@@ -6,7 +6,7 @@
 ### Initialize Repo
 - git init
 - git remote -v
-- git remote add origin SSH-url
+- git remote add origin url
 
 ###
 
@@ -14,7 +14,7 @@
 - `git add .`
 - `git commit -m "message"`
 - `git push origin master`
-- git commit -am "
+- git commit -am "message"
 
 ### Pull
 - git fetch origin
