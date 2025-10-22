@@ -1,19 +1,20 @@
-## Git & GitHub
-Git is used for
+## Git
 - collab
 - version control (maintain history)
-- branching and merging
-- backup all version details are store in .git folder in local device
-
+- distributed vcs
 
 ### Initialize Repo
 - git init
-- git remote add origin SSH link
 - git remote -v
+- git remote add origin SSH-url
+
+###
+
 
 - `git add .`
 - `git commit -m "message"`
 - `git push origin master`
+- git commit -am "
 
 ### Pull
 - git fetch origin
