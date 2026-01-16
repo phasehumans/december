@@ -1,0 +1,5 @@
+{
+  "name": "o1-agent-cli",
+  "description": "A highly polished, modern terminal UI for an AI coding agent.",
+  "requestFramePermissions": []
+}
