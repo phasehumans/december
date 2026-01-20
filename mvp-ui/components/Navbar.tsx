@@ -1,0 +1,61 @@
+import React from 'react';
+import { Github } from 'lucide-react';
+import { Logo } from './Logo';
+
+interface NavbarProps {
+  isAuthenticated: boolean;
+  onLogin: () => void;
+  onSignup: () => void;
+}
+
+export const Navbar: React.FC<NavbarProps> = ({ isAuthenticated, onLogin, onSignup }) => {
+  return (
+    <nav className="fixed top-0 left-0 right-0 h-20 flex items-center justify-between px-6 md:px-12 z-50 bg-transparent transition-all duration-300">
+      <div className="flex items-center gap-8">
+        <Logo />
+        
+        {/* Tagline - Only visible when NOT authenticated */}
+        {!isAuthenticated && (
+            <span className="hidden lg:block text-sm text-neutral-500 font-medium tracking-wide">
+                Build something Human
+            </span>
+        )}
+        
+        {/* Desktop Links - Only visible when NOT authenticated */}
+        {!isAuthenticated && (
+            <div className="hidden md:flex items-center gap-6 text-sm font-medium text-neutral-400">
+                <a href="#" className="hover:text-white transition-colors">Solutions</a>
+                <a href="#" className="hover:text-white transition-colors">Enterprise</a>
+                <a href="#" className="hover:text-white transition-colors">Pricing</a>
+                <a href="#" className="hover:text-white transition-colors">Community</a>
+                <a href="#" className="hover:text-white transition-colors">Discover</a>
+            </div>
+        )}
+      </div>
+
+      <div className="flex items-center gap-4">
+         {!isAuthenticated && (
+            <>
+                <button 
+                    onClick={onLogin}
+                    className="text-sm font-medium text-white hover:text-neutral-300 transition-colors px-3 py-2"
+                >
+                    Log in
+                </button>
+                <button 
+                    onClick={onSignup}
+                    className="px-4 py-2 bg-white text-black text-sm font-semibold rounded-md hover:bg-neutral-200 transition-colors shadow-lg shadow-white/5"
+                >
+                    Get started
+                </button>
+            </>
+        )}
+        {isAuthenticated && (
+             <div className="w-8 h-8 rounded-full bg-neutral-800 border border-white/10 flex items-center justify-center">
+                <span className="text-xs font-medium text-neutral-400">U</span>
+             </div>
+        )}
+      </div>
+    </nav>
+  );
+};
