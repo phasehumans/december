@@ -15,8 +15,8 @@ export const Logo = ({ className, showText = true }: LogoProps) => {
             phase
         </span>
         
-        {/* Humans: Sans-serif, representing the user/organic state */}
-        <span className="font-sans text-xl font-bold text-white tracking-tight ml-[1px]">
+        {/* Humans: Sans-serif (Display), representing the user/organic state */}
+        <span className="font-display text-xl font-bold text-white tracking-tight ml-[1px]">
             humans
         </span>
 

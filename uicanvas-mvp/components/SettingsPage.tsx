@@ -29,7 +29,7 @@ export const SettingsPage = () => {
             
             {/* Settings Sidebar */}
             <div className="w-64 shrink-0 border-r border-white/5 py-8 px-4 hidden md:block">
-                <h2 className="text-xl font-bold text-white px-4 mb-6 tracking-tight">Settings</h2>
+                <h2 className="text-xl font-display font-bold text-white px-4 mb-6 tracking-tight">Settings</h2>
                 <div className="space-y-1">
                     {tabs.map((tab) => (
                         <button
@@ -64,7 +64,7 @@ export const SettingsPage = () => {
                                 className="space-y-8"
                             >
                                 <div>
-                                    <h3 className="text-2xl font-bold text-white mb-1">General Profile</h3>
+                                    <h3 className="text-2xl font-display font-bold text-white mb-1">General Profile</h3>
                                     <p className="text-neutral-400 text-sm">Manage your personal information and preferences.</p>
                                 </div>
 
@@ -135,7 +135,7 @@ export const SettingsPage = () => {
                                 className="space-y-8"
                             >
                                 <div>
-                                    <h3 className="text-2xl font-bold text-white mb-1">Team Members</h3>
+                                    <h3 className="text-2xl font-display font-bold text-white mb-1">Team Members</h3>
                                     <p className="text-neutral-400 text-sm">Manage access and roles for your workspace.</p>
                                 </div>
 
@@ -182,7 +182,7 @@ export const SettingsPage = () => {
                                 className="space-y-8"
                             >
                                 <div>
-                                    <h3 className="text-2xl font-bold text-white mb-1">Billing & Plans</h3>
+                                    <h3 className="text-2xl font-display font-bold text-white mb-1">Billing & Plans</h3>
                                     <p className="text-neutral-400 text-sm">Manage your subscription and payment methods.</p>
                                 </div>
 

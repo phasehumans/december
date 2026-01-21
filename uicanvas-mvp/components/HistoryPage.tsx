@@ -147,7 +147,7 @@ export const HistoryPage = () => {
                 {/* Header Section */}
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
                     <div>
-                        <h1 className="text-3xl font-bold text-white tracking-tight mb-2">History</h1>
+                        <h1 className="text-3xl font-display font-bold text-white tracking-tight mb-2">History</h1>
                         <p className="text-neutral-400">Manage and restore your generated interfaces.</p>
                     </div>
 

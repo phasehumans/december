@@ -105,7 +105,7 @@ export const DocsPage = () => {
                             <ChevronRight size={12} />
                             <span className="text-neutral-200">Introduction</span>
                         </div>
-                        <h1 className="text-4xl lg:text-5xl font-bold tracking-tight text-white mb-6">
+                        <h1 className="text-4xl lg:text-5xl font-display font-bold tracking-tight text-white mb-6">
                             Introduction to PhaseHumans
                         </h1>
                         <p className="text-xl text-neutral-400 font-light leading-relaxed max-w-2xl">
@@ -116,7 +116,7 @@ export const DocsPage = () => {
                     <div className="space-y-12">
                         {/* Section 1 */}
                         <section>
-                            <h2 className="text-2xl font-semibold text-white mb-4 flex items-center gap-2">
+                            <h2 className="text-2xl font-display font-semibold text-white mb-4 flex items-center gap-2">
                                 <Zap className="text-yellow-500" size={24} />
                                 Why PhaseHumans?
                             </h2>
@@ -143,7 +143,7 @@ export const DocsPage = () => {
 
                         {/* Section 2 */}
                         <section>
-                            <h2 className="text-2xl font-semibold text-white mb-4">Installation</h2>
+                            <h2 className="text-2xl font-display font-semibold text-white mb-4">Installation</h2>
                             <p className="text-neutral-400 leading-7 mb-4">
                                 PhaseHumans is available as a CLI tool for rapid project scaffolding.
                             </p>
@@ -156,7 +156,7 @@ export const DocsPage = () => {
 
                         {/* Section 3 */}
                         <section>
-                            <h2 className="text-2xl font-semibold text-white mb-4">Architecture</h2>
+                            <h2 className="text-2xl font-display font-semibold text-white mb-4">Architecture</h2>
                             <p className="text-neutral-400 leading-7 mb-6">
                                 The core of PhaseHumans consists of three main parts: the <strong>Context Canvas</strong>, the <strong>Synthesis Engine</strong>, and the <strong>Renderer</strong>.
                             </p>

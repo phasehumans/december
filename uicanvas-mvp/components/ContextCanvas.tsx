@@ -249,16 +249,18 @@ export const ContextCanvas: React.FC<ContextCanvasProps> = ({ items, onAddItem, 
     );
 };
 
-const CanvasItemComponent = ({ 
+interface CanvasItemComponentProps {
+    item: CanvasItem;
+    isSelected: boolean;
+    onSelect: () => void;
+    onRemove: () => void;
+}
+
+const CanvasItemComponent: React.FC<CanvasItemComponentProps> = ({ 
     item, 
     isSelected, 
     onSelect,
     onRemove 
-}: { 
-    item: CanvasItem, 
-    isSelected: boolean, 
-    onSelect: () => void,
-    onRemove: () => void
 }) => {
     
     // Quick Delete Button Component

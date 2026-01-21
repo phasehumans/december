@@ -41,6 +41,7 @@ function App() {
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
   
   const [prompt, setPrompt] = useState("");
+  const [placeholderText, setPlaceholderText] = useState("Ask PhaseHumans to ");
   
   const [view, setView] = useState<ViewState>('home');
   const [isGenerating, setIsGenerating] = useState(false);
@@ -52,6 +53,52 @@ function App() {
 
   // Canvas State
   const [canvasItems, setCanvasItems] = useState<CanvasItem[]>([]);
+
+  // Typewriter Effect for Placeholder
+  useEffect(() => {
+    const prefix = "Ask PhaseHumans to ";
+    const suffixes = [
+      "create a prototype...",
+      "create a landing page for my SaaS...",
+      "build a dashboard for analytics...",
+      "design a portfolio for a photographer...",
+      "create a webapp that tracks expenses..."
+    ];
+    
+    let currentPhraseIndex = 0;
+    let currentCharIndex = 0;
+    let isDeleting = false;
+    let timeoutId: ReturnType<typeof setTimeout>;
+
+    const type = () => {
+      const currentSuffix = suffixes[currentPhraseIndex];
+      
+      if (isDeleting) {
+        currentCharIndex--;
+      } else {
+        currentCharIndex++;
+      }
+
+      setPlaceholderText(prefix + currentSuffix.substring(0, currentCharIndex));
+
+      let typeSpeed = isDeleting ? 30 : 50;
+
+      if (!isDeleting && currentCharIndex === currentSuffix.length) {
+        typeSpeed = 3000; // Pause at end of sentence
+        isDeleting = true;
+      } else if (isDeleting && currentCharIndex === 0) {
+        isDeleting = false;
+        currentPhraseIndex = (currentPhraseIndex + 1) % suffixes.length;
+        typeSpeed = 500; // Pause before new sentence
+      }
+
+      timeoutId = setTimeout(type, typeSpeed);
+    };
+
+    timeoutId = setTimeout(type, 100);
+
+    return () => clearTimeout(timeoutId);
+  }, []);
 
   const handleOpenLogin = () => {
     setAuthMode('login');
@@ -209,49 +256,49 @@ function App() {
                             
                             <div className="w-full max-w-7xl mx-auto flex flex-col items-center justify-center">
                                 {/* Hero Text */}
-                                <div className="text-center space-y-4 mb-10">
-                                    <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-white drop-shadow-lg leading-tight">
+                                <div className="text-center space-y-3 mb-8">
+                                    <h1 className="text-3xl md:text-5xl font-display font-bold tracking-tight text-white drop-shadow-lg leading-tight">
                                         What should we <span className="text-neutral-500">build</span> together?
                                     </h1>
-                                    <p className="text-xl text-neutral-400 font-light max-w-lg mx-auto">
+                                    <p className="text-base md:text-lg text-neutral-400 font-light max-w-lg mx-auto">
                                         Your ideas and context, built together.
                                     </p>
                                 </div>
 
                                 {/* Lovable-style Prompt Box */}
-                                <div className="w-full max-w-4xl bg-[#09090b] rounded-[32px] p-4 shadow-2xl border border-white/10 ring-1 ring-white/5 relative group transition-all focus-within:ring-white/20 focus-within:bg-[#0c0c0e]">
+                                <div className="w-full max-w-[52rem] bg-[#09090b] rounded-[28px] p-3 shadow-2xl border border-white/10 ring-1 ring-white/5 relative group transition-all focus-within:ring-white/20 focus-within:bg-[#0c0c0e]">
                                     
                                     <textarea 
                                         value={prompt}
                                         onChange={(e) => setPrompt(e.target.value)}
-                                        placeholder="Ask PhaseHumans to create a prototype..."
-                                        className="w-full bg-transparent text-white text-xl p-2 min-h-[48px] resize-none outline-none placeholder-neutral-600 font-light leading-relaxed"
+                                        placeholder={placeholderText}
+                                        className="w-full bg-transparent text-white text-lg p-2 min-h-[40px] resize-none outline-none placeholder-neutral-600 font-light leading-relaxed"
                                         spellCheck={false}
                                     />
 
-                                    <div className="flex items-center justify-between mt-2">
+                                    <div className="flex items-center justify-between mt-1">
                                         {/* Left Action */}
-                                        <button className="p-2.5 rounded-full text-neutral-500 hover:text-white hover:bg-neutral-800 transition-colors border border-transparent hover:border-white/5 outline-none focus-visible:ring-2 focus-visible:ring-white/20">
-                                            <Plus size={22} />
+                                        <button className="p-2 rounded-full text-neutral-500 hover:text-white hover:bg-neutral-800 transition-colors border border-transparent hover:border-white/5 outline-none focus-visible:ring-2 focus-visible:ring-white/20">
+                                            <Plus size={20} />
                                         </button>
 
                                         {/* Right Actions */}
                                         <div className="flex items-center gap-2">
-                                            <button className="p-2.5 rounded-full text-neutral-500 hover:text-white hover:bg-neutral-800 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-white/20">
-                                                <Mic size={22} />
+                                            <button className="p-2 rounded-full text-neutral-500 hover:text-white hover:bg-neutral-800 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-white/20">
+                                                <Mic size={20} />
                                             </button>
 
                                             <button 
                                                 onClick={handleGenerate}
                                                 disabled={!prompt}
                                                 className={cn(
-                                                    "inline-flex items-center justify-center rounded-full text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20 disabled:pointer-events-none disabled:opacity-50 ml-1 h-10 w-10",
+                                                    "inline-flex items-center justify-center rounded-full text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20 disabled:pointer-events-none disabled:opacity-50 ml-1 h-9 w-9",
                                                     prompt 
                                                         ? "bg-white text-black hover:bg-neutral-200 shadow-lg shadow-white/10" 
                                                         : "bg-neutral-800 text-neutral-500"
                                                 )}
                                             >
-                                                <ArrowUp size={18} strokeWidth={2.5} />
+                                                <ArrowUp size={16} strokeWidth={2.5} />
                                             </button>
                                         </div>
                                     </div>
