@@ -9,11 +9,12 @@ export interface NavItem {
 
 export interface CanvasItem {
   id: string;
-  type: 'image' | 'file' | 'link' | 'shape';
+  type: 'image' | 'file' | 'link' | 'shape' | 'note';
   content: string | ReactNode;
   x: number;
   y: number;
   prompt?: string;
+  color?: string;
 }
 
 export interface User {

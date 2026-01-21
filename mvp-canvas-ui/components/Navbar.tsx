@@ -36,6 +36,15 @@ export const Navbar: React.FC<NavbarProps> = ({ isAuthenticated, onLogin, onSign
       <div className="flex items-center gap-4">
          {!isAuthenticated && (
             <>
+                <a 
+                    href="https://github.com" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="p-2 text-neutral-400 hover:text-white transition-colors hover:bg-white/5 rounded-full"
+                    aria-label="GitHub"
+                >
+                    <Github size={20} />
+                </a>
                 <button 
                     onClick={onLogin}
                     className="text-sm font-medium text-white hover:text-neutral-300 transition-colors px-3 py-2"
