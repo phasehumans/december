@@ -18,6 +18,7 @@ import {
     Sparkles
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Logo } from './Logo';
 
 interface OutputScreenProps {
     onBack?: () => void;
@@ -76,9 +77,9 @@ export const OutputScreen: React.FC<OutputScreenProps> = ({ onBack, isGenerating
             <button onClick={onBack} className="text-neutral-500 hover:text-white transition-colors p-1 rounded-md hover:bg-white/5">
                 <Menu size={18} />
             </button>
-            <div className="flex items-center gap-2 text-sm font-mono text-neutral-400 select-none cursor-default">
-                <span className="text-neutral-300 font-medium">phasehumans</span>
-                <span className="text-neutral-600">{'>'}</span>
+            <div className="flex items-center gap-2 select-none cursor-default">
+                <Logo className="scale-75 origin-left" />
+                <span className="text-neutral-600 font-mono text-sm translate-y-[1px]">{'>'}</span>
             </div>
         </div>
 

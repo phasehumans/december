@@ -304,41 +304,6 @@ function App() {
                                     </div>
                                 </div>
                             </div>
-
-                            {/* Scroll Indicator - Positioned Absolutely relative to content container */}
-                            {isAuthenticated && (
-                                <motion.div 
-                                    initial={{ opacity: 0, y: 20 }} 
-                                    animate={{ opacity: 1, y: 0 }} 
-                                    transition={{ delay: 1.2, duration: 1, type: "spring" }}
-                                    className="absolute bottom-10 left-1/2 -translate-x-1/2 z-30"
-                                >
-                                    <button 
-                                        onClick={() => {
-                                            const canvasSection = document.getElementById('context-canvas-section');
-                                            if (canvasSection) {
-                                                canvasSection.scrollIntoView({ behavior: 'smooth' });
-                                            } else {
-                                                window.scrollTo({ top: window.innerHeight, behavior: 'smooth' });
-                                            }
-                                        }}
-                                        className="group flex flex-col items-center gap-2 outline-none"
-                                    >
-                                        <div className="relative flex items-center gap-3 pl-4 pr-3 py-2.5 bg-[#0F0F0F]/80 backdrop-blur-md border border-white/10 rounded-full shadow-[0_0_40px_-10px_rgba(0,0,0,0.7)] hover:border-white/20 hover:bg-[#1A1A1A] hover:shadow-[0_0_50px_-10px_rgba(255,255,255,0.1)] transition-all duration-300 ring-1 ring-white/5 group-focus-visible:ring-white/20">
-                                            
-                                            <span className="text-[11px] font-medium text-neutral-400 tracking-wide uppercase group-hover:text-white transition-colors select-none">
-                                                Scroll to add context
-                                            </span>
-
-                                            <div className="w-px h-4 bg-white/10 mx-1" />
-
-                                            <div className="p-1 rounded-full bg-white/5 text-neutral-400 group-hover:text-white group-hover:bg-white/10 transition-all">
-                                                <ChevronDown size={14} className="group-hover:translate-y-0.5 transition-transform duration-300" />
-                                            </div>
-                                        </div>
-                                    </button>
-                                </motion.div>
-                            )}
                         </div>
 
                         {/* Context Canvas Section - Only if Authenticated */}
@@ -403,87 +368,90 @@ function App() {
             <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
                 <motion.div 
                     initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                    className="absolute inset-0 bg-black/80 backdrop-blur-md"
+                    className="absolute inset-0 bg-black/60 backdrop-blur-md"
                     onClick={() => setIsAuthModalOpen(false)}
                 />
                 <motion.div 
-                    initial={{ opacity: 0, scale: 0.95, y: 20, filter: "blur(10px)" }} 
+                    initial={{ opacity: 0, scale: 0.9, y: 20, filter: "blur(10px)" }} 
                     animate={{ opacity: 1, scale: 1, y: 0, filter: "blur(0px)" }} 
-                    exit={{ opacity: 0, scale: 0.95, y: 20, filter: "blur(10px)" }}
+                    exit={{ opacity: 0, scale: 0.9, y: 20, filter: "blur(10px)" }}
                     transition={{ type: "spring", damping: 25, stiffness: 300 }}
-                    className="relative w-full max-w-[360px] bg-[#0A0A0A] border border-white/10 rounded-2xl p-6 shadow-2xl overflow-hidden"
+                    className="relative w-full max-w-[400px] bg-[#09090b] border border-white/10 rounded-[32px] p-8 shadow-2xl overflow-hidden ring-1 ring-white/5"
                 >
+                    {/* Decorative Gradient Blob */}
+                    <div className="absolute -top-20 -right-20 w-40 h-40 bg-white/5 rounded-full blur-[50px] pointer-events-none" />
+                    
                     <button 
                         onClick={() => setIsAuthModalOpen(false)}
-                        className="absolute top-4 right-4 p-1.5 text-neutral-600 hover:text-white transition-colors rounded-full hover:bg-white/5"
+                        className="absolute top-6 right-6 p-2 text-neutral-500 hover:text-white transition-colors rounded-full hover:bg-white/5"
                     >
-                        <X size={14} />
+                        <X size={16} />
                     </button>
 
-                    <div className="flex flex-col items-center mb-6">
-                        <div className="mb-4 scale-75">
+                    <div className="flex flex-col items-center mb-8">
+                        <div className="mb-5 scale-90">
                             <Logo />
                         </div>
-                        <h2 className="text-lg font-medium text-white tracking-tight">
+                        <h2 className="text-xl font-semibold text-white tracking-tight">
                             {authMode === 'login' ? 'Welcome back' : 'Create account'}
                         </h2>
-                        <p className="text-[10px] text-neutral-500 font-mono mt-1 tracking-wide uppercase">
+                        <p className="text-xs text-neutral-500 font-medium mt-1.5">
                             {authMode === 'login' 
-                                ? 'Authenticate Session' 
-                                : 'Initialize New User'}
+                                ? 'Enter your details to access your workspace.' 
+                                : 'Start building your ideas in seconds.'}
                         </p>
                     </div>
 
-                    <div className="space-y-3">
+                    <div className="space-y-4">
                         <button 
                             onClick={handleGoogleAuth}
-                            className="relative w-full h-9 flex items-center justify-center gap-2 bg-white text-black hover:bg-neutral-200 rounded-lg text-sm font-medium transition-all group overflow-hidden"
+                            className="relative w-full h-11 flex items-center justify-center gap-2 bg-neutral-900 hover:bg-neutral-800 border border-white/5 text-white rounded-2xl text-sm font-medium transition-all group overflow-hidden shadow-sm"
                         >
                             <GoogleIcon />
                             <span>Continue with Google</span>
                         </button>
                         
-                        <div className="flex items-center gap-3 py-1.5">
-                            <div className="h-px flex-1 bg-white/5" />
-                            <span className="text-[10px] text-neutral-600 font-mono">OR</span>
-                            <div className="h-px flex-1 bg-white/5" />
+                        <div className="flex items-center gap-3 py-2">
+                            <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+                            <span className="text-[10px] text-neutral-600 font-mono uppercase tracking-wider">Or</span>
+                            <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/10 to-transparent" />
                         </div>
 
-                        <form onSubmit={handleAuthSubmit} className="space-y-2.5">
-                            <div className="space-y-1">
-                                <label className="text-[10px] uppercase tracking-wider text-neutral-500 font-mono ml-1">Email</label>
+                        <form onSubmit={handleAuthSubmit} className="space-y-3">
+                            <div className="space-y-1.5">
+                                <label className="text-[11px] font-medium text-neutral-400 ml-1">Email</label>
                                 <input 
                                     type="email" 
-                                    className="w-full bg-[#050505] border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-neutral-700 focus:outline-none focus:border-white/30 focus:ring-1 focus:ring-white/20 transition-all font-sans"
-                                    placeholder="user@example.com"
+                                    className="w-full bg-[#121214] border border-white/5 rounded-2xl px-4 py-3 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-white/20 focus:bg-[#18181b] focus:ring-1 focus:ring-white/10 transition-all font-sans"
+                                    placeholder="name@example.com"
                                 />
                             </div>
                             
-                            <div className="space-y-1">
-                                <label className="text-[10px] uppercase tracking-wider text-neutral-500 font-mono ml-1">Password</label>
+                            <div className="space-y-1.5">
+                                <label className="text-[11px] font-medium text-neutral-400 ml-1">Password</label>
                                 <input 
                                     type="password" 
-                                    className="w-full bg-[#050505] border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-neutral-700 focus:outline-none focus:border-white/30 focus:ring-1 focus:ring-white/20 transition-all font-sans"
+                                    className="w-full bg-[#121214] border border-white/5 rounded-2xl px-4 py-3 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-white/20 focus:bg-[#18181b] focus:ring-1 focus:ring-white/10 transition-all font-sans"
                                     placeholder="••••••••"
                                 />
                             </div>
 
                             <button 
                                 type="submit"
-                                className="w-full h-9 mt-1 bg-[#1a1a1a] border border-white/10 text-neutral-200 hover:text-white hover:bg-[#222] rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2"
+                                className="w-full h-11 mt-2 bg-white text-black hover:bg-neutral-200 rounded-2xl text-sm font-bold transition-all flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:shadow-[0_0_25px_rgba(255,255,255,0.2)] hover:scale-[1.02] active:scale-[0.98]"
                             >
-                                <span>{authMode === 'login' ? 'Enter Phase' : 'Join Phase'}</span>
-                                <ArrowRight size={14} />
+                                <span>{authMode === 'login' ? 'Sign In' : 'Sign Up'}</span>
+                                <ArrowRight size={16} />
                             </button>
                         </form>
                     </div>
 
-                    <div className="mt-6 pt-3 border-t border-white/5 text-center">
-                        <p className="text-[10px] text-neutral-500">
-                            {authMode === 'login' ? "No account? " : "Have an account? "}
+                    <div className="mt-8 text-center">
+                        <p className="text-xs text-neutral-500">
+                            {authMode === 'login' ? "Don't have an account? " : "Already have an account? "}
                             <button 
                                 onClick={() => setAuthMode(authMode === 'login' ? 'signup' : 'login')}
-                                className="text-white hover:underline decoration-white/30 underline-offset-4 transition-all ml-1"
+                                className="text-white hover:text-neutral-300 font-medium transition-colors ml-0.5"
                             >
                                 {authMode === 'login' ? 'Sign up' : 'Log in'}
                             </button>

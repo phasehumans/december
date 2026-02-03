@@ -41,7 +41,7 @@ const ToolButton = ({ icon: Icon, label, onClick, active }: { icon: any, label: 
                 ? "bg-white text-black shadow-[0_0_20px_rgba(255,255,255,0.3)]" 
                 : "text-neutral-400 hover:text-white hover:bg-white/10 hover:border-white/5"
         )}
-        title={label} // Using native title attribute instead of custom tooltip
+        title={label}
     >
         <Icon size={18} strokeWidth={2} />
     </button>
@@ -79,45 +79,31 @@ export const ContextCanvas: React.FC<ContextCanvasProps> = ({ items, onAddItem, 
             {/* Main Canvas Area */}
             <div 
                 ref={containerRef}
-                className="relative w-full h-[850px] bg-[#0E0E10] rounded-3xl border border-white/5 shadow-2xl overflow-hidden group ring-1 ring-white/5 select-none"
+                className="relative w-full h-[850px] bg-[#141415] rounded-3xl border border-white/10 shadow-2xl overflow-hidden group ring-1 ring-white/5 select-none"
                 onClick={() => setSelectedId(null)}
             >
-                {/* Engineering Grid Background with Mask */}
+                {/* Dotted Grid Background - Subtle White/Grey Dots */}
                 <div 
-                    className="absolute inset-0 opacity-[0.15] pointer-events-none" 
+                    className="absolute inset-0 pointer-events-none opacity-20" 
                     style={{
-                        backgroundImage: `
-                            linear-gradient(to right, #444 1px, transparent 1px),
-                            linear-gradient(to bottom, #444 1px, transparent 1px)
-                        `,
-                        backgroundSize: '40px 40px',
-                        maskImage: 'radial-gradient(circle at center, black 40%, transparent 100%)',
-                        WebkitMaskImage: 'radial-gradient(circle at center, black 40%, transparent 100%)'
+                        backgroundImage: 'radial-gradient(#888 1.5px, transparent 1.5px)',
+                        backgroundSize: '24px 24px'
                     }} 
                 />
                 
-                {/* Micro Dot Texture */}
-                <div 
-                    className="absolute inset-0 opacity-[0.07] pointer-events-none"
-                    style={{
-                        backgroundImage: 'radial-gradient(#FFF 1px, transparent 1px)',
-                        backgroundSize: '16px 16px'
-                    }}
-                />
-
-                {/* Ambient Glow */}
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(20,20,30,0.2)_0%,rgba(0,0,0,0.4)_100%)] pointer-events-none" />
+                {/* Ambient Dark Glow */}
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.02)_0%,rgba(0,0,0,0)_100%)] pointer-events-none" />
 
                 {/* Top Bar Navigation & Toolbar */}
                 <div className="absolute top-6 left-6 right-6 flex items-start justify-between z-40 pointer-events-none">
                     {/* Left: Project Info */}
-                    <div className="pointer-events-auto flex items-center gap-3 px-4 py-2 bg-[#0A0A0A]/80 backdrop-blur-xl border border-white/10 rounded-full shadow-lg hover:border-white/20 transition-colors">
+                    <div className="pointer-events-auto flex items-center gap-3 px-4 py-2 bg-[#0A0A0A]/90 backdrop-blur-xl border border-white/10 rounded-full shadow-lg hover:border-white/20 transition-colors">
                         <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
                         <span className="text-xs text-white font-medium opacity-90 tracking-wide">Context Canvas</span>
                     </div>
 
                     {/* Center: Toolbar */}
-                    <div className="pointer-events-auto flex items-center gap-1 p-1.5 bg-[#0A0A0A]/80 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-[0_20px_40px_-10px_rgba(0,0,0,0.8)] ring-1 ring-white/5 hover:bg-[#0A0A0A]/90 transition-colors">
+                    <div className="pointer-events-auto flex items-center gap-1 p-1.5 bg-[#0A0A0A]/90 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-[0_20px_40px_-10px_rgba(0,0,0,0.5)] ring-1 ring-white/5 hover:bg-[#0A0A0A] transition-colors">
                         {/* Selector */}
                         <ToolButton 
                             icon={MousePointer2} 
@@ -194,7 +180,7 @@ export const ContextCanvas: React.FC<ContextCanvasProps> = ({ items, onAddItem, 
                     {/* Right: Controls (Undo/Redo & Zoom) */}
                     <div className="pointer-events-auto flex items-center gap-3">
                         {/* Undo/Redo */}
-                        <div className="flex items-center p-1 bg-[#0A0A0A]/80 backdrop-blur-xl border border-white/10 rounded-xl shadow-lg">
+                        <div className="flex items-center p-1 bg-[#0A0A0A]/90 backdrop-blur-xl border border-white/10 rounded-xl shadow-lg">
                             <button className="p-2.5 hover:bg-white/10 rounded-lg text-neutral-400 hover:text-white transition-colors">
                                 <Undo2 size={16} />
                             </button>
@@ -205,7 +191,7 @@ export const ContextCanvas: React.FC<ContextCanvasProps> = ({ items, onAddItem, 
                         </div>
 
                         {/* Zoom */}
-                        <div className="flex items-center p-1 bg-[#0A0A0A]/80 backdrop-blur-xl border border-white/10 rounded-xl shadow-lg gap-1">
+                        <div className="flex items-center p-1 bg-[#0A0A0A]/90 backdrop-blur-xl border border-white/10 rounded-xl shadow-lg gap-1">
                              <button 
                                 onClick={() => setScale(s => Math.max(25, s - 25))}
                                 className="p-2.5 hover:bg-white/10 rounded-lg text-neutral-400 hover:text-white transition-colors"
@@ -290,21 +276,21 @@ const CanvasItemComponent: React.FC<CanvasItemComponentProps> = ({
                 item.type === 'note' ? "w-64" : item.type === 'link' ? "w-[480px]" : "w-80"
             )}
         >
-            {/* Subtle White Selection Outline */}
+            {/* Selection Outline */}
             <div className={cn(
-                "absolute -inset-[1px] rounded-2xl border transition-all duration-200 pointer-events-none",
+                "absolute -inset-[2px] rounded-2xl border-2 transition-all duration-200 pointer-events-none",
                 isSelected 
-                    ? "border-white/20 shadow-[0_0_20px_rgba(255,255,255,0.05)] bg-white/[0.01]" 
-                    : "border-transparent group-hover:border-white/5"
+                    ? "border-white/30 shadow-[0_0_20px_rgba(255,255,255,0.05)]" 
+                    : "border-transparent group-hover:border-white/10"
             )} />
 
             {/* Content Container */}
-            <div className="relative">
+            <div className="relative shadow-2xl rounded-xl">
                 
                 {/* Note Item */}
                 {item.type === 'note' && (
                     <div className={cn(
-                        "relative overflow-hidden shadow-2xl transition-shadow bg-[#FEF9C3] text-neutral-900 rounded-bl-sm rounded-xl"
+                        "relative overflow-hidden shadow-sm transition-shadow bg-[#FEF9C3] text-neutral-900 rounded-bl-sm rounded-xl border border-neutral-200"
                     )}>
                         <DeleteButton />
                         <div className="p-4 min-h-[180px] flex flex-col">
@@ -323,7 +309,7 @@ const CanvasItemComponent: React.FC<CanvasItemComponentProps> = ({
 
                 {/* Image Item */}
                 {item.type === 'image' && (
-                    <div className="bg-[#0A0A0A] rounded-xl border border-white/10 overflow-hidden shadow-2xl relative">
+                    <div className="bg-[#1C1C1E] rounded-xl border border-white/10 overflow-hidden shadow-2xl relative">
                         <DeleteButton />
                         
                         {/* Image Preview */}
@@ -339,13 +325,13 @@ const CanvasItemComponent: React.FC<CanvasItemComponentProps> = ({
                         </div>
 
                         {/* Input Area */}
-                        <div className="p-3 bg-[#0A0A0A] border-t border-white/5">
+                        <div className="p-3 bg-[#1C1C1E] border-t border-white/5">
                             <div className="flex items-center gap-2 mb-2">
                                 <span className="text-[10px] font-mono text-neutral-500 uppercase tracking-wider">Context</span>
                             </div>
                             <textarea 
                                 placeholder="Describe how to use this image..."
-                                className="w-full bg-[#141414] text-xs text-white px-3 py-2 rounded-lg border border-white/5 focus:border-white/10 focus:bg-[#1A1A1A] outline-none transition-colors placeholder-neutral-600 resize-none min-h-[60px]"
+                                className="w-full bg-[#141414] text-xs text-white px-3 py-2 rounded-lg border border-white/5 focus:border-white/10 focus:bg-[#2A2A2D] outline-none transition-colors placeholder-neutral-600 resize-none min-h-[60px]"
                             />
                         </div>
                     </div>
@@ -353,20 +339,20 @@ const CanvasItemComponent: React.FC<CanvasItemComponentProps> = ({
 
                 {/* Link/Website Item */}
                 {item.type === 'link' && (
-                    <div className="bg-[#0A0A0A] rounded-xl border border-white/10 overflow-hidden shadow-2xl relative">
+                    <div className="bg-[#1C1C1E] rounded-xl border border-white/10 overflow-hidden shadow-2xl relative">
                         <DeleteButton />
                         
                         {/* Mini Browser Header */}
-                        <div className="h-9 bg-[#111] border-b border-white/5 flex items-center px-4 gap-3">
+                        <div className="h-9 bg-[#2A2A2D] border-b border-white/5 flex items-center px-4 gap-3">
                             <div className="flex gap-1.5">
                                 <div className="w-2.5 h-2.5 rounded-full bg-[#FF5F57]" />
                                 <div className="w-2.5 h-2.5 rounded-full bg-[#FEBC2E]" />
                                 <div className="w-2.5 h-2.5 rounded-full bg-[#28C840]" />
                             </div>
                             <div className="flex-1 flex justify-center">
-                                <div className="flex items-center gap-2 bg-[#050505] border border-white/5 rounded-md px-3 py-0.5 max-w-[240px] w-full">
-                                    <Globe size={10} className="text-neutral-600" />
-                                    <span className="text-[10px] text-neutral-500 font-mono truncate w-full text-center opacity-80 select-none">
+                                <div className="flex items-center gap-2 bg-[#141414] border border-white/5 rounded-md px-3 py-0.5 max-w-[240px] w-full">
+                                    <Globe size={10} className="text-neutral-500" />
+                                    <span className="text-[10px] text-neutral-400 font-mono truncate w-full text-center opacity-80 select-none">
                                         {item.content as string}
                                     </span>
                                 </div>
@@ -386,13 +372,13 @@ const CanvasItemComponent: React.FC<CanvasItemComponentProps> = ({
                         </div>
 
                         {/* Input Area */}
-                         <div className="p-3 bg-[#0A0A0A] border-t border-white/5">
+                         <div className="p-3 bg-[#1C1C1E] border-t border-white/5">
                             <div className="flex items-center gap-2 mb-2">
                                 <span className="text-[10px] font-mono text-neutral-500 uppercase tracking-wider">Website Context</span>
                             </div>
                              <textarea 
                                 placeholder="Describe what to use from this site..."
-                                className="w-full bg-[#141414] text-xs text-white px-3 py-2 rounded-lg border border-white/5 focus:border-white/10 focus:bg-[#1A1A1A] outline-none transition-colors placeholder-neutral-600 resize-none min-h-[60px]"
+                                className="w-full bg-[#141414] text-xs text-white px-3 py-2 rounded-lg border border-white/5 focus:border-white/10 focus:bg-[#2A2A2D] outline-none transition-colors placeholder-neutral-600 resize-none min-h-[60px]"
                             />
                         </div>
                     </div>
