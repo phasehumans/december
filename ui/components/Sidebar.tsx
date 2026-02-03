@@ -138,16 +138,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     onClick={() => onNavigate('history')}
                 />
             </SidebarSection>
-            
-            <SidebarSection title="Resources" collapsed={isCollapsed}>
-                <SidebarItem 
-                    icon={BookOpen} 
-                    label="Documentation" 
-                    active={currentView === 'docs'}
-                    collapsed={isCollapsed} 
-                    onClick={() => onNavigate('docs')}
-                />
-            </SidebarSection>
         </div>
 
         {/* Footer Actions */}
