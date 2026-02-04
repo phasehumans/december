@@ -31,12 +31,12 @@ export const Navbar: React.FC<NavbarProps> = ({ isAuthenticated, onLogin, onSign
         {/* Tagline - Only visible when NOT authenticated */}
         {!isAuthenticated && (
             <span className="hidden lg:block text-sm text-neutral-500 font-medium tracking-wide">
-                Build something Human
+                humans. technology.
             </span>
         )}
         
         {/* Desktop Links - Only visible when NOT authenticated */}
-        {!isAuthenticated && (
+        {/* {!isAuthenticated && (
             <div className="hidden md:flex items-center gap-6 text-sm font-medium text-neutral-400">
                 <a href="#" className="hover:text-white transition-colors">Solutions</a>
                 <a href="#" className="hover:text-white transition-colors">Enterprise</a>
@@ -44,7 +44,7 @@ export const Navbar: React.FC<NavbarProps> = ({ isAuthenticated, onLogin, onSign
                 <a href="#" className="hover:text-white transition-colors">Community</a>
                 <a href="#" className="hover:text-white transition-colors">Discover</a>
             </div>
-        )}
+        )} */}
       </div>
 
       <div className="flex items-center gap-4">
@@ -52,7 +52,7 @@ export const Navbar: React.FC<NavbarProps> = ({ isAuthenticated, onLogin, onSign
             <>
                 <div className="flex items-center gap-2 mr-2">
                     <a 
-                        href="https://twitter.com" 
+                        href="https://x.com/phasehumans" 
                         target="_blank" 
                         rel="noopener noreferrer"
                         className="p-2 text-neutral-400 hover:text-white transition-colors hover:bg-white/5 rounded-full"
@@ -61,7 +61,7 @@ export const Navbar: React.FC<NavbarProps> = ({ isAuthenticated, onLogin, onSign
                         <XIcon size={18} />
                     </a>
                     <a 
-                        href="https://github.com" 
+                        href="https://github.com/phasehumans" 
                         target="_blank" 
                         rel="noopener noreferrer"
                         className="p-2 text-neutral-400 hover:text-white transition-colors hover:bg-white/5 rounded-full"
