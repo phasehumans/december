@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Navbar } from './components/Navbar';
 import { Sidebar } from './components/Sidebar';
 import { OutputScreen } from './components/OutputScreen';
-import { DocsPage } from './components/DocsPage';
+// import { DocsPage } from './components/DocsPage';
 import { HistoryModal } from './components/HistoryModal';
 import { SettingsModal } from './components/SettingsModal';
 import { ContextCanvas } from './components/ContextCanvas';
@@ -41,7 +41,7 @@ function App() {
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
   
   const [prompt, setPrompt] = useState("");
-  const [placeholderText, setPlaceholderText] = useState("Ask PhaseHumans to ");
+  const [placeholderText, setPlaceholderText] = useState("ask phasehumans to ");
   
   const [view, setView] = useState<ViewState>('home');
   const [isGenerating, setIsGenerating] = useState(false);
@@ -56,10 +56,10 @@ function App() {
 
   // Typewriter Effect for Placeholder
   useEffect(() => {
-    const prefix = "Ask PhaseHumans to ";
+    const prefix = "ask phasehumans to ";
     const suffixes = [
       "create a prototype...",
-      "create a landing page for my SaaS...",
+      "create a landing page for my business...",
       "build a dashboard for analytics...",
       "design a portfolio for a photographer...",
       "create a webapp that tracks expenses..."
@@ -261,7 +261,7 @@ function App() {
                                         What should we <span className="text-neutral-500">build</span> together?
                                     </h1>
                                     <p className="text-base md:text-lg text-neutral-400 font-light max-w-lg mx-auto">
-                                        Your ideas and context, built together.
+                                        turns context canvas into a working website
                                     </p>
                                 </div>
 

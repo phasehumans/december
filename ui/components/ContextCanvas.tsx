@@ -99,7 +99,7 @@ export const ContextCanvas: React.FC<ContextCanvasProps> = ({ items, onAddItem, 
                     {/* Left: Project Info */}
                     <div className="pointer-events-auto flex items-center gap-3 px-4 py-2 bg-[#0A0A0A]/90 backdrop-blur-xl border border-white/10 rounded-full shadow-lg hover:border-white/20 transition-colors">
                         <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-                        <span className="text-xs text-white font-medium opacity-90 tracking-wide">Context Canvas</span>
+                        <span className="text-xs text-white font-medium opacity-90 tracking-wide"># Context Canvas</span>
                     </div>
 
                     {/* Center: Toolbar */}
@@ -119,7 +119,7 @@ export const ContextCanvas: React.FC<ContextCanvasProps> = ({ items, onAddItem, 
                         <ToolButton icon={LinkIcon} label="Upload Website" onClick={() => handleAddItem('link')} />
                         
                         <div className="w-px h-6 bg-white/10 mx-1" />
-                        
+                    
                         {/* Draw Tools */}
                         <ToolButton 
                             icon={Pen} 
