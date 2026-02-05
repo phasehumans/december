@@ -1,0 +1,18 @@
+node_modules
+dist
+build
+coverage
+.env
+.env.*
+bun.lockb
+package-lock.json
+*.log
+.logs
+.cache
+.vscode
+.idea
+.DS_Store
+
+# Generated files
+server/src/db/prisma/generated
+logs
