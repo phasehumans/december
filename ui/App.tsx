@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Navbar } from './components/Navbar';
 import { Sidebar } from './components/Sidebar';
 import { OutputScreen } from './components/OutputScreen';
-// import { DocsPage } from './components/DocsPage';
 import { HistoryModal } from './components/HistoryModal';
 import { SettingsModal } from './components/SettingsModal';
 import { ContextCanvas } from './components/ContextCanvas';
@@ -347,7 +346,6 @@ function App() {
                     exit={{ opacity: 0 }}
                     className="flex-1 w-full bg-[#050505] relative z-20"
                 >
-                     <DocsPage />
                 </motion.div>
             )}
         </AnimatePresence>

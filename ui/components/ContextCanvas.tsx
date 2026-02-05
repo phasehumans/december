@@ -98,8 +98,8 @@ export const ContextCanvas: React.FC<ContextCanvasProps> = ({ items, onAddItem, 
                 <div className="absolute top-6 left-6 right-6 flex items-start justify-between z-40 pointer-events-none">
                     {/* Left: Project Info */}
                     <div className="pointer-events-auto flex items-center gap-3 px-4 py-2 bg-[#0A0A0A]/90 backdrop-blur-xl border border-white/10 rounded-full shadow-lg hover:border-white/20 transition-colors">
-                        <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-                        <span className="text-xs text-white font-medium opacity-90 tracking-wide"># Context Canvas</span>
+                        {/* <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" /> */}
+                        <span className="text-xs text-white font-medium opacity-90 tracking-wide">Context Canvas</span>
                     </div>
 
                     {/* Center: Toolbar */}
