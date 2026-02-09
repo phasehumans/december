@@ -1,24 +1,20 @@
-import { ReactNode } from 'react'
+import { ReactNode } from "react";
 
 export interface NavItem {
-  label: string
-  icon: ReactNode
-  href: string
-  active?: boolean
+  label: string;
+  icon: ReactNode;
+  href: string;
+  active?: boolean;
 }
 
 export interface CanvasItem {
-  id: string
-  type: 'image' | 'file' | 'link' | 'shape' | 'note'
-  content: string | ReactNode
-  x: number
-  y: number
-  prompt?: string
-  color?: string
-}
-
-export interface User {
-  name: string
-  email: string
-  avatar: string
+  id: string;
+  type: 'image' | 'link' | 'note' | 'square' | 'circle' | 'frame' | 'line' | 'arrow';
+  content: string;
+  x: number;
+  y: number;
+  width?: number;
+  height?: number;
+  color?: string;
+  prompt?: string;
 }
