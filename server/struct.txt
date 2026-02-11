@@ -1,0 +1,76 @@
+server/
+│
+├── package.json
+├── tsconfig.json
+├── bunfig.toml
+│
+└── src/
+    │
+    ├── main.ts                    # Boot server
+    ├── app.ts                     # Express app config
+    │
+    ├── config/
+    │   ├── env.ts
+    │   ├── logger.ts
+    │   └── constants.ts
+    │
+    ├── db/
+    │   ├── prisma.ts
+    │   ├── schema.prisma
+    │   └── migrations/
+    │
+    ├── middleware/
+    │   ├── auth.middleware.ts
+    │   ├── rate-limit.middleware.ts
+    │   ├── error.middleware.ts
+    │   ├── request-id.middleware.ts
+    │   └── validate.middleware.ts
+    │
+    ├── integrations/
+    │   ├── core.client.ts         # calls @phasehumans/core
+    │   ├── runtime.client.ts      # calls runtime service
+    │   └── llm.client.ts          # optional if direct LLM calls
+    │
+    ├── modules/
+    │   │
+    │   ├── auth/
+    │   │   ├── auth.routes.ts
+    │   │   ├── auth.controller.ts
+    │   │   ├── auth.service.ts
+    │   │   ├── auth.repository.ts
+    │   │   ├── jwt.ts
+    │   │   └── auth.schema.ts
+    │   │
+    │   ├── project/
+    │   │   ├── project.routes.ts
+    │   │   ├── project.controller.ts
+    │   │   ├── project.service.ts
+    │   │   ├── project.repository.ts
+    │   │   └── project.schema.ts
+    │   │
+    │   ├── prompt/
+    │   │   ├── prompt.routes.ts
+    │   │   ├── prompt.controller.ts
+    │   │   ├── prompt.service.ts
+    │   │   ├── prompt.repository.ts
+    │   │   └── prompt.schema.ts
+    │   │
+    │   ├── runtime/
+    │   │   ├── runtime.routes.ts
+    │   │   ├── runtime.controller.ts
+    │   │   ├── runtime.service.ts
+    │   │   └── runtime.repository.ts
+    │   │
+    │   └── usage/
+    │       ├── usage.service.ts
+    │       └── usage.repository.ts
+    │
+    ├── observability/
+    │   ├── tracing.ts
+    │   ├── metrics.ts
+    │   └── audit.ts
+    │
+    └── utils/
+        ├── errors.ts
+        ├── async-handler.ts
+        └── hash.ts
