@@ -1,25 +1,16 @@
 {
   "name": "phasehumans",
-  "version": "1.0.0",
-  "description": "",
-  "homepage": "https://github.com/phasehumans/phasehumans.dev#readme",
-  "bugs": {
-    "url": "https://github.com/phasehumans/phasehumans.dev/issues"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/phasehumans/phasehumans.dev.git"
-  },
-  "license": "ISC",
-  "author": "chaitanya sonawane",
-  "type": "commonjs",
-  "main": "index.js",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
   "scripts": {
-    "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format": "prettier --write ."
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.3.14",
+    "@types/bun": "latest",
     "prettier": "^3.8.1"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
   }
 }

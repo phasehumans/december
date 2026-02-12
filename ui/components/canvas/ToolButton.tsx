@@ -1,11 +1,11 @@
-import React from 'react';
-import { cn } from '@/lib/utils';
+import React from 'react'
+import { cn } from '@/lib/utils'
 
 interface ToolButtonProps {
-  icon: any;
-  label: string;
-  onClick: () => void;
-  active?: boolean;
+  icon: any
+  label: string
+  onClick: () => void
+  active?: boolean
 }
 
 export const ToolButton: React.FC<ToolButtonProps> = ({
@@ -26,4 +26,4 @@ export const ToolButton: React.FC<ToolButtonProps> = ({
   >
     <Icon size={18} strokeWidth={2} />
   </button>
-);
+)

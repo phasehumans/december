@@ -153,4 +153,4 @@ export const PREVIEW_HTML = `
     </div>
 </body>
 </html>
-`;
+`
