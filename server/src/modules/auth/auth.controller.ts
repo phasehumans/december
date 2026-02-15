@@ -3,12 +3,27 @@ const signup = async () => {
 
 }
 
-const signin = async () => {
+const login = async () => {
+
+}
+
+const getMe = async () => {
+
+}
+
+const logout = async () => {
+
+}
+
+const changePassword = async () => {
 
 }
 
 
 export const authController = {
     signup,
-    signin
+    login,
+    getMe,
+    logout,
+    changePassword
 }
