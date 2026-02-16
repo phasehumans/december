@@ -1,16 +1,10 @@
-import {z} from "zod"
+import { z } from 'zod'
 
-const signupSchema = z.object({
-
+export const signupSchema = z.object({
+    name: z.string().min(3).max(20),
+    email: z.string().email(),
+    password: z.string().min(6).max(20)
 })
 
-const signinSchema = z.object({
+const loginSchema = z.object({})
 
-})
-
-
-export {
-    signupSchema,
-    signinSchema,
-    
-}
