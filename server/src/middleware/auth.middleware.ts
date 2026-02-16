@@ -21,9 +21,10 @@ export const authMiddleware = (req: Request, res: Response, next: NextFunction) 
                 message: "invalid token"
             })
         }
-        
+
         req.userId = decoded.userId
         next()
+        
     } catch (error: any) {
         return res.status(500).json({
             success: false,
@@ -32,6 +33,4 @@ export const authMiddleware = (req: Request, res: Response, next: NextFunction) 
         })
     }
     
-
-
 }
