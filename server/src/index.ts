@@ -13,5 +13,5 @@ app.use('/api/v1/profile', profileRouter)
 
 const PORT = process.env.PORT || 4000
 app.listen(PORT, function () {
-  console.log(`server is listening on PORT ${PORT}`)
+    console.log(`server is listening on PORT ${PORT}`)
 })
