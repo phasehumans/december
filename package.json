@@ -1,16 +1,16 @@
 {
-  "name": "phasehumans",
-  "module": "index.ts",
-  "type": "module",
-  "private": true,
-  "scripts": {
-    "format": "prettier --write ."
-  },
-  "devDependencies": {
-    "@types/bun": "latest",
-    "prettier": "^3.8.1"
-  },
-  "peerDependencies": {
-    "typescript": "^5"
-  }
+    "name": "phasehumans",
+    "module": "index.ts",
+    "type": "module",
+    "private": true,
+    "scripts": {
+        "format": "prettier --write ."
+    },
+    "devDependencies": {
+        "@types/bun": "latest",
+        "prettier": "^3.8.1"
+    },
+    "peerDependencies": {
+        "typescript": "^5"
+    }
 }
