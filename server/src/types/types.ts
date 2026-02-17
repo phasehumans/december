@@ -1,11 +1,11 @@
 import 'express'
 
 declare global {
-  namespace Express {
-    interface Request {
-      userId?: {
-        userId: string
-      }
+    namespace Express {
+        interface Request {
+            userId?: {
+                userId: string
+            }
+        }
     }
-  }
 }
