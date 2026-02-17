@@ -1,5 +1,7 @@
 import type { Request, Response } from 'express'
 import { profileService } from './profile.service'
+import { success } from 'zod'
+import { changePasswordSchema, updateNameSchema } from './profile.schema'
 
 const getProfile = async (req: Request, res: Response) => {
   const userId = req.userId
@@ -27,9 +29,87 @@ const getProfile = async (req: Request, res: Response) => {
   }
 }
 
-const updateName = async (req: Request, res: Response) => {}
+const updateName = async (req: Request, res: Response) => {
+  const userId = req.userId as string | undefined
+  const parseData = updateNameSchema.safeParse(req.body)
 
-const changePassword = async (req: Request, res: Response) => {}
+  if (!parseData.success) {
+    return res.status(400).json({
+      success: false,
+      message: 'invalid inputs',
+      errors: parseData.error.flatten(),
+    })
+  }
+
+  if (!userId) {
+    return res.status(400).json({
+      success: false,
+      message: 'unauthorized',
+    })
+  }
+
+  const { name } = parseData.data
+  const typedUserId: string = userId
+
+  try {
+    const result = await profileService.updateName({
+      userId: typedUserId,
+      name,
+    })
+    return res.status(200).json({
+      success: true,
+      message: 'name updated successfully',
+      data: result,
+    })
+  } catch (error: any) {
+    return res.status(400).json({
+      success: false,
+      message: 'failed to update name',
+      errors: error.message,
+    })
+  }
+}
+
+const changePassword = async (req: Request, res: Response) => {
+  const userId = req.userId as string | undefined
+  const parseData = changePasswordSchema.safeParse(req.body)
+
+  if (!parseData.success) {
+    return res.status(400).json({
+      success: false,
+      message: 'invalid inputs',
+      errors: parseData.error.flatten(),
+    })
+  }
+
+  if (!userId) {
+    return res.status(400).json({
+      success: false,
+      message: 'unauthorized',
+    })
+  }
+
+  const { password } = parseData.data
+  const typedUserId: string = userId
+
+  try {
+    const result = await profileService.changePassword({
+      userId: typedUserId,
+      password,
+    })
+    return res.status(200).json({
+      success: true,
+      message: 'password change successfully',
+      data: result,
+    })
+  } catch (error: any) {
+    return res.status(400).json({
+      success: false,
+      message: 'failed to change password',
+      errors: error.message,
+    })
+  }
+}
 
 export const profileController = {
   getProfile,
