@@ -1,10 +1,5 @@
-import { email } from 'zod'
 import { prisma } from '../../utils/db'
 import bcrypt from 'bcrypt'
-
-type getProfileType = {
-    userId: string
-}
 
 type updateNameType = {
     userId: string
@@ -16,10 +11,12 @@ type changePasswordType = {
     password: string
 }
 
-const getProfile = async (data: getProfileType) => {
+const getProfile = async (data: string) => {
+    // console.log(data.userId)
+    // console.log(data)
     const profile = await prisma.user.findUnique({
         where: {
-            id: data.userId,
+            id: data,
         },
     })
 

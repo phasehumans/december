@@ -1,6 +1,5 @@
 import type { Request, Response, NextFunction } from 'express'
 import jwt from 'jsonwebtoken'
-import { success } from 'zod'
 
 export const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -23,6 +22,8 @@ export const authMiddleware = (req: Request, res: Response, next: NextFunction) 
         }
 
         req.userId = decoded.userId
+        // console.log(req.userId)
+        // console.log(decoded.userId)
         next()
     } catch (error: any) {
         return res.status(500).json({

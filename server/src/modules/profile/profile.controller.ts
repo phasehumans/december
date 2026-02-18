@@ -1,10 +1,10 @@
 import type { Request, Response } from 'express'
 import { profileService } from './profile.service'
-import { success } from 'zod'
 import { changePasswordSchema, updateNameSchema } from './profile.schema'
 
 const getProfile = async (req: Request, res: Response) => {
-    const userId = req.userId
+    const userId = req.userId as string | undefined
+    // console.log(userId)
 
     if (!userId) {
         return res.status(400).json({
@@ -14,7 +14,8 @@ const getProfile = async (req: Request, res: Response) => {
     }
 
     try {
-        const result = await profileService.getProfile(userId)
+        const typedUserId: string = userId
+        const result = await profileService.getProfile(typedUserId)
         return res.status(200).json({
             success: true,
             message: 'profile details',
