@@ -1,5 +1,4 @@
-import { password } from 'bun'
-import { email, z } from 'zod'
+import { z } from 'zod'
 
 export const signupSchema = z.object({
     name: z.string().min(3).max(20),
