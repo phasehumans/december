@@ -1,7 +1,6 @@
 import { loginSchema, signupSchema } from './auth.schema'
 import type { Request, Response } from 'express'
 import { authService } from './auth.service'
-import { success } from 'zod'
 
 const signup = async (req: Request, res: Response) => {
     const parseData = signupSchema.safeParse(req.body)
@@ -68,7 +67,6 @@ const logout = async (req: Request, res: Response) => {
     } catch (error: any) {
         return res.status(500).json({
             success: false,
-            message: 'internal server error',
             errors: error.message,
         })
     }
