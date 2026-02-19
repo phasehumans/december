@@ -1,4 +1,4 @@
-### Engineering Decisions @phasehumans
+## Engineering Decisions @phasehumans
 
 #### 19-02-2026 - bun runtime for ui over node
 - opt for bun rt over node for frontend react
