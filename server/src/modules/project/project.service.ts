@@ -1,5 +1,15 @@
 import { prisma } from "../../utils/db"
 
+type projectInfoType = {
+    name: string,
+    prompt: string
+}
+
+type updateProjectInfoType = {
+    rename? : string
+    starred? : boolean
+}
+
 const getAllProjects = async (userId: string) => {
     const projects = await prisma.project.findMany({
         where: {
@@ -11,9 +21,7 @@ const getAllProjects = async (userId: string) => {
         throw new Error("projects doesnot exist")
     }
 
-    return {
-        projects
-    }
+    return projects
 
 }
 
@@ -26,23 +34,63 @@ const getProjectById = async (userId: string, projectId: string) => {
     })
 
     if(!project){
-        throw new Error("project doesnot exists")
+        throw new Error("project doesnot exist")
     }
 
-    return {
-        name: project.name,
-        prompt: project.prompt,
-        star: project.starred,
-        edited: project.updatedAt
+    return project
+}
+
+const createProject = async (projectInfo: projectInfoType, userId: string) => {
+    const {name, prompt} = projectInfo
+
+    const project = await prisma.project.create({
+        data: {
+            name: name,
+            prompt: prompt,
+            starred: false,
+            userId: userId
+        }
+    })
+
+    return project
+
+}
+
+const updateProject = async (updateProjectInfo: updateProjectInfoType , projectId : string, userId: string) => {
+    let {rename, starred} = updateProjectInfo
+
+    const project = await prisma.project.findUnique({
+        where:{
+            id: projectId,
+            userId: userId
+        }
+    })
+
+    if(!project){
+        throw new Error("project not found")
     }
-}
 
-const createProject = async () => {
+    if(rename == undefined){
+        rename = project.name
+    }
 
-}
+    if(starred == undefined){
+        starred = project.starred
+    }
 
-const updateProject = async () => {
+    const updatedProject = await prisma.project.update({
+        where:{
+            id: projectId,
+            userId: userId
+        },
 
+        data:{
+            name: rename,
+            starred: starred
+        }
+    })
+
+    return updatedProject
 }
 
 const deleteProject = async () => {
