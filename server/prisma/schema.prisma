@@ -28,6 +28,7 @@ model Project {
   id        String   @id @default(uuid())
   name      String
   prompt    String
+  starred   Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
