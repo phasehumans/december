@@ -30,3 +30,4 @@ server/src/db/prisma/generated/
 docker-compose.override.yml
 
 Thumbs.db
+refui
