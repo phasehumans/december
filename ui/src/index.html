@@ -1,12 +1,86 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="dark">
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>PhaseHumans</title>
-        <script type="module" src="./frontend.tsx" async></script>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <script>
+            tailwind.config = {
+                darkMode: 'class',
+                theme: {
+                    extend: {
+                        colors: {
+                            background: '#171615' /* The requested warm dark grey */,
+                            sidebar: '#1D1C1B' /* Updated sidebar color */,
+                            surface: '#252423' /* Slightly lighter for input box/cards */,
+                            surfaceHover: '#2F2E2D',
+                            border: '#333333',
+                            textMain: '#E8E8E6' /* Off-white for better contrast on warm dark */,
+                            textMuted: '#A09F9D',
+                            accent: '#FFFFFF',
+                        },
+                        fontFamily: {
+                            sans: ['Inter', 'sans-serif'],
+                            display: ['FK Grotesk', 'sans-serif'],
+                            sohne: ['"Söhne"', '"Sohne"', 'sans-serif'],
+                            roboto: ['Roboto', 'sans-serif'],
+                            hand: ['Caveat', 'cursive'],
+                        },
+                        keyframes: {
+                            fadeIn: {
+                                '0%': { opacity: '0', transform: 'translateY(10px)' },
+                                '100%': { opacity: '1', transform: 'translateY(0)' },
+                            },
+                        },
+                        animation: {
+                            fadeIn: 'fadeIn 0.8s ease-out forwards',
+                        },
+                    },
+                },
+            }
+        </script>
+        <style>
+            body {
+                background-color: #171615;
+                color: #e8e8e6;
+                font-family: 'Inter', sans-serif;
+            }
+            /* Custom scrollbar for webkit */
+            ::-webkit-scrollbar {
+                width: 8px;
+                height: 8px;
+            }
+            ::-webkit-scrollbar-track {
+                background: transparent;
+            }
+            ::-webkit-scrollbar-thumb {
+                background: #333333;
+                border-radius: 4px;
+            }
+            ::-webkit-scrollbar-thumb:hover {
+                background: #4b4b4b;
+            }
+            .no-scrollbar::-webkit-scrollbar {
+                display: none;
+            }
+            .no-scrollbar {
+                -ms-overflow-style: none;
+                scrollbar-width: none;
+            }
+            .dot-pattern {
+                background-image: radial-gradient(#454545 1.5px, transparent 1.5px);
+                background-size: 24px 24px;
+            }
+        </style>
+        <link
+            href="https://fonts.googleapis.com/css2?family=Caveat:wght@400..700&family=Inter:wght@300;400;500;600;700&family=Roboto:wght@400;500;700&display=swap"
+            rel="stylesheet"
+        />
+        <link rel="stylesheet" href="./index.css" />
     </head>
     <body>
         <div id="root"></div>
+        <script type="module" src="./frontend.tsx"></script>
     </body>
 </html>
