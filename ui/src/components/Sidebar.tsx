@@ -29,7 +29,6 @@ const Sidebar: React.FC<SidebarProps> = ({
     const [recentOpen, setRecentOpen] = useState(true)
     const [starredOpen, setStarredOpen] = useState(true)
 
-    // Filter projects based on auth
     const recentProjects = isAuthenticated ? projects.slice(0, 3) : []
     const starredProjects = isAuthenticated ? projects.filter((p) => p.isStarred) : []
 
