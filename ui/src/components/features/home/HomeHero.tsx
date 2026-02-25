@@ -53,7 +53,7 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
             <div className="w-full h-screen bg-background relative shrink-0 p-2">
                 <div className="md:hidden w-full text-center pb-4 pt-2">
                     <span className="text-[10px] uppercase tracking-widest text-neutral-500 font-medium bg-white/5 px-3 py-1.5 rounded-full border border-white/5">
-                        Desktop Recommended
+                        Best on Desktop
                     </span>
                 </div>
                 <div className="w-full h-full rounded-3xl overflow-hidden border border-white/10 shadow-2xl relative">

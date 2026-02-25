@@ -79,7 +79,7 @@ export const ChatThread: React.FC<ChatSidebarProps> = ({
                         <div className="p-1 rounded-md bg-white/5 group-hover:bg-white/10 transition-colors">
                             <ChevronLeft size={14} />
                         </div>
-                        <span>Back to start</span>
+                        <span>Back</span>
                     </button>
                 </div>
                 {/* Mobile Close Button */}

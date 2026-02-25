@@ -5,7 +5,10 @@ export const HomeHeader: React.FC = () => {
     return (
         <div className="absolute top-4 right-4 md:top-6 md:right-12 z-50 flex flex-col items-end gap-1">
             <div className="flex items-center gap-5">
-                <a href="#" className="text-textMuted hover:text-textMain transition-colors">
+                <a
+                    href="https://x.com/phasehumans"
+                    className="text-textMuted hover:text-textMain transition-colors"
+                >
                     <Icons.XLogo />
                 </a>
                 <a
