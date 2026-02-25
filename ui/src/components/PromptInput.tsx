@@ -95,7 +95,7 @@ const PromptInput: React.FC<PromptInputProps> = ({
                             <PromptPlaceholder displayText={displayText} />
                         </div>
                         <div className="md:hidden absolute left-5 top-[18px] text-[#6C6A69] pointer-events-none select-none truncate max-w-[calc(100%-60px)] text-[15px] font-medium">
-                            Ask phasehumans to create...
+                            Ask PhaseHumans to create...
                         </div>
                     </>
                 )}

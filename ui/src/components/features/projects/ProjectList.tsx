@@ -79,7 +79,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({
                 <div className="flex flex-col gap-2 mb-12">
                     <h1 className="text-3xl font-medium text-textMain tracking-tight">Projects</h1>
                     <p className="text-neutral-500 text-sm max-w-md leading-relaxed">
-                        View and manage your generated interfaces.
+                        Manage your projects
                     </p>
                 </div>
 
@@ -175,12 +175,6 @@ export const ProjectList: React.FC<ProjectListProps> = ({
                     {projects.length === 0 && (
                         <div className="py-20 text-center flex flex-col items-center justify-center gap-3 text-neutral-600">
                             <span className="text-sm">No projects found.</span>
-                            <button
-                                onClick={onNewProject}
-                                className="text-xs text-[#E8E8E6] hover:underline"
-                            >
-                                Create a new one
-                            </button>
                         </div>
                     )}
                 </div>
