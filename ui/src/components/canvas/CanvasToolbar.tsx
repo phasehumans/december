@@ -208,7 +208,9 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
                         <ToolButton
                             icon={Info}
                             label="How to use"
-                            onClick={() => window.open('https://phasehumans.com/guide', '_blank')}
+                            onClick={() =>
+                                window.open('https://www.youtube.com/@phasehumans', '_blank')
+                            }
                         />
                     </div>
                 </div>
