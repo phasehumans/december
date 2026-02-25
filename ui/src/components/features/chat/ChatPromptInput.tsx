@@ -81,7 +81,7 @@ export const ChatPromptInput: React.FC<ChatPromptInputProps> = ({
                     value={value}
                     onChange={(e) => onChange(e.target.value)}
                     onKeyDown={handleKeyDown}
-                    placeholder={selectedElement ? 'Describe changes...' : 'Ask Lovable...'}
+                    placeholder={selectedElement ? 'Describe changes...' : 'Ask PhaseHumans...'}
                     className="w-full bg-transparent text-[15px] text-neutral-200 pl-5 pr-12 py-3 min-h-[54px] max-h-[200px] resize-none outline-none placeholder-neutral-500 font-medium leading-relaxed scrollbar-hide caret-white"
                     rows={1}
                 />

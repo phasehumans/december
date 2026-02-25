@@ -55,16 +55,14 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut }) =
                     <h1 className="text-3xl font-medium text-textMain mb-2 tracking-tight">
                         Settings
                     </h1>
-                    <p className="text-neutral-500 text-sm">Manage your account preferences.</p>
+                    <p className="text-neutral-500 text-sm">Manage your account settings</p>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16">
                     <div className="space-y-8">
                         <SettingsSection title="Profile">
                             <div className="flex flex-col gap-2">
-                                <label className="text-xs font-medium text-neutral-400">
-                                    Display Name
-                                </label>
+                                <label className="text-xs font-medium text-neutral-400">Name</label>
                                 <SettingsRow
                                     label={name}
                                     action={
@@ -77,7 +75,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut }) =
                                             }}
                                             className="h-7 text-[10px] px-2.5"
                                         >
-                                            Change
+                                            Change Name
                                         </Button>
                                     }
                                 />
@@ -87,7 +85,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut }) =
                                     Password
                                 </label>
                                 <SettingsRow
-                                    label="••••••••••••••••"
+                                    label="••••••••"
                                     action={
                                         <Button
                                             variant="outline"
@@ -95,7 +93,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut }) =
                                             onClick={() => setPasswordModalOpen(true)}
                                             className="h-7 text-[10px] px-2.5"
                                         >
-                                            Change
+                                            Change Password
                                         </Button>
                                     }
                                 />

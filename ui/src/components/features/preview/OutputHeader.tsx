@@ -185,7 +185,7 @@ export const OutputHeader: React.FC<OutputHeaderProps> = ({
                     <div className="text-[#525150] select-none mx-2 text-lg font-light">/</div>
 
                     <div className="flex-1 text-sm text-[#91908F] truncate font-mono opacity-60 text-center">
-                        localhost:3000
+                        {/* sample text here local host */}
                     </div>
 
                     <div className="flex items-center gap-1 pl-2">
