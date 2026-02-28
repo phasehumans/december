@@ -1,12 +1,12 @@
 use anyhow::Result;
 
-mod cli;
 mod agent;
-mod memory;
+mod cli;
 mod error;
+mod memory;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    cli::run().await?;
-    Ok(())
+    cli::run().await
 }
+

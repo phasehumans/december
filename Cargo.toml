@@ -2,13 +2,11 @@
 name = "december"
 version = "0.1.0"
 edition = "2024"
+description = "Terminal coding agent scaffold"
 
 [dependencies]
-anyhow = "1.0.102"
-clap = { version = "4.5.60", features = ["derive"] }
-serde = { version = "1.0.228", features = ["derive"] }
-serde_json = "1.0.149"
-thiserror = "2.0.18"
-tokio = { version = "1.49.0", features = ["full"] }
-tracing = "0.1.44"
-tracing-subscriber = "0.3.22"
+anyhow = "1.0.100"
+clap = { version = "4.5.51", features = ["derive"] }
+thiserror = "2.0.17"
+tokio = { version = "1.47.1", features = ["full"] }
+

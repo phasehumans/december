@@ -1,7 +1,8 @@
 use thiserror::Error;
 
-#[derive(Error, Debug)]
+#[derive(Debug, Error)]
 pub enum DecemberError {
-    #[error("Invalid input")]
-    InvalidInput,
+    #[error("Prompt cannot be empty")]
+    EmptyPrompt,
 }
+
