@@ -23,7 +23,7 @@ const signup = async (data: signupInput) => {
     })
 
     if (existingUser) {
-        throw new Error('user already exists')
+        throw new Error('email already exists')
     }
 
     const hashPassword = await bcrypt.hash(password, 10)
@@ -36,11 +36,8 @@ const signup = async (data: signupInput) => {
         },
     })
 
-    return {
-        id: newUser.id,
-        name: newUser.name,
-        email: newUser.email,
-    }
+    return newUser
+    // let the controller decide the shape of res
 }
 
 const login = async (data: loginInput) => {
@@ -53,13 +50,13 @@ const login = async (data: loginInput) => {
     })
 
     if (!existingUser) {
-        throw new Error('invalid credentials')
+        throw new Error('invalid email or password')
     }
 
     const isPasswordMatch = await bcrypt.compare(password, existingUser.password!)
 
     if (!isPasswordMatch) {
-        throw new Error('invalid credentials')
+        throw new Error('invalid email or password')
     }
 
     const token = jwt.sign(
@@ -72,16 +69,12 @@ const login = async (data: loginInput) => {
         }
     )
 
-    return {
-        name: existingUser.name,
-        email: existingUser.email,
-        token: token,
-    }
+    return token
 }
 
 const logout = async () => {
     return {
-        message: 'logged out successfully',
+        message: 'logout successful',
     }
 }
 
