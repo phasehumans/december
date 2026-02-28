@@ -1,13 +1,27 @@
+import { string } from 'zod'
 import { prisma } from '../../utils/db'
 
-type projectInfoType = {
-    name: string
-    prompt: string
+type GetProject = {
+    userId: string
+    projectId: string
 }
 
-type updateProjectInfoType = {
+type CreateProject = {
+    name: string,
+    prompt: string,
+    userId: string
+}
+
+type UpdateProject = {
+    projectId: string
+    userId: string
     rename?: string
     starred?: boolean
+}
+
+type DeleteProject = {
+    userId: string,
+    projectId: string
 }
 
 const getAllProjects = async (userId: string) => {
@@ -18,13 +32,14 @@ const getAllProjects = async (userId: string) => {
     })
 
     if (!projects) {
-        throw new Error('projects doesnot exist')
+        throw new Error('projects not found')
     }
 
     return projects
 }
 
-const getProjectById = async (userId: string, projectId: string) => {
+const getProjectById = async (data: GetProject) => {
+    const {userId, projectId} = data
     const project = await prisma.project.findUnique({
         where: {
             userId: userId,
@@ -39,8 +54,8 @@ const getProjectById = async (userId: string, projectId: string) => {
     return project
 }
 
-const createProject = async (projectInfo: projectInfoType, userId: string) => {
-    const { name, prompt } = projectInfo
+const createProject = async (data: CreateProject) => {
+    const { name, prompt, userId } = data
 
     const project = await prisma.project.create({
         data: {
@@ -54,12 +69,8 @@ const createProject = async (projectInfo: projectInfoType, userId: string) => {
     return project
 }
 
-const updateProject = async (
-    updateProjectInfo: updateProjectInfoType,
-    projectId: string,
-    userId: string
-) => {
-    let { rename, starred } = updateProjectInfo
+const updateProject = async (data: UpdateProject) => {
+    let { projectId, userId, rename, starred } = data
 
     const project = await prisma.project.findUnique({
         where: {
@@ -95,19 +106,21 @@ const updateProject = async (
     return updatedProject
 }
 
-const deleteProject = async (userId: string, projectId: string) => {
-    try {
-        const project = await prisma.project.delete({
-            where: {
-                id: projectId,
-                userId: userId,
-            },
-        })
+const deleteProject = async (data: DeleteProject) => {
+    const {userId, projectId} = data
 
-        return project
-    } catch (error) {
+    const project = await prisma.project.delete({
+        where: {
+            id: projectId,
+            userId: userId,
+        },
+    })
+
+    if(!project){
         throw new Error('project not found')
     }
+
+    return project
 }
 
 export const projectService = {

@@ -4,7 +4,6 @@ import { changePasswordSchema, updateNameSchema } from './profile.schema'
 
 const getProfile = async (req: Request, res: Response) => {
     const userId = req.userId as string | undefined
-    // console.log(userId)
 
     if (!userId) {
         return res.status(400).json({
@@ -14,17 +13,15 @@ const getProfile = async (req: Request, res: Response) => {
     }
 
     try {
-        const typedUserId: string = userId
-        const result = await profileService.getProfile(typedUserId)
+        const result = await profileService.getProfile(userId)
         return res.status(200).json({
             success: true,
-            message: 'profile details',
+            message: 'profile fetched successfully',
             data: result,
         })
     } catch (error: any) {
         return res.status(400).json({
             success: false,
-            message: 'user doesnot exist',
             errors: error.message,
         })
     }
@@ -37,8 +34,8 @@ const updateName = async (req: Request, res: Response) => {
     if (!parseData.success) {
         return res.status(400).json({
             success: false,
-            message: 'invalid inputs',
-            errors: parseData.error.flatten(),
+            message: 'validation failed',
+            errors: parseData.error.flatten().fieldErrors,
         })
     }
 
@@ -50,11 +47,9 @@ const updateName = async (req: Request, res: Response) => {
     }
 
     const { name } = parseData.data
-    const typedUserId: string = userId
-
     try {
         const result = await profileService.updateName({
-            userId: typedUserId,
+            userId,
             name,
         })
         return res.status(200).json({
@@ -65,7 +60,6 @@ const updateName = async (req: Request, res: Response) => {
     } catch (error: any) {
         return res.status(400).json({
             success: false,
-            message: 'failed to update name',
             errors: error.message,
         })
     }
@@ -78,8 +72,8 @@ const changePassword = async (req: Request, res: Response) => {
     if (!parseData.success) {
         return res.status(400).json({
             success: false,
-            message: 'invalid inputs',
-            errors: parseData.error.flatten(),
+            message: 'validation failed',
+            errors: parseData.error.flatten().fieldErrors,
         })
     }
 
@@ -91,22 +85,20 @@ const changePassword = async (req: Request, res: Response) => {
     }
 
     const { password } = parseData.data
-    const typedUserId: string = userId
 
     try {
         const result = await profileService.changePassword({
-            userId: typedUserId,
+            userId,
             password,
         })
         return res.status(200).json({
             success: true,
-            message: 'password change successfully',
+            message: 'password changed successfully',
             data: result,
         })
     } catch (error: any) {
         return res.status(400).json({
             success: false,
-            message: 'failed to change password',
             errors: error.message,
         })
     }
