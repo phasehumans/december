@@ -1,7 +1,6 @@
 import type { Request, Response } from 'express'
 import { projectService } from './project.service'
-import { success } from 'zod'
-import { createProjectSchema, upadteProjectSchema } from './project.schema'
+import { createProjectSchema, updateProjectSchema } from './project.schema'
 
 const getAllProjects = async (req: Request, res: Response) => {
     const userId = req.userId as string | undefined
@@ -14,17 +13,15 @@ const getAllProjects = async (req: Request, res: Response) => {
     }
 
     try {
-        const typedUserId: string = userId
-        const result = await projectService.getAllProjects(typedUserId)
+        const result = await projectService.getAllProjects(userId)
         return res.status(200).json({
             success: true,
-            message: 'all projects',
+            message: 'projects fetched successfully',
             data: result,
         })
     } catch (error: any) {
         return res.status(500).json({
             success: false,
-            message: 'error while fetching projects',
             errors: error.message,
         })
     }
@@ -44,21 +41,20 @@ const getProjectById = async (req: Request, res: Response) => {
     if (!projectId) {
         return res.status(400).json({
             success: false,
-            message: 'no project id',
+            message: 'project id is required',
         })
     }
 
     try {
-        const result = await projectService.getProjectById(userId, projectId)
+        const result = await projectService.getProjectById({userId, projectId})
         return res.status(200).json({
             success: true,
-            message: 'projects',
+            message: 'project fetched successfully',
             data: result,
         })
     } catch (error: any) {
         return res.status(500).json({
             success: false,
-            message: 'error while fetching project',
             errors: error.message,
         })
     }
@@ -70,8 +66,8 @@ const createProject = async (req: Request, res: Response) => {
     if (!parseData.success) {
         return res.status(400).json({
             success: false,
-            message: 'invalid inputs',
-            errors: parseData.error.flatten(),
+            message: 'validation failed',
+            errors: parseData.error.flatten().fieldErrors,
         })
     }
 
@@ -85,30 +81,29 @@ const createProject = async (req: Request, res: Response) => {
     }
 
     try {
-        const projectInfo = parseData.data
-        const result = await projectService.createProject(projectInfo, userId)
+        const {name, prompt} = parseData.data
+        const result = await projectService.createProject({name, prompt, userId})
         return res.status(201).json({
             success: true,
-            message: 'project created successfully',
+            message: 'project created',
             data: result,
         })
     } catch (error: any) {
         return res.status(500).json({
             success: false,
-            message: 'error while creating project',
             errors: error.message,
         })
     }
 }
 
 const updateProject = async (req: Request, res: Response) => {
-    const parseData = upadteProjectSchema.safeParse(req.body)
+    const parseData = updateProjectSchema.safeParse(req.body)
 
     if (!parseData.success) {
         return res.status(400).json({
             success: false,
-            message: 'invalid inputs',
-            errors: parseData.error.flatten(),
+            message: 'validation failed',
+            errors: parseData.error.flatten().fieldErrors,
         })
     }
 
@@ -118,7 +113,7 @@ const updateProject = async (req: Request, res: Response) => {
     if (!projectId) {
         return res.status(400).json({
             success: false,
-            message: 'projectId is required',
+            message: 'project id is required',
         })
     }
 
@@ -130,17 +125,16 @@ const updateProject = async (req: Request, res: Response) => {
     }
 
     try {
-        const updateProjectInfo = parseData.data
-        const result = await projectService.updateProject(updateProjectInfo, projectId, userId)
+        const {rename, starred} = parseData.data
+        const result = await projectService.updateProject({projectId, userId, rename, starred})
         return res.status(200).json({
             success: true,
-            message: 'project details updated',
+            message: 'project updated',
             data: result,
         })
     } catch (error: any) {
         return res.status(500).json({
             success: false,
-            message: 'error while update project',
             errors: error.message,
         })
     }
@@ -160,21 +154,20 @@ const deleteProject = async (req: Request, res: Response) => {
     if (!projectId) {
         return res.status(400).json({
             success: false,
-            message: 'projectId not found',
+            message: 'project id is required',
         })
     }
 
     try {
-        const result = await projectService.deleteProject(userId, projectId)
+        const result = await projectService.deleteProject({userId, projectId})
         return res.status(200).json({
             success: true,
-            message: 'project deleted successfully',
+            message: 'project deleted',
             data: result,
         })
     } catch (error: any) {
         return res.status(500).json({
             success: false,
-            message: 'error while deleting project',
             errors: error.message,
         })
     }

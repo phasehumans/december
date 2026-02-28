@@ -8,16 +8,18 @@ const signup = async (req: Request, res: Response) => {
     if (!parseData.success) {
         return res.status(400).json({
             success: false,
-            message: 'invalid inputs',
-            errors: parseData.error.flatten(),
+            message: 'validation failed',
+            errors: parseData.error.flatten().fieldErrors,
         })
     }
+
+    console.log(parseData)
 
     try {
         const result = await authService.signup(parseData.data)
         return res.status(201).json({
             success: true,
-            message: 'user created successfully',
+            message: 'signup successful"',
             data: result,
         })
     } catch (error: any) {
@@ -34,8 +36,8 @@ const login = async (req: Request, res: Response) => {
     if (!parseData.success) {
         return res.status(400).json({
             success: false,
-            message: 'invalid inputs',
-            errors: parseData.error.flatten(),
+            message: 'validation failed',
+            errors: parseData.error.flatten().fieldErrors,
         })
     }
 
@@ -43,7 +45,7 @@ const login = async (req: Request, res: Response) => {
         const result = await authService.login(parseData.data)
         return res.status(200).json({
             success: true,
-            message: 'user login successfully',
+            message: 'login successful',
             data: result,
         })
     } catch (error: any) {
@@ -62,7 +64,7 @@ const logout = async (req: Request, res: Response) => {
 
         return res.status(200).json({
             success: true,
-            message: 'logged out successfully',
+            message: 'logout successful',
         })
     } catch (error: any) {
         return res.status(500).json({

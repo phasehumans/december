@@ -5,7 +5,7 @@ export const createProjectSchema = z.object({
     prompt: z.string(),
 })
 
-export const upadteProjectSchema = z.object({
+export const updateProjectSchema = z.object({
     rename: z.string().optional(),
     starred: z.boolean().optional(),
 })
