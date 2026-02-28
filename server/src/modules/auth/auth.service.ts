@@ -2,18 +2,18 @@ import { prisma } from '../../utils/db'
 import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
 
-type signupInput = {
+type Signup = {
     name: string
     email: string
     password: string
 }
 
-type loginInput = {
+type Login = {
     email: string
     password: string
 }
 
-const signup = async (data: signupInput) => {
+const signup = async (data: Signup) => {
     const { name, email, password } = data
 
     const existingUser = await prisma.user.findUnique({
@@ -40,7 +40,7 @@ const signup = async (data: signupInput) => {
     // let the controller decide the shape of res
 }
 
-const login = async (data: loginInput) => {
+const login = async (data: Login) => {
     const { email, password } = data
 
     const existingUser = await prisma.user.findUnique({

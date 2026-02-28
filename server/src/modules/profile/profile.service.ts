@@ -1,19 +1,17 @@
 import { prisma } from '../../utils/db'
 import bcrypt from 'bcrypt'
 
-type updateNameType = {
+type UpdateName = {
     userId: string
     name: string
 }
 
-type changePasswordType = {
+type ChangePassword = {
     userId: string
     password: string
 }
 
 const getProfile = async (data: string) => {
-    // console.log(data.userId)
-    // console.log(data)
     const profile = await prisma.user.findUnique({
         where: {
             id: data,
@@ -21,16 +19,13 @@ const getProfile = async (data: string) => {
     })
 
     if (!profile) {
-        throw new Error('user doesnot exist')
+        throw new Error('user not found')
     }
 
-    return {
-        name: profile.name,
-        email: profile.email,
-    }
+    return profile
 }
 
-const updateName = async (data: updateNameType) => {
+const updateName = async (data: UpdateName) => {
     const { name, userId } = data
 
     const existingUser = await prisma.user.findUnique({
@@ -40,7 +35,7 @@ const updateName = async (data: updateNameType) => {
     })
 
     if (!existingUser) {
-        throw new Error('user does not exist')
+        throw new Error('user not found')
     }
 
     const updatedUser = await prisma.user.update({
@@ -52,12 +47,10 @@ const updateName = async (data: updateNameType) => {
         },
     })
 
-    return {
-        name: updatedUser.name,
-    }
+    return updatedUser
 }
 
-const changePassword = async (data: changePasswordType) => {
+const changePassword = async (data: ChangePassword) => {
     const { password, userId } = data
 
     const existingUser = await prisma.user.findUnique({
@@ -67,7 +60,7 @@ const changePassword = async (data: changePasswordType) => {
     })
 
     if (!existingUser) {
-        throw new Error('user does not exist')
+        throw new Error('user not found')
     }
 
     const hashPassword = await bcrypt.hash(password, 10)
@@ -81,9 +74,7 @@ const changePassword = async (data: changePasswordType) => {
         },
     })
 
-    return {
-        name: updatedUser.name,
-    }
+    return updatedUser
 }
 
 export const profileService = {
