@@ -8,12 +8,14 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App'
+import { GoogleOAuthProvider } from '@react-oauth/google' 
 
 const elem = document.getElementById('root')!
 const app = (
-    <StrictMode>
-        <App />
-    </StrictMode>
+    <GoogleOAuthProvider clientId='762203307362-qg77ln4ci9eldv3i0q1smv804epsbhk0.apps.googleusercontent.com'>
+        <App/>
+    </GoogleOAuthProvider>
+    
 )
 
 if (import.meta.hot) {
