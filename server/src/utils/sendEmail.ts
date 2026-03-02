@@ -1,13 +1,13 @@
-import { Resend } from "resend";
+import { Resend } from 'resend'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 
 export const sendOTP = async (email: string, otp: string) => {
     await resend.emails.send({
-      from: "PhaseHumans <onboarding@resend.dev>",
-      to: email,
-      subject: "Your Verification Code",
-      html: `
+        from: 'Chaitanya <onboarding@resend.dev>',
+        to: email,
+        subject: 'Your Verification Code',
+        html: `
       <div style="font-family: Arial, sans-serif; background-color: #f4f6f8; padding: 40px 20px;">
         <div style="max-width: 500px; margin: auto; background: #ffffff; border-radius: 12px; padding: 30px; box-shadow: 0 5px 20px rgba(0,0,0,0.05);">
           
@@ -42,5 +42,5 @@ export const sendOTP = async (email: string, otp: string) => {
         </div>
       </div>
       `,
-    });
-  };
+    })
+}

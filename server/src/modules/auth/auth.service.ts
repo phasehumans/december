@@ -203,7 +203,7 @@ const google = async (data: Google) => {
             expiresIn: '7d',
         }
     )
-
+    // console.log(token)
     return token
 }
 
