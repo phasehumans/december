@@ -2,6 +2,7 @@ import { prisma } from '../../utils/db'
 import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
 import crypto from 'crypto'
+import { sendOTP } from '../../utils/sendEmail'
 
 type Signup = {
     email: string
@@ -54,6 +55,7 @@ const signup = async (data: Signup) => {
     })
 
     // send OTP
+    sendOTP(newUser.email, otp)
 
     return { message: 'otp sent successfully' }
     // let the controller decide the shape of res
