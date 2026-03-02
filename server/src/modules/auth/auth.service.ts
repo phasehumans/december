@@ -1,10 +1,16 @@
 import { prisma } from '../../utils/db'
 import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
+import crypto from 'crypto'
 
 type Signup = {
     email: string
     password: string
+}
+
+type VerifyOpt = {
+    email: string
+    otp: string
 }
 
 type Login = {
@@ -32,17 +38,91 @@ const signup = async (data: Signup) => {
     }
 
     const hashPassword = await bcrypt.hash(password, 10)
+    const userName = email.split('@')[0]?.replace(/\d+/g, '')
+    const opt = crypto.randomInt(100000, 1000000).toString()
+    const optHash = await bcrypt.hash(opt, 10)
 
     const newUser = await prisma.user.create({
         data: {
-            // name: name,
+            name: userName!,
             email: email,
             password: hashPassword,
+            emailVerified: false,
+            otpHash: optHash,
+            otpExpiresAt: new Date(Date.now() + 10 * 60 * 1000),
         },
     })
 
-    return newUser
+    // send OTP
+
+    return { message: 'otp sent successfully' }
     // let the controller decide the shape of res
+}
+
+const verifyOtp = async (data: VerifyOpt) => {
+    const { email, otp } = data
+
+    const user = await prisma.user.findUnique({
+        where: {
+            email: email,
+        },
+    })
+
+    if (!user) {
+        throw new Error('user not found')
+    }
+
+    if (user.emailVerified) {
+        throw new Error('email already verified')
+    }
+
+    if (!user.otpHash || !user.otpExpiresAt) {
+        throw new Error('otp not found, request new one')
+    }
+
+    if (user.otpExpiresAt < new Date()) {
+        await prisma.user.update({
+            where: {
+                id: user.id,
+            },
+
+            data: {
+                otpHash: null,
+                otpExpiresAt: null,
+            },
+        })
+
+        throw new Error('opt expired')
+    }
+
+    const isValid = await bcrypt.compare(otp, user.otpHash)
+
+    if (!isValid) {
+        throw new Error('invalid otp')
+    }
+
+    await prisma.user.update({
+        where: {
+            id: user.id,
+        },
+        data: {
+            emailVerified: true,
+            otpHash: null,
+            otpExpiresAt: null,
+        },
+    })
+
+    const token = jwt.sign(
+        {
+            userId: user.id,
+        },
+        process.env.JWT_SECRET!,
+        {
+            expiresIn: '7d',
+        }
+    )
+
+    return token
 }
 
 const login = async (data: Login) => {
@@ -56,6 +136,10 @@ const login = async (data: Login) => {
 
     if (!existingUser) {
         throw new Error('invalid email or password')
+    }
+
+    if (!existingUser.emailVerified) {
+        throw new Error('please verify your email')
     }
 
     const isPasswordMatch = await bcrypt.compare(password, existingUser.password!)
@@ -78,12 +162,12 @@ const login = async (data: Login) => {
 }
 
 const google = async (data: Google) => {
-    return "HI"
+    return 'HI'
 }
-
 
 export const authService = {
     signup,
+    verifyOtp,
     login,
     google,
 }

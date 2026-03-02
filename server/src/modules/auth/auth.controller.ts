@@ -17,17 +17,41 @@ const signup = async (req: Request, res: Response) => {
         })
     }
 
-    console.log(parseData)
-
     try {
         const result = await authService.signup(parseData.data)
         return res.status(201).json({
             success: true,
-            message: 'signup successful',
+            message: 'opt sent to email',
             data: result,
         })
     } catch (error: any) {
         return res.status(409).json({
+            success: false,
+            errors: error.message,
+        })
+    }
+}
+
+const verifyOtp = async (req: Request, res: Response) => {
+    const { email, otp } = req.body
+
+    if (!email || !otp) {
+        return res.status(400).json({
+            success: false,
+            message: 'email and otp is required',
+        })
+    }
+
+    try {
+        const result = await authService.verifyOtp({ email, otp })
+
+        return res.status(200).json({
+            success: true,
+            message: 'email verified successfully',
+            data: result,
+        })
+    } catch (error: any) {
+        return res.status(500).json({
             success: false,
             errors: error.message,
         })
@@ -102,7 +126,6 @@ const google = async (req: Request, res: Response) => {
             message: 'email not verified',
         })
     }
-    console.log(email, name)
 
     try {
         const result = await authService.google({ email, name, sub })
@@ -119,9 +142,9 @@ const google = async (req: Request, res: Response) => {
     }
 }
 
-
 export const authController = {
     signup,
+    verifyOtp,
     login,
     google,
 }
