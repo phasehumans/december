@@ -1,6 +1,9 @@
 import { loginSchema, signupSchema } from './auth.schema'
 import type { Request, Response } from 'express'
 import { authService } from './auth.service'
+import axios from 'axios'
+import { OAuth2Client } from 'google-auth-library'
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID)
 
 const signup = async (req: Request, res: Response) => {
     const parseData = signupSchema.safeParse(req.body)
@@ -56,6 +59,34 @@ const login = async (req: Request, res: Response) => {
     }
 }
 
+const google = async (req: Request, res: Response) => {
+    const {code} = req.body
+
+    const tokenResponse = await axios.post(
+        "https://oauth2.googleapis.com/token",
+        {
+            code,
+            client_id: process.env.GOOGLE_CLIENT_ID,
+            client_secret: process.env.GOOGLE_CLIENT_SECRET,
+            redirect_uri: "postmessage",
+            grant_type: "authorization_code"
+        }
+    )
+
+    const { id_token } = tokenResponse.data
+
+    const ticket = await client.verifyIdToken({
+        idToken: id_token,
+        audience: process.env.GOOGLE_CLIENT_ID
+    })
+
+    const payload = ticket.getPayload()
+
+    const {email, name, sub} = payload
+
+    
+}
+
 const logout = async (req: Request, res: Response) => {
     try {
         await authService.logout()
@@ -77,5 +108,6 @@ const logout = async (req: Request, res: Response) => {
 export const authController = {
     signup,
     login,
+    google,
     logout,
 }
