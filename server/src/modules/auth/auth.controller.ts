@@ -110,6 +110,8 @@ const google = async (req: Request, res: Response) => {
         })
     }
 
+    // console.log(payload)
+
     const { email, name, sub, email_verified } = payload
 
     if (!email || !name || !sub) {
