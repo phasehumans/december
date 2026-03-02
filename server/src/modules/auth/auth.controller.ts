@@ -44,7 +44,6 @@ const verifyOtp = async (req: Request, res: Response) => {
 
     try {
         const result = await authService.verifyOtp({ email, otp })
-
         return res.status(200).json({
             success: true,
             message: 'email verified successfully',
@@ -131,7 +130,7 @@ const google = async (req: Request, res: Response) => {
         const result = await authService.google({ email, name, sub })
         return res.status(200).json({
             success: true,
-            message: 'signin / signup successful',
+            message: 'login successful',
             data: result,
         })
     } catch (error: any) {

@@ -39,8 +39,8 @@ const signup = async (data: Signup) => {
 
     const hashPassword = await bcrypt.hash(password, 10)
     const userName = email.split('@')[0]?.replace(/\d+/g, '')
-    const opt = crypto.randomInt(100000, 1000000).toString()
-    const optHash = await bcrypt.hash(opt, 10)
+    const otp = crypto.randomInt(100000, 1000000).toString()
+    const otpHash = await bcrypt.hash(otp, 10)
 
     const newUser = await prisma.user.create({
         data: {
@@ -48,7 +48,7 @@ const signup = async (data: Signup) => {
             email: email,
             password: hashPassword,
             emailVerified: false,
-            otpHash: optHash,
+            otpHash: otpHash,
             otpExpiresAt: new Date(Date.now() + 10 * 60 * 1000),
         },
     })
@@ -92,7 +92,7 @@ const verifyOtp = async (data: VerifyOpt) => {
             },
         })
 
-        throw new Error('opt expired')
+        throw new Error('otp expired')
     }
 
     const isValid = await bcrypt.compare(otp, user.otpHash)
@@ -162,7 +162,47 @@ const login = async (data: Login) => {
 }
 
 const google = async (data: Google) => {
-    return 'HI'
+    const { name, email, sub } = data
+
+    let user = await prisma.user.findUnique({
+        where: {
+            email: email,
+        },
+    })
+
+    if (!user) {
+        user = await prisma.user.create({
+            data: {
+                email: email,
+                emailVerified: true,
+                googleId: sub,
+                name: name,
+            },
+        })
+    } else if (!user.googleId) {
+        user = await prisma.user.update({
+            where: {
+                id: user.id,
+            },
+            data: {
+                googleId: sub,
+            },
+        })
+    } else if (user.googleId != sub) {
+        throw new Error('google id mismatch')
+    }
+
+    const token = jwt.sign(
+        {
+            userId: user.id,
+        },
+        process.env.JWT_SECRET!,
+        {
+            expiresIn: '7d',
+        }
+    )
+
+    return token
 }
 
 export const authService = {
