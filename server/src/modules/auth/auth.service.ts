@@ -3,7 +3,6 @@ import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
 
 type Signup = {
-    name: string
     email: string
     password: string
 }
@@ -13,8 +12,14 @@ type Login = {
     password: string
 }
 
+type Google = {
+    name: string
+    email: string
+    sub: string
+}
+
 const signup = async (data: Signup) => {
-    const { name, email, password } = data
+    const { email, password } = data
 
     const existingUser = await prisma.user.findUnique({
         where: {
@@ -30,7 +35,7 @@ const signup = async (data: Signup) => {
 
     const newUser = await prisma.user.create({
         data: {
-            name: name,
+            // name: name,
             email: email,
             password: hashPassword,
         },
@@ -72,14 +77,13 @@ const login = async (data: Login) => {
     return token
 }
 
-const logout = async () => {
-    return {
-        message: 'logout successful',
-    }
+const google = async (data: Google) => {
+    return "HI"
 }
+
 
 export const authService = {
     signup,
     login,
-    logout,
+    google,
 }
