@@ -1,19 +1,27 @@
 ## Engineering Decisions @phasehumans
 
-#### 19-02-2026 - bun runtime for ui over node
+#### 01-03-2026
+
+- reducing ui just in two screens; home screen and output screen
+- home screen will consist of a sidebar, a heading for CTA (what are we building today?), prompt box, 4 capsule suggestions and context canvas
+- output screen will conssit chatbar, preview, code and header that contains options such has publish, github, download etc
+- sidebar will contain two pages redirect: all projects and Account settings
+- no navbar and footer; and landing page is removed as discuss earlier last week
+
+#### 19-02-2026
 
 - opt for bun rt over node for frontend react
 - sever runtime is bun, so it makes more sense to go for for same for ui
 - choosing node for ui, is good. but it will create overhead of 2 runtime
 - bun is fairly new, i am to0 optimistic for bun right now, lets see
 
-#### 17-02-2026 - removed the landing page
+#### 17-02-2026
 
 - removed the landing page, the user visit directly to the webiste
 - having landing page creates more overhead at this moment, if needed then add later
 - restrict users actions on @context canvas, when user is not authenticated
 
-#### 16-02-2026 - opt for module based approach
+#### 16-02-2026
 
 - adopt module based appraoch instead of sepearate controller, routes approach
 - phasehumans can be divided into modules like auth, user, project, usage/ billing etc

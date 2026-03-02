@@ -7,8 +7,8 @@ type GetProject = {
 }
 
 type CreateProject = {
-    name: string,
-    prompt: string,
+    name: string
+    prompt: string
     userId: string
 }
 
@@ -20,7 +20,7 @@ type UpdateProject = {
 }
 
 type DeleteProject = {
-    userId: string,
+    userId: string
     projectId: string
 }
 
@@ -39,7 +39,7 @@ const getAllProjects = async (userId: string) => {
 }
 
 const getProjectById = async (data: GetProject) => {
-    const {userId, projectId} = data
+    const { userId, projectId } = data
     const project = await prisma.project.findUnique({
         where: {
             userId: userId,
@@ -107,7 +107,7 @@ const updateProject = async (data: UpdateProject) => {
 }
 
 const deleteProject = async (data: DeleteProject) => {
-    const {userId, projectId} = data
+    const { userId, projectId } = data
 
     const project = await prisma.project.delete({
         where: {
@@ -116,7 +116,7 @@ const deleteProject = async (data: DeleteProject) => {
         },
     })
 
-    if(!project){
+    if (!project) {
         throw new Error('project not found')
     }
 

@@ -4,6 +4,7 @@ import { X } from 'lucide-react'
 import { Logo } from './Logo'
 import { Button } from './ui/Button'
 import { Input } from './ui/Input'
+import { useGoogleLogin } from '@react-oauth/google'
 
 // Google Icon Component (Standard Colored)
 const GoogleIcon = () => (
@@ -102,6 +103,32 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         onAuthSuccess()
     }
 
+    const googleLogin = useGoogleLogin({
+        flow: 'auth-code',
+        onSuccess: async (codeResponse) => {
+            try {
+                const res = await fetch('http://localhost:4000/api/v1/auth/google', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        code: codeResponse.code,
+                    }),
+                })
+
+                const data = await res.json()
+
+                localStorage.setItem('token', data.token)
+
+                onAuthSuccess()
+            } catch (err) {
+                console.error('Google login failed', err)
+            }
+        },
+        onError: () => {
+            console.log('Google Login Failed')
+        },
+    })
+
     return (
         <AnimatePresence>
             {isOpen && (
@@ -138,7 +165,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                                 <div className="flex flex-col gap-3 mb-6">
                                     <Button
                                         variant="secondary"
-                                        onClick={onAuthSuccess}
+                                        onClick={() => googleLogin()}
                                         className="w-full bg-[#E5E5E5] hover:bg-white text-black border-transparent"
                                         leftIcon={<GoogleIcon />}
                                     >

@@ -46,7 +46,7 @@ const getProjectById = async (req: Request, res: Response) => {
     }
 
     try {
-        const result = await projectService.getProjectById({userId, projectId})
+        const result = await projectService.getProjectById({ userId, projectId })
         return res.status(200).json({
             success: true,
             message: 'project fetched successfully',
@@ -81,8 +81,8 @@ const createProject = async (req: Request, res: Response) => {
     }
 
     try {
-        const {name, prompt} = parseData.data
-        const result = await projectService.createProject({name, prompt, userId})
+        const { name, prompt } = parseData.data
+        const result = await projectService.createProject({ name, prompt, userId })
         return res.status(201).json({
             success: true,
             message: 'project created',
@@ -125,8 +125,8 @@ const updateProject = async (req: Request, res: Response) => {
     }
 
     try {
-        const {rename, starred} = parseData.data
-        const result = await projectService.updateProject({projectId, userId, rename, starred})
+        const { rename, starred } = parseData.data
+        const result = await projectService.updateProject({ projectId, userId, rename, starred })
         return res.status(200).json({
             success: true,
             message: 'project updated',
@@ -159,7 +159,7 @@ const deleteProject = async (req: Request, res: Response) => {
     }
 
     try {
-        const result = await projectService.deleteProject({userId, projectId})
+        const result = await projectService.deleteProject({ userId, projectId })
         return res.status(200).json({
             success: true,
             message: 'project deleted',
