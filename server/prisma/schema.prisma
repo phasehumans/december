@@ -13,6 +13,14 @@ datasource db {
   provider = "postgresql"
 }
 
+enum ProjectStatus {
+  DRAFT
+  GENERATING
+  READY
+  DEPLOYED
+  FAILED
+}
+
 model User {
   id            String    @id @default(uuid())
   name          String
@@ -29,12 +37,14 @@ model User {
 }
 
 model Project {
-  id        String   @id @default(uuid())
-  name      String
-  prompt    String
-  starred   Boolean  @default(false)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            String        @id @default(uuid())
+  name          String
+  description   String?
+  prompt        String
+  isStarred     Boolean       @default(false)
+  projectStatus ProjectStatus @default(DRAFT)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
 
   userId String
   user   User   @relation(fields: [userId], references: [id])
