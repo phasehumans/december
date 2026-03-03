@@ -104,8 +104,13 @@ const changePassword = async (req: Request, res: Response) => {
     }
 }
 
+const connectGithub = async (req: Request, res: Response) => {
+
+}
+
 export const profileController = {
     getProfile,
     updateName,
     changePassword,
+    connectGithub
 }

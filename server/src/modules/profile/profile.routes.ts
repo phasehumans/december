@@ -5,8 +5,9 @@ import { profileController } from './profile.controller'
 const profileRouter = Router()
 
 profileRouter.use(authMiddleware)
-profileRouter.get('/me', profileController.getProfile)
+profileRouter.get('/', profileController.getProfile)
 profileRouter.patch('/update-name', profileController.updateName)
 profileRouter.patch('/change-password', profileController.changePassword)
+profileRouter.post('/connect-github', profileController.connectGithub)
 
 export default profileRouter
