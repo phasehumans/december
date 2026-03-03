@@ -1,9 +1,9 @@
 import { z } from 'zod'
 
 export const createProjectSchema = z.object({
-    name: z.string(),
+    name: z.string().min(3).max(20),
     description: z.string().min(10).max(30).optional(),
-    prompt: z.string(),
+    prompt: z.string().min(3),
 })
 
 export const updateProjectSchema = z.object({
