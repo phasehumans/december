@@ -1,4 +1,3 @@
-import { string } from 'zod'
 import { prisma } from '../../utils/db'
 
 type GetProject = {
@@ -8,6 +7,7 @@ type GetProject = {
 
 type CreateProject = {
     name: string
+    description: string | undefined
     prompt: string
     userId: string
 }
@@ -16,7 +16,7 @@ type UpdateProject = {
     projectId: string
     userId: string
     rename?: string
-    starred?: boolean
+    isStarred?: boolean
 }
 
 type DeleteProject = {
@@ -48,20 +48,21 @@ const getProjectById = async (data: GetProject) => {
     })
 
     if (!project) {
-        throw new Error('project doesnot exist')
+        throw new Error('project not found')
     }
 
     return project
 }
 
 const createProject = async (data: CreateProject) => {
-    const { name, prompt, userId } = data
+    const { name, description, prompt, userId } = data
 
     const project = await prisma.project.create({
         data: {
             name: name,
+            description: description,
             prompt: prompt,
-            starred: false,
+            isStarred: false,
             userId: userId,
         },
     })
@@ -70,40 +71,25 @@ const createProject = async (data: CreateProject) => {
 }
 
 const updateProject = async (data: UpdateProject) => {
-    let { projectId, userId, rename, starred } = data
+    let { projectId, userId, rename, isStarred } = data
 
-    const project = await prisma.project.findUnique({
-        where: {
-            id: projectId,
-            userId: userId,
-        },
-    })
-
-    if (!project) {
-        throw new Error('project not found')
-    }
-
-    if (rename == undefined) {
-        rename = project.name
-    }
-
-    if (starred == undefined) {
-        starred = project.starred
-    }
-
-    const updatedProject = await prisma.project.update({
+    const project = await prisma.project.updateMany({
         where: {
             id: projectId,
             userId: userId,
         },
 
         data: {
-            name: rename,
-            starred: starred,
+            ...(rename !== undefined && { name: rename }),
+            ...(isStarred !== undefined && { isStarred }),
         },
     })
 
-    return updatedProject
+    if (project.count === 0) {
+        throw new Error('project not found')
+    }
+
+    return { message: 'project updated' }
 }
 
 const deleteProject = async (data: DeleteProject) => {
