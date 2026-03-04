@@ -1,9 +1,9 @@
-import { loginSchema, signupSchema } from './auth.schema'
+﻿import { loginSchema, signupSchema } from './auth.schema'
 import type { Request, Response } from 'express'
 import { authService } from './auth.service'
 import axios from 'axios'
 import { OAuth2Client } from 'google-auth-library'
-import { success } from 'zod'
+
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID)
 
 const signup = async (req: Request, res: Response) => {
@@ -86,49 +86,68 @@ const login = async (req: Request, res: Response) => {
 const google = async (req: Request, res: Response) => {
     const { code } = req.body
 
-    const tokenResponse = await axios.post('https://oauth2.googleapis.com/token', {
-        code,
-        client_id: process.env.GOOGLE_CLIENT_ID,
-        client_secret: process.env.GOOGLE_CLIENT_SECRET,
-        redirect_uri: 'postmessage',
-        grant_type: 'authorization_code',
-    })
-
-    const { id_token } = tokenResponse.data
-
-    const ticket = await client.verifyIdToken({
-        idToken: id_token,
-        audience: process.env.GOOGLE_CLIENT_ID,
-    })
-
-    const payload = ticket.getPayload()
-
-    if (!payload) {
+    if (!code) {
         return res.status(400).json({
             success: false,
-            message: 'invalid token payload',
+            message: 'authorization code is required',
         })
     }
 
-    // console.log(payload)
-
-    const { email, name, sub, email_verified } = payload
-
-    if (!email || !name || !sub) {
-        return res.status(400).json({
+    if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+        return res.status(500).json({
             success: false,
-            message: 'google fields required',
-        })
-    }
-
-    if (!email_verified) {
-        return res.status(400).json({
-            success: false,
-            message: 'email not verified',
+            message: 'google auth is not configured on server',
         })
     }
 
     try {
+        const tokenResponse = await axios.post('https://oauth2.googleapis.com/token', {
+            code,
+            client_id: process.env.GOOGLE_CLIENT_ID,
+            client_secret: process.env.GOOGLE_CLIENT_SECRET,
+            redirect_uri: 'postmessage',
+            grant_type: 'authorization_code',
+        })
+
+        const { id_token } = tokenResponse.data
+
+        if (!id_token) {
+            return res.status(400).json({
+                success: false,
+                message: 'google id token not found',
+            })
+        }
+
+        const ticket = await client.verifyIdToken({
+            idToken: id_token,
+            audience: process.env.GOOGLE_CLIENT_ID,
+        })
+
+        const payload = ticket.getPayload()
+
+        if (!payload) {
+            return res.status(400).json({
+                success: false,
+                message: 'invalid token payload',
+            })
+        }
+
+        const { email, name, sub, email_verified } = payload
+
+        if (!email || !name || !sub) {
+            return res.status(400).json({
+                success: false,
+                message: 'google fields required',
+            })
+        }
+
+        if (!email_verified) {
+            return res.status(400).json({
+                success: false,
+                message: 'email not verified',
+            })
+        }
+
         const result = await authService.google({ email, name, sub })
         return res.status(200).json({
             success: true,
@@ -138,7 +157,8 @@ const google = async (req: Request, res: Response) => {
     } catch (error: any) {
         return res.status(500).json({
             success: false,
-            errors: error.message,
+            message: 'google login failed',
+            errors: error?.response?.data?.error_description || error.message,
         })
     }
 }

@@ -21,7 +21,7 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
     const [prompt, setPrompt] = React.useState('')
 
     return (
-        <main className="flex-1 overflow-y-auto no-scrollbar scroll-smooth relative flex flex-col">
+        <main className="h-full min-h-0 overflow-y-auto no-scrollbar scroll-smooth relative flex flex-col">
             <HomeHeader />
 
             <div className="flex flex-col items-center justify-center pt-16 md:pt-0 h-[65vh] md:h-[85vh] min-h-[450px] md:min-h-[500px] gap-6 animate-in fade-in duration-500 max-w-4xl mx-auto px-4 w-full shrink-0">

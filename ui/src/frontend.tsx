@@ -5,16 +5,18 @@
  * It is included in `src/index.html`.
  */
 
-import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App'
 import { GoogleOAuthProvider } from '@react-oauth/google'
+import { QueryProvider } from './providers/query-provider'
 
 const elem = document.getElementById('root')!
 const app = (
-    <GoogleOAuthProvider clientId="762203307362-qg77ln4ci9eldv3i0q1smv804epsbhk0.apps.googleusercontent.com">
-        <App />
-    </GoogleOAuthProvider>
+    <QueryProvider>
+        <GoogleOAuthProvider clientId="762203307362-qg77ln4ci9eldv3i0q1smv804epsbhk0.apps.googleusercontent.com">
+            <App />
+        </GoogleOAuthProvider>
+    </QueryProvider>
 )
 
 if (import.meta.hot) {

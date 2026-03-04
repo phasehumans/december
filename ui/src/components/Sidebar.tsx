@@ -1,10 +1,11 @@
-import React, { useState } from 'react'
+﻿import React, { useState } from 'react'
 import { Icons } from './ui/Icons'
 import { SidebarNavItem } from './sidebar/SidebarNavItem'
 import { SidebarSectionHeader } from './sidebar/SidebarSectionHeader'
 import { SidebarProjectItem } from './sidebar/SidebarProjectItem'
 import { SidebarHeader } from './sidebar/SidebarHeader'
 import { SidebarFooter } from './sidebar/SidebarFooter'
+import { Skeleton } from './ui/Skeleton'
 import { cn } from '../lib/utils'
 import type { Project } from '../types'
 
@@ -15,6 +16,11 @@ interface SidebarProps {
     isAuthenticated: boolean
     onOpenAuth: () => void
     projects: Project[]
+    isProjectsLoading: boolean
+}
+
+const SidebarProjectSkeleton = () => {
+    return <Skeleton className="h-6 w-full rounded-md" />
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
@@ -24,6 +30,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     isAuthenticated,
     onOpenAuth,
     projects,
+    isProjectsLoading,
 }) => {
     const [isCollapsed, setIsCollapsed] = useState(true)
     const [recentOpen, setRecentOpen] = useState(true)
@@ -35,7 +42,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     return (
         <div
             className={cn(
-                "hidden md:flex flex-col h-screen bg-sidebar border-r border-white/5 py-5 z-20 transition-all duration-300 ease-in-out font-['Segoe_UI']",
+                "hidden md:flex flex-col h-screen bg-sidebar border-r border-white/5 py-5 z-20 transition-[width] duration-300 ease-out font-['Segoe_UI']",
                 isCollapsed ? 'w-[72px]' : 'w-[260px]'
             )}
         >
@@ -80,8 +87,12 @@ const Sidebar: React.FC<SidebarProps> = ({
                         onToggle={() => setRecentOpen(!recentOpen)}
                     />
                     {!isCollapsed && recentOpen && (
-                        <div className="flex flex-col gap-0.5 ml-4 pl-3 border-l border-white/10 mt-1 animate-in slide-in-from-top-2 duration-200">
-                            {recentProjects.length > 0 ? (
+                        <div className="flex flex-col gap-1 ml-4 pl-3 border-l border-white/10 mt-1 min-h-[84px]">
+                            {isAuthenticated && isProjectsLoading ? (
+                                Array.from({ length: 3 }).map((_, index) => (
+                                    <SidebarProjectSkeleton key={`recent-skeleton-${index}`} />
+                                ))
+                            ) : recentProjects.length > 0 ? (
                                 recentProjects.map((project) => (
                                     <SidebarProjectItem key={project.id} {...project} />
                                 ))
@@ -104,8 +115,12 @@ const Sidebar: React.FC<SidebarProps> = ({
                         onToggle={() => setStarredOpen(!starredOpen)}
                     />
                     {!isCollapsed && starredOpen && (
-                        <div className="flex flex-col gap-0.5 ml-4 pl-3 border-l border-white/10 mt-1 animate-in slide-in-from-top-2 duration-200">
-                            {starredProjects.length > 0 ? (
+                        <div className="flex flex-col gap-1 ml-4 pl-3 border-l border-white/10 mt-1 min-h-[84px]">
+                            {isAuthenticated && isProjectsLoading ? (
+                                Array.from({ length: 2 }).map((_, index) => (
+                                    <SidebarProjectSkeleton key={`starred-skeleton-${index}`} />
+                                ))
+                            ) : starredProjects.length > 0 ? (
                                 starredProjects.map((project) => (
                                     <SidebarProjectItem key={project.id} {...project} />
                                 ))
