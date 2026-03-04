@@ -1,4 +1,4 @@
-import React from 'react'
+﻿import React from 'react'
 import { Icons } from '../ui/Icons'
 import { Logo } from '../Logo'
 import { cn } from '../../lib/utils'
@@ -17,10 +17,7 @@ export const SidebarHeader: React.FC<SidebarHeaderProps> = ({
     return (
         <div className="px-4 mb-6 flex items-center justify-between min-h-[40px]">
             {!isCollapsed && (
-                <div
-                    className="animate-in fade-in duration-300 cursor-pointer pl-2"
-                    onClick={onNewThread}
-                >
+                <div className="cursor-pointer pl-2" onClick={onNewThread}>
                     <Logo />
                 </div>
             )}

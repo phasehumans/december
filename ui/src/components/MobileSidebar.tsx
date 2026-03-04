@@ -5,6 +5,7 @@ import { SidebarNavItem } from './sidebar/SidebarNavItem'
 import { SidebarSectionHeader } from './sidebar/SidebarSectionHeader'
 import { SidebarProjectItem } from './sidebar/SidebarProjectItem'
 import { SidebarFooter } from './sidebar/SidebarFooter'
+import { Skeleton } from './ui/Skeleton'
 import { cn } from '../lib/utils'
 import type { Project } from '../types'
 
@@ -17,6 +18,11 @@ interface MobileSidebarProps {
     isAuthenticated: boolean
     onOpenAuth: () => void
     projects: Project[]
+    isProjectsLoading: boolean
+}
+
+const SidebarProjectSkeleton = () => {
+    return <Skeleton className="h-6 w-full rounded-md" />
 }
 
 export const MobileSidebar: React.FC<MobileSidebarProps> = ({
@@ -28,6 +34,7 @@ export const MobileSidebar: React.FC<MobileSidebarProps> = ({
     isAuthenticated,
     onOpenAuth,
     projects,
+    isProjectsLoading,
 }) => {
     const [recentOpen, setRecentOpen] = React.useState(true)
     const [starredOpen, setStarredOpen] = React.useState(true)
@@ -38,21 +45,27 @@ export const MobileSidebar: React.FC<MobileSidebarProps> = ({
     return (
         <>
             {/* Backdrop */}
-            {isOpen && (
-                <div className="fixed inset-0 bg-black/50 z-40 md:hidden" onClick={onClose} />
-            )}
+            <div
+                className={cn(
+                    'fixed inset-0 bg-black/50 z-40 md:hidden transition-opacity duration-300 ease-out',
+                    isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+                )}
+                onClick={onClose}
+            />
 
             {/* Sidebar */}
             <div
                 className={cn(
-                    'fixed inset-y-0 left-0 w-[280px] bg-sidebar border-r border-white/5 z-[60] transform transition-transform duration-300 ease-in-out md:hidden flex flex-col py-5',
-                    isOpen ? 'translate-x-0' : '-translate-x-full'
+                    'fixed inset-y-0 left-0 w-[280px] bg-sidebar border-r border-white/5 z-[60] md:hidden flex flex-col py-5 transition-[transform,opacity] duration-300 ease-out will-change-transform',
+                    isOpen
+                        ? 'translate-x-0 opacity-100 pointer-events-auto'
+                        : '-translate-x-full opacity-0 pointer-events-none'
                 )}
             >
                 {/* Header */}
                 <div className="px-4 mb-6 flex items-center justify-between min-h-[40px]">
                     <div
-                        className="animate-in fade-in duration-300 cursor-pointer pl-2"
+                        className="cursor-pointer pl-2"
                         onClick={() => {
                             onNewThread()
                             onClose()
@@ -111,8 +124,12 @@ export const MobileSidebar: React.FC<MobileSidebarProps> = ({
                             onToggle={() => setRecentOpen(!recentOpen)}
                         />
                         {recentOpen && (
-                            <div className="flex flex-col gap-0.5 ml-4 pl-3 border-l border-white/10 mt-1">
-                                {recentProjects.length > 0 ? (
+                            <div className="flex flex-col gap-1 ml-4 pl-3 border-l border-white/10 mt-1 min-h-[84px]">
+                                {isAuthenticated && isProjectsLoading ? (
+                                    Array.from({ length: 3 }).map((_, index) => (
+                                        <SidebarProjectSkeleton key={`mobile-recent-${index}`} />
+                                    ))
+                                ) : recentProjects.length > 0 ? (
                                     recentProjects.map((project) => (
                                         <SidebarProjectItem key={project.id} {...project} />
                                     ))
@@ -135,8 +152,12 @@ export const MobileSidebar: React.FC<MobileSidebarProps> = ({
                             onToggle={() => setStarredOpen(!starredOpen)}
                         />
                         {starredOpen && (
-                            <div className="flex flex-col gap-0.5 ml-4 pl-3 border-l border-white/10 mt-1">
-                                {starredProjects.length > 0 ? (
+                            <div className="flex flex-col gap-1 ml-4 pl-3 border-l border-white/10 mt-1 min-h-[84px]">
+                                {isAuthenticated && isProjectsLoading ? (
+                                    Array.from({ length: 2 }).map((_, index) => (
+                                        <SidebarProjectSkeleton key={`mobile-starred-${index}`} />
+                                    ))
+                                ) : starredProjects.length > 0 ? (
                                     starredProjects.map((project) => (
                                         <SidebarProjectItem key={project.id} {...project} />
                                     ))
@@ -167,3 +188,4 @@ export const MobileSidebar: React.FC<MobileSidebarProps> = ({
         </>
     )
 }
+
