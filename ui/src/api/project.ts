@@ -70,7 +70,6 @@ const updateProject = async (
     return res.json()
 }
 
-
 const deleteProject = async (projectId: string) => {
     const res = await fetch(`${PROJECT_URL}/${projectId}`, {
         method: "DELETE",
