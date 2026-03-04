@@ -1,4 +1,6 @@
-import React, { useState } from 'react'
+﻿import React, { useState } from 'react'
+import { AnimatePresence, motion } from 'framer-motion'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import Sidebar from './components/Sidebar'
 import { MobileSidebar } from './components/MobileSidebar'
 import { AuthModal } from './components/AuthModal'
@@ -13,20 +15,63 @@ import { ProfileSettings } from './components/features/profile/ProfileSettings'
 // Services & Types
 import type { Message, Project } from './types'
 import { PREVIEW_HTML } from './constants/preview'
-import { INITIAL_PROJECTS } from './constants/projects'
+import { clearAuthToken, getAuthToken, setAuthToken } from './api/client'
+import { projectAPI, type BackendProject } from './api/project'
 
 type ViewState = 'chat' | 'all-projects' | 'profile'
 
+const mapBackendProjectToUIProject = (project: BackendProject): Project => {
+    const updatedAt = new Date(project.updatedAt)
+
+    return {
+        id: project.id,
+        title: project.name,
+        description: project.description ?? '',
+        isStarred: project.isStarred,
+        updatedAt: updatedAt.toLocaleString(),
+    }
+}
+
+const pageTransition = {
+    duration: 0.22,
+    ease: [0.22, 1, 0.36, 1] as const,
+}
+
+const pageVariants = {
+    initial: { opacity: 0, y: 6 },
+    animate: { opacity: 1, y: 0 },
+    exit: { opacity: 0, y: -4 },
+}
+
 const App: React.FC = () => {
+    const queryClient = useQueryClient()
+
     const [view, setView] = useState<ViewState>('chat')
     const [messages, setMessages] = useState<Message[]>([])
-    const [projects, setProjects] = useState<Project[]>(INITIAL_PROJECTS)
     const [isGenerating, setIsGenerating] = useState(false)
     const [currentCode, setCurrentCode] = useState<string>('')
+    const [authToken, setAuthTokenState] = useState<string | null>(() => getAuthToken())
 
-    const [isAuthenticated, setIsAuthenticated] = useState(false)
     const [showAuthModal, setShowAuthModal] = useState(false)
     const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
+
+    const isAuthenticated = Boolean(authToken)
+
+    const {
+        data: projects = [],
+        isLoading: isProjectsLoading,
+        isFetching: isProjectsFetching,
+        error: projectsError,
+    } = useQuery({
+        queryKey: ['projects'],
+        queryFn: projectAPI.getProjects,
+        enabled: isAuthenticated,
+        placeholderData: (previousData) => previousData,
+        select: (backendProjects) =>
+            backendProjects
+                .map(mapBackendProjectToUIProject)
+                .sort((a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: 'base' })),
+    })
 
     // Navigation Handlers
     const handleNewThread = () => {
@@ -49,7 +94,10 @@ const App: React.FC = () => {
     }
 
     const handleSignOut = () => {
-        setIsAuthenticated(false)
+        clearAuthToken()
+        setAuthTokenState(null)
+        queryClient.removeQueries({ queryKey: ['projects'] })
+        queryClient.removeQueries({ queryKey: ['profile'] })
         setView('chat')
         setMessages([])
         setCurrentCode('')
@@ -81,7 +129,7 @@ const App: React.FC = () => {
                 content:
                     "I've crafted a high-fidelity landing page for Acme Corp. It features a dark-themed aesthetic, dynamic metrics grid, and a responsive navbar.",
                 type: 'text',
-                code: code,
+                code,
             }
 
             setCurrentCode(code)
@@ -92,6 +140,7 @@ const App: React.FC = () => {
 
     const isHome = view === 'chat' && messages.length === 0
     const showSidebar = !(!isHome && view === 'chat')
+    const isProjectsInitialLoading = isProjectsLoading && projects.length === 0
 
     return (
         <div className="flex w-full h-screen bg-background text-textMain overflow-hidden font-sans selection:bg-accent selection:text-black">
@@ -103,6 +152,7 @@ const App: React.FC = () => {
                     isAuthenticated={isAuthenticated}
                     onOpenAuth={() => setShowAuthModal(true)}
                     projects={projects}
+                    isProjectsLoading={isProjectsInitialLoading}
                 />
             )}
 
@@ -127,45 +177,97 @@ const App: React.FC = () => {
                 isAuthenticated={isAuthenticated}
                 onOpenAuth={() => setShowAuthModal(true)}
                 projects={projects}
+                isProjectsLoading={isProjectsInitialLoading}
             />
 
             <AuthModal
                 isOpen={showAuthModal}
                 onClose={() => setShowAuthModal(false)}
-                onAuthSuccess={() => {
-                    setIsAuthenticated(true)
+                onAuthSuccess={(token) => {
+                    setAuthToken(token)
+                    setAuthTokenState(token)
                     setShowAuthModal(false)
+                    queryClient.invalidateQueries({ queryKey: ['projects'] })
+                    queryClient.invalidateQueries({ queryKey: ['profile'] })
                 }}
             />
 
             <div className="flex-1 flex flex-col h-full relative overflow-hidden">
-                {view === 'all-projects' && (
-                    <ProjectList
-                        onNewProject={handleNewThread}
-                        projects={projects}
-                        setProjects={setProjects}
-                    />
-                )}
+                <AnimatePresence mode="wait" initial={false}>
+                    {view === 'all-projects' && (
+                        <motion.div
+                            key="all-projects"
+                            variants={pageVariants}
+                            initial="initial"
+                            animate="animate"
+                            exit="exit"
+                            transition={pageTransition}
+                            className="h-full"
+                        >
+                            <ProjectList
+                                onNewProject={handleNewThread}
+                                projects={projects}
+                                isLoading={isProjectsInitialLoading}
+                                isFetching={isProjectsFetching}
+                                errorMessage={
+                                    projectsError instanceof Error ? projectsError.message : null
+                                }
+                            />
+                        </motion.div>
+                    )}
 
-                {view === 'profile' && <ProfileSettings onSignOut={handleSignOut} />}
+                    {view === 'profile' && (
+                        <motion.div
+                            key="profile"
+                            variants={pageVariants}
+                            initial="initial"
+                            animate="animate"
+                            exit="exit"
+                            transition={pageTransition}
+                            className="h-full"
+                        >
+                            <ProfileSettings onSignOut={handleSignOut} />
+                        </motion.div>
+                    )}
 
-                {view === 'chat' &&
-                    (isHome ? (
-                        <HomeHero
-                            onPromptSubmit={handlePromptSubmit}
-                            isGenerating={isGenerating}
-                            isAuthenticated={isAuthenticated}
-                            onOpenAuth={() => setShowAuthModal(true)}
-                        />
-                    ) : (
-                        <OutputScreen
-                            onBack={() => {
-                                setView('chat')
-                                setMessages([])
-                            }}
-                            isGenerating={isGenerating}
-                        />
-                    ))}
+                    {view === 'chat' &&
+                        (isHome ? (
+                            <motion.div
+                                key="chat-home"
+                                variants={pageVariants}
+                                initial="initial"
+                                animate="animate"
+                                exit="exit"
+                                transition={pageTransition}
+                                className="h-full"
+                            >
+                                <HomeHero
+                                    onPromptSubmit={handlePromptSubmit}
+                                    isGenerating={isGenerating}
+                                    isAuthenticated={isAuthenticated}
+                                    onOpenAuth={() => setShowAuthModal(true)}
+                                />
+                            </motion.div>
+                        ) : (
+                            <motion.div
+                                key="chat-output"
+                                variants={pageVariants}
+                                initial="initial"
+                                animate="animate"
+                                exit="exit"
+                                transition={pageTransition}
+                                className="h-full"
+                            >
+                                <OutputScreen
+                                    onBack={() => {
+                                        setView('chat')
+                                        setMessages([])
+                                    }}
+                                    isGenerating={isGenerating}
+                                />
+                            </motion.div>
+                        ))}
+                </AnimatePresence>
             </div>
         </div>
     )

@@ -13,7 +13,7 @@ import { QueryProvider } from './providers/query-provider'
 const elem = document.getElementById('root')!
 const app = (
     <QueryProvider>
-        <GoogleOAuthProvider clientId="762203307362-qg77ln4ci9eldv3i0q1smv804epsbhk0.apps.googleusercontent.com ">
+        <GoogleOAuthProvider clientId="762203307362-qg77ln4ci9eldv3i0q1smv804epsbhk0.apps.googleusercontent.com">
             <App />
         </GoogleOAuthProvider>
     </QueryProvider>
