@@ -4,6 +4,7 @@ import { Modal } from '../../ui/Modal'
 import { Button } from '../../ui/Button'
 import { Input } from '../../ui/Input'
 import type { Project } from '../../../types'
+import { projectAPI } from '@/api/project' 
 
 interface ProjectListProps {
     onNewProject: () => void
