@@ -1,10 +1,12 @@
 import React, { useState } from 'react'
+import { useMutation } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X } from 'lucide-react'
 import { Logo } from './Logo'
 import { Button } from './ui/Button'
 import { Input } from './ui/Input'
 import { useGoogleLogin } from '@react-oauth/google'
+import { authAPI } from '@/api/auth'
 
 // Google Icon Component (Standard Colored)
 const GoogleIcon = () => (
@@ -32,7 +34,15 @@ interface AuthModalProps {
     isOpen: boolean
     onClose: () => void
     initialMode?: 'login' | 'signup'
-    onAuthSuccess: () => void
+    onAuthSuccess: (token: string) => void
+}
+
+const getErrorMessage = (error: unknown) => {
+    if (error instanceof Error) {
+        return error.message
+    }
+
+    return 'Something went wrong. Please try again.'
 }
 
 export const AuthModal: React.FC<AuthModalProps> = ({
@@ -44,7 +54,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     const [authMode, setAuthMode] = useState<'login' | 'signup'>(initialMode)
     const [step, setStep] = useState<'auth' | 'otp'>('auth')
     const [email, setEmail] = useState('')
+    const [password, setPassword] = useState('')
     const [otp, setOtp] = useState(['', '', '', '', '', ''])
+    const [errorMessage, setErrorMessage] = useState<string | null>(null)
     const inputRefs = React.useRef<(HTMLInputElement | null)[]>([])
 
     React.useEffect(() => {
@@ -52,17 +64,67 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             setAuthMode(initialMode)
             setStep('auth')
             setEmail('')
+            setPassword('')
+            setErrorMessage(null)
             setOtp(['', '', '', '', '', ''])
         }
     }, [isOpen, initialMode])
 
+    const signupMutation = useMutation({
+        mutationFn: authAPI.signup,
+        onSuccess: () => {
+            setStep('otp')
+            setErrorMessage(null)
+        },
+        onError: (error) => {
+            setErrorMessage(getErrorMessage(error))
+        },
+    })
+
+    const loginMutation = useMutation({
+        mutationFn: authAPI.login,
+        onSuccess: (token) => {
+            setErrorMessage(null)
+            onAuthSuccess(token)
+        },
+        onError: (error) => {
+            setErrorMessage(getErrorMessage(error))
+        },
+    })
+
+    const verifyOtpMutation = useMutation({
+        mutationFn: authAPI.verifyOtp,
+        onSuccess: (token) => {
+            setErrorMessage(null)
+            onAuthSuccess(token)
+        },
+        onError: (error) => {
+            setErrorMessage(getErrorMessage(error))
+        },
+    })
+
+    const googleMutation = useMutation({
+        mutationFn: authAPI.google,
+        onSuccess: (token) => {
+            setErrorMessage(null)
+            onAuthSuccess(token)
+        },
+        onError: (error) => {
+            setErrorMessage(getErrorMessage(error))
+        },
+    })
+
     const handleAuthSubmit = (e: React.FormEvent) => {
         e.preventDefault()
+
+        setErrorMessage(null)
+
         if (authMode === 'signup') {
-            setStep('otp')
-        } else {
-            onAuthSuccess()
+            signupMutation.mutate({ email, password })
+            return
         }
+
+        loginMutation.mutate({ email, password })
     }
 
     const handleOtpChange = (index: number, value: string) => {
@@ -99,35 +161,26 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
     const handleOtpSubmit = (e: React.FormEvent) => {
         e.preventDefault()
-        // Verify OTP logic here (otp.join(''))
-        onAuthSuccess()
+
+        setErrorMessage(null)
+        verifyOtpMutation.mutate({
+            email,
+            otp: otp.join(''),
+        })
     }
 
     const googleLogin = useGoogleLogin({
         flow: 'auth-code',
         onSuccess: async (codeResponse) => {
-            try {
-                const res = await fetch('http://localhost:4000/api/v1/auth/google', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        code: codeResponse.code,
-                    }),
-                })
-
-                const data = await res.json()
-
-                localStorage.setItem('token', data.token)
-
-                onAuthSuccess()
-            } catch (err) {
-                console.error('Google login failed', err)
-            }
+            googleMutation.mutate({ code: codeResponse.code })
         },
         onError: () => {
-            console.log('Google Login Failed')
+            setErrorMessage('Google Login Failed')
         },
     })
+
+    const isAuthPending =
+        signupMutation.isPending || loginMutation.isPending || googleMutation.isPending
 
     return (
         <AnimatePresence>
@@ -168,6 +221,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                                         onClick={() => googleLogin()}
                                         className="w-full bg-[#E5E5E5] hover:bg-white text-black border-transparent"
                                         leftIcon={<GoogleIcon />}
+                                        isLoading={googleMutation.isPending}
+                                        disabled={isAuthPending}
                                     >
                                         Continue with Google
                                     </Button>
@@ -192,15 +247,27 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                                         placeholder="name@example.com"
                                         value={email}
                                         onChange={(e) => setEmail(e.target.value)}
+                                        disabled={isAuthPending}
                                     />
                                     <Input
                                         label="Password"
                                         type="password"
                                         required
-                                        placeholder="••••••••"
+                                        placeholder="********"
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                        disabled={isAuthPending}
                                     />
 
-                                    <Button type="submit" className="w-full mt-2">
+                                    {errorMessage && (
+                                        <p className="text-xs text-red-400 pt-1">{errorMessage}</p>
+                                    )}
+
+                                    <Button
+                                        type="submit"
+                                        className="w-full mt-2"
+                                        isLoading={isAuthPending}
+                                    >
                                         <span>{authMode === 'login' ? 'Sign In' : 'Sign Up'}</span>
                                     </Button>
                                 </form>
@@ -212,11 +279,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                                             ? "Don't have an account? "
                                             : 'Already have an account? '}
                                         <button
-                                            onClick={() =>
+                                            onClick={() => {
+                                                setErrorMessage(null)
                                                 setAuthMode(
                                                     authMode === 'login' ? 'signup' : 'login'
                                                 )
-                                            }
+                                            }}
                                             className="text-white hover:text-neutral-300 transition-colors font-medium ml-1 underline decoration-transparent hover:decoration-white/50 underline-offset-2"
                                         >
                                             {authMode === 'login' ? 'Sign up' : 'Log in'}
@@ -256,23 +324,35 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                                                 }
                                                 onKeyDown={(e) => handleKeyDown(index, e)}
                                                 onPaste={index === 0 ? handlePaste : undefined}
+                                                disabled={verifyOtpMutation.isPending}
                                                 className="w-10 h-12 text-center text-xl font-medium bg-[#242322] border border-white/10 rounded-lg focus:border-white/30 focus:outline-none text-white transition-all caret-white"
                                             />
                                         ))}
                                     </div>
 
+                                    {errorMessage && (
+                                        <p className="text-xs text-red-400 text-center">
+                                            {errorMessage}
+                                        </p>
+                                    )}
+
                                     <Button
                                         type="submit"
                                         className="w-full mt-2"
                                         disabled={otp.some((d) => !d)}
+                                        isLoading={verifyOtpMutation.isPending}
                                     >
                                         <span>Verify & Create Account</span>
                                     </Button>
 
                                     <button
                                         type="button"
-                                        onClick={() => setStep('auth')}
+                                        onClick={() => {
+                                            setErrorMessage(null)
+                                            setStep('auth')
+                                        }}
                                         className="w-full text-xs text-neutral-500 hover:text-neutral-300 transition-colors mt-4"
+                                        disabled={verifyOtpMutation.isPending}
                                     >
                                         Back to Sign Up
                                     </button>
