@@ -188,4 +188,3 @@ export const MobileSidebar: React.FC<MobileSidebarProps> = ({
         </>
     )
 }
-

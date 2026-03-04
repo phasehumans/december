@@ -33,9 +33,7 @@ const resolveBaseUrl = () => {
 
 const rawBaseUrl = resolveBaseUrl()
 
-const normalizedBaseUrl = rawBaseUrl.endsWith('/')
-    ? rawBaseUrl.slice(0, -1)
-    : rawBaseUrl
+const normalizedBaseUrl = rawBaseUrl.endsWith('/') ? rawBaseUrl.slice(0, -1) : rawBaseUrl
 
 export const API_BASE_URL = normalizedBaseUrl.endsWith('/api/v1')
     ? normalizedBaseUrl

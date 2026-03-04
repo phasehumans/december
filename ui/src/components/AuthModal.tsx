@@ -179,7 +179,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         },
     })
 
-    const isAuthPending = signupMutation.isPending || loginMutation.isPending || googleMutation.isPending
+    const isAuthPending =
+        signupMutation.isPending || loginMutation.isPending || googleMutation.isPending
 
     return (
         <AnimatePresence>
@@ -262,7 +263,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                                         <p className="text-xs text-red-400 pt-1">{errorMessage}</p>
                                     )}
 
-                                    <Button type="submit" className="w-full mt-2" isLoading={isAuthPending}>
+                                    <Button
+                                        type="submit"
+                                        className="w-full mt-2"
+                                        isLoading={isAuthPending}
+                                    >
                                         <span>{authMode === 'login' ? 'Sign In' : 'Sign Up'}</span>
                                     </Button>
                                 </form>
@@ -276,7 +281,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                                         <button
                                             onClick={() => {
                                                 setErrorMessage(null)
-                                                setAuthMode(authMode === 'login' ? 'signup' : 'login')
+                                                setAuthMode(
+                                                    authMode === 'login' ? 'signup' : 'login'
+                                                )
                                             }}
                                             className="text-white hover:text-neutral-300 transition-colors font-medium ml-1 underline decoration-transparent hover:decoration-white/50 underline-offset-2"
                                         >
@@ -324,7 +331,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                                     </div>
 
                                     {errorMessage && (
-                                        <p className="text-xs text-red-400 text-center">{errorMessage}</p>
+                                        <p className="text-xs text-red-400 text-center">
+                                            {errorMessage}
+                                        </p>
                                     )}
 
                                     <Button
