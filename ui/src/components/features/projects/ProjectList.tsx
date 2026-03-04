@@ -18,54 +18,33 @@ interface ProjectListProps {
 
 const ProjectRowSkeleton = () => {
     return (
-        <div className="grid grid-cols-12 gap-4 items-center px-6 py-4 rounded-xl border border-white/5 bg-surface/20">
-            <div className="col-span-6 flex items-center gap-4">
-                <Skeleton className="w-10 h-10 rounded-xl hidden md:block" />
-                <div className="flex flex-col gap-2 flex-1">
-                    <Skeleton className="h-4 w-44" />
-                    <Skeleton className="h-3 w-72 max-w-full" />
-                </div>
+        <div className="flex items-center justify-between rounded-xl border border-white/5 bg-surface/20 px-5 py-4">
+            <div className="flex min-w-0 flex-1 flex-col gap-2">
+                <Skeleton className="h-4 w-40" />
+                <Skeleton className="h-3 w-64 max-w-full" />
             </div>
-            <div className="col-span-4">
-                <Skeleton className="h-4 w-28" />
-            </div>
-            <div className="col-span-2 flex justify-end">
-                <Skeleton className="h-8 w-16 rounded-lg" />
-            </div>
+            <Skeleton className="ml-4 h-3 w-24 shrink-0" />
         </div>
     )
 }
 
 const ProjectListSkeleton = () => {
     return (
-        <div className="space-y-8 min-h-[520px]">
-            <div className="flex items-end justify-between gap-4">
-                <div className="flex flex-col gap-2">
-                    <Skeleton className="h-9 w-40" />
-                    <Skeleton className="h-4 w-48" />
-                </div>
+        <div className="space-y-6 min-h-[520px]">
+            <div className="space-y-2">
+                <Skeleton className="h-8 w-32" />
+                <Skeleton className="h-4 w-44" />
             </div>
 
-            <div className="grid grid-cols-12 gap-4 px-6 py-3 border-b border-white/5 mb-2 select-none">
-                <div className="col-span-6">
-                    <Skeleton className="h-3 w-12" />
-                </div>
-                <div className="col-span-4">
-                    <Skeleton className="h-3 w-20" />
-                </div>
-                <div className="col-span-2 flex justify-end">
-                    <Skeleton className="h-3 w-8" />
-                </div>
-            </div>
-
-            <div className="flex flex-col gap-1 min-h-[420px]">
-                {Array.from({ length: 6 }).map((_, index) => (
+            <div className="flex flex-col gap-2 min-h-[420px]">
+                {Array.from({ length: 4 }).map((_, index) => (
                     <ProjectRowSkeleton key={`project-list-skeleton-${index}`} />
                 ))}
             </div>
         </div>
     )
 }
+
 export const ProjectList: React.FC<ProjectListProps> = ({
     onNewProject,
     projects,
