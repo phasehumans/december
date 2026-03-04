@@ -1,5 +1,13 @@
 ## Engineering Decisions @phasehumans
 
+### 03-03-2026
+- auth with google is done, let integrate the github
+- github integration is not used for auth, but to bring users repo ==
+- so that user can push his vibecoded webapp to his github account
+- i am not sure how am i gonna do this, but let see
+- one thing is sure that github integration is for push code to users repo and not for auth
+- i think for github intergation, i need some kind of verification from them at first place
+
 #### 01-03-2026
 
 - reducing ui just in two screens; home screen and output screen
