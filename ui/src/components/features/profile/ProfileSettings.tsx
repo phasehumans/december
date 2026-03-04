@@ -400,6 +400,3 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut }) =
         </div>
     )
 }
-
-
-
