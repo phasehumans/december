@@ -5,14 +5,17 @@
  * It is included in `src/index.html`.
  */
 
-import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App'
 import { GoogleOAuthProvider } from '@react-oauth/google'
 
+if (!import.meta.env.GOOGLE_CLIENT_ID) {
+    throw new Error("GOOGLE_CLIENT_ID is missing")
+}
+
 const elem = document.getElementById('root')!
 const app = (
-    <GoogleOAuthProvider clientId="762203307362-qg77ln4ci9eldv3i0q1smv804epsbhk0.apps.googleusercontent.com">
+    <GoogleOAuthProvider clientId={import.meta.env.GOOGLE_CLIENT_ID}>
         <App />
     </GoogleOAuthProvider>
 )

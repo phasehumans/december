@@ -31,7 +31,7 @@ export const SidebarFooter: React.FC<SidebarFooterProps> = ({
                     {!isCollapsed && (
                         <div className="flex flex-col items-start overflow-hidden font-['Segoe_UI']">
                             <span className="font-medium text-sm text-[#91908F] group-hover:text-[#E8E8E6] truncate w-full text-left transition-colors">
-                                Account & Settings
+                                Account Settings
                             </span>
                         </div>
                     )}
