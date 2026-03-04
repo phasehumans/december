@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react'
+import React, { useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import Sidebar from './components/Sidebar'
@@ -192,7 +192,7 @@ const App: React.FC = () => {
                 }}
             />
 
-            <div className="flex-1 flex flex-col h-full relative overflow-hidden">
+            <div className="flex-1 flex flex-col h-full min-h-0 relative overflow-hidden">
                 <AnimatePresence mode="wait" initial={false}>
                     {view === 'all-projects' && (
                         <motion.div
@@ -202,7 +202,7 @@ const App: React.FC = () => {
                             animate="animate"
                             exit="exit"
                             transition={pageTransition}
-                            className="h-full"
+                            className="h-full min-h-0"
                         >
                             <ProjectList
                                 onNewProject={handleNewThread}
@@ -224,7 +224,7 @@ const App: React.FC = () => {
                             animate="animate"
                             exit="exit"
                             transition={pageTransition}
-                            className="h-full"
+                            className="h-full min-h-0"
                         >
                             <ProfileSettings onSignOut={handleSignOut} />
                         </motion.div>
@@ -239,7 +239,7 @@ const App: React.FC = () => {
                                 animate="animate"
                                 exit="exit"
                                 transition={pageTransition}
-                                className="h-full"
+                                className="h-full min-h-0"
                             >
                                 <HomeHero
                                     onPromptSubmit={handlePromptSubmit}
@@ -256,7 +256,7 @@ const App: React.FC = () => {
                                 animate="animate"
                                 exit="exit"
                                 transition={pageTransition}
-                                className="h-full"
+                                className="h-full min-h-0"
                             >
                                 <OutputScreen
                                     onBack={() => {
