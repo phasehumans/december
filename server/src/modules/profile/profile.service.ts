@@ -77,13 +77,11 @@ const changePassword = async (data: ChangePassword) => {
     return updatedUser
 }
 
-const connectGithub = async () => {
-
-}
+const connectGithub = async () => {}
 
 export const profileService = {
     getProfile,
     updateName,
     changePassword,
-    connectGithub
+    connectGithub,
 }
