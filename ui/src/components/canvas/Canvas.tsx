@@ -235,13 +235,53 @@ export const Canvas = forwardRef<CanvasRef, CanvasProps>((props, ref) => {
         return Math.hypot(point.x - cx, point.y - cy)
     }
 
+    const ERASE_TOLERANCE = 8
+
+    const isPointNearRectStroke = (
+        point: { x: number; y: number },
+        bounds: { x: number; y: number; width: number; height: number },
+        tolerance = ERASE_TOLERANCE
+    ) => {
+        const left = bounds.x
+        const top = bounds.y
+        const right = bounds.x + bounds.width
+        const bottom = bounds.y + bounds.height
+
+        const edges: Array<[{ x: number; y: number }, { x: number; y: number }]> = [
+            [{ x: left, y: top }, { x: right, y: top }],
+            [{ x: right, y: top }, { x: right, y: bottom }],
+            [{ x: right, y: bottom }, { x: left, y: bottom }],
+            [{ x: left, y: bottom }, { x: left, y: top }],
+        ]
+
+        return edges.some(([start, end]) => distanceToSegment(point, start, end) <= tolerance)
+    }
+
+    const isPointNearEllipseStroke = (
+        point: { x: number; y: number },
+        bounds: { x: number; y: number; width: number; height: number },
+        tolerance = ERASE_TOLERANCE
+    ) => {
+        const rx = bounds.width / 2
+        const ry = bounds.height / 2
+        if (rx < 1 || ry < 1) return false
+
+        const cx = bounds.x + rx
+        const cy = bounds.y + ry
+        const nx = (point.x - cx) / rx
+        const ny = (point.y - cy) / ry
+        const radialDelta = Math.abs(Math.sqrt(nx * nx + ny * ny) - 1)
+        const approxDistance = radialDelta * Math.min(rx, ry)
+        return approxDistance <= tolerance
+    }
+
     const isPointInsideItem = (point: { x: number; y: number }, item: CanvasItem) => {
         const bounds = getItemBounds(item)
 
         if (item.type === 'line' || item.type === 'arrow') {
             const points = getLineAbsolutePoints(item)
             for (let i = 0; i < points.length - 1; i += 1) {
-                if (distanceToSegment(point, points[i]!, points[i + 1]!) <= 8) {
+                if (distanceToSegment(point, points[i]!, points[i + 1]!) <= ERASE_TOLERANCE) {
                     return true
                 }
             }
@@ -251,19 +291,19 @@ export const Canvas = forwardRef<CanvasRef, CanvasProps>((props, ref) => {
         if (item.type === 'pen' && item.points && item.points.length > 1) {
             const absolutePoints = item.points.map((pt) => ({ x: item.x + pt.x, y: item.y + pt.y }))
             for (let i = 0; i < absolutePoints.length - 1; i += 1) {
-                if (distanceToSegment(point, absolutePoints[i]!, absolutePoints[i + 1]!) <= 8) {
+                if (distanceToSegment(point, absolutePoints[i]!, absolutePoints[i + 1]!) <= ERASE_TOLERANCE) {
                     return true
                 }
             }
             return false
         }
 
+        if (item.type === 'square' || item.type === 'frame') {
+            return isPointNearRectStroke(point, bounds)
+        }
+
         if (item.type === 'circle') {
-            const cx = bounds.x + bounds.width / 2
-            const cy = bounds.y + bounds.height / 2
-            const nx = (point.x - cx) / (bounds.width / 2)
-            const ny = (point.y - cy) / (bounds.height / 2)
-            return nx * nx + ny * ny <= 1
+            return isPointNearEllipseStroke(point, bounds)
         }
 
         return (
