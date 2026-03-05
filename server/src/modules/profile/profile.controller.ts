@@ -116,8 +116,6 @@ const connectGithub = async (req: Request, res: Response) => {
         })
     }
 
-    console.log(code, userId)
-
     type GithubTokenResponse = {
         access_token: string
         token_type: string
@@ -140,8 +138,6 @@ const connectGithub = async (req: Request, res: Response) => {
                 })
             }
         )
-
-        console.log(tokenResponse)
     
         const tokenData = (await tokenResponse.json()) as GithubTokenResponse
         const accessToken = tokenData.access_token
@@ -155,7 +151,7 @@ const connectGithub = async (req: Request, res: Response) => {
         const githubUser: any = await userRes.json()
         const username = githubUser.login
     
-        console.log(accessToken, githubUser)
+        console.log(accessToken, username)
     
         const result = await profileService.connectGithub({userId, accessToken, username})
         return res.status(200).json({
