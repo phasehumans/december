@@ -1,16 +1,15 @@
 import React, { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Eye, EyeOff } from 'lucide-react'
 import { profileAPI } from '@/api/profile'
 import { Icons } from '../../ui/Icons'
-import { Modal } from '../../ui/Modal'
 import { Button } from '../../ui/Button'
-import { Input } from '../../ui/Input'
 import { Switch } from '../../ui/Switch'
 import { Badge } from '../../ui/Badge'
 import { Skeleton } from '../../ui/Skeleton'
 import { SettingsSection } from '../../settings/SettingsSection'
 import { SettingsRow } from '../../settings/SettingsRow'
+import { ProfileNameModal } from './ProfileNameModal'
+import { ProfilePasswordModal } from './ProfilePasswordModal'
 
 interface ProfileSettingsProps {
     onSignOut: () => void
@@ -18,7 +17,7 @@ interface ProfileSettingsProps {
 
 const ProfileSettingsSkeleton = () => {
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 min-h-[430px]">
+        <div className="grid min-h-[430px] grid-cols-1 gap-8 lg:grid-cols-2 lg:gap-16">
             <div className="space-y-8">
                 <SettingsSection title="Profile">
                     <div className="space-y-4">
@@ -55,7 +54,6 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut }) =
     const [emailNotifications, setEmailNotifications] = useState(true)
     const [isGithubConnected, setIsGithubConnected] = useState(false)
 
-    // Modals
     const [nameModalOpen, setNameModalOpen] = useState(false)
     const [tempName, setTempName] = useState('')
 
@@ -131,6 +129,11 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut }) =
         setNameModalOpen(true)
     }
 
+    const openPasswordModal = () => {
+        setProfileActionError(null)
+        setPasswordModalOpen(true)
+    }
+
     const handleSaveName = () => {
         if (!tempName.trim()) {
             return
@@ -157,14 +160,14 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut }) =
     const resolvedName = profile?.name ?? 'User'
 
     return (
-        <div className="flex-1 overflow-y-auto no-scrollbar px-6 pb-6 pt-20 md:p-10 w-full font-sans bg-background relative">
-            <div className="max-w-5xl mx-auto min-h-[520px]">
+        <div className="relative flex-1 w-full overflow-y-auto bg-background px-6 pb-6 pt-20 font-sans no-scrollbar md:p-10">
+            <div className="mx-auto max-w-5xl min-h-[520px]">
                 <div className="mb-8 flex items-end justify-between gap-4">
                     <div>
-                        <h1 className="text-3xl font-medium text-textMain mb-2 tracking-tight">
+                        <h1 className="mb-2 text-3xl font-medium tracking-tight text-textMain">
                             Settings
                         </h1>
-                        <p className="text-neutral-500 text-sm">Manage your account settings</p>
+                        <p className="text-sm text-neutral-500">Manage your account settings</p>
                     </div>
                     {isProfileFetching && !isProfileLoading && (
                         <div className="text-xs text-neutral-500">Syncing profile...</div>
@@ -183,7 +186,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut }) =
                 {isProfileLoading && !profile ? (
                     <ProfileSettingsSkeleton />
                 ) : (
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16">
+                    <div className="grid grid-cols-1 gap-8 lg:grid-cols-2 lg:gap-16">
                         <div className="space-y-8">
                             <SettingsSection title="Profile">
                                 <div className="flex flex-col gap-2">
@@ -197,7 +200,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut }) =
                                                 variant="outline"
                                                 size="sm"
                                                 onClick={openNameModal}
-                                                className="h-7 text-[10px] px-2.5"
+                                                className="h-7 px-2.5 text-[10px]"
                                                 disabled={!profile}
                                             >
                                                 Change Name
@@ -215,11 +218,8 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut }) =
                                             <Button
                                                 variant="outline"
                                                 size="sm"
-                                                onClick={() => {
-                                                    setProfileActionError(null)
-                                                    setPasswordModalOpen(true)
-                                                }}
-                                                className="h-7 text-[10px] px-2.5"
+                                                onClick={openPasswordModal}
+                                                className="h-7 px-2.5 text-[10px]"
                                             >
                                                 Change Password
                                             </Button>
@@ -244,13 +244,13 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut }) =
 
                         <div className="space-y-8">
                             <SettingsSection title="Integrations">
-                                <div className="flex items-center justify-between p-3 rounded-xl bg-surface/20 border border-white/5 hover:border-white/10 transition-colors">
+                                <div className="flex items-center justify-between rounded-xl border border-white/5 bg-surface/20 p-3 transition-colors hover:border-white/10">
                                     <div className="flex items-center gap-3">
-                                        <div className="w-9 h-9 rounded-lg bg-white/5 flex items-center justify-center text-white">
-                                            <Icons.Github className="w-4 h-4" />
+                                        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/5 text-white">
+                                            <Icons.Github className="h-4 w-4" />
                                         </div>
                                         <div>
-                                            <div className="font-medium text-sm text-textMain">
+                                            <div className="text-sm font-medium text-textMain">
                                                 GitHub
                                             </div>
                                             <div className="text-[11px] text-neutral-500">
@@ -275,13 +275,13 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut }) =
                                     <label className="text-xs font-medium text-neutral-400">
                                         Usage
                                     </label>
-                                    <div className="p-3 rounded-xl bg-surface/20 border border-white/5">
-                                        <div className="flex justify-between text-xs mb-2">
+                                    <div className="rounded-xl border border-white/5 bg-surface/20 p-3">
+                                        <div className="mb-2 flex justify-between text-xs">
                                             <span className="text-neutral-400">Generations</span>
                                             <span className="text-textMain">124 / 500</span>
                                         </div>
-                                        <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
-                                            <div className="h-full bg-white w-[25%] rounded-full" />
+                                        <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/5">
+                                            <div className="h-full w-[25%] rounded-full bg-white" />
                                         </div>
                                     </div>
                                 </div>
@@ -291,9 +291,9 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut }) =
                                 <Button
                                     variant="danger"
                                     onClick={onSignOut}
-                                    className="bg-transparent border-0 hover:bg-red-500/10 text-red-400/80 hover:text-red-400 justify-start px-2 -ml-2"
+                                    className="-ml-2 justify-start border-0 bg-transparent px-2 text-red-400/80 hover:bg-red-500/10 hover:text-red-400"
                                 >
-                                    <Icons.LogOut className="w-4 h-4 mr-2" /> Sign out
+                                    <Icons.LogOut className="mr-2 h-4 w-4" /> Sign out
                                 </Button>
                             </div>
                         </div>
@@ -301,102 +301,31 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut }) =
                 )}
             </div>
 
-            <Modal
+            <ProfileNameModal
                 isOpen={nameModalOpen}
+                value={tempName}
+                isPending={updateNameMutation.isPending}
                 onClose={() => setNameModalOpen(false)}
-                title="Change Name"
-                maxWidth="max-w-[420px]"
-            >
-                <div className="space-y-4">
-                    <Input
-                        label="Display Name"
-                        value={tempName}
-                        onChange={(e) => setTempName(e.target.value)}
-                        autoFocus
-                    />
-                    <div className="flex items-center justify-end gap-3 mt-8">
-                        <Button
-                            variant="ghost"
-                            onClick={() => setNameModalOpen(false)}
-                            disabled={updateNameMutation.isPending}
-                        >
-                            Cancel
-                        </Button>
-                        <Button
-                            onClick={handleSaveName}
-                            isLoading={updateNameMutation.isPending}
-                            disabled={!tempName.trim()}
-                        >
-                            Save Changes
-                        </Button>
-                    </div>
-                </div>
-            </Modal>
+                onChange={setTempName}
+                onSave={handleSaveName}
+            />
 
-            <Modal
+            <ProfilePasswordModal
                 isOpen={passwordModalOpen}
+                isPending={updatePasswordMutation.isPending}
+                currentPassword={currentPassword}
+                newPassword={newPassword}
+                confirmPassword={confirmPassword}
+                showCurrentPass={showCurrentPass}
+                showNewPass={showNewPass}
                 onClose={() => setPasswordModalOpen(false)}
-                title="Change Password"
-                maxWidth="max-w-[420px]"
-            >
-                <div className="space-y-4">
-                    <Input
-                        label="Current Password"
-                        type={showCurrentPass ? 'text' : 'password'}
-                        placeholder="********"
-                        value={currentPassword}
-                        onChange={(e) => setCurrentPassword(e.target.value)}
-                        rightIcon={
-                            <button
-                                type="button"
-                                onClick={() => setShowCurrentPass(!showCurrentPass)}
-                                className="hover:text-white"
-                            >
-                                {showCurrentPass ? <EyeOff size={14} /> : <Eye size={14} />}
-                            </button>
-                        }
-                    />
-                    <Input
-                        label="New Password"
-                        type={showNewPass ? 'text' : 'password'}
-                        placeholder="********"
-                        value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
-                        rightIcon={
-                            <button
-                                type="button"
-                                onClick={() => setShowNewPass(!showNewPass)}
-                                className="hover:text-white"
-                            >
-                                {showNewPass ? <EyeOff size={14} /> : <Eye size={14} />}
-                            </button>
-                        }
-                    />
-                    <Input
-                        label="Confirm Password"
-                        type="password"
-                        placeholder="********"
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                    />
-
-                    <div className="flex items-center justify-end gap-3 mt-8">
-                        <Button
-                            variant="ghost"
-                            onClick={() => setPasswordModalOpen(false)}
-                            disabled={updatePasswordMutation.isPending}
-                        >
-                            Cancel
-                        </Button>
-                        <Button
-                            onClick={handleUpdatePassword}
-                            isLoading={updatePasswordMutation.isPending}
-                        >
-                            Update Password
-                        </Button>
-                    </div>
-                </div>
-            </Modal>
+                onUpdatePassword={handleUpdatePassword}
+                onCurrentPasswordChange={setCurrentPassword}
+                onNewPasswordChange={setNewPassword}
+                onConfirmPasswordChange={setConfirmPassword}
+                onToggleShowCurrentPass={() => setShowCurrentPass((prev) => !prev)}
+                onToggleShowNewPass={() => setShowNewPass((prev) => !prev)}
+            />
         </div>
     )
 }

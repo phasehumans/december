@@ -54,11 +54,9 @@ const signup = async (data: Signup) => {
         },
     })
 
-    // send OTP
-    sendOTP(newUser.email, otp)
+    await sendOTP(newUser.email, otp)
 
     return { message: 'otp sent successfully' }
-    // let the controller decide the shape of res
 }
 
 const verifyOtp = async (data: VerifyOpt) => {
@@ -203,7 +201,6 @@ const google = async (data: Google) => {
             expiresIn: '7d',
         }
     )
-    // console.log(token)
     return token
 }
 

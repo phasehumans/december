@@ -155,6 +155,7 @@ const google = async (req: Request, res: Response) => {
             data: result,
         })
     } catch (error: any) {
+        console.log(error)
         return res.status(500).json({
             success: false,
             message: 'google login failed',
