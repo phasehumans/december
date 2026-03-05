@@ -52,7 +52,6 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut }) =
     const queryClient = useQueryClient()
     const profileQueryKey = ['profile'] as const
     const [emailNotifications, setEmailNotifications] = useState(true)
-    const [isGithubConnected, setIsGithubConnected] = useState(false)
 
     const [nameModalOpen, setNameModalOpen] = useState(false)
     const [tempName, setTempName] = useState('')
@@ -76,6 +75,8 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut }) =
         queryFn: profileAPI.getProfile,
         placeholderData: (previousData) => previousData,
     })
+
+    const isGithubConnected = profile?.githubConnected ?? false
 
     const updateNameMutation = useMutation({
         mutationFn: profileAPI.updateName,
@@ -155,6 +156,16 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut }) =
 
         setProfileActionError(null)
         updatePasswordMutation.mutate({ password: newPassword })
+    }
+
+    const connectGithub = () => {
+        const url =
+            `https://github.com/login/oauth/authorize` +
+            `?client_id=Ov23liFGkTAwCW7E8gtk` +
+            `&scope=repo` +
+            `&state=${profile?.id}`
+
+        window.location.href = url
     }
 
     const resolvedName = profile?.name ?? 'User'
@@ -262,7 +273,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut }) =
                                     </div>
                                     <Badge
                                         variant={isGithubConnected ? 'success' : 'default'}
-                                        onClick={() => setIsGithubConnected(!isGithubConnected)}
+                                        onClick={!isGithubConnected ? connectGithub : undefined}
                                         className="cursor-pointer"
                                     >
                                         {isGithubConnected ? 'Connected' : 'Connect'}

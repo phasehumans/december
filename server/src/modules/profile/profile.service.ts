@@ -11,6 +11,12 @@ type ChangePassword = {
     password: string
 }
 
+type ConnectGithub = {
+    userId: string
+    accessToken: string
+    username: string
+}
+
 const getProfile = async (data: string) => {
     const profile = await prisma.user.findUnique({
         where: {
@@ -77,7 +83,28 @@ const changePassword = async (data: ChangePassword) => {
     return updatedUser
 }
 
-const connectGithub = async () => {}
+const connectGithub = async (data: ConnectGithub) => {
+    const { username, accessToken, userId } = data
+
+    // console.log("inside service: ", username, accessToken)
+
+    const updatedUser = await prisma.user.update({
+        where: {
+            id: userId,
+        },
+        data: {
+            githubUsername: username,
+            githubToken: accessToken,
+            githubConnected: true,
+        },
+    })
+
+    if (!updatedUser) {
+        throw new Error('user not found')
+    }
+
+    return updatedUser
+}
 
 export const profileService = {
     getProfile,
