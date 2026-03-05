@@ -23,13 +23,24 @@ export interface GeneratedCode {
 
 export interface CanvasItem {
     id: string
-    type: 'note' | 'image' | 'link' | 'frame' | 'square' | 'circle' | 'line' | 'arrow'
+    type:
+        | 'note'
+        | 'image'
+        | 'link'
+        | 'frame'
+        | 'square'
+        | 'circle'
+        | 'line'
+        | 'arrow'
+        | 'pen'
+        | 'text'
     x: number
     y: number
     width?: number
     height?: number
     content?: string
     color?: string
+    points?: { x: number; y: number }[]
     parentId?: string // ID of the container frame if this item is grouped
 }
 

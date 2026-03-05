@@ -149,19 +149,17 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
                             onClick={() => handleAuthCheck(() => setActiveTool('frame'))}
                             active={activeTool === 'frame'}
                         />
-                        {/* DISABLED */}
                         <ToolButton
                             icon={Pen}
-                            label="Pen Tool (Coming Soon)"
-                            onClick={() => handleAuthCheck(() => {})}
-                            active={false}
+                            label="Pen Tool"
+                            onClick={() => handleAuthCheck(() => setActiveTool('pen'))}
+                            active={activeTool === 'pen'}
                         />
-                        {/* DISABLED */}
                         <ToolButton
                             icon={Eraser}
-                            label="Eraser Tool (Coming Soon)"
-                            onClick={() => handleAuthCheck(() => {})}
-                            active={false}
+                            label="Eraser Tool"
+                            onClick={() => handleAuthCheck(() => setActiveTool('eraser'))}
+                            active={activeTool === 'eraser'}
                         />
                     </div>
 
@@ -169,35 +167,35 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
 
                     {/* Group 4: Shapes & Text */}
                     <div className="flex items-center gap-0.5">
-                        {/* DISABLED */}
                         <ToolButton
                             icon={Square}
-                            label="Rectangle (Coming Soon)"
-                            onClick={() => handleAuthCheck(() => {})}
+                            label="Rectangle"
+                            onClick={() => handleAuthCheck(() => setActiveTool('square'))}
+                            active={activeTool === 'square'}
                         />
-                        {/* DISABLED */}
                         <ToolButton
                             icon={Circle}
-                            label="Circle (Coming Soon)"
-                            onClick={() => handleAuthCheck(() => {})}
+                            label="Circle"
+                            onClick={() => handleAuthCheck(() => setActiveTool('circle'))}
+                            active={activeTool === 'circle'}
                         />
-                        {/* DISABLED */}
                         <ToolButton
                             icon={Minus}
-                            label="Line (Coming Soon)"
-                            onClick={() => handleAuthCheck(() => {})}
+                            label="Line"
+                            onClick={() => handleAuthCheck(() => setActiveTool('line'))}
+                            active={activeTool === 'line'}
                         />
-                        {/* DISABLED */}
                         <ToolButton
                             icon={ArrowRight}
-                            label="Arrow (Coming Soon)"
-                            onClick={() => handleAuthCheck(() => {})}
+                            label="Arrow"
+                            onClick={() => handleAuthCheck(() => setActiveTool('arrow'))}
+                            active={activeTool === 'arrow'}
                         />
-                        {/* DISABLED */}
                         <ToolButton
                             icon={TextIcon}
-                            label="Text (Coming Soon)"
-                            onClick={() => handleAuthCheck(() => {})}
+                            label="Text"
+                            onClick={() => handleAuthCheck(() => setActiveTool('text'))}
+                            active={activeTool === 'text'}
                         />
                     </div>
 

@@ -16,6 +16,7 @@ interface CanvasItemComponentProps {
     onConnectEnd?: (itemId: string, side: 'left' | 'right') => void
     onUpdate?: (updates: Partial<CanvasItem>) => void
     scale: number
+    activeTool?: string
 }
 
 export const CanvasItemComponent: React.FC<CanvasItemComponentProps> = ({
@@ -30,9 +31,29 @@ export const CanvasItemComponent: React.FC<CanvasItemComponentProps> = ({
     onConnectEnd,
     onUpdate,
     scale,
+    activeTool,
 }) => {
     const isChild = !!item.parentId
     const [isDropdownOpen, setIsDropdownOpen] = React.useState(false)
+
+    const drawTools = new Set(['frame', 'square', 'circle', 'line', 'arrow', 'pen', 'text', 'eraser'])
+
+    const getLineEndpoints = () => {
+        if (item.points && item.points.length >= 2) {
+            const first = item.points[0]!
+            const last = item.points[item.points.length - 1]!
+            return { x1: first.x, y1: first.y, x2: last.x, y2: last.y }
+        }
+
+        const w = Math.max(item.width || 192, 2)
+        const h = Math.max(item.height || 24, 2)
+        return { x1: 2, y1: h / 2, x2: w - 2, y2: h / 2 }
+    }
+
+    const getPenPath = () => {
+        if (!item.points || item.points.length < 2) return ''
+        return item.points.map((pt, idx) => `${idx === 0 ? 'M' : 'L'} ${pt.x} ${pt.y}`).join(' ')
+    }
 
     // Quick Delete Button Component
     const DeleteButton = () => (
@@ -50,6 +71,11 @@ export const CanvasItemComponent: React.FC<CanvasItemComponentProps> = ({
     )
 
     const handlePointerDown = (e: React.PointerEvent) => {
+        // Let the canvas own interactions while a draw tool is active.
+        if (activeTool && drawTools.has(activeTool) && activeTool !== 'select') {
+            return
+        }
+
         // If it's a child item (inside a frame), we don't drag it, but we might select it
         if (isChild) {
             if (e.button === 0) {
@@ -144,6 +170,9 @@ export const CanvasItemComponent: React.FC<CanvasItemComponentProps> = ({
         'CUSTOM',
     ]
 
+    const lineEndpoints = getLineEndpoints()
+    const penPath = getPenPath()
+
     return (
         <motion.div
             initial={false}
@@ -164,13 +193,15 @@ export const CanvasItemComponent: React.FC<CanvasItemComponentProps> = ({
                 !isChild ? 'cursor-grab active:cursor-grabbing' : 'cursor-default',
                 // Default sizes if width/height not set
                 item.type === 'note' && !item.width && 'w-64',
+                item.type === 'text' && !item.width && 'w-56 h-12',
                 item.type === 'link' && !item.width && 'w-[480px]',
                 item.type === 'image' && !item.width && 'w-80 h-72',
                 item.type === 'frame' && !item.width && 'w-96 h-96',
                 (item.type === 'square' || item.type === 'circle') && !item.width && 'w-32 h-32',
                 (item.type === 'line' || item.type === 'arrow') &&
                     !item.width &&
-                    'w-48 h-12 flex items-center'
+                    'w-48 h-12 flex items-center',
+                item.type === 'pen' && !item.width && 'w-48 h-24'
             )}
         >
             {/* Selection Outline (Hidden for Frame, as frame itself is the border) */}
@@ -202,6 +233,27 @@ export const CanvasItemComponent: React.FC<CanvasItemComponentProps> = ({
                                 Text
                             </div>
                         </div>
+                    </div>
+                )}
+
+                {/* Text Item */}
+                {item.type === 'text' && (
+                    <div className="w-full h-full relative">
+                        <DeleteButton />
+                        <textarea
+                            defaultValue={item.content || ''}
+                            placeholder="Text"
+                            onPointerDown={(e) => e.stopPropagation()}
+                            onBlur={(e) => {
+                                const nextText = e.target.value.trim()
+                                if (!nextText) {
+                                    onRemove()
+                                    return
+                                }
+                                onUpdate && onUpdate({ content: e.target.value })
+                            }}
+                            className="w-full h-full bg-transparent resize-none text-[22px] leading-tight font-medium text-[#E8E8E6] placeholder-neutral-500/70 border-none outline-none"
+                        />
                     </div>
                 )}
 
@@ -395,10 +447,10 @@ export const CanvasItemComponent: React.FC<CanvasItemComponentProps> = ({
                         <DeleteButton />
                         <svg width="100%" height="100%" className="overflow-visible">
                             <line
-                                x1="0"
-                                y1="50%"
-                                x2="100%"
-                                y2="50%"
+                                x1={lineEndpoints.x1}
+                                y1={lineEndpoints.y1}
+                                x2={lineEndpoints.x2}
+                                y2={lineEndpoints.y2}
                                 stroke="currentColor"
                                 strokeWidth="2"
                                 strokeLinecap="round"
@@ -412,7 +464,7 @@ export const CanvasItemComponent: React.FC<CanvasItemComponentProps> = ({
                 {item.type === 'arrow' && (
                     <div className="w-full h-full flex items-center relative text-white">
                         <DeleteButton />
-                        <svg width="100%" height="24" className="overflow-visible">
+                        <svg width="100%" height="100%" className="overflow-visible">
                             <defs>
                                 <marker
                                     id={`arrow-head-item-${item.id}`}
@@ -433,10 +485,10 @@ export const CanvasItemComponent: React.FC<CanvasItemComponentProps> = ({
                                 </marker>
                             </defs>
                             <line
-                                x1="0"
-                                y1="12"
-                                x2="100%"
-                                y2="12"
+                                x1={lineEndpoints.x1}
+                                y1={lineEndpoints.y1}
+                                x2={lineEndpoints.x2}
+                                y2={lineEndpoints.y2}
                                 stroke="currentColor"
                                 strokeWidth="1.5"
                                 markerEnd={`url(#arrow-head-item-${item.id})`}
@@ -445,7 +497,27 @@ export const CanvasItemComponent: React.FC<CanvasItemComponentProps> = ({
                         </svg>
                     </div>
                 )}
+
+                {/* Pen */}
+                {item.type === 'pen' && (
+                    <div className="w-full h-full relative text-white">
+                        <DeleteButton />
+                        <svg width="100%" height="100%" className="overflow-visible">
+                            <path
+                                d={penPath}
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                            />
+                        </svg>
+                    </div>
+                )}
             </div>
         </motion.div>
     )
 }
+
+
+
