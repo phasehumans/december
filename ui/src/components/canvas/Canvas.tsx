@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect, useImperativeHandle, forwardRef } from 'react'
 import { CanvasToolbar } from './CanvasToolbar'
 import { CanvasItemComponent } from './CanvasItemComponent'
+import { CanvasConnectionsLayer } from './CanvasConnectionsLayer'
+import { CanvasTempItemPreview } from './CanvasTempItemPreview'
 import type { CanvasItem, CanvasConnection } from '../../types'
-
 export interface CanvasRef {
     triggerImageUpload: () => void
 }
@@ -12,34 +13,34 @@ interface CanvasProps {
     onOpenAuth?: () => void
 }
 
+interface UpdateOptions {
+    commitHistory?: boolean
+}
+
+const SHAPE_TOOLS = new Set(['frame', 'square', 'circle', 'line', 'arrow'])
+const DRAW_TOOLS = new Set(['frame', 'square', 'circle', 'line', 'arrow', 'pen'])
+const ONE_SHOT_TOOLS = new Set(['frame', 'square', 'circle', 'line', 'arrow', 'text'])
+
 export const Canvas = forwardRef<CanvasRef, CanvasProps>((props, ref) => {
     const { isAuthenticated, onOpenAuth } = props
     const [items, setItems] = useState<CanvasItem[]>([])
     const [connections, setConnections] = useState<CanvasConnection[]>([])
-
-    // Interaction State for Onboarding
     const [hasInteracted, setHasInteracted] = useState(false)
-
-    // History State
     const [history, setHistory] = useState<
         { items: CanvasItem[]; connections: CanvasConnection[] }[]
     >([{ items: [], connections: [] }])
     const [historyStep, setHistoryStep] = useState(0)
-
     const [activeTool, setActiveTool] = useState('select')
     const [scale, setScale] = useState(100)
     const [selectedId, setSelectedId] = useState<string | null>(null)
-
-    // Pan state
     const [pan, setPan] = useState({ x: 0, y: 0 })
     const [isPanning, setIsPanning] = useState(false)
-
-    // Frame Drawing State
     const [isDrawing, setIsDrawing] = useState(false)
     const [dragStart, setDragStart] = useState<{ x: number; y: number } | null>(null)
-    const [tempFrame, setTempFrame] = useState<CanvasItem | null>(null)
-
-    // Connection State
+    const [tempItem, setTempItem] = useState<CanvasItem | null>(null)
+    const [isErasing, setIsErasing] = useState(false)
+    const erasedItemIdsRef = useRef<Set<string>>(new Set())
+    const didEraseRef = useRef(false)
     const [connectionDraft, setConnectionDraft] = useState<{
         fromId: string
         fromSide: 'left' | 'right'
@@ -47,29 +48,20 @@ export const Canvas = forwardRef<CanvasRef, CanvasProps>((props, ref) => {
     } | null>(null)
 
     const containerRef = useRef<HTMLDivElement>(null)
-
-    // Refs to access latest state inside non-react event listeners or stale closures
     const stateRef = useRef({ scale, pan, items, connections })
 
-    // Update refs whenever state changes
     useEffect(() => {
         stateRef.current = { scale, pan, items, connections }
     }, [scale, pan, items, connections])
 
-    // --- Interaction Marking ---
     const markInteraction = () => {
-        if (!hasInteracted) {
-            setHasInteracted(true)
-        }
+        if (!hasInteracted) setHasInteracted(true)
     }
 
-    // --- History Management ---
-
     const addToHistory = (newItems: CanvasItem[], newConnections: CanvasConnection[]) => {
-        // If we are not at the end of history, slice it
         const newHistory = history.slice(0, historyStep + 1)
         newHistory.push({
-            items: JSON.parse(JSON.stringify(newItems)), // Deep copy
+            items: JSON.parse(JSON.stringify(newItems)),
             connections: JSON.parse(JSON.stringify(newConnections)),
         })
         setHistory(newHistory)
@@ -77,24 +69,20 @@ export const Canvas = forwardRef<CanvasRef, CanvasProps>((props, ref) => {
     }
 
     const undo = () => {
-        if (historyStep > 0) {
-            const prevStep = historyStep - 1
-            setHistoryStep(prevStep)
-            setItems(history[prevStep]!.items)
-            setConnections(history[prevStep]!.connections)
-        }
+        if (historyStep <= 0) return
+        const prevStep = historyStep - 1
+        setHistoryStep(prevStep)
+        setItems(history[prevStep]!.items)
+        setConnections(history[prevStep]!.connections)
     }
 
     const redo = () => {
-        if (historyStep < history.length - 1) {
-            const nextStep = historyStep + 1
-            setHistoryStep(nextStep)
-            setItems(history[nextStep]!.items)
-            setConnections(history[nextStep]!.connections)
-        }
+        if (historyStep >= history.length - 1) return
+        const nextStep = historyStep + 1
+        setHistoryStep(nextStep)
+        setItems(history[nextStep]!.items)
+        setConnections(history[nextStep]!.connections)
     }
-
-    // --- Zoom Handling ---
 
     useEffect(() => {
         const container = containerRef.current
@@ -104,48 +92,297 @@ export const Canvas = forwardRef<CanvasRef, CanvasProps>((props, ref) => {
             if (e.ctrlKey || e.metaKey) {
                 e.preventDefault()
                 const { scale: currentScale, pan: currentPan } = stateRef.current
-
                 const rect = container.getBoundingClientRect()
                 const mouseX = e.clientX - rect.left
                 const mouseY = e.clientY - rect.top
-
                 const scaleFactor = currentScale / 100
                 const worldX = (mouseX - currentPan.x) / scaleFactor
                 const worldY = (mouseY - currentPan.y) / scaleFactor
-
-                const SENSITIVITY = 0.003
-                const zoomDelta = -e.deltaY * SENSITIVITY
-
+                const zoomDelta = -e.deltaY * 0.003
                 let newScale = currentScale * Math.exp(zoomDelta)
                 newScale = Math.min(Math.max(newScale, 10), 500)
-
                 const newScaleFactor = newScale / 100
-                const newPanX = mouseX - worldX * newScaleFactor
-                const newPanY = mouseY - worldY * newScaleFactor
-
                 setScale(newScale)
-                setPan({ x: newPanX, y: newPanY })
+                setPan({ x: mouseX - worldX * newScaleFactor, y: mouseY - worldY * newScaleFactor })
             }
         }
 
         container.addEventListener('wheel', onWheel, { passive: false })
-        return () => {
-            container.removeEventListener('wheel', onWheel)
-        }
+        return () => container.removeEventListener('wheel', onWheel)
     }, [])
 
-    // --- Actions ---
+    useEffect(() => {
+        const shortcuts: Record<string, string> = {
+            v: 'select',
+            r: 'square',
+            o: 'circle',
+            l: 'line',
+            a: 'arrow',
+            p: 'pen',
+            t: 'text',
+            e: 'eraser',
+        }
+
+        const onKeyDown = (e: KeyboardEvent) => {
+            if (e.metaKey || e.ctrlKey || e.altKey) return
+
+            const target = e.target as HTMLElement | null
+            if (target) {
+                const tag = target.tagName
+                if (
+                    tag === 'INPUT' ||
+                    tag === 'TEXTAREA' ||
+                    tag === 'SELECT' ||
+                    target.isContentEditable
+                ) {
+                    return
+                }
+            }
+
+            const nextTool = shortcuts[e.key.toLowerCase()]
+            if (!nextTool) return
+
+            e.preventDefault()
+            setActiveTool(nextTool)
+        }
+
+        window.addEventListener('keydown', onKeyDown)
+        return () => window.removeEventListener('keydown', onKeyDown)
+    }, [])
+
+    const getDefaultItemSize = (item: CanvasItem) => {
+        switch (item.type) {
+            case 'note':
+                return { width: 256, height: 180 }
+            case 'text':
+                return { width: 224, height: 48 }
+            case 'image':
+                return { width: 320, height: 288 }
+            case 'link':
+                return { width: 480, height: 120 }
+            case 'frame':
+                return { width: 384, height: 384 }
+            case 'square':
+            case 'circle':
+                return { width: 128, height: 128 }
+            case 'line':
+            case 'arrow':
+                return { width: 192, height: 48 }
+            case 'pen':
+                return { width: 192, height: 96 }
+            default:
+                return { width: 120, height: 80 }
+        }
+    }
+
+    const getItemBounds = (item: CanvasItem) => {
+        const defaults = getDefaultItemSize(item)
+        return {
+            x: item.x,
+            y: item.y,
+            width: Math.max(item.width ?? defaults.width, 2),
+            height: Math.max(item.height ?? defaults.height, 2),
+        }
+    }
+
+    const getLineAbsolutePoints = (item: CanvasItem) => {
+        const bounds = getItemBounds(item)
+        const relativePoints =
+            item.points && item.points.length >= 2
+                ? item.points
+                : [
+                      { x: 2, y: bounds.height / 2 },
+                      { x: bounds.width - 2, y: bounds.height / 2 },
+                  ]
+
+        return relativePoints.map((pt) => ({ x: item.x + pt.x, y: item.y + pt.y }))
+    }
+
+    const buildSmoothPath = (points: { x: number; y: number }[]) => {
+        if (points.length === 0) return ''
+        if (points.length === 1) return `M ${points[0]!.x} ${points[0]!.y}`
+        if (points.length === 2) {
+            return `M ${points[0]!.x} ${points[0]!.y} L ${points[1]!.x} ${points[1]!.y}`
+        }
+
+        let d = `M ${points[0]!.x} ${points[0]!.y}`
+        for (let i = 1; i < points.length - 1; i += 1) {
+            const current = points[i]!
+            const next = points[i + 1]!
+            const midX = (current.x + next.x) / 2
+            const midY = (current.y + next.y) / 2
+            d += ` Q ${current.x} ${current.y} ${midX} ${midY}`
+        }
+
+        const last = points[points.length - 1]!
+        d += ` L ${last.x} ${last.y}`
+        return d
+    }
+
+    const buildPolylinePath = (points: { x: number; y: number }[]) => {
+        if (points.length < 2) return ''
+        return points.map((pt, idx) => `${idx === 0 ? 'M' : 'L'} ${pt.x} ${pt.y}`).join(' ')
+    }
+
+    const distanceToSegment = (
+        point: { x: number; y: number },
+        a: { x: number; y: number },
+        b: { x: number; y: number }
+    ) => {
+        const abx = b.x - a.x
+        const aby = b.y - a.y
+        const apx = point.x - a.x
+        const apy = point.y - a.y
+        const ab2 = abx * abx + aby * aby
+        if (ab2 === 0) return Math.hypot(point.x - a.x, point.y - a.y)
+        const t = Math.max(0, Math.min(1, (apx * abx + apy * aby) / ab2))
+        const cx = a.x + abx * t
+        const cy = a.y + aby * t
+        return Math.hypot(point.x - cx, point.y - cy)
+    }
+
+    const ERASE_TOLERANCE = 8
+
+    const isPointNearRectStroke = (
+        point: { x: number; y: number },
+        bounds: { x: number; y: number; width: number; height: number },
+        tolerance = ERASE_TOLERANCE
+    ) => {
+        const left = bounds.x
+        const top = bounds.y
+        const right = bounds.x + bounds.width
+        const bottom = bounds.y + bounds.height
+
+        const edges: Array<[{ x: number; y: number }, { x: number; y: number }]> = [
+            [
+                { x: left, y: top },
+                { x: right, y: top },
+            ],
+            [
+                { x: right, y: top },
+                { x: right, y: bottom },
+            ],
+            [
+                { x: right, y: bottom },
+                { x: left, y: bottom },
+            ],
+            [
+                { x: left, y: bottom },
+                { x: left, y: top },
+            ],
+        ]
+
+        return edges.some(([start, end]) => distanceToSegment(point, start, end) <= tolerance)
+    }
+
+    const isPointNearEllipseStroke = (
+        point: { x: number; y: number },
+        bounds: { x: number; y: number; width: number; height: number },
+        tolerance = ERASE_TOLERANCE
+    ) => {
+        const rx = bounds.width / 2
+        const ry = bounds.height / 2
+        if (rx < 1 || ry < 1) return false
+
+        const cx = bounds.x + rx
+        const cy = bounds.y + ry
+        const nx = (point.x - cx) / rx
+        const ny = (point.y - cy) / ry
+        const radialDelta = Math.abs(Math.sqrt(nx * nx + ny * ny) - 1)
+        const approxDistance = radialDelta * Math.min(rx, ry)
+        return approxDistance <= tolerance
+    }
+
+    const isPointInsideItem = (point: { x: number; y: number }, item: CanvasItem) => {
+        const bounds = getItemBounds(item)
+
+        if (item.type === 'line' || item.type === 'arrow') {
+            const points = getLineAbsolutePoints(item)
+            for (let i = 0; i < points.length - 1; i += 1) {
+                if (distanceToSegment(point, points[i]!, points[i + 1]!) <= ERASE_TOLERANCE) {
+                    return true
+                }
+            }
+            return false
+        }
+
+        if (item.type === 'pen' && item.points && item.points.length > 1) {
+            const absolutePoints = item.points.map((pt) => ({ x: item.x + pt.x, y: item.y + pt.y }))
+            for (let i = 0; i < absolutePoints.length - 1; i += 1) {
+                if (
+                    distanceToSegment(point, absolutePoints[i]!, absolutePoints[i + 1]!) <=
+                    ERASE_TOLERANCE
+                ) {
+                    return true
+                }
+            }
+            return false
+        }
+
+        if (item.type === 'square' || item.type === 'frame') {
+            return isPointNearRectStroke(point, bounds)
+        }
+
+        if (item.type === 'circle') {
+            return isPointNearEllipseStroke(point, bounds)
+        }
+
+        return (
+            point.x >= bounds.x &&
+            point.x <= bounds.x + bounds.width &&
+            point.y >= bounds.y &&
+            point.y <= bounds.y + bounds.height
+        )
+    }
+
+    const normalizeRect = (start: { x: number; y: number }, end: { x: number; y: number }) => ({
+        x: Math.min(start.x, end.x),
+        y: Math.min(start.y, end.y),
+        width: Math.max(Math.abs(end.x - start.x), 2),
+        height: Math.max(Math.abs(end.y - start.y), 2),
+    })
+
+    const eraseAtPoint = (point: { x: number; y: number }) => {
+        const currentItems = stateRef.current.items
+        const currentConnections = stateRef.current.connections
+        const target = [...currentItems]
+            .reverse()
+            .find(
+                (item) => !erasedItemIdsRef.current.has(item.id) && isPointInsideItem(point, item)
+            )
+
+        if (!target) return
+
+        const idsToRemove = new Set<string>()
+        if (target.type === 'frame') {
+            currentItems.forEach((item) => {
+                if (item.id === target.id || item.parentId === target.id) idsToRemove.add(item.id)
+            })
+        } else {
+            idsToRemove.add(target.id)
+        }
+
+        idsToRemove.forEach((id) => erasedItemIdsRef.current.add(id))
+
+        const newItems = currentItems.filter((item) => !idsToRemove.has(item.id))
+        const newConnections = currentConnections.filter(
+            (conn) => !idsToRemove.has(conn.from) && !idsToRemove.has(conn.to)
+        )
+
+        didEraseRef.current = true
+        setItems(newItems)
+        setConnections(newConnections)
+        setSelectedId((prev) => (prev && idsToRemove.has(prev) ? null : prev))
+        stateRef.current = { ...stateRef.current, items: newItems, connections: newConnections }
+    }
 
     const handleAddItem = (type: CanvasItem['type'], content?: string) => {
         markInteraction()
         const viewportCenterX = window.innerWidth / 2
         const viewportCenterY = window.innerHeight / 2
-
         const centerX = (viewportCenterX - pan.x) / (scale / 100)
         const centerY = (viewportCenterY - pan.y) / (scale / 100)
-
         const jitter = type !== 'link' ? Math.random() * 40 - 20 : 0
-
         const finalX = centerX + jitter - (type === 'image' || type === 'link' ? 130 : 50)
         const finalY = centerY + jitter - (type === 'image' || type === 'link' ? 120 : 50)
 
@@ -166,9 +403,8 @@ export const Canvas = forwardRef<CanvasRef, CanvasProps>((props, ref) => {
             return
         }
 
-        // For Frame, we don't add immediately. The user must drag to create.
-        if (type === 'frame') {
-            setActiveTool('frame')
+        if (DRAW_TOOLS.has(type)) {
+            setActiveTool(type)
             return
         }
 
@@ -196,9 +432,7 @@ export const Canvas = forwardRef<CanvasRef, CanvasProps>((props, ref) => {
                 if (file) {
                     const reader = new FileReader()
                     reader.onload = (evt) => {
-                        if (evt.target?.result) {
-                            handleAddItem('image', evt.target.result as string)
-                        }
+                        if (evt.target?.result) handleAddItem('image', evt.target.result as string)
                     }
                     reader.readAsDataURL(file)
                 }
@@ -220,40 +454,31 @@ export const Canvas = forwardRef<CanvasRef, CanvasProps>((props, ref) => {
             newConnections = connections.filter((c) => c.from !== id && c.to !== id)
         } else {
             newItems = items.filter((item) => item.id !== id)
-            // Also remove connections to/from this item
             newConnections = connections.filter((c) => c.from !== id && c.to !== id)
         }
 
         setItems(newItems)
         setConnections(newConnections)
         addToHistory(newItems, newConnections)
-
         if (selectedId === id) setSelectedId(null)
     }
 
     const handleItemSelect = (id: string) => {
-        // Selecting an item is not considered a "drawing" interaction that hides hints
-        if (activeTool === 'hand' || activeTool === 'frame') return
-        if (connectionDraft) return // Don't select if connecting
+        if (activeTool !== 'select') return
+        if (connectionDraft) return
 
         const item = items.find((i) => i.id === id)
-        if (item?.parentId) {
-            setSelectedId(item.parentId)
-        } else {
-            setSelectedId(id)
-        }
+        if (item?.parentId) setSelectedId(item.parentId)
+        else setSelectedId(id)
     }
 
     const handleItemDrag = (id: string, delta: { x: number; y: number }) => {
-        markInteraction() // Moving items hides hints
+        markInteraction()
         setItems((prev) =>
             prev.map((item) => {
-                if (item.id === id) {
+                if (item.id === id) return { ...item, x: item.x + delta.x, y: item.y + delta.y }
+                if (item.parentId === id)
                     return { ...item, x: item.x + delta.x, y: item.y + delta.y }
-                }
-                if (item.parentId === id) {
-                    return { ...item, x: item.x + delta.x, y: item.y + delta.y }
-                }
                 return item
             })
         )
@@ -261,69 +486,51 @@ export const Canvas = forwardRef<CanvasRef, CanvasProps>((props, ref) => {
 
     const handleItemDragEnd = () => {
         markInteraction()
-        // When drag ends, save the current state to history.
-        // We must use the ref to get the latest state because of closure staleness in the ItemComponent callback.
         addToHistory(stateRef.current.items, stateRef.current.connections)
     }
-
-    // --- Connection Handlers ---
 
     const handleConnectStart = (itemId: string, side: 'left' | 'right', e: React.PointerEvent) => {
         markInteraction()
         e.stopPropagation()
         e.preventDefault()
         const coords = getCanvasCoordinates(e)
-        setConnectionDraft({
-            fromId: itemId,
-            fromSide: side,
-            toPoint: coords,
-        })
+        setConnectionDraft({ fromId: itemId, fromSide: side, toPoint: coords })
     }
 
     const handleConnectEnd = (itemId: string, side: 'left' | 'right') => {
         markInteraction()
-        if (connectionDraft) {
-            if (connectionDraft.fromId !== itemId) {
-                const newConnection: CanvasConnection = {
-                    id: Date.now().toString(),
-                    from: connectionDraft.fromId,
-                    to: itemId,
-                    fromSide: connectionDraft.fromSide,
-                    toSide: side,
-                }
-                const newConnections = [...connections, newConnection]
-                setConnections(newConnections)
-                addToHistory(items, newConnections)
+        if (!connectionDraft) return
+
+        if (connectionDraft.fromId !== itemId) {
+            const newConnection: CanvasConnection = {
+                id: Date.now().toString(),
+                from: connectionDraft.fromId,
+                to: itemId,
+                fromSide: connectionDraft.fromSide,
+                toSide: side,
             }
-            setConnectionDraft(null)
+            const newConnections = [...connections, newConnection]
+            setConnections(newConnections)
+            addToHistory(items, newConnections)
         }
+
+        setConnectionDraft(null)
     }
 
-    // Helper to get anchor point coordinates
     const getAnchorPoint = (itemId: string, side: 'left' | 'right') => {
         const item = items.find((i) => i.id === itemId)
         if (!item) return { x: 0, y: 0 }
 
         const w = item.width || (item.type === 'frame' ? 320 : 100)
         const h = item.height || (item.type === 'frame' ? 320 : 100)
-
-        // Calculate vertical center
         const cy = item.y + h / 2
-
-        if (side === 'left') {
-            return { x: item.x, y: cy }
-        } else {
-            return { x: item.x + w, y: cy }
-        }
+        return side === 'left' ? { x: item.x, y: cy } : { x: item.x + w, y: cy }
     }
 
-    // Background and Grid Calculation
     const baseGridSize = 24
     const baseDotSize = 1.5
     const currentGridSize = baseGridSize * (scale / 100)
     const currentDotSize = baseDotSize * (scale / 100)
-
-    // --- Interaction Handlers ---
 
     const getCanvasCoordinates = (e: React.PointerEvent) => {
         if (!containerRef.current) return { x: 0, y: 0 }
@@ -336,64 +543,192 @@ export const Canvas = forwardRef<CanvasRef, CanvasProps>((props, ref) => {
     }
 
     const handlePointerDown = (e: React.PointerEvent) => {
-        // 1. Pan Tool or Middle Click
+        if (e.button !== 0 && e.button !== 1) return
+
+        const coords = getCanvasCoordinates(e)
+
         if (activeTool === 'hand' || e.button === 1) {
             setIsPanning(true)
             e.preventDefault()
             return
         }
 
-        // 2. Frame Tool - Start Drawing
-        if (activeTool === 'frame') {
-            markInteraction() // Start drawing - hides hints
+        if (e.button !== 0) return
+
+        if (activeTool === 'eraser') {
+            markInteraction()
             e.preventDefault()
-            e.stopPropagation() // Prevent selecting other items beneath
-            const coords = getCanvasCoordinates(e)
-            setDragStart(coords)
-            setIsDrawing(true)
-            // Create a temp frame with 0 size
-            setTempFrame({
-                id: 'temp-frame',
-                type: 'frame',
+            e.stopPropagation()
+            setSelectedId(null)
+            setIsErasing(true)
+            didEraseRef.current = false
+            erasedItemIdsRef.current = new Set()
+            eraseAtPoint(coords)
+            return
+        }
+
+        if (activeTool === 'text') {
+            markInteraction()
+            e.preventDefault()
+            e.stopPropagation()
+            const textItem: CanvasItem = {
+                id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+                type: 'text',
                 x: coords.x,
                 y: coords.y,
-                width: 0,
-                height: 0,
-                content: 'Custom',
-            })
+                width: 220,
+                height: 48,
+                content: '',
+            }
+            const newItems = [...stateRef.current.items, textItem]
+            setItems(newItems)
+            setSelectedId(textItem.id)
+            addToHistory(newItems, stateRef.current.connections)
+            setActiveTool('select')
             return
+        }
+
+        if (SHAPE_TOOLS.has(activeTool)) {
+            markInteraction()
+            e.preventDefault()
+            e.stopPropagation()
+            setDragStart(coords)
+            setIsDrawing(true)
+            setSelectedId(null)
+
+            const tempBase: CanvasItem = {
+                id: 'temp-item',
+                type: activeTool as CanvasItem['type'],
+                x: coords.x,
+                y: coords.y,
+                width: 2,
+                height: 2,
+                content: activeTool === 'frame' ? 'Custom' : undefined,
+            }
+
+            if (activeTool === 'line' || activeTool === 'arrow') {
+                tempBase.points = [
+                    { x: 0, y: 0 },
+                    { x: 2, y: 2 },
+                ]
+            }
+
+            setTempItem(tempBase)
+            return
+        }
+
+        if (activeTool === 'pen') {
+            markInteraction()
+            e.preventDefault()
+            e.stopPropagation()
+            setDragStart(coords)
+            setIsDrawing(true)
+            setSelectedId(null)
+            setTempItem({
+                id: 'temp-pen',
+                type: 'pen',
+                x: coords.x,
+                y: coords.y,
+                width: 2,
+                height: 2,
+                points: [{ x: 0, y: 0 }],
+            })
         }
     }
 
     const handlePointerMove = (e: React.PointerEvent) => {
         const coords = getCanvasCoordinates(e)
 
-        // Connection Draft Update
         if (connectionDraft) {
             setConnectionDraft((prev) => (prev ? { ...prev, toPoint: coords } : null))
             return
         }
 
-        // Panning
         if (isPanning) {
-            setPan((prev) => ({
-                x: prev.x + e.movementX,
-                y: prev.y + e.movementY,
-            }))
+            setPan((prev) => ({ x: prev.x + e.movementX, y: prev.y + e.movementY }))
             return
         }
 
-        // Drawing Frame
-        if (isDrawing && dragStart && tempFrame) {
-            const width = coords.x - dragStart.x
-            const height = coords.y - dragStart.y
+        if (activeTool === 'eraser' && isErasing) {
+            eraseAtPoint(coords)
+            return
+        }
 
-            setTempFrame((prev) =>
+        if (isDrawing && dragStart && tempItem) {
+            if (tempItem.type === 'pen') {
+                setTempItem((prev) => {
+                    if (!prev || prev.type !== 'pen') return prev
+
+                    const existingPoints = prev.points || []
+                    const absolutePoints = existingPoints.map((pt) => ({
+                        x: prev.x + pt.x,
+                        y: prev.y + pt.y,
+                    }))
+                    const lastPoint = absolutePoints[absolutePoints.length - 1]
+                    const distance = lastPoint
+                        ? Math.hypot(coords.x - lastPoint.x, coords.y - lastPoint.y)
+                        : Infinity
+
+                    if (distance < 0.9) {
+                        return prev
+                    }
+
+                    const nextPoint = lastPoint
+                        ? {
+                              x: lastPoint.x + (coords.x - lastPoint.x) * 0.65,
+                              y: lastPoint.y + (coords.y - lastPoint.y) * 0.65,
+                          }
+                        : coords
+
+                    absolutePoints.push(nextPoint)
+
+                    const xs = absolutePoints.map((pt) => pt.x)
+                    const ys = absolutePoints.map((pt) => pt.y)
+                    const minX = Math.min(...xs)
+                    const maxX = Math.max(...xs)
+                    const minY = Math.min(...ys)
+                    const maxY = Math.max(...ys)
+
+                    return {
+                        ...prev,
+                        x: minX,
+                        y: minY,
+                        width: Math.max(maxX - minX, 2),
+                        height: Math.max(maxY - minY, 2),
+                        points: absolutePoints.map((pt) => ({ x: pt.x - minX, y: pt.y - minY })),
+                    }
+                })
+                return
+            }
+
+            const rect = normalizeRect(dragStart, coords)
+            if (tempItem.type === 'line' || tempItem.type === 'arrow') {
+                setTempItem((prev) =>
+                    prev
+                        ? {
+                              ...prev,
+                              x: rect.x,
+                              y: rect.y,
+                              width: rect.width,
+                              height: rect.height,
+                              points: [
+                                  { x: dragStart.x - rect.x, y: dragStart.y - rect.y },
+                                  { x: coords.x - rect.x, y: coords.y - rect.y },
+                              ],
+                          }
+                        : null
+                )
+                return
+            }
+
+            setTempItem((prev) =>
                 prev
                     ? {
                           ...prev,
-                          width: width,
-                          height: height,
+                          x: rect.x,
+                          y: rect.y,
+                          width: rect.width,
+                          height: rect.height,
                       }
                     : null
             )
@@ -401,73 +736,87 @@ export const Canvas = forwardRef<CanvasRef, CanvasProps>((props, ref) => {
     }
 
     const handlePointerUp = () => {
-        if (connectionDraft) {
-            setConnectionDraft(null) // Cancel draft if dropped on empty space
+        if (connectionDraft) setConnectionDraft(null)
+        if (isPanning) setIsPanning(false)
+
+        if (isErasing) {
+            setIsErasing(false)
+            if (didEraseRef.current)
+                addToHistory(stateRef.current.items, stateRef.current.connections)
+            didEraseRef.current = false
+            erasedItemIdsRef.current = new Set()
         }
 
-        if (isPanning) {
-            setIsPanning(false)
-        }
+        if (isDrawing && tempItem) {
+            let shouldCreate = false
 
-        if (isDrawing && tempFrame) {
-            // Normalize geometry (handle negative width/height)
-            const finalX =
-                tempFrame.width && tempFrame.width < 0 ? tempFrame.x + tempFrame.width : tempFrame.x
-            const finalY =
-                tempFrame.height && tempFrame.height < 0
-                    ? tempFrame.y + tempFrame.height
-                    : tempFrame.y
-            const finalWidth = Math.abs(tempFrame.width || 0)
-            const finalHeight = Math.abs(tempFrame.height || 0)
-
-            // Only create if it has some size
-            if (finalWidth > 50 && finalHeight > 50) {
-                const newItem: CanvasItem = {
-                    ...tempFrame,
-                    id: Date.now().toString(),
-                    x: finalX,
-                    y: finalY,
-                    width: finalWidth,
-                    height: finalHeight,
+            if (tempItem.type === 'frame') {
+                shouldCreate = (tempItem.width || 0) > 50 && (tempItem.height || 0) > 50
+            } else if (tempItem.type === 'square' || tempItem.type === 'circle') {
+                shouldCreate = (tempItem.width || 0) > 8 && (tempItem.height || 0) > 8
+            } else if (tempItem.type === 'line' || tempItem.type === 'arrow') {
+                const pts = tempItem.points || []
+                if (pts.length >= 2) {
+                    const start = pts[0]!
+                    const end = pts[pts.length - 1]!
+                    shouldCreate = Math.hypot(end.x - start.x, end.y - start.y) > 6
                 }
-                const newItems = [...items, newItem]
-                setItems(newItems)
-                addToHistory(newItems, connections)
-                setSelectedId(newItem.id)
+            } else if (tempItem.type === 'pen') {
+                shouldCreate = (tempItem.points?.length || 0) > 1
             }
 
+            if (shouldCreate) {
+                const newItem: CanvasItem = {
+                    ...tempItem,
+                    id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+                    width: Math.max(tempItem.width || 0, 2),
+                    height: Math.max(tempItem.height || 0, 2),
+                }
+                const newItems = [...stateRef.current.items, newItem]
+                setItems(newItems)
+                setSelectedId(newItem.id)
+                addToHistory(newItems, stateRef.current.connections)
+            }
+
+            if (ONE_SHOT_TOOLS.has(tempItem.type)) setActiveTool('select')
             setIsDrawing(false)
             setDragStart(null)
-            setTempFrame(null)
-            setActiveTool('select') // Switch back to select after drawing
+            setTempItem(null)
         }
     }
 
-    // Helper to generate the folder path for the temporary frame
     const getTempFramePath = (w: number, h: number) => {
         const width = Math.abs(w)
         const height = Math.abs(h)
         const radius = 8
         const tabHeight = 32
         const tabWidth = 120
-
         return `
-      M 0 ${radius} 
-      Q 0 0 ${radius} 0 
-      L ${tabWidth - radius} 0 
-      Q ${tabWidth} 0 ${tabWidth} ${radius} 
-      L ${tabWidth} ${tabHeight} 
-      L ${width - radius} ${tabHeight} 
-      Q ${width} ${tabHeight} ${width} ${tabHeight + radius} 
-      L ${width} ${height - radius} 
-      Q ${width} ${height} ${width - radius} ${height} 
-      L ${radius} ${height} 
-      Q 0 ${height} 0 ${height - radius} 
+      M 0 ${radius}
+      Q 0 0 ${radius} 0
+      L ${tabWidth - radius} 0
+      Q ${tabWidth} 0 ${tabWidth} ${radius}
+      L ${tabWidth} ${tabHeight}
+      L ${width - radius} ${tabHeight}
+      Q ${width} ${tabHeight} ${width} ${tabHeight + radius}
+      L ${width} ${height - radius}
+      Q ${width} ${height} ${width - radius} ${height}
+      L ${radius} ${height}
+      Q 0 ${height} 0 ${height - radius}
       Z
     `
     }
 
-    // Generate Path for Connections (Curved Line)
+    const getDraftLinePoints = (item: CanvasItem) => {
+        if (item.points && item.points.length >= 2) return item.points
+        const w = Math.max(item.width || 2, 2)
+        const h = Math.max(item.height || 2, 2)
+        return [
+            { x: 2, y: h / 2 },
+            { x: w - 2, y: h / 2 },
+        ]
+    }
+
     const getConnectionPath = (x1: number, y1: number, x2: number, y2: number) => {
         const dist = Math.abs(x2 - x1)
         const cp1x = x1 + dist * 0.5
@@ -475,22 +824,42 @@ export const Canvas = forwardRef<CanvasRef, CanvasProps>((props, ref) => {
         return `M ${x1} ${y1} C ${cp1x} ${y1}, ${cp2x} ${y2}, ${x2} ${y2}`
     }
 
-    const handleItemUpdate = (id: string, updates: Partial<CanvasItem>) => {
-        setItems((prev) =>
-            prev.map((item) => {
-                if (item.id === id) {
-                    return { ...item, ...updates }
-                }
-                return item
-            })
+    const handleItemUpdate = (
+        id: string,
+        updates: Partial<CanvasItem>,
+        options?: UpdateOptions
+    ) => {
+        const commitHistory = options?.commitHistory !== false
+        const newItems = stateRef.current.items.map((item) =>
+            item.id === id ? { ...item, ...updates } : item
         )
-        addToHistory(items, connections)
+
+        setItems(newItems)
+        stateRef.current = { ...stateRef.current, items: newItems }
+
+        if (commitHistory) {
+            addToHistory(newItems, stateRef.current.connections)
+        }
     }
+
+    const handleItemUpdateEnd = () => {
+        addToHistory(stateRef.current.items, stateRef.current.connections)
+    }
+
+    const isDrawCursorTool = [
+        'frame',
+        'square',
+        'circle',
+        'line',
+        'arrow',
+        'pen',
+        'eraser',
+    ].includes(activeTool)
 
     return (
         <div
             ref={containerRef}
-            className={`relative w-full h-full bg-[#1e1e1e] overflow-hidden ${activeTool === 'hand' ? 'cursor-grab active:cursor-grabbing' : activeTool === 'frame' ? 'cursor-crosshair' : ''}`}
+            className={`relative w-full h-full bg-[#1e1e1e] overflow-hidden ${activeTool === 'hand' ? 'cursor-grab active:cursor-grabbing' : isDrawCursorTool ? 'cursor-crosshair' : activeTool === 'text' ? 'cursor-text' : ''}`}
             style={{
                 backgroundImage: `radial-gradient(#3a3a3a ${currentDotSize}px, transparent ${currentDotSize}px)`,
                 backgroundSize: `${currentGridSize}px ${currentGridSize}px`,
@@ -517,90 +886,34 @@ export const Canvas = forwardRef<CanvasRef, CanvasProps>((props, ref) => {
                 onOpenAuth={onOpenAuth}
             />
 
-            {/* Canvas Content Layer */}
             <div
                 className="absolute top-0 left-0 w-full h-full origin-top-left will-change-transform"
-                style={{
-                    transform: `translate(${pan.x}px, ${pan.y}px) scale(${scale / 100})`,
-                }}
+                style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${scale / 100})` }}
                 onClick={() => {
                     if (
-                        activeTool !== 'hand' &&
-                        activeTool !== 'frame' &&
+                        activeTool === 'select' &&
                         !isPanning &&
                         !isDrawing &&
-                        !connectionDraft
+                        !connectionDraft &&
+                        !isErasing
                     ) {
                         setSelectedId(null)
                     }
                 }}
             >
-                {/* Connections Layer (Below Items) */}
-                <svg className="absolute inset-0 w-full h-full overflow-visible pointer-events-none z-0">
-                    <defs>
-                        {/* Arrowhead Marker (End) */}
-                        <marker
-                            id="arrowhead"
-                            markerWidth="10"
-                            markerHeight="7"
-                            refX="9"
-                            refY="3.5"
-                            orient="auto"
-                        >
-                            <polygon points="0 0, 10 3.5, 0 7" fill="#A09F9D" />
-                        </marker>
-                        {/* Circle Marker (Start) */}
-                        <marker
-                            id="circle-marker"
-                            markerWidth="8"
-                            markerHeight="8"
-                            refX="4"
-                            refY="4"
-                            orient="auto"
-                        >
-                            <circle cx="4" cy="4" r="2.5" fill="#A09F9D" />
-                        </marker>
-                    </defs>
-                    {connections.map((conn) => {
-                        const start = getAnchorPoint(conn.from, conn.fromSide)
-                        const end = getAnchorPoint(conn.to, conn.toSide)
-                        return (
-                            <path
-                                key={conn.id}
-                                d={getConnectionPath(start.x, start.y, end.x, end.y)}
-                                fill="none"
-                                stroke="#A09F9D"
-                                strokeWidth="2"
-                                markerStart="url(#circle-marker)"
-                                markerEnd="url(#arrowhead)"
-                                className="opacity-80"
-                            />
-                        )
-                    })}
-                    {connectionDraft && connectionDraft.toPoint && (
-                        <path
-                            d={getConnectionPath(
-                                getAnchorPoint(connectionDraft.fromId, connectionDraft.fromSide).x,
-                                getAnchorPoint(connectionDraft.fromId, connectionDraft.fromSide).y,
-                                connectionDraft.toPoint.x,
-                                connectionDraft.toPoint.y
-                            )}
-                            fill="none"
-                            stroke="#A09F9D"
-                            strokeWidth="2"
-                            strokeDasharray="5,5"
-                            markerStart="url(#circle-marker)"
-                            markerEnd="url(#arrowhead)"
-                            className="opacity-60"
-                        />
-                    )}
-                </svg>
+                <CanvasConnectionsLayer
+                    connections={connections}
+                    connectionDraft={connectionDraft}
+                    getAnchorPoint={getAnchorPoint}
+                    getConnectionPath={getConnectionPath}
+                />
 
                 {items.map((item) => (
                     <CanvasItemComponent
                         key={item.id}
                         item={item}
                         scale={scale}
+                        activeTool={activeTool}
                         isSelected={selectedId === item.id || item.parentId === selectedId}
                         onSelect={() => handleItemSelect(item.id)}
                         onRemove={() => handleRemoveItem(item.id)}
@@ -608,41 +921,19 @@ export const Canvas = forwardRef<CanvasRef, CanvasProps>((props, ref) => {
                         onDragEnd={handleItemDragEnd}
                         onConnectStart={handleConnectStart}
                         onConnectEnd={handleConnectEnd}
-                        onUpdate={(updates) => handleItemUpdate(item.id, updates)}
+                        onUpdate={(updates, options) => handleItemUpdate(item.id, updates, options)}
+                        onUpdateEnd={handleItemUpdateEnd}
                     />
                 ))}
 
-                {/* Temporary Frame being drawn */}
-                {tempFrame && (
-                    <div
-                        style={{
-                            position: 'absolute',
-                            left:
-                                tempFrame.width && tempFrame.width < 0
-                                    ? tempFrame.x + tempFrame.width
-                                    : tempFrame.x,
-                            top:
-                                tempFrame.height && tempFrame.height < 0
-                                    ? tempFrame.y + tempFrame.height
-                                    : tempFrame.y,
-                            width: Math.abs(tempFrame.width || 0),
-                            height: Math.abs(tempFrame.height || 0),
-                        }}
-                        className="pointer-events-none z-50 opacity-50"
-                    >
-                        <svg width="100%" height="100%" className="overflow-visible">
-                            <path
-                                d={getTempFramePath(
-                                    tempFrame.width || 100,
-                                    tempFrame.height || 100
-                                )}
-                                fill="rgba(255,255,255,0.05)"
-                                stroke="#AAA"
-                                strokeWidth="2"
-                                strokeDasharray="8 6"
-                            />
-                        </svg>
-                    </div>
+                {tempItem && (
+                    <CanvasTempItemPreview
+                        tempItem={tempItem}
+                        buildSmoothPath={buildSmoothPath}
+                        buildPolylinePath={buildPolylinePath}
+                        getDraftLinePoints={getDraftLinePoints}
+                        getTempFramePath={getTempFramePath}
+                    />
                 )}
 
                 {activeTool === 'hand' && (
