@@ -112,7 +112,7 @@ export const CanvasItemComponent: React.FC<CanvasItemComponentProps> = ({
     }
 
     const startShapeResize = (
-        corner: 'nw' | 'ne' | 'sw' | 'se',
+        handle: 'n' | 's' | 'e' | 'w' | 'nw' | 'ne' | 'sw' | 'se',
         e: React.PointerEvent<HTMLDivElement>
     ) => {
         if (!onUpdate) return
@@ -138,27 +138,27 @@ export const CanvasItemComponent: React.FC<CanvasItemComponentProps> = ({
             lastX = moveEvent.clientX
             lastY = moveEvent.clientY
 
-            if (corner.includes('e')) {
+            if (handle.includes('e')) {
                 width += dx
             }
-            if (corner.includes('s')) {
+            if (handle.includes('s')) {
                 height += dy
             }
-            if (corner.includes('w')) {
+            if (handle.includes('w')) {
                 x += dx
                 width -= dx
             }
-            if (corner.includes('n')) {
+            if (handle.includes('n')) {
                 y += dy
                 height -= dy
             }
 
             if (width < MIN_SIZE) {
-                if (corner.includes('w')) x -= MIN_SIZE - width
+                if (handle.includes('w')) x -= MIN_SIZE - width
                 width = MIN_SIZE
             }
             if (height < MIN_SIZE) {
-                if (corner.includes('n')) y -= MIN_SIZE - height
+                if (handle.includes('n')) y -= MIN_SIZE - height
                 height = MIN_SIZE
             }
 
@@ -344,17 +344,18 @@ export const CanvasItemComponent: React.FC<CanvasItemComponentProps> = ({
     const linePath = buildPolylinePath(linePoints)
     const lineStart = linePoints[0]
     const lineEnd = linePoints[linePoints.length - 1]
-    const lineMiddle =
-        linePoints.length >= 3
-            ? linePoints[1]
-            : {
-                  x: ((lineStart?.x || 0) + (lineEnd?.x || 0)) / 2,
-                  y: ((lineStart?.y || 0) + (lineEnd?.y || 0)) / 2,
-              }
     const penPath = buildSmoothPath(item.points || [])
 
-    const showShapeResizeHandles = canTransform && (item.type === 'square' || item.type === 'circle')
+    const showShapeResizeHandles =
+        canTransform && (item.type === 'frame' || item.type === 'square' || item.type === 'circle')
     const showLineHandles = canTransform && (item.type === 'line' || item.type === 'arrow')
+    const showSelectionContainer =
+        item.type !== 'frame' &&
+        item.type !== 'square' &&
+        item.type !== 'circle' &&
+        item.type !== 'line' &&
+        item.type !== 'arrow' &&
+        item.type !== 'pen'
 
     return (
         <motion.div
@@ -383,7 +384,7 @@ export const CanvasItemComponent: React.FC<CanvasItemComponentProps> = ({
                 item.type === 'pen' && !item.width && 'w-48 h-24'
             )}
         >
-            {item.type !== 'frame' && (
+            {showSelectionContainer && (
                 <div
                     className={cn(
                         'absolute -inset-[3px] rounded-2xl border transition-all duration-200 pointer-events-none z-0',
@@ -567,7 +568,6 @@ export const CanvasItemComponent: React.FC<CanvasItemComponentProps> = ({
 
                 {item.type === 'square' && (
                     <div className="w-full h-full relative">
-                        <DeleteButton />
                         <svg width="100%" height="100%" className="w-full h-full block">
                             <rect
                                 x="2"
@@ -576,7 +576,7 @@ export const CanvasItemComponent: React.FC<CanvasItemComponentProps> = ({
                                 height="calc(100% - 4px)"
                                 rx="12"
                                 fill="transparent"
-                                stroke="#9A9A9A"
+                                stroke={isSelected ? '#E8E8E6' : '#9A9A9A'}
                                 strokeWidth="2"
                                 className="group-hover:stroke-neutral-200 transition-colors"
                             />
@@ -586,14 +586,13 @@ export const CanvasItemComponent: React.FC<CanvasItemComponentProps> = ({
 
                 {item.type === 'circle' && (
                     <div className="w-full h-full relative">
-                        <DeleteButton />
                         <svg width="100%" height="100%" className="w-full h-full block">
                             <circle
                                 cx="50%"
                                 cy="50%"
                                 r="calc(50% - 2px)"
                                 fill="transparent"
-                                stroke="#9A9A9A"
+                                stroke={isSelected ? '#E8E8E6' : '#9A9A9A'}
                                 strokeWidth="2"
                                 className="group-hover:stroke-neutral-200 transition-colors"
                             />
@@ -603,12 +602,11 @@ export const CanvasItemComponent: React.FC<CanvasItemComponentProps> = ({
 
                 {item.type === 'line' && (
                     <div className="w-full h-full flex items-center justify-center relative text-white">
-                        <DeleteButton />
                         <svg width="100%" height="100%" className="overflow-visible">
                             <path
                                 d={linePath}
                                 fill="none"
-                                stroke="currentColor"
+                                stroke={isSelected ? '#E8E8E6' : '#C9C9C7'}
                                 strokeWidth="2"
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
@@ -620,7 +618,6 @@ export const CanvasItemComponent: React.FC<CanvasItemComponentProps> = ({
 
                 {item.type === 'arrow' && (
                     <div className="w-full h-full flex items-center relative text-white">
-                        <DeleteButton />
                         <svg width="100%" height="100%" className="overflow-visible">
                             <defs>
                                 <marker
@@ -634,7 +631,7 @@ export const CanvasItemComponent: React.FC<CanvasItemComponentProps> = ({
                                     <path
                                         d="M 2 2 L 10 6 L 2 10"
                                         fill="none"
-                                        stroke="currentColor"
+                                        stroke={isSelected ? '#E8E8E6' : '#C9C9C7'}
                                         strokeWidth="1.5"
                                         strokeLinecap="round"
                                         strokeLinejoin="round"
@@ -644,7 +641,7 @@ export const CanvasItemComponent: React.FC<CanvasItemComponentProps> = ({
                             <path
                                 d={linePath}
                                 fill="none"
-                                stroke="currentColor"
+                                stroke={isSelected ? '#E8E8E6' : '#C9C9C7'}
                                 strokeWidth="1.6"
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
@@ -657,12 +654,11 @@ export const CanvasItemComponent: React.FC<CanvasItemComponentProps> = ({
 
                 {item.type === 'pen' && (
                     <div className="w-full h-full relative text-white">
-                        <DeleteButton />
                         <svg width="100%" height="100%" className="overflow-visible">
                             <path
                                 d={penPath}
                                 fill="none"
-                                stroke="currentColor"
+                                stroke={isSelected ? '#E8E8E6' : '#C9C9C7'}
                                 strokeWidth="2"
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
@@ -678,31 +674,42 @@ export const CanvasItemComponent: React.FC<CanvasItemComponentProps> = ({
                             onPointerDown={(e) => startShapeResize('nw', e)}
                         />
                         <div
+                            className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-3 h-3 rounded-full bg-white border border-black/60 cursor-ns-resize z-50"
+                            onPointerDown={(e) => startShapeResize('n', e)}
+                        />
+                        <div
                             className="absolute -top-1.5 -right-1.5 w-3 h-3 rounded-full bg-white border border-black/60 cursor-nesw-resize z-50"
                             onPointerDown={(e) => startShapeResize('ne', e)}
+                        />
+                        <div
+                            className="absolute top-1/2 -right-1.5 -translate-y-1/2 w-3 h-3 rounded-full bg-white border border-black/60 cursor-ew-resize z-50"
+                            onPointerDown={(e) => startShapeResize('e', e)}
                         />
                         <div
                             className="absolute -bottom-1.5 -left-1.5 w-3 h-3 rounded-full bg-white border border-black/60 cursor-nesw-resize z-50"
                             onPointerDown={(e) => startShapeResize('sw', e)}
                         />
                         <div
+                            className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 rounded-full bg-white border border-black/60 cursor-ns-resize z-50"
+                            onPointerDown={(e) => startShapeResize('s', e)}
+                        />
+                        <div
                             className="absolute -bottom-1.5 -right-1.5 w-3 h-3 rounded-full bg-white border border-black/60 cursor-nwse-resize z-50"
                             onPointerDown={(e) => startShapeResize('se', e)}
+                        />
+                        <div
+                            className="absolute top-1/2 -left-1.5 -translate-y-1/2 w-3 h-3 rounded-full bg-white border border-black/60 cursor-ew-resize z-50"
+                            onPointerDown={(e) => startShapeResize('w', e)}
                         />
                     </>
                 )}
 
-                {showLineHandles && lineStart && lineEnd && lineMiddle && (
+                {showLineHandles && lineStart && lineEnd && (
                     <>
                         <div
                             className="absolute w-3 h-3 rounded-full bg-white border border-black/60 z-50 cursor-pointer"
                             style={{ left: lineStart.x - 6, top: lineStart.y - 6 }}
                             onPointerDown={(e) => startLineHandleDrag('start', e)}
-                        />
-                        <div
-                            className="absolute w-3 h-3 rounded-full bg-white border border-black/60 z-50 cursor-pointer"
-                            style={{ left: lineMiddle.x - 6, top: lineMiddle.y - 6 }}
-                            onPointerDown={(e) => startLineHandleDrag('middle', e)}
                         />
                         <div
                             className="absolute w-3 h-3 rounded-full bg-white border border-black/60 z-50 cursor-pointer"
@@ -715,5 +722,3 @@ export const CanvasItemComponent: React.FC<CanvasItemComponentProps> = ({
         </motion.div>
     )
 }
-
-
