@@ -7,12 +7,10 @@ import { AuthModal } from './components/AuthModal'
 import { OutputScreen } from './components/OutputScreen'
 import { Icons } from './components/ui/Icons'
 
-// Features
 import { HomeHero } from './components/features/home/HomeHero'
 import { ProjectList } from './components/features/projects/ProjectList'
 import { ProfileSettings } from './components/features/profile/ProfileSettings'
 
-// Services & Types
 import type { Message, Project } from './types'
 import { PREVIEW_HTML } from './constants/preview'
 import { clearAuthToken, getAuthToken, setAuthToken } from './api/client'
