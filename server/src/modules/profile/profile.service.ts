@@ -12,8 +12,8 @@ type ChangePassword = {
 }
 
 type ConnectGithub = {
-    userId: string,
-    accessToken: string,
+    userId: string
+    accessToken: string
     username: string
 }
 
@@ -84,27 +84,26 @@ const changePassword = async (data: ChangePassword) => {
 }
 
 const connectGithub = async (data: ConnectGithub) => {
-    const {username, accessToken, userId} = data
+    const { username, accessToken, userId } = data
 
     // console.log("inside service: ", username, accessToken)
 
     const updatedUser = await prisma.user.update({
         where: {
-            id: userId
+            id: userId,
         },
         data: {
             githubUsername: username,
             githubToken: accessToken,
-            githubConnected: true
-        }
-    }) 
+            githubConnected: true,
+        },
+    })
 
-    if(!updatedUser){
-        throw new Error("user not found")
+    if (!updatedUser) {
+        throw new Error('user not found')
     }
 
     return updatedUser
-
 }
 
 export const profileService = {
