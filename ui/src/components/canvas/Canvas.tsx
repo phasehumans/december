@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect, useImperativeHandle, forwardRef } from 'react'
 import { CanvasToolbar } from './CanvasToolbar'
 import { CanvasItemComponent } from './CanvasItemComponent'
+import { CanvasConnectionsLayer } from './CanvasConnectionsLayer'
+import { CanvasTempItemPreview } from './CanvasTempItemPreview'
 import type { CanvasItem, CanvasConnection } from '../../types'
-
 export interface CanvasRef {
     triggerImageUpload: () => void
 }
@@ -25,9 +26,9 @@ export const Canvas = forwardRef<CanvasRef, CanvasProps>((props, ref) => {
     const [items, setItems] = useState<CanvasItem[]>([])
     const [connections, setConnections] = useState<CanvasConnection[]>([])
     const [hasInteracted, setHasInteracted] = useState(false)
-    const [history, setHistory] = useState<{ items: CanvasItem[]; connections: CanvasConnection[] }[]>([
-        { items: [], connections: [] },
-    ])
+    const [history, setHistory] = useState<
+        { items: CanvasItem[]; connections: CanvasConnection[] }[]
+    >([{ items: [], connections: [] }])
     const [historyStep, setHistoryStep] = useState(0)
     const [activeTool, setActiveTool] = useState('select')
     const [scale, setScale] = useState(100)
@@ -128,7 +129,12 @@ export const Canvas = forwardRef<CanvasRef, CanvasProps>((props, ref) => {
             const target = e.target as HTMLElement | null
             if (target) {
                 const tag = target.tagName
-                if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target.isContentEditable) {
+                if (
+                    tag === 'INPUT' ||
+                    tag === 'TEXTAREA' ||
+                    tag === 'SELECT' ||
+                    target.isContentEditable
+                ) {
                     return
                 }
             }
@@ -248,10 +254,22 @@ export const Canvas = forwardRef<CanvasRef, CanvasProps>((props, ref) => {
         const bottom = bounds.y + bounds.height
 
         const edges: Array<[{ x: number; y: number }, { x: number; y: number }]> = [
-            [{ x: left, y: top }, { x: right, y: top }],
-            [{ x: right, y: top }, { x: right, y: bottom }],
-            [{ x: right, y: bottom }, { x: left, y: bottom }],
-            [{ x: left, y: bottom }, { x: left, y: top }],
+            [
+                { x: left, y: top },
+                { x: right, y: top },
+            ],
+            [
+                { x: right, y: top },
+                { x: right, y: bottom },
+            ],
+            [
+                { x: right, y: bottom },
+                { x: left, y: bottom },
+            ],
+            [
+                { x: left, y: bottom },
+                { x: left, y: top },
+            ],
         ]
 
         return edges.some(([start, end]) => distanceToSegment(point, start, end) <= tolerance)
@@ -291,7 +309,10 @@ export const Canvas = forwardRef<CanvasRef, CanvasProps>((props, ref) => {
         if (item.type === 'pen' && item.points && item.points.length > 1) {
             const absolutePoints = item.points.map((pt) => ({ x: item.x + pt.x, y: item.y + pt.y }))
             for (let i = 0; i < absolutePoints.length - 1; i += 1) {
-                if (distanceToSegment(point, absolutePoints[i]!, absolutePoints[i + 1]!) <= ERASE_TOLERANCE) {
+                if (
+                    distanceToSegment(point, absolutePoints[i]!, absolutePoints[i + 1]!) <=
+                    ERASE_TOLERANCE
+                ) {
                     return true
                 }
             }
@@ -326,7 +347,9 @@ export const Canvas = forwardRef<CanvasRef, CanvasProps>((props, ref) => {
         const currentConnections = stateRef.current.connections
         const target = [...currentItems]
             .reverse()
-            .find((item) => !erasedItemIdsRef.current.has(item.id) && isPointInsideItem(point, item))
+            .find(
+                (item) => !erasedItemIdsRef.current.has(item.id) && isPointInsideItem(point, item)
+            )
 
         if (!target) return
 
@@ -385,7 +408,13 @@ export const Canvas = forwardRef<CanvasRef, CanvasProps>((props, ref) => {
             return
         }
 
-        const newItem: CanvasItem = { id: Date.now().toString(), type, x: finalX, y: finalY, content }
+        const newItem: CanvasItem = {
+            id: Date.now().toString(),
+            type,
+            x: finalX,
+            y: finalY,
+            content,
+        }
         const newItems = [...items, newItem]
         setItems(newItems)
         setSelectedId(newItem.id)
@@ -448,7 +477,8 @@ export const Canvas = forwardRef<CanvasRef, CanvasProps>((props, ref) => {
         setItems((prev) =>
             prev.map((item) => {
                 if (item.id === id) return { ...item, x: item.x + delta.x, y: item.y + delta.y }
-                if (item.parentId === id) return { ...item, x: item.x + delta.x, y: item.y + delta.y }
+                if (item.parentId === id)
+                    return { ...item, x: item.x + delta.x, y: item.y + delta.y }
                 return item
             })
         )
@@ -630,7 +660,10 @@ export const Canvas = forwardRef<CanvasRef, CanvasProps>((props, ref) => {
                     if (!prev || prev.type !== 'pen') return prev
 
                     const existingPoints = prev.points || []
-                    const absolutePoints = existingPoints.map((pt) => ({ x: prev.x + pt.x, y: prev.y + pt.y }))
+                    const absolutePoints = existingPoints.map((pt) => ({
+                        x: prev.x + pt.x,
+                        y: prev.y + pt.y,
+                    }))
                     const lastPoint = absolutePoints[absolutePoints.length - 1]
                     const distance = lastPoint
                         ? Math.hypot(coords.x - lastPoint.x, coords.y - lastPoint.y)
@@ -708,7 +741,8 @@ export const Canvas = forwardRef<CanvasRef, CanvasProps>((props, ref) => {
 
         if (isErasing) {
             setIsErasing(false)
-            if (didEraseRef.current) addToHistory(stateRef.current.items, stateRef.current.connections)
+            if (didEraseRef.current)
+                addToHistory(stateRef.current.items, stateRef.current.connections)
             didEraseRef.current = false
             erasedItemIdsRef.current = new Set()
         }
@@ -790,7 +824,11 @@ export const Canvas = forwardRef<CanvasRef, CanvasProps>((props, ref) => {
         return `M ${x1} ${y1} C ${cp1x} ${y1}, ${cp2x} ${y2}, ${x2} ${y2}`
     }
 
-    const handleItemUpdate = (id: string, updates: Partial<CanvasItem>, options?: UpdateOptions) => {
+    const handleItemUpdate = (
+        id: string,
+        updates: Partial<CanvasItem>,
+        options?: UpdateOptions
+    ) => {
         const commitHistory = options?.commitHistory !== false
         const newItems = stateRef.current.items.map((item) =>
             item.id === id ? { ...item, ...updates } : item
@@ -808,9 +846,15 @@ export const Canvas = forwardRef<CanvasRef, CanvasProps>((props, ref) => {
         addToHistory(stateRef.current.items, stateRef.current.connections)
     }
 
-    const isDrawCursorTool = ['frame', 'square', 'circle', 'line', 'arrow', 'pen', 'eraser'].includes(
-        activeTool
-    )
+    const isDrawCursorTool = [
+        'frame',
+        'square',
+        'circle',
+        'line',
+        'arrow',
+        'pen',
+        'eraser',
+    ].includes(activeTool)
 
     return (
         <div
@@ -846,68 +890,23 @@ export const Canvas = forwardRef<CanvasRef, CanvasProps>((props, ref) => {
                 className="absolute top-0 left-0 w-full h-full origin-top-left will-change-transform"
                 style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${scale / 100})` }}
                 onClick={() => {
-                    if (activeTool === 'select' && !isPanning && !isDrawing && !connectionDraft && !isErasing) {
+                    if (
+                        activeTool === 'select' &&
+                        !isPanning &&
+                        !isDrawing &&
+                        !connectionDraft &&
+                        !isErasing
+                    ) {
                         setSelectedId(null)
                     }
                 }}
             >
-                <svg className="absolute inset-0 w-full h-full overflow-visible pointer-events-none z-0">
-                    <defs>
-                        <marker
-                            id="arrowhead"
-                            markerWidth="10"
-                            markerHeight="7"
-                            refX="9"
-                            refY="3.5"
-                            orient="auto"
-                        >
-                            <polygon points="0 0, 10 3.5, 0 7" fill="#A09F9D" />
-                        </marker>
-                        <marker
-                            id="circle-marker"
-                            markerWidth="8"
-                            markerHeight="8"
-                            refX="4"
-                            refY="4"
-                            orient="auto"
-                        >
-                            <circle cx="4" cy="4" r="2.5" fill="#A09F9D" />
-                        </marker>
-                    </defs>
-                    {connections.map((conn) => {
-                        const start = getAnchorPoint(conn.from, conn.fromSide)
-                        const end = getAnchorPoint(conn.to, conn.toSide)
-                        return (
-                            <path
-                                key={conn.id}
-                                d={getConnectionPath(start.x, start.y, end.x, end.y)}
-                                fill="none"
-                                stroke="#A09F9D"
-                                strokeWidth="2"
-                                markerStart="url(#circle-marker)"
-                                markerEnd="url(#arrowhead)"
-                                className="opacity-80"
-                            />
-                        )
-                    })}
-                    {connectionDraft && connectionDraft.toPoint && (
-                        <path
-                            d={getConnectionPath(
-                                getAnchorPoint(connectionDraft.fromId, connectionDraft.fromSide).x,
-                                getAnchorPoint(connectionDraft.fromId, connectionDraft.fromSide).y,
-                                connectionDraft.toPoint.x,
-                                connectionDraft.toPoint.y
-                            )}
-                            fill="none"
-                            stroke="#A09F9D"
-                            strokeWidth="2"
-                            strokeDasharray="5,5"
-                            markerStart="url(#circle-marker)"
-                            markerEnd="url(#arrowhead)"
-                            className="opacity-60"
-                        />
-                    )}
-                </svg>
+                <CanvasConnectionsLayer
+                    connections={connections}
+                    connectionDraft={connectionDraft}
+                    getAnchorPoint={getAnchorPoint}
+                    getConnectionPath={getConnectionPath}
+                />
 
                 {items.map((item) => (
                     <CanvasItemComponent
@@ -928,108 +927,18 @@ export const Canvas = forwardRef<CanvasRef, CanvasProps>((props, ref) => {
                 ))}
 
                 {tempItem && (
-                    <div
-                        style={{
-                            position: 'absolute',
-                            left: tempItem.x,
-                            top: tempItem.y,
-                            width: Math.max(tempItem.width || 0, 2),
-                            height: Math.max(tempItem.height || 0, 2),
-                        }}
-                        className="pointer-events-none z-50 opacity-70"
-                    >
-                        {tempItem.type === 'frame' && (
-                            <svg width="100%" height="100%" className="overflow-visible">
-                                <path
-                                    d={getTempFramePath(tempItem.width || 100, tempItem.height || 100)}
-                                    fill="rgba(255,255,255,0.05)"
-                                    stroke="#AAA"
-                                    strokeWidth="2"
-                                    strokeDasharray="8 6"
-                                />
-                            </svg>
-                        )}
-
-                        {tempItem.type === 'square' && (
-                            <svg width="100%" height="100%" className="overflow-visible">
-                                <rect
-                                    x="1"
-                                    y="1"
-                                    width="calc(100% - 2px)"
-                                    height="calc(100% - 2px)"
-                                    rx="10"
-                                    fill="rgba(255,255,255,0.05)"
-                                    stroke="#AAA"
-                                    strokeWidth="2"
-                                />
-                            </svg>
-                        )}
-
-                        {tempItem.type === 'circle' && (
-                            <svg width="100%" height="100%" className="overflow-visible">
-                                <ellipse
-                                    cx="50%"
-                                    cy="50%"
-                                    rx="calc(50% - 2px)"
-                                    ry="calc(50% - 2px)"
-                                    fill="rgba(255,255,255,0.05)"
-                                    stroke="#AAA"
-                                    strokeWidth="2"
-                                />
-                            </svg>
-                        )}
-
-                        {(tempItem.type === 'line' || tempItem.type === 'arrow') && (
-                            <svg width="100%" height="100%" className="overflow-visible text-[#DDD]">
-                                {tempItem.type === 'arrow' && (
-                                    <defs>
-                                        <marker
-                                            id="draft-arrow-head"
-                                            markerWidth="12"
-                                            markerHeight="12"
-                                            refX="10"
-                                            refY="6"
-                                            orient="auto"
-                                        >
-                                            <path
-                                                d="M 2 2 L 10 6 L 2 10"
-                                                fill="none"
-                                                stroke="currentColor"
-                                                strokeWidth="1.5"
-                                                strokeLinecap="round"
-                                                strokeLinejoin="round"
-                                            />
-                                        </marker>
-                                    </defs>
-                                )}
-                                <path
-                                    d={buildPolylinePath(getDraftLinePoints(tempItem))}
-                                    fill="none"
-                                    stroke="currentColor"
-                                    strokeWidth="2"
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    markerEnd={tempItem.type === 'arrow' ? 'url(#draft-arrow-head)' : undefined}
-                                />
-                            </svg>
-                        )}
-
-                        {tempItem.type === 'pen' && (
-                            <svg width="100%" height="100%" className="overflow-visible text-[#DDD]">
-                                <path
-                                    d={buildSmoothPath(tempItem.points || [])}
-                                    fill="none"
-                                    stroke="currentColor"
-                                    strokeWidth="2"
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                />
-                            </svg>
-                        )}
-                    </div>
+                    <CanvasTempItemPreview
+                        tempItem={tempItem}
+                        buildSmoothPath={buildSmoothPath}
+                        buildPolylinePath={buildPolylinePath}
+                        getDraftLinePoints={getDraftLinePoints}
+                        getTempFramePath={getTempFramePath}
+                    />
                 )}
 
-                {activeTool === 'hand' && <div className="absolute -inset-[5000px] z-50 bg-transparent" />}
+                {activeTool === 'hand' && (
+                    <div className="absolute -inset-[5000px] z-50 bg-transparent" />
+                )}
             </div>
         </div>
     )
