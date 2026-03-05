@@ -161,7 +161,8 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut }) =
         const url =
           `https://github.com/login/oauth/authorize` +
           `?client_id=Ov23liFGkTAwCW7E8gtk` +
-          `&scope=repo`
+          `&scope=repo`+
+          `&state=${profile?.id}`
       
         window.location.href = url
     }
