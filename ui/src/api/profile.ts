@@ -8,6 +8,8 @@ export type Profile = {
     updatedAt: string
     emailVerified: boolean
     googleId: string | null
+    githubConnected: boolean
+    githubUsername?: string
 }
 
 type UpdateNameInput = {

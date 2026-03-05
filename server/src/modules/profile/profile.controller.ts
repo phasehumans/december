@@ -151,14 +151,10 @@ const connectGithub = async (req: Request, res: Response) => {
         const githubUser: any = await userRes.json()
         const username = githubUser.login
     
-        console.log(accessToken, username)
+        // console.log(accessToken, username)
     
         const result = await profileService.connectGithub({userId, accessToken, username})
-        return res.status(200).json({
-            success: true,
-            message: "github connected",
-            data: result
-        })
+        return res.redirect("http://localhost:3000")
     } catch (error: any) {
         return res.status(500).json({
             success: false,
