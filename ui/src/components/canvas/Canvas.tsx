@@ -12,6 +12,10 @@ interface CanvasProps {
     onOpenAuth?: () => void
 }
 
+interface UpdateOptions {
+    commitHistory?: boolean
+}
+
 const SHAPE_TOOLS = new Set(['frame', 'square', 'circle', 'line', 'arrow'])
 const DRAW_TOOLS = new Set(['frame', 'square', 'circle', 'line', 'arrow', 'pen'])
 const ONE_SHOT_TOOLS = new Set(['frame', 'square', 'circle', 'line', 'arrow', 'text'])
@@ -41,6 +45,7 @@ export const Canvas = forwardRef<CanvasRef, CanvasProps>((props, ref) => {
         fromSide: 'left' | 'right'
         toPoint?: { x: number; y: number }
     } | null>(null)
+
     const containerRef = useRef<HTMLDivElement>(null)
     const stateRef = useRef({ scale, pan, items, connections })
 
@@ -63,21 +68,19 @@ export const Canvas = forwardRef<CanvasRef, CanvasProps>((props, ref) => {
     }
 
     const undo = () => {
-        if (historyStep > 0) {
-            const prevStep = historyStep - 1
-            setHistoryStep(prevStep)
-            setItems(history[prevStep]!.items)
-            setConnections(history[prevStep]!.connections)
-        }
+        if (historyStep <= 0) return
+        const prevStep = historyStep - 1
+        setHistoryStep(prevStep)
+        setItems(history[prevStep]!.items)
+        setConnections(history[prevStep]!.connections)
     }
 
     const redo = () => {
-        if (historyStep < history.length - 1) {
-            const nextStep = historyStep + 1
-            setHistoryStep(nextStep)
-            setItems(history[nextStep]!.items)
-            setConnections(history[nextStep]!.connections)
-        }
+        if (historyStep >= history.length - 1) return
+        const nextStep = historyStep + 1
+        setHistoryStep(nextStep)
+        setItems(history[nextStep]!.items)
+        setConnections(history[nextStep]!.connections)
     }
 
     useEffect(() => {
@@ -105,6 +108,40 @@ export const Canvas = forwardRef<CanvasRef, CanvasProps>((props, ref) => {
 
         container.addEventListener('wheel', onWheel, { passive: false })
         return () => container.removeEventListener('wheel', onWheel)
+    }, [])
+
+    useEffect(() => {
+        const shortcuts: Record<string, string> = {
+            v: 'select',
+            r: 'square',
+            o: 'circle',
+            l: 'line',
+            a: 'arrow',
+            p: 'pen',
+            t: 'text',
+            e: 'eraser',
+        }
+
+        const onKeyDown = (e: KeyboardEvent) => {
+            if (e.metaKey || e.ctrlKey || e.altKey) return
+
+            const target = e.target as HTMLElement | null
+            if (target) {
+                const tag = target.tagName
+                if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target.isContentEditable) {
+                    return
+                }
+            }
+
+            const nextTool = shortcuts[e.key.toLowerCase()]
+            if (!nextTool) return
+
+            e.preventDefault()
+            setActiveTool(nextTool)
+        }
+
+        window.addEventListener('keydown', onKeyDown)
+        return () => window.removeEventListener('keydown', onKeyDown)
     }, [])
 
     const getDefaultItemSize = (item: CanvasItem) => {
@@ -144,15 +181,48 @@ export const Canvas = forwardRef<CanvasRef, CanvasProps>((props, ref) => {
 
     const getLineAbsolutePoints = (item: CanvasItem) => {
         const bounds = getItemBounds(item)
-        if (item.points && item.points.length >= 2) {
-            const first = item.points[0]!
-            const last = item.points[item.points.length - 1]!
-            return { x1: item.x + first.x, y1: item.y + first.y, x2: item.x + last.x, y2: item.y + last.y }
-        }
-        return { x1: bounds.x + 2, y1: bounds.y + bounds.height / 2, x2: bounds.x + bounds.width - 2, y2: bounds.y + bounds.height / 2 }
+        const relativePoints =
+            item.points && item.points.length >= 2
+                ? item.points
+                : [
+                      { x: 2, y: bounds.height / 2 },
+                      { x: bounds.width - 2, y: bounds.height / 2 },
+                  ]
+
+        return relativePoints.map((pt) => ({ x: item.x + pt.x, y: item.y + pt.y }))
     }
 
-    const distanceToSegment = (point: { x: number; y: number }, a: { x: number; y: number }, b: { x: number; y: number }) => {
+    const buildSmoothPath = (points: { x: number; y: number }[]) => {
+        if (points.length === 0) return ''
+        if (points.length === 1) return `M ${points[0]!.x} ${points[0]!.y}`
+        if (points.length === 2) {
+            return `M ${points[0]!.x} ${points[0]!.y} L ${points[1]!.x} ${points[1]!.y}`
+        }
+
+        let d = `M ${points[0]!.x} ${points[0]!.y}`
+        for (let i = 1; i < points.length - 1; i += 1) {
+            const current = points[i]!
+            const next = points[i + 1]!
+            const midX = (current.x + next.x) / 2
+            const midY = (current.y + next.y) / 2
+            d += ` Q ${current.x} ${current.y} ${midX} ${midY}`
+        }
+
+        const last = points[points.length - 1]!
+        d += ` L ${last.x} ${last.y}`
+        return d
+    }
+
+    const buildPolylinePath = (points: { x: number; y: number }[]) => {
+        if (points.length < 2) return ''
+        return points.map((pt, idx) => `${idx === 0 ? 'M' : 'L'} ${pt.x} ${pt.y}`).join(' ')
+    }
+
+    const distanceToSegment = (
+        point: { x: number; y: number },
+        a: { x: number; y: number },
+        b: { x: number; y: number }
+    ) => {
         const abx = b.x - a.x
         const aby = b.y - a.y
         const apx = point.x - a.x
@@ -167,17 +237,27 @@ export const Canvas = forwardRef<CanvasRef, CanvasProps>((props, ref) => {
 
     const isPointInsideItem = (point: { x: number; y: number }, item: CanvasItem) => {
         const bounds = getItemBounds(item)
+
         if (item.type === 'line' || item.type === 'arrow') {
-            const line = getLineAbsolutePoints(item)
-            return distanceToSegment(point, { x: line.x1, y: line.y1 }, { x: line.x2, y: line.y2 }) <= 8
-        }
-        if (item.type === 'pen' && item.points && item.points.length > 1) {
-            const absolutePoints = item.points.map((pt) => ({ x: item.x + pt.x, y: item.y + pt.y }))
-            for (let i = 0; i < absolutePoints.length - 1; i += 1) {
-                if (distanceToSegment(point, absolutePoints[i]!, absolutePoints[i + 1]!) <= 8) return true
+            const points = getLineAbsolutePoints(item)
+            for (let i = 0; i < points.length - 1; i += 1) {
+                if (distanceToSegment(point, points[i]!, points[i + 1]!) <= 8) {
+                    return true
+                }
             }
             return false
         }
+
+        if (item.type === 'pen' && item.points && item.points.length > 1) {
+            const absolutePoints = item.points.map((pt) => ({ x: item.x + pt.x, y: item.y + pt.y }))
+            for (let i = 0; i < absolutePoints.length - 1; i += 1) {
+                if (distanceToSegment(point, absolutePoints[i]!, absolutePoints[i + 1]!) <= 8) {
+                    return true
+                }
+            }
+            return false
+        }
+
         if (item.type === 'circle') {
             const cx = bounds.x + bounds.width / 2
             const cy = bounds.y + bounds.height / 2
@@ -185,7 +265,13 @@ export const Canvas = forwardRef<CanvasRef, CanvasProps>((props, ref) => {
             const ny = (point.y - cy) / (bounds.height / 2)
             return nx * nx + ny * ny <= 1
         }
-        return point.x >= bounds.x && point.x <= bounds.x + bounds.width && point.y >= bounds.y && point.y <= bounds.y + bounds.height
+
+        return (
+            point.x >= bounds.x &&
+            point.x <= bounds.x + bounds.width &&
+            point.y >= bounds.y &&
+            point.y <= bounds.y + bounds.height
+        )
     }
 
     const normalizeRect = (start: { x: number; y: number }, end: { x: number; y: number }) => ({
@@ -198,7 +284,10 @@ export const Canvas = forwardRef<CanvasRef, CanvasProps>((props, ref) => {
     const eraseAtPoint = (point: { x: number; y: number }) => {
         const currentItems = stateRef.current.items
         const currentConnections = stateRef.current.connections
-        const target = [...currentItems].reverse().find((item) => !erasedItemIdsRef.current.has(item.id) && isPointInsideItem(point, item))
+        const target = [...currentItems]
+            .reverse()
+            .find((item) => !erasedItemIdsRef.current.has(item.id) && isPointInsideItem(point, item))
+
         if (!target) return
 
         const idsToRemove = new Set<string>()
@@ -209,10 +298,14 @@ export const Canvas = forwardRef<CanvasRef, CanvasProps>((props, ref) => {
         } else {
             idsToRemove.add(target.id)
         }
+
         idsToRemove.forEach((id) => erasedItemIdsRef.current.add(id))
 
         const newItems = currentItems.filter((item) => !idsToRemove.has(item.id))
-        const newConnections = currentConnections.filter((conn) => !idsToRemove.has(conn.from) && !idsToRemove.has(conn.to))
+        const newConnections = currentConnections.filter(
+            (conn) => !idsToRemove.has(conn.from) && !idsToRemove.has(conn.to)
+        )
+
         didEraseRef.current = true
         setItems(newItems)
         setConnections(newConnections)
@@ -286,6 +379,7 @@ export const Canvas = forwardRef<CanvasRef, CanvasProps>((props, ref) => {
 
         let newItems: CanvasItem[]
         let newConnections = connections
+
         if (itemToRemove.type === 'frame') {
             newItems = items.filter((item) => item.id !== id && item.parentId !== id)
             newConnections = connections.filter((c) => c.from !== id && c.to !== id)
@@ -349,6 +443,7 @@ export const Canvas = forwardRef<CanvasRef, CanvasProps>((props, ref) => {
             setConnections(newConnections)
             addToHistory(items, newConnections)
         }
+
         setConnectionDraft(null)
     }
 
@@ -378,6 +473,8 @@ export const Canvas = forwardRef<CanvasRef, CanvasProps>((props, ref) => {
     }
 
     const handlePointerDown = (e: React.PointerEvent) => {
+        if (e.button !== 0 && e.button !== 1) return
+
         const coords = getCanvasCoordinates(e)
 
         if (activeTool === 'hand' || e.button === 1) {
@@ -385,6 +482,8 @@ export const Canvas = forwardRef<CanvasRef, CanvasProps>((props, ref) => {
             e.preventDefault()
             return
         }
+
+        if (e.button !== 0) return
 
         if (activeTool === 'eraser') {
             markInteraction()
@@ -409,7 +508,7 @@ export const Canvas = forwardRef<CanvasRef, CanvasProps>((props, ref) => {
                 y: coords.y,
                 width: 220,
                 height: 48,
-                content: 'Text',
+                content: '',
             }
             const newItems = [...stateRef.current.items, textItem]
             setItems(newItems)
@@ -489,9 +588,26 @@ export const Canvas = forwardRef<CanvasRef, CanvasProps>((props, ref) => {
             if (tempItem.type === 'pen') {
                 setTempItem((prev) => {
                     if (!prev || prev.type !== 'pen') return prev
+
                     const existingPoints = prev.points || []
                     const absolutePoints = existingPoints.map((pt) => ({ x: prev.x + pt.x, y: prev.y + pt.y }))
-                    absolutePoints.push(coords)
+                    const lastPoint = absolutePoints[absolutePoints.length - 1]
+                    const distance = lastPoint
+                        ? Math.hypot(coords.x - lastPoint.x, coords.y - lastPoint.y)
+                        : Infinity
+
+                    if (distance < 0.9) {
+                        return prev
+                    }
+
+                    const nextPoint = lastPoint
+                        ? {
+                              x: lastPoint.x + (coords.x - lastPoint.x) * 0.65,
+                              y: lastPoint.y + (coords.y - lastPoint.y) * 0.65,
+                          }
+                        : coords
+
+                    absolutePoints.push(nextPoint)
 
                     const xs = absolutePoints.map((pt) => pt.x)
                     const ys = absolutePoints.map((pt) => pt.y)
@@ -617,20 +733,14 @@ export const Canvas = forwardRef<CanvasRef, CanvasProps>((props, ref) => {
     `
     }
 
-    const getDraftLineEndpoints = (item: CanvasItem) => {
-        if (item.points && item.points.length >= 2) {
-            const first = item.points[0]!
-            const last = item.points[item.points.length - 1]!
-            return { x1: first.x, y1: first.y, x2: last.x, y2: last.y }
-        }
+    const getDraftLinePoints = (item: CanvasItem) => {
+        if (item.points && item.points.length >= 2) return item.points
         const w = Math.max(item.width || 2, 2)
         const h = Math.max(item.height || 2, 2)
-        return { x1: 2, y1: h / 2, x2: w - 2, y2: h / 2 }
-    }
-
-    const getDraftPenPath = (item: CanvasItem) => {
-        if (!item.points || item.points.length < 2) return ''
-        return item.points.map((pt, idx) => `${idx === 0 ? 'M' : 'L'} ${pt.x} ${pt.y}`).join(' ')
+        return [
+            { x: 2, y: h / 2 },
+            { x: w - 2, y: h / 2 },
+        ]
     }
 
     const getConnectionPath = (x1: number, y1: number, x2: number, y2: number) => {
@@ -640,13 +750,27 @@ export const Canvas = forwardRef<CanvasRef, CanvasProps>((props, ref) => {
         return `M ${x1} ${y1} C ${cp1x} ${y1}, ${cp2x} ${y2}, ${x2} ${y2}`
     }
 
-    const handleItemUpdate = (id: string, updates: Partial<CanvasItem>) => {
-        const newItems = stateRef.current.items.map((item) => (item.id === id ? { ...item, ...updates } : item))
+    const handleItemUpdate = (id: string, updates: Partial<CanvasItem>, options?: UpdateOptions) => {
+        const commitHistory = options?.commitHistory !== false
+        const newItems = stateRef.current.items.map((item) =>
+            item.id === id ? { ...item, ...updates } : item
+        )
+
         setItems(newItems)
-        addToHistory(newItems, stateRef.current.connections)
+        stateRef.current = { ...stateRef.current, items: newItems }
+
+        if (commitHistory) {
+            addToHistory(newItems, stateRef.current.connections)
+        }
     }
 
-    const isDrawCursorTool = ['frame', 'square', 'circle', 'line', 'arrow', 'pen', 'eraser'].includes(activeTool)
+    const handleItemUpdateEnd = () => {
+        addToHistory(stateRef.current.items, stateRef.current.connections)
+    }
+
+    const isDrawCursorTool = ['frame', 'square', 'circle', 'line', 'arrow', 'pen', 'eraser'].includes(
+        activeTool
+    )
 
     return (
         <div
@@ -689,10 +813,24 @@ export const Canvas = forwardRef<CanvasRef, CanvasProps>((props, ref) => {
             >
                 <svg className="absolute inset-0 w-full h-full overflow-visible pointer-events-none z-0">
                     <defs>
-                        <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                        <marker
+                            id="arrowhead"
+                            markerWidth="10"
+                            markerHeight="7"
+                            refX="9"
+                            refY="3.5"
+                            orient="auto"
+                        >
                             <polygon points="0 0, 10 3.5, 0 7" fill="#A09F9D" />
                         </marker>
-                        <marker id="circle-marker" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto">
+                        <marker
+                            id="circle-marker"
+                            markerWidth="8"
+                            markerHeight="8"
+                            refX="4"
+                            refY="4"
+                            orient="auto"
+                        >
                             <circle cx="4" cy="4" r="2.5" fill="#A09F9D" />
                         </marker>
                     </defs>
@@ -744,7 +882,8 @@ export const Canvas = forwardRef<CanvasRef, CanvasProps>((props, ref) => {
                         onDragEnd={handleItemDragEnd}
                         onConnectStart={handleConnectStart}
                         onConnectEnd={handleConnectEnd}
-                        onUpdate={(updates) => handleItemUpdate(item.id, updates)}
+                        onUpdate={(updates, options) => handleItemUpdate(item.id, updates, options)}
+                        onUpdateEnd={handleItemUpdateEnd}
                     />
                 ))}
 
@@ -804,7 +943,14 @@ export const Canvas = forwardRef<CanvasRef, CanvasProps>((props, ref) => {
                             <svg width="100%" height="100%" className="overflow-visible text-[#DDD]">
                                 {tempItem.type === 'arrow' && (
                                     <defs>
-                                        <marker id="draft-arrow-head" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+                                        <marker
+                                            id="draft-arrow-head"
+                                            markerWidth="12"
+                                            markerHeight="12"
+                                            refX="10"
+                                            refY="6"
+                                            orient="auto"
+                                        >
                                             <path
                                                 d="M 2 2 L 10 6 L 2 10"
                                                 fill="none"
@@ -816,14 +962,13 @@ export const Canvas = forwardRef<CanvasRef, CanvasProps>((props, ref) => {
                                         </marker>
                                     </defs>
                                 )}
-                                <line
-                                    x1={getDraftLineEndpoints(tempItem).x1}
-                                    y1={getDraftLineEndpoints(tempItem).y1}
-                                    x2={getDraftLineEndpoints(tempItem).x2}
-                                    y2={getDraftLineEndpoints(tempItem).y2}
+                                <path
+                                    d={buildPolylinePath(getDraftLinePoints(tempItem))}
+                                    fill="none"
                                     stroke="currentColor"
                                     strokeWidth="2"
                                     strokeLinecap="round"
+                                    strokeLinejoin="round"
                                     markerEnd={tempItem.type === 'arrow' ? 'url(#draft-arrow-head)' : undefined}
                                 />
                             </svg>
@@ -832,7 +977,7 @@ export const Canvas = forwardRef<CanvasRef, CanvasProps>((props, ref) => {
                         {tempItem.type === 'pen' && (
                             <svg width="100%" height="100%" className="overflow-visible text-[#DDD]">
                                 <path
-                                    d={getDraftPenPath(tempItem)}
+                                    d={buildSmoothPath(tempItem.points || [])}
                                     fill="none"
                                     stroke="currentColor"
                                     strokeWidth="2"
