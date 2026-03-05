@@ -86,6 +86,8 @@ const changePassword = async (data: ChangePassword) => {
 const connectGithub = async (data: ConnectGithub) => {
     const {username, accessToken, userId} = data
 
+    console.log("inside service: ", username, accessToken, userId)
+
     const updatedUser = await prisma.user.update({
         where: {
             id: userId
@@ -102,9 +104,6 @@ const connectGithub = async (data: ConnectGithub) => {
     }
 
     return updatedUser
-
-
-
 
 }
 
