@@ -1,8 +1,12 @@
 import React from 'react'
 import { motion } from 'framer-motion'
-import { X, Type as TextIcon, ChevronDown } from 'lucide-react'
+import { Type as TextIcon } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import type { CanvasItem } from '../../types'
+import { CanvasDeleteButton } from './CanvasDeleteButton'
+import { CanvasFrameItem } from './CanvasFrameItem'
+import { CanvasVectorItem } from './CanvasVectorItem'
+import { CanvasResizeHandles } from './CanvasResizeHandles'
 
 interface UpdateOptions {
     commitHistory?: boolean
@@ -60,11 +64,11 @@ export const CanvasItemComponent: React.FC<CanvasItemComponentProps> = ({
         }
 
         const defaults = getDefaultSizeByType(item.type)
-        const w = Math.max(item.width || defaults.width, 2)
-        const h = Math.max(item.height || defaults.height, 2)
+        const width = Math.max(item.width || defaults.width, 2)
+        const height = Math.max(item.height || defaults.height, 2)
         return [
-            { x: 2, y: h / 2 },
-            { x: w - 2, y: h / 2 },
+            { x: 2, y: height / 2 },
+            { x: width - 2, y: height / 2 },
         ]
     }, [item.height, item.points, item.type, item.width])
 
@@ -236,20 +240,6 @@ export const CanvasItemComponent: React.FC<CanvasItemComponentProps> = ({
         window.addEventListener('pointerup', handleUp)
     }
 
-    const DeleteButton = () => (
-        <button
-            onClick={(e) => {
-                e.stopPropagation()
-                onRemove()
-            }}
-            className="absolute -top-3 -right-3 bg-black border border-white/10 text-neutral-400 hover:text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-all z-50 hover:bg-neutral-800 hover:border-white/20 shadow-xl scale-75 hover:scale-100"
-            title="Remove item"
-            onPointerDown={(e) => e.stopPropagation()}
-        >
-            <X size={12} strokeWidth={2.5} />
-        </button>
-    )
-
     const handlePointerDown = (e: React.PointerEvent) => {
         if (!isSelectMode) {
             return
@@ -305,41 +295,6 @@ export const CanvasItemComponent: React.FC<CanvasItemComponentProps> = ({
         window.addEventListener('pointerup', handlePointerUp)
     }
 
-    const getFramePath = (w: number, h: number) => {
-        const width = Math.max(w, 50)
-        const height = Math.max(h, 50)
-        const radius = 10
-        const tabHeight = 35
-        const tabWidth = 140
-        const tw = Math.min(tabWidth, width - radius)
-
-        return `
-      M 0 ${radius}
-      Q 0 0 ${radius} 0
-      L ${tw - radius} 0
-      Q ${tw} 0 ${tw} ${radius}
-      L ${tw} ${tabHeight}
-      L ${width - radius} ${tabHeight}
-      Q ${width} ${tabHeight} ${width} ${tabHeight + radius}
-      L ${width} ${height - radius}
-      Q ${width} ${height} ${width - radius} ${height}
-      L ${radius} ${height}
-      Q 0 ${height} 0 ${height - radius}
-      Z
-    `
-    }
-
-    const FRAME_TYPES = [
-        'LANDING',
-        'CONTENT',
-        'AUTH',
-        'DASHBOARD',
-        'LIST',
-        'DETAIL',
-        'ACCOUNT',
-        'CUSTOM',
-    ]
-
     const linePoints = getLinePoints()
     const linePath = buildPolylinePath(linePoints)
     const lineStart = linePoints[0]
@@ -380,7 +335,9 @@ export const CanvasItemComponent: React.FC<CanvasItemComponentProps> = ({
                 item.type === 'image' && !item.width && 'w-80 h-72',
                 item.type === 'frame' && !item.width && 'w-96 h-96',
                 (item.type === 'square' || item.type === 'circle') && !item.width && 'w-32 h-32',
-                (item.type === 'line' || item.type === 'arrow') && !item.width && 'w-48 h-12 flex items-center',
+                (item.type === 'line' || item.type === 'arrow') &&
+                    !item.width &&
+                    'w-48 h-12 flex items-center',
                 item.type === 'pen' && !item.width && 'w-48 h-24'
             )}
         >
@@ -395,18 +352,18 @@ export const CanvasItemComponent: React.FC<CanvasItemComponentProps> = ({
                 />
             )}
 
-            <div className="relative z-10 w-full h-full">
+            <div className="relative z-10 h-full w-full">
                 {item.type === 'note' && (
-                    <div className="relative overflow-hidden shadow-xl bg-[#FEF9C3] text-neutral-900 rounded-xl border border-neutral-200/50">
-                        <DeleteButton />
-                        <div className="p-4 min-h-[160px] flex flex-col">
+                    <div className="relative overflow-hidden rounded-xl border border-neutral-200/50 bg-[#FEF9C3] text-neutral-900 shadow-xl">
+                        <CanvasDeleteButton onRemove={onRemove} />
+                        <div className="flex min-h-[160px] flex-col p-4">
                             <textarea
                                 placeholder="Type text..."
-                                className="w-full h-full bg-transparent border-none outline-none resize-none text-sm font-medium placeholder-neutral-500/50 leading-relaxed text-neutral-900"
+                                className="h-full w-full resize-none border-none bg-transparent text-sm font-medium leading-relaxed text-neutral-900 outline-none placeholder-neutral-500/50"
                                 autoFocus
                                 onPointerDown={(e) => e.stopPropagation()}
                             />
-                            <div className="mt-auto text-[10px] text-neutral-500 font-medium uppercase tracking-wider opacity-50 pt-2 flex items-center gap-1">
+                            <div className="mt-auto flex items-center gap-1 pt-2 text-[10px] font-medium uppercase tracking-wider text-neutral-500 opacity-50">
                                 <TextIcon size={10} />
                                 Text
                             </div>
@@ -415,8 +372,8 @@ export const CanvasItemComponent: React.FC<CanvasItemComponentProps> = ({
                 )}
 
                 {item.type === 'text' && (
-                    <div className="w-full h-full relative">
-                        <DeleteButton />
+                    <div className="relative h-full w-full">
+                        <CanvasDeleteButton onRemove={onRemove} />
                         <textarea
                             defaultValue={item.content || ''}
                             placeholder="Text"
@@ -429,26 +386,26 @@ export const CanvasItemComponent: React.FC<CanvasItemComponentProps> = ({
                                 }
                                 onUpdate && onUpdate({ content: e.target.value })
                             }}
-                            className="w-full h-full bg-transparent resize-none text-[22px] leading-tight font-medium text-[#E8E8E6] placeholder-neutral-500/70 border-none outline-none"
+                            className="h-full w-full resize-none border-none bg-transparent text-[22px] font-medium leading-tight text-[#E8E8E6] outline-none placeholder-neutral-500/70"
                         />
                     </div>
                 )}
 
                 {item.type === 'image' && (
-                    <div className="bg-[#1C1C1E] rounded-xl border border-white/10 overflow-hidden shadow-xl flex flex-col h-full ring-1 ring-black/40 group-hover:border-neutral-700 transition-colors">
-                        {!isChild && <DeleteButton />}
-                        <div className="relative w-full h-[65%] overflow-hidden bg-[#111] border-b border-white/5 group/img">
+                    <div className="flex h-full flex-col overflow-hidden rounded-xl border border-white/10 bg-[#1C1C1E] shadow-xl ring-1 ring-black/40 transition-colors group-hover:border-neutral-700">
+                        {!isChild && <CanvasDeleteButton onRemove={onRemove} />}
+                        <div className="relative h-[65%] w-full overflow-hidden border-b border-white/5 bg-[#111] group/img">
                             <img
                                 src={item.content}
                                 alt=""
-                                className="w-full h-full object-cover opacity-90 group-hover/img:opacity-100 transition-opacity duration-300"
+                                className="h-full w-full object-cover opacity-90 transition-opacity duration-300 group-hover/img:opacity-100"
                                 draggable={false}
                             />
                             {isChild && <div className="absolute inset-0 bg-transparent" />}
                         </div>
-                        <div className="flex-1 p-3 bg-[#222] flex flex-col">
+                        <div className="flex flex-1 flex-col bg-[#222] p-3">
                             <textarea
-                                className="w-full h-full bg-transparent resize-none text-[13px] text-[#E8E8E6] placeholder-neutral-500/70 focus:outline-none leading-relaxed font-sans"
+                                className="h-full w-full resize-none bg-transparent text-[13px] leading-relaxed text-[#E8E8E6] placeholder-neutral-500/70 focus:outline-none font-sans"
                                 placeholder="Describe how to use this image..."
                                 onKeyDown={(e) => e.stopPropagation()}
                                 onPointerDown={(e) => e.stopPropagation()}
@@ -458,266 +415,41 @@ export const CanvasItemComponent: React.FC<CanvasItemComponentProps> = ({
                 )}
 
                 {item.type === 'link' && (
-                    <div className="w-full h-full bg-[#252423] border border-white/10 rounded-xl flex items-center justify-center">
-                        <DeleteButton />
-                        <span className="text-neutral-500 text-xs">{item.content}</span>
+                    <div className="flex h-full w-full items-center justify-center rounded-xl border border-white/10 bg-[#252423]">
+                        <CanvasDeleteButton onRemove={onRemove} />
+                        <span className="text-xs text-neutral-500">{item.content}</span>
                     </div>
                 )}
 
                 {item.type === 'frame' && (
-                    <div className="w-full h-full relative group">
-                        <div className="absolute top-1 right-2 z-50">
-                            <DeleteButton />
-                        </div>
-
-                        <svg
-                            width="100%"
-                            height="100%"
-                            className="overflow-visible"
-                            style={{
-                                filter: isSelected ? 'drop-shadow(0 0 4px rgba(255,255,255,0.1))' : 'none',
-                            }}
-                        >
-                            <path
-                                d={getFramePath(item.width || 320, item.height || 320)}
-                                fill="rgba(255,255,255,0.001)"
-                                stroke={isSelected ? '#E8E8E6' : '#555'}
-                                strokeWidth="2"
-                                strokeDasharray="8 6"
-                                strokeLinejoin="round"
-                                className="transition-colors duration-200"
-                            />
-                        </svg>
-
-                        <div className="absolute top-0 left-0 w-[140px] h-[35px] flex items-center pl-4 pr-3">
-                            <div className="relative w-full group/select h-full flex items-center">
-                                <button
-                                    onClick={(e) => {
-                                        e.stopPropagation()
-                                        setIsDropdownOpen(!isDropdownOpen)
-                                    }}
-                                    className="w-full flex items-center justify-between bg-transparent text-[10px] uppercase font-bold tracking-widest text-neutral-500 hover:text-white transition-colors focus:outline-none"
-                                    onPointerDown={(e) => e.stopPropagation()}
-                                >
-                                    <span>
-                                        {item.content && FRAME_TYPES.includes(item.content.toUpperCase())
-                                            ? item.content.toUpperCase()
-                                            : 'CUSTOM'}
-                                    </span>
-                                    <ChevronDown
-                                        size={10}
-                                        strokeWidth={2.5}
-                                        className={cn('transition-transform', isDropdownOpen ? 'rotate-180' : '')}
-                                    />
-                                </button>
-
-                                {isDropdownOpen && (
-                                    <div
-                                        className="absolute top-full left-0 w-[160px] bg-[#1C1C1E] border border-white/10 rounded-md shadow-2xl z-[100] overflow-hidden flex flex-col py-1 mt-1"
-                                        onPointerDown={(e) => e.stopPropagation()}
-                                    >
-                                        {FRAME_TYPES.map((opt) => (
-                                            <button
-                                                key={opt}
-                                                onClick={(e) => {
-                                                    e.stopPropagation()
-                                                    if (onUpdate) onUpdate({ content: opt }, { commitHistory: false })
-                                                    onUpdateEnd && onUpdateEnd()
-                                                    setIsDropdownOpen(false)
-                                                }}
-                                                className={cn(
-                                                    'text-left px-3 py-3 text-[11px] font-medium tracking-wider hover:bg-[#2A2A2C] transition-colors uppercase',
-                                                    (item.content || 'CUSTOM').toUpperCase() === opt
-                                                        ? 'bg-neutral-800 text-white hover:bg-neutral-700'
-                                                        : 'text-neutral-400 hover:text-white'
-                                                )}
-                                            >
-                                                {opt}
-                                            </button>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-
-                        <div
-                            className="absolute top-1/2 -left-1.5 -translate-y-1/2 w-3 h-3 bg-neutral-600 hover:bg-[#E8E8E6] hover:scale-125 rounded-full cursor-crosshair z-50 transition-all border border-[#1e1e1e]"
-                            onPointerDown={(e) => {
-                                e.stopPropagation()
-                                onConnectStart && onConnectStart(item.id, 'left', e)
-                            }}
-                            onPointerUp={(e) => {
-                                e.stopPropagation()
-                                onConnectEnd && onConnectEnd(item.id, 'left')
-                            }}
-                        />
-
-                        <div
-                            className="absolute top-1/2 -right-1.5 -translate-y-1/2 w-3 h-3 bg-neutral-600 hover:bg-[#E8E8E6] hover:scale-125 rounded-full cursor-crosshair z-50 transition-all border border-[#1e1e1e]"
-                            onPointerDown={(e) => {
-                                e.stopPropagation()
-                                onConnectStart && onConnectStart(item.id, 'right', e)
-                            }}
-                            onPointerUp={(e) => {
-                                e.stopPropagation()
-                                onConnectEnd && onConnectEnd(item.id, 'right')
-                            }}
-                        />
-                    </div>
+                    <CanvasFrameItem
+                        item={item}
+                        isSelected={isSelected}
+                        isDropdownOpen={isDropdownOpen}
+                        setIsDropdownOpen={setIsDropdownOpen}
+                        onRemove={onRemove}
+                        onUpdate={onUpdate}
+                        onUpdateEnd={onUpdateEnd}
+                        onConnectStart={onConnectStart}
+                        onConnectEnd={onConnectEnd}
+                    />
                 )}
 
-                {item.type === 'square' && (
-                    <div className="w-full h-full relative">
-                        <svg width="100%" height="100%" className="w-full h-full block">
-                            <rect
-                                x="2"
-                                y="2"
-                                width="calc(100% - 4px)"
-                                height="calc(100% - 4px)"
-                                rx="12"
-                                fill="transparent"
-                                stroke={isSelected ? '#E8E8E6' : '#9A9A9A'}
-                                strokeWidth="2"
-                                className="group-hover:stroke-neutral-200 transition-colors"
-                            />
-                        </svg>
-                    </div>
-                )}
+                <CanvasVectorItem
+                    item={item}
+                    isSelected={isSelected}
+                    linePath={linePath}
+                    penPath={penPath}
+                />
 
-                {item.type === 'circle' && (
-                    <div className="w-full h-full relative">
-                        <svg width="100%" height="100%" className="w-full h-full block">
-                            <circle
-                                cx="50%"
-                                cy="50%"
-                                r="calc(50% - 2px)"
-                                fill="transparent"
-                                stroke={isSelected ? '#E8E8E6' : '#9A9A9A'}
-                                strokeWidth="2"
-                                className="group-hover:stroke-neutral-200 transition-colors"
-                            />
-                        </svg>
-                    </div>
-                )}
-
-                {item.type === 'line' && (
-                    <div className="w-full h-full flex items-center justify-center relative text-white">
-                        <svg width="100%" height="100%" className="overflow-visible">
-                            <path
-                                d={linePath}
-                                fill="none"
-                                stroke={isSelected ? '#E8E8E6' : '#C9C9C7'}
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                className="group-hover:text-neutral-300 transition-colors"
-                            />
-                        </svg>
-                    </div>
-                )}
-
-                {item.type === 'arrow' && (
-                    <div className="w-full h-full flex items-center relative text-white">
-                        <svg width="100%" height="100%" className="overflow-visible">
-                            <defs>
-                                <marker
-                                    id={`arrow-head-item-${item.id}`}
-                                    markerWidth="12"
-                                    markerHeight="12"
-                                    refX="10"
-                                    refY="6"
-                                    orient="auto"
-                                >
-                                    <path
-                                        d="M 2 2 L 10 6 L 2 10"
-                                        fill="none"
-                                        stroke={isSelected ? '#E8E8E6' : '#C9C9C7'}
-                                        strokeWidth="1.5"
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                    />
-                                </marker>
-                            </defs>
-                            <path
-                                d={linePath}
-                                fill="none"
-                                stroke={isSelected ? '#E8E8E6' : '#C9C9C7'}
-                                strokeWidth="1.6"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                markerEnd={`url(#arrow-head-item-${item.id})`}
-                                className="group-hover:text-neutral-300 transition-colors"
-                            />
-                        </svg>
-                    </div>
-                )}
-
-                {item.type === 'pen' && (
-                    <div className="w-full h-full relative text-white">
-                        <svg width="100%" height="100%" className="overflow-visible">
-                            <path
-                                d={penPath}
-                                fill="none"
-                                stroke={isSelected ? '#E8E8E6' : '#C9C9C7'}
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                            />
-                        </svg>
-                    </div>
-                )}
-
-                {showShapeResizeHandles && (
-                    <>
-                        <div
-                            className="absolute -top-1.5 -left-1.5 w-3 h-3 rounded-full bg-white border border-black/60 cursor-nwse-resize z-50"
-                            onPointerDown={(e) => startShapeResize('nw', e)}
-                        />
-                        <div
-                            className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-3 h-3 rounded-full bg-white border border-black/60 cursor-ns-resize z-50"
-                            onPointerDown={(e) => startShapeResize('n', e)}
-                        />
-                        <div
-                            className="absolute -top-1.5 -right-1.5 w-3 h-3 rounded-full bg-white border border-black/60 cursor-nesw-resize z-50"
-                            onPointerDown={(e) => startShapeResize('ne', e)}
-                        />
-                        <div
-                            className="absolute top-1/2 -right-1.5 -translate-y-1/2 w-3 h-3 rounded-full bg-white border border-black/60 cursor-ew-resize z-50"
-                            onPointerDown={(e) => startShapeResize('e', e)}
-                        />
-                        <div
-                            className="absolute -bottom-1.5 -left-1.5 w-3 h-3 rounded-full bg-white border border-black/60 cursor-nesw-resize z-50"
-                            onPointerDown={(e) => startShapeResize('sw', e)}
-                        />
-                        <div
-                            className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 rounded-full bg-white border border-black/60 cursor-ns-resize z-50"
-                            onPointerDown={(e) => startShapeResize('s', e)}
-                        />
-                        <div
-                            className="absolute -bottom-1.5 -right-1.5 w-3 h-3 rounded-full bg-white border border-black/60 cursor-nwse-resize z-50"
-                            onPointerDown={(e) => startShapeResize('se', e)}
-                        />
-                        <div
-                            className="absolute top-1/2 -left-1.5 -translate-y-1/2 w-3 h-3 rounded-full bg-white border border-black/60 cursor-ew-resize z-50"
-                            onPointerDown={(e) => startShapeResize('w', e)}
-                        />
-                    </>
-                )}
-
-                {showLineHandles && lineStart && lineEnd && (
-                    <>
-                        <div
-                            className="absolute w-3 h-3 rounded-full bg-white border border-black/60 z-50 cursor-pointer"
-                            style={{ left: lineStart.x - 6, top: lineStart.y - 6 }}
-                            onPointerDown={(e) => startLineHandleDrag('start', e)}
-                        />
-                        <div
-                            className="absolute w-3 h-3 rounded-full bg-white border border-black/60 z-50 cursor-pointer"
-                            style={{ left: lineEnd.x - 6, top: lineEnd.y - 6 }}
-                            onPointerDown={(e) => startLineHandleDrag('end', e)}
-                        />
-                    </>
-                )}
+                <CanvasResizeHandles
+                    showShapeResizeHandles={showShapeResizeHandles}
+                    showLineHandles={showLineHandles}
+                    lineStart={lineStart}
+                    lineEnd={lineEnd}
+                    onShapeHandleDown={startShapeResize}
+                    onLineHandleDown={startLineHandleDrag}
+                />
             </div>
         </motion.div>
     )

@@ -7,70 +7,70 @@ import unusedImports from 'eslint-plugin-unused-imports'
 import prettier from 'eslint-config-prettier'
 
 export default [
-  {
-    ignores: [
-      'node_modules',
-      'dist',
-      'build',
-      'coverage',
-      '.next',
-      '.turbo',
-      'bun.lockb',
-      '*.config.js',
-    ],
-  },
-
-  js.configs.recommended,
-  ...tseslint.configs.recommended,
-
-  {
-    files: ['**/*.{ts,tsx,js,jsx}'],
-
-    languageOptions: {
-      ecmaVersion: 'latest',
-      sourceType: 'module',
+    {
+        ignores: [
+            'node_modules',
+            'dist',
+            'build',
+            'coverage',
+            '.next',
+            '.turbo',
+            'bun.lockb',
+            '*.config.js',
+        ],
     },
 
-    plugins: {
-      react,
-      'react-hooks': reactHooks,
-      import: importPlugin,
-      'unused-imports': unusedImports,
-    },
+    js.configs.recommended,
+    ...tseslint.configs.recommended,
 
-    settings: {
-      react: {
-        version: 'detect',
-      },
-    },
+    {
+        files: ['**/*.{ts,tsx,js,jsx}'],
 
-    rules: {
-      'react/react-in-jsx-scope': 'off',
-
-      'react-hooks/rules-of-hooks': 'error',
-      'react-hooks/exhaustive-deps': 'warn',
-
-      'import/order': [
-        'warn',
-        {
-          groups: ['builtin', 'external', 'internal', 'parent', 'sibling', 'index'],
-          'newlines-between': 'always',
+        languageOptions: {
+            ecmaVersion: 'latest',
+            sourceType: 'module',
         },
-      ],
 
-      'unused-imports/no-unused-imports': 'error',
-
-      'unused-imports/no-unused-vars': [
-        'warn',
-        {
-          vars: 'all',
-          varsIgnorePattern: '^_',
-          args: 'after-used',
-          argsIgnorePattern: '^_',
+        plugins: {
+            react,
+            'react-hooks': reactHooks,
+            import: importPlugin,
+            'unused-imports': unusedImports,
         },
-      ],
-    },
-  },
 
-  prettier,
+        settings: {
+            react: {
+                version: 'detect',
+            },
+        },
+
+        rules: {
+            'react/react-in-jsx-scope': 'off',
+
+            'react-hooks/rules-of-hooks': 'error',
+            'react-hooks/exhaustive-deps': 'warn',
+
+            'import/order': [
+                'warn',
+                {
+                    groups: ['builtin', 'external', 'internal', 'parent', 'sibling', 'index'],
+                    'newlines-between': 'always',
+                },
+            ],
+
+            'unused-imports/no-unused-imports': 'error',
+
+            'unused-imports/no-unused-vars': [
+                'warn',
+                {
+                    vars: 'all',
+                    varsIgnorePattern: '^_',
+                    args: 'after-used',
+                    argsIgnorePattern: '^_',
+                },
+            ],
+        },
+    },
+
+    prettier,
 ]
