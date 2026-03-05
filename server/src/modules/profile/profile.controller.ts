@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express'
 import { profileService } from './profile.service'
 import { changePasswordSchema, updateNameSchema } from './profile.schema'
+import { success } from 'zod'
 
 const getProfile = async (req: Request, res: Response) => {
     const userId = req.userId as string | undefined
@@ -104,7 +105,53 @@ const changePassword = async (req: Request, res: Response) => {
     }
 }
 
-const connectGithub = async (req: Request, res: Response) => {}
+const connectGithub = async (req: Request, res: Response) => {
+    const code = req.query.code
+
+    if(!code){
+        return res.status(400).json({
+            success: false,
+            message: "no code provided"
+        })
+    }
+
+    type GithubTokenResponse = {
+        access_token: string
+        token_type: string
+        scope: string
+      }
+      
+      const tokenResponse = await fetch(
+        "https://github.com/login/oauth/access_token",
+        {
+          method: "POST",
+          headers: {
+            Accept: "application/json",
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            client_id: process.env.GITHUB_CLIENT_ID,
+            client_secret: process.env.GITHUB_CLIENT_SECRET,
+            code,
+          }),
+        }
+    )
+      
+    const tokenData = (await tokenResponse.json()) as GithubTokenResponse
+    const accessToken = tokenData.access_token
+
+    const userRes = await fetch("https://api.github.com/user", {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+    })
+      
+    const githubUser = await userRes.json()
+
+    console.log(githubUser)
+
+
+}
 
 export const profileController = {
     getProfile,

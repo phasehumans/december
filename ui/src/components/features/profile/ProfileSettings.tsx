@@ -157,6 +157,15 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut }) =
         updatePasswordMutation.mutate({ password: newPassword })
     }
 
+    const connectGithub = () => {
+        const url =
+          `https://github.com/login/oauth/authorize` +
+          `?client_id=Ov23liFGkTAwCW7E8gtk` +
+          `&scope=repo`
+      
+        window.location.href = url
+    }
+
     const resolvedName = profile?.name ?? 'User'
 
     return (
@@ -262,7 +271,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut }) =
                                     </div>
                                     <Badge
                                         variant={isGithubConnected ? 'success' : 'default'}
-                                        onClick={() => setIsGithubConnected(!isGithubConnected)}
+                                        onClick={connectGithub}
                                         className="cursor-pointer"
                                     >
                                         {isGithubConnected ? 'Connected' : 'Connect'}
