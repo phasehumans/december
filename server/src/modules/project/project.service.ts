@@ -1,4 +1,4 @@
-import { prisma } from '../../utils/db'
+import { prisma } from '../../config/db'
 
 type GetProject = {
     userId: string
