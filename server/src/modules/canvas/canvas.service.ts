@@ -1,13 +1,19 @@
 import { spawn } from "child_process"
-
+import path from "path"
 
 type getWebClips = {
     url: string
 }
 
-const getWebClips = async (data: string) => {
+const getWebClips = async (data: getWebClips) => {
     return new Promise((resolve, reject) => {
-        const worker = spawn("node", ["../../utils/clipper.js", data])
+        const workerPath = path.resolve(
+            process.cwd(),
+            "src",
+            "utils",
+            "clipper.js"
+          )
+        const worker = spawn("node", [workerPath, data.url])
     
         let output = ""
     
@@ -29,7 +35,6 @@ const getWebClips = async (data: string) => {
       })
 }
 
-getWebClips("https://www.notion.com/")
 
 
 export const canvasService = {
