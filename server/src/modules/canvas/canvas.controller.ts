@@ -16,7 +16,7 @@ const getWebClips = async (req: Request, res: Response) => {
     const { url } = parseData.data
 
     try {
-        const result = canvasService.getWebClips({ url })
+        const result = await canvasService.getWebClips({ url })
         return res.status(200).json({
             success: true,
             message: 'webclips fetched successfully',
