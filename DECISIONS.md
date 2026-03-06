@@ -1,5 +1,14 @@
 ## Engineering Decisions @phasehumans
 
+#### 06-03-2026
+
+- worked on web-clipper feature
+- facing err of playwright and bun load browser
+- so spawn a node worker for this playwright, because playwright was working fine with node
+- web-clipper feature is still supporting direct links, in future i will create util to support nested links
+- user gives lovable.com, this util will create arr of all nested links lovable.com/profile , lovable.com/settings ..
+- but nested links should have limits, what if user give amazon.com
+
 #### 03-03-2026
 
 - auth with google is done, let integrate the github

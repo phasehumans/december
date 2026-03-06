@@ -2,7 +2,7 @@ import { prisma } from '../../config/db'
 import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
 import crypto from 'crypto'
-import { sendOTP } from '../../utils/sendEmail'
+import { sendOTP } from '../../utils/sendmail'
 
 type Signup = {
     email: string
