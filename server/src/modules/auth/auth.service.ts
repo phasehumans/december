@@ -1,4 +1,4 @@
-import { prisma } from '../../utils/db'
+import { prisma } from '../../config/db'
 import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
 import crypto from 'crypto'
