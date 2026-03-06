@@ -20,7 +20,7 @@ const getWebClips = async (req: Request, res: Response) => {
         return res.status(200).json({
             success: true,
             message: 'webclips fetched successfully',
-            data: result
+            data: result,
         })
     } catch (error: any) {
         return res.status(500).json({
