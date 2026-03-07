@@ -51,7 +51,7 @@ const ProfileSettingsSkeleton = () => {
 export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut }) => {
     const queryClient = useQueryClient()
     const profileQueryKey = ['profile'] as const
-    const [emailNotifications, setEmailNotifications] = useState(true)
+    // const [emailNotifications, setEmailNotifications] = useState(true)
 
     const [nameModalOpen, setNameModalOpen] = useState(false)
     const [tempName, setTempName] = useState('')
@@ -77,6 +77,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut }) =
     })
 
     const isGithubConnected = profile?.githubConnected ?? false
+    const emailNotifications = profile?.receiveNotification ?? true
 
     const updateNameMutation = useMutation({
         mutationFn: profileAPI.updateName,
@@ -124,6 +125,38 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut }) =
         },
     })
 
+    const updateNotificationMutation = useMutation({
+        mutationFn: profileAPI.updateNotification,
+
+        onMutate: async ({ receiveNotification }) => {
+            setProfileActionError(null)
+
+            await queryClient.cancelQueries({ queryKey: profileQueryKey })
+
+            const previousProfile = queryClient.getQueryData(profileQueryKey)
+
+            queryClient.setQueryData(profileQueryKey, (currentProfile: typeof profile) =>
+                currentProfile ? { ...currentProfile, receiveNotification } : currentProfile
+            )
+
+            return { previousProfile }
+        },
+
+        onError: (error, _variables, context) => {
+            if (context?.previousProfile) {
+                queryClient.setQueryData(profileQueryKey, context.previousProfile)
+            }
+
+            setProfileActionError(
+                error instanceof Error ? error.message : 'Failed to update notifications'
+            )
+        },
+
+        onSettled: () => {
+            queryClient.invalidateQueries({ queryKey: profileQueryKey })
+        },
+    })
+
     const openNameModal = () => {
         setProfileActionError(null)
         setTempName(profile?.name ?? '')
@@ -156,6 +189,12 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut }) =
 
         setProfileActionError(null)
         updatePasswordMutation.mutate({ password: newPassword })
+    }
+
+    const handleNotificationToggle = (value: boolean) => {
+        updateNotificationMutation.mutate({
+            receiveNotification: value,
+        })
     }
 
     const connectGithub = () => {
@@ -246,7 +285,8 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut }) =
                                     action={
                                         <Switch
                                             checked={emailNotifications}
-                                            onCheckedChange={setEmailNotifications}
+                                            onCheckedChange={handleNotificationToggle}
+                                            disabled={updateNotificationMutation.isPending}
                                         />
                                     }
                                 />
