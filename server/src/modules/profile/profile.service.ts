@@ -11,6 +11,11 @@ type ChangePassword = {
     password: string
 }
 
+type updateNotification = {
+    userId: string
+    receiveNotification: boolean
+}
+
 type ConnectGithub = {
     userId: string
     accessToken: string
@@ -83,6 +88,25 @@ const changePassword = async (data: ChangePassword) => {
     return updatedUser
 }
 
+const updateNotification = async (data: updateNotification) => {
+    const { userId, receiveNotification } = data
+
+    const updatedUser = await prisma.user.update({
+        where: {
+            id: userId,
+        },
+        data: {
+            receiveNotification: receiveNotification,
+        },
+    })
+
+    if (!updatedUser) {
+        throw new Error('user not found')
+    }
+
+    return updatedUser
+}
+
 const connectGithub = async (data: ConnectGithub) => {
     const { username, accessToken, userId } = data
 
@@ -110,5 +134,6 @@ export const profileService = {
     getProfile,
     updateName,
     changePassword,
+    updateNotification,
     connectGithub,
 }

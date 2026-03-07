@@ -7,3 +7,7 @@ export const updateNameSchema = z.object({
 export const changePasswordSchema = z.object({
     password: z.string().min(6).max(20),
 })
+
+export const updateNotificationSchema = z.object({
+    receiveNotification: z.boolean(),
+})
