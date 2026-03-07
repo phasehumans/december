@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express'
 import { profileService } from './profile.service'
-import { changePasswordSchema, updateNameSchema } from './profile.schema'
+import { changePasswordSchema, updateNameSchema, updateNotificationSchema } from './profile.schema'
 import { success } from 'zod'
 
 const getProfile = async (req: Request, res: Response) => {
@@ -105,6 +105,42 @@ const changePassword = async (req: Request, res: Response) => {
     }
 }
 
+const updateNotification = async (req: Request, res: Response) => {
+    const parseData = updateNotificationSchema.safeParse(req.body)
+
+    if (!parseData.success) {
+        return res.status(400).json({
+            success: false,
+            message: 'validation failed',
+            errors: parseData.error.flatten().fieldErrors,
+        })
+    }
+
+    const { receiveNotification } = parseData.data
+    const userId = req.userId as string | undefined
+
+    if (!userId) {
+        return res.status(400).json({
+            success: false,
+            message: 'unauthorized',
+        })
+    }
+
+    try {
+        const result = await profileService.updateNotification({ receiveNotification, userId })
+        return res.status(200).json({
+            success: true,
+            message: 'notification preferences updated',
+            data: result,
+        })
+    } catch (error: any) {
+        return res.status(500).json({
+            success: false,
+            errors: error.message,
+        })
+    }
+}
+
 const connectGithub = async (req: Request, res: Response) => {
     const code = req.query.code as string
     const userId = req.query.state as string
@@ -164,5 +200,6 @@ export const profileController = {
     getProfile,
     updateName,
     changePassword,
+    updateNotification,
     connectGithub,
 }
