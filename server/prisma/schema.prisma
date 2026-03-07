@@ -22,19 +22,20 @@ enum ProjectStatus {
 }
 
 model User {
-  id              String    @id @default(uuid())
-  name            String
-  email           String    @unique
-  password        String?
-  emailVerified   Boolean   @default(false)
-  googleId        String?
-  otpHash         String?
-  otpExpiresAt    DateTime?
-  githubUsername  String?
-  githubToken     String?
-  githubConnected Boolean   @default(false)
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  id                  String    @id @default(uuid())
+  name                String
+  email               String    @unique
+  password            String?
+  emailVerified       Boolean   @default(false)
+  receiveNotification Boolean   @default(true)
+  googleId            String?
+  otpHash             String?
+  otpExpiresAt        DateTime?
+  githubUsername      String?
+  githubToken         String?
+  githubConnected     Boolean   @default(false)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 
   projects Project[]
 }
