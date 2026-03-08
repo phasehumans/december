@@ -24,6 +24,11 @@ type DeleteProject = {
     projectId: string
 }
 
+type DuplicateProject = {
+    userId: string
+    projectId: string
+}
+
 const getAllProjects = async (userId: string) => {
     const projects = await prisma.project.findMany({
         where: {
@@ -109,10 +114,37 @@ const deleteProject = async (data: DeleteProject) => {
     return project
 }
 
+const duplicateProject = async (data: DuplicateProject) => {
+    const { projectId, userId } = data
+
+    const project = await prisma.project.findUnique({
+        where: {
+            id: projectId,
+            userId: userId,
+        },
+    })
+
+    if (!project) {
+        throw new Error('project not found')
+    }
+
+    const newProject = await prisma.project.create({
+        data: {
+            name: `copy of ${project.name}`,
+            description: project.description,
+            prompt: project.prompt,
+            userId: userId,
+        },
+    })
+
+    return newProject
+}
+
 export const projectService = {
     getAllProjects,
     getProjectById,
     createProject,
     updateProject,
     deleteProject,
+    duplicateProject,
 }

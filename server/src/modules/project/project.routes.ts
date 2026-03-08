@@ -10,5 +10,6 @@ projectRouter.get('/:projectId', projectController.getProjectById)
 projectRouter.post('/', projectController.createProject)
 projectRouter.patch('/:projectId', projectController.updateProject)
 projectRouter.delete('/:projectId', projectController.deleteProject)
+projectRouter.post('/:projectId/duplicate', projectController.duplicateProject)
 
 export default projectRouter
