@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express'
 import { projectService } from './project.service'
 import { createProjectSchema, updateProjectSchema } from './project.schema'
+import { success } from 'zod'
 
 const getAllProjects = async (req: Request, res: Response) => {
     const userId = req.userId as string | undefined
@@ -173,10 +174,44 @@ const deleteProject = async (req: Request, res: Response) => {
     }
 }
 
+const duplicateProject = async (req: Request, res: Response) => {
+    const userId = req.userId as string | undefined
+    const projectId = req.params.projectId as string | undefined
+
+    if (!userId) {
+        return res.status(400).json({
+            success: false,
+            message: 'unauthorized',
+        })
+    }
+
+    if (!projectId) {
+        return res.status(400).json({
+            success: false,
+            message: 'project id is required',
+        })
+    }
+
+    try {
+        const result = await projectService.duplicateProject({ userId, projectId })
+        return res.status(200).json({
+            success: true,
+            message: 'project duplicated',
+            data: result,
+        })
+    } catch (error: any) {
+        return res.status(500).json({
+            success: false,
+            errors: error.message,
+        })
+    }
+}
+
 export const projectController = {
     getAllProjects,
     getProjectById,
     createProject,
     updateProject,
     deleteProject,
+    duplicateProject,
 }
