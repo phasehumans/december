@@ -1,150 +1,54 @@
-import React, { useState } from 'react'
-import { Icons } from '@/shared/components/ui/Icons'
-import { Button } from '@/shared/components/ui/Button'
-import { Switch } from '@/shared/components/ui/Switch'
-import { Badge } from '@/shared/components/ui/Badge'
-import { Skeleton } from '@/shared/components/ui/Skeleton'
-import { useProfileSettingsData } from '../hooks/useProfileSettingsData'
-import { SettingsSection } from './SettingsSection'
-import { SettingsRow } from './SettingsRow'
+import React from 'react'
+import { useProfileSettingsController } from '../hooks/useProfileSettingsController'
 import { ProfileNameModal } from './ProfileNameModal'
 import { ProfilePasswordModal } from './ProfilePasswordModal'
+import { ProfileSettingsContent } from './ProfileSettingsContent'
+import { ProfileSettingsSkeleton } from './ProfileSettingsSkeleton'
 import type { ProfileSettingsProps } from '@/features/profile/types'
 
-const ProfileSettingsSkeleton = () => {
-    return (
-        <div className="grid min-h-[430px] grid-cols-1 gap-8 lg:grid-cols-2 lg:gap-16">
-            <div className="space-y-8">
-                <SettingsSection title="Profile">
-                    <div className="space-y-4">
-                        <Skeleton className="h-4 w-20" />
-                        <Skeleton className="h-10 w-full" />
-                        <Skeleton className="h-4 w-24" />
-                        <Skeleton className="h-10 w-full" />
-                    </div>
-                </SettingsSection>
-
-                <SettingsSection title="Notifications">
-                    <Skeleton className="h-12 w-full" />
-                </SettingsSection>
-            </div>
-
-            <div className="space-y-8">
-                <SettingsSection title="Integrations">
-                    <Skeleton className="h-20 w-full" />
-                </SettingsSection>
-
-                <SettingsSection title="Billing & Usage">
-                    <Skeleton className="h-16 w-full" />
-                </SettingsSection>
-
-                <Skeleton className="h-10 w-28" />
-            </div>
-        </div>
-    )
-}
-
 export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut }) => {
-    // const [emailNotifications, setEmailNotifications] = useState(true)
-
-    const [nameModalOpen, setNameModalOpen] = useState(false)
-    const [tempName, setTempName] = useState('')
-
-    const [passwordModalOpen, setPasswordModalOpen] = useState(false)
-    const [showCurrentPass, setShowCurrentPass] = useState(false)
-    const [showNewPass, setShowNewPass] = useState(false)
-    const [currentPassword, setCurrentPassword] = useState('')
-    const [newPassword, setNewPassword] = useState('')
-    const [confirmPassword, setConfirmPassword] = useState('')
-
-    const [profileActionError, setProfileActionError] = useState<string | null>(null)
-
     const {
         profile,
-        profileQuery: {
-            isLoading: isProfileLoading,
-            isFetching: isProfileFetching,
-            error: profileError,
-        },
+        isProfileLoading,
+        isProfileFetching,
+        profileError,
+        profileActionError,
+        nameModalOpen,
+        tempName,
+        passwordModalOpen,
+        showCurrentPass,
+        showNewPass,
+        currentPassword,
+        newPassword,
+        confirmPassword,
+        setNameModalOpen,
+        setTempName,
+        setPasswordModalOpen,
+        setShowCurrentPass,
+        setShowNewPass,
+        setCurrentPassword,
+        setNewPassword,
+        setConfirmPassword,
         updateNameMutation,
         updatePasswordMutation,
         updateNotificationMutation,
-    } = useProfileSettingsData({
-        setProfileActionError,
-        onNameMutate: () => {
-            setNameModalOpen(false)
-        },
-        onPasswordSuccess: () => {
-            setPasswordModalOpen(false)
-            setCurrentPassword('')
-            setNewPassword('')
-            setConfirmPassword('')
-        },
-    })
-
-    const isGithubConnected = profile?.githubConnected ?? false
-    const emailNotifications = profile?.receiveNotification ?? true
-
-    const openNameModal = () => {
-        setProfileActionError(null)
-        setTempName(profile?.name ?? '')
-        setNameModalOpen(true)
-    }
-
-    const openPasswordModal = () => {
-        setProfileActionError(null)
-        setPasswordModalOpen(true)
-    }
-
-    const handleSaveName = () => {
-        if (!tempName.trim()) {
-            return
-        }
-
-        updateNameMutation.mutate({ name: tempName.trim() })
-    }
-
-    const handleUpdatePassword = () => {
-        if (!newPassword.trim()) {
-            setProfileActionError('Please enter a new password')
-            return
-        }
-
-        if (newPassword !== confirmPassword) {
-            setProfileActionError('New password and confirm password do not match')
-            return
-        }
-
-        setProfileActionError(null)
-        updatePasswordMutation.mutate({ password: newPassword })
-    }
-
-    const handleNotificationToggle = (value: boolean) => {
-        updateNotificationMutation.mutate({
-            receiveNotification: value,
-        })
-    }
-
-    const connectGithub = () => {
-        const url =
-            `https://github.com/login/oauth/authorize` +
-            `?client_id=Ov23liFGkTAwCW7E8gtk` +
-            `&scope=repo` +
-            `&state=${profile?.id}`
-
-        window.location.href = url
-    }
-
-    const resolvedName = profile?.name ?? 'User'
+        isGithubConnected,
+        emailNotifications,
+        resolvedName,
+        openNameModal,
+        openPasswordModal,
+        handleSaveName,
+        handleUpdatePassword,
+        handleNotificationToggle,
+        connectGithub,
+    } = useProfileSettingsController()
 
     return (
         <div className="relative flex-1 w-full overflow-y-auto bg-background px-6 pb-6 pt-20 font-sans no-scrollbar md:p-10">
             <div className="mx-auto max-w-5xl min-h-[520px]">
                 <div className="mb-8 flex items-end justify-between gap-4">
                     <div>
-                        <h1 className="mb-2 text-3xl font-medium tracking-tight text-textMain">
-                            Settings
-                        </h1>
+                        <h1 className="mb-2 text-3xl font-medium tracking-tight text-textMain">Settings</h1>
                         <p className="text-sm text-neutral-500">Manage your account settings</p>
                     </div>
                     {isProfileFetching && !isProfileLoading && (
@@ -164,119 +68,18 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut }) =
                 {isProfileLoading && !profile ? (
                     <ProfileSettingsSkeleton />
                 ) : (
-                    <div className="grid grid-cols-1 gap-8 lg:grid-cols-2 lg:gap-16">
-                        <div className="space-y-8">
-                            <SettingsSection title="Profile">
-                                <div className="flex flex-col gap-2">
-                                    <label className="text-xs font-medium text-neutral-400">
-                                        Name
-                                    </label>
-                                    <SettingsRow
-                                        label={resolvedName}
-                                        action={
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={openNameModal}
-                                                className="h-7 px-2.5 text-[10px]"
-                                                disabled={!profile}
-                                            >
-                                                Change Name
-                                            </Button>
-                                        }
-                                    />
-                                </div>
-                                <div className="flex flex-col gap-2">
-                                    <label className="text-xs font-medium text-neutral-400">
-                                        Password
-                                    </label>
-                                    <SettingsRow
-                                        label="********"
-                                        action={
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={openPasswordModal}
-                                                className="h-7 px-2.5 text-[10px]"
-                                            >
-                                                Change Password
-                                            </Button>
-                                        }
-                                    />
-                                </div>
-                            </SettingsSection>
-
-                            <SettingsSection title="Notifications">
-                                <SettingsRow
-                                    label="Email Notifications"
-                                    description="Receive updates about activity"
-                                    action={
-                                        <Switch
-                                            checked={emailNotifications}
-                                            onCheckedChange={handleNotificationToggle}
-                                            disabled={updateNotificationMutation.isPending}
-                                        />
-                                    }
-                                />
-                            </SettingsSection>
-                        </div>
-
-                        <div className="space-y-8">
-                            <SettingsSection title="Integrations">
-                                <div className="flex items-center justify-between rounded-xl border border-white/5 bg-surface/20 p-3 transition-colors hover:border-white/10">
-                                    <div className="flex items-center gap-3">
-                                        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/5 text-white">
-                                            <Icons.Github className="h-4 w-4" />
-                                        </div>
-                                        <div>
-                                            <div className="text-sm font-medium text-textMain">
-                                                GitHub
-                                            </div>
-                                            <div className="text-[11px] text-neutral-500">
-                                                {isGithubConnected
-                                                    ? 'Connected'
-                                                    : 'Connect your repositories'}
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <Badge
-                                        variant={isGithubConnected ? 'success' : 'default'}
-                                        onClick={!isGithubConnected ? connectGithub : undefined}
-                                        className="cursor-pointer"
-                                    >
-                                        {isGithubConnected ? 'Connected' : 'Connect'}
-                                    </Badge>
-                                </div>
-                            </SettingsSection>
-
-                            <SettingsSection title="Billing & Usage">
-                                <div className="flex flex-col gap-2">
-                                    <label className="text-xs font-medium text-neutral-400">
-                                        Usage
-                                    </label>
-                                    <div className="rounded-xl border border-white/5 bg-surface/20 p-3">
-                                        <div className="mb-2 flex justify-between text-xs">
-                                            <span className="text-neutral-400">Generations</span>
-                                            <span className="text-textMain">124 / 500</span>
-                                        </div>
-                                        <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/5">
-                                            <div className="h-full w-[25%] rounded-full bg-white" />
-                                        </div>
-                                    </div>
-                                </div>
-                            </SettingsSection>
-
-                            <div className="pt-2">
-                                <Button
-                                    variant="danger"
-                                    onClick={onSignOut}
-                                    className="-ml-2 justify-start border-0 bg-transparent px-2 text-red-400/80 hover:bg-red-500/10 hover:text-red-400"
-                                >
-                                    <Icons.LogOut className="mr-2 h-4 w-4" /> Sign out
-                                </Button>
-                            </div>
-                        </div>
-                    </div>
+                    <ProfileSettingsContent
+                        resolvedName={resolvedName}
+                        hasProfile={Boolean(profile)}
+                        isGithubConnected={isGithubConnected}
+                        emailNotifications={emailNotifications}
+                        isNotificationPending={updateNotificationMutation.isPending}
+                        onOpenNameModal={openNameModal}
+                        onOpenPasswordModal={openPasswordModal}
+                        onNotificationToggle={handleNotificationToggle}
+                        onConnectGithub={connectGithub}
+                        onSignOut={onSignOut}
+                    />
                 )}
             </div>
 

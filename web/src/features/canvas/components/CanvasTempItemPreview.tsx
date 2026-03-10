@@ -1,5 +1,5 @@
 import React from 'react'
-import type { CanvasItemCanvasTempItemPreviewProps } from '@/features/canvas/types'
+import type { CanvasTempItemPreviewProps } from '@/features/canvas/types'
 export const CanvasTempItemPreview: React.FC<CanvasTempItemPreviewProps> = ({
     tempItem,
     buildSmoothPath,
@@ -109,3 +109,4 @@ export const CanvasTempItemPreview: React.FC<CanvasTempItemPreviewProps> = ({
         </div>
     )
 }
+
