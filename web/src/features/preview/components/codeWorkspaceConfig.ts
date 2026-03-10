@@ -8,11 +8,11 @@ import { EditorView, keymap } from '@codemirror/view'
 import { tags } from '@lezer/highlight'
 import type { CodeFile, CodeFilePath } from '@/features/preview/types'
 
-const IDE_BACKGROUND = '#1F1F1F'
-const IDE_SURFACE = '#262626'
-const IDE_BORDER = '#303030'
-const IDE_TEXT = '#E6E6E6'
-const IDE_MUTED = '#9B9B9B'
+const VSCODE_DARK_PLUS_BACKGROUND = '#1e1e1e'
+const VSCODE_DARK_PLUS_TEXT = '#d4d4d4'
+const VSCODE_DARK_PLUS_ACTIVE_LINE = '#2a2d2e'
+const VSCODE_DARK_PLUS_SELECTION = '#264f78'
+const VSCODE_DARK_PLUS_GUTTER_TEXT = '#858585'
 
 export const FILES: CodeFile[] = [
     { path: 'index.html', label: 'index.html', language: 'html' },
@@ -64,102 +64,77 @@ export const applyScriptToHtml = (html: string, script: string) => {
     return `${html}\n${scriptBlock}`
 }
 
-const codeMirrorTheme = EditorView.theme(
+export const vscodeDarkPlusTheme = EditorView.theme(
     {
         '&': {
             height: '100%',
-            backgroundColor: IDE_BACKGROUND,
-            color: IDE_TEXT,
-            fontSize: '13px',
+            backgroundColor: VSCODE_DARK_PLUS_BACKGROUND,
+            color: VSCODE_DARK_PLUS_TEXT,
+            fontFamily: '"JetBrains Mono", "Fira Code", Consolas, monospace',
+            fontSize: '14px',
         },
         '.cm-scroller': {
-            fontFamily:
-                'ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", "Courier New", monospace',
-            lineHeight: '20px',
+            fontFamily: '"JetBrains Mono", "Fira Code", Consolas, monospace',
+            lineHeight: '1.5',
             overflow: 'auto',
         },
         '.cm-content': {
-            padding: '12px 0 16px',
-            caretColor: '#F0F0F0',
+            padding: '8px 0',
+            caretColor: '#ffffff',
         },
         '.cm-line': {
-            paddingLeft: '2px',
+            paddingLeft: '4px',
         },
         '.cm-gutters': {
-            backgroundColor: IDE_BACKGROUND,
-            color: IDE_MUTED,
-            borderRight: `1px solid ${IDE_BORDER}`,
-            minWidth: '44px',
+            backgroundColor: VSCODE_DARK_PLUS_BACKGROUND,
+            color: VSCODE_DARK_PLUS_GUTTER_TEXT,
+            border: 'none',
+            minWidth: '42px',
         },
         '.cm-gutterElement': {
-            padding: '0 10px 0 8px',
+            padding: '0 10px 0 12px',
+        },
+        '.cm-lineNumbers .cm-gutterElement': {
+            textAlign: 'right',
         },
         '.cm-activeLine': {
-            backgroundColor: IDE_SURFACE,
+            backgroundColor: VSCODE_DARK_PLUS_ACTIVE_LINE,
         },
         '.cm-activeLineGutter': {
-            backgroundColor: IDE_SURFACE,
-            color: IDE_TEXT,
+            backgroundColor: VSCODE_DARK_PLUS_ACTIVE_LINE,
+            color: VSCODE_DARK_PLUS_TEXT,
         },
         '.cm-selectionBackground, .cm-content ::selection': {
-            backgroundColor: '#3B3B3B !important',
+            backgroundColor: `${VSCODE_DARK_PLUS_SELECTION} !important`,
         },
         '.cm-cursor, .cm-dropCursor': {
-            borderLeftColor: '#F0F0F0',
-        },
-        '.cm-foldPlaceholder': {
-            backgroundColor: IDE_SURFACE,
-            borderColor: IDE_BORDER,
-            color: IDE_MUTED,
-        },
-        '.cm-matchingBracket': {
-            color: '#E6C07B !important',
-            backgroundColor: '#363129',
-            outline: '1px solid #4E473A',
-        },
-        '.cm-nonmatchingBracket': {
-            color: '#FF6B6B !important',
-        },
-        '.cm-tooltip': {
-            backgroundColor: '#242424',
-            color: IDE_TEXT,
-            border: `1px solid ${IDE_BORDER}`,
-        },
-        '.cm-tooltip-autocomplete > ul': {
-            maxHeight: '220px',
-        },
-        '.cm-tooltip-autocomplete > ul > li[aria-selected]': {
-            backgroundColor: '#323232',
-            color: IDE_TEXT,
-        },
-        '.cm-panels': {
-            backgroundColor: '#242424',
-            borderBottom: `1px solid ${IDE_BORDER}`,
-            color: IDE_TEXT,
-        },
-        '.cm-searchMatch, .cm-selectionMatch': {
-            backgroundColor: '#4A4132',
-            outline: '1px solid #7D6A4A',
+            borderLeftColor: '#ffffff',
         },
     },
     { dark: true }
 )
 
-const codeMirrorHighlightStyle = HighlightStyle.define([
-    { tag: [tags.comment, tags.meta], color: '#8C8C8C' },
+export const vscodeDarkPlusHighlightStyle = HighlightStyle.define([
     {
-        tag: [tags.keyword, tags.operatorKeyword, tags.controlKeyword, tags.modifier],
-        color: '#E4A95F',
+        tag: [tags.keyword, tags.controlKeyword, tags.operatorKeyword, tags.modifier],
+        color: '#569CD6',
     },
-    { tag: [tags.string, tags.special(tags.string)], color: '#94C79C' },
-    { tag: [tags.number, tags.bool, tags.null], color: '#D48AA6' },
-    { tag: [tags.tagName, tags.className, tags.typeName], color: '#8DB5F2' },
-    { tag: [tags.attributeName, tags.propertyName], color: '#E1BE8A' },
-    { tag: [tags.function(tags.variableName), tags.labelName], color: '#8BC0F2' },
-    { tag: [tags.variableName, tags.name], color: IDE_TEXT },
-    { tag: [tags.operator, tags.punctuation, tags.bracket], color: '#CFCFCF' },
-    { tag: tags.invalid, color: '#FF6B6B' },
+    { tag: [tags.string, tags.special(tags.string)], color: '#CE9178' },
+    { tag: [tags.number, tags.bool, tags.null], color: '#B5CEA8' },
+    { tag: tags.comment, color: '#6A9955', fontStyle: 'italic' },
+    { tag: [tags.variableName, tags.propertyName, tags.attributeName], color: '#9CDCFE' },
+    {
+        tag: [tags.function(tags.variableName), tags.function(tags.propertyName), tags.labelName],
+        color: '#DCDCAA',
+    },
+    { tag: [tags.typeName, tags.className, tags.namespace], color: '#4EC9B0' },
+    { tag: [tags.operator, tags.punctuation, tags.bracket, tags.separator], color: '#D4D4D4' },
 ])
+
+export const vscodeDarkPlusExtensions: Extension[] = [
+    vscodeDarkPlusTheme,
+    syntaxHighlighting(vscodeDarkPlusHighlightStyle),
+]
 
 export const getSharedEditorExtensions = (): Extension[] => [
     EditorState.tabSize.of(2),
@@ -171,8 +146,7 @@ export const getSharedEditorExtensions = (): Extension[] => [
         'data-gramm': 'false',
     }),
     keymap.of([indentWithTab]),
-    codeMirrorTheme,
-    syntaxHighlighting(codeMirrorHighlightStyle),
+    ...vscodeDarkPlusExtensions,
 ]
 
 export const getLanguageExtension = (language: CodeFile['language']): Extension => {
