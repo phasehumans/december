@@ -14,7 +14,7 @@ export const CodeWorkspaceStatusBar: React.FC<CodeWorkspaceStatusBarProps> = ({
     chars,
 }) => {
     return (
-        <div className="h-8 shrink-0 px-4 flex items-center justify-between text-[11px] border-t border-[#303030] bg-[#1F1F1F] text-[#8E8E8E]">
+        <div className="h-8 shrink-0 px-4 flex items-center justify-between text-[11px] border-t border-[#2d2d2d] bg-[#1e1e1e] text-[#858585]">
             <span>
                 Ln {line}, Col {column}
             </span>

@@ -85,7 +85,7 @@ export const CodeWorkspaceEditorPane: React.FC<CodeWorkspaceEditorPaneProps> = (
     }, [activeFile.path, value])
 
     return (
-        <div className="flex-1 min-w-0 min-h-0 flex flex-col bg-[#1F1F1F]">
+        <div className="flex-1 min-w-0 min-h-0 flex flex-col bg-[#1e1e1e]">
             <CodeWorkspaceEditorHeader activeFile={activeFile} />
 
             <div className="flex-1 min-h-0">

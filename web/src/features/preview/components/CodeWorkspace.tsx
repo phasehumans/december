@@ -62,7 +62,7 @@ export const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({ html, onHtmlChange
     }
 
     return (
-        <div className="flex-1 min-h-0 flex overflow-hidden bg-[#1F1F1F] border-t border-[#303030]">
+        <div className="flex-1 min-h-0 flex overflow-hidden bg-[#1e1e1e] border-t border-[#2d2d2d]">
             <CodeWorkspaceFileSidebar
                 files={FILES}
                 selectedFile={selectedFile}

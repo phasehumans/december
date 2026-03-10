@@ -19,10 +19,10 @@ const getLanguageLabel = (language: CodeFile['language']) => {
 
 export const CodeWorkspaceEditorHeader: React.FC<CodeWorkspaceEditorHeaderProps> = ({ activeFile }) => {
     return (
-        <div className="h-11 shrink-0 px-4 flex items-center justify-between text-xs border-b border-[#303030] bg-[#1F1F1F]">
+        <div className="h-11 shrink-0 px-4 flex items-center justify-between text-xs border-b border-[#2d2d2d] bg-[#1e1e1e]">
             <div className="flex items-center gap-2 min-w-0">
-                <span className="text-[#E6E6E6] truncate">{activeFile.label}</span>
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#252525] text-[#A0A0A0] border border-[#343434]">
+                <span className="text-[#d4d4d4] truncate">{activeFile.label}</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#252525] text-[#858585] border border-[#2d2d2d]">
                     {getLanguageLabel(activeFile.language)}
                 </span>
             </div>
