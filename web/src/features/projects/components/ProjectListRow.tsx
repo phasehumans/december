@@ -78,6 +78,3 @@ export const ProjectListRow: React.FC<ProjectListRowProps> = ({
         </div>
     )
 }
-
-
-

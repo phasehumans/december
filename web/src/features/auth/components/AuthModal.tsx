@@ -77,7 +77,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             return
         }
 
-        
         loginMutation.mutate({ email, password })
     }
 

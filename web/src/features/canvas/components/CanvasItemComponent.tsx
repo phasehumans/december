@@ -434,6 +434,3 @@ export const CanvasItemComponent: React.FC<CanvasItemComponentProps> = ({
         </motion.div>
     )
 }
-
-
-

@@ -156,6 +156,3 @@ export const CanvasFrameItem: React.FC<CanvasFrameItemProps> = ({
         </div>
     )
 }
-
-
-

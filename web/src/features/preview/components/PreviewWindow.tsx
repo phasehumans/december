@@ -98,5 +98,3 @@ const PreviewWindow: React.FC<PreviewWindowProps> = ({
 }
 
 export default PreviewWindow
-
-

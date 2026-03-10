@@ -111,5 +111,3 @@ export const ChatPromptInput: React.FC<ChatPromptInputProps> = ({
         </div>
     )
 }
-
-

@@ -46,5 +46,3 @@ export const SidebarSectionHeader: React.FC<SidebarSectionHeaderProps> = ({
         </button>
     )
 }
-
-

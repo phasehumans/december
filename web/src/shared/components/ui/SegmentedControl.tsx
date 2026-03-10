@@ -51,5 +51,3 @@ export const SegmentedControl = <T extends string>({
         </div>
     )
 }
-
-

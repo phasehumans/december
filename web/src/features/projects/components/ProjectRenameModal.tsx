@@ -42,5 +42,3 @@ export const ProjectRenameModal: React.FC<ProjectRenameModalProps> = ({
         </Modal>
     )
 }
-
-

@@ -148,5 +148,3 @@ export const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({ html, onHtmlChange
         </div>
     )
 }
-
-

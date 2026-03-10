@@ -232,5 +232,3 @@ export const OutputHeader: React.FC<OutputHeaderProps> = ({
         </header>
     )
 }
-
-

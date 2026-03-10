@@ -38,5 +38,3 @@ export const Avatar: React.FC<AvatarProps> = ({ src, fallback, size = 'md', clas
         </div>
     )
 }
-
-

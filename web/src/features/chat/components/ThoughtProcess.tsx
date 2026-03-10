@@ -82,5 +82,3 @@ export const ThoughtProcess: React.FC<ThoughtProcessProps> = ({
         </div>
     )
 }
-
-

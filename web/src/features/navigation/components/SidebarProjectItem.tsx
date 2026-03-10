@@ -12,5 +12,3 @@ export const SidebarProjectItem: React.FC<SidebarProjectItemProps> = ({ title, o
         </button>
     )
 }
-
-

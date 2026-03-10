@@ -35,5 +35,3 @@ export const ProjectDeleteModal: React.FC<ProjectDeleteModalProps> = ({
         </Modal>
     )
 }
-
-

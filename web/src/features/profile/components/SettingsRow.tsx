@@ -23,5 +23,3 @@ export const SettingsRow: React.FC<SettingsRowProps> = ({
         </div>
     )
 }
-
-

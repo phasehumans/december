@@ -36,5 +36,3 @@ export const Badge: React.FC<BadgeProps> = ({
         </div>
     )
 }
-
-

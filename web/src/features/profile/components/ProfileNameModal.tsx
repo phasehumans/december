@@ -33,5 +33,3 @@ export const ProfileNameModal: React.FC<ProfileNameModalProps> = ({
         </Modal>
     )
 }
-
-

@@ -122,5 +122,3 @@ const PromptInput: React.FC<PromptInputProps> = ({
 }
 
 export default PromptInput
-
-
