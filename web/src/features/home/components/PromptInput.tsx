@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { useTypewriter } from '../hooks/useTypewriter'
-import { PromptPlaceholder } from '@/shared/components/ui/PromptPlaceholder'
 import { PromptFooter } from '@/shared/components/ui/PromptFooter'
+import { PromptInputPlaceholder } from './PromptInputPlaceholder'
 import type { PromptInputProps } from '@/features/home/types'
 
 const PromptInput: React.FC<PromptInputProps> = ({
@@ -20,6 +20,8 @@ const PromptInput: React.FC<PromptInputProps> = ({
 
     const isControlled = value !== undefined
     const input = isControlled ? value : internalInput
+    const displayText = useTypewriter({ minimized, placeholder })
+    const shouldShowPlaceholder = !input && !minimized && !placeholder
 
     const handleAuthCheck = (action: () => void) => {
         if (!isAuthenticated && onOpenAuth) {
@@ -36,9 +38,6 @@ const PromptInput: React.FC<PromptInputProps> = ({
         onChange?.(val)
     }
 
-    const displayText = useTypewriter({ minimized, placeholder })
-
-    // Auto-resize textarea
     useEffect(() => {
         if (textareaRef.current) {
             textareaRef.current.style.height = 'auto'
@@ -46,8 +45,8 @@ const PromptInput: React.FC<PromptInputProps> = ({
         }
     }, [input])
 
-    const handleSubmit = (e?: React.FormEvent) => {
-        e?.preventDefault()
+    const handleSubmit = (event?: React.FormEvent) => {
+        event?.preventDefault()
         handleAuthCheck(() => {
             if (!input?.trim() || isLoading) return
             onSubmit(input)
@@ -57,19 +56,15 @@ const PromptInput: React.FC<PromptInputProps> = ({
         })
     }
 
-    const handleKeyDown = (e: React.KeyboardEvent) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault()
+    const handleKeyDown = (event: React.KeyboardEvent) => {
+        if (event.key === 'Enter' && !event.shiftKey) {
+            event.preventDefault()
             handleSubmit()
         }
     }
 
-    const shouldShowPlaceholder = !input && !minimized && !placeholder
-
     return (
-        <div
-            className={`relative w-full transition-all duration-300 ${minimized ? 'max-w-full' : 'max-w-3xl'}`}
-        >
+        <div className={`relative w-full transition-all duration-300 ${minimized ? 'max-w-full' : 'max-w-3xl'}`}>
             <div
                 className={`
         relative group rounded-[17px] bg-[#242322] border border-[#363534]
@@ -77,28 +72,15 @@ const PromptInput: React.FC<PromptInputProps> = ({
         transition-all duration-300 ease-out flex flex-col
       `}
             >
-                {/* Placeholder Layer (Absolute) */}
-                {shouldShowPlaceholder && (
-                    <>
-                        <div className="hidden md:block">
-                            <PromptPlaceholder displayText={displayText} />
-                        </div>
-                        <div className="md:hidden absolute left-5 top-[18px] text-[#6C6A69] pointer-events-none select-none truncate max-w-[calc(100%-60px)] text-[15px] font-medium">
-                            Ask PhaseHumans to create...
-                        </div>
-                    </>
-                )}
+                <PromptInputPlaceholder shouldShow={shouldShowPlaceholder} displayText={displayText} />
 
                 <div className="flex items-start w-full relative">
-                    {/* Input Area */}
                     <textarea
                         ref={textareaRef}
                         value={input}
-                        onChange={(e) => handleInputChange(e.target.value)}
+                        onChange={(event) => handleInputChange(event.target.value)}
                         onKeyDown={handleKeyDown}
-                        placeholder={
-                            minimized || placeholder ? placeholder || 'Ask a follow-up...' : ''
-                        }
+                        placeholder={minimized || placeholder ? placeholder || 'Ask a follow-up...' : ''}
                         className={`
                 w-full bg-transparent text-[#D6D5D4] caret-white
                 resize-none focus:outline-none z-10 font-sans font-medium leading-relaxed
@@ -109,7 +91,6 @@ const PromptInput: React.FC<PromptInputProps> = ({
                     />
                 </div>
 
-                {/* Footer of Input */}
                 <PromptFooter
                     onUpload={() => handleAuthCheck(() => onUpload?.())}
                     onSubmit={() => handleSubmit()}
