@@ -17,7 +17,12 @@ interface ChatMessageActionsProps {
     onFeedbackChange: (feedback: FeedbackType) => void
 }
 
-const ChatActionButton: React.FC<ChatActionButtonProps> = ({ icon: Icon, title, isActive, onClick }) => {
+const ChatActionButton: React.FC<ChatActionButtonProps> = ({
+    icon: Icon,
+    title,
+    isActive,
+    onClick,
+}) => {
     return (
         <button
             onClick={onClick}
@@ -32,7 +37,10 @@ const ChatActionButton: React.FC<ChatActionButtonProps> = ({ icon: Icon, title, 
     )
 }
 
-export const ChatMessageActions: React.FC<ChatMessageActionsProps> = ({ feedback, onFeedbackChange }) => {
+export const ChatMessageActions: React.FC<ChatMessageActionsProps> = ({
+    feedback,
+    onFeedbackChange,
+}) => {
     return (
         <div className="flex items-center justify-between pt-3 mt-2">
             <div className="flex items-center gap-2">

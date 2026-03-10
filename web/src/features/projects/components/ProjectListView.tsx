@@ -1,5 +1,3 @@
-
-
 import React from 'react'
 import { Skeleton } from '@/shared/components/ui/Skeleton'
 import { ProjectListRow } from './ProjectListRow'
@@ -72,7 +70,9 @@ export const ProjectListView: React.FC<ProjectListViewProps> = ({
             <div className="mb-12 flex items-end justify-between gap-4">
                 <div className="flex flex-col gap-2">
                     <h1 className="text-3xl font-medium tracking-tight text-textMain">Projects</h1>
-                    <p className="max-w-md text-sm leading-relaxed text-neutral-500">Manage your projects</p>
+                    <p className="max-w-md text-sm leading-relaxed text-neutral-500">
+                        Manage your projects
+                    </p>
                 </div>
                 {isFetching && !isInitialLoading && (
                     <div className="text-xs text-neutral-500">Syncing projects...</div>

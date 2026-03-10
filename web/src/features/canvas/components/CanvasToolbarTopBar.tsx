@@ -26,7 +26,11 @@ interface CanvasToolbarTopBarProps {
 }
 
 interface ToolbarAction {
-    icon: React.ComponentType<{ className?: string; size?: number | string; strokeWidth?: number | string }>
+    icon: React.ComponentType<{
+        className?: string
+        size?: number | string
+        strokeWidth?: number | string
+    }>
     label: string
     onClick: () => void
     isActive?: boolean
@@ -57,27 +61,82 @@ export const CanvasToolbarTopBar: React.FC<CanvasToolbarTopBarProps> = ({
     onOpenHelp,
 }) => {
     const navigationActions: ToolbarAction[] = [
-        { icon: MousePointer2, label: 'Selector', onClick: () => onSelectTool('select'), isActive: activeTool === 'select' },
-        { icon: Hand, label: 'Pan Tool', onClick: () => onSelectTool('hand'), isActive: activeTool === 'hand' },
+        {
+            icon: MousePointer2,
+            label: 'Selector',
+            onClick: () => onSelectTool('select'),
+            isActive: activeTool === 'select',
+        },
+        {
+            icon: Hand,
+            label: 'Pan Tool',
+            onClick: () => onSelectTool('hand'),
+            isActive: activeTool === 'hand',
+        },
     ]
 
     const assetActions: ToolbarAction[] = [
         { icon: ImageIcon, label: 'Upload Image', onClick: onUploadImage },
-        { icon: Globe, label: 'Upload Website', onClick: onToggleLinkInput, isActive: isLinkInputOpen },
+        {
+            icon: Globe,
+            label: 'Upload Website',
+            onClick: onToggleLinkInput,
+            isActive: isLinkInputOpen,
+        },
     ]
 
     const drawingActions: ToolbarAction[] = [
-        { icon: Frame, label: 'Frame Tool', onClick: () => onSelectTool('frame'), isActive: activeTool === 'frame' },
-        { icon: Pen, label: 'Pen Tool', onClick: () => onSelectTool('pen'), isActive: activeTool === 'pen' },
-        { icon: Eraser, label: 'Eraser Tool', onClick: () => onSelectTool('eraser'), isActive: activeTool === 'eraser' },
+        {
+            icon: Frame,
+            label: 'Frame Tool',
+            onClick: () => onSelectTool('frame'),
+            isActive: activeTool === 'frame',
+        },
+        {
+            icon: Pen,
+            label: 'Pen Tool',
+            onClick: () => onSelectTool('pen'),
+            isActive: activeTool === 'pen',
+        },
+        {
+            icon: Eraser,
+            label: 'Eraser Tool',
+            onClick: () => onSelectTool('eraser'),
+            isActive: activeTool === 'eraser',
+        },
     ]
 
     const shapeActions: ToolbarAction[] = [
-        { icon: Square, label: 'Rectangle', onClick: () => onSelectTool('square'), isActive: activeTool === 'square' },
-        { icon: Circle, label: 'Circle', onClick: () => onSelectTool('circle'), isActive: activeTool === 'circle' },
-        { icon: Minus, label: 'Line', onClick: () => onSelectTool('line'), isActive: activeTool === 'line' },
-        { icon: ArrowRight, label: 'Arrow', onClick: () => onSelectTool('arrow'), isActive: activeTool === 'arrow' },
-        { icon: TextIcon, label: 'Text', onClick: () => onSelectTool('text'), isActive: activeTool === 'text' },
+        {
+            icon: Square,
+            label: 'Rectangle',
+            onClick: () => onSelectTool('square'),
+            isActive: activeTool === 'square',
+        },
+        {
+            icon: Circle,
+            label: 'Circle',
+            onClick: () => onSelectTool('circle'),
+            isActive: activeTool === 'circle',
+        },
+        {
+            icon: Minus,
+            label: 'Line',
+            onClick: () => onSelectTool('line'),
+            isActive: activeTool === 'line',
+        },
+        {
+            icon: ArrowRight,
+            label: 'Arrow',
+            onClick: () => onSelectTool('arrow'),
+            isActive: activeTool === 'arrow',
+        },
+        {
+            icon: TextIcon,
+            label: 'Text',
+            onClick: () => onSelectTool('text'),
+            isActive: activeTool === 'text',
+        },
     ]
 
     return (
@@ -90,7 +149,10 @@ export const CanvasToolbarTopBar: React.FC<CanvasToolbarTopBarProps> = ({
             <div className="w-px h-5 bg-white/10 mx-1" />
             {renderGroup(shapeActions)}
             <div className="w-px h-5 bg-white/10 mx-1" />
-            {renderGroup([{ icon: Info, label: 'How to use', onClick: onOpenHelp }], 'flex items-center gap-0.5 pr-0.5')}
+            {renderGroup(
+                [{ icon: Info, label: 'How to use', onClick: onOpenHelp }],
+                'flex items-center gap-0.5 pr-0.5'
+            )}
         </div>
     )
 }

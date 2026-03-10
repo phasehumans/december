@@ -34,7 +34,10 @@ const pageVariants = {
     exit: { opacity: 0, y: -4 },
 }
 
-const AnimatedPage: React.FC<{ pageKey: string; children: React.ReactNode }> = ({ pageKey, children }) => {
+const AnimatedPage: React.FC<{ pageKey: string; children: React.ReactNode }> = ({
+    pageKey,
+    children,
+}) => {
     return (
         <motion.div
             key={pageKey}

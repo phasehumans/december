@@ -37,7 +37,7 @@ export const extractFilesFromHtml = (html: string): Record<CodeFilePath, string>
 }
 
 export const applyStylesToHtml = (html: string, styles: string) => {
-    const styleBlock = `<style>\n${styles}\n    </style>`
+    const styleBlock = `<style>\n${styles}\n</style>`
 
     if (STYLE_BLOCK_REGEX.test(html)) {
         return html.replace(STYLE_BLOCK_REGEX, styleBlock)
@@ -51,7 +51,7 @@ export const applyStylesToHtml = (html: string, styles: string) => {
 }
 
 export const applyScriptToHtml = (html: string, script: string) => {
-    const scriptBlock = `<script>\n${script}\n    </script>`
+    const scriptBlock = `<script>\n${script}\n</script>`
 
     if (INLINE_SCRIPT_REGEX.test(html)) {
         return html.replace(INLINE_SCRIPT_REGEX, scriptBlock)
@@ -73,40 +73,52 @@ export const vscodeDarkPlusTheme = EditorView.theme(
             fontFamily: '"JetBrains Mono", "Fira Code", Consolas, monospace',
             fontSize: '14px',
         },
+
         '.cm-scroller': {
+            backgroundColor: VSCODE_DARK_PLUS_BACKGROUND,
             fontFamily: '"JetBrains Mono", "Fira Code", Consolas, monospace',
             lineHeight: '1.5',
             overflow: 'auto',
         },
+
         '.cm-content': {
+            backgroundColor: VSCODE_DARK_PLUS_BACKGROUND,
             padding: '8px 0',
             caretColor: '#ffffff',
         },
+
         '.cm-line': {
             paddingLeft: '4px',
         },
+
         '.cm-gutters': {
             backgroundColor: VSCODE_DARK_PLUS_BACKGROUND,
             color: VSCODE_DARK_PLUS_GUTTER_TEXT,
             border: 'none',
             minWidth: '42px',
         },
+
         '.cm-gutterElement': {
             padding: '0 10px 0 12px',
         },
+
         '.cm-lineNumbers .cm-gutterElement': {
             textAlign: 'right',
         },
+
         '.cm-activeLine': {
             backgroundColor: VSCODE_DARK_PLUS_ACTIVE_LINE,
         },
+
         '.cm-activeLineGutter': {
             backgroundColor: VSCODE_DARK_PLUS_ACTIVE_LINE,
             color: VSCODE_DARK_PLUS_TEXT,
         },
+
         '.cm-selectionBackground, .cm-content ::selection': {
             backgroundColor: `${VSCODE_DARK_PLUS_SELECTION} !important`,
         },
+
         '.cm-cursor, .cm-dropCursor': {
             borderLeftColor: '#ffffff',
         },
@@ -150,14 +162,8 @@ export const getSharedEditorExtensions = (): Extension[] => [
 ]
 
 export const getLanguageExtension = (language: CodeFile['language']): Extension => {
-    if (language === 'html') {
-        return htmlLanguage()
-    }
-
-    if (language === 'css') {
-        return cssLanguage()
-    }
-
+    if (language === 'html') return htmlLanguage()
+    if (language === 'css') return cssLanguage()
     return javascript()
 }
 

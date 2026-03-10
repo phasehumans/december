@@ -11,7 +11,9 @@ export const useOutputScreenController = ({ isGenerating }: UseOutputScreenContr
     const [device, setDevice] = React.useState<PreviewDevice>('desktop')
     const [previewHtml, setPreviewHtml] = React.useState(PREVIEW_HTML)
     const [isVisualMode, setIsVisualMode] = React.useState(false)
-    const [selectedElement, setSelectedElement] = React.useState<PreviewSelectedElement | null>(null)
+    const [selectedElement, setSelectedElement] = React.useState<PreviewSelectedElement | null>(
+        null
+    )
     const [editPrompt, setEditPrompt] = React.useState('')
     const [isApplyingEdit, setIsApplyingEdit] = React.useState(false)
     const [isChatSidebarCollapsed, setIsChatSidebarCollapsed] = React.useState(false)

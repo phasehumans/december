@@ -48,7 +48,9 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut }) =
             <div className="mx-auto max-w-5xl min-h-[520px]">
                 <div className="mb-8 flex items-end justify-between gap-4">
                     <div>
-                        <h1 className="mb-2 text-3xl font-medium tracking-tight text-textMain">Settings</h1>
+                        <h1 className="mb-2 text-3xl font-medium tracking-tight text-textMain">
+                            Settings
+                        </h1>
                         <p className="text-sm text-neutral-500">Manage your account settings</p>
                     </div>
                     {isProfileFetching && !isProfileLoading && (

@@ -133,10 +133,13 @@ export interface CanvasVectorItemProps {
 }
 
 export interface ToolButtonProps {
-    icon: ComponentType<{ className?: string; size?: number | string; strokeWidth?: number | string }>
+    icon: ComponentType<{
+        className?: string
+        size?: number | string
+        strokeWidth?: number | string
+    }>
     label: string
     isActive?: boolean
     onClick?: () => void
     disabled?: boolean
 }
-

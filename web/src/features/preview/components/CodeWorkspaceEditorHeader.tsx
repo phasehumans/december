@@ -17,7 +17,9 @@ const getLanguageLabel = (language: CodeFile['language']) => {
     return 'JavaScript'
 }
 
-export const CodeWorkspaceEditorHeader: React.FC<CodeWorkspaceEditorHeaderProps> = ({ activeFile }) => {
+export const CodeWorkspaceEditorHeader: React.FC<CodeWorkspaceEditorHeaderProps> = ({
+    activeFile,
+}) => {
     return (
         <div className="h-11 shrink-0 px-4 flex items-center justify-between text-xs border-b border-[#2d2d2d] bg-[#1e1e1e]">
             <div className="flex items-center gap-2 min-w-0">

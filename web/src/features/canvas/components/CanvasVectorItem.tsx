@@ -1,9 +1,15 @@
 import React from 'react'
 import type { CanvasVectorItemProps } from '@/features/canvas/types'
 
-const getStroke = (isSelected: boolean, inactiveColor: string) => (isSelected ? '#E8E8E6' : inactiveColor)
+const getStroke = (isSelected: boolean, inactiveColor: string) =>
+    isSelected ? '#E8E8E6' : inactiveColor
 
-export const CanvasVectorItem: React.FC<CanvasVectorItemProps> = ({ item, isSelected, linePath, penPath }) => {
+export const CanvasVectorItem: React.FC<CanvasVectorItemProps> = ({
+    item,
+    isSelected,
+    linePath,
+    penPath,
+}) => {
     const selectedStroke = getStroke(isSelected, '#9A9A9A')
     const lineStroke = getStroke(isSelected, '#C9C9C7')
 
@@ -63,7 +69,14 @@ export const CanvasVectorItem: React.FC<CanvasVectorItemProps> = ({ item, isSele
                 <div className="relative flex h-full w-full items-center text-white">
                     <svg width="100%" height="100%" className="overflow-visible">
                         <defs>
-                            <marker id={`arrow-head-item-${item.id}`} markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+                            <marker
+                                id={`arrow-head-item-${item.id}`}
+                                markerWidth="12"
+                                markerHeight="12"
+                                refX="10"
+                                refY="6"
+                                orient="auto"
+                            >
                                 <path
                                     d="M 2 2 L 10 6 L 2 10"
                                     fill="none"

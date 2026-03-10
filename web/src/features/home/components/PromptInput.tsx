@@ -64,7 +64,9 @@ const PromptInput: React.FC<PromptInputProps> = ({
     }
 
     return (
-        <div className={`relative w-full transition-all duration-300 ${minimized ? 'max-w-full' : 'max-w-3xl'}`}>
+        <div
+            className={`relative w-full transition-all duration-300 ${minimized ? 'max-w-full' : 'max-w-3xl'}`}
+        >
             <div
                 className={`
         relative group rounded-[17px] bg-[#242322] border border-[#363534]
@@ -72,7 +74,10 @@ const PromptInput: React.FC<PromptInputProps> = ({
         transition-all duration-300 ease-out flex flex-col
       `}
             >
-                <PromptInputPlaceholder shouldShow={shouldShowPlaceholder} displayText={displayText} />
+                <PromptInputPlaceholder
+                    shouldShow={shouldShowPlaceholder}
+                    displayText={displayText}
+                />
 
                 <div className="flex items-start w-full relative">
                     <textarea
@@ -80,7 +85,9 @@ const PromptInput: React.FC<PromptInputProps> = ({
                         value={input}
                         onChange={(event) => handleInputChange(event.target.value)}
                         onKeyDown={handleKeyDown}
-                        placeholder={minimized || placeholder ? placeholder || 'Ask a follow-up...' : ''}
+                        placeholder={
+                            minimized || placeholder ? placeholder || 'Ask a follow-up...' : ''
+                        }
                         className={`
                 w-full bg-transparent text-[#D6D5D4] caret-white
                 resize-none focus:outline-none z-10 font-sans font-medium leading-relaxed
