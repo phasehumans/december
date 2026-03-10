@@ -1,6 +1,11 @@
 import React, { useEffect, useState } from 'react'
 import { useProjectListMutations } from '../hooks/useProjectListMutations'
-import type { DeleteModalState, Project, ProjectListProps, RenameModalState } from '@/features/projects/types'
+import type {
+    DeleteModalState,
+    Project,
+    ProjectListProps,
+    RenameModalState,
+} from '@/features/projects/types'
 import { ProjectListView } from './ProjectListView'
 import { ProjectListModals } from './ProjectListModals'
 
@@ -12,8 +17,15 @@ export const ProjectList: React.FC<ProjectListProps> = ({
     errorMessage,
 }) => {
     const [menuOpenId, setMenuOpenId] = useState<string | null>(null)
-    const [renameModal, setRenameModal] = useState<RenameModalState>({ isOpen: false, project: null, value: '' })
-    const [deleteModal, setDeleteModal] = useState<DeleteModalState>({ isOpen: false, project: null })
+    const [renameModal, setRenameModal] = useState<RenameModalState>({
+        isOpen: false,
+        project: null,
+        value: '',
+    })
+    const [deleteModal, setDeleteModal] = useState<DeleteModalState>({
+        isOpen: false,
+        project: null,
+    })
     const [actionError, setActionError] = useState<string | null>(null)
     const isInitialLoading = isLoading && projects.length === 0
 
@@ -56,7 +68,10 @@ export const ProjectList: React.FC<ProjectListProps> = ({
     const handleRename = (event: React.FormEvent) => {
         event.preventDefault()
         if (!renameModal.project || !renameModal.value.trim()) return
-        renameMutation.mutate({ projectId: renameModal.project.id, rename: renameModal.value.trim() })
+        renameMutation.mutate({
+            projectId: renameModal.project.id,
+            rename: renameModal.value.trim(),
+        })
     }
 
     const handleDelete = () => {
@@ -89,7 +104,9 @@ export const ProjectList: React.FC<ProjectListProps> = ({
                 isRenamePending={renameMutation.isPending}
                 isDeletePending={deleteMutation.isPending}
                 onCloseRename={() => setRenameModal((prev) => ({ ...prev, isOpen: false }))}
-                onRenameChange={(nextValue) => setRenameModal((prev) => ({ ...prev, value: nextValue }))}
+                onRenameChange={(nextValue) =>
+                    setRenameModal((prev) => ({ ...prev, value: nextValue }))
+                }
                 onRenameSubmit={handleRename}
                 onCloseDelete={() => setDeleteModal((prev) => ({ ...prev, isOpen: false }))}
                 onDeleteConfirm={handleDelete}

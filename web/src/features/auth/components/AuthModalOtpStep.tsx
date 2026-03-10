@@ -25,8 +25,9 @@ export const AuthModalOtpStep: React.FC<AuthModalOtpStepProps> = ({
                     Verify your email
                 </h2>
                 <p className="text-xs text-neutral-400 text-center mt-2 max-w-[280px]">
-                    We sent a verification code to <span className="text-white font-medium">{email}</span>.
-                    Enter it below to create your account.
+                    We sent a verification code to{' '}
+                    <span className="text-white font-medium">{email}</span>. Enter it below to
+                    create your account.
                 </p>
             </div>
 
@@ -50,7 +51,12 @@ export const AuthModalOtpStep: React.FC<AuthModalOtpStepProps> = ({
 
                 {errorMessage && <p className="text-xs text-red-400 text-center">{errorMessage}</p>}
 
-                <Button type="submit" className="w-full mt-2" disabled={otp.some((digit) => !digit)} isLoading={isPending}>
+                <Button
+                    type="submit"
+                    className="w-full mt-2"
+                    disabled={otp.some((digit) => !digit)}
+                    isLoading={isPending}
+                >
                     <span>Verify & Create Account</span>
                 </Button>
 

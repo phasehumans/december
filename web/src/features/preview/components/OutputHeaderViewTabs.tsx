@@ -41,7 +41,10 @@ export const OutputHeaderViewTabs: React.FC<OutputHeaderViewTabsProps> = ({
 }) => {
     return (
         <div className="flex items-center gap-2">
-            <button onClick={onBack} className="md:hidden p-1.5 text-[#91908F] hover:text-white mr-2">
+            <button
+                onClick={onBack}
+                className="md:hidden p-1.5 text-[#91908F] hover:text-white mr-2"
+            >
                 <ChevronLeft size={20} />
             </button>
 
@@ -64,7 +67,12 @@ export const OutputHeaderViewTabs: React.FC<OutputHeaderViewTabsProps> = ({
                     activeTab={activeTab}
                     onSelect={setActiveTab}
                 />
-                <ViewModeTab label="Code" tab="code" activeTab={activeTab} onSelect={setActiveTab} />
+                <ViewModeTab
+                    label="Code"
+                    tab="code"
+                    activeTab={activeTab}
+                    onSelect={setActiveTab}
+                />
                 <ViewModeTab
                     label="Canvas"
                     tab="canvas"

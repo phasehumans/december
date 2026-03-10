@@ -21,10 +21,8 @@ export const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({ html, onHtmlChange
         setFiles(extractFilesFromHtml(html))
     }, [html])
 
-    const activeFile: CodeFile =
-        FILES.find((file) => file.path === selectedFile) ??
-        FILES[0] ??
-        { path: 'index.html', label: 'index.html', language: 'html' }
+    const activeFile: CodeFile = FILES.find((file) => file.path === selectedFile) ??
+        FILES[0] ?? { path: 'index.html', label: 'index.html', language: 'html' }
 
     const sharedExtensions = React.useMemo(() => getSharedEditorExtensions(), [])
 

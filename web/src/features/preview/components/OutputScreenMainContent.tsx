@@ -62,7 +62,9 @@ export const OutputScreenMainContent: React.FC<OutputScreenMainContentProps> = (
                 />
             )}
 
-            {activeTab === 'code' && <CodeWorkspace html={previewHtml} onHtmlChange={setPreviewHtml} />}
+            {activeTab === 'code' && (
+                <CodeWorkspace html={previewHtml} onHtmlChange={setPreviewHtml} />
+            )}
 
             {activeTab === 'canvas' && (
                 <div className="flex-1 min-h-0 p-2 bg-[#0F0F0F]">

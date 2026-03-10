@@ -109,4 +109,3 @@ export const CanvasTempItemPreview: React.FC<CanvasTempItemPreviewProps> = ({
         </div>
     )
 }
-

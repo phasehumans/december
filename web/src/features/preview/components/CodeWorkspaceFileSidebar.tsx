@@ -17,7 +17,9 @@ export const CodeWorkspaceFileSidebar: React.FC<CodeWorkspaceFileSidebarProps> =
     return (
         <aside className="w-56 shrink-0 border-r border-[#2d2d2d] bg-[#1e1e1e] flex flex-col">
             <div className="h-10 px-3 flex items-center justify-between border-b border-[#2d2d2d]">
-                <span className="text-[11px] tracking-[0.1em] uppercase text-[#858585]">Explorer</span>
+                <span className="text-[11px] tracking-[0.1em] uppercase text-[#858585]">
+                    Explorer
+                </span>
                 <span className="text-[11px] text-[#858585]">{files.length}</span>
             </div>
             <div className="p-1.5 space-y-0.5 overflow-auto">
@@ -37,7 +39,10 @@ export const CodeWorkspaceFileSidebar: React.FC<CodeWorkspaceFileSidebarProps> =
                         >
                             <FileText
                                 size={14}
-                                className={cn('shrink-0', isActive ? 'text-[#d4d4d4]' : 'text-[#858585]')}
+                                className={cn(
+                                    'shrink-0',
+                                    isActive ? 'text-[#d4d4d4]' : 'text-[#858585]'
+                                )}
                             />
                             <span className="truncate">{file.label}</span>
                         </button>

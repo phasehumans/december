@@ -7,7 +7,10 @@ interface MobileSidebarHeaderProps {
     onNewThread: () => void
 }
 
-export const MobileSidebarHeader: React.FC<MobileSidebarHeaderProps> = ({ onClose, onNewThread }) => {
+export const MobileSidebarHeader: React.FC<MobileSidebarHeaderProps> = ({
+    onClose,
+    onNewThread,
+}) => {
     return (
         <div className="px-4 mb-6 flex items-center justify-between min-h-[40px]">
             <div

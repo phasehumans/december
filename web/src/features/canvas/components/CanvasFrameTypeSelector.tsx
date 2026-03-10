@@ -3,7 +3,16 @@ import { ChevronDown } from 'lucide-react'
 import { cn } from '@/shared/lib/utils'
 import type { CanvasFrameItemProps } from '@/features/canvas/types'
 
-const FRAME_TYPES = ['LANDING', 'CONTENT', 'AUTH', 'DASHBOARD', 'LIST', 'DETAIL', 'ACCOUNT', 'CUSTOM']
+const FRAME_TYPES = [
+    'LANDING',
+    'CONTENT',
+    'AUTH',
+    'DASHBOARD',
+    'LIST',
+    'DETAIL',
+    'ACCOUNT',
+    'CUSTOM',
+]
 
 interface CanvasFrameTypeSelectorProps {
     content?: string
@@ -33,7 +42,9 @@ export const CanvasFrameTypeSelector: React.FC<CanvasFrameTypeSelectorProps> = (
                     className="w-full flex items-center justify-between bg-transparent text-[10px] uppercase font-bold tracking-widest text-neutral-500 hover:text-white transition-colors focus:outline-none"
                     onPointerDown={(event) => event.stopPropagation()}
                 >
-                    <span>{FRAME_TYPES.includes(normalizedContent) ? normalizedContent : 'CUSTOM'}</span>
+                    <span>
+                        {FRAME_TYPES.includes(normalizedContent) ? normalizedContent : 'CUSTOM'}
+                    </span>
                     <ChevronDown
                         size={10}
                         strokeWidth={2.5}
@@ -51,7 +62,8 @@ export const CanvasFrameTypeSelector: React.FC<CanvasFrameTypeSelectorProps> = (
                                 key={option}
                                 onClick={(event) => {
                                     event.stopPropagation()
-                                    if (onUpdate) onUpdate({ content: option }, { commitHistory: false })
+                                    if (onUpdate)
+                                        onUpdate({ content: option }, { commitHistory: false })
                                     onUpdateEnd?.()
                                     setIsDropdownOpen(false)
                                 }}
