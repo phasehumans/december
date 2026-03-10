@@ -1,1 +1,2 @@
-export { Icons } from './components/ui/Icons'
+export { Icons } from './shared/components/ui/Icons'
+

@@ -1,20 +1,21 @@
 import React, { useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import Sidebar from './components/Sidebar'
-import { MobileSidebar } from './components/MobileSidebar'
-import { AuthModal } from './components/AuthModal'
-import { OutputScreen } from './components/OutputScreen'
-import { Icons } from './components/ui/Icons'
+import Sidebar from './features/navigation/components/Sidebar'
+import { MobileSidebar } from './features/navigation/components/MobileSidebar'
+import { AuthModal } from './features/auth/components/AuthModal'
+import { OutputScreen } from './features/preview/components/OutputScreen'
+import { Icons } from './shared/components/ui/Icons'
 
-import { HomeHero } from './components/features/home/HomeHero'
-import { ProjectList } from './components/features/projects/ProjectList'
-import { ProfileSettings } from './components/features/profile/ProfileSettings'
+import { HomeHero } from './features/home/components/HomeHero'
+import { ProjectList } from './features/projects/components/ProjectList'
+import { ProfileSettings } from './features/profile/components/ProfileSettings'
 
-import type { Message, Project } from './types'
-import { PREVIEW_HTML } from './constants/preview'
-import { clearAuthToken, getAuthToken, setAuthToken } from './api/client'
-import { projectAPI, type BackendProject } from './api/project'
+import type { Message } from './features/chat/types'
+import type { Project } from './features/projects/types'
+import { PREVIEW_HTML } from './features/preview/constants/preview'
+import { clearAuthToken, getAuthToken, setAuthToken } from './shared/api/client'
+import { projectAPI, type BackendProject } from './features/projects/api/project'
 
 type ViewState = 'chat' | 'all-projects' | 'profile'
 
@@ -272,3 +273,5 @@ const App: React.FC = () => {
 }
 
 export default App
+
+
