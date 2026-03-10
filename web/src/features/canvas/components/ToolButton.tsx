@@ -16,5 +16,3 @@ export const ToolButton: React.FC<ToolButtonProps> = ({ icon: Icon, label, onCli
         <Icon size={18} strokeWidth={2} />
     </button>
 )
-
-

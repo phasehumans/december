@@ -54,5 +54,3 @@ export const SidebarFooter: React.FC<SidebarFooterProps> = ({
         </div>
     )
 }
-
-

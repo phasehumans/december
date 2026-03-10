@@ -91,5 +91,3 @@ export const PreviewArea: React.FC<PreviewAreaProps> = ({
         </div>
     )
 }
-
-

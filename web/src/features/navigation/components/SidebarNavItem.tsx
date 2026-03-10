@@ -31,5 +31,3 @@ export const SidebarNavItem: React.FC<SidebarNavItemProps> = ({
         {!collapsed && <span className="font-medium text-sm whitespace-nowrap">{label}</span>}
     </button>
 )
-
-

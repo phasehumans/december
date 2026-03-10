@@ -27,4 +27,3 @@ export const Logo = ({ className = '', showText = true }: LogoProps) => {
 }
 
 export default Logo
-

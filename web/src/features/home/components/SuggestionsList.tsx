@@ -47,4 +47,3 @@ export const SuggestionsList: React.FC<SuggestionsListProps> = ({
         </div>
     )
 }
-

@@ -199,5 +199,3 @@ export const OutputScreen: React.FC<OutputScreenProps> = ({ onBack, isGenerating
         </div>
     )
 }
-
-

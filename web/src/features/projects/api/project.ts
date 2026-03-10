@@ -58,4 +58,3 @@ export const projectAPI = {
     updateProject,
     deleteProject,
 }
-

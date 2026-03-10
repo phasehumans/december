@@ -76,5 +76,3 @@ export const ProfilePasswordModal: React.FC<ProfilePasswordModalProps> = ({
         </Modal>
     )
 }
-
-

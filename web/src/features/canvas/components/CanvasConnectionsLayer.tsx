@@ -68,6 +68,3 @@ export const CanvasConnectionsLayer: React.FC<CanvasConnectionsLayerProps> = ({
         </svg>
     )
 }
-
-
-

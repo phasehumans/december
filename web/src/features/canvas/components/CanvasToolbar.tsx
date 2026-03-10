@@ -273,6 +273,3 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
         </div>
     )
 }
-
-
-

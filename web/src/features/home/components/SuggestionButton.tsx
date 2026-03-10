@@ -11,4 +11,3 @@ export const SuggestionButton: React.FC<SuggestionButtonProps> = ({ label, onCli
         </button>
     )
 }
-

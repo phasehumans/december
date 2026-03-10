@@ -11,4 +11,3 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({ title, childre
         </section>
     )
 }
-

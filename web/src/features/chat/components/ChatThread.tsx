@@ -102,5 +102,3 @@ export const ChatThread: React.FC<ChatSidebarProps> = ({
         </aside>
     )
 }
-
-

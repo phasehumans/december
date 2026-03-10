@@ -17,4 +17,3 @@ export const CanvasDeleteButton: React.FC<CanvasDeleteButtonProps> = ({ onRemove
         </button>
     )
 }
-

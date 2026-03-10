@@ -119,5 +119,3 @@ export const CanvasVectorItem: React.FC<CanvasVectorItemProps> = ({
 
     return null
 }
-
-

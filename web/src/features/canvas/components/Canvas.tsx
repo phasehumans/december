@@ -3,7 +3,12 @@ import { CanvasToolbar } from './CanvasToolbar'
 import { CanvasItemComponent } from './CanvasItemComponent'
 import { CanvasConnectionsLayer } from './CanvasConnectionsLayer'
 import { CanvasTempItemPreview } from './CanvasTempItemPreview'
-import type { CanvasConnection, CanvasItem, CanvasProps, CanvasUpdateOptions as UpdateOptions } from '@/features/canvas/types'
+import type {
+    CanvasConnection,
+    CanvasItem,
+    CanvasProps,
+    CanvasUpdateOptions as UpdateOptions,
+} from '@/features/canvas/types'
 export interface CanvasRef {
     triggerImageUpload: () => void
 }
@@ -936,6 +941,3 @@ export const Canvas = forwardRef<CanvasRef, CanvasProps>((props, ref) => {
 })
 
 export default Canvas
-
-
-
