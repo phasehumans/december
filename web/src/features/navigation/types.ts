@@ -1,0 +1,63 @@
+import type { ReactNode } from 'react'
+import type { Project } from '@/features/projects/types'
+
+export interface NavigationState {
+    isCollapsed: boolean
+}
+
+export interface SidebarProps {
+    onNewThread: () => void
+    onAllProjects: () => void
+    onProfile: () => void
+    isAuthenticated: boolean
+    onOpenAuth: () => void
+    projects: Project[]
+    isProjectsLoading: boolean
+}
+
+export interface MobileSidebarProps {
+    isOpen: boolean
+    onClose: () => void
+    onNewThread: () => void
+    onAllProjects: () => void
+    onProfile: () => void
+    isAuthenticated: boolean
+    onOpenAuth: () => void
+    projects: Project[]
+    isProjectsLoading: boolean
+}
+
+export interface SidebarHeaderProps {
+    isCollapsed: boolean
+    onToggleCollapse: () => void
+    onNewThread: () => void
+}
+
+export interface SidebarFooterProps {
+    isAuthenticated: boolean
+    isCollapsed: boolean
+    onProfile: () => void
+    onOpenAuth: () => void
+}
+
+export interface SidebarNavItemProps {
+    icon: ReactNode
+    label: string
+    active?: boolean
+    collapsed?: boolean
+    onClick?: () => void
+}
+
+export interface SidebarProjectItemProps {
+    id: string
+    title: string
+    onClick?: () => void
+}
+
+export interface SidebarSectionHeaderProps {
+    label: string
+    icon: ReactNode
+    collapsed?: boolean
+    isOpen?: boolean
+    onToggle: () => void
+}

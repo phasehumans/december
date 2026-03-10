@@ -20,6 +20,7 @@
         "typescript": "^5"
     },
     "dependencies": {
+        "@openai/agents": "^0.5.4",
         "@playwright/test": "^1.58.2",
         "@prisma/adapter-pg": "^7.4.0",
         "@prisma/client": "^7.4.0",
@@ -30,6 +31,7 @@
         "express": "^5.2.1",
         "google-auth-library": "^10.6.1",
         "jsonwebtoken": "^9.0.3",
+        "openai": "^6.27.0",
         "pg": "^8.18.0",
         "playwright": "^1.58.2",
         "resend": "^6.9.3",
