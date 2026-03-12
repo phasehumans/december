@@ -1,3 +1,4 @@
+import { extractProjectIntent } from '../../core/agents/prompt.agent'
 import { cleanPrompt } from '../../utils/cleanPrompt'
 
 type generateWebsite = {
@@ -5,11 +6,13 @@ type generateWebsite = {
     userId: string
 }
 
-const generateWebsite = (data: generateWebsite) => {
+const generateWebsite = async (data: generateWebsite) => {
     const { prompt, userId } = data
 
-    const cprompt = cleanPrompt(prompt)
-    console.log(cprompt)
+    const userPrompt = cleanPrompt(prompt)
+    const result = await extractProjectIntent(userPrompt)
+
+    return result
 }
 
 export const generateService = {
