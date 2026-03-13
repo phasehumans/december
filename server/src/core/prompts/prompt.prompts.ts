@@ -1,4 +1,4 @@
-const FEATURE_EXTRACTION_PROMPT = `You are a project intent extraction agent for a UI generator.
+export const FEATURE_EXTRACTION_PROMPT = `You are a project intent extraction agent for a UI generator.
 
 Read the user's prompt and return ONLY valid JSON.
 No markdown.
@@ -46,5 +46,3 @@ Return exactly this shape:
   "sections": ["string"],
   "styling": ["string"]
 }`
-
-export { FEATURE_EXTRACTION_PROMPT }

@@ -1,3 +1,4 @@
+import { extractProjectPlan } from '../../core/agents/plan.agent'
 import { extractProjectIntent } from '../../core/agents/prompt.agent'
 import { cleanPrompt } from '../../utils/cleanPrompt'
 
@@ -10,9 +11,12 @@ const generateWebsite = async (data: generateWebsite) => {
     const { prompt, userId } = data
 
     const userPrompt = cleanPrompt(prompt)
-    const result = await extractProjectIntent(userPrompt)
-
-    return result
+    // console.log(userPrompt)
+    const projectIntent = await extractProjectIntent(userPrompt)
+    // console.log(projectIntent)
+    const projectPlan = await extractProjectPlan(projectIntent)
+    // console.log(projectPlan)
+    return projectPlan
 }
 
 export const generateService = {
