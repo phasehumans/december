@@ -1,8 +1,8 @@
 import OpenAI from 'openai'
-import dotenv from 'dotenv'
+// import dotenv from 'dotenv'
 import { FEATURE_EXTRACTION_PROMPT } from '../prompts/prompt.prompts'
 
-dotenv.config()
+// dotenv.config()
 
 const openai = new OpenAI({
     baseURL: 'https://openrouter.ai/api/v1',

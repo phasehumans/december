@@ -1,7 +1,7 @@
 import OpenAI from 'openai'
-import dotenv from 'dotenv'
+// import dotenv from 'dotenv'
 import { PLAN_AGENT_PROMPT } from '../prompts/plan.prompts'
-dotenv.config()
+// dotenv.config()
 
 const openai = new OpenAI({
     baseURL: 'https://openrouter.ai/api/v1',

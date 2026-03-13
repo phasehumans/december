@@ -1,5 +1,14 @@
 ## Engineering Decisions @phasehumans
 
+### 13-03-2026
+
+- added prompt and planner agent in the system, deefine to have 5 agents
+- prompt | plan | build | fix | edit -> these are 5 agents
+- till now implemented this 2 prompt and plan agent
+- prompt agent main goal is to take user vague input and turn it into structure intent
+- later this struture intent is passed to plan agent and it turns that into a struct of file and dependency plan
+- file {} of path, access, summary; no code write till now; same for dependency {}
+
 #### 06-03-2026
 
 - worked on web-clipper feature
