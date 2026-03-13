@@ -25,15 +25,18 @@ const ProjectListAreaSkeleton: React.FC = () => {
             {Array.from({ length: 6 }).map((_, index) => (
                 <div
                     key={`project-list-skeleton-${index}`}
-                    className="grid grid-cols-12 items-center gap-4 rounded-xl px-6 py-4"
+                    className="grid grid-cols-[minmax(0,1fr)_auto_2.5rem_2.5rem] items-center gap-3 rounded-xl px-5 py-4 md:gap-4"
                 >
-                    <div className="col-span-6">
+                    <div>
                         <Skeleton className="h-4 w-56 max-w-full" />
                     </div>
-                    <div className="col-span-4">
+                    <div>
                         <Skeleton className="h-3.5 w-24" />
                     </div>
-                    <div className="col-span-2 flex justify-end">
+                    <div className="flex justify-center">
+                        <Skeleton className="h-8 w-8 rounded-lg" />
+                    </div>
+                    <div className="flex justify-center">
                         <Skeleton className="h-8 w-8 rounded-lg" />
                     </div>
                 </div>
@@ -77,10 +80,11 @@ export const ProjectListView: React.FC<ProjectListViewProps> = ({
                 </div>
             )}
 
-            <div className="mb-2 grid grid-cols-12 gap-4 border-b border-white/5 px-6 py-3 text-[11px] font-medium uppercase tracking-wider text-neutral-500 select-none">
-                <div className="col-span-6">Name</div>
-                <div className="col-span-4">Last Edited</div>
-                <div className="col-span-2 text-right"></div>
+            <div className="mb-2 grid grid-cols-[minmax(0,1fr)_auto_2.5rem_2.5rem] gap-3 border-b border-white/5 px-5 py-3 text-[11px] font-medium uppercase tracking-wider text-neutral-500 select-none md:gap-4">
+                <div>Name</div>
+                <div className="pr-2">Last Edited</div>
+                <div className="text-center">Star</div>
+                <div></div>
             </div>
 
             {isInitialLoading ? (
