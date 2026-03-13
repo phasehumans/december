@@ -30,9 +30,17 @@ export const useAppController = () => {
         enabled: isAuthenticated,
         placeholderData: (previousData) => previousData,
         select: (backendProjects) =>
-            backendProjects
-                .map(mapBackendProjectToUIProject)
-                .sort((a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: 'base' })),
+            [...backendProjects]
+                .sort((a, b) => {
+                    const updatedAtDiff = new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+
+                    if (updatedAtDiff !== 0) {
+                        return updatedAtDiff
+                    }
+
+                    return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
+                })
+                .map(mapBackendProjectToUIProject),
     })
 
     const requireAuthOr = (action: () => void) => {
