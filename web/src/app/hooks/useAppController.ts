@@ -32,7 +32,8 @@ export const useAppController = () => {
         select: (backendProjects) =>
             [...backendProjects]
                 .sort((a, b) => {
-                    const updatedAtDiff = new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+                    const updatedAtDiff =
+                        new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
 
                     if (updatedAtDiff !== 0) {
                         return updatedAtDiff
