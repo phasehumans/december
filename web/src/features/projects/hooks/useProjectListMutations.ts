@@ -7,6 +7,7 @@ const projectQueryKey = ['projects'] as const
 type UseProjectListMutationsOptions = {
     setActionError: (message: string | null) => void
     onRenameMutate: () => void
+    onDuplicateMutate: () => void
     onDeleteMutate: () => void
 }
 
@@ -21,6 +22,7 @@ const getErrorMessage = (error: unknown, fallback: string) => {
 export const useProjectListMutations = ({
     setActionError,
     onRenameMutate,
+    onDuplicateMutate,
     onDeleteMutate,
 }: UseProjectListMutationsOptions) => {
     const queryClient = useQueryClient()
@@ -91,6 +93,24 @@ export const useProjectListMutations = ({
         },
     })
 
+    const duplicateMutation = useMutation({
+        mutationFn: (projectId: string) => projectAPI.duplicateProject(projectId),
+        onMutate: async () => {
+            setActionError(null)
+            await queryClient.cancelQueries({ queryKey: projectQueryKey })
+            onDuplicateMutate()
+        },
+        onError: (error) => {
+            setActionError(getErrorMessage(error, 'Failed to duplicate project'))
+        },
+        onSuccess: () => {
+            setActionError(null)
+        },
+        onSettled: () => {
+            queryClient.invalidateQueries({ queryKey: projectQueryKey })
+        },
+    })
+
     const deleteMutation = useMutation({
         mutationFn: (projectId: string) => projectAPI.deleteProject(projectId),
         onMutate: async (projectId) => {
@@ -125,6 +145,7 @@ export const useProjectListMutations = ({
     return {
         toggleStarMutation,
         renameMutation,
+        duplicateMutation,
         deleteMutation,
     }
 }

@@ -10,6 +10,7 @@ export const ProjectListRow: React.FC<ProjectListRowProps> = ({
     onToggleStar,
     onToggleMenu,
     onOpenRename,
+    onOpenDuplicate,
     onOpenDelete,
 }) => {
     return (
@@ -63,6 +64,12 @@ export const ProjectListRow: React.FC<ProjectListRowProps> = ({
                                 className="mx-1 flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-[13px] text-neutral-300 transition-colors hover:bg-white/5 hover:text-white"
                             >
                                 <Icons.Edit className="h-3.5 w-3.5" /> Rename
+                            </button>
+                            <button
+                                onClick={(e) => onOpenDuplicate(project, e)}
+                                className="mx-1 flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-[13px] text-neutral-300 transition-colors hover:bg-white/5 hover:text-white"
+                            >
+                                <Icons.Copy className="h-3.5 w-3.5" /> Duplicate
                             </button>
                             <div className="mx-1 my-1 h-px bg-white/5" />
                             <button

@@ -51,10 +51,17 @@ const deleteProject = (projectId: string) => {
     })
 }
 
+const duplicateProject = (projectId: string) => {
+    return apiRequest<BackendProject>(`/project/${projectId}/duplicate`, {
+        method: 'POST',
+    })
+}
+
 export const projectAPI = {
     getProjects,
     getProject,
     createProject,
     updateProject,
     deleteProject,
+    duplicateProject,
 }

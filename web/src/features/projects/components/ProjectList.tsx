@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { useProjectListMutations } from '../hooks/useProjectListMutations'
 import type {
     DeleteModalState,
+    DuplicateModalState,
     Project,
     ProjectListProps,
     RenameModalState,
@@ -22,6 +23,10 @@ export const ProjectList: React.FC<ProjectListProps> = ({
         project: null,
         value: '',
     })
+    const [duplicateModal, setDuplicateModal] = useState<DuplicateModalState>({
+        isOpen: false,
+        project: null,
+    })
     const [deleteModal, setDeleteModal] = useState<DeleteModalState>({
         isOpen: false,
         project: null,
@@ -35,11 +40,13 @@ export const ProjectList: React.FC<ProjectListProps> = ({
         return () => window.removeEventListener('click', handleClickOutside)
     }, [menuOpenId])
 
-    const { toggleStarMutation, renameMutation, deleteMutation } = useProjectListMutations({
-        setActionError,
-        onRenameMutate: () => setRenameModal({ isOpen: false, project: null, value: '' }),
-        onDeleteMutate: () => setDeleteModal({ isOpen: false, project: null }),
-    })
+    const { toggleStarMutation, renameMutation, duplicateMutation, deleteMutation } =
+        useProjectListMutations({
+            setActionError,
+            onRenameMutate: () => setRenameModal({ isOpen: false, project: null, value: '' }),
+            onDuplicateMutate: () => setDuplicateModal({ isOpen: false, project: null }),
+            onDeleteMutate: () => setDeleteModal({ isOpen: false, project: null }),
+        })
 
     const toggleStar = (id: string, event: React.MouseEvent) => {
         event.stopPropagation()
@@ -62,6 +69,9 @@ export const ProjectList: React.FC<ProjectListProps> = ({
     const openRenameModal = (project: Project, event: React.MouseEvent) =>
         openModal(event, () => setRenameModal({ isOpen: true, project, value: project.title }))
 
+    const openDuplicateModal = (project: Project, event: React.MouseEvent) =>
+        openModal(event, () => setDuplicateModal({ isOpen: true, project }))
+
     const openDeleteModal = (project: Project, event: React.MouseEvent) =>
         openModal(event, () => setDeleteModal({ isOpen: true, project }))
 
@@ -72,6 +82,11 @@ export const ProjectList: React.FC<ProjectListProps> = ({
             projectId: renameModal.project.id,
             rename: renameModal.value.trim(),
         })
+    }
+
+    const handleDuplicate = () => {
+        if (!duplicateModal.project) return
+        duplicateMutation.mutate(duplicateModal.project.id)
     }
 
     const handleDelete = () => {
@@ -94,20 +109,25 @@ export const ProjectList: React.FC<ProjectListProps> = ({
                     onToggleStar={toggleStar}
                     onToggleMenu={toggleMenu}
                     onOpenRename={openRenameModal}
+                    onOpenDuplicate={openDuplicateModal}
                     onOpenDelete={openDeleteModal}
                 />
             </div>
 
             <ProjectListModals
                 renameModal={renameModal}
+                duplicateModal={duplicateModal}
                 deleteModal={deleteModal}
                 isRenamePending={renameMutation.isPending}
+                isDuplicatePending={duplicateMutation.isPending}
                 isDeletePending={deleteMutation.isPending}
                 onCloseRename={() => setRenameModal((prev) => ({ ...prev, isOpen: false }))}
                 onRenameChange={(nextValue) =>
                     setRenameModal((prev) => ({ ...prev, value: nextValue }))
                 }
                 onRenameSubmit={handleRename}
+                onCloseDuplicate={() => setDuplicateModal((prev) => ({ ...prev, isOpen: false }))}
+                onDuplicateConfirm={handleDuplicate}
                 onCloseDelete={() => setDeleteModal((prev) => ({ ...prev, isOpen: false }))}
                 onDeleteConfirm={handleDelete}
             />
