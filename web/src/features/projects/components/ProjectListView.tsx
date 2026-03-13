@@ -19,31 +19,25 @@ interface ProjectListViewProps {
     onOpenDelete: (project: Project, event: React.MouseEvent) => void
 }
 
-const ProjectRowSkeleton: React.FC = () => {
+const ProjectListAreaSkeleton: React.FC = () => {
     return (
-        <div className="flex items-center justify-between rounded-xl border border-white/5 bg-surface/20 px-5 py-4">
-            <div className="flex min-w-0 flex-1 flex-col gap-2">
-                <Skeleton className="h-4 w-40" />
-                <Skeleton className="h-3 w-64 max-w-full" />
-            </div>
-            <Skeleton className="ml-4 h-3 w-24 shrink-0" />
-        </div>
-    )
-}
-
-const ProjectListSkeleton: React.FC = () => {
-    return (
-        <div className="min-h-[520px] space-y-6">
-            <div className="space-y-2">
-                <Skeleton className="h-8 w-32" />
-                <Skeleton className="h-4 w-44" />
-            </div>
-
-            <div className="min-h-[420px] flex flex-col gap-2">
-                {Array.from({ length: 4 }).map((_, index) => (
-                    <ProjectRowSkeleton key={`project-list-skeleton-${index}`} />
-                ))}
-            </div>
+        <div className="min-h-[420px] flex flex-col gap-1">
+            {Array.from({ length: 6 }).map((_, index) => (
+                <div
+                    key={`project-list-skeleton-${index}`}
+                    className="grid grid-cols-12 items-center gap-4 rounded-xl px-6 py-4"
+                >
+                    <div className="col-span-6">
+                        <Skeleton className="h-4 w-56 max-w-full" />
+                    </div>
+                    <div className="col-span-4">
+                        <Skeleton className="h-3.5 w-24" />
+                    </div>
+                    <div className="col-span-2 flex justify-end">
+                        <Skeleton className="h-8 w-8 rounded-lg" />
+                    </div>
+                </div>
+            ))}
         </div>
     )
 }
@@ -63,10 +57,6 @@ export const ProjectListView: React.FC<ProjectListViewProps> = ({
     onOpenDuplicate,
     onOpenDelete,
 }) => {
-    if (isInitialLoading) {
-        return <ProjectListSkeleton />
-    }
-
     return (
         <>
             <div className="mb-12 flex items-end justify-between gap-4">
@@ -93,28 +83,32 @@ export const ProjectListView: React.FC<ProjectListViewProps> = ({
                 <div className="col-span-2 text-right"></div>
             </div>
 
-            <div className="min-h-[420px] flex flex-col gap-1">
-                {projects.map((project) => (
-                    <ProjectListRow
-                        key={project.id}
-                        project={project}
-                        isMenuOpen={menuOpenId === project.id}
-                        isTogglePending={isTogglePending}
-                        onOpenProject={onNewProject}
-                        onToggleStar={onToggleStar}
-                        onToggleMenu={onToggleMenu}
-                        onOpenRename={onOpenRename}
-                        onOpenDuplicate={onOpenDuplicate}
-                        onOpenDelete={onOpenDelete}
-                    />
-                ))}
+            {isInitialLoading ? (
+                <ProjectListAreaSkeleton />
+            ) : (
+                <div className="min-h-[420px] flex flex-col gap-1">
+                    {projects.map((project) => (
+                        <ProjectListRow
+                            key={project.id}
+                            project={project}
+                            isMenuOpen={menuOpenId === project.id}
+                            isTogglePending={isTogglePending}
+                            onOpenProject={onNewProject}
+                            onToggleStar={onToggleStar}
+                            onToggleMenu={onToggleMenu}
+                            onOpenRename={onOpenRename}
+                            onOpenDuplicate={onOpenDuplicate}
+                            onOpenDelete={onOpenDelete}
+                        />
+                    ))}
 
-                {projects.length === 0 && (
-                    <div className="flex flex-col items-center justify-center gap-3 py-20 text-center text-neutral-600">
-                        <span className="text-sm">No projects found.</span>
-                    </div>
-                )}
-            </div>
+                    {projects.length === 0 && (
+                        <div className="flex flex-col items-center justify-center gap-3 py-20 text-center text-neutral-600">
+                            <span className="text-sm">No projects found.</span>
+                        </div>
+                    )}
+                </div>
+            )}
         </>
     )
 }

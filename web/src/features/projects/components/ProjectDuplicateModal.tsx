@@ -10,21 +10,34 @@ export const ProjectDuplicateModal: React.FC<ProjectDuplicateModalProps> = ({
     onClose,
     onConfirm,
 }) => {
+    const displayTitle = projectTitle?.trim() ? `"${projectTitle}"` : 'this project'
+
+    const handleSubmit = (event: React.FormEvent) => {
+        event.preventDefault()
+        onConfirm()
+    }
+
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title="Duplicate project?" maxWidth="max-w-[400px]">
-            <div className="flex flex-col gap-4">
+        <Modal
+            isOpen={isOpen}
+            onClose={onClose}
+            title="Duplicate project"
+            description="Create a copy of this project in your workspace."
+        >
+            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
                 <p className="text-sm text-neutral-400 leading-relaxed">
-                    Create a duplicate of <span className="text-white font-medium">"{projectTitle}"</span>?
+                    A new project will be created from{' '}
+                    <span className="text-white font-medium">{displayTitle}</span>.
                 </p>
-                <div className="mt-2 flex items-center justify-end gap-3">
-                    <Button variant="ghost" onClick={onClose} disabled={isPending}>
+                <div className="mt-4 flex items-center justify-end gap-3">
+                    <Button variant="ghost" type="button" onClick={onClose} disabled={isPending}>
                         Cancel
                     </Button>
-                    <Button variant="secondary" onClick={onConfirm} isLoading={isPending}>
+                    <Button type="submit" isLoading={isPending}>
                         Continue
                     </Button>
                 </div>
-            </div>
+            </form>
         </Modal>
     )
 }
