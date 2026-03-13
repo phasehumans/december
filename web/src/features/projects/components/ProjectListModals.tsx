@@ -1,28 +1,41 @@
 import React from 'react'
 import { ProjectRenameModal } from './ProjectRenameModal'
+import { ProjectDuplicateModal } from './ProjectDuplicateModal'
 import { ProjectDeleteModal } from './ProjectDeleteModal'
-import type { DeleteModalState, RenameModalState } from '@/features/projects/types'
+import type {
+    DeleteModalState,
+    DuplicateModalState,
+    RenameModalState,
+} from '@/features/projects/types'
 
 interface ProjectListModalsProps {
     renameModal: RenameModalState
+    duplicateModal: DuplicateModalState
     deleteModal: DeleteModalState
     isRenamePending: boolean
+    isDuplicatePending: boolean
     isDeletePending: boolean
     onCloseRename: () => void
     onRenameChange: (nextValue: string) => void
     onRenameSubmit: (event: React.FormEvent) => void
+    onCloseDuplicate: () => void
+    onDuplicateConfirm: () => void
     onCloseDelete: () => void
     onDeleteConfirm: () => void
 }
 
 export const ProjectListModals: React.FC<ProjectListModalsProps> = ({
     renameModal,
+    duplicateModal,
     deleteModal,
     isRenamePending,
+    isDuplicatePending,
     isDeletePending,
     onCloseRename,
     onRenameChange,
     onRenameSubmit,
+    onCloseDuplicate,
+    onDuplicateConfirm,
     onCloseDelete,
     onDeleteConfirm,
 }) => {
@@ -35,6 +48,14 @@ export const ProjectListModals: React.FC<ProjectListModalsProps> = ({
                 onClose={onCloseRename}
                 onChange={onRenameChange}
                 onSubmit={onRenameSubmit}
+            />
+
+            <ProjectDuplicateModal
+                isOpen={duplicateModal.isOpen}
+                projectTitle={duplicateModal.project?.title}
+                isPending={isDuplicatePending}
+                onClose={onCloseDuplicate}
+                onConfirm={onDuplicateConfirm}
             />
 
             <ProjectDeleteModal

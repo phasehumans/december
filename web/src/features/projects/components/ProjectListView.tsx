@@ -15,6 +15,7 @@ interface ProjectListViewProps {
     onToggleStar: (id: string, event: React.MouseEvent) => void
     onToggleMenu: (id: string, event: React.MouseEvent) => void
     onOpenRename: (project: Project, event: React.MouseEvent) => void
+    onOpenDuplicate: (project: Project, event: React.MouseEvent) => void
     onOpenDelete: (project: Project, event: React.MouseEvent) => void
 }
 
@@ -59,6 +60,7 @@ export const ProjectListView: React.FC<ProjectListViewProps> = ({
     onToggleStar,
     onToggleMenu,
     onOpenRename,
+    onOpenDuplicate,
     onOpenDelete,
 }) => {
     if (isInitialLoading) {
@@ -102,6 +104,7 @@ export const ProjectListView: React.FC<ProjectListViewProps> = ({
                         onToggleStar={onToggleStar}
                         onToggleMenu={onToggleMenu}
                         onOpenRename={onOpenRename}
+                        onOpenDuplicate={onOpenDuplicate}
                         onOpenDelete={onOpenDelete}
                     />
                 ))}
