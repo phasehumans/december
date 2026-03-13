@@ -15,7 +15,7 @@ const openai = new OpenAI({
 
 export const extractProjectIntent = async (userPrompt: string) => {
     const completion = await openai.chat.completions.create({
-        model: 'openai/gpt-oss-20b:free:',
+        model: 'openai/gpt-oss-20b:free',
         temperature: 0,
         max_tokens: 800,
         messages: [
