@@ -50,6 +50,11 @@ export interface DeleteModalState {
     project: Project | null
 }
 
+export interface DuplicateModalState {
+    isOpen: boolean
+    project: Project | null
+}
+
 export interface ProjectListRowProps {
     project: Project
     isMenuOpen: boolean
@@ -58,6 +63,7 @@ export interface ProjectListRowProps {
     onToggleStar: (id: string, event: MouseEvent) => void
     onToggleMenu: (id: string, event: MouseEvent) => void
     onOpenRename: (project: Project, event: MouseEvent) => void
+    onOpenDuplicate: (project: Project, event: MouseEvent) => void
     onOpenDelete: (project: Project, event: MouseEvent) => void
 }
 
@@ -71,6 +77,14 @@ export interface ProjectRenameModalProps {
 }
 
 export interface ProjectDeleteModalProps {
+    isOpen: boolean
+    projectTitle?: string
+    isPending: boolean
+    onClose: () => void
+    onConfirm: () => void
+}
+
+export interface ProjectDuplicateModalProps {
     isOpen: boolean
     projectTitle?: string
     isPending: boolean
