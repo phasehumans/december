@@ -49,7 +49,8 @@ export interface PreviewWindowProps {
     onClearSelection: () => void
 }
 
-export type CodeFilePath = 'index.html' | 'styles.css' | 'script.js'
+export type CodeFilePath = string
+export type CodeFileLanguage = 'html' | 'css' | 'javascript' | 'typescript' | 'tsx'
 
 export interface CodeWorkspaceProps {
     html: string
@@ -59,5 +60,19 @@ export interface CodeWorkspaceProps {
 export interface CodeFile {
     path: CodeFilePath
     label: string
-    language: 'html' | 'css' | 'javascript'
+    language: CodeFileLanguage
 }
+
+export interface CodeFileTreeFileNode {
+    type: 'file'
+    file: CodeFile
+}
+
+export interface CodeFileTreeFolderNode {
+    type: 'folder'
+    name: string
+    path: string
+    children: CodeFileTreeNode[]
+}
+
+export type CodeFileTreeNode = CodeFileTreeFileNode | CodeFileTreeFolderNode
