@@ -130,7 +130,7 @@ const duplicateProject = async (data: DuplicateProject) => {
 
     const newProject = await prisma.project.create({
         data: {
-            name: `copy of ${project.name}`,
+            name: `Copy of ${project.name}`,
             description: project.description,
             prompt: project.prompt,
             userId: userId,
