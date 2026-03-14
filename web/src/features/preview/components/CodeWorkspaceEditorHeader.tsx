@@ -25,8 +25,6 @@ const getTabs = (activeFile: CodeFile, openFiles: CodeFile[]): HeaderTab[] => {
     return [...openFiles.map((file) => ({ file, isPreview: false })), { file: activeFile, isPreview: true }]
 }
 
-const getPathLabel = (path: string) => path.split('/').join(' / ')
-
 export const CodeWorkspaceEditorHeader: React.FC<CodeWorkspaceEditorHeaderProps> = ({
     activeFile,
     openFiles,
@@ -36,8 +34,8 @@ export const CodeWorkspaceEditorHeader: React.FC<CodeWorkspaceEditorHeaderProps>
     const tabs = React.useMemo(() => getTabs(activeFile, openFiles), [activeFile, openFiles])
 
     return (
-        <div className="shrink-0 border-b border-[#2d2d2d] bg-[#1e1e1e]">
-            <div className="h-9 px-2 flex items-center gap-1 overflow-x-auto">
+        <div className="h-10 shrink-0 border-b border-[#2d2d2d] bg-[#1e1e1e]">
+            <div className="h-full px-2 flex items-center gap-1 overflow-x-auto">
                 {tabs.map((tab) => {
                     const isActive = tab.file.path === activeFile.path
 
@@ -45,9 +43,9 @@ export const CodeWorkspaceEditorHeader: React.FC<CodeWorkspaceEditorHeaderProps>
                         <div
                             key={`${tab.file.path}-${tab.isPreview ? 'preview' : 'pinned'}`}
                             className={cn(
-                                'h-7 min-w-0 max-w-[220px] flex items-center rounded border px-1.5 gap-1',
+                                'h-7 min-w-0 max-w-[220px] flex items-center rounded-lg border px-2 gap-1.5',
                                 isActive
-                                    ? 'bg-[#1f2937] border-[#374151] text-[#d4d4d4]'
+                                    ? 'bg-[#393F51] border-[#4a5166] text-[#d4d4d4]'
                                     : 'bg-[#1f1f1f] border-[#2d2d2d] text-[#a3a3a3] hover:bg-[#252526]'
                             )}
                         >
@@ -78,10 +76,6 @@ export const CodeWorkspaceEditorHeader: React.FC<CodeWorkspaceEditorHeaderProps>
                         </div>
                     )
                 })}
-            </div>
-
-            <div className="h-6 px-3 border-t border-[#252526] text-[11px] text-[#8a8a8a] flex items-center truncate">
-                {getPathLabel(activeFile.path)}
             </div>
         </div>
     )
