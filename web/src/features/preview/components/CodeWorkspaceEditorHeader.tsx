@@ -1,34 +1,82 @@
 import React from 'react'
-import type { CodeFile } from '@/features/preview/types'
+import { X } from 'lucide-react'
+import { cn } from '@/shared/lib/utils'
+import type { CodeFile, CodeFilePath } from '@/features/preview/types'
 
 interface CodeWorkspaceEditorHeaderProps {
     activeFile: CodeFile
+    openFiles: CodeFile[]
+    onSelectFile: (path: CodeFilePath) => void
+    onCloseFile: (path: CodeFilePath) => void
 }
 
-const getLanguageLabel = (language: CodeFile['language']) => {
-    if (language === 'html') {
-        return 'HTML'
+interface HeaderTab {
+    file: CodeFile
+    isPreview: boolean
+}
+
+const getTabs = (activeFile: CodeFile, openFiles: CodeFile[]): HeaderTab[] => {
+    const isActivePinned = openFiles.some((file) => file.path === activeFile.path)
+
+    if (isActivePinned) {
+        return openFiles.map((file) => ({ file, isPreview: false }))
     }
 
-    if (language === 'css') {
-        return 'CSS'
-    }
-
-    return 'JavaScript'
+    return [...openFiles.map((file) => ({ file, isPreview: false })), { file: activeFile, isPreview: true }]
 }
 
 export const CodeWorkspaceEditorHeader: React.FC<CodeWorkspaceEditorHeaderProps> = ({
     activeFile,
+    openFiles,
+    onSelectFile,
+    onCloseFile,
 }) => {
+    const tabs = React.useMemo(() => getTabs(activeFile, openFiles), [activeFile, openFiles])
+
     return (
-        <div className="h-11 shrink-0 px-4 flex items-center justify-between text-xs border-b border-[#2d2d2d] bg-[#1e1e1e]">
-            <div className="flex items-center gap-2 min-w-0">
-                <span className="text-[#d4d4d4] truncate">{activeFile.label}</span>
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#252525] text-[#858585] border border-[#2d2d2d]">
-                    {getLanguageLabel(activeFile.language)}
-                </span>
+        <div className="h-10 shrink-0 border-b border-[#2d2d2d] bg-[#1e1e1e]">
+            <div className="h-full px-2 flex items-center gap-1 overflow-x-auto">
+                {tabs.map((tab) => {
+                    const isActive = tab.file.path === activeFile.path
+
+                    return (
+                        <div
+                            key={`${tab.file.path}-${tab.isPreview ? 'preview' : 'pinned'}`}
+                            className={cn(
+                                'h-7 min-w-0 max-w-[220px] flex items-center rounded-lg border px-2 gap-1.5',
+                                isActive
+                                    ? 'bg-[#393F51] border-[#4a5166] text-[#d4d4d4]'
+                                    : 'bg-[#1f1f1f] border-[#2d2d2d] text-[#a3a3a3] hover:bg-[#252526]'
+                            )}
+                        >
+                            <button
+                                type="button"
+                                onClick={() => onSelectFile(tab.file.path)}
+                                className={cn(
+                                    'min-w-0 truncate text-[12px] text-left',
+                                    tab.isPreview && 'italic'
+                                )}
+                            >
+                                {tab.file.label}
+                            </button>
+
+                            {!tab.isPreview && (
+                                <button
+                                    type="button"
+                                    onClick={(event) => {
+                                        event.stopPropagation()
+                                        onCloseFile(tab.file.path)
+                                    }}
+                                    className="shrink-0 text-[#8b8b8b] hover:text-[#d4d4d4]"
+                                    aria-label={`Close ${tab.file.label}`}
+                                >
+                                    <X size={12} />
+                                </button>
+                            )}
+                        </div>
+                    )
+                })}
             </div>
-            <div className="text-[11px] text-[#8A8A8A]">Auto-sync preview</div>
         </div>
     )
 }
