@@ -1,5 +1,5 @@
 import React from 'react'
-import { ChevronDown, ChevronRight, FileText, Folder, Minus } from 'lucide-react'
+import { ChevronDown, ChevronRight, FileText, Folder } from 'lucide-react'
 import { cn } from '@/shared/lib/utils'
 import type { CodeFilePath, CodeFileTreeNode } from '@/features/preview/types'
 
@@ -7,6 +7,7 @@ interface CodeWorkspaceFileSidebarProps {
     tree: CodeFileTreeNode[]
     selectedFile: CodeFilePath
     onSelectFile: (path: CodeFilePath) => void
+    onPinFile: (path: CodeFilePath) => void
 }
 
 const collectFolderPaths = (nodes: CodeFileTreeNode[]): string[] =>
@@ -22,6 +23,7 @@ export const CodeWorkspaceFileSidebar: React.FC<CodeWorkspaceFileSidebarProps> =
     tree,
     selectedFile,
     onSelectFile,
+    onPinFile,
 }) => {
     const allFolderPaths = React.useMemo(() => collectFolderPaths(tree), [tree])
     const [expandedFolders, setExpandedFolders] = React.useState<Set<string>>(
@@ -31,6 +33,12 @@ export const CodeWorkspaceFileSidebar: React.FC<CodeWorkspaceFileSidebarProps> =
     React.useEffect(() => {
         setExpandedFolders(new Set(allFolderPaths))
     }, [allFolderPaths])
+
+    const isFullyExpanded = allFolderPaths.length > 0 && expandedFolders.size === allFolderPaths.length
+
+    const handleToggleAllFolders = () => {
+        setExpandedFolders(isFullyExpanded ? new Set() : new Set(allFolderPaths))
+    }
 
     const toggleFolder = (path: string) => {
         setExpandedFolders((previous) => {
@@ -53,6 +61,7 @@ export const CodeWorkspaceFileSidebar: React.FC<CodeWorkspaceFileSidebarProps> =
                     <button
                         key={node.file.path}
                         onClick={() => onSelectFile(node.file.path)}
+                        onDoubleClick={() => onPinFile(node.file.path)}
                         className={cn(
                             'w-full flex items-center gap-2 py-1 rounded text-left text-[13px] transition-colors',
                             isActive
@@ -60,6 +69,7 @@ export const CodeWorkspaceFileSidebar: React.FC<CodeWorkspaceFileSidebarProps> =
                                 : 'text-[#c5c5c5] hover:bg-[#252526]'
                         )}
                         style={{ paddingLeft: `${8 + depth * 12}px`, paddingRight: '8px' }}
+                        title="Double-click to pin in tabs"
                     >
                         <FileText
                             size={14}
@@ -104,12 +114,12 @@ export const CodeWorkspaceFileSidebar: React.FC<CodeWorkspaceFileSidebarProps> =
                 </span>
                 <button
                     type="button"
-                    onClick={() => setExpandedFolders(new Set())}
+                    onClick={handleToggleAllFolders}
                     className="p-1 rounded text-[#9b9b9b] hover:text-[#d4d4d4] hover:bg-[#2a2d2e] transition-colors"
-                    title="Collapse all folders"
-                    aria-label="Collapse all folders"
+                    title={isFullyExpanded ? 'Collapse all folders' : 'Expand all folders'}
+                    aria-label={isFullyExpanded ? 'Collapse all folders' : 'Expand all folders'}
                 >
-                    <Minus size={14} />
+                    {isFullyExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                 </button>
             </div>
 
