@@ -43,10 +43,18 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut }) =
         connectGithub,
     } = useProfileSettingsController()
 
+    const profileErrorMessage =
+        profileActionError ??
+        (profileError instanceof Error
+            ? profileError.message
+            : profileError
+              ? 'Failed to load profile'
+              : null)
+
     return (
         <div className="relative h-full w-full flex-1 overflow-y-auto bg-background px-8 pb-8 pt-20 font-sans no-scrollbar md:p-16">
             <div className="relative z-10 mx-auto min-h-[520px] max-w-6xl">
-                <div className="mb-12 flex items-end justify-between gap-4">
+                <div className="mb-12 flex items-start justify-between gap-4">
                     <div>
                         <h1 className="mb-2 text-3xl font-medium tracking-tight text-textMain">
                             Settings
@@ -55,19 +63,17 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut }) =
                             Manage your account settings
                         </p>
                     </div>
-                    {isProfileFetching && !isProfileLoading && (
-                        <div className="text-xs text-neutral-500">Syncing profile...</div>
-                    )}
-                </div>
-
-                {(profileActionError || profileError) && (
-                    <div className="mb-6 rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-300">
-                        {profileActionError ??
-                            (profileError instanceof Error
-                                ? profileError.message
-                                : 'Failed to load profile')}
+                    <div className="flex flex-col items-end gap-2">
+                        {isProfileFetching && !isProfileLoading && (
+                            <div className="text-xs text-neutral-500">Syncing profile...</div>
+                        )}
+                        {profileErrorMessage && (
+                            <div className="max-w-[26rem] truncate rounded-full border border-red-500/35 bg-red-500/15 px-4 py-1 text-xs font-medium text-red-200">
+                                {profileErrorMessage}
+                            </div>
+                        )}
                     </div>
-                )}
+                </div>
 
                 {isProfileLoading && !profile ? (
                     <ProfileSettingsSkeleton />

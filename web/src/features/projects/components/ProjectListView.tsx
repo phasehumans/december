@@ -60,25 +60,28 @@ export const ProjectListView: React.FC<ProjectListViewProps> = ({
     onOpenDuplicate,
     onOpenDelete,
 }) => {
+    const displayedError = actionError ?? errorMessage
+
     return (
         <>
-            <div className="mb-12 flex items-end justify-between gap-4">
+            <div className="mb-12 flex items-start justify-between gap-4">
                 <div className="flex flex-col gap-2">
                     <h1 className="text-3xl font-medium tracking-tight text-textMain">Projects</h1>
                     <p className="max-w-md text-sm leading-relaxed text-neutral-500">
                         Manage your projects
                     </p>
                 </div>
-                {isFetching && !isInitialLoading && (
-                    <div className="text-xs text-neutral-500">Syncing projects...</div>
-                )}
-            </div>
-
-            {(errorMessage || actionError) && (
-                <div className="mb-5 rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-300">
-                    {actionError ?? errorMessage}
+                <div className="flex flex-col items-end gap-2">
+                    {isFetching && !isInitialLoading && (
+                        <div className="text-xs text-neutral-500">Syncing projects...</div>
+                    )}
+                    {displayedError && (
+                        <div className="max-w-[26rem] truncate rounded-full border border-red-500/35 bg-red-500/15 px-4 py-1 text-xs font-medium text-red-200">
+                            {displayedError}
+                        </div>
+                    )}
                 </div>
-            )}
+            </div>
 
             <div className="mb-2 grid grid-cols-[minmax(0,1fr)_auto_2.5rem_2.5rem] gap-3 border-b border-white/5 px-5 py-3 text-[11px] font-medium uppercase tracking-wider text-neutral-500 select-none md:gap-4">
                 <div>Name</div>
