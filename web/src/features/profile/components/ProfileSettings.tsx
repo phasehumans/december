@@ -44,14 +44,16 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut }) =
     } = useProfileSettingsController()
 
     return (
-        <div className="relative flex-1 w-full overflow-y-auto bg-background px-6 pb-6 pt-20 font-sans no-scrollbar md:p-10">
-            <div className="mx-auto max-w-5xl min-h-[520px]">
-                <div className="mb-8 flex items-end justify-between gap-4">
+        <div className="relative h-full w-full flex-1 overflow-y-auto bg-background px-8 pb-8 pt-20 font-sans no-scrollbar md:p-16">
+            <div className="relative z-10 mx-auto min-h-[520px] max-w-6xl">
+                <div className="mb-12 flex items-end justify-between gap-4">
                     <div>
                         <h1 className="mb-2 text-3xl font-medium tracking-tight text-textMain">
                             Settings
                         </h1>
-                        <p className="text-sm text-neutral-500">Manage your account settings</p>
+                        <p className="max-w-md text-sm text-neutral-500">
+                            Manage your account settings
+                        </p>
                     </div>
                     {isProfileFetching && !isProfileLoading && (
                         <div className="text-xs text-neutral-500">Syncing profile...</div>

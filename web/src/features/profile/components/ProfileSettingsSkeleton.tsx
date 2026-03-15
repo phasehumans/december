@@ -4,7 +4,7 @@ import { SettingsSection } from './SettingsSection'
 
 export const ProfileSettingsSkeleton: React.FC = () => {
     return (
-        <div className="grid min-h-[430px] grid-cols-1 gap-8 lg:grid-cols-2 lg:gap-16">
+        <div className="grid min-h-[430px] grid-cols-1 gap-8 xl:grid-cols-[minmax(0,1fr)_minmax(0,0.95fr)] xl:gap-12">
             <div className="space-y-8">
                 <SettingsSection title="Profile">
                     <div className="space-y-4">
