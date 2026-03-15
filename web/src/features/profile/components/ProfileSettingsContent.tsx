@@ -28,7 +28,7 @@ export const ProfileSettingsContent: React.FC<ProfileSettingsContentProps> = ({
     onSignOut,
 }) => {
     return (
-        <div className="grid grid-cols-1 gap-8 lg:grid-cols-2 lg:gap-16">
+        <div className="grid min-h-[430px] grid-cols-1 gap-8 xl:grid-cols-[minmax(0,1fr)_minmax(0,0.95fr)] xl:gap-12">
             <ProfileSettingsPrimaryColumn
                 resolvedName={resolvedName}
                 hasProfile={hasProfile}
