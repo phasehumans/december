@@ -1,6 +1,7 @@
 ## Engineering Decisions @phasehumans
 
 ### 14-03-2024
+
 - fixed the ide/ code edito; proceding with code mirror insted of monacco
 - no very luctractive fn this is, phasehumans avg user will spend more time on canvas and prompt box rather than ide
 - so keep the ide very simple and minimal, with code mirror

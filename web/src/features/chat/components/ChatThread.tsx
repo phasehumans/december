@@ -19,6 +19,7 @@ export const ChatThread: React.FC<ChatSidebarProps> = ({
     isApplyingEdit,
     isCollapsed,
     onClose,
+    mode = 'sidebar',
 }) => {
     const [messages, setMessages] = React.useState<
         Array<{ role: 'user' | 'assistant'; content: string }>
@@ -39,6 +40,46 @@ export const ChatThread: React.FC<ChatSidebarProps> = ({
         setMessages((prev) => [...prev, { role: 'user', content: editPrompt }])
         handleApplyEdit()
         // Simulate AI response for demo purposes if needed, or rely on parent to update
+    }
+
+    const messagesList = (
+        <div className="flex flex-col gap-8">
+            {messages.map((msg, index) => (
+                <ChatMessage
+                    key={index}
+                    role={msg.role}
+                    content={msg.content}
+                    isGenerating={isGenerating}
+                    executionTime={executionTime}
+                    index={index}
+                />
+            ))}
+        </div>
+    )
+
+    const promptInput = (
+        <ChatPromptInput
+            value={editPrompt}
+            onChange={setEditPrompt}
+            onSubmit={handleSubmit}
+            isVisualMode={isVisualMode}
+            onToggleVisualMode={() => setIsVisualMode(!isVisualMode)}
+            selectedElement={selectedElement}
+            onClearSelection={handleClearSelection}
+            isApplyingEdit={isApplyingEdit}
+        />
+    )
+
+    if (mode === 'mobile') {
+        return (
+            <div className="h-full bg-[#1F1F1F] rounded-2xl border border-white/10 flex flex-col overflow-hidden font-sans min-h-0">
+                <div className="flex-1 overflow-y-auto p-4 pb-0 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/10 hover:[&::-webkit-scrollbar-thumb]:bg-white/20">
+                    {messagesList}
+                </div>
+
+                {promptInput}
+            </div>
+        )
     }
 
     return (
@@ -73,31 +114,11 @@ export const ChatThread: React.FC<ChatSidebarProps> = ({
             {/* Chat Content */}
             <div className="flex-1 flex flex-col overflow-hidden min-w-[340px]">
                 <div className="flex-1 overflow-y-auto p-5 pb-0 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/10 hover:[&::-webkit-scrollbar-thumb]:bg-white/20">
-                    <div className="flex flex-col gap-8">
-                        {messages.map((msg, index) => (
-                            <ChatMessage
-                                key={index}
-                                role={msg.role}
-                                content={msg.content}
-                                isGenerating={isGenerating}
-                                executionTime={executionTime}
-                                index={index}
-                            />
-                        ))}
-                    </div>
+                    {messagesList}
                 </div>
 
                 {/* Input Area */}
-                <ChatPromptInput
-                    value={editPrompt}
-                    onChange={setEditPrompt}
-                    onSubmit={handleSubmit}
-                    isVisualMode={isVisualMode}
-                    onToggleVisualMode={() => setIsVisualMode(!isVisualMode)}
-                    selectedElement={selectedElement}
-                    onClearSelection={handleClearSelection}
-                    isApplyingEdit={isApplyingEdit}
-                />
+                {promptInput}
             </div>
         </aside>
     )
