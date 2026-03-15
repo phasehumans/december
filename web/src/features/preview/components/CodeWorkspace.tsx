@@ -19,7 +19,9 @@ const FALLBACK_FILE: CodeFile = {
 
 export const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({ html, onHtmlChange }) => {
     const [selectedFile, setSelectedFile] = React.useState<CodeFilePath>(DEFAULT_CODE_FILE_PATH)
-    const [openFilePaths, setOpenFilePaths] = React.useState<CodeFilePath[]>([DEFAULT_CODE_FILE_PATH])
+    const [openFilePaths, setOpenFilePaths] = React.useState<CodeFilePath[]>([
+        DEFAULT_CODE_FILE_PATH,
+    ])
     const [files, setFiles] = React.useState<Record<CodeFilePath, string>>(() =>
         getSampleReactProjectContents(html)
     )
@@ -81,7 +83,8 @@ export const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({ html, onHtmlChange
             const next = previous.filter((openPath) => openPath !== path)
 
             if (selectedFile === path) {
-                const fallbackPath = next[closingIndex] ?? next[closingIndex - 1] ?? DEFAULT_CODE_FILE_PATH
+                const fallbackPath =
+                    next[closingIndex] ?? next[closingIndex - 1] ?? DEFAULT_CODE_FILE_PATH
                 setSelectedFile(fallbackPath)
             }
 

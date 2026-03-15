@@ -41,7 +41,11 @@ export const OutputScreen: React.FC<OutputScreenProps> = ({ onBack, isGenerating
         <div className="w-full h-full bg-black text-white font-sans overflow-hidden">
             <div className="md:hidden flex h-full min-h-0 flex-col bg-[#0F0F0F]">
                 <div className="flex-1 min-h-0 px-2 pt-2 pb-2 overflow-hidden">
-                    <div className={mobileActiveTab === 'chat' ? 'h-full min-h-0' : 'hidden h-full min-h-0'}>
+                    <div
+                        className={
+                            mobileActiveTab === 'chat' ? 'h-full min-h-0' : 'hidden h-full min-h-0'
+                        }
+                    >
                         <ChatSidebar
                             mode="mobile"
                             onBack={handleBack}
@@ -63,7 +67,13 @@ export const OutputScreen: React.FC<OutputScreenProps> = ({ onBack, isGenerating
                         />
                     </div>
 
-                    <div className={mobileActiveTab === 'preview' ? 'h-full min-h-0' : 'hidden h-full min-h-0'}>
+                    <div
+                        className={
+                            mobileActiveTab === 'preview'
+                                ? 'h-full min-h-0 flex'
+                                : 'hidden h-full min-h-0 flex'
+                        }
+                    >
                         <PreviewArea
                             html={previewHtml}
                             isGenerating={isGenerating}
