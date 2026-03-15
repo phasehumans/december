@@ -10,6 +10,7 @@ export const PreviewArea: React.FC<PreviewAreaProps> = ({
     isVisualMode,
     onMessage,
     iframeRef,
+    fullscreen = false,
 }) => {
     // Attach message listener for iframe communication
     useEffect(() => {
@@ -18,25 +19,32 @@ export const PreviewArea: React.FC<PreviewAreaProps> = ({
     }, [onMessage])
 
     return (
-        <div className="flex-1 overflow-hidden relative bg-[#1F1F1F] flex items-center justify-center p-0.5 pb-2">
-            {/* Background Grid */}
-            <div
-                className="absolute inset-0 z-0 opacity-20 pointer-events-none"
-                style={{
-                    backgroundImage: 'radial-gradient(#333 1px, transparent 1px)',
-                    backgroundSize: '20px 20px',
-                }}
-            />
+        <div
+            className={cn(
+                'flex-1 overflow-hidden relative bg-[#1F1F1F]',
+                fullscreen ? 'min-h-0' : 'flex items-center justify-center p-0.5 pb-2'
+            )}
+        >
+            {!fullscreen && (
+                <div
+                    className="absolute inset-0 z-0 opacity-20 pointer-events-none"
+                    style={{
+                        backgroundImage: 'radial-gradient(#333 1px, transparent 1px)',
+                        backgroundSize: '20px 20px',
+                    }}
+                />
+            )}
 
-            {/* Preview Container */}
             <div
                 className={cn(
                     'relative transition-all duration-500 bg-white shadow-2xl overflow-hidden group',
-                    device === 'mobile'
-                        ? 'w-[375px] h-[812px] rounded-[3rem] border-[8px] border-[#1a1a1a]'
-                        : device === 'tablet'
-                          ? 'w-[768px] h-[1024px] rounded-[2rem] border-[8px] border-[#1a1a1a]'
-                          : 'w-full h-full rounded-xl border border-[#262626] shadow-2xl'
+                    fullscreen
+                        ? 'w-full h-full rounded-2xl border border-white/10'
+                        : device === 'mobile'
+                          ? 'w-[375px] h-[812px] rounded-[3rem] border-[8px] border-[#1a1a1a]'
+                          : device === 'tablet'
+                            ? 'w-[768px] h-[1024px] rounded-[2rem] border-[8px] border-[#1a1a1a]'
+                            : 'w-full h-full rounded-xl border border-[#262626] shadow-2xl'
                 )}
             >
                 {isGenerating ? (

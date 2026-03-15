@@ -48,6 +48,7 @@ export interface ChatSidebarProps {
     isApplyingEdit: boolean
     isCollapsed: boolean
     onClose?: () => void
+    mode?: 'sidebar' | 'mobile'
 }
 
 export interface ThoughtProcessProps {
