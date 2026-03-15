@@ -18,11 +18,33 @@ export const PreviewArea: React.FC<PreviewAreaProps> = ({
         return () => window.removeEventListener('message', onMessage)
     }, [onMessage])
 
+    const srcDoc = React.useMemo(() => {
+        if (!fullscreen) {
+            return html
+        }
+
+        const hasViewportMeta = /<meta[^>]+name=["']viewport["'][^>]*>/i.test(html)
+
+        if (hasViewportMeta) {
+            return html
+        }
+
+        const viewportTag = '<meta name="viewport" content="width=device-width, initial-scale=1" />'
+
+        if (/<head[^>]*>/i.test(html)) {
+            return html.replace(/<head([^>]*)>/i, `<head$1>${viewportTag}`)
+        }
+
+        return `<!DOCTYPE html><html><head>${viewportTag}</head><body>${html}</body></html>`
+    }, [html, fullscreen])
+
     return (
         <div
             className={cn(
-                'flex-1 overflow-hidden relative bg-[#1F1F1F]',
-                fullscreen ? 'min-h-0' : 'flex items-center justify-center p-0.5 pb-2'
+                'overflow-hidden relative bg-[#1F1F1F]',
+                fullscreen
+                    ? 'h-full w-full min-h-0'
+                    : 'flex-1 flex items-center justify-center p-0.5 pb-2'
             )}
         >
             {!fullscreen && (
@@ -92,7 +114,7 @@ export const PreviewArea: React.FC<PreviewAreaProps> = ({
                             isVisualMode ? 'cursor-crosshair' : ''
                         )}
                         title="Preview"
-                        srcDoc={html}
+                        srcDoc={srcDoc}
                     />
                 )}
             </div>
