@@ -34,7 +34,8 @@ export const CodeWorkspaceFileSidebar: React.FC<CodeWorkspaceFileSidebarProps> =
         setExpandedFolders(new Set(allFolderPaths))
     }, [allFolderPaths])
 
-    const isFullyExpanded = allFolderPaths.length > 0 && expandedFolders.size === allFolderPaths.length
+    const isFullyExpanded =
+        allFolderPaths.length > 0 && expandedFolders.size === allFolderPaths.length
 
     const handleToggleAllFolders = () => {
         setExpandedFolders(isFullyExpanded ? new Set() : new Set(allFolderPaths))

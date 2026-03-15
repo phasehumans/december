@@ -22,7 +22,10 @@ const getTabs = (activeFile: CodeFile, openFiles: CodeFile[]): HeaderTab[] => {
         return openFiles.map((file) => ({ file, isPreview: false }))
     }
 
-    return [...openFiles.map((file) => ({ file, isPreview: false })), { file: activeFile, isPreview: true }]
+    return [
+        ...openFiles.map((file) => ({ file, isPreview: false })),
+        { file: activeFile, isPreview: true },
+    ]
 }
 
 export const CodeWorkspaceEditorHeader: React.FC<CodeWorkspaceEditorHeaderProps> = ({

@@ -27,7 +27,11 @@ const createFileNode = (
     },
 })
 
-const createFolderNode = (name: string, path: string, children: CodeFileTreeNode[]): CodeFileTreeNode => ({
+const createFolderNode = (
+    name: string,
+    path: string,
+    children: CodeFileTreeNode[]
+): CodeFileTreeNode => ({
     type: 'folder',
     name,
     path,

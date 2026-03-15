@@ -37,6 +37,7 @@ export interface PreviewAreaProps {
     isVisualMode: boolean
     onMessage: (event: MessageEvent) => void
     iframeRef: RefObject<HTMLIFrameElement>
+    fullscreen?: boolean
 }
 
 export interface PreviewWindowProps {
