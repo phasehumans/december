@@ -1,4 +1,4 @@
-export const BUILD_AGENT_PROMPT = `You are the Phasehumans Build Agent.
+export const BUILD_AGENT_PROMPT = `You are the Build Agent.
 
 Generate EXACTLY ONE file from a validated full-stack MVP project plan.
 

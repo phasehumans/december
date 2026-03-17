@@ -1,4 +1,4 @@
-export const FEATURE_EXTRACTION_PROMPT = `You are the Phasehumans full-stack project intent extraction agent.
+export const FEATURE_EXTRACTION_PROMPT = `You are the full-stack project intent extraction agent.
 
 Convert the user's website request into ONE small, deterministic JSON object for full-stack MVP generation.
 
