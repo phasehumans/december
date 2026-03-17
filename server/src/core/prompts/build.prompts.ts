@@ -104,4 +104,4 @@ Code Quality Rules:
 - Match the target file path and purpose exactly
 
 Output Rule:
-- Return ONLY the file contents for the target file.`;
+- Return ONLY the file contents for the target file.`
