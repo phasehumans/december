@@ -7,7 +7,11 @@ import type { OutputScreenProps } from '@/features/preview/types'
 
 type MobileOutputTab = 'chat' | 'preview'
 
-export const OutputScreen: React.FC<OutputScreenProps> = ({ onBack, isGenerating = false }) => {
+export const OutputScreen: React.FC<OutputScreenProps> = ({
+    onBack,
+    isGenerating = false,
+    showStructureOnly = false,
+}) => {
     const {
         activeTab,
         setActiveTab,
@@ -82,6 +86,7 @@ export const OutputScreen: React.FC<OutputScreenProps> = ({ onBack, isGenerating
                             onMessage={handleIframeMessage}
                             iframeRef={iframeRef}
                             fullscreen
+                            showStructureOnly={showStructureOnly}
                         />
                     </div>
                 </div>
@@ -147,6 +152,7 @@ export const OutputScreen: React.FC<OutputScreenProps> = ({ onBack, isGenerating
                     isVisualMode={isVisualMode}
                     iframeRef={iframeRef}
                     onIframeMessage={handleIframeMessage}
+                    showStructureOnly={showStructureOnly}
                 />
             </div>
         </div>
