@@ -29,7 +29,7 @@ export const extractProjectPlan = async (structureIntent: any) => {
     const content = completion.choices[0]?.message?.content
 
     if (!content) {
-        throw new Error('No response from planner agent')
+        throw new Error('no response from planner agent')
     }
 
     return JSON.parse(content)

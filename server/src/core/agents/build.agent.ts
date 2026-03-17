@@ -1,5 +1,5 @@
 import OpenAI from 'openai'
-import { FEATURE_EXTRACTION_PROMPT } from '../prompts/prompt.prompts'
+import { BUILD_AGENT_PROMPT } from '../prompts/build.prompts'
 
 const openai = new OpenAI({
     baseURL: 'https://openrouter.ai/api/v1',
@@ -10,19 +10,18 @@ const openai = new OpenAI({
     },
 })
 
-export const extractProjectIntent = async (userPrompt: string) => {
+export const extractProjectIntent = async (structurePlan: any) => {
     const completion = await openai.chat.completions.create({
         model: 'openai/gpt-oss-20b:free',
         temperature: 0,
-        max_tokens: 1000,
         messages: [
             {
                 role: 'system',
-                content: FEATURE_EXTRACTION_PROMPT,
+                content: BUILD_AGENT_PROMPT,
             },
             {
                 role: 'user',
-                content: userPrompt,
+                content: JSON.stringify(structurePlan),
             },
         ],
     })
@@ -30,7 +29,7 @@ export const extractProjectIntent = async (userPrompt: string) => {
     const content = completion.choices[0]?.message?.content
 
     if (!content) {
-        throw new Error('prompt agent returned empty response')
+        throw new Error('no response from build agent')
     }
 
     return JSON.parse(content)
