@@ -3,7 +3,7 @@ import { OutputHeader } from './OutputHeader'
 import { PreviewArea } from './PreviewArea'
 import { CodeWorkspace } from './CodeWorkspace'
 import Canvas from '@/features/canvas/components/Canvas'
-import type { PreviewDevice, PreviewSelectedElement, PreviewTab } from '@/features/preview/types'
+import type { PreviewDevice, PreviewTab } from '@/features/preview/types'
 
 interface OutputScreenMainContentProps {
     activeTab: PreviewTab
@@ -20,6 +20,7 @@ interface OutputScreenMainContentProps {
     isVisualMode: boolean
     iframeRef: React.RefObject<HTMLIFrameElement>
     onIframeMessage: (event: MessageEvent) => void
+    showStructureOnly: boolean
 }
 
 export const OutputScreenMainContent: React.FC<OutputScreenMainContentProps> = ({
@@ -37,6 +38,7 @@ export const OutputScreenMainContent: React.FC<OutputScreenMainContentProps> = (
     isVisualMode,
     iframeRef,
     onIframeMessage,
+    showStructureOnly,
 }) => {
     return (
         <div className="flex-1 flex flex-col h-full bg-[#0F0F0F] relative overflow-hidden transition-all duration-300 min-h-0">
@@ -59,6 +61,7 @@ export const OutputScreenMainContent: React.FC<OutputScreenMainContentProps> = (
                     isVisualMode={isVisualMode}
                     onMessage={onIframeMessage}
                     iframeRef={iframeRef}
+                    showStructureOnly={showStructureOnly}
                 />
             )}
 

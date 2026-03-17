@@ -3,6 +3,8 @@ import { motion } from 'framer-motion'
 import { cn } from '@/shared/lib/utils'
 import type { PreviewAreaProps } from '@/features/preview/types'
 
+const loaderDotDelays = [0, 0.12, 0.24]
+
 export const PreviewArea: React.FC<PreviewAreaProps> = ({
     html,
     isGenerating,
@@ -11,6 +13,7 @@ export const PreviewArea: React.FC<PreviewAreaProps> = ({
     onMessage,
     iframeRef,
     fullscreen = false,
+    showStructureOnly = false,
 }) => {
     // Attach message listener for iframe communication
     useEffect(() => {
@@ -37,6 +40,9 @@ export const PreviewArea: React.FC<PreviewAreaProps> = ({
 
         return `<!DOCTYPE html><html><head>${viewportTag}</head><body>${html}</body></html>`
     }, [html, fullscreen])
+
+    const showLoader = isGenerating
+    const showStructurePlaceholder = showStructureOnly && !isGenerating
 
     return (
         <div
@@ -69,41 +75,38 @@ export const PreviewArea: React.FC<PreviewAreaProps> = ({
                             : 'w-full h-full rounded-xl border border-[#262626] shadow-2xl'
                 )}
             >
-                {isGenerating ? (
-                    <div className="absolute inset-0 bg-[#1F1F1F] flex flex-col items-center justify-center z-50">
-                        <div className="flex flex-col items-center gap-6">
-                            <div className="relative flex items-center justify-center">
-                                <motion.div
-                                    initial={{ scale: 0.8, opacity: 0.5 }}
-                                    animate={{ scale: 1.2, opacity: 0 }}
-                                    transition={{
-                                        duration: 1.5,
-                                        repeat: Infinity,
-                                        ease: 'easeOut',
+                {showLoader ? (
+                    <div className="absolute inset-0 z-50 flex items-center justify-center bg-[#171716]">
+                        <div className="flex items-center gap-2">
+                            {loaderDotDelays.map((delay, index) => (
+                                <motion.span
+                                    key={index}
+                                    className="h-2.5 w-2.5 rounded-full bg-white/80"
+                                    animate={{
+                                        opacity: [0.3, 1, 0.3],
+                                        y: [0, -3, 0],
                                     }}
-                                    className="absolute w-12 h-12 bg-white/10 rounded-full"
-                                />
-                                <motion.div
-                                    initial={{ scale: 0.8, opacity: 0.5 }}
-                                    animate={{ scale: 1.2, opacity: 0 }}
                                     transition={{
-                                        duration: 1.5,
+                                        duration: 0.75,
                                         repeat: Infinity,
-                                        ease: 'easeOut',
-                                        delay: 0.5,
+                                        ease: 'easeInOut',
+                                        delay,
                                     }}
-                                    className="absolute w-12 h-12 bg-white/10 rounded-full"
                                 />
-                                <div className="w-3 h-3 bg-white rounded-full shadow-[0_0_10px_rgba(255,255,255,0.5)]" />
+                            ))}
+                        </div>
+                    </div>
+                ) : showStructurePlaceholder ? (
+                    <div className="absolute inset-0 z-40 bg-[#171716] p-5">
+                        <div className="h-full w-full rounded-xl border border-white/10 bg-[#1F1F1F] p-4 md:p-5 flex flex-col gap-3">
+                            <div className="h-8 w-40 rounded-md bg-white/10" />
+                            <div className="h-3 w-72 rounded-md bg-white/5 max-w-full" />
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
+                                <div className="h-28 rounded-lg border border-white/10 bg-white/[0.03]" />
+                                <div className="h-28 rounded-lg border border-white/10 bg-white/[0.03]" />
                             </div>
-                            <motion.span
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                transition={{ duration: 0.5 }}
-                                className="text-xs font-medium text-neutral-400 tracking-widest uppercase"
-                            >
-                                Generating
-                            </motion.span>
+                            <div className="h-24 rounded-lg border border-white/10 bg-white/[0.03]" />
+                            <div className="mt-auto h-10 rounded-md bg-white/[0.04]" />
                         </div>
                     </div>
                 ) : (
