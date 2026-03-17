@@ -10,7 +10,7 @@ const openai = new OpenAI({
     },
 })
 
-export const extractProjectIntent = async (structurePlan: any) => {
+export const generateProjectFile = async (FileBuildInput: any) => {
     const completion = await openai.chat.completions.create({
         model: 'openai/gpt-oss-20b:free',
         temperature: 0,
@@ -21,7 +21,7 @@ export const extractProjectIntent = async (structurePlan: any) => {
             },
             {
                 role: 'user',
-                content: JSON.stringify(structurePlan),
+                content: JSON.stringify(FileBuildInput),
             },
         ],
     })
@@ -32,5 +32,5 @@ export const extractProjectIntent = async (structurePlan: any) => {
         throw new Error('no response from build agent')
     }
 
-    return JSON.parse(content)
+    return content
 }
