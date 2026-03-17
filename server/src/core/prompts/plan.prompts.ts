@@ -177,4 +177,4 @@ If input is invalid, return EXACTLY:
   "message": "Invalid intent input",
   "data": null,
   "errors": ["Invalid or incomplete feature extraction payload"]
-}`;
+}`

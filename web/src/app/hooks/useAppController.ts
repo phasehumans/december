@@ -25,12 +25,9 @@ export const useAppController = () => {
     const [showGenerationRequirementsModal, setShowGenerationRequirementsModal] =
         React.useState(false)
     const [pendingPrompt, setPendingPrompt] = React.useState<string | null>(null)
-    const [pendingPromptMessageId, setPendingPromptMessageId] = React.useState<string | null>(
-        null
-    )
-    const [generationRequirements, setGenerationRequirements] = React.useState<GenerationRequirements>(
-        defaultGenerationRequirements
-    )
+    const [pendingPromptMessageId, setPendingPromptMessageId] = React.useState<string | null>(null)
+    const [generationRequirements, setGenerationRequirements] =
+        React.useState<GenerationRequirements>(defaultGenerationRequirements)
     const [generationRequirementsError, setGenerationRequirementsError] = React.useState<
         string | null
     >(null)
@@ -130,7 +127,9 @@ export const useAppController = () => {
             setIsGenerating(false)
 
             if (pendingPromptMessageId) {
-                setMessages((prev) => prev.filter((message) => message.id !== pendingPromptMessageId))
+                setMessages((prev) =>
+                    prev.filter((message) => message.id !== pendingPromptMessageId)
+                )
             }
 
             const shouldResetThread = view !== 'chat'
@@ -184,7 +183,10 @@ export const useAppController = () => {
             return
         }
 
-        if (generationRequirements.needsDatabase && !generationRequirements.neonDatabaseUrl.trim()) {
+        if (
+            generationRequirements.needsDatabase &&
+            !generationRequirements.neonDatabaseUrl.trim()
+        ) {
             setGenerationRequirementsError('Please paste your NeonDB URL before continuing.')
             return
         }

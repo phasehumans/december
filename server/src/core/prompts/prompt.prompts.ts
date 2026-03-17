@@ -88,4 +88,4 @@ Return EXACTLY this JSON shape:
   "needsAuthentication": true,
   "needsFileStorage": false,
   "needsPayments": false
-}`;
+}`

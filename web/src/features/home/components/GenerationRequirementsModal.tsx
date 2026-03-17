@@ -14,6 +14,9 @@ interface GenerationRequirementsModalProps {
     onContinue: () => void
 }
 
+const NEON_VIDEO_URL = 'https://www.youtube.com/watch?v=Eu6Oez5ksMg'
+const NEON_VIDEO_THUMBNAIL = 'https://img.youtube.com/vi/Eu6Oez5ksMg/hqdefault.jpg'
+
 export const GenerationRequirementsModal: React.FC<GenerationRequirementsModalProps> = ({
     isOpen,
     requirements,
@@ -34,7 +37,9 @@ export const GenerationRequirementsModal: React.FC<GenerationRequirementsModalPr
                 <div className="flex items-center justify-between rounded-lg border border-white/10 bg-[#242323] px-3 py-2.5">
                     <div>
                         <p className="text-sm font-medium text-white">Use database</p>
-                        <p className="text-xs text-neutral-400">Enable DB integration for this build.</p>
+                        <p className="text-xs text-neutral-400">
+                            Enable DB integration for this build.
+                        </p>
                     </div>
                     <Switch
                         checked={requirements.needsDatabase}
@@ -59,17 +64,26 @@ export const GenerationRequirementsModal: React.FC<GenerationRequirementsModalPr
                     }
                 />
 
-                <div className="rounded-lg border border-white/10 bg-[#242323] p-2">
-                    <iframe
-                        className="h-32 w-full rounded-md border border-white/10"
-                        src="https://www.youtube.com/embed/ysz5S6PUM-U"
-                        title="Neon DB URL guide"
-                        loading="lazy"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                        referrerPolicy="strict-origin-when-cross-origin"
-                        allowFullScreen
-                    />
-                </div>
+                <a
+                    href={NEON_VIDEO_URL}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="group block overflow-hidden rounded-xl border border-white/10 bg-[#242323]"
+                >
+                    <div className="relative h-32 w-full">
+                        <img
+                            src={NEON_VIDEO_THUMBNAIL}
+                            alt="How to find Neon DB URL"
+                            className="h-full w-full object-cover"
+                        />
+                        <div className="absolute inset-0 bg-black/30 transition-colors group-hover:bg-black/20" />
+                        <div className="absolute inset-0 flex items-center justify-center">
+                            <span className="rounded-full bg-black/65 px-3 py-1 text-xs text-white border border-white/20">
+                                Open video
+                            </span>
+                        </div>
+                    </div>
+                </a>
 
                 {errorMessage && (
                     <p className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
