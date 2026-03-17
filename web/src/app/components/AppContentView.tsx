@@ -11,6 +11,7 @@ interface AppContentViewProps {
     view: ViewState
     isHome: boolean
     isGenerating: boolean
+    isRequirementsModalOpen: boolean
     isAuthenticated: boolean
     projects: Project[]
     isProjectsInitialLoading: boolean
@@ -57,6 +58,7 @@ export const AppContentView: React.FC<AppContentViewProps> = ({
     view,
     isHome,
     isGenerating,
+    isRequirementsModalOpen,
     isAuthenticated,
     projects,
     isProjectsInitialLoading,
@@ -100,7 +102,11 @@ export const AppContentView: React.FC<AppContentViewProps> = ({
                     </AnimatedPage>
                 ) : (
                     <AnimatedPage pageKey="chat-output">
-                        <OutputScreen onBack={onBackFromOutput} isGenerating={isGenerating} />
+                        <OutputScreen
+                            onBack={onBackFromOutput}
+                            isGenerating={isGenerating}
+                            showStructureOnly={isRequirementsModalOpen}
+                        />
                     </AnimatedPage>
                 ))}
         </AnimatePresence>
