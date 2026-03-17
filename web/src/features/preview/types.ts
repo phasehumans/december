@@ -17,6 +17,7 @@ export interface PreviewSelectedElement {
 export interface OutputScreenProps {
     onBack?: () => void
     isGenerating?: boolean
+    showStructureOnly?: boolean
 }
 
 export interface OutputHeaderProps {
@@ -38,6 +39,7 @@ export interface PreviewAreaProps {
     onMessage: (event: MessageEvent) => void
     iframeRef: RefObject<HTMLIFrameElement>
     fullscreen?: boolean
+    showStructureOnly?: boolean
 }
 
 export interface PreviewWindowProps {
