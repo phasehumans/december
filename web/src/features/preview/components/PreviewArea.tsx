@@ -3,7 +3,7 @@ import { motion } from 'framer-motion'
 import { cn } from '@/shared/lib/utils'
 import type { PreviewAreaProps } from '@/features/preview/types'
 
-const loaderDotDelays = [0, 0.12, 0.24]
+const loaderDotDelays = [0, 0.14, 0.28]
 
 export const PreviewArea: React.FC<PreviewAreaProps> = ({
     html,
@@ -76,18 +76,19 @@ export const PreviewArea: React.FC<PreviewAreaProps> = ({
                 )}
             >
                 {showLoader ? (
-                    <div className="absolute inset-0 z-50 flex items-center justify-center bg-[#171716]">
+                    <div className="absolute inset-0 z-50 flex items-center justify-center bg-[#171615]">
                         <div className="flex items-center gap-2">
                             {loaderDotDelays.map((delay, index) => (
                                 <motion.span
                                     key={index}
-                                    className="h-2.5 w-2.5 rounded-full bg-white/80"
+                                    className="h-2 w-2 rounded-full bg-[#DCDCD9]"
                                     animate={{
-                                        opacity: [0.3, 1, 0.3],
-                                        y: [0, -3, 0],
+                                        opacity: [0.35, 0.75, 0.35],
+                                        scale: [0.98, 1.06, 0.98],
+                                        y: [0, -1, 0],
                                     }}
                                     transition={{
-                                        duration: 0.75,
+                                        duration: 1.1,
                                         repeat: Infinity,
                                         ease: 'easeInOut',
                                         delay,
