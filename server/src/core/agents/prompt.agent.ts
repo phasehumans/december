@@ -1,16 +1,11 @@
-import OpenAI from 'openai'
-import { FEATURE_EXTRACTION_PROMPT } from '../prompts/prompt.prompts'
+import { openai } from '../../config/oai'
+import { FEATURE_EXTRACTION_PROMPT } from '../prompts/prompt.prompt'
 
-const openai = new OpenAI({
-    baseURL: 'https://openrouter.ai/api/v1',
-    apiKey: process.env.OPENROUTER_API_KEY,
-    defaultHeaders: {
-        'HTTP-Referer': 'http://localhost:4000',
-        'X-OpenRouter-Title': 'phasehumans',
-    },
-})
+type UserPrompt = {
+    
+}
 
-export const extractProjectIntent = async (userPrompt: string) => {
+export const extractProjectIntent = async (data: string) => {
     const completion = await openai.chat.completions.create({
         model: 'openai/gpt-oss-20b:free',
         temperature: 0,
@@ -21,7 +16,7 @@ export const extractProjectIntent = async (userPrompt: string) => {
             },
             {
                 role: 'user',
-                content: userPrompt,
+                content: data,
             },
         ],
     })

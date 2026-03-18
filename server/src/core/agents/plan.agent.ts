@@ -1,16 +1,7 @@
-import OpenAI from 'openai'
-import { PLAN_AGENT_PROMPT } from '../prompts/plan.prompts'
+import { openai } from '../../config/oai'
+import { PLAN_AGENT_PROMPT } from '../prompts/plan.prompt'
 
-const openai = new OpenAI({
-    baseURL: 'https://openrouter.ai/api/v1',
-    apiKey: process.env.OPENROUTER_API_KEY,
-    defaultHeaders: {
-        'HTTP-Referer': 'http://localhost:4000',
-        'X-OpenRouter-Title': 'phasehumans',
-    },
-})
-
-export const extractProjectPlan = async (structureIntent: any) => {
+export const extractProjectPlan = async (data: any) => {
     const completion = await openai.chat.completions.create({
         model: 'openai/gpt-oss-20b:free',
         temperature: 0,
@@ -21,7 +12,7 @@ export const extractProjectPlan = async (structureIntent: any) => {
             },
             {
                 role: 'user',
-                content: JSON.stringify(structureIntent),
+                content: JSON.stringify(data),
             },
         ],
     })
