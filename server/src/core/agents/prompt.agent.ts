@@ -1,11 +1,12 @@
 import { openai } from '../../config/oai'
 import { FEATURE_EXTRACTION_PROMPT } from '../prompts/prompt.prompt'
+import { extractProjectIntentSchema } from '../../modules/generation/generation.schema'
 
-type UserPrompt = {
-    
+type ExtractProjectIntent = {
+    userPrompt: string
 }
 
-export const extractProjectIntent = async (data: string) => {
+export const extractProjectIntent = async (data: ExtractProjectIntent) => {
     const completion = await openai.chat.completions.create({
         model: 'openai/gpt-oss-20b:free',
         temperature: 0,
@@ -16,7 +17,7 @@ export const extractProjectIntent = async (data: string) => {
             },
             {
                 role: 'user',
-                content: data,
+                content: data.userPrompt,
             },
         ],
     })
