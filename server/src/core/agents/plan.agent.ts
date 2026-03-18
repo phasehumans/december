@@ -1,7 +1,50 @@
 import { openai } from '../../config/oai'
 import { PLAN_AGENT_PROMPT } from '../prompts/plan.prompt'
 
-export const extractProjectPlan = async (data: any) => {
+type ExtractProjectPlan = {
+    prompt: string
+    summary: string
+
+    appType:
+        | 'landing-page'
+        | 'dashboard'
+        | 'portfolio'
+        | 'saas-app'
+        | 'blog'
+        | 'ecommerce'
+        | 'marketplace'
+        | 'booking-platform'
+        | 'crm'
+        | 'social-app'
+        | 'admin-panel'
+
+    experienceType: 'marketing' | 'app' | 'hybrid'
+
+    frontendFramework: 'vite-react'
+    backendFramework: 'express'
+    runTime: 'bun'
+
+    databaseProvider: 'neon-postgres'
+    databaseConnection: 'neon-url'
+
+    database: 'postgres' | 'none'
+
+    authStrategy: 'jwt-email-password'
+    auth: 'required' | 'optional' | 'none'
+
+    pages: string[]
+    sections: string[]
+    coreEntities: string[]
+    coreFeatures: string[]
+
+    needsBackend: boolean
+    needsDatabase: boolean
+    needsAuthentication: boolean
+    needsFileStorage: boolean
+    needsPayments: boolean
+}
+
+export const extractProjectPlan = async (data: ExtractProjectPlan) => {
     const completion = await openai.chat.completions.create({
         model: 'openai/gpt-oss-20b:free',
         temperature: 0,
