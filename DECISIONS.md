@@ -1,6 +1,13 @@
 ## Engineering Decisions @phasehumans
 
-### 14-03-2024
+### 19-03-2026
+
+- current status of phasehumans is that web/frontend is completed just need minor ui tweaks and real data integrations from backend, currently the work needed is for server/backend.
+- basic setup and crud are done, prompt and plan agents are also done, next things i should focus on is build agent and stream its response of each file to frontend in code mirror editor.
+- later that same files in batch will go to runtime; not firecracker and rust sperate runtime service in this phase, later add it, for now keep it simple and get the phasehumans working in real data, let it do it basic fn to generate code, later add the addons
+- next target is just to build agent and stream its generation content to files in frontend and chatbar logs/activity
+
+### 14-03-2026
 
 - fixed the ide/ code edito; proceding with code mirror insted of monacco
 - no very luctractive fn this is, phasehumans avg user will spend more time on canvas and prompt box rather than ide
