@@ -13,7 +13,7 @@ const generateWebsite = async (req: Request, res: Response) => {
         })
     }
 
-    const { prompt } = parseData.data
+    const { prompt, isDB, dbURL } = parseData.data
     const userId = req.userId as string | undefined
 
     if (!userId) {
@@ -24,7 +24,7 @@ const generateWebsite = async (req: Request, res: Response) => {
     }
 
     try {
-        const result = await generateService.generateWebsite({ prompt, userId })
+        const result = await generateService.generateWebsite({ prompt, userId, isDB, dbURL })
         return res.status(200).json({
             success: true,
             message: 'done',
