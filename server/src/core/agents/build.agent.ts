@@ -114,5 +114,11 @@ export const generateProjectFile = async (data: GenerateProjectFile) => {
         throw new Error('no response from build agent')
     }
 
-    return content
+    // return content
+    try {
+        return JSON.parse(content)
+    } catch (error) {
+        console.error('RAW BUILD AGENT OUTPUT:\n', content)
+        throw new Error('invalid JSON response | build agent')
+    }
 }
