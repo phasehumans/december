@@ -6,7 +6,7 @@ export const generateWebsiteSchema = z.object({
     dbURL: z.string().optional(),
 })
 
-export const extractProjectIntentSchema = z.object({
+export const extractProjectPlanSchema = z.object({
     prompt: z.string(),
     summary: z.string(),
 
@@ -50,7 +50,7 @@ export const extractProjectIntentSchema = z.object({
     needsPayments: z.boolean(),
 })
 
-export const extractProjectPlanSchema = z.object({
+export const generateProjectFileSchema = z.object({
     success: z.boolean(),
     message: z.string(),
 

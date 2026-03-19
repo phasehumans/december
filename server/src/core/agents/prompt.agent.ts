@@ -1,6 +1,5 @@
 import { openai } from '../../config/oai'
 import { FEATURE_EXTRACTION_PROMPT } from '../prompts/prompt.prompt'
-import { extractProjectIntentSchema } from '../../modules/generation/generation.schema'
 
 type ExtractProjectIntent = {
     userPrompt: string
