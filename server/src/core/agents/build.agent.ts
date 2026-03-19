@@ -1,16 +1,98 @@
-import OpenAI from 'openai'
-import { BUILD_AGENT_PROMPT } from '../prompts/build.prompts'
+import { openai } from '../../config/oai'
+import { BUILD_AGENT_PROMPT } from '../prompts/build.prompt'
 
-const openai = new OpenAI({
-    baseURL: 'https://openrouter.ai/api/v1',
-    apiKey: process.env.OPENROUTER_API_KEY,
-    defaultHeaders: {
-        'HTTP-Referer': 'http://localhost:4000',
-        'X-OpenRouter-Title': 'phasehumans',
-    },
-})
+type GenerateProjectFile = {
+    success: boolean
+    message: string
 
-export const generateProjectFile = async (FileBuildInput: any) => {
+    data: {
+        projectName: string
+
+        layoutType: 'single-page' | 'multi-page'
+        needsRouting: boolean
+
+        installCommands: {
+            web: string[]
+            server: string[]
+        }
+
+        dependencies: {
+            web: string[]
+            server: string[]
+        }
+
+        devDependencies: {
+            web: string[]
+            server: string[]
+        }
+
+        frontend: {
+            pages: {
+                name: string
+                route: string
+                purpose: string
+            }[]
+
+            components: {
+                name: string
+                type: 'layout' | 'section' | 'shared' | 'feature'
+                purpose: string
+            }[]
+        }
+
+        backend: {
+            enabled: boolean
+
+            modules: {
+                name: string
+                purpose: string
+            }[]
+
+            apiResources: {
+                name: string
+                basePath: string
+                purpose: string
+            }[]
+        }
+
+        databasePlan: {
+            enabled: boolean
+            orm: 'prisma' | 'none'
+            validation: 'zod' | 'none'
+
+            tables: {
+                name: string
+                purpose: string
+                columns: string[]
+            }[]
+        }
+
+        files: {
+            path: string
+            purpose: string
+            generate: boolean
+            generator:
+                | 'static'
+                | 'app-shell'
+                | 'page'
+                | 'component'
+                | 'layout'
+                | 'route'
+                | 'api'
+                | 'model'
+                | 'schema'
+                | 'config'
+                | 'lib'
+        }[]
+
+        generationOrder: string[]
+        constraints: string[]
+    }
+
+    errors: string[]
+}
+
+export const generateProjectFile = async (data: GenerateProjectFile) => {
     const completion = await openai.chat.completions.create({
         model: 'openai/gpt-oss-20b:free',
         temperature: 0,
@@ -21,7 +103,7 @@ export const generateProjectFile = async (FileBuildInput: any) => {
             },
             {
                 role: 'user',
-                content: JSON.stringify(FileBuildInput),
+                content: JSON.stringify(data),
             },
         ],
     })
@@ -32,5 +114,11 @@ export const generateProjectFile = async (FileBuildInput: any) => {
         throw new Error('no response from build agent')
     }
 
-    return content
+    // return content
+    try {
+        return JSON.parse(content)
+    } catch (error) {
+        console.error('RAW BUILD AGENT OUTPUT:\n', content)
+        throw new Error('invalid JSON response | build agent')
+    }
 }
