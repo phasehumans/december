@@ -1,17 +1,11 @@
 import React from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import type { Message } from '@/features/chat/types'
-import type { GenerationRequirements, ViewState } from '@/app/types'
-import { PREVIEW_HTML } from '@/features/preview/constants/preview'
-import { GENERATION_LOADER_DURATION_MS } from '@/features/preview/constants/generation'
+import type { ViewState } from '@/app/types'
 import { clearAuthToken, getAuthToken } from '@/shared/api/client'
+import { generationAPI } from '@/features/generation/api/generation'
 import { projectAPI } from '@/features/projects/api/project'
 import { mapBackendProjectToUIProject } from '@/app/mapProject'
-
-const defaultGenerationRequirements: GenerationRequirements = {
-    needsDatabase: false,
-    neonDatabaseUrl: '',
-}
 
 export const useAppController = () => {
     const queryClient = useQueryClient()
@@ -22,16 +16,7 @@ export const useAppController = () => {
     const [authToken, setAuthTokenState] = React.useState<string | null>(() => getAuthToken())
     const [showAuthModal, setShowAuthModal] = React.useState(false)
     const [isMobileSidebarOpen, setIsMobileSidebarOpen] = React.useState(false)
-    const [showGenerationRequirementsModal, setShowGenerationRequirementsModal] =
-        React.useState(false)
-    const [pendingPrompt, setPendingPrompt] = React.useState<string | null>(null)
-    const [pendingPromptMessageId, setPendingPromptMessageId] = React.useState<string | null>(null)
-    const [generationRequirements, setGenerationRequirements] =
-        React.useState<GenerationRequirements>(defaultGenerationRequirements)
-    const [generationRequirementsError, setGenerationRequirementsError] = React.useState<
-        string | null
-    >(null)
-    const generationTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
+    const generationAbortControllerRef = React.useRef<AbortController | null>(null)
 
     const isAuthenticated = Boolean(authToken)
 
@@ -60,18 +45,16 @@ export const useAppController = () => {
                 .map(mapBackendProjectToUIProject),
     })
 
-    const clearGenerationTimeout = React.useCallback(() => {
-        if (generationTimeoutRef.current) {
-            clearTimeout(generationTimeoutRef.current)
-            generationTimeoutRef.current = null
-        }
+    const abortGenerationRequest = React.useCallback(() => {
+        generationAbortControllerRef.current?.abort()
+        generationAbortControllerRef.current = null
     }, [])
 
     React.useEffect(() => {
         return () => {
-            clearGenerationTimeout()
+            abortGenerationRequest()
         }
-    }, [clearGenerationTimeout])
+    }, [abortGenerationRequest])
 
     const requireAuthOr = (action: () => void) => {
         if (!isAuthenticated) {
@@ -83,14 +66,161 @@ export const useAppController = () => {
     }
 
     const resetGenerationFlow = React.useCallback(() => {
-        setShowGenerationRequirementsModal(false)
-        setPendingPrompt(null)
-        setPendingPromptMessageId(null)
-        setGenerationRequirements(defaultGenerationRequirements)
-        setGenerationRequirementsError(null)
+        abortGenerationRequest()
         setIsGenerating(false)
-        clearGenerationTimeout()
-    }, [clearGenerationTimeout])
+    }, [abortGenerationRequest])
+
+    const appendAssistantMessage = React.useCallback(
+        (messageId: string, status: 'thinking' | 'planning') => {
+            setMessages((prev) => {
+                const existingMessage = prev.find((message) => message.id === messageId)
+
+                if (existingMessage) {
+                    return prev.map((message) =>
+                        message.id === messageId ? { ...message, status } : message
+                    )
+                }
+
+                return [
+                    ...prev,
+                    {
+                        id: messageId,
+                        role: 'assistant',
+                        content: '',
+                        type: 'text',
+                        status,
+                    },
+                ]
+            })
+        },
+        []
+    )
+
+    const appendAssistantChunk = React.useCallback((messageId: string, chunk: string) => {
+        setMessages((prev) =>
+            prev.map((message) =>
+                message.id === messageId
+                    ? {
+                          ...message,
+                          content: `${message.content}${chunk}`,
+                      }
+                    : message
+            )
+        )
+    }, [])
+
+    const updateAssistantStatus = React.useCallback(
+        (messageId: string, status: 'thinking' | 'planning' | 'done' | 'error') => {
+            setMessages((prev) =>
+                prev.map((message) =>
+                    message.id === messageId
+                        ? {
+                              ...message,
+                              status,
+                          }
+                        : message
+                )
+            )
+        },
+        []
+    )
+
+    const markStreamingMessagesAsError = React.useCallback(() => {
+        setMessages((prev) =>
+            prev.map((message) =>
+                message.role === 'assistant' &&
+                (message.status === 'thinking' || message.status === 'planning')
+                    ? {
+                          ...message,
+                          status: 'error',
+                      }
+                    : message
+            )
+        )
+    }, [])
+
+    const appendErrorMessage = React.useCallback((message: string) => {
+        setMessages((prev) => [
+            ...prev,
+            {
+                id: `${Date.now()}-error`,
+                role: 'assistant',
+                content: message,
+                type: 'text',
+                status: 'error',
+            },
+        ])
+    }, [])
+
+    const startGeneration = React.useCallback(
+        (prompt: string) => {
+            abortGenerationRequest()
+            setIsGenerating(true)
+
+            const abortController = new AbortController()
+            generationAbortControllerRef.current = abortController
+
+            void (async () => {
+                try {
+                    await generationAPI.generateProjectStream({
+                        prompt,
+                        isDB: false,
+                        signal: abortController.signal,
+                        onEvent: (event) => {
+                            switch (event.type) {
+                                case 'connected':
+                                    return
+                                case 'project-created':
+                                    void queryClient.invalidateQueries({ queryKey: ['projects'] })
+                                    return
+                                case 'phase':
+                                    return
+                                case 'message-start':
+                                    appendAssistantMessage(event.data.messageId, event.data.status)
+                                    return
+                                case 'message-chunk':
+                                    appendAssistantChunk(event.data.messageId, event.data.chunk)
+                                    return
+                                case 'message-complete':
+                                    updateAssistantStatus(event.data.messageId, event.data.status)
+                                    return
+                                case 'result':
+                                    void queryClient.invalidateQueries({ queryKey: ['projects'] })
+                                    return
+                                case 'error':
+                                    return
+                            }
+                        },
+                    })
+                } catch (error) {
+                    if (abortController.signal.aborted) {
+                        return
+                    }
+
+                    markStreamingMessagesAsError()
+
+                    const message =
+                        error instanceof Error ? error.message : 'Generation failed unexpectedly.'
+                    appendErrorMessage(message)
+                } finally {
+                    if (generationAbortControllerRef.current === abortController) {
+                        generationAbortControllerRef.current = null
+                    }
+
+                    setIsGenerating(false)
+                }
+            })()
+        },
+        [
+            abortGenerationRequest,
+            appendAssistantChunk,
+            appendAssistantMessage,
+            appendErrorMessage,
+            markStreamingMessagesAsError,
+            queryClient,
+            updateAssistantStatus,
+        ]
+    )
 
     const handleNewThread = () => {
         requireAuthOr(() => {
@@ -107,6 +237,7 @@ export const useAppController = () => {
     }
 
     const handleSignOut = () => {
+        abortGenerationRequest()
         clearAuthToken()
         setAuthTokenState(null)
         queryClient.removeQueries({ queryKey: ['projects'] })
@@ -121,15 +252,6 @@ export const useAppController = () => {
             const normalizedPrompt = prompt.trim()
             if (!normalizedPrompt) {
                 return
-            }
-
-            clearGenerationTimeout()
-            setIsGenerating(false)
-
-            if (pendingPromptMessageId) {
-                setMessages((prev) =>
-                    prev.filter((message) => message.id !== pendingPromptMessageId)
-                )
             }
 
             const shouldResetThread = view !== 'chat'
@@ -150,70 +272,8 @@ export const useAppController = () => {
                 setMessages((prev) => [...prev, userMsg])
             }
 
-            setPendingPrompt(normalizedPrompt)
-            setPendingPromptMessageId(promptMessageId)
-            setGenerationRequirements(defaultGenerationRequirements)
-            setGenerationRequirementsError(null)
-            setShowGenerationRequirementsModal(true)
+            startGeneration(normalizedPrompt)
         })
-    }
-
-    const handleGenerationRequirementsChange = (nextRequirements: GenerationRequirements) => {
-        setGenerationRequirements(nextRequirements)
-        setGenerationRequirementsError(null)
-    }
-
-    const handleGenerationRequirementsCancel = () => {
-        if (pendingPromptMessageId) {
-            setMessages((prev) => prev.filter((message) => message.id !== pendingPromptMessageId))
-        }
-
-        setShowGenerationRequirementsModal(false)
-        setPendingPrompt(null)
-        setPendingPromptMessageId(null)
-        setGenerationRequirements(defaultGenerationRequirements)
-        setGenerationRequirementsError(null)
-        setIsGenerating(false)
-        clearGenerationTimeout()
-    }
-
-    const handleGenerationRequirementsContinue = () => {
-        if (!pendingPrompt) {
-            setShowGenerationRequirementsModal(false)
-            return
-        }
-
-        if (
-            generationRequirements.needsDatabase &&
-            !generationRequirements.neonDatabaseUrl.trim()
-        ) {
-            setGenerationRequirementsError('Please paste your NeonDB URL before continuing.')
-            return
-        }
-
-        const dbSummary = generationRequirements.needsDatabase
-            ? ` Database enabled with Neon URL: ${generationRequirements.neonDatabaseUrl.trim()}`
-            : ' Database not requested.'
-
-        clearGenerationTimeout()
-        setShowGenerationRequirementsModal(false)
-        setGenerationRequirementsError(null)
-        setPendingPrompt(null)
-        setPendingPromptMessageId(null)
-        setIsGenerating(true)
-
-        generationTimeoutRef.current = setTimeout(() => {
-            const assistantMsg: Message = {
-                id: (Date.now() + 1).toString(),
-                role: 'assistant',
-                content: `Generation complete for "${pendingPrompt}".${dbSummary}`,
-                type: 'text',
-                code: PREVIEW_HTML,
-            }
-
-            setMessages((prev) => [...prev, assistantMsg])
-            setIsGenerating(false)
-        }, GENERATION_LOADER_DURATION_MS)
     }
 
     const isHome = view === 'chat' && messages.length === 0
@@ -231,6 +291,7 @@ export const useAppController = () => {
         queryClient,
         view,
         setView,
+        messages,
         isGenerating,
         authToken,
         setAuthTokenState,
@@ -245,16 +306,10 @@ export const useAppController = () => {
         projectsErrorMessage,
         isHome,
         showSidebar,
-        showGenerationRequirementsModal,
-        generationRequirements,
-        generationRequirementsError,
         handleNewThread,
         handleNavigate,
         handleSignOut,
         handlePromptSubmit,
-        handleGenerationRequirementsChange,
-        handleGenerationRequirementsCancel,
-        handleGenerationRequirementsContinue,
         handleBackFromOutput,
     }
 }

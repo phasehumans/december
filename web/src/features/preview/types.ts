@@ -1,4 +1,5 @@
 import type { RefObject } from 'react'
+import type { Message } from '@/features/chat/types'
 
 export type PreviewDevice = 'desktop' | 'mobile' | 'tablet'
 export type PreviewTab = 'preview' | 'code' | 'canvas'
@@ -16,6 +17,8 @@ export interface PreviewSelectedElement {
 
 export interface OutputScreenProps {
     onBack?: () => void
+    onPromptSubmit: (prompt: string) => void
+    messages: Message[]
     isGenerating?: boolean
     showStructureOnly?: boolean
 }

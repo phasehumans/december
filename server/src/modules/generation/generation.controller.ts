@@ -2,6 +2,15 @@ import type { Request, Response } from 'express'
 import { generateWebsiteSchema } from './generation.schema'
 import { generateService } from './generation.service'
 
+const writeEvent = (res: Response, event: string, data: unknown) => {
+    if (res.writableEnded) {
+        return
+    }
+
+    res.write(`event: ${event}\n`)
+    res.write(`data: ${JSON.stringify(data)}\n\n`)
+}
+
 const generateWebsite = async (req: Request, res: Response) => {
     const parseData = generateWebsiteSchema.safeParse(req.body)
 
@@ -24,17 +33,39 @@ const generateWebsite = async (req: Request, res: Response) => {
     }
 
     try {
-        const result = await generateService.generateWebsite({ prompt, userId, isDB, dbURL })
-        return res.status(200).json({
-            success: true,
-            message: 'done',
-            data: result,
+        res.status(200)
+        res.setHeader('Content-Type', 'text/event-stream')
+        res.setHeader('Cache-Control', 'no-cache, no-transform')
+        res.setHeader('Connection', 'keep-alive')
+        res.setHeader('X-Accel-Buffering', 'no')
+        res.flushHeaders?.()
+
+        writeEvent(res, 'connected', { ok: true })
+
+        await generateService.generateWebsite({
+            prompt,
+            userId,
+            isDB,
+            dbURL,
+            onEvent: async (event) => {
+                writeEvent(res, event.type, event.data)
+            },
         })
+
+        return res.end()
     } catch (error: any) {
-        return res.status(500).json({
-            success: false,
-            errors: error.message,
+        if (!res.headersSent) {
+            return res.status(500).json({
+                success: false,
+                errors: error.message,
+            })
+        }
+
+        writeEvent(res, 'error', {
+            message: error.message,
         })
+
+        return res.end()
     }
 }
 

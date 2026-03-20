@@ -4,14 +4,15 @@ import { HomeHero } from '@/features/home/components/HomeHero'
 import { OutputScreen } from '@/features/preview/components/OutputScreen'
 import { ProjectList } from '@/features/projects/components/ProjectList'
 import { ProfileSettings } from '@/features/profile/components/ProfileSettings'
+import type { Message } from '@/features/chat/types'
 import type { Project } from '@/features/projects/types'
 import type { ViewState } from '@/app/types'
 
 interface AppContentViewProps {
     view: ViewState
     isHome: boolean
+    messages: Message[]
     isGenerating: boolean
-    isRequirementsModalOpen: boolean
     isAuthenticated: boolean
     projects: Project[]
     isProjectsInitialLoading: boolean
@@ -57,8 +58,8 @@ const AnimatedPage: React.FC<{ pageKey: string; children: React.ReactNode }> = (
 export const AppContentView: React.FC<AppContentViewProps> = ({
     view,
     isHome,
+    messages,
     isGenerating,
-    isRequirementsModalOpen,
     isAuthenticated,
     projects,
     isProjectsInitialLoading,
@@ -104,8 +105,9 @@ export const AppContentView: React.FC<AppContentViewProps> = ({
                     <AnimatedPage pageKey="chat-output">
                         <OutputScreen
                             onBack={onBackFromOutput}
+                            onPromptSubmit={onPromptSubmit}
+                            messages={messages}
                             isGenerating={isGenerating}
-                            showStructureOnly={isRequirementsModalOpen}
                         />
                     </AnimatedPage>
                 ))}
