@@ -1,44 +1,308 @@
+import { z } from 'zod'
+import { prisma } from '../../config/db'
 import { extractProjectPlan } from '../../core/agents/plan.agent'
 import { extractProjectIntent } from '../../core/agents/prompt.agent'
-import { generateProjectFile } from '../../core/agents/build.agent'
 import { cleanPrompt } from '../../utils/cleanPrompt'
-import { extractProjectPlanSchema, generateProjectFileSchema } from './generation.schema'
+import {
+    generateProjectFileSchema,
+    planAgentResponseSchema,
+    projectIntentSchema,
+    promptAgentResponseSchema,
+} from './generation.schema'
 
 type GenerateWebsite = {
     prompt: string
     userId: string
     isDB: boolean
     dbURL?: string
+    onEvent?: (event: GenerationStreamEvent) => Promise<void> | void
+}
+
+type ProjectIntent = z.infer<typeof projectIntentSchema>
+type ProjectPlan = z.infer<typeof generateProjectFileSchema>
+type ProjectRecord = Awaited<ReturnType<typeof prisma.project.create>>
+
+type GenerationStreamEvent =
+    | {
+          type: 'project-created'
+          data: {
+              project: ProjectRecord
+          }
+      }
+    | {
+          type: 'phase'
+          data: {
+              phase: 'thinking' | 'planning' | 'done'
+          }
+      }
+    | {
+          type: 'message-start'
+          data: {
+              messageId: string
+              status: 'thinking' | 'planning'
+          }
+      }
+    | {
+          type: 'message-chunk'
+          data: {
+              messageId: string
+              chunk: string
+          }
+      }
+    | {
+          type: 'message-complete'
+          data: {
+              messageId: string
+              status: 'done'
+          }
+      }
+    | {
+          type: 'result'
+          data: {
+              project: ProjectRecord
+              intent: ProjectIntent
+              plan: ProjectPlan
+              isDB: boolean
+              dbURL?: string
+          }
+      }
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
+const createProjectName = (prompt: string) => {
+    const words = cleanPrompt(prompt)
+        .split(' ')
+        .filter(Boolean)
+        .slice(0, 4)
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+
+    const name = words.join(' ').trim()
+    return name.length >= 3 ? name.slice(0, 40) : 'New Project'
+}
+
+const splitIntoChunks = (content: string, minLength: number, maxLength: number) => {
+    const chunks: string[] = []
+    let cursor = 0
+
+    while (cursor < content.length) {
+        const remaining = content.length - cursor
+        const currentMaxLength = Math.min(maxLength, remaining)
+        const currentMinLength = Math.min(minLength, currentMaxLength)
+        let sliceLength = currentMinLength
+
+        if (currentMaxLength > currentMinLength) {
+            sliceLength += Math.floor(Math.random() * (currentMaxLength - currentMinLength + 1))
+        }
+
+        let nextCursor = cursor + sliceLength
+
+        if (nextCursor < content.length) {
+            const whitespaceIndex = content.lastIndexOf(' ', nextCursor)
+
+            if (whitespaceIndex > cursor + 2) {
+                nextCursor = whitespaceIndex + 1
+            }
+        }
+
+        const chunk = content.slice(cursor, nextCursor)
+
+        if (chunk) {
+            chunks.push(chunk)
+        }
+
+        cursor = nextCursor
+    }
+
+    return chunks.length > 0 ? chunks : [content]
+}
+
+const applyDatabaseSelection = (intent: ProjectIntent, isDB: boolean) => {
+    if (!isDB) {
+        return {
+            ...intent,
+            database: 'none' as const,
+            needsDatabase: false,
+        }
+    }
+
+    return {
+        ...intent,
+        database: 'postgres' as const,
+        needsDatabase: true,
+        needsBackend: true,
+    }
+}
+
+const emitAssistantMessage = async (
+    onEvent: GenerateWebsite['onEvent'],
+    data: {
+        messageId: string
+        status: 'thinking' | 'planning'
+        content: string
+    }
+) => {
+    if (!onEvent) {
+        return
+    }
+
+    const chunkRange =
+        data.status === 'planning'
+            ? { minLength: 6, maxLength: 12, minDelay: 22, maxDelay: 40 }
+            : { minLength: 8, maxLength: 16, minDelay: 20, maxDelay: 36 }
+
+    await onEvent({
+        type: 'message-start',
+        data: {
+            messageId: data.messageId,
+            status: data.status,
+        },
+    })
+
+    await sleep(120)
+
+    for (const chunk of splitIntoChunks(data.content, chunkRange.minLength, chunkRange.maxLength)) {
+        await onEvent({
+            type: 'message-chunk',
+            data: {
+                messageId: data.messageId,
+                chunk,
+            },
+        })
+
+        const delay =
+            chunkRange.minDelay +
+            Math.floor(Math.random() * (chunkRange.maxDelay - chunkRange.minDelay + 1))
+
+        await sleep(delay)
+    }
+
+    await sleep(80)
+
+    await onEvent({
+        type: 'message-complete',
+        data: {
+            messageId: data.messageId,
+            status: 'done',
+        },
+    })
 }
 
 const generateWebsite = async (data: GenerateWebsite) => {
-    const { prompt, userId, isDB, dbURL } = data
+    const { prompt, userId, isDB, dbURL, onEvent } = data
+    let project: ProjectRecord | null = null
 
-    const userPrompt = cleanPrompt(prompt)
-    const projectIntent = await extractProjectIntent({ userPrompt })
-    console.log(projectIntent)
+    try {
+        const userPrompt = cleanPrompt(prompt)
 
-    const parseIntent = extractProjectPlanSchema.safeParse(projectIntent)
+        project = await prisma.project.create({
+            data: {
+                name: createProjectName(userPrompt),
+                description: 'Generation in progress',
+                prompt,
+                projectStatus: 'GENERATING',
+                userId,
+            },
+        })
 
-    if (!parseIntent.success) {
-        throw new Error('invalid response | prompt agent')
+        await onEvent?.({
+            type: 'project-created',
+            data: {
+                project,
+            },
+        })
+
+        await onEvent?.({
+            type: 'phase',
+            data: {
+                phase: 'thinking',
+            },
+        })
+
+        const rawIntentResponse = await extractProjectIntent({ userPrompt })
+        const parseIntent = promptAgentResponseSchema.safeParse(rawIntentResponse)
+
+        if (!parseIntent.success) {
+            throw new Error('invalid response | prompt agent')
+        }
+
+        const intent = applyDatabaseSelection(parseIntent.data.intent, isDB)
+
+        await emitAssistantMessage(onEvent, {
+            messageId: `${project.id}:prompt-agent`,
+            status: 'thinking',
+            content: parseIntent.data.message,
+        })
+
+        await onEvent?.({
+            type: 'phase',
+            data: {
+                phase: 'planning',
+            },
+        })
+
+        const rawPlanResponse = await extractProjectPlan(intent)
+        const parsePlan = planAgentResponseSchema.safeParse(rawPlanResponse)
+
+        if (!parsePlan.success) {
+            throw new Error('invalid response | plan agent')
+        }
+
+        if (!parsePlan.data.plan.success) {
+            throw new Error(parsePlan.data.plan.errors[0] || 'invalid response | plan agent')
+        }
+
+        await emitAssistantMessage(onEvent, {
+            messageId: `${project.id}:plan-agent`,
+            status: 'planning',
+            content: parsePlan.data.message,
+        })
+
+        const updatedProject = await prisma.project.update({
+            where: {
+                id: project.id,
+            },
+            data: {
+                name: parsePlan.data.plan.data.projectName,
+                description: intent.summary,
+                projectStatus: 'READY',
+            },
+        })
+
+        await onEvent?.({
+            type: 'phase',
+            data: {
+                phase: 'done',
+            },
+        })
+
+        const result = {
+            project: updatedProject,
+            intent,
+            plan: parsePlan.data.plan,
+            isDB,
+            ...(dbURL ? { dbURL } : {}),
+        }
+
+        await onEvent?.({
+            type: 'result',
+            data: result,
+        })
+
+        return result
+    } catch (error) {
+        if (project) {
+            await prisma.project.update({
+                where: {
+                    id: project.id,
+                },
+                data: {
+                    projectStatus: 'FAILED',
+                },
+            })
+        }
+
+        throw error
     }
-
-    const projectPlan = await extractProjectPlan(parseIntent.data)
-    console.log(projectPlan)
-    // console.log(JSON.stringify(projectPlan, null, 2))
-
-    const parsePlan = generateProjectFileSchema.safeParse(projectPlan)
-
-    if (!parsePlan.success) {
-        throw new Error('invalid repsonse | plan agent')
-    }
-
-    const projectFiles = await generateProjectFile(parsePlan.data)
-    console.log(projectFiles)
-    // console.log(JSON.stringify(projectFiles, null, 2))
-
-    return 'all ok'
 }
 
 export const generateService = {
