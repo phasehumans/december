@@ -80,7 +80,7 @@ const createProjectName = (prompt: string) => {
     return name.length >= 3 ? name.slice(0, 40) : 'New Project'
 }
 
-const splitIntoChunks = (content: string, maxLength = 28) => {
+const splitIntoChunks = (content: string, maxLength: number) => {
     const tokens = content.split(/(\s+)/).filter(Boolean)
     const chunks: string[] = []
     let currentChunk = ''
@@ -131,6 +131,9 @@ const emitAssistantMessage = async (
         return
     }
 
+    const chunkLength = data.status === 'planning' ? 12 : 18
+    const chunkDelay = data.status === 'planning' ? 72 : 58
+
     await onEvent({
         type: 'message-start',
         data: {
@@ -139,7 +142,9 @@ const emitAssistantMessage = async (
         },
     })
 
-    for (const chunk of splitIntoChunks(data.content)) {
+    await sleep(180)
+
+    for (const chunk of splitIntoChunks(data.content, chunkLength)) {
         await onEvent({
             type: 'message-chunk',
             data: {
@@ -148,8 +153,10 @@ const emitAssistantMessage = async (
             },
         })
 
-        await sleep(18)
+        await sleep(chunkDelay)
     }
+
+    await sleep(120)
 
     await onEvent({
         type: 'message-complete',

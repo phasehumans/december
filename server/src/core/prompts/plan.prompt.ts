@@ -76,12 +76,13 @@ Allowed generator values:
 Message rules:
 - message must be plain text
 - message should feel like a live planning update for the chatbar
-- message should be 2 short paragraphs
-- paragraph 1 should explain the build plan at a high level
-- paragraph 2 should mention the main pages, components, routes, or modules that will be created
-- keep it specific enough that the user can picture the project structure
+- message must be exactly 4 or 5 bullet points
+- every bullet must start with "- "
+- every bullet should stay on a single line
+- bullets should describe major implementation steps, pages, sections, routes, or modules
+- keep the bullets concrete and easy to scan
 - never mention JSON, schemas, internal tools, or hidden reasoning
-- do not use bullet symbols or markdown headings
+- do not add any heading or intro text before the bullets
 
 Return EXACTLY this JSON shape:
 {
@@ -188,7 +189,7 @@ Consistency:
 
 If input is invalid, return EXACTLY:
 {
-  "message": "I could not create a valid implementation plan from the current intent.",
+  "message": "- Unable to create a valid implementation plan from the current intent\n- Recheck the extracted product requirements\n- Verify the requested pages and features\n- Confirm the backend and data needs",
   "plan": {
     "success": false,
     "message": "Invalid intent input",
