@@ -80,23 +80,37 @@ const createProjectName = (prompt: string) => {
     return name.length >= 3 ? name.slice(0, 40) : 'New Project'
 }
 
-const splitIntoChunks = (content: string, maxLength: number) => {
-    const tokens = content.split(/(\s+)/).filter(Boolean)
+const splitIntoChunks = (content: string, minLength: number, maxLength: number) => {
     const chunks: string[] = []
-    let currentChunk = ''
+    let cursor = 0
 
-    for (const token of tokens) {
-        if ((currentChunk + token).length > maxLength && currentChunk) {
-            chunks.push(currentChunk)
-            currentChunk = token
-            continue
+    while (cursor < content.length) {
+        const remaining = content.length - cursor
+        const currentMaxLength = Math.min(maxLength, remaining)
+        const currentMinLength = Math.min(minLength, currentMaxLength)
+        let sliceLength = currentMinLength
+
+        if (currentMaxLength > currentMinLength) {
+            sliceLength += Math.floor(Math.random() * (currentMaxLength - currentMinLength + 1))
         }
 
-        currentChunk += token
-    }
+        let nextCursor = cursor + sliceLength
 
-    if (currentChunk) {
-        chunks.push(currentChunk)
+        if (nextCursor < content.length) {
+            const whitespaceIndex = content.lastIndexOf(' ', nextCursor)
+
+            if (whitespaceIndex > cursor + 2) {
+                nextCursor = whitespaceIndex + 1
+            }
+        }
+
+        const chunk = content.slice(cursor, nextCursor)
+
+        if (chunk) {
+            chunks.push(chunk)
+        }
+
+        cursor = nextCursor
     }
 
     return chunks.length > 0 ? chunks : [content]
@@ -131,8 +145,10 @@ const emitAssistantMessage = async (
         return
     }
 
-    const chunkLength = data.status === 'planning' ? 12 : 18
-    const chunkDelay = data.status === 'planning' ? 72 : 58
+    const chunkRange =
+        data.status === 'planning'
+            ? { minLength: 6, maxLength: 12, minDelay: 22, maxDelay: 40 }
+            : { minLength: 8, maxLength: 16, minDelay: 20, maxDelay: 36 }
 
     await onEvent({
         type: 'message-start',
@@ -142,9 +158,9 @@ const emitAssistantMessage = async (
         },
     })
 
-    await sleep(180)
+    await sleep(120)
 
-    for (const chunk of splitIntoChunks(data.content, chunkLength)) {
+    for (const chunk of splitIntoChunks(data.content, chunkRange.minLength, chunkRange.maxLength)) {
         await onEvent({
             type: 'message-chunk',
             data: {
@@ -153,10 +169,14 @@ const emitAssistantMessage = async (
             },
         })
 
-        await sleep(chunkDelay)
+        const delay =
+            chunkRange.minDelay +
+            Math.floor(Math.random() * (chunkRange.maxDelay - chunkRange.minDelay + 1))
+
+        await sleep(delay)
     }
 
-    await sleep(120)
+    await sleep(80)
 
     await onEvent({
         type: 'message-complete',
