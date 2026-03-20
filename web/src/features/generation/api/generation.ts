@@ -77,8 +77,13 @@ const toApiError = async (res: Response) => {
         payload = null
     }
 
+    const genericMessage =
+        payload?.message && ['internal server error', 'server error'].includes(payload.message)
+
     const message =
-        payload?.message ||
+        (typeof payload?.errors === 'string' && (genericMessage || !payload?.message)
+            ? payload.errors
+            : payload?.message) ||
         (typeof payload?.errors === 'string' ? payload.errors : undefined) ||
         `Request failed with status ${res.status}`
 
