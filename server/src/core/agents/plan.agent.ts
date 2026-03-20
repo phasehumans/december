@@ -1,4 +1,5 @@
 import { openai } from '../../config/oai'
+import { parseModelJson } from '../../utils/parseModelJson'
 import { PLAN_AGENT_PROMPT } from '../prompts/plan.prompt'
 
 type ExtractProjectPlan = {
@@ -66,5 +67,5 @@ export const extractProjectPlan = async (data: ExtractProjectPlan) => {
         throw new Error('no response from planner agent')
     }
 
-    return JSON.parse(content)
+    return parseModelJson(content, 'plan agent')
 }

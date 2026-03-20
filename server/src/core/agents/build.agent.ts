@@ -1,4 +1,5 @@
 import { openai } from '../../config/oai'
+import { parseModelJson } from '../../utils/parseModelJson'
 import { BUILD_AGENT_PROMPT } from '../prompts/build.prompt'
 
 type GenerateProjectFile = {
@@ -114,11 +115,10 @@ export const generateProjectFile = async (data: GenerateProjectFile) => {
         throw new Error('no response from build agent')
     }
 
-    // return content
     try {
-        return JSON.parse(content)
+        return parseModelJson(content, 'build agent')
     } catch (error) {
         console.error('RAW BUILD AGENT OUTPUT:\n', content)
-        throw new Error('invalid JSON response | build agent')
+        throw error
     }
 }
