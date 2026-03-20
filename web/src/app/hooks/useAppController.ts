@@ -17,6 +17,10 @@ export const useAppController = () => {
     const [showAuthModal, setShowAuthModal] = React.useState(false)
     const [isMobileSidebarOpen, setIsMobileSidebarOpen] = React.useState(false)
     const generationAbortControllerRef = React.useRef<AbortController | null>(null)
+    const activeAssistantMessageIdRef = React.useRef<string | null>(null)
+    const activeGenerationPhaseRef = React.useRef<'thinking' | 'planning' | 'building' | null>(
+        null
+    )
 
     const isAuthenticated = Boolean(authToken)
 
@@ -45,6 +49,75 @@ export const useAppController = () => {
                 .map(mapBackendProjectToUIProject),
     })
 
+    const updateAssistantMessage = React.useCallback(
+        (messageId: string, updater: (message: Message) => Message) => {
+            setMessages((prev) =>
+                prev.map((message) => (message.id === messageId ? updater(message) : message))
+            )
+        },
+        []
+    )
+
+    const setAssistantStatus = React.useCallback(
+        (messageId: string, status: 'thinking' | 'planning' | 'building' | 'done' | 'error') => {
+            updateAssistantMessage(messageId, (message) => ({
+                ...message,
+                status,
+            }))
+        },
+        [updateAssistantMessage]
+    )
+
+    const appendAssistantChunk = React.useCallback(
+        (messageId: string, chunk: string) => {
+            updateAssistantMessage(messageId, (message) => ({
+                ...message,
+                content: `${message.content}${chunk}`,
+            }))
+        },
+        [updateAssistantMessage]
+    )
+
+    const ensureAssistantSpacing = React.useCallback(
+        (messageId: string) => {
+            updateAssistantMessage(messageId, (message) => {
+                if (!message.content.trim()) {
+                    return message
+                }
+
+                if (message.content.endsWith('\n\n')) {
+                    return message
+                }
+
+                const spacer = message.content.endsWith('\n') ? '\n' : '\n\n'
+
+                return {
+                    ...message,
+                    content: `${message.content}${spacer}`,
+                }
+            })
+        },
+        [updateAssistantMessage]
+    )
+
+    const setAssistantError = React.useCallback(
+        (messageId: string, errorMessage: string) => {
+            updateAssistantMessage(messageId, (message) => ({
+                ...message,
+                status: 'error',
+                content: message.content.trim()
+                    ? `${message.content.trim()}\n\n${errorMessage}`
+                    : errorMessage,
+            }))
+        },
+        [updateAssistantMessage]
+    )
+
+    const resetGenerationRefs = React.useCallback(() => {
+        activeAssistantMessageIdRef.current = null
+        activeGenerationPhaseRef.current = null
+    }, [])
+
     const abortGenerationRequest = React.useCallback(() => {
         generationAbortControllerRef.current?.abort()
         generationAbortControllerRef.current = null
@@ -67,94 +140,15 @@ export const useAppController = () => {
 
     const resetGenerationFlow = React.useCallback(() => {
         abortGenerationRequest()
+        resetGenerationRefs()
         setIsGenerating(false)
-    }, [abortGenerationRequest])
-
-    const appendAssistantMessage = React.useCallback(
-        (messageId: string, status: 'thinking' | 'planning') => {
-            setMessages((prev) => {
-                const existingMessage = prev.find((message) => message.id === messageId)
-
-                if (existingMessage) {
-                    return prev.map((message) =>
-                        message.id === messageId ? { ...message, status } : message
-                    )
-                }
-
-                return [
-                    ...prev,
-                    {
-                        id: messageId,
-                        role: 'assistant',
-                        content: '',
-                        type: 'text',
-                        status,
-                    },
-                ]
-            })
-        },
-        []
-    )
-
-    const appendAssistantChunk = React.useCallback((messageId: string, chunk: string) => {
-        setMessages((prev) =>
-            prev.map((message) =>
-                message.id === messageId
-                    ? {
-                          ...message,
-                          content: `${message.content}${chunk}`,
-                      }
-                    : message
-            )
-        )
-    }, [])
-
-    const updateAssistantStatus = React.useCallback(
-        (messageId: string, status: 'thinking' | 'planning' | 'done' | 'error') => {
-            setMessages((prev) =>
-                prev.map((message) =>
-                    message.id === messageId
-                        ? {
-                              ...message,
-                              status,
-                          }
-                        : message
-                )
-            )
-        },
-        []
-    )
-
-    const markStreamingMessagesAsError = React.useCallback(() => {
-        setMessages((prev) =>
-            prev.map((message) =>
-                message.role === 'assistant' &&
-                (message.status === 'thinking' || message.status === 'planning')
-                    ? {
-                          ...message,
-                          status: 'error',
-                      }
-                    : message
-            )
-        )
-    }, [])
-
-    const appendErrorMessage = React.useCallback((message: string) => {
-        setMessages((prev) => [
-            ...prev,
-            {
-                id: `${Date.now()}-error`,
-                role: 'assistant',
-                content: message,
-                type: 'text',
-                status: 'error',
-            },
-        ])
-    }, [])
+    }, [abortGenerationRequest, resetGenerationRefs])
 
     const startGeneration = React.useCallback(
-        (prompt: string) => {
+        (prompt: string, assistantMessageId: string) => {
             abortGenerationRequest()
+            activeAssistantMessageIdRef.current = assistantMessageId
+            activeGenerationPhaseRef.current = 'thinking'
             setIsGenerating(true)
 
             const abortController = new AbortController()
@@ -167,6 +161,12 @@ export const useAppController = () => {
                         isDB: false,
                         signal: abortController.signal,
                         onEvent: (event) => {
+                            const activeMessageId = activeAssistantMessageIdRef.current
+
+                            if (!activeMessageId) {
+                                return
+                            }
+
                             switch (event.type) {
                                 case 'connected':
                                     return
@@ -174,20 +174,48 @@ export const useAppController = () => {
                                     void queryClient.invalidateQueries({ queryKey: ['projects'] })
                                     return
                                 case 'phase':
+                                    if (event.data.phase === 'planning') {
+                                        activeGenerationPhaseRef.current = 'planning'
+                                        setAssistantStatus(activeMessageId, 'planning')
+                                        ensureAssistantSpacing(activeMessageId)
+                                    }
+
+                                    if (event.data.phase === 'done') {
+                                        activeGenerationPhaseRef.current = 'building'
+                                        setAssistantStatus(activeMessageId, 'building')
+                                    }
+
                                     return
                                 case 'message-start':
-                                    appendAssistantMessage(event.data.messageId, event.data.status)
+                                    if (event.data.status === 'thinking') {
+                                        activeGenerationPhaseRef.current = 'thinking'
+                                        setAssistantStatus(activeMessageId, 'thinking')
+                                    }
+
+                                    if (event.data.status === 'planning') {
+                                        activeGenerationPhaseRef.current = 'planning'
+                                        setAssistantStatus(activeMessageId, 'planning')
+                                        ensureAssistantSpacing(activeMessageId)
+                                    }
+
                                     return
                                 case 'message-chunk':
-                                    appendAssistantChunk(event.data.messageId, event.data.chunk)
+                                    appendAssistantChunk(activeMessageId, event.data.chunk)
                                     return
                                 case 'message-complete':
-                                    updateAssistantStatus(event.data.messageId, event.data.status)
+                                    if (activeGenerationPhaseRef.current === 'planning') {
+                                        activeGenerationPhaseRef.current = 'building'
+                                        setAssistantStatus(activeMessageId, 'building')
+                                    }
+
                                     return
                                 case 'result':
+                                    activeGenerationPhaseRef.current = 'building'
+                                    setAssistantStatus(activeMessageId, 'building')
                                     void queryClient.invalidateQueries({ queryKey: ['projects'] })
                                     return
                                 case 'error':
+                                    setAssistantError(activeMessageId, event.data.message)
                                     return
                             }
                         },
@@ -197,28 +225,30 @@ export const useAppController = () => {
                         return
                     }
 
-                    markStreamingMessagesAsError()
-
+                    const activeMessageId = activeAssistantMessageIdRef.current
                     const message =
                         error instanceof Error ? error.message : 'Generation failed unexpectedly.'
-                    appendErrorMessage(message)
+
+                    if (activeMessageId) {
+                        setAssistantError(activeMessageId, message)
+                    }
                 } finally {
                     if (generationAbortControllerRef.current === abortController) {
                         generationAbortControllerRef.current = null
+                        resetGenerationRefs()
+                        setIsGenerating(false)
                     }
-
-                    setIsGenerating(false)
                 }
             })()
         },
         [
             abortGenerationRequest,
             appendAssistantChunk,
-            appendAssistantMessage,
-            appendErrorMessage,
-            markStreamingMessagesAsError,
+            ensureAssistantSpacing,
             queryClient,
-            updateAssistantStatus,
+            resetGenerationRefs,
+            setAssistantError,
+            setAssistantStatus,
         ]
     )
 
@@ -259,20 +289,28 @@ export const useAppController = () => {
                 setView('chat')
             }
 
-            const promptMessageId = Date.now().toString()
+            const baseId = Date.now().toString()
+            const assistantMessageId = `${baseId}-assistant`
             const userMsg: Message = {
-                id: promptMessageId,
+                id: baseId,
                 role: 'user',
                 content: normalizedPrompt,
             }
-
-            if (shouldResetThread) {
-                setMessages([userMsg])
-            } else {
-                setMessages((prev) => [...prev, userMsg])
+            const assistantMsg: Message = {
+                id: assistantMessageId,
+                role: 'assistant',
+                content: '',
+                type: 'text',
+                status: 'thinking',
             }
 
-            startGeneration(normalizedPrompt)
+            if (shouldResetThread) {
+                setMessages([userMsg, assistantMsg])
+            } else {
+                setMessages((prev) => [...prev, userMsg, assistantMsg])
+            }
+
+            startGeneration(normalizedPrompt, assistantMessageId)
         })
     }
 

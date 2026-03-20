@@ -70,12 +70,13 @@ Keep arrays practical for MVP:
 Message rules:
 - message must be plain text
 - message should feel like a live agent update for the chatbar
-- message should be 2 short paragraphs
-- paragraph 1 should say what you are going to build in a confident concise way
-- paragraph 2 should describe the design direction and the core user-facing features you understood
-- keep the message rich and specific, similar to a product/design summary
+- message must be 2 to 3 short lines separated by newline characters
+- keep the full message concise and specific
+- line 1 should say what you are going to build
+- line 2 should mention the visual or interaction direction
+- line 3 is optional and should mention the most important user-facing flow or feature set
 - never mention JSON, schemas, internal tools, or hidden reasoning
-- do not use bullet symbols or markdown headings
+- do not use bullets, markdown headings, or numbered lists
 
 Return EXACTLY this JSON shape:
 {

@@ -23,6 +23,21 @@ export const ChatThread: React.FC<ChatSidebarProps> = ({
     onClose,
     mode = 'sidebar',
 }) => {
+    const scrollContainerRef = React.useRef<HTMLDivElement | null>(null)
+
+    React.useEffect(() => {
+        const container = scrollContainerRef.current
+
+        if (!container) {
+            return
+        }
+
+        container.scrollTo({
+            top: container.scrollHeight,
+            behavior: 'smooth',
+        })
+    }, [messages])
+
     const handleSubmit = () => {
         const nextPrompt = editPrompt.trim()
 
@@ -71,7 +86,10 @@ export const ChatThread: React.FC<ChatSidebarProps> = ({
     if (mode === 'mobile') {
         return (
             <div className="h-full bg-[#1F1F1F] rounded-2xl border border-white/10 flex flex-col overflow-hidden font-sans min-h-0">
-                <div className="flex-1 overflow-y-auto p-4 pb-0 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/10 hover:[&::-webkit-scrollbar-thumb]:bg-white/20">
+                <div
+                    ref={scrollContainerRef}
+                    className="flex-1 overflow-y-auto p-4 pb-0 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/10 hover:[&::-webkit-scrollbar-thumb]:bg-white/20"
+                >
                     {messagesList}
                 </div>
 
@@ -108,7 +126,10 @@ export const ChatThread: React.FC<ChatSidebarProps> = ({
             </div>
 
             <div className="flex-1 flex flex-col overflow-hidden min-w-[340px]">
-                <div className="flex-1 overflow-y-auto p-5 pb-0 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/10 hover:[&::-webkit-scrollbar-thumb]:bg-white/20">
+                <div
+                    ref={scrollContainerRef}
+                    className="flex-1 overflow-y-auto p-5 pb-0 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/10 hover:[&::-webkit-scrollbar-thumb]:bg-white/20"
+                >
                     {messagesList}
                 </div>
 
