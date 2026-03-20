@@ -22,10 +22,24 @@ export const authMiddleware = (req: Request, res: Response, next: NextFunction) 
         }
 
         req.userId = decoded.userId
-        // console.log(req.userId)
-        // console.log(decoded.userId)
         next()
     } catch (error: any) {
+        if (error instanceof jwt.TokenExpiredError) {
+            return res.status(401).json({
+                success: false,
+                message: 'token expired',
+                errors: error.message,
+            })
+        }
+
+        if (error instanceof jwt.JsonWebTokenError) {
+            return res.status(401).json({
+                success: false,
+                message: 'invalid token',
+                errors: error.message,
+            })
+        }
+
         return res.status(500).json({
             success: false,
             message: 'internal server error',

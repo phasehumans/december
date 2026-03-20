@@ -1,4 +1,5 @@
 import { openai } from '../../config/oai'
+import { parseModelJson } from '../../utils/parseModelJson'
 import { FEATURE_EXTRACTION_PROMPT } from '../prompts/prompt.prompt'
 
 type ExtractProjectIntent = {
@@ -27,5 +28,5 @@ export const extractProjectIntent = async (data: ExtractProjectIntent) => {
         throw new Error('prompt agent returned empty response')
     }
 
-    return JSON.parse(content)
+    return parseModelJson(content, 'prompt agent')
 }

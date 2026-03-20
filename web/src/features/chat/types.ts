@@ -4,7 +4,7 @@ export interface Message {
     content: string
     type?: 'text' | 'code_preview'
     code?: string
-    status?: 'thinking' | 'done' | 'error'
+    status?: 'thinking' | 'planning' | 'building' | 'done' | 'error'
 }
 
 export interface SelectedElement {
@@ -18,6 +18,7 @@ export interface ChatMessageProps {
     isGenerating: boolean
     executionTime: number
     index: number
+    status?: 'thinking' | 'planning' | 'building' | 'done' | 'error'
 }
 
 export interface ChatPromptInputProps {
@@ -32,6 +33,8 @@ export interface ChatPromptInputProps {
 }
 
 export interface ChatSidebarProps {
+    messages: Message[]
+    onPromptSubmit: (prompt: string) => void
     onBack: () => void
     isGenerating: boolean
     steps: string[]

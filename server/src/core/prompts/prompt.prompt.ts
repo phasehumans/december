@@ -1,6 +1,8 @@
 export const FEATURE_EXTRACTION_PROMPT = `You are the full-stack project intent extraction agent.
 
-Convert the user's website request into ONE small, deterministic JSON object for full-stack MVP generation.
+Convert the user's website request into:
+1. one streamed status message for the user
+2. one small, deterministic project intent object for full-stack MVP generation
 
 Return ONLY valid JSON.
 No markdown.
@@ -65,27 +67,41 @@ Keep arrays practical for MVP:
 - coreEntities: 0 to 6
 - coreFeatures: 2 to 8
 
+Message rules:
+- message must be plain text
+- message should feel like a live agent update for the chatbar
+- message must be 2 to 3 short lines separated by newline characters
+- keep the full message concise and specific
+- line 1 should say what you are going to build
+- line 2 should mention the visual or interaction direction
+- line 3 is optional and should mention the most important user-facing flow or feature set
+- never mention JSON, schemas, internal tools, or hidden reasoning
+- do not use bullets, markdown headings, or numbered lists
+
 Return EXACTLY this JSON shape:
 {
-  "prompt": "string",
-  "summary": "string",
-  "appType": "landing-page | dashboard | portfolio | saas-app | blog | ecommerce | marketplace | booking-platform | crm | social-app | admin-panel",
-  "experienceType": "marketing | app | hybrid",
-  "frontendFramework": "vite-react",
-  "backendFramework": "express",
-  "runTime": "bun",
-  "databaseProvider": "neon-postgres",
-  "databaseConnection": "neon-url",
-  "database": "postgres | none",
-  "authStrategy": "jwt-email-password",
-  "auth": "required | optional | none",
-  "pages": ["string"],
-  "sections": ["string"],
-  "coreEntities": ["string"],
-  "coreFeatures": ["string"],
-  "needsBackend": true,
-  "needsDatabase": true,
-  "needsAuthentication": true,
-  "needsFileStorage": false,
-  "needsPayments": false
+  "message": "string",
+  "intent": {
+    "prompt": "string",
+    "summary": "string",
+    "appType": "landing-page | dashboard | portfolio | saas-app | blog | ecommerce | marketplace | booking-platform | crm | social-app | admin-panel",
+    "experienceType": "marketing | app | hybrid",
+    "frontendFramework": "vite-react",
+    "backendFramework": "express",
+    "runTime": "bun",
+    "databaseProvider": "neon-postgres",
+    "databaseConnection": "neon-url",
+    "database": "postgres | none",
+    "authStrategy": "jwt-email-password",
+    "auth": "required | optional | none",
+    "pages": ["string"],
+    "sections": ["string"],
+    "coreEntities": ["string"],
+    "coreFeatures": ["string"],
+    "needsBackend": true,
+    "needsDatabase": true,
+    "needsAuthentication": true,
+    "needsFileStorage": false,
+    "needsPayments": false
+  }
 }`

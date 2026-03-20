@@ -1,12 +1,22 @@
 import { z } from 'zod'
 
-export const generateWebsiteSchema = z.object({
-    prompt: z.string().min(5),
-    isDB: z.boolean(),
-    dbURL: z.string().optional(),
-})
+export const generateWebsiteSchema = z
+    .object({
+        prompt: z.string().min(5),
+        isDB: z.boolean(),
+        dbURL: z.string().optional(),
+    })
+    .superRefine((data, ctx) => {
+        if (data.isDB && !data.dbURL?.trim()) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                path: ['dbURL'],
+                message: 'db url is required when database is enabled',
+            })
+        }
+    })
 
-export const extractProjectPlanSchema = z.object({
+export const projectIntentSchema = z.object({
     prompt: z.string(),
     summary: z.string(),
 
@@ -49,6 +59,8 @@ export const extractProjectPlanSchema = z.object({
     needsFileStorage: z.boolean(),
     needsPayments: z.boolean(),
 })
+
+export const extractProjectPlanSchema = projectIntentSchema
 
 export const generateProjectFileSchema = z.object({
     success: z.boolean(),
@@ -153,4 +165,14 @@ export const generateProjectFileSchema = z.object({
     }),
 
     errors: z.array(z.string()),
+})
+
+export const promptAgentResponseSchema = z.object({
+    message: z.string().min(1),
+    intent: projectIntentSchema,
+})
+
+export const planAgentResponseSchema = z.object({
+    message: z.string().min(1),
+    plan: generateProjectFileSchema,
 })

@@ -9,6 +9,8 @@ type MobileOutputTab = 'chat' | 'preview'
 
 export const OutputScreen: React.FC<OutputScreenProps> = ({
     onBack,
+    onPromptSubmit,
+    messages,
     isGenerating = false,
     showStructureOnly = false,
 }) => {
@@ -52,6 +54,8 @@ export const OutputScreen: React.FC<OutputScreenProps> = ({
                     >
                         <ChatSidebar
                             mode="mobile"
+                            messages={messages}
+                            onPromptSubmit={onPromptSubmit}
                             onBack={handleBack}
                             isGenerating={isGenerating}
                             steps={steps}
@@ -119,6 +123,8 @@ export const OutputScreen: React.FC<OutputScreenProps> = ({
 
             <div className="hidden md:flex w-full h-full overflow-hidden">
                 <ChatSidebar
+                    messages={messages}
+                    onPromptSubmit={onPromptSubmit}
                     onBack={handleBack}
                     isGenerating={isGenerating}
                     steps={steps}
