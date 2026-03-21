@@ -3,7 +3,7 @@ import { OutputHeader } from './OutputHeader'
 import { PreviewArea } from './PreviewArea'
 import { CodeWorkspace } from './CodeWorkspace'
 import Canvas from '@/features/canvas/components/Canvas'
-import type { PreviewDevice, PreviewTab } from '@/features/preview/types'
+import type { GeneratedProjectFile, PreviewDevice, PreviewTab } from '@/features/preview/types'
 
 interface OutputScreenMainContentProps {
     activeTab: PreviewTab
@@ -16,6 +16,8 @@ interface OutputScreenMainContentProps {
     onBack?: () => void
     previewHtml: string
     setPreviewHtml: (nextHtml: string) => void
+    generatedFiles?: Record<string, GeneratedProjectFile>
+    activeGeneratedFilePath?: string | null
     isGenerating: boolean
     isVisualMode: boolean
     iframeRef: React.RefObject<HTMLIFrameElement>
@@ -34,6 +36,8 @@ export const OutputScreenMainContent: React.FC<OutputScreenMainContentProps> = (
     onBack,
     previewHtml,
     setPreviewHtml,
+    generatedFiles,
+    activeGeneratedFilePath,
     isGenerating,
     isVisualMode,
     iframeRef,
@@ -66,7 +70,12 @@ export const OutputScreenMainContent: React.FC<OutputScreenMainContentProps> = (
             )}
 
             {activeTab === 'code' && (
-                <CodeWorkspace html={previewHtml} onHtmlChange={setPreviewHtml} />
+                <CodeWorkspace
+                    html={previewHtml}
+                    generatedFiles={generatedFiles}
+                    activeFilePath={activeGeneratedFilePath}
+                    onHtmlChange={setPreviewHtml}
+                />
             )}
 
             {activeTab === 'canvas' && (

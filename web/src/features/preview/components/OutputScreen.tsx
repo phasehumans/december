@@ -11,6 +11,9 @@ export const OutputScreen: React.FC<OutputScreenProps> = ({
     onBack,
     onPromptSubmit,
     messages,
+    generatedFiles,
+    activeGeneratedFilePath,
+    generationPhase,
     isGenerating = false,
     showStructureOnly = false,
 }) => {
@@ -38,7 +41,12 @@ export const OutputScreen: React.FC<OutputScreenProps> = ({
         handleApplyEdit,
         handleClearSelection,
         handleOpenInNewTab,
-    } = useOutputScreenController({ isGenerating })
+    } = useOutputScreenController({
+        isGenerating,
+        generatedFiles,
+        activeGeneratedFilePath,
+        generationPhase,
+    })
 
     const [mobileActiveTab, setMobileActiveTab] = React.useState<MobileOutputTab>('chat')
     const handleBack = onBack || (() => {})
@@ -154,6 +162,8 @@ export const OutputScreen: React.FC<OutputScreenProps> = ({
                     onBack={onBack}
                     previewHtml={previewHtml}
                     setPreviewHtml={setPreviewHtml}
+                    generatedFiles={generatedFiles}
+                    activeGeneratedFilePath={activeGeneratedFilePath}
                     isGenerating={isGenerating}
                     isVisualMode={isVisualMode}
                     iframeRef={iframeRef}

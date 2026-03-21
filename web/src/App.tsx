@@ -10,6 +10,9 @@ const App: React.FC = () => {
         queryClient,
         view,
         messages,
+        generatedFiles,
+        activeGeneratedFilePath,
+        generationPhase,
         isGenerating,
         setAuthTokenState,
         showAuthModal,
@@ -61,6 +64,9 @@ const App: React.FC = () => {
                     view={view}
                     isHome={isHome}
                     messages={messages}
+                    generatedFiles={generatedFiles}
+                    activeGeneratedFilePath={activeGeneratedFilePath}
+                    generationPhase={generationPhase}
                     isGenerating={isGenerating}
                     isAuthenticated={isAuthenticated}
                     projects={projects}

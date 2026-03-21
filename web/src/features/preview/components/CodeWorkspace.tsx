@@ -2,73 +2,143 @@ import React from 'react'
 import { CodeWorkspaceEditorPane } from './CodeWorkspaceEditorPane'
 import { CodeWorkspaceFileSidebar } from './CodeWorkspaceFileSidebar'
 import {
-    DEFAULT_CODE_FILE_PATH,
-    SAMPLE_REACT_PROJECT_FILES,
-    SAMPLE_REACT_PROJECT_TREE,
+    createCodeWorkspaceTree,
+    flattenFiles,
+    getDefaultCodeFilePath,
     getLanguageExtension,
-    getSampleReactProjectContents,
     getSharedEditorExtensions,
 } from './codeWorkspaceConfig'
 import type { CodeFile, CodeFilePath, CodeWorkspaceProps } from '@/features/preview/types'
 
-const FALLBACK_FILE: CodeFile = {
-    path: DEFAULT_CODE_FILE_PATH,
-    label: 'App.tsx',
-    language: 'tsx',
+const getWorkspaceHtmlPath = (paths: CodeFilePath[]) => {
+    const preferredPaths = ['web/index.html', 'public/index.html', 'index.html']
+
+    return preferredPaths.find((path) => paths.includes(path)) ?? null
 }
 
-export const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({ html, onHtmlChange }) => {
-    const [selectedFile, setSelectedFile] = React.useState<CodeFilePath>(DEFAULT_CODE_FILE_PATH)
-    const [openFilePaths, setOpenFilePaths] = React.useState<CodeFilePath[]>([
-        DEFAULT_CODE_FILE_PATH,
-    ])
-    const [files, setFiles] = React.useState<Record<CodeFilePath, string>>(() =>
-        getSampleReactProjectContents(html)
+export const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({
+    html,
+    generatedFiles,
+    activeFilePath,
+    onHtmlChange,
+}) => {
+    const userSelectedFileRef = React.useRef(false)
+    const generatedFileContents = React.useMemo(
+        () =>
+            Object.fromEntries(
+                Object.entries(generatedFiles ?? {}).map(([path, file]) => [path, file.content])
+            ),
+        [generatedFiles]
     )
 
-    React.useEffect(() => {
-        setFiles((previous) => ({
-            ...previous,
-            'public/index.html': html,
-        }))
-    }, [html])
+    const workspaceTree = React.useMemo(
+        () => createCodeWorkspaceTree(Object.keys(generatedFiles ?? {})),
+        [generatedFiles]
+    )
 
-    const activeFile: CodeFile =
-        SAMPLE_REACT_PROJECT_FILES.find((file) => file.path === selectedFile) ??
-        SAMPLE_REACT_PROJECT_FILES[0] ??
-        FALLBACK_FILE
+    const workspaceFiles = React.useMemo(() => flattenFiles(workspaceTree), [workspaceTree])
+    const defaultFilePath = React.useMemo(
+        () => getDefaultCodeFilePath(workspaceFiles.map((file) => file.path)),
+        [workspaceFiles]
+    )
+    const htmlFilePath = React.useMemo(
+        () => getWorkspaceHtmlPath(workspaceFiles.map((file) => file.path)),
+        [workspaceFiles]
+    )
+
+    const [selectedFile, setSelectedFile] = React.useState<CodeFilePath | null>(null)
+    const [openFilePaths, setOpenFilePaths] = React.useState<CodeFilePath[]>([])
+    const [files, setFiles] = React.useState<Record<CodeFilePath, string>>({})
+
+    React.useEffect(() => {
+        setFiles(generatedFileContents)
+    }, [generatedFileContents])
+
+    React.useEffect(() => {
+        if (workspaceFiles.length === 0) {
+            userSelectedFileRef.current = false
+            setSelectedFile(null)
+            setOpenFilePaths([])
+            return
+        }
+
+        const workspacePathSet = new Set(workspaceFiles.map((file) => file.path))
+
+        setOpenFilePaths((previous) => previous.filter((path) => workspacePathSet.has(path)))
+
+        const hasSelectedFile = Boolean(selectedFile && workspacePathSet.has(selectedFile))
+
+        if (activeFilePath && workspacePathSet.has(activeFilePath)) {
+            if (!userSelectedFileRef.current || !hasSelectedFile) {
+                setSelectedFile(activeFilePath)
+                setOpenFilePaths((previous) =>
+                    previous.includes(activeFilePath) ? previous : [...previous, activeFilePath]
+                )
+            }
+
+            return
+        }
+
+        if (!hasSelectedFile && defaultFilePath) {
+            setSelectedFile(defaultFilePath)
+            setOpenFilePaths((previous) =>
+                previous.includes(defaultFilePath) ? previous : [...previous, defaultFilePath]
+            )
+        }
+    }, [activeFilePath, defaultFilePath, selectedFile, workspaceFiles])
+
+    React.useEffect(() => {
+        if (!htmlFilePath || !files[htmlFilePath]) {
+            return
+        }
+
+        if (files[htmlFilePath] !== html) {
+            onHtmlChange?.(files[htmlFilePath] ?? html)
+        }
+    }, [files, html, htmlFilePath, onHtmlChange])
+
+    const activeFile: CodeFile | null =
+        workspaceFiles.find((file) => file.path === selectedFile) ?? workspaceFiles[0] ?? null
 
     const openFiles = React.useMemo(
         () =>
             openFilePaths
-                .map((path) => SAMPLE_REACT_PROJECT_FILES.find((file) => file.path === path))
+                .map((path) => workspaceFiles.find((file) => file.path === path))
                 .filter((file): file is CodeFile => Boolean(file)),
-        [openFilePaths]
+        [openFilePaths, workspaceFiles]
     )
 
     const sharedExtensions = React.useMemo(() => getSharedEditorExtensions(), [])
-
     const editorExtensions = React.useMemo(
-        () => [...sharedExtensions, getLanguageExtension(activeFile.language)],
-        [activeFile.language, sharedExtensions]
+        () =>
+            activeFile
+                ? [...sharedExtensions, getLanguageExtension(activeFile.language)]
+                : sharedExtensions,
+        [activeFile, sharedExtensions]
     )
 
     const handleChange = (value: string) => {
+        if (!activeFile) {
+            return
+        }
+
         setFiles((previous) => ({
             ...previous,
             [activeFile.path]: value,
         }))
 
-        if (activeFile.path === 'public/index.html') {
+        if (htmlFilePath && activeFile.path === htmlFilePath) {
             onHtmlChange?.(value)
         }
     }
 
     const handleSelectFile = (path: CodeFilePath) => {
+        userSelectedFileRef.current = true
         setSelectedFile(path)
     }
 
     const handlePinFile = (path: CodeFilePath) => {
+        userSelectedFileRef.current = true
         setSelectedFile(path)
         setOpenFilePaths((previous) => (previous.includes(path) ? previous : [...previous, path]))
     }
@@ -84,7 +154,7 @@ export const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({ html, onHtmlChange
 
             if (selectedFile === path) {
                 const fallbackPath =
-                    next[closingIndex] ?? next[closingIndex - 1] ?? DEFAULT_CODE_FILE_PATH
+                    next[closingIndex] ?? next[closingIndex - 1] ?? defaultFilePath ?? null
                 setSelectedFile(fallbackPath)
             }
 
@@ -95,8 +165,8 @@ export const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({ html, onHtmlChange
     return (
         <div className="flex-1 min-h-0 flex overflow-hidden bg-[#1e1e1e] border-t border-[#2d2d2d]">
             <CodeWorkspaceFileSidebar
-                tree={SAMPLE_REACT_PROJECT_TREE}
-                selectedFile={selectedFile}
+                tree={workspaceTree}
+                selectedFile={selectedFile ?? ''}
                 onSelectFile={handleSelectFile}
                 onPinFile={handlePinFile}
             />
@@ -104,9 +174,9 @@ export const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({ html, onHtmlChange
             <CodeWorkspaceEditorPane
                 activeFile={activeFile}
                 openFiles={openFiles}
-                onSelectOpenFile={setSelectedFile}
+                onSelectOpenFile={handleSelectFile}
                 onCloseOpenFile={handleCloseOpenFile}
-                value={files[activeFile.path] ?? ''}
+                value={activeFile ? (files[activeFile.path] ?? '') : ''}
                 extensions={editorExtensions}
                 onChange={handleChange}
             />

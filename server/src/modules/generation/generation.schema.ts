@@ -1,5 +1,26 @@
 import { z } from 'zod'
 
+const fileGeneratorSchema = z.enum([
+    'static',
+    'app-shell',
+    'page',
+    'component',
+    'layout',
+    'route',
+    'api',
+    'model',
+    'schema',
+    'config',
+    'lib',
+])
+
+export const plannedProjectFileSchema = z.object({
+    path: z.string().min(1),
+    purpose: z.string().min(1),
+    generate: z.boolean(),
+    generator: fileGeneratorSchema,
+})
+
 export const generateWebsiteSchema = z
     .object({
         prompt: z.string().min(5),
@@ -62,11 +83,8 @@ export const projectIntentSchema = z.object({
 
 export const extractProjectPlanSchema = projectIntentSchema
 
-export const generateProjectFileSchema = z.object({
-    success: z.boolean(),
-    message: z.string(),
-
-    data: z.object({
+export const projectPlanDataSchema = z
+    .object({
         projectName: z.string(),
 
         layoutType: z.enum(['single-page', 'multi-page']),
@@ -139,33 +157,81 @@ export const generateProjectFileSchema = z.object({
             ),
         }),
 
-        files: z.array(
-            z.object({
-                path: z.string(),
-                purpose: z.string(),
-                generate: z.boolean(),
-                generator: z.enum([
-                    'static',
-                    'app-shell',
-                    'page',
-                    'component',
-                    'layout',
-                    'route',
-                    'api',
-                    'model',
-                    'schema',
-                    'config',
-                    'lib',
-                ]),
-            })
-        ),
-
+        files: z.array(plannedProjectFileSchema),
         generationOrder: z.array(z.string()),
         constraints: z.array(z.string()),
-    }),
+    })
+    .superRefine((data, ctx) => {
+        const filePaths = data.files.map((file) => file.path)
+        const uniqueFilePaths = new Set(filePaths)
 
-    errors: z.array(z.string()),
-})
+        if (uniqueFilePaths.size !== filePaths.length) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                path: ['files'],
+                message: 'file paths must be unique',
+            })
+        }
+
+        const generatedPaths = data.files.filter((file) => file.generate).map((file) => file.path)
+        const generatedPathSet = new Set(generatedPaths)
+        const generationOrderSet = new Set(data.generationOrder)
+
+        if (generationOrderSet.size !== data.generationOrder.length) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                path: ['generationOrder'],
+                message: 'generation order must not contain duplicate file paths',
+            })
+        }
+
+        for (const path of data.generationOrder) {
+            if (!generatedPathSet.has(path)) {
+                ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    path: ['generationOrder'],
+                    message: `generation order contains unknown or non-generated path: ${path}`,
+                })
+            }
+        }
+
+        for (const path of generatedPathSet) {
+            if (!generationOrderSet.has(path)) {
+                ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    path: ['generationOrder'],
+                    message: `generation order is missing generated path: ${path}`,
+                })
+            }
+        }
+    })
+
+export const projectPlanSchema = z
+    .object({
+        success: z.boolean(),
+        message: z.string(),
+        data: projectPlanDataSchema.nullable(),
+        errors: z.array(z.string()),
+    })
+    .superRefine((plan, ctx) => {
+        if (plan.success && !plan.data) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                path: ['data'],
+                message: 'plan data is required when success is true',
+            })
+        }
+
+        if (!plan.success && plan.data !== null) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                path: ['data'],
+                message: 'plan data must be null when success is false',
+            })
+        }
+    })
+
+export const generateProjectFileSchema = projectPlanSchema
 
 export const promptAgentResponseSchema = z.object({
     message: z.string().min(1),
@@ -174,5 +240,5 @@ export const promptAgentResponseSchema = z.object({
 
 export const planAgentResponseSchema = z.object({
     message: z.string().min(1),
-    plan: generateProjectFileSchema,
+    plan: projectPlanSchema,
 })
