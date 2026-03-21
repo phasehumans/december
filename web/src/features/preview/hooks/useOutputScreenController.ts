@@ -11,6 +11,7 @@ interface UseOutputScreenControllerArgs {
     isGenerating: boolean
     generatedFiles?: Record<string, GeneratedProjectFile>
     activeGeneratedFilePath?: string | null
+    generationPhase?: 'thinking' | 'planning' | 'building' | 'done' | null
 }
 
 const getPreviewHtmlFromFiles = (generatedFiles?: Record<string, GeneratedProjectFile>) => {
@@ -29,8 +30,9 @@ const getPreviewHtmlFromFiles = (generatedFiles?: Record<string, GeneratedProjec
 export const useOutputScreenController = ({
     isGenerating,
     generatedFiles,
+    generationPhase,
 }: UseOutputScreenControllerArgs) => {
-    const [activeTab, setActiveTab] = React.useState<PreviewTab>('code')
+    const [activeTab, setActiveTab] = React.useState<PreviewTab>('preview')
     const [device, setDevice] = React.useState<PreviewDevice>('desktop')
     const [previewHtml, setPreviewHtml] = React.useState(PREVIEW_HTML)
     const [isVisualMode, setIsVisualMode] = React.useState(false)
@@ -44,6 +46,7 @@ export const useOutputScreenController = ({
     const [isThoughtsOpen, setIsThoughtsOpen] = React.useState(true)
     const [executionTime, setExecutionTime] = React.useState(0)
     const iframeRef = React.useRef<HTMLIFrameElement>(null)
+    const hasSwitchedToCodeForBuildRef = React.useRef(false)
 
     React.useEffect(() => {
         const checkMobile = () => {
@@ -69,6 +72,8 @@ export const useOutputScreenController = ({
 
             setSteps([])
             setIsThoughtsOpen(true)
+            hasSwitchedToCodeForBuildRef.current = false
+            setActiveTab('preview')
 
             const sequences = [
                 'Analyzing request intent',
@@ -99,6 +104,13 @@ export const useOutputScreenController = ({
             return () => clearTimeout(timeout)
         }
     }, [isGenerating, steps.length])
+
+    React.useEffect(() => {
+        if (generationPhase === 'building' && !hasSwitchedToCodeForBuildRef.current) {
+            hasSwitchedToCodeForBuildRef.current = true
+            setActiveTab('code')
+        }
+    }, [generationPhase])
 
     React.useEffect(() => {
         if (iframeRef.current?.contentWindow) {

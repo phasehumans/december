@@ -16,6 +16,7 @@ export const extractProjectIntent = async (data: ExtractProjectIntent) => {
         task: async (attempt, lastError) => {
             const completion = await openai.chat.completions.create({
                 model: 'openai/gpt-oss-20b:free',
+                max_tokens: 1200,
                 temperature: 0,
                 messages: [
                     {

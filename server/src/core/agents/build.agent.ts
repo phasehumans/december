@@ -91,7 +91,9 @@ export const generateProjectFile = async (data: GenerateProjectFileInput) => {
         maxAttempts: BUILD_AGENT_MAX_ATTEMPTS,
         task: async (attempt, lastError) => {
             const completion = await openai.chat.completions.create({
-                model: 'openai/gpt-oss-20b:free',
+                // model: 'openai/gpt-oss-20b:free',
+                model: 'openai/gpt-5.1-codex-mini',
+                max_tokens: 4000,
                 temperature: 0,
                 messages: [
                     {

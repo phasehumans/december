@@ -13,6 +13,7 @@ export const OutputScreen: React.FC<OutputScreenProps> = ({
     messages,
     generatedFiles,
     activeGeneratedFilePath,
+    generationPhase,
     isGenerating = false,
     showStructureOnly = false,
 }) => {
@@ -44,6 +45,7 @@ export const OutputScreen: React.FC<OutputScreenProps> = ({
         isGenerating,
         generatedFiles,
         activeGeneratedFilePath,
+        generationPhase,
     })
 
     const [mobileActiveTab, setMobileActiveTab] = React.useState<MobileOutputTab>('chat')

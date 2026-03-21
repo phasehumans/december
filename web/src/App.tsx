@@ -12,6 +12,7 @@ const App: React.FC = () => {
         messages,
         generatedFiles,
         activeGeneratedFilePath,
+        generationPhase,
         isGenerating,
         setAuthTokenState,
         showAuthModal,
@@ -65,6 +66,7 @@ const App: React.FC = () => {
                     messages={messages}
                     generatedFiles={generatedFiles}
                     activeGeneratedFilePath={activeGeneratedFilePath}
+                    generationPhase={generationPhase}
                     isGenerating={isGenerating}
                     isAuthenticated={isAuthenticated}
                     projects={projects}

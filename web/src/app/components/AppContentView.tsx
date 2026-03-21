@@ -15,6 +15,7 @@ interface AppContentViewProps {
     messages: Message[]
     generatedFiles: Record<string, GeneratedProjectFile>
     activeGeneratedFilePath: string | null
+    generationPhase: 'thinking' | 'planning' | 'building' | 'done' | null
     isGenerating: boolean
     isAuthenticated: boolean
     projects: Project[]
@@ -64,6 +65,7 @@ export const AppContentView: React.FC<AppContentViewProps> = ({
     messages,
     generatedFiles,
     activeGeneratedFilePath,
+    generationPhase,
     isGenerating,
     isAuthenticated,
     projects,
@@ -114,6 +116,7 @@ export const AppContentView: React.FC<AppContentViewProps> = ({
                             messages={messages}
                             generatedFiles={generatedFiles}
                             activeGeneratedFilePath={activeGeneratedFilePath}
+                            generationPhase={generationPhase}
                             isGenerating={isGenerating}
                         />
                     </AnimatedPage>
