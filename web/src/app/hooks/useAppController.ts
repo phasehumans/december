@@ -8,6 +8,37 @@ import { projectAPI } from '@/features/projects/api/project'
 import { mapBackendProjectToUIProject } from '@/app/mapProject'
 import type { GeneratedProjectFile } from '@/features/preview/types'
 
+const getUserFacingGenerationError = (message: string) => {
+    const normalizedMessage = message.toLowerCase()
+
+    if (normalizedMessage.includes('sign in')) {
+        return 'Please sign in and try again.'
+    }
+
+    if (normalizedMessage.includes('implementation plan')) {
+        return "I couldn't turn that request into a reliable implementation plan. Try again or simplify the prompt to the essential pages and flows."
+    }
+
+    if (normalizedMessage.includes('understand the request')) {
+        return "I couldn't understand the request clearly enough to start the project. Try rephrasing it with the main pages, style, and core features."
+    }
+
+    if (normalizedMessage.includes('project files') || normalizedMessage.includes('retry the build')) {
+        return 'I started the build but hit an issue while generating the project files. Please retry the build.'
+    }
+
+    if (
+        normalizedMessage.includes('connection was interrupted') ||
+        normalizedMessage.includes('failed to fetch') ||
+        normalizedMessage.includes('network') ||
+        normalizedMessage.includes('stream body is missing')
+    ) {
+        return 'The generation connection was interrupted. Please try again.'
+    }
+
+    return 'Something went wrong while generating this project. Please try again.'
+}
+
 export const useAppController = () => {
     const queryClient = useQueryClient()
 
@@ -19,6 +50,9 @@ export const useAppController = () => {
     const [activeGeneratedFilePath, setActiveGeneratedFilePathState] = React.useState<string | null>(
         null
     )
+    const [generationPhase, setGenerationPhase] = React.useState<
+        'thinking' | 'planning' | 'building' | 'done' | null
+    >(null)
     const [isGenerating, setIsGenerating] = React.useState(false)
     const [authToken, setAuthTokenState] = React.useState<string | null>(() => getAuthToken())
     const [showAuthModal, setShowAuthModal] = React.useState(false)
@@ -29,6 +63,7 @@ export const useAppController = () => {
     const activeGenerationPhaseRef = React.useRef<
         'thinking' | 'planning' | 'building' | 'done' | null
     >(null)
+    const hasReceivedStreamErrorRef = React.useRef(false)
 
     const isAuthenticated = Boolean(authToken)
 
@@ -115,12 +150,14 @@ export const useAppController = () => {
 
     const setAssistantError = React.useCallback(
         (messageId: string, errorMessage: string) => {
+            const userFacingMessage = getUserFacingGenerationError(errorMessage)
+
             updateAssistantMessage(messageId, (message) => ({
                 ...message,
                 status: 'error',
                 content: message.content.trim()
-                    ? `${message.content.trim()}\n\n${errorMessage}`
-                    : errorMessage,
+                    ? `${message.content.trim()}\n\n${userFacingMessage}`
+                    : userFacingMessage,
             }))
         },
         [updateAssistantMessage]
@@ -134,6 +171,8 @@ export const useAppController = () => {
     const resetGenerationRefs = React.useCallback(() => {
         activeAssistantMessageIdRef.current = null
         activeGenerationPhaseRef.current = null
+        hasReceivedStreamErrorRef.current = false
+        setGenerationPhase(null)
     }, [])
 
     const abortGenerationRequest = React.useCallback(() => {
@@ -205,7 +244,7 @@ export const useAppController = () => {
         })
     }, [])
 
-    const markGeneratedFileError = React.useCallback((path: string, message?: string) => {
+    const markGeneratedFileError = React.useCallback((path: string) => {
         setGeneratedFiles((prev) => {
             const current = prev[path]
 
@@ -218,9 +257,6 @@ export const useAppController = () => {
                 [path]: {
                     ...current,
                     status: 'error',
-                    purpose: message
-                        ? `${current.purpose ?? ''}${current.purpose ? ' | ' : ''}${message}`
-                        : current.purpose,
                 },
             }
         })
@@ -266,6 +302,8 @@ export const useAppController = () => {
             resetGeneratedOutput()
             activeAssistantMessageIdRef.current = assistantMessageId
             activeGenerationPhaseRef.current = 'thinking'
+            hasReceivedStreamErrorRef.current = false
+            setGenerationPhase('thinking')
             setIsGenerating(true)
 
             const abortController = new AbortController()
@@ -293,17 +331,20 @@ export const useAppController = () => {
                                 case 'phase':
                                     if (event.data.phase === 'planning') {
                                         activeGenerationPhaseRef.current = 'planning'
+                                        setGenerationPhase('planning')
                                         setAssistantStatus(activeMessageId, 'planning')
                                         ensureAssistantSpacing(activeMessageId)
                                     }
 
                                     if (event.data.phase === 'building') {
                                         activeGenerationPhaseRef.current = 'building'
+                                        setGenerationPhase('building')
                                         setAssistantStatus(activeMessageId, 'building')
                                     }
 
                                     if (event.data.phase === 'done') {
                                         activeGenerationPhaseRef.current = 'done'
+                                        setGenerationPhase('done')
                                         setAssistantStatus(activeMessageId, 'done')
                                     }
 
@@ -311,11 +352,13 @@ export const useAppController = () => {
                                 case 'message-start':
                                     if (event.data.status === 'thinking') {
                                         activeGenerationPhaseRef.current = 'thinking'
+                                        setGenerationPhase('thinking')
                                         setAssistantStatus(activeMessageId, 'thinking')
                                     }
 
                                     if (event.data.status === 'planning') {
                                         activeGenerationPhaseRef.current = 'planning'
+                                        setGenerationPhase('planning')
                                         setAssistantStatus(activeMessageId, 'planning')
                                         ensureAssistantSpacing(activeMessageId)
                                     }
@@ -338,22 +381,20 @@ export const useAppController = () => {
                                     completeGeneratedFile(event.data.path)
                                     return
                                 case 'file-error':
-                                    markGeneratedFileError(event.data.path, event.data.message)
+                                    markGeneratedFileError(event.data.path)
                                     return
                                 case 'result':
                                     activeGenerationPhaseRef.current = 'done'
+                                    setGenerationPhase('done')
                                     setAssistantStatus(activeMessageId, 'done')
                                     hydrateGeneratedFiles(event.data.generatedFiles)
                                     void queryClient.invalidateQueries({ queryKey: ['projects'] })
                                     return
                                 case 'error':
+                                    hasReceivedStreamErrorRef.current = true
                                     if (activeGeneratedFilePathRef.current) {
-                                        markGeneratedFileError(
-                                            activeGeneratedFilePathRef.current,
-                                            event.data.message
-                                        )
+                                        markGeneratedFileError(activeGeneratedFilePathRef.current)
                                     }
-                                    setAssistantError(activeMessageId, event.data.message)
                                     return
                             }
                         },
@@ -368,7 +409,7 @@ export const useAppController = () => {
                         error instanceof Error ? error.message : 'Generation failed unexpectedly.'
 
                     if (activeGeneratedFilePathRef.current) {
-                        markGeneratedFileError(activeGeneratedFilePathRef.current, message)
+                        markGeneratedFileError(activeGeneratedFilePathRef.current)
                     }
 
                     if (activeMessageId) {
@@ -480,6 +521,7 @@ export const useAppController = () => {
         messages,
         generatedFiles,
         activeGeneratedFilePath,
+        generationPhase,
         isGenerating,
         authToken,
         setAuthTokenState,

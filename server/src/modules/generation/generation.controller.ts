@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express'
 import { generateWebsiteSchema } from './generation.schema'
 import { generateService } from './generation.service'
+import { normalizeGenerationError } from './generation.error'
 
 const writeEvent = (res: Response, event: string, data: unknown) => {
     if (res.writableEnded) {
@@ -53,16 +54,19 @@ const generateWebsite = async (req: Request, res: Response) => {
         })
 
         return res.end()
-    } catch (error: any) {
+    } catch (error: unknown) {
+        const normalizedError = normalizeGenerationError(error)
+        console.error('[generation]', normalizedError.internalMessage)
+
         if (!res.headersSent) {
             return res.status(500).json({
                 success: false,
-                errors: error.message,
+                message: normalizedError.publicMessage,
             })
         }
 
         writeEvent(res, 'error', {
-            message: error.message,
+            message: normalizedError.publicMessage,
         })
 
         return res.end()

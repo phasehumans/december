@@ -4,6 +4,7 @@ import { generateProjectFile } from '../../core/agents/build.agent'
 import { extractProjectPlan } from '../../core/agents/plan.agent'
 import { extractProjectIntent } from '../../core/agents/prompt.agent'
 import { cleanPrompt } from '../../utils/cleanPrompt'
+import { normalizeGenerationError } from './generation.error'
 import {
     plannedProjectFileSchema,
     planAgentResponseSchema,
@@ -515,6 +516,7 @@ const generateWebsite = async (data: GenerateWebsite) => {
 export const generateService = {
     generateWebsite,
 }
+
 
 
 
