@@ -36,10 +36,7 @@ const renderContent = (content: string) => {
         }
 
         return (
-            <p
-                key={`section-${index}`}
-                className="text-sm leading-6 text-[#D1D0CF]"
-            >
+            <p key={`section-${index}`} className="text-sm leading-6 text-[#D1D0CF]">
                 {section}
             </p>
         )

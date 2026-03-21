@@ -516,7 +516,3 @@ const generateWebsite = async (data: GenerateWebsite) => {
 export const generateService = {
     generateWebsite,
 }
-
-
-
-

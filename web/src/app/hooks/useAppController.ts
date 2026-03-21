@@ -23,7 +23,10 @@ const getUserFacingGenerationError = (message: string) => {
         return "I couldn't understand the request clearly enough to start the project. Try rephrasing it with the main pages, style, and core features."
     }
 
-    if (normalizedMessage.includes('project files') || normalizedMessage.includes('retry the build')) {
+    if (
+        normalizedMessage.includes('project files') ||
+        normalizedMessage.includes('retry the build')
+    ) {
         return 'I started the build but hit an issue while generating the project files. Please retry the build.'
     }
 
@@ -44,12 +47,12 @@ export const useAppController = () => {
 
     const [view, setView] = React.useState<ViewState>('chat')
     const [messages, setMessages] = React.useState<Message[]>([])
-    const [generatedFiles, setGeneratedFiles] = React.useState<Record<string, GeneratedProjectFile>>(
-        {}
-    )
-    const [activeGeneratedFilePath, setActiveGeneratedFilePathState] = React.useState<string | null>(
-        null
-    )
+    const [generatedFiles, setGeneratedFiles] = React.useState<
+        Record<string, GeneratedProjectFile>
+    >({})
+    const [activeGeneratedFilePath, setActiveGeneratedFilePathState] = React.useState<
+        string | null
+    >(null)
     const [generationPhase, setGenerationPhase] = React.useState<
         'thinking' | 'planning' | 'building' | 'done' | null
     >(null)

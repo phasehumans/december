@@ -110,7 +110,10 @@ export const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({
 
     const sharedExtensions = React.useMemo(() => getSharedEditorExtensions(), [])
     const editorExtensions = React.useMemo(
-        () => (activeFile ? [...sharedExtensions, getLanguageExtension(activeFile.language)] : sharedExtensions),
+        () =>
+            activeFile
+                ? [...sharedExtensions, getLanguageExtension(activeFile.language)]
+                : sharedExtensions,
         [activeFile, sharedExtensions]
     )
 
@@ -173,11 +176,10 @@ export const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({
                 openFiles={openFiles}
                 onSelectOpenFile={handleSelectFile}
                 onCloseOpenFile={handleCloseOpenFile}
-                value={activeFile ? files[activeFile.path] ?? '' : ''}
+                value={activeFile ? (files[activeFile.path] ?? '') : ''}
                 extensions={editorExtensions}
                 onChange={handleChange}
             />
         </div>
     )
 }
-
