@@ -27,7 +27,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         <div
             className={cn(
                 "hidden md:flex flex-col h-screen bg-sidebar border-r border-white/5 py-5 z-20 transition-[width] duration-300 ease-out font-['Segoe_UI']",
-                isCollapsed ? 'w-[72px]' : 'w-[260px]'
+                isCollapsed ? 'w-[68px]' : 'w-[248px]'
             )}
         >
             <SidebarHeader

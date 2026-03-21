@@ -1,5 +1,10 @@
 ## Engineering Decisions @phasehumans
 
+### 21-03-2026
+
+- worked on build agent, code generation is working good, need to add retry logic. build agent is currently not persist anything in db, will add code storage, but where should i store the code, probably in code storage and store snapshot and metadata in postgres
+- will be work on storage and retrieval and should create a starter kit to for each project type to reduce the token cost
+
 ### 20-03-2026
 
 - done with the stream message of prompt and plan agent, prompt agent message is just a 2-3 line verdict of what user wants to build and plan agent sents the 4-5 bullets of work to be done, this are stream to chat in chatgpt style stream
