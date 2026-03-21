@@ -29,7 +29,10 @@ const stripWrappingCodeFence = (content: string) => {
         return trimmed
     }
 
-    return trimmed.replace(/^```(?:[\w.-]+)?\s*/i, '').replace(/\s*```$/, '').trim()
+    return trimmed
+        .replace(/^```(?:[\w.-]+)?\s*/i, '')
+        .replace(/\s*```$/, '')
+        .trim()
 }
 
 const validateGeneratedFileContent = (path: string, content: string) => {
@@ -56,18 +59,31 @@ const validateGeneratedFileContent = (path: string, content: string) => {
 
 const getPriorityContextPaths = (targetPath: string) => {
     if (targetPath.startsWith('web/')) {
-        return ['web/package.json', 'web/tsconfig.json', 'web/vite.config.ts', 'web/src/main.tsx', 'web/src/App.tsx']
+        return [
+            'web/package.json',
+            'web/tsconfig.json',
+            'web/vite.config.ts',
+            'web/src/main.tsx',
+            'web/src/App.tsx',
+        ]
     }
 
     if (targetPath.startsWith('server/')) {
-        return ['server/package.json', 'server/tsconfig.json', 'server/src/index.ts', 'server/src/app.ts']
+        return [
+            'server/package.json',
+            'server/tsconfig.json',
+            'server/src/index.ts',
+            'server/src/app.ts',
+        ]
     }
 
     return []
 }
 
 const selectRelatedFiles = (targetPath: string, generatedFiles: Record<string, string>) => {
-    const targetDirectory = targetPath.includes('/') ? targetPath.slice(0, targetPath.lastIndexOf('/')) : ''
+    const targetDirectory = targetPath.includes('/')
+        ? targetPath.slice(0, targetPath.lastIndexOf('/'))
+        : ''
     const sameDirectoryPaths = Object.keys(generatedFiles).filter(
         (path) => path !== targetPath && targetDirectory && path.startsWith(`${targetDirectory}/`)
     )
@@ -107,7 +123,10 @@ export const generateProjectFile = async (data: GenerateProjectFileInput) => {
                             projectPlan: data.plan,
                             targetFile: data.targetFile,
                             plannedFiles: data.plan.data?.files ?? [],
-                            relatedFiles: selectRelatedFiles(data.targetFile.path, data.generatedFiles),
+                            relatedFiles: selectRelatedFiles(
+                                data.targetFile.path,
+                                data.generatedFiles
+                            ),
                         }),
                     },
                     ...(attempt > 1

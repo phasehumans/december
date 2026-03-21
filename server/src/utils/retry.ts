@@ -9,13 +9,7 @@ interface RetryAsyncOptions<T> {
 }
 
 export const retryAsync = async <T>(options: RetryAsyncOptions<T>) => {
-    const {
-        label,
-        maxAttempts = 3,
-        initialDelayMs = 250,
-        maxDelayMs = 1500,
-        task,
-    } = options
+    const { label, maxAttempts = 3, initialDelayMs = 250, maxDelayMs = 1500, task } = options
 
     let lastError: Error | null = null
 
@@ -26,7 +20,9 @@ export const retryAsync = async <T>(options: RetryAsyncOptions<T>) => {
             lastError = error instanceof Error ? error : new Error(String(error))
 
             if (attempt === maxAttempts) {
-                throw new Error(`${label} failed after ${maxAttempts} attempts | ${lastError.message}`)
+                throw new Error(
+                    `${label} failed after ${maxAttempts} attempts | ${lastError.message}`
+                )
             }
 
             const delayMs = Math.min(initialDelayMs * 2 ** (attempt - 1), maxDelayMs)

@@ -6,7 +6,12 @@ import { indentUnit, HighlightStyle, syntaxHighlighting } from '@codemirror/lang
 import { EditorState, type Extension } from '@codemirror/state'
 import { EditorView, keymap } from '@codemirror/view'
 import { tags } from '@lezer/highlight'
-import type { CodeFile, CodeFileLanguage, CodeFilePath, CodeFileTreeNode } from '@/features/preview/types'
+import type {
+    CodeFile,
+    CodeFileLanguage,
+    CodeFilePath,
+    CodeFileTreeNode,
+} from '@/features/preview/types'
 
 const VSCODE_DARK_PLUS_BACKGROUND = '#1e1e1e'
 const VSCODE_DARK_PLUS_TEXT = '#d4d4d4'
@@ -155,7 +160,9 @@ export const getDefaultCodeFilePath = (paths: CodeFilePath[]): CodeFilePath | nu
         }
     }
 
-    const sortedPaths = [...paths].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }))
+    const sortedPaths = [...paths].sort((a, b) =>
+        a.localeCompare(b, undefined, { sensitivity: 'base' })
+    )
 
     return sortedPaths[0] ?? null
 }

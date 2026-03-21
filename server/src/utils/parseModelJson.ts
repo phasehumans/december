@@ -5,7 +5,10 @@ const stripCodeFence = (content: string) => {
         return trimmed
     }
 
-    return trimmed.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim()
+    return trimmed
+        .replace(/^```(?:json)?\s*/i, '')
+        .replace(/\s*```$/, '')
+        .trim()
 }
 
 const extractBalancedJson = (content: string) => {

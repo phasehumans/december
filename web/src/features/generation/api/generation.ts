@@ -163,7 +163,13 @@ const parseEventBlock = (block: string) => {
     } as GenerationStreamEvent
 }
 
-const generateProjectStream = async ({ prompt, isDB, dbURL, signal, onEvent }: GenerateProjectInput) => {
+const generateProjectStream = async ({
+    prompt,
+    isDB,
+    dbURL,
+    signal,
+    onEvent,
+}: GenerateProjectInput) => {
     const token = getAuthToken()
     const res = await fetch(`${API_BASE_URL}/generate`, {
         method: 'POST',
