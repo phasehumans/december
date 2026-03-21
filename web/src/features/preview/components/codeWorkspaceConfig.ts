@@ -6,13 +6,20 @@ import { indentUnit, HighlightStyle, syntaxHighlighting } from '@codemirror/lang
 import { EditorState, type Extension } from '@codemirror/state'
 import { EditorView, keymap } from '@codemirror/view'
 import { tags } from '@lezer/highlight'
-import type { CodeFile, CodeFilePath, CodeFileTreeNode } from '@/features/preview/types'
+import type { CodeFile, CodeFileLanguage, CodeFilePath, CodeFileTreeNode } from '@/features/preview/types'
 
 const VSCODE_DARK_PLUS_BACKGROUND = '#1e1e1e'
 const VSCODE_DARK_PLUS_TEXT = '#d4d4d4'
 const VSCODE_DARK_PLUS_ACTIVE_LINE = '#2a2d2e'
 const VSCODE_DARK_PLUS_SELECTION = '#264f78'
 const VSCODE_DARK_PLUS_GUTTER_TEXT = '#858585'
+
+interface MutableFolderNode {
+    name: string
+    path: string
+    folders: Map<string, MutableFolderNode>
+    files: CodeFile[]
+}
 
 const createFileNode = (
     path: CodeFilePath,
@@ -38,38 +45,91 @@ const createFolderNode = (
     children,
 })
 
-export const SAMPLE_REACT_PROJECT_TREE: CodeFileTreeNode[] = [
-    createFileNode('package.json', 'package.json', 'javascript'),
-    createFileNode('tsconfig.json', 'tsconfig.json', 'javascript'),
-    createFileNode('vite.config.ts', 'vite.config.ts', 'typescript'),
-    createFolderNode('public', 'public', [
-        createFileNode('public/index.html', 'index.html', 'html'),
-    ]),
-    createFolderNode('src', 'src', [
-        createFileNode('src/main.tsx', 'main.tsx', 'tsx'),
-        createFileNode('src/App.tsx', 'App.tsx', 'tsx'),
-        createFileNode('src/App.css', 'App.css', 'css'),
-        createFolderNode('components', 'src/components', [
-            createFileNode('src/components/Header.tsx', 'Header.tsx', 'tsx'),
-            createFileNode('src/components/FileExplorer.tsx', 'FileExplorer.tsx', 'tsx'),
-            createFileNode('src/components/EditorPane.tsx', 'EditorPane.tsx', 'tsx'),
-        ]),
-        createFolderNode('hooks', 'src/hooks', [
-            createFileNode('src/hooks/useProjectFiles.ts', 'useProjectFiles.ts', 'typescript'),
-        ]),
-        createFolderNode('utils', 'src/utils', [
-            createFileNode('src/utils/tree.ts', 'tree.ts', 'typescript'),
-        ]),
-        createFolderNode('features', 'src/features', [
-            createFolderNode('preview', 'src/features/preview', [
-                createFileNode('src/features/preview/PreviewPanel.tsx', 'PreviewPanel.tsx', 'tsx'),
-                createFileNode('src/features/preview/PreviewPanel.css', 'PreviewPanel.css', 'css'),
-            ]),
-        ]),
-    ]),
-]
+const getFileLabel = (path: CodeFilePath) => path.split('/').pop() ?? path
 
-const flattenFiles = (nodes: CodeFileTreeNode[]): CodeFile[] =>
+export const inferCodeFileLanguage = (path: CodeFilePath): CodeFileLanguage => {
+    if (path.endsWith('.html')) return 'html'
+    if (path.endsWith('.css')) return 'css'
+    if (path.endsWith('.tsx')) return 'tsx'
+    if (path.endsWith('.ts')) return 'typescript'
+    return 'javascript'
+}
+
+const sortTreeNodes = (a: CodeFileTreeNode, b: CodeFileTreeNode) => {
+    if (a.type !== b.type) {
+        return a.type === 'folder' ? -1 : 1
+    }
+
+    const aLabel = a.type === 'folder' ? a.name : a.file.label
+    const bLabel = b.type === 'folder' ? b.name : b.file.label
+
+    return aLabel.localeCompare(bLabel, undefined, { sensitivity: 'base' })
+}
+
+const toTreeNodes = (folder: MutableFolderNode): CodeFileTreeNode[] => {
+    const folderNodes = [...folder.folders.values()].map((childFolder) =>
+        createFolderNode(childFolder.name, childFolder.path, toTreeNodes(childFolder))
+    )
+    const fileNodes = folder.files.map((file) =>
+        createFileNode(file.path, file.label, file.language)
+    )
+
+    return [...folderNodes, ...fileNodes].sort(sortTreeNodes)
+}
+
+export const createCodeWorkspaceTree = (paths: CodeFilePath[]): CodeFileTreeNode[] => {
+    const root: MutableFolderNode = {
+        name: '',
+        path: '',
+        folders: new Map(),
+        files: [],
+    }
+
+    const normalizedPaths = [...new Set(paths)].sort((a, b) =>
+        a.localeCompare(b, undefined, { sensitivity: 'base' })
+    )
+
+    for (const path of normalizedPaths) {
+        const segments = path.split('/').filter(Boolean)
+
+        if (segments.length === 0) {
+            continue
+        }
+
+        let currentFolder = root
+
+        for (let index = 0; index < segments.length - 1; index += 1) {
+            const segment = segments[index]!
+            const nextPath = segments.slice(0, index + 1).join('/')
+            const existingFolder = currentFolder.folders.get(segment)
+
+            if (existingFolder) {
+                currentFolder = existingFolder
+                continue
+            }
+
+            const nextFolder: MutableFolderNode = {
+                name: segment,
+                path: nextPath,
+                folders: new Map(),
+                files: [],
+            }
+
+            currentFolder.folders.set(segment, nextFolder)
+            currentFolder = nextFolder
+        }
+
+        currentFolder.files.push({
+            path,
+            label: getFileLabel(path),
+            language: inferCodeFileLanguage(path),
+        })
+    }
+
+    return toTreeNodes(root)
+}
+
+export const flattenFiles = (nodes: CodeFileTreeNode[]): CodeFile[] =>
     nodes.flatMap((node) => {
         if (node.type === 'file') {
             return [node.file]
@@ -78,12 +138,50 @@ const flattenFiles = (nodes: CodeFileTreeNode[]): CodeFile[] =>
         return flattenFiles(node.children)
     })
 
+export const SAMPLE_REACT_PROJECT_TREE: CodeFileTreeNode[] = createCodeWorkspaceTree([
+    'package.json',
+    'tsconfig.json',
+    'vite.config.ts',
+    'public/index.html',
+    'src/main.tsx',
+    'src/App.tsx',
+    'src/App.css',
+    'src/components/Header.tsx',
+    'src/components/FileExplorer.tsx',
+    'src/components/EditorPane.tsx',
+    'src/hooks/useProjectFiles.ts',
+    'src/utils/tree.ts',
+    'src/features/preview/PreviewPanel.tsx',
+    'src/features/preview/PreviewPanel.css',
+])
+
 export const SAMPLE_REACT_PROJECT_FILES = flattenFiles(SAMPLE_REACT_PROJECT_TREE)
 
-export const DEFAULT_CODE_FILE_PATH: CodeFilePath =
-    SAMPLE_REACT_PROJECT_FILES.find((file) => file.path === 'src/App.tsx')?.path ??
-    SAMPLE_REACT_PROJECT_FILES[0]?.path ??
-    'src/App.tsx'
+const DEFAULT_FILE_PATH_PRIORITIES = [
+    'web/src/App.tsx',
+    'src/App.tsx',
+    'web/src/main.tsx',
+    'src/main.tsx',
+    'web/index.html',
+    'public/index.html',
+    'index.html',
+]
+
+export const getDefaultCodeFilePath = (paths: CodeFilePath[]): CodeFilePath => {
+    for (const preferredPath of DEFAULT_FILE_PATH_PRIORITIES) {
+        if (paths.includes(preferredPath)) {
+            return preferredPath
+        }
+    }
+
+    const sortedPaths = [...paths].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }))
+
+    return sortedPaths[0] ?? 'src/App.tsx'
+}
+
+export const DEFAULT_CODE_FILE_PATH: CodeFilePath = getDefaultCodeFilePath(
+    SAMPLE_REACT_PROJECT_FILES.map((file) => file.path)
+)
 
 const DEFAULT_PUBLIC_INDEX_HTML = `<!doctype html>
 <html lang="en">

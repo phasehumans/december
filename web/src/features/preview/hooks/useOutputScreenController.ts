@@ -1,12 +1,36 @@
 import React from 'react'
 import { PREVIEW_HTML } from '@/features/preview/constants/preview'
-import type { PreviewDevice, PreviewSelectedElement, PreviewTab } from '@/features/preview/types'
+import type {
+    GeneratedProjectFile,
+    PreviewDevice,
+    PreviewSelectedElement,
+    PreviewTab,
+} from '@/features/preview/types'
 
 interface UseOutputScreenControllerArgs {
     isGenerating: boolean
+    generatedFiles?: Record<string, GeneratedProjectFile>
+    activeGeneratedFilePath?: string | null
 }
 
-export const useOutputScreenController = ({ isGenerating }: UseOutputScreenControllerArgs) => {
+const getPreviewHtmlFromFiles = (generatedFiles?: Record<string, GeneratedProjectFile>) => {
+    if (!generatedFiles) {
+        return ''
+    }
+
+    return (
+        generatedFiles['web/index.html']?.content ||
+        generatedFiles['public/index.html']?.content ||
+        generatedFiles['index.html']?.content ||
+        ''
+    )
+}
+
+export const useOutputScreenController = ({
+    isGenerating,
+    generatedFiles,
+    activeGeneratedFilePath,
+}: UseOutputScreenControllerArgs) => {
     const [activeTab, setActiveTab] = React.useState<PreviewTab>('preview')
     const [device, setDevice] = React.useState<PreviewDevice>('desktop')
     const [previewHtml, setPreviewHtml] = React.useState(PREVIEW_HTML)
@@ -49,10 +73,10 @@ export const useOutputScreenController = ({ isGenerating }: UseOutputScreenContr
 
             const sequences = [
                 'Analyzing request intent',
-                'Scaffolding component architecture',
-                'Generating Tailwind utility classes',
-                'Synthesizing responsive layout',
-                'Finalizing render pass',
+                'Locking implementation plan',
+                'Preparing build order and file tree',
+                'Streaming file generation to the IDE',
+                'Finalizing generated project output',
             ]
 
             let stepIndex = 0
@@ -92,6 +116,20 @@ export const useOutputScreenController = ({ isGenerating }: UseOutputScreenContr
             }
         }
     }, [isVisualMode])
+
+    React.useEffect(() => {
+        const generatedPreviewHtml = getPreviewHtmlFromFiles(generatedFiles)
+
+        if (generatedPreviewHtml.trim()) {
+            setPreviewHtml(generatedPreviewHtml)
+        }
+    }, [generatedFiles])
+
+    React.useEffect(() => {
+        if (activeGeneratedFilePath) {
+            setActiveTab('code')
+        }
+    }, [activeGeneratedFilePath])
 
     const handleIframeMessage = React.useCallback((event: MessageEvent) => {
         if (event.data.type === 'element-selected') {

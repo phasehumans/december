@@ -7,11 +7,14 @@ import { ProfileSettings } from '@/features/profile/components/ProfileSettings'
 import type { Message } from '@/features/chat/types'
 import type { Project } from '@/features/projects/types'
 import type { ViewState } from '@/app/types'
+import type { GeneratedProjectFile } from '@/features/preview/types'
 
 interface AppContentViewProps {
     view: ViewState
     isHome: boolean
     messages: Message[]
+    generatedFiles: Record<string, GeneratedProjectFile>
+    activeGeneratedFilePath: string | null
     isGenerating: boolean
     isAuthenticated: boolean
     projects: Project[]
@@ -59,6 +62,8 @@ export const AppContentView: React.FC<AppContentViewProps> = ({
     view,
     isHome,
     messages,
+    generatedFiles,
+    activeGeneratedFilePath,
     isGenerating,
     isAuthenticated,
     projects,
@@ -107,6 +112,8 @@ export const AppContentView: React.FC<AppContentViewProps> = ({
                             onBack={onBackFromOutput}
                             onPromptSubmit={onPromptSubmit}
                             messages={messages}
+                            generatedFiles={generatedFiles}
+                            activeGeneratedFilePath={activeGeneratedFilePath}
                             isGenerating={isGenerating}
                         />
                     </AnimatedPage>

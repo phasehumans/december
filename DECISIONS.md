@@ -1,5 +1,12 @@
 ## Engineering Decisions @phasehumans
 
+### 20-03-2026
+
+- done with the stream message of prompt and plan agent, prompt agent message is just a 2-3 line verdict of what user wants to build and plan agent sents the 4-5 bullets of work to be done, this are stream to chat in chatgpt style stream
+- orginal work on this agents is diffrent; prompt agent send a struct json object to plan agent and plan agent sends {} to build agent about file and dependencies in background, 
+- this stream messages are just visual satisfaction to user, i need to ensure the non blocking when build agent generate each file, i think i should display the file that is getting genreated like ai studio does, it would be great ux elmt
+- i need more strict json parser and swap a reasoning model in plan agent because this agent will define the quality of work produce by build agent
+
 ### 19-03-2026
 
 - current status of phasehumans is that web/frontend is completed just need minor ui tweaks and real data integrations from backend, currently the work needed is for server/backend.
