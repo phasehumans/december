@@ -3,6 +3,7 @@ import type { Message } from '@/features/chat/types'
 
 export type PreviewDevice = 'desktop' | 'mobile' | 'tablet'
 export type PreviewTab = 'preview' | 'code' | 'canvas'
+export type GeneratedFileStatus = 'queued' | 'building' | 'done' | 'error'
 
 export interface GeneratedCode {
     html: string
@@ -15,10 +16,21 @@ export interface PreviewSelectedElement {
     textContent: string
 }
 
+export interface GeneratedProjectFile {
+    path: string
+    content: string
+    status: GeneratedFileStatus
+    purpose?: string
+    generator?: string
+}
+
 export interface OutputScreenProps {
     onBack?: () => void
     onPromptSubmit: (prompt: string) => void
     messages: Message[]
+    generatedFiles?: Record<string, GeneratedProjectFile>
+    activeGeneratedFilePath?: string | null
+    generationPhase?: 'thinking' | 'planning' | 'building' | 'done' | null
     isGenerating?: boolean
     showStructureOnly?: boolean
 }
@@ -60,6 +72,8 @@ export type CodeFileLanguage = 'html' | 'css' | 'javascript' | 'typescript' | 't
 
 export interface CodeWorkspaceProps {
     html: string
+    generatedFiles?: Record<string, GeneratedProjectFile>
+    activeFilePath?: CodeFilePath | null
     onHtmlChange?: (nextHtml: string) => void
 }
 

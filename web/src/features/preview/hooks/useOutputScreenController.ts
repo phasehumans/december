@@ -1,12 +1,37 @@
 import React from 'react'
 import { PREVIEW_HTML } from '@/features/preview/constants/preview'
-import type { PreviewDevice, PreviewSelectedElement, PreviewTab } from '@/features/preview/types'
+import type {
+    GeneratedProjectFile,
+    PreviewDevice,
+    PreviewSelectedElement,
+    PreviewTab,
+} from '@/features/preview/types'
 
 interface UseOutputScreenControllerArgs {
     isGenerating: boolean
+    generatedFiles?: Record<string, GeneratedProjectFile>
+    activeGeneratedFilePath?: string | null
+    generationPhase?: 'thinking' | 'planning' | 'building' | 'done' | null
 }
 
-export const useOutputScreenController = ({ isGenerating }: UseOutputScreenControllerArgs) => {
+const getPreviewHtmlFromFiles = (generatedFiles?: Record<string, GeneratedProjectFile>) => {
+    if (!generatedFiles) {
+        return ''
+    }
+
+    return (
+        generatedFiles['web/index.html']?.content ||
+        generatedFiles['public/index.html']?.content ||
+        generatedFiles['index.html']?.content ||
+        ''
+    )
+}
+
+export const useOutputScreenController = ({
+    isGenerating,
+    generatedFiles,
+    generationPhase,
+}: UseOutputScreenControllerArgs) => {
     const [activeTab, setActiveTab] = React.useState<PreviewTab>('preview')
     const [device, setDevice] = React.useState<PreviewDevice>('desktop')
     const [previewHtml, setPreviewHtml] = React.useState(PREVIEW_HTML)
@@ -21,6 +46,7 @@ export const useOutputScreenController = ({ isGenerating }: UseOutputScreenContr
     const [isThoughtsOpen, setIsThoughtsOpen] = React.useState(true)
     const [executionTime, setExecutionTime] = React.useState(0)
     const iframeRef = React.useRef<HTMLIFrameElement>(null)
+    const hasSwitchedToCodeForBuildRef = React.useRef(false)
 
     React.useEffect(() => {
         const checkMobile = () => {
@@ -36,46 +62,57 @@ export const useOutputScreenController = ({ isGenerating }: UseOutputScreenContr
     }, [])
 
     React.useEffect(() => {
-        let timerInterval: ReturnType<typeof setInterval>
-
-        if (isGenerating) {
-            const start = Date.now()
-            timerInterval = setInterval(() => {
-                setExecutionTime((Date.now() - start) / 1000)
-            }, 100)
-
-            setSteps([])
-            setIsThoughtsOpen(true)
-
-            const sequences = [
-                'Analyzing request intent',
-                'Scaffolding component architecture',
-                'Generating Tailwind utility classes',
-                'Synthesizing responsive layout',
-                'Finalizing render pass',
-            ]
-
-            let stepIndex = 0
-            const stepInterval = setInterval(() => {
-                if (stepIndex < sequences.length) {
-                    setSteps((prev) => [...prev, sequences[stepIndex]!])
-                    stepIndex += 1
-                } else {
-                    clearInterval(stepInterval)
-                }
-            }, 800)
-
-            return () => {
-                clearInterval(timerInterval)
-                clearInterval(stepInterval)
-            }
+        if (!isGenerating) {
+            return
         }
 
-        if (steps.length > 0) {
+        const start = Date.now()
+        const timerInterval = setInterval(() => {
+            setExecutionTime((Date.now() - start) / 1000)
+        }, 100)
+
+        setSteps([])
+        setIsThoughtsOpen(true)
+        hasSwitchedToCodeForBuildRef.current = false
+        setActiveTab('preview')
+
+        const sequences = [
+            'Analyzing request intent',
+            'Locking implementation plan',
+            'Preparing build order and file tree',
+            'Streaming file generation to the IDE',
+            'Finalizing generated project output',
+        ]
+
+        let stepIndex = 0
+        const stepInterval = setInterval(() => {
+            if (stepIndex < sequences.length) {
+                setSteps((prev) => [...prev, sequences[stepIndex]!])
+                stepIndex += 1
+            } else {
+                clearInterval(stepInterval)
+            }
+        }, 800)
+
+        return () => {
+            clearInterval(timerInterval)
+            clearInterval(stepInterval)
+        }
+    }, [isGenerating])
+
+    React.useEffect(() => {
+        if (!isGenerating && steps.length > 0) {
             const timeout = setTimeout(() => setIsThoughtsOpen(false), 2000)
             return () => clearTimeout(timeout)
         }
     }, [isGenerating, steps.length])
+
+    React.useEffect(() => {
+        if (generationPhase === 'building' && !hasSwitchedToCodeForBuildRef.current) {
+            hasSwitchedToCodeForBuildRef.current = true
+            setActiveTab('code')
+        }
+    }, [generationPhase])
 
     React.useEffect(() => {
         if (iframeRef.current?.contentWindow) {
@@ -92,6 +129,14 @@ export const useOutputScreenController = ({ isGenerating }: UseOutputScreenContr
             }
         }
     }, [isVisualMode])
+
+    React.useEffect(() => {
+        const generatedPreviewHtml = getPreviewHtmlFromFiles(generatedFiles)
+
+        if (generatedPreviewHtml.trim()) {
+            setPreviewHtml(generatedPreviewHtml)
+        }
+    }, [generatedFiles])
 
     const handleIframeMessage = React.useCallback((event: MessageEvent) => {
         if (event.data.type === 'element-selected') {

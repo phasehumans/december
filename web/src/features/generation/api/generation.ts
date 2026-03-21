@@ -1,7 +1,14 @@
 import { API_BASE_URL, ApiError, getAuthToken } from '@/shared/api/client'
 import type { BackendProject } from '@/features/projects/api/project'
 
-export type GenerationMessageStatus = 'thinking' | 'planning' | 'done' | 'error'
+export type GenerationMessageStatus = 'thinking' | 'planning' | 'building' | 'done' | 'error'
+
+export interface PlannedBuildFile {
+    path: string
+    purpose: string
+    generate: boolean
+    generator: string
+}
 
 export type GenerationStreamEvent =
     | {
@@ -19,7 +26,7 @@ export type GenerationStreamEvent =
     | {
           type: 'phase'
           data: {
-              phase: 'thinking' | 'planning' | 'done'
+              phase: 'thinking' | 'planning' | 'building' | 'done'
           }
       }
     | {
@@ -44,11 +51,51 @@ export type GenerationStreamEvent =
           }
       }
     | {
+          type: 'build-plan'
+          data: {
+              files: PlannedBuildFile[]
+              totalFiles: number
+          }
+      }
+    | {
+          type: 'file-start'
+          data: {
+              path: string
+              purpose: string
+              generator: string
+              index: number
+              total: number
+          }
+      }
+    | {
+          type: 'file-chunk'
+          data: {
+              path: string
+              chunk: string
+          }
+      }
+    | {
+          type: 'file-complete'
+          data: {
+              path: string
+              index: number
+              total: number
+          }
+      }
+    | {
+          type: 'file-error'
+          data: {
+              path: string
+              message: string
+          }
+      }
+    | {
           type: 'result'
           data: {
               project: BackendProject
               intent: unknown
               plan: unknown
+              generatedFiles: Record<string, string>
               isDB: boolean
               dbURL?: string
           }
@@ -116,7 +163,13 @@ const parseEventBlock = (block: string) => {
     } as GenerationStreamEvent
 }
 
-const generateProjectStream = async ({ prompt, isDB, dbURL, signal, onEvent }: GenerateProjectInput) => {
+const generateProjectStream = async ({
+    prompt,
+    isDB,
+    dbURL,
+    signal,
+    onEvent,
+}: GenerateProjectInput) => {
     const token = getAuthToken()
     const res = await fetch(`${API_BASE_URL}/generate`, {
         method: 'POST',
