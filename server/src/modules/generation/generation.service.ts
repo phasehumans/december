@@ -159,7 +159,7 @@ const splitIntoChunks = (content: string, minLength: number, maxLength: number) 
     return chunks.length > 0 ? chunks : [content]
 }
 
-const splitFileContentIntoChunks = (content: string, maxChunkLength = 96) => {
+const splitFileContentIntoChunks = (content: string, targetChunkLength = 72) => {
     if (!content) {
         return ['']
     }
@@ -168,11 +168,18 @@ const splitFileContentIntoChunks = (content: string, maxChunkLength = 96) => {
     let cursor = 0
 
     while (cursor < content.length) {
-        let nextCursor = Math.min(cursor + maxChunkLength, content.length)
+        let nextCursor = Math.min(cursor + targetChunkLength, content.length)
         const newlineIndex = content.lastIndexOf('\n', nextCursor)
+        const whitespaceIndex = content.lastIndexOf(' ', nextCursor)
 
-        if (newlineIndex >= cursor + 12) {
+        if (newlineIndex >= cursor + 18) {
             nextCursor = newlineIndex + 1
+        } else if (whitespaceIndex >= cursor + 18) {
+            nextCursor = whitespaceIndex + 1
+        }
+
+        if (nextCursor <= cursor) {
+            nextCursor = Math.min(cursor + targetChunkLength, content.length)
         }
 
         chunks.push(content.slice(cursor, nextCursor))
@@ -242,7 +249,7 @@ const emitAssistantMessage = async (
         await sleep(delay)
     }
 
-    await sleep(80)
+    await sleep(32)
 
     await onEvent({
         type: 'message-complete',
@@ -295,7 +302,7 @@ const emitFileStream = async (
         },
     })
 
-    await sleep(80)
+    await sleep(32)
 
     for (const chunk of splitFileContentIntoChunks(data.content)) {
         await onEvent({
@@ -306,10 +313,10 @@ const emitFileStream = async (
             },
         })
 
-        await sleep(18)
+        await sleep(10)
     }
 
-    await sleep(48)
+    await sleep(20)
 
     await onEvent({
         type: 'file-complete',
@@ -508,5 +515,6 @@ const generateWebsite = async (data: GenerateWebsite) => {
 export const generateService = {
     generateWebsite,
 }
+
 
 
