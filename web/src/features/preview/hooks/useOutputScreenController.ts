@@ -62,44 +62,46 @@ export const useOutputScreenController = ({
     }, [])
 
     React.useEffect(() => {
-        let timerInterval: ReturnType<typeof setInterval>
-
-        if (isGenerating) {
-            const start = Date.now()
-            timerInterval = setInterval(() => {
-                setExecutionTime((Date.now() - start) / 1000)
-            }, 100)
-
-            setSteps([])
-            setIsThoughtsOpen(true)
-            hasSwitchedToCodeForBuildRef.current = false
-            setActiveTab('preview')
-
-            const sequences = [
-                'Analyzing request intent',
-                'Locking implementation plan',
-                'Preparing build order and file tree',
-                'Streaming file generation to the IDE',
-                'Finalizing generated project output',
-            ]
-
-            let stepIndex = 0
-            const stepInterval = setInterval(() => {
-                if (stepIndex < sequences.length) {
-                    setSteps((prev) => [...prev, sequences[stepIndex]!])
-                    stepIndex += 1
-                } else {
-                    clearInterval(stepInterval)
-                }
-            }, 800)
-
-            return () => {
-                clearInterval(timerInterval)
-                clearInterval(stepInterval)
-            }
+        if (!isGenerating) {
+            return
         }
 
-        if (steps.length > 0) {
+        const start = Date.now()
+        const timerInterval = setInterval(() => {
+            setExecutionTime((Date.now() - start) / 1000)
+        }, 100)
+
+        setSteps([])
+        setIsThoughtsOpen(true)
+        hasSwitchedToCodeForBuildRef.current = false
+        setActiveTab('preview')
+
+        const sequences = [
+            'Analyzing request intent',
+            'Locking implementation plan',
+            'Preparing build order and file tree',
+            'Streaming file generation to the IDE',
+            'Finalizing generated project output',
+        ]
+
+        let stepIndex = 0
+        const stepInterval = setInterval(() => {
+            if (stepIndex < sequences.length) {
+                setSteps((prev) => [...prev, sequences[stepIndex]!])
+                stepIndex += 1
+            } else {
+                clearInterval(stepInterval)
+            }
+        }, 800)
+
+        return () => {
+            clearInterval(timerInterval)
+            clearInterval(stepInterval)
+        }
+    }, [isGenerating])
+
+    React.useEffect(() => {
+        if (!isGenerating && steps.length > 0) {
             const timeout = setTimeout(() => setIsThoughtsOpen(false), 2000)
             return () => clearTimeout(timeout)
         }
