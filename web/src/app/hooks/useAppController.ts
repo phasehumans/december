@@ -3,24 +3,35 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import type { Message } from '@/features/chat/types'
 import type { ViewState } from '@/app/types'
 import { clearAuthToken, getAuthToken } from '@/shared/api/client'
-import { generationAPI } from '@/features/generation/api/generation'
+import {
+    generationAPI,
+    type PlannedBuildFile,
+} from '@/features/generation/api/generation'
 import { projectAPI } from '@/features/projects/api/project'
 import { mapBackendProjectToUIProject } from '@/app/mapProject'
+import type { GeneratedProjectFile } from '@/features/preview/types'
 
 export const useAppController = () => {
     const queryClient = useQueryClient()
 
     const [view, setView] = React.useState<ViewState>('chat')
     const [messages, setMessages] = React.useState<Message[]>([])
+    const [generatedFiles, setGeneratedFiles] = React.useState<Record<string, GeneratedProjectFile>>(
+        {}
+    )
+    const [activeGeneratedFilePath, setActiveGeneratedFilePathState] = React.useState<string | null>(
+        null
+    )
     const [isGenerating, setIsGenerating] = React.useState(false)
     const [authToken, setAuthTokenState] = React.useState<string | null>(() => getAuthToken())
     const [showAuthModal, setShowAuthModal] = React.useState(false)
     const [isMobileSidebarOpen, setIsMobileSidebarOpen] = React.useState(false)
     const generationAbortControllerRef = React.useRef<AbortController | null>(null)
     const activeAssistantMessageIdRef = React.useRef<string | null>(null)
-    const activeGenerationPhaseRef = React.useRef<'thinking' | 'planning' | 'building' | null>(
-        null
-    )
+    const activeGeneratedFilePathRef = React.useRef<string | null>(null)
+    const activeGenerationPhaseRef = React.useRef<
+        'thinking' | 'planning' | 'building' | 'done' | null
+    >(null)
 
     const isAuthenticated = Boolean(authToken)
 
@@ -48,6 +59,11 @@ export const useAppController = () => {
                 })
                 .map(mapBackendProjectToUIProject),
     })
+
+    const setActiveGeneratedFilePath = React.useCallback((path: string | null) => {
+        activeGeneratedFilePathRef.current = path
+        setActiveGeneratedFilePathState(path)
+    }, [])
 
     const updateAssistantMessage = React.useCallback(
         (messageId: string, updater: (message: Message) => Message) => {
@@ -113,6 +129,11 @@ export const useAppController = () => {
         [updateAssistantMessage]
     )
 
+    const resetGeneratedOutput = React.useCallback(() => {
+        setGeneratedFiles({})
+        setActiveGeneratedFilePath(null)
+    }, [setActiveGeneratedFilePath])
+
     const resetGenerationRefs = React.useCallback(() => {
         activeAssistantMessageIdRef.current = null
         activeGenerationPhaseRef.current = null
@@ -138,15 +159,131 @@ export const useAppController = () => {
         action()
     }
 
+    const primeGeneratedFiles = React.useCallback(
+        (files: PlannedBuildFile[]) => {
+            const nextFiles = Object.fromEntries(
+                files.map((file) => [
+                    file.path,
+                    {
+                        path: file.path,
+                        content: '',
+                        status: 'queued' as const,
+                        purpose: file.purpose,
+                        generator: file.generator,
+                    },
+                ])
+            )
+
+            setGeneratedFiles(nextFiles)
+            setActiveGeneratedFilePath(files[0]?.path ?? null)
+        },
+        [setActiveGeneratedFilePath]
+    )
+
+    const startGeneratedFile = React.useCallback(
+        (data: { path: string; purpose: string; generator: string }) => {
+            setGeneratedFiles((prev) => ({
+                ...prev,
+                [data.path]: {
+                    path: data.path,
+                    content: prev[data.path]?.content ?? '',
+                    status: 'building',
+                    purpose: data.purpose,
+                    generator: data.generator,
+                },
+            }))
+            setActiveGeneratedFilePath(data.path)
+        },
+        [setActiveGeneratedFilePath]
+    )
+
+    const appendGeneratedFileChunk = React.useCallback((path: string, chunk: string) => {
+        setGeneratedFiles((prev) => ({
+            ...prev,
+            [path]: {
+                path,
+                content: `${prev[path]?.content ?? ''}${chunk}`,
+                status: 'building',
+                purpose: prev[path]?.purpose,
+                generator: prev[path]?.generator,
+            },
+        }))
+    }, [])
+
+    const completeGeneratedFile = React.useCallback((path: string) => {
+        setGeneratedFiles((prev) => {
+            const current = prev[path]
+
+            if (!current) {
+                return prev
+            }
+
+            return {
+                ...prev,
+                [path]: {
+                    ...current,
+                    status: 'done',
+                },
+            }
+        })
+    }, [])
+
+    const markGeneratedFileError = React.useCallback((path: string, message?: string) => {
+        setGeneratedFiles((prev) => {
+            const current = prev[path]
+
+            if (!current) {
+                return prev
+            }
+
+            return {
+                ...prev,
+                [path]: {
+                    ...current,
+                    status: 'error',
+                    purpose: message ? `${current.purpose ?? ''}${current.purpose ? ' | ' : ''}${message}` : current.purpose,
+                },
+            }
+        })
+    }, [])
+
+    const hydrateGeneratedFiles = React.useCallback(
+        (files: Record<string, string>) => {
+            const paths = Object.keys(files)
+
+            setGeneratedFiles((prev) =>
+                Object.fromEntries(
+                    paths.map((path) => [
+                        path,
+                        {
+                            path,
+                            content: files[path] ?? '',
+                            status: 'done' as const,
+                            purpose: prev[path]?.purpose,
+                            generator: prev[path]?.generator,
+                        },
+                    ])
+                )
+            )
+
+            if (paths.length > 0) {
+                setActiveGeneratedFilePath(paths[paths.length - 1] ?? null)
+            }
+        },
+        [setActiveGeneratedFilePath]
+    )
+
     const resetGenerationFlow = React.useCallback(() => {
         abortGenerationRequest()
         resetGenerationRefs()
+        resetGeneratedOutput()
         setIsGenerating(false)
-    }, [abortGenerationRequest, resetGenerationRefs])
+    }, [abortGenerationRequest, resetGeneratedOutput, resetGenerationRefs])
 
     const startGeneration = React.useCallback(
         (prompt: string, assistantMessageId: string) => {
             abortGenerationRequest()
+            resetGeneratedOutput()
             activeAssistantMessageIdRef.current = assistantMessageId
             activeGenerationPhaseRef.current = 'thinking'
             setIsGenerating(true)
@@ -180,9 +317,14 @@ export const useAppController = () => {
                                         ensureAssistantSpacing(activeMessageId)
                                     }
 
-                                    if (event.data.phase === 'done') {
+                                    if (event.data.phase === 'building') {
                                         activeGenerationPhaseRef.current = 'building'
                                         setAssistantStatus(activeMessageId, 'building')
+                                    }
+
+                                    if (event.data.phase === 'done') {
+                                        activeGenerationPhaseRef.current = 'done'
+                                        setAssistantStatus(activeMessageId, 'done')
                                     }
 
                                     return
@@ -203,18 +345,35 @@ export const useAppController = () => {
                                     appendAssistantChunk(activeMessageId, event.data.chunk)
                                     return
                                 case 'message-complete':
-                                    if (activeGenerationPhaseRef.current === 'planning') {
-                                        activeGenerationPhaseRef.current = 'building'
-                                        setAssistantStatus(activeMessageId, 'building')
-                                    }
-
+                                    return
+                                case 'build-plan':
+                                    primeGeneratedFiles(event.data.files)
+                                    return
+                                case 'file-start':
+                                    startGeneratedFile(event.data)
+                                    return
+                                case 'file-chunk':
+                                    appendGeneratedFileChunk(event.data.path, event.data.chunk)
+                                    return
+                                case 'file-complete':
+                                    completeGeneratedFile(event.data.path)
+                                    return
+                                case 'file-error':
+                                    markGeneratedFileError(event.data.path, event.data.message)
                                     return
                                 case 'result':
-                                    activeGenerationPhaseRef.current = 'building'
-                                    setAssistantStatus(activeMessageId, 'building')
+                                    activeGenerationPhaseRef.current = 'done'
+                                    setAssistantStatus(activeMessageId, 'done')
+                                    hydrateGeneratedFiles(event.data.generatedFiles)
                                     void queryClient.invalidateQueries({ queryKey: ['projects'] })
                                     return
                                 case 'error':
+                                    if (activeGeneratedFilePathRef.current) {
+                                        markGeneratedFileError(
+                                            activeGeneratedFilePathRef.current,
+                                            event.data.message
+                                        )
+                                    }
                                     setAssistantError(activeMessageId, event.data.message)
                                     return
                             }
@@ -228,6 +387,10 @@ export const useAppController = () => {
                     const activeMessageId = activeAssistantMessageIdRef.current
                     const message =
                         error instanceof Error ? error.message : 'Generation failed unexpectedly.'
+
+                    if (activeGeneratedFilePathRef.current) {
+                        markGeneratedFileError(activeGeneratedFilePathRef.current, message)
+                    }
 
                     if (activeMessageId) {
                         setAssistantError(activeMessageId, message)
@@ -244,11 +407,18 @@ export const useAppController = () => {
         [
             abortGenerationRequest,
             appendAssistantChunk,
+            appendGeneratedFileChunk,
+            completeGeneratedFile,
             ensureAssistantSpacing,
+            hydrateGeneratedFiles,
+            markGeneratedFileError,
+            primeGeneratedFiles,
             queryClient,
+            resetGeneratedOutput,
             resetGenerationRefs,
             setAssistantError,
             setAssistantStatus,
+            startGeneratedFile,
         ]
     )
 
@@ -330,6 +500,8 @@ export const useAppController = () => {
         view,
         setView,
         messages,
+        generatedFiles,
+        activeGeneratedFilePath,
         isGenerating,
         authToken,
         setAuthTokenState,

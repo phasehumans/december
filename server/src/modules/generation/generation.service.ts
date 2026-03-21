@@ -1,12 +1,14 @@
 import { z } from 'zod'
 import { prisma } from '../../config/db'
+import { generateProjectFile } from '../../core/agents/build.agent'
 import { extractProjectPlan } from '../../core/agents/plan.agent'
 import { extractProjectIntent } from '../../core/agents/prompt.agent'
 import { cleanPrompt } from '../../utils/cleanPrompt'
 import {
-    generateProjectFileSchema,
+    plannedProjectFileSchema,
     planAgentResponseSchema,
     projectIntentSchema,
+    projectPlanSchema,
     promptAgentResponseSchema,
 } from './generation.schema'
 
@@ -19,7 +21,8 @@ type GenerateWebsite = {
 }
 
 type ProjectIntent = z.infer<typeof projectIntentSchema>
-type ProjectPlan = z.infer<typeof generateProjectFileSchema>
+type ProjectPlan = z.infer<typeof projectPlanSchema>
+type PlannedProjectFile = z.infer<typeof plannedProjectFileSchema>
 type ProjectRecord = Awaited<ReturnType<typeof prisma.project.create>>
 
 type GenerationStreamEvent =
@@ -32,7 +35,7 @@ type GenerationStreamEvent =
     | {
           type: 'phase'
           data: {
-              phase: 'thinking' | 'planning' | 'done'
+              phase: 'thinking' | 'planning' | 'building' | 'done'
           }
       }
     | {
@@ -57,11 +60,51 @@ type GenerationStreamEvent =
           }
       }
     | {
+          type: 'build-plan'
+          data: {
+              files: PlannedProjectFile[]
+              totalFiles: number
+          }
+      }
+    | {
+          type: 'file-start'
+          data: {
+              path: string
+              purpose: string
+              generator: PlannedProjectFile['generator']
+              index: number
+              total: number
+          }
+      }
+    | {
+          type: 'file-chunk'
+          data: {
+              path: string
+              chunk: string
+          }
+      }
+    | {
+          type: 'file-complete'
+          data: {
+              path: string
+              index: number
+              total: number
+          }
+      }
+    | {
+          type: 'file-error'
+          data: {
+              path: string
+              message: string
+          }
+      }
+    | {
           type: 'result'
           data: {
               project: ProjectRecord
               intent: ProjectIntent
               plan: ProjectPlan
+              generatedFiles: Record<string, string>
               isDB: boolean
               dbURL?: string
           }
@@ -114,6 +157,29 @@ const splitIntoChunks = (content: string, minLength: number, maxLength: number) 
     }
 
     return chunks.length > 0 ? chunks : [content]
+}
+
+const splitFileContentIntoChunks = (content: string, maxChunkLength = 96) => {
+    if (!content) {
+        return ['']
+    }
+
+    const chunks: string[] = []
+    let cursor = 0
+
+    while (cursor < content.length) {
+        let nextCursor = Math.min(cursor + maxChunkLength, content.length)
+        const newlineIndex = content.lastIndexOf('\n', nextCursor)
+
+        if (newlineIndex >= cursor + 12) {
+            nextCursor = newlineIndex + 1
+        }
+
+        chunks.push(content.slice(cursor, nextCursor))
+        cursor = nextCursor
+    }
+
+    return chunks
 }
 
 const applyDatabaseSelection = (intent: ProjectIntent, isDB: boolean) => {
@@ -187,6 +253,74 @@ const emitAssistantMessage = async (
     })
 }
 
+const getFilesInGenerationOrder = (plan: ProjectPlan) => {
+    if (!plan.data) {
+        throw new Error('project plan is missing data')
+    }
+
+    const plannedFiles = new Map(plan.data.files.map((file) => [file.path, file]))
+
+    return plan.data.generationOrder.map((path) => {
+        const file = plannedFiles.get(path)
+
+        if (!file || !file.generate) {
+            throw new Error(`generation order contains invalid file path: ${path}`)
+        }
+
+        return file
+    })
+}
+
+const emitFileStream = async (
+    onEvent: GenerateWebsite['onEvent'],
+    data: {
+        file: PlannedProjectFile
+        content: string
+        index: number
+        total: number
+    }
+) => {
+    if (!onEvent) {
+        return
+    }
+
+    await onEvent({
+        type: 'file-start',
+        data: {
+            path: data.file.path,
+            purpose: data.file.purpose,
+            generator: data.file.generator,
+            index: data.index,
+            total: data.total,
+        },
+    })
+
+    await sleep(80)
+
+    for (const chunk of splitFileContentIntoChunks(data.content)) {
+        await onEvent({
+            type: 'file-chunk',
+            data: {
+                path: data.file.path,
+                chunk,
+            },
+        })
+
+        await sleep(18)
+    }
+
+    await sleep(48)
+
+    await onEvent({
+        type: 'file-complete',
+        data: {
+            path: data.file.path,
+            index: data.index,
+            total: data.total,
+        },
+    })
+}
+
 const generateWebsite = async (data: GenerateWebsite) => {
     const { prompt, userId, isDB, dbURL, onEvent } = data
     let project: ProjectRecord | null = null
@@ -251,19 +385,84 @@ const generateWebsite = async (data: GenerateWebsite) => {
             throw new Error(parsePlan.data.plan.errors[0] || 'invalid response | plan agent')
         }
 
+        if (!parsePlan.data.plan.data) {
+            throw new Error('plan agent returned empty plan data')
+        }
+
+        const plan = parsePlan.data.plan
+        const planData = plan.data as NonNullable<ProjectPlan['data']>
+        const orderedFiles = getFilesInGenerationOrder(plan)
+        const generatedFiles: Record<string, string> = {}
+
         await emitAssistantMessage(onEvent, {
             messageId: `${project.id}:plan-agent`,
             status: 'planning',
             content: parsePlan.data.message,
         })
 
+        project = await prisma.project.update({
+            where: {
+                id: project.id,
+            },
+            data: {
+                name: planData.projectName,
+                description: intent.summary,
+            },
+        })
+
+        await onEvent?.({
+            type: 'phase',
+            data: {
+                phase: 'building',
+            },
+        })
+
+        await onEvent?.({
+            type: 'build-plan',
+            data: {
+                files: orderedFiles,
+                totalFiles: orderedFiles.length,
+            },
+        })
+
+        for (const [fileIndex, file] of orderedFiles.entries()) {
+            try {
+                const content = await generateProjectFile({
+                    intent,
+                    plan,
+                    targetFile: file,
+                    generatedFiles,
+                })
+
+                generatedFiles[file.path] = content
+
+                await emitFileStream(onEvent, {
+                    file,
+                    content,
+                    index: fileIndex + 1,
+                    total: orderedFiles.length,
+                })
+            } catch (error) {
+                const message =
+                    error instanceof Error ? error.message : `failed to generate ${file.path}`
+
+                await onEvent?.({
+                    type: 'file-error',
+                    data: {
+                        path: file.path,
+                        message,
+                    },
+                })
+
+                throw error
+            }
+        }
+
         const updatedProject = await prisma.project.update({
             where: {
                 id: project.id,
             },
             data: {
-                name: parsePlan.data.plan.data.projectName,
-                description: intent.summary,
                 projectStatus: 'READY',
             },
         })
@@ -278,7 +477,8 @@ const generateWebsite = async (data: GenerateWebsite) => {
         const result = {
             project: updatedProject,
             intent,
-            plan: parsePlan.data.plan,
+            plan,
+            generatedFiles,
             isDB,
             ...(dbURL ? { dbURL } : {}),
         }
@@ -308,3 +508,5 @@ const generateWebsite = async (data: GenerateWebsite) => {
 export const generateService = {
     generateWebsite,
 }
+
+
