@@ -29,9 +29,8 @@ const getPreviewHtmlFromFiles = (generatedFiles?: Record<string, GeneratedProjec
 export const useOutputScreenController = ({
     isGenerating,
     generatedFiles,
-    activeGeneratedFilePath,
 }: UseOutputScreenControllerArgs) => {
-    const [activeTab, setActiveTab] = React.useState<PreviewTab>('preview')
+    const [activeTab, setActiveTab] = React.useState<PreviewTab>('code')
     const [device, setDevice] = React.useState<PreviewDevice>('desktop')
     const [previewHtml, setPreviewHtml] = React.useState(PREVIEW_HTML)
     const [isVisualMode, setIsVisualMode] = React.useState(false)
@@ -124,12 +123,6 @@ export const useOutputScreenController = ({
             setPreviewHtml(generatedPreviewHtml)
         }
     }, [generatedFiles])
-
-    React.useEffect(() => {
-        if (activeGeneratedFilePath) {
-            setActiveTab('code')
-        }
-    }, [activeGeneratedFilePath])
 
     const handleIframeMessage = React.useCallback((event: MessageEvent) => {
         if (event.data.type === 'element-selected') {

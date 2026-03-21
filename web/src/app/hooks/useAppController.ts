@@ -3,10 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import type { Message } from '@/features/chat/types'
 import type { ViewState } from '@/app/types'
 import { clearAuthToken, getAuthToken } from '@/shared/api/client'
-import {
-    generationAPI,
-    type PlannedBuildFile,
-} from '@/features/generation/api/generation'
+import { generationAPI } from '@/features/generation/api/generation'
 import { projectAPI } from '@/features/projects/api/project'
 import { mapBackendProjectToUIProject } from '@/app/mapProject'
 import type { GeneratedProjectFile } from '@/features/preview/types'
@@ -159,27 +156,6 @@ export const useAppController = () => {
         action()
     }
 
-    const primeGeneratedFiles = React.useCallback(
-        (files: PlannedBuildFile[]) => {
-            const nextFiles = Object.fromEntries(
-                files.map((file) => [
-                    file.path,
-                    {
-                        path: file.path,
-                        content: '',
-                        status: 'queued' as const,
-                        purpose: file.purpose,
-                        generator: file.generator,
-                    },
-                ])
-            )
-
-            setGeneratedFiles(nextFiles)
-            setActiveGeneratedFilePath(files[0]?.path ?? null)
-        },
-        [setActiveGeneratedFilePath]
-    )
-
     const startGeneratedFile = React.useCallback(
         (data: { path: string; purpose: string; generator: string }) => {
             setGeneratedFiles((prev) => ({
@@ -192,6 +168,7 @@ export const useAppController = () => {
                     generator: data.generator,
                 },
             }))
+
             setActiveGeneratedFilePath(data.path)
         },
         [setActiveGeneratedFilePath]
@@ -241,7 +218,9 @@ export const useAppController = () => {
                 [path]: {
                     ...current,
                     status: 'error',
-                    purpose: message ? `${current.purpose ?? ''}${current.purpose ? ' | ' : ''}${message}` : current.purpose,
+                    purpose: message
+                        ? `${current.purpose ?? ''}${current.purpose ? ' | ' : ''}${message}`
+                        : current.purpose,
                 },
             }
         })
@@ -251,8 +230,9 @@ export const useAppController = () => {
         (files: Record<string, string>) => {
             const paths = Object.keys(files)
 
-            setGeneratedFiles((prev) =>
-                Object.fromEntries(
+            setGeneratedFiles((prev) => ({
+                ...prev,
+                ...Object.fromEntries(
                     paths.map((path) => [
                         path,
                         {
@@ -263,8 +243,8 @@ export const useAppController = () => {
                             generator: prev[path]?.generator,
                         },
                     ])
-                )
-            )
+                ),
+            }))
 
             if (paths.length > 0) {
                 setActiveGeneratedFilePath(paths[paths.length - 1] ?? null)
@@ -347,7 +327,6 @@ export const useAppController = () => {
                                 case 'message-complete':
                                     return
                                 case 'build-plan':
-                                    primeGeneratedFiles(event.data.files)
                                     return
                                 case 'file-start':
                                     startGeneratedFile(event.data)
@@ -412,7 +391,6 @@ export const useAppController = () => {
             ensureAssistantSpacing,
             hydrateGeneratedFiles,
             markGeneratedFileError,
-            primeGeneratedFiles,
             queryClient,
             resetGeneratedOutput,
             resetGenerationRefs,

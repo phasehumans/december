@@ -138,25 +138,6 @@ export const flattenFiles = (nodes: CodeFileTreeNode[]): CodeFile[] =>
         return flattenFiles(node.children)
     })
 
-export const SAMPLE_REACT_PROJECT_TREE: CodeFileTreeNode[] = createCodeWorkspaceTree([
-    'package.json',
-    'tsconfig.json',
-    'vite.config.ts',
-    'public/index.html',
-    'src/main.tsx',
-    'src/App.tsx',
-    'src/App.css',
-    'src/components/Header.tsx',
-    'src/components/FileExplorer.tsx',
-    'src/components/EditorPane.tsx',
-    'src/hooks/useProjectFiles.ts',
-    'src/utils/tree.ts',
-    'src/features/preview/PreviewPanel.tsx',
-    'src/features/preview/PreviewPanel.css',
-])
-
-export const SAMPLE_REACT_PROJECT_FILES = flattenFiles(SAMPLE_REACT_PROJECT_TREE)
-
 const DEFAULT_FILE_PATH_PRIORITIES = [
     'web/src/App.tsx',
     'src/App.tsx',
@@ -167,7 +148,7 @@ const DEFAULT_FILE_PATH_PRIORITIES = [
     'index.html',
 ]
 
-export const getDefaultCodeFilePath = (paths: CodeFilePath[]): CodeFilePath => {
+export const getDefaultCodeFilePath = (paths: CodeFilePath[]): CodeFilePath | null => {
     for (const preferredPath of DEFAULT_FILE_PATH_PRIORITIES) {
         if (paths.includes(preferredPath)) {
             return preferredPath
@@ -176,142 +157,30 @@ export const getDefaultCodeFilePath = (paths: CodeFilePath[]): CodeFilePath => {
 
     const sortedPaths = [...paths].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }))
 
-    return sortedPaths[0] ?? 'src/App.tsx'
+    return sortedPaths[0] ?? null
 }
 
-export const DEFAULT_CODE_FILE_PATH: CodeFilePath = getDefaultCodeFilePath(
-    SAMPLE_REACT_PROJECT_FILES.map((file) => file.path)
-)
+export const getSharedEditorExtensions = (): Extension[] => [
+    EditorState.tabSize.of(2),
+    EditorState.allowMultipleSelections.of(true),
+    indentUnit.of('  '),
+    EditorView.lineWrapping,
+    EditorView.contentAttributes.of({
+        spellcheck: 'false',
+        'data-gramm': 'false',
+    }),
+    keymap.of([indentWithTab]),
+    vscodeDarkPlusTheme,
+    syntaxHighlighting(vscodeDarkPlusHighlightStyle),
+]
 
-const DEFAULT_PUBLIC_INDEX_HTML = `<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Phase IDE Sample</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
-</html>`
-
-const REACT_SAMPLE_CONTENTS: Record<CodeFilePath, string> = {
-    'package.json': `{
-  "name": "phase-react-sample",
-  "private": true,
-  "version": "0.0.0",
-  "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
-    "preview": "vite preview"
-  },
-  "dependencies": {
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1"
-  },
-  "devDependencies": {
-    "typescript": "^5.6.3",
-    "vite": "^5.4.0"
-  }
-}`,
-    'tsconfig.json': `{
-  "compilerOptions": {
-    "target": "ES2020",
-    "module": "ESNext",
-    "jsx": "react-jsx",
-    "strict": true,
-    "moduleResolution": "Bundler"
-  },
-  "include": ["src"]
-}`,
-    'vite.config.ts': `import { defineConfig } from 'vite'
-
-export default defineConfig({
-  server: {
-    port: 5173,
-  },
-})`,
-    'public/index.html': DEFAULT_PUBLIC_INDEX_HTML,
-    'src/main.tsx': `import React from 'react'
-import ReactDOM from 'react-dom/client'
-import App from './App'
-import './App.css'
-
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>
-)`,
-    'src/App.tsx': `import { Header } from './components/Header'
-import { PreviewPanel } from './features/preview/PreviewPanel'
-
-export default function App() {
-  return (
-    <main className="app-shell">
-      <Header title="Phase IDE" subtitle="React sample project" />
-      <PreviewPanel />
-    </main>
-  )
-}`,
-    'src/App.css': `.app-shell {
-  min-height: 100vh;
-  background: #0f1116;
-  color: #e5e7eb;
-  padding: 24px;
-  font-family: 'Inter', sans-serif;
-}`,
-    'src/components/Header.tsx': `interface HeaderProps {
-  title: string
-  subtitle: string
+export const getLanguageExtension = (language: CodeFile['language']): Extension => {
+    if (language === 'html') return htmlLanguage()
+    if (language === 'css') return cssLanguage()
+    if (language === 'typescript') return javascript({ typescript: true })
+    if (language === 'tsx') return javascript({ typescript: true, jsx: true })
+    return javascript({ jsx: true })
 }
-
-export const Header = ({ title, subtitle }: HeaderProps) => {
-  return (
-    <header>
-      <h1>{title}</h1>
-      <p>{subtitle}</p>
-    </header>
-  )
-}`,
-    'src/components/FileExplorer.tsx': `export const FileExplorer = () => {
-  return <aside>VS Code style file explorer tree</aside>
-}`,
-    'src/components/EditorPane.tsx': `export const EditorPane = () => {
-  return <section>Code editor pane</section>
-}`,
-    'src/hooks/useProjectFiles.ts': `export const useProjectFiles = () => {
-  return {
-    selected: 'src/App.tsx',
-  }
-}`,
-    'src/utils/tree.ts': `export const flattenTree = <T>(items: T[]): T[] => {
-  return items
-}`,
-    'src/features/preview/PreviewPanel.tsx': `import './PreviewPanel.css'
-
-export const PreviewPanel = () => {
-  return (
-    <section className="preview-panel">
-      <h2>Preview</h2>
-      <p>Switch to Preview tab to run your generated output.</p>
-    </section>
-  )
-}`,
-    'src/features/preview/PreviewPanel.css': `.preview-panel {
-  margin-top: 20px;
-  border: 1px solid #2a2d2e;
-  background: #161b22;
-  border-radius: 10px;
-  padding: 16px;
-}`,
-}
-
-export const getSampleReactProjectContents = (html: string): Record<CodeFilePath, string> => ({
-    ...REACT_SAMPLE_CONTENTS,
-    'public/index.html': html.trim() ? html : DEFAULT_PUBLIC_INDEX_HTML,
-})
 
 export const vscodeDarkPlusTheme = EditorView.theme(
     {
@@ -391,32 +260,6 @@ export const vscodeDarkPlusHighlightStyle = HighlightStyle.define([
     { tag: [tags.typeName, tags.className, tags.namespace], color: '#4EC9B0' },
     { tag: [tags.operator, tags.punctuation, tags.bracket, tags.separator], color: '#D4D4D4' },
 ])
-
-export const vscodeDarkPlusExtensions: Extension[] = [
-    vscodeDarkPlusTheme,
-    syntaxHighlighting(vscodeDarkPlusHighlightStyle),
-]
-
-export const getSharedEditorExtensions = (): Extension[] => [
-    EditorState.tabSize.of(2),
-    EditorState.allowMultipleSelections.of(true),
-    indentUnit.of('  '),
-    EditorView.lineWrapping,
-    EditorView.contentAttributes.of({
-        spellcheck: 'false',
-        'data-gramm': 'false',
-    }),
-    keymap.of([indentWithTab]),
-    ...vscodeDarkPlusExtensions,
-]
-
-export const getLanguageExtension = (language: CodeFile['language']): Extension => {
-    if (language === 'html') return htmlLanguage()
-    if (language === 'css') return cssLanguage()
-    if (language === 'typescript') return javascript({ typescript: true })
-    if (language === 'tsx') return javascript({ typescript: true, jsx: true })
-    return javascript({ jsx: true })
-}
 
 export const codeMirrorBasicSetup = {
     autocompletion: true,
