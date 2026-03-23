@@ -5,7 +5,7 @@ import {
     ListObjectsV2Command,
 } from '@aws-sdk/client-s3'
 
-import { s3 } from '../config/s3'
+import { s3 } from '../../config/s3'
 
 const BUCKET = process.env.S3_BUCKET!
 
