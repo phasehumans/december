@@ -32,3 +32,5 @@ docker-compose.override.yml
 Thumbs.db
 refui
 guide.md
+
+infra/minio/docker/minio/data/
