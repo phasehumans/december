@@ -34,3 +34,4 @@ refui
 guide.md
 
 infra/minio/docker/minio/data/
+infra/postgres/data/
