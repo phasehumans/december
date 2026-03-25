@@ -3,7 +3,7 @@ members = [
   "protocol",
   "config",
   "december-core",
-  "cli",
+  "cli", "tui",
 ]
 resolver = "2"
 

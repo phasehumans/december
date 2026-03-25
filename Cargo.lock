@@ -17,3 +17,7 @@ version = "0.1.0"
 [[package]]
 name = "protocol"
 version = "0.1.0"
+
+[[package]]
+name = "tui"
+version = "0.1.0"
