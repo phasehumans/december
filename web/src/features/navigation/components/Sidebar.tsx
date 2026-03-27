@@ -11,6 +11,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     onNewThread,
     onAllProjects,
     onProfile,
+    onOpenProject,
     isAuthenticated,
     onOpenAuth,
     projects,
@@ -68,6 +69,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                     isLoading={isAuthenticated && isProjectsLoading}
                     loadingCount={3}
                     emptyText="No recent projects"
+                    onOpenProject={onOpenProject}
                 />
 
                 <SidebarProjectsSection
@@ -80,6 +82,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                     isLoading={isAuthenticated && isProjectsLoading}
                     loadingCount={2}
                     emptyText="No starred projects"
+                    onOpenProject={onOpenProject}
                 />
             </div>
 

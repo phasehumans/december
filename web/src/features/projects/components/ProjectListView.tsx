@@ -6,6 +6,7 @@ import type { Project } from '@/features/projects/types'
 interface ProjectListViewProps {
     projects: Project[]
     onNewProject: () => void
+    onOpenProject: (projectId: string) => void
     isInitialLoading: boolean
     isFetching: boolean
     errorMessage: string | null
@@ -47,7 +48,7 @@ const ProjectListAreaSkeleton: React.FC = () => {
 
 export const ProjectListView: React.FC<ProjectListViewProps> = ({
     projects,
-    onNewProject,
+    onOpenProject,
     isInitialLoading,
     isFetching,
     errorMessage,
@@ -100,7 +101,7 @@ export const ProjectListView: React.FC<ProjectListViewProps> = ({
                             project={project}
                             isMenuOpen={menuOpenId === project.id}
                             isTogglePending={isTogglePending}
-                            onOpenProject={onNewProject}
+                            onOpenProject={onOpenProject}
                             onToggleStar={onToggleStar}
                             onToggleMenu={onToggleMenu}
                             onOpenRename={onOpenRename}

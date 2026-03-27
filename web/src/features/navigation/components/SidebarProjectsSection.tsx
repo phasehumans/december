@@ -14,6 +14,7 @@ interface SidebarProjectsSectionProps {
     isLoading: boolean
     loadingCount: number
     emptyText: string
+    onOpenProject: (projectId: string) => void
 }
 
 const SidebarProjectSkeleton: React.FC = () => {
@@ -30,6 +31,7 @@ export const SidebarProjectsSection: React.FC<SidebarProjectsSectionProps> = ({
     isLoading,
     loadingCount,
     emptyText,
+    onOpenProject,
 }) => {
     return (
         <div className="flex flex-col gap-1">
@@ -51,7 +53,12 @@ export const SidebarProjectsSection: React.FC<SidebarProjectsSectionProps> = ({
                         ))
                     ) : projects.length > 0 ? (
                         projects.map((project) => (
-                            <SidebarProjectItem key={project.id} {...project} />
+                            <SidebarProjectItem
+                                key={project.id}
+                                id={project.id}
+                                title={project.title}
+                                onClick={onOpenProject}
+                            />
                         ))
                     ) : (
                         <div className="px-2 py-1.5 text-[13px] text-[#91908F]/50 italic font-['Segoe_UI']">

@@ -1,5 +1,11 @@
 ## Engineering Decisions @phasehumans
 
+### 27-03-2026
+
+- implemented the code store and chat store, also stored the versions, the version is segreted into to types current and prev versions
+- also worked on dowload code in zip
+- code is stored in mirio / s3 and chat is store in postgres
+
 ### 21-03-2026
 
 - worked on build agent, code generation is working good, need to add retry logic. build agent is currently not persist anything in db, will add code storage, but where should i store the code, probably in code storage and store snapshot and metadata in postgres

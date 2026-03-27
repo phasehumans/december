@@ -3,8 +3,8 @@ import { prisma } from '../../config/db'
 import { generateProjectFile } from '../../core/agents/build.agent'
 import { extractProjectPlan } from '../../core/agents/plan.agent'
 import { extractProjectIntent } from '../../core/agents/prompt.agent'
+import { saveProjectFiles } from '../../lib/save-project-files'
 import { cleanPrompt } from '../../utils/cleanPrompt'
-import { normalizeGenerationError } from './generation.error'
 import {
     plannedProjectFileSchema,
     planAgentResponseSchema,
@@ -18,6 +18,7 @@ type GenerateWebsite = {
     userId: string
     isDB: boolean
     dbURL?: string
+    projectId?: string
     onEvent?: (event: GenerationStreamEvent) => Promise<void> | void
 }
 
@@ -103,6 +104,12 @@ type GenerationStreamEvent =
           type: 'result'
           data: {
               project: ProjectRecord
+              version: {
+                  id: string
+                  versionNumber: number
+                  label: string
+                  status: 'READY'
+              }
               intent: ProjectIntent
               plan: ProjectPlan
               generatedFiles: Record<string, string>
@@ -205,6 +212,18 @@ const applyDatabaseSelection = (intent: ProjectIntent, isDB: boolean) => {
         needsDatabase: true,
         needsBackend: true,
     }
+}
+
+const appendAssistantMessageContent = (existing: string, next: string) => {
+    if (!next.trim()) {
+        return existing
+    }
+
+    if (!existing.trim()) {
+        return next.trim()
+    }
+
+    return `${existing.trim()}\n\n${next.trim()}`
 }
 
 const emitAssistantMessage = async (
@@ -329,22 +348,101 @@ const emitFileStream = async (
     })
 }
 
-const generateWebsite = async (data: GenerateWebsite) => {
-    const { prompt, userId, isDB, dbURL, onEvent } = data
-    let project: ProjectRecord | null = null
+const initializeGenerationTarget = async (data: GenerateWebsite) => {
+    const versionId = crypto.randomUUID()
 
-    try {
-        const userPrompt = cleanPrompt(prompt)
+    return prisma.$transaction(async (tx) => {
+        const existingProject = data.projectId
+            ? await tx.project.findFirst({
+                  where: {
+                      id: data.projectId,
+                      userId: data.userId,
+                  },
+              })
+            : null
 
-        project = await prisma.project.create({
-            data: {
-                name: createProjectName(userPrompt),
-                description: 'Generation in progress',
-                prompt,
-                projectStatus: 'GENERATING',
-                userId,
+        if (data.projectId && !existingProject) {
+            throw new Error('project not found')
+        }
+
+        const project = existingProject
+            ? await tx.project.update({
+                  where: {
+                      id: existingProject.id,
+                  },
+                  data: {
+                      prompt: data.prompt,
+                      projectStatus: 'GENERATING',
+                  },
+              })
+            : await tx.project.create({
+                  data: {
+                      name: createProjectName(data.prompt),
+                      description: 'Generation in progress',
+                      prompt: data.prompt,
+                      projectStatus: 'GENERATING',
+                      userId: data.userId,
+                  },
+              })
+
+        const latestVersion = await tx.projectVersion.findFirst({
+            where: {
+                projectId: project.id,
+            },
+            orderBy: {
+                versionNumber: 'desc',
+            },
+            select: {
+                versionNumber: true,
             },
         })
+
+        const versionNumber = (latestVersion?.versionNumber ?? 0) + 1
+        const version = await tx.projectVersion.create({
+            data: {
+                id: versionId,
+                projectId: project.id,
+                versionNumber,
+                label: `v${versionNumber}`,
+                sourcePrompt: data.prompt,
+                status: 'GENERATING',
+                objectStoragePrefix: `projects/${project.id}/versions/${versionId}`,
+                manifestJson: [],
+                isDatabaseEnabled: data.isDB,
+                databaseUrl: data.dbURL,
+            },
+        })
+
+        return {
+            project,
+            version,
+            hadCurrentVersion: Boolean(existingProject?.currentVersionId),
+        }
+    })
+}
+
+const generateWebsite = async (data: GenerateWebsite) => {
+    const { prompt, isDB, dbURL, onEvent } = data
+    const userPrompt = cleanPrompt(prompt)
+    let project: ProjectRecord | null = null
+    let versionId = ''
+    let versionNumber = 0
+    let versionLabel = ''
+    let hadCurrentVersion = false
+    let assistantMessageContent = ''
+    let messagesPersisted = false
+
+    try {
+        const initializedTarget = await initializeGenerationTarget({
+            ...data,
+            prompt,
+        })
+
+        project = initializedTarget.project
+        versionId = initializedTarget.version.id
+        versionNumber = initializedTarget.version.versionNumber
+        versionLabel = initializedTarget.version.label ?? `v${versionNumber}`
+        hadCurrentVersion = initializedTarget.hadCurrentVersion
 
         await onEvent?.({
             type: 'project-created',
@@ -368,6 +466,10 @@ const generateWebsite = async (data: GenerateWebsite) => {
         }
 
         const intent = applyDatabaseSelection(parseIntent.data.intent, isDB)
+        assistantMessageContent = appendAssistantMessageContent(
+            assistantMessageContent,
+            parseIntent.data.message
+        )
 
         await emitAssistantMessage(onEvent, {
             messageId: `${project.id}:prompt-agent`,
@@ -401,6 +503,10 @@ const generateWebsite = async (data: GenerateWebsite) => {
         const planData = plan.data as NonNullable<ProjectPlan['data']>
         const orderedFiles = getFilesInGenerationOrder(plan)
         const generatedFiles: Record<string, string> = {}
+        assistantMessageContent = appendAssistantMessageContent(
+            assistantMessageContent,
+            parsePlan.data.message
+        )
 
         await emitAssistantMessage(onEvent, {
             messageId: `${project.id}:plan-agent`,
@@ -415,6 +521,7 @@ const generateWebsite = async (data: GenerateWebsite) => {
             data: {
                 name: planData.projectName,
                 description: intent.summary,
+                prompt,
             },
         })
 
@@ -466,14 +573,75 @@ const generateWebsite = async (data: GenerateWebsite) => {
             }
         }
 
-        const updatedProject = await prisma.project.update({
-            where: {
-                id: project.id,
-            },
-            data: {
-                projectStatus: 'READY',
-            },
+        const savedFiles = await saveProjectFiles({
+            projectId: project.id,
+            versionId,
+            files: Object.entries(generatedFiles).map(([path, content]) => ({
+                path,
+                content,
+            })),
         })
+
+        const persisted = await prisma.$transaction(async (tx) => {
+            const updatedVersion = await tx.projectVersion.update({
+                where: {
+                    id: versionId,
+                },
+                data: {
+                    summary: intent.summary,
+                    status: 'READY',
+                    manifestJson: savedFiles.map((file) => ({
+                        path: file.path,
+                        key: file.key,
+                        contentType: file.contentType,
+                        size: file.size,
+                    })),
+                    intentJson: intent as any,
+                    planJson: plan as any,
+                    isDatabaseEnabled: isDB,
+                    databaseUrl: dbURL,
+                    messages: {
+                        create: [
+                            {
+                                projectId: project!.id,
+                                role: 'USER',
+                                content: prompt,
+                                sequence: 1,
+                            },
+                            {
+                                projectId: project!.id,
+                                role: 'ASSISTANT',
+                                content: assistantMessageContent,
+                                status: 'done',
+                                sequence: 2,
+                            },
+                        ],
+                    },
+                },
+            })
+
+            const updatedProject = await tx.project.update({
+                where: {
+                    id: project!.id,
+                },
+                data: {
+                    name: planData.projectName,
+                    description: intent.summary,
+                    prompt,
+                    projectStatus: 'READY',
+                    currentVersionId: updatedVersion.id,
+                    versionCount: versionNumber,
+                },
+            })
+
+            return {
+                project: updatedProject,
+                version: updatedVersion,
+            }
+        })
+
+        messagesPersisted = true
+        project = persisted.project
 
         await onEvent?.({
             type: 'phase',
@@ -483,7 +651,13 @@ const generateWebsite = async (data: GenerateWebsite) => {
         })
 
         const result = {
-            project: updatedProject,
+            project,
+            version: {
+                id: persisted.version.id,
+                versionNumber: persisted.version.versionNumber,
+                label: persisted.version.label ?? versionLabel,
+                status: 'READY' as const,
+            },
             intent,
             plan,
             generatedFiles,
@@ -498,14 +672,52 @@ const generateWebsite = async (data: GenerateWebsite) => {
 
         return result
     } catch (error) {
-        if (project) {
-            await prisma.project.update({
-                where: {
-                    id: project.id,
-                },
-                data: {
-                    projectStatus: 'FAILED',
-                },
+        if (project && versionId) {
+            const fallbackAssistantMessage =
+                assistantMessageContent.trim() ||
+                (error instanceof Error ? error.message : 'Generation failed unexpectedly.')
+
+            await prisma.$transaction(async (tx) => {
+                if (!messagesPersisted) {
+                    await tx.projectMessage.createMany({
+                        data: [
+                            {
+                                projectId: project!.id,
+                                projectVersionId: versionId,
+                                role: 'USER',
+                                content: prompt,
+                                sequence: 1,
+                            },
+                            {
+                                projectId: project!.id,
+                                projectVersionId: versionId,
+                                role: 'ASSISTANT',
+                                content: fallbackAssistantMessage,
+                                status: 'error',
+                                sequence: 2,
+                            },
+                        ],
+                    })
+                }
+
+                await tx.projectVersion.update({
+                    where: {
+                        id: versionId,
+                    },
+                    data: {
+                        summary: assistantMessageContent.trim() || undefined,
+                        status: 'FAILED',
+                    },
+                })
+
+                await tx.project.update({
+                    where: {
+                        id: project!.id,
+                    },
+                    data: {
+                        projectStatus: hadCurrentVersion ? 'READY' : 'FAILED',
+                    },
+                })
             })
         }
 

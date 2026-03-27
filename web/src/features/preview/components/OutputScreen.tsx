@@ -16,6 +16,12 @@ export const OutputScreen: React.FC<OutputScreenProps> = ({
     generationPhase,
     isGenerating = false,
     showStructureOnly = false,
+    projectName,
+    versions,
+    activeVersionId,
+    isVersionLoading,
+    onSelectVersion,
+    onDownload,
 }) => {
     const {
         activeTab,
@@ -169,6 +175,12 @@ export const OutputScreen: React.FC<OutputScreenProps> = ({
                     iframeRef={iframeRef}
                     onIframeMessage={handleIframeMessage}
                     showStructureOnly={showStructureOnly}
+                    projectName={projectName}
+                    versions={versions}
+                    activeVersionId={activeVersionId}
+                    isVersionLoading={isVersionLoading}
+                    onSelectVersion={onSelectVersion}
+                    onDownload={onDownload}
                 />
             </div>
         </div>
