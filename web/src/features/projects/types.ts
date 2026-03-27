@@ -6,33 +6,13 @@ export interface Project {
     description: string
     updatedAt: string
     isStarred: boolean
-}
-
-export interface BackendProject {
-    id: string
-    name: string
-    description: string | null
-    prompt: string
-    isStarred: boolean
-    projectStatus: 'DRAFT' | 'GENERATING' | 'READY' | 'DEPLOYED' | 'FAILED'
-    createdAt: string
-    updatedAt: string
-    userId: string
-}
-
-export interface CreateProjectInput {
-    name: string
-    description?: string
-    prompt: string
-}
-
-export interface UpdateProjectInput {
-    rename?: string
-    isStarred?: boolean
+    versionCount: number
+    currentVersionId: string | null
 }
 
 export interface ProjectListProps {
     onNewProject: () => void
+    onOpenProject: (projectId: string) => void
     projects: Project[]
     isLoading: boolean
     isFetching: boolean
@@ -59,7 +39,7 @@ export interface ProjectListRowProps {
     project: Project
     isMenuOpen: boolean
     isTogglePending: boolean
-    onOpenProject: () => void
+    onOpenProject: (projectId: string) => void
     onToggleStar: (id: string, event: MouseEvent) => void
     onToggleMenu: (id: string, event: MouseEvent) => void
     onOpenRename: (project: Project, event: MouseEvent) => void

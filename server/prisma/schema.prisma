@@ -21,6 +21,18 @@ enum ProjectStatus {
   FAILED
 }
 
+enum ProjectVersionStatus {
+  GENERATING
+  READY
+  FAILED
+}
+
+enum ProjectMessageRole {
+  USER
+  ASSISTANT
+  SYSTEM
+}
+
 model User {
   id                  String    @id @default(uuid())
   name                String
@@ -41,15 +53,63 @@ model User {
 }
 
 model Project {
-  id            String        @id @default(uuid())
-  name          String
-  description   String?
-  prompt        String
-  isStarred     Boolean       @default(false)
-  projectStatus ProjectStatus @default(DRAFT)
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  id               String        @id @default(uuid())
+  name             String
+  description      String?
+  prompt           String
+  isStarred        Boolean       @default(false)
+  projectStatus    ProjectStatus @default(DRAFT)
+  versionCount     Int           @default(0)
+  currentVersionId String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  currentVersion ProjectVersion?  @relation("ProjectCurrentVersion", fields: [currentVersionId], references: [id], onDelete: SetNull)
+  versions       ProjectVersion[] @relation("ProjectVersions")
+  messages       ProjectMessage[]
 
   userId String
   user   User   @relation(fields: [userId], references: [id])
+}
+
+model ProjectVersion {
+  id                  String               @id @default(uuid())
+  versionNumber       Int
+  label               String?
+  sourcePrompt        String
+  summary             String?
+  status              ProjectVersionStatus @default(GENERATING)
+  objectStoragePrefix String
+  manifestJson        Json
+  intentJson          Json?
+  planJson            Json?
+  isDatabaseEnabled   Boolean              @default(false)
+  databaseUrl         String?
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+
+  projectId String
+  project   Project @relation("ProjectVersions", fields: [projectId], references: [id], onDelete: Cascade)
+
+  currentForProjects Project[]       @relation("ProjectCurrentVersion")
+  messages           ProjectMessage[]
+
+  @@unique([projectId, versionNumber])
+}
+
+model ProjectMessage {
+  id        String             @id @default(uuid())
+  role      ProjectMessageRole
+  content   String
+  status    String?
+  sequence  Int
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+
+  projectId        String
+  projectVersionId String
+  project          Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectVersion   ProjectVersion @relation(fields: [projectVersionId], references: [id], onDelete: Cascade)
+
+  @@unique([projectVersionId, sequence])
 }

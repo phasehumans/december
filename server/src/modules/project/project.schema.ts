@@ -10,3 +10,7 @@ export const updateProjectSchema = z.object({
     rename: z.string().optional(),
     isStarred: z.boolean().optional(),
 })
+
+export const projectVersionQuerySchema = z.object({
+    versionId: z.string().uuid().optional(),
+})

@@ -1,8 +1,8 @@
 import {
-    PutObjectCommand,
-    GetObjectCommand,
     DeleteObjectCommand,
+    GetObjectCommand,
     ListObjectsV2Command,
+    PutObjectCommand,
 } from '@aws-sdk/client-s3'
 
 import { s3 } from '../config/s3'
@@ -17,8 +17,20 @@ export function currentKey(projectId: string, path: string) {
     return `projects/${projectId}/current/${normalizePath(path)}`
 }
 
+export function currentPrefix(projectId: string) {
+    return `projects/${projectId}/current/`
+}
+
 export function versionKey(projectId: string, versionId: string, path: string) {
     return `projects/${projectId}/versions/${versionId}/${normalizePath(path)}`
+}
+
+export function versionPrefix(projectId: string, versionId: string) {
+    return `projects/${projectId}/versions/${versionId}/`
+}
+
+export function projectPrefix(projectId: string) {
+    return `projects/${projectId}/`
 }
 
 export async function putTextFile({
@@ -57,6 +69,17 @@ export async function deleteObject(key: string) {
             Bucket: BUCKET,
             Key: key,
         })
+    )
+}
+
+export async function deletePrefix(prefix: string) {
+    const objects = await listPrefix(prefix)
+
+    await Promise.all(
+        objects
+            .map((object) => object.Key)
+            .filter((key): key is string => Boolean(key))
+            .map((key) => deleteObject(key))
     )
 }
 

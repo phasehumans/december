@@ -6,6 +6,7 @@ const projectRouter = Router()
 
 projectRouter.use(authMiddleware)
 projectRouter.get('/', projectController.getAllProjects)
+projectRouter.get('/:projectId/download', projectController.downloadProjectVersion)
 projectRouter.get('/:projectId', projectController.getProjectById)
 projectRouter.post('/', projectController.createProject)
 projectRouter.patch('/:projectId', projectController.updateProject)

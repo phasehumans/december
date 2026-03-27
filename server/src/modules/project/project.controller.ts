@@ -1,7 +1,13 @@
 import type { Request, Response } from 'express'
 import { projectService } from './project.service'
-import { createProjectSchema, updateProjectSchema } from './project.schema'
-import { success } from 'zod'
+import {
+    createProjectSchema,
+    projectVersionQuerySchema,
+    updateProjectSchema,
+} from './project.schema'
+
+const getErrorStatus = (message: string) =>
+    message.toLowerCase().includes('not found') ? 404 : 500
 
 const getAllProjects = async (req: Request, res: Response) => {
     const userId = req.userId as string | undefined
@@ -31,6 +37,7 @@ const getAllProjects = async (req: Request, res: Response) => {
 const getProjectById = async (req: Request, res: Response) => {
     const userId = req.userId as string | undefined
     const projectId = req.params.projectId as string | undefined
+    const parseQuery = projectVersionQuerySchema.safeParse(req.query)
 
     if (!userId) {
         return res.status(400).json({
@@ -46,15 +53,27 @@ const getProjectById = async (req: Request, res: Response) => {
         })
     }
 
+    if (!parseQuery.success) {
+        return res.status(400).json({
+            success: false,
+            message: 'validation failed',
+            errors: parseQuery.error.flatten().fieldErrors,
+        })
+    }
+
     try {
-        const result = await projectService.getProjectById({ userId, projectId })
+        const result = await projectService.getProjectById({
+            userId,
+            projectId,
+            versionId: parseQuery.data.versionId,
+        })
         return res.status(200).json({
             success: true,
             message: 'project fetched successfully',
             data: result,
         })
     } catch (error: any) {
-        return res.status(500).json({
+        return res.status(getErrorStatus(error.message)).json({
             success: false,
             errors: error.message,
         })
@@ -167,7 +186,7 @@ const deleteProject = async (req: Request, res: Response) => {
             data: result,
         })
     } catch (error: any) {
-        return res.status(500).json({
+        return res.status(getErrorStatus(error.message)).json({
             success: false,
             errors: error.message,
         })
@@ -200,7 +219,52 @@ const duplicateProject = async (req: Request, res: Response) => {
             data: result,
         })
     } catch (error: any) {
-        return res.status(500).json({
+        return res.status(getErrorStatus(error.message)).json({
+            success: false,
+            errors: error.message,
+        })
+    }
+}
+
+const downloadProjectVersion = async (req: Request, res: Response) => {
+    const userId = req.userId as string | undefined
+    const projectId = req.params.projectId as string | undefined
+    const parseQuery = projectVersionQuerySchema.safeParse(req.query)
+
+    if (!userId) {
+        return res.status(400).json({
+            success: false,
+            message: 'unauthorized',
+        })
+    }
+
+    if (!projectId) {
+        return res.status(400).json({
+            success: false,
+            message: 'project id is required',
+        })
+    }
+
+    if (!parseQuery.success) {
+        return res.status(400).json({
+            success: false,
+            message: 'validation failed',
+            errors: parseQuery.error.flatten().fieldErrors,
+        })
+    }
+
+    try {
+        const result = await projectService.downloadProjectVersion({
+            userId,
+            projectId,
+            versionId: parseQuery.data.versionId,
+        })
+
+        res.setHeader('Content-Type', 'application/zip')
+        res.setHeader('Content-Disposition', `attachment; filename="${result.fileName}"`)
+        return res.status(200).send(Buffer.from(result.zip))
+    } catch (error: any) {
+        return res.status(getErrorStatus(error.message)).json({
             success: false,
             errors: error.message,
         })
@@ -214,4 +278,5 @@ export const projectController = {
     updateProject,
     deleteProject,
     duplicateProject,
+    downloadProjectVersion,
 }

@@ -1,5 +1,5 @@
 import { API_BASE_URL, ApiError, getAuthToken } from '@/shared/api/client'
-import type { BackendProject } from '@/features/projects/api/project'
+import type { BackendProject, BackendProjectVersionSummary } from '@/features/projects/api/project'
 
 export type GenerationMessageStatus = 'thinking' | 'planning' | 'building' | 'done' | 'error'
 
@@ -93,6 +93,10 @@ export type GenerationStreamEvent =
           type: 'result'
           data: {
               project: BackendProject
+              version: Pick<
+                  BackendProjectVersionSummary,
+                  'id' | 'versionNumber' | 'label' | 'status'
+              >
               intent: unknown
               plan: unknown
               generatedFiles: Record<string, string>
@@ -111,6 +115,7 @@ type GenerateProjectInput = {
     prompt: string
     isDB: boolean
     dbURL?: string
+    projectId?: string | null
     signal?: AbortSignal
     onEvent: (event: GenerationStreamEvent) => void
 }
@@ -167,6 +172,7 @@ const generateProjectStream = async ({
     prompt,
     isDB,
     dbURL,
+    projectId,
     signal,
     onEvent,
 }: GenerateProjectInput) => {
@@ -177,7 +183,7 @@ const generateProjectStream = async ({
             'Content-Type': 'application/json',
             ...(token ? { Authorization: token } : {}),
         },
-        body: JSON.stringify({ prompt, isDB, dbURL }),
+        body: JSON.stringify({ prompt, isDB, dbURL, ...(projectId ? { projectId } : {}) }),
         signal,
     })
 

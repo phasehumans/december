@@ -9,6 +9,7 @@ export interface SidebarProps {
     onNewThread: () => void
     onAllProjects: () => void
     onProfile: () => void
+    onOpenProject: (projectId: string) => void
     isAuthenticated: boolean
     onOpenAuth: () => void
     projects: Project[]
@@ -21,6 +22,7 @@ export interface MobileSidebarProps {
     onNewThread: () => void
     onAllProjects: () => void
     onProfile: () => void
+    onOpenProject: (projectId: string) => void
     isAuthenticated: boolean
     onOpenAuth: () => void
     projects: Project[]
@@ -51,7 +53,7 @@ export interface SidebarNavItemProps {
 export interface SidebarProjectItemProps {
     id: string
     title: string
-    onClick?: () => void
+    onClick: (projectId: string) => void
 }
 
 export interface SidebarSectionHeaderProps {

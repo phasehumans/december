@@ -1,4 +1,4 @@
-import { apiRequest } from '@/shared/api/client'
+import { API_BASE_URL, ApiError, apiRequest, getAuthToken } from '@/shared/api/client'
 
 export type BackendProject = {
     id: string
@@ -7,9 +7,50 @@ export type BackendProject = {
     prompt: string
     isStarred: boolean
     projectStatus: 'DRAFT' | 'GENERATING' | 'READY' | 'DEPLOYED' | 'FAILED'
+    versionCount?: number
+    currentVersionId?: string | null
     createdAt: string
     updatedAt: string
     userId: string
+}
+
+export type BackendProjectVersionSummary = {
+    id: string
+    versionNumber: number
+    label: string
+    sourcePrompt: string
+    summary: string | null
+    status: 'GENERATING' | 'READY' | 'FAILED'
+    objectStoragePrefix: string
+    fileCount: number
+    createdAt: string
+    updatedAt: string
+}
+
+export type BackendProjectMessage = {
+    id: string
+    role: 'USER' | 'ASSISTANT' | 'SYSTEM'
+    content: string
+    status?: 'thinking' | 'planning' | 'building' | 'done' | 'error' | null
+    sequence: number
+    createdAt: string
+    updatedAt: string
+}
+
+export type BackendProjectDetail = {
+    project: BackendProject
+    versions: BackendProjectVersionSummary[]
+    selectedVersionId: string | null
+    activeVersion:
+        | (BackendProjectVersionSummary & {
+              intent: unknown
+              plan: unknown
+              isDatabaseEnabled: boolean
+              databaseUrl?: string | null
+          })
+        | null
+    chatMessages: BackendProjectMessage[]
+    generatedFiles: Record<string, string>
 }
 
 type CreateProjectInput = {
@@ -23,12 +64,15 @@ type UpdateProjectInput = {
     isStarred?: boolean
 }
 
+const buildVersionQuery = (versionId?: string | null) =>
+    versionId ? `?versionId=${encodeURIComponent(versionId)}` : ''
+
 const getProjects = () => {
     return apiRequest<BackendProject[]>('/project')
 }
 
-const getProject = (projectId: string) => {
-    return apiRequest<BackendProject>(`/project/${projectId}`)
+const getProject = (projectId: string, versionId?: string | null) => {
+    return apiRequest<BackendProjectDetail>(`/project/${projectId}${buildVersionQuery(versionId)}`)
 }
 
 const createProject = (data: CreateProjectInput) => {
@@ -46,7 +90,7 @@ const updateProject = (projectId: string, data: UpdateProjectInput) => {
 }
 
 const deleteProject = (projectId: string) => {
-    return apiRequest<BackendProject>(`/project/${projectId}`, {
+    return apiRequest<{ message: string }>(`/project/${projectId}`, {
         method: 'DELETE',
     })
 }
@@ -57,6 +101,40 @@ const duplicateProject = (projectId: string) => {
     })
 }
 
+const downloadProject = async (projectId: string, versionId?: string | null) => {
+    const token = getAuthToken()
+    const res = await fetch(
+        `${API_BASE_URL}/project/${projectId}/download${buildVersionQuery(versionId)}`,
+        {
+            headers: token ? { Authorization: token } : undefined,
+        }
+    )
+
+    if (!res.ok) {
+        let payload: { message?: string; errors?: unknown } | null = null
+
+        try {
+            payload = await res.json()
+        } catch {
+            payload = null
+        }
+
+        const message =
+            (typeof payload?.errors === 'string' && payload.errors) ||
+            payload?.message ||
+            `Request failed with status ${res.status}`
+
+        throw new ApiError(message, res.status, payload?.errors)
+    }
+
+    return {
+        blob: await res.blob(),
+        fileName:
+            res.headers.get('Content-Disposition')?.match(/filename="?([^";]+)"?/)?.[1] ??
+            `${projectId}.zip`,
+    }
+}
+
 export const projectAPI = {
     getProjects,
     getProject,
@@ -64,4 +142,5 @@ export const projectAPI = {
     updateProject,
     deleteProject,
     duplicateProject,
+    downloadProject,
 }
