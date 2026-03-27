@@ -4,7 +4,12 @@ import type { Message } from '@/features/chat/types'
 import type { ViewState } from '@/app/types'
 import { clearAuthToken, getAuthToken } from '@/shared/api/client'
 import { generationAPI } from '@/features/generation/api/generation'
-import { projectAPI } from '@/features/projects/api/project'
+import {
+    projectAPI,
+    type BackendProjectDetail,
+    type BackendProjectMessage,
+    type BackendProjectVersionSummary,
+} from '@/features/projects/api/project'
 import { mapBackendProjectToUIProject } from '@/app/mapProject'
 import type { GeneratedProjectFile } from '@/features/preview/types'
 
@@ -42,6 +47,26 @@ const getUserFacingGenerationError = (message: string) => {
     return 'Something went wrong while generating this project. Please try again.'
 }
 
+const mapBackendMessageToUIMessage = (message: BackendProjectMessage): Message => ({
+    id: message.id,
+    role: message.role === 'USER' ? 'user' : message.role === 'SYSTEM' ? 'system' : 'assistant',
+    content: message.content,
+    type: 'text',
+    status: message.status ?? 'done',
+})
+
+const mapStoredFilesToGeneratedFiles = (files: Record<string, string>) =>
+    Object.fromEntries(
+        Object.entries(files).map(([path, content]) => [
+            path,
+            {
+                path,
+                content,
+                status: 'done' as const,
+            },
+        ])
+    )
+
 export const useAppController = () => {
     const queryClient = useQueryClient()
 
@@ -60,6 +85,12 @@ export const useAppController = () => {
     const [authToken, setAuthTokenState] = React.useState<string | null>(() => getAuthToken())
     const [showAuthModal, setShowAuthModal] = React.useState(false)
     const [isMobileSidebarOpen, setIsMobileSidebarOpen] = React.useState(false)
+    const [activeProjectId, setActiveProjectId] = React.useState<string | null>(null)
+    const [activeProjectName, setActiveProjectName] = React.useState<string | null>(null)
+    const [projectVersions, setProjectVersions] = React.useState<BackendProjectVersionSummary[]>([])
+    const [activeProjectVersionId, setActiveProjectVersionId] = React.useState<string | null>(null)
+    const [isProjectOpening, setIsProjectOpening] = React.useState(false)
+    const [projectLoadError, setProjectLoadError] = React.useState<string | null>(null)
     const generationAbortControllerRef = React.useRef<AbortController | null>(null)
     const activeAssistantMessageIdRef = React.useRef<string | null>(null)
     const activeGeneratedFilePathRef = React.useRef<string | null>(null)
@@ -67,6 +98,7 @@ export const useAppController = () => {
         'thinking' | 'planning' | 'building' | 'done' | null
     >(null)
     const hasReceivedStreamErrorRef = React.useRef(false)
+    const outputOriginViewRef = React.useRef<ViewState>('chat')
 
     const isAuthenticated = Boolean(authToken)
 
@@ -166,6 +198,15 @@ export const useAppController = () => {
         [updateAssistantMessage]
     )
 
+    const replaceGeneratedOutput = React.useCallback(
+        (files: Record<string, string>) => {
+            const paths = Object.keys(files)
+            setGeneratedFiles(mapStoredFilesToGeneratedFiles(files))
+            setActiveGeneratedFilePath(paths[paths.length - 1] ?? null)
+        },
+        [setActiveGeneratedFilePath]
+    )
+
     const resetGeneratedOutput = React.useCallback(() => {
         setGeneratedFiles({})
         setActiveGeneratedFilePath(null)
@@ -176,6 +217,15 @@ export const useAppController = () => {
         activeGenerationPhaseRef.current = null
         hasReceivedStreamErrorRef.current = false
         setGenerationPhase(null)
+    }, [])
+
+    const clearOpenedProject = React.useCallback(() => {
+        setActiveProjectId(null)
+        setActiveProjectName(null)
+        setProjectVersions([])
+        setActiveProjectVersionId(null)
+        setProjectLoadError(null)
+        setIsProjectOpening(false)
     }, [])
 
     const abortGenerationRequest = React.useCallback(() => {
@@ -265,31 +315,59 @@ export const useAppController = () => {
         })
     }, [])
 
-    const hydrateGeneratedFiles = React.useCallback(
-        (files: Record<string, string>) => {
-            const paths = Object.keys(files)
+    const hydrateProjectDetail = React.useCallback(
+        (detail: BackendProjectDetail) => {
+            setActiveProjectId(detail.project.id)
+            setActiveProjectName(detail.project.name)
+            setProjectVersions(detail.versions)
+            setActiveProjectVersionId(detail.selectedVersionId)
+            setProjectLoadError(null)
+            setMessages(detail.chatMessages.map(mapBackendMessageToUIMessage))
+            replaceGeneratedOutput(detail.generatedFiles)
+            setGenerationPhase(null)
+        },
+        [replaceGeneratedOutput]
+    )
 
-            setGeneratedFiles((prev) => ({
-                ...prev,
-                ...Object.fromEntries(
-                    paths.map((path) => [
-                        path,
-                        {
-                            path,
-                            content: files[path] ?? '',
-                            status: 'done' as const,
-                            purpose: prev[path]?.purpose,
-                            generator: prev[path]?.generator,
-                        },
-                    ])
-                ),
-            }))
+    const openProject = React.useCallback(
+        async ({
+            projectId,
+            versionId,
+            originView,
+            abortActiveGeneration = true,
+        }: {
+            projectId: string
+            versionId?: string | null
+            originView?: ViewState
+            abortActiveGeneration?: boolean
+        }) => {
+            if (abortActiveGeneration) {
+                abortGenerationRequest()
+                setIsGenerating(false)
+                resetGenerationRefs()
+            }
 
-            if (paths.length > 0) {
-                setActiveGeneratedFilePath(paths[paths.length - 1] ?? null)
+            if (originView) {
+                outputOriginViewRef.current = originView
+            }
+
+            setIsMobileSidebarOpen(false)
+            setIsProjectOpening(true)
+            setProjectLoadError(null)
+            setView('chat')
+
+            try {
+                const detail = await projectAPI.getProject(projectId, versionId)
+                hydrateProjectDetail(detail)
+            } catch (error) {
+                setProjectLoadError(
+                    error instanceof Error ? error.message : 'Failed to open project'
+                )
+            } finally {
+                setIsProjectOpening(false)
             }
         },
-        [setActiveGeneratedFilePath]
+        [abortGenerationRequest, hydrateProjectDetail, resetGenerationRefs]
     )
 
     const resetGenerationFlow = React.useCallback(() => {
@@ -300,7 +378,7 @@ export const useAppController = () => {
     }, [abortGenerationRequest, resetGeneratedOutput, resetGenerationRefs])
 
     const startGeneration = React.useCallback(
-        (prompt: string, assistantMessageId: string) => {
+        (prompt: string, assistantMessageId: string, projectId?: string | null) => {
             abortGenerationRequest()
             resetGeneratedOutput()
             activeAssistantMessageIdRef.current = assistantMessageId
@@ -308,6 +386,7 @@ export const useAppController = () => {
             hasReceivedStreamErrorRef.current = false
             setGenerationPhase('thinking')
             setIsGenerating(true)
+            setProjectLoadError(null)
 
             const abortController = new AbortController()
             generationAbortControllerRef.current = abortController
@@ -317,6 +396,7 @@ export const useAppController = () => {
                     await generationAPI.generateProjectStream({
                         prompt,
                         isDB: false,
+                        projectId,
                         signal: abortController.signal,
                         onEvent: (event) => {
                             const activeMessageId = activeAssistantMessageIdRef.current
@@ -329,6 +409,8 @@ export const useAppController = () => {
                                 case 'connected':
                                     return
                                 case 'project-created':
+                                    setActiveProjectId(event.data.project.id)
+                                    setActiveProjectName(event.data.project.name)
                                     void queryClient.invalidateQueries({ queryKey: ['projects'] })
                                     return
                                 case 'phase':
@@ -390,8 +472,17 @@ export const useAppController = () => {
                                     activeGenerationPhaseRef.current = 'done'
                                     setGenerationPhase('done')
                                     setAssistantStatus(activeMessageId, 'done')
-                                    hydrateGeneratedFiles(event.data.generatedFiles)
+                                    replaceGeneratedOutput(event.data.generatedFiles)
+                                    setActiveProjectId(event.data.project.id)
+                                    setActiveProjectName(event.data.project.name)
+                                    setActiveProjectVersionId(event.data.version.id)
                                     void queryClient.invalidateQueries({ queryKey: ['projects'] })
+                                    void openProject({
+                                        projectId: event.data.project.id,
+                                        versionId: event.data.version.id,
+                                        originView: outputOriginViewRef.current,
+                                        abortActiveGeneration: false,
+                                    })
                                     return
                                 case 'error':
                                     hasReceivedStreamErrorRef.current = true
@@ -433,9 +524,10 @@ export const useAppController = () => {
             appendGeneratedFileChunk,
             completeGeneratedFile,
             ensureAssistantSpacing,
-            hydrateGeneratedFiles,
             markGeneratedFileError,
+            openProject,
             queryClient,
+            replaceGeneratedOutput,
             resetGeneratedOutput,
             resetGenerationRefs,
             setAssistantError,
@@ -444,10 +536,67 @@ export const useAppController = () => {
         ]
     )
 
+    const handleOpenProject = React.useCallback(
+        (projectId: string, versionId?: string | null) => {
+            requireAuthOr(() => {
+                void openProject({
+                    projectId,
+                    versionId,
+                    originView: view,
+                })
+            })
+        },
+        [openProject, view, isAuthenticated]
+    )
+
+    const handleSelectVersion = React.useCallback(
+        (versionId: string) => {
+            if (
+                !activeProjectId ||
+                !versionId ||
+                versionId === activeProjectVersionId ||
+                isGenerating
+            ) {
+                return
+            }
+
+            void openProject({
+                projectId: activeProjectId,
+                versionId,
+                originView: outputOriginViewRef.current,
+            })
+        },
+        [activeProjectId, activeProjectVersionId, isGenerating, openProject]
+    )
+
+    const handleDownloadProject = React.useCallback(async () => {
+        if (!activeProjectId) {
+            return
+        }
+
+        try {
+            const result = await projectAPI.downloadProject(activeProjectId, activeProjectVersionId)
+            const url = window.URL.createObjectURL(result.blob)
+            const anchor = document.createElement('a')
+            anchor.href = url
+            anchor.download = result.fileName
+            document.body.appendChild(anchor)
+            anchor.click()
+            anchor.remove()
+            window.URL.revokeObjectURL(url)
+        } catch (error) {
+            setProjectLoadError(
+                error instanceof Error ? error.message : 'Failed to download project'
+            )
+        }
+    }, [activeProjectId, activeProjectVersionId])
+
     const handleNewThread = () => {
         requireAuthOr(() => {
+            outputOriginViewRef.current = 'chat'
             setView('chat')
             setMessages([])
+            clearOpenedProject()
             resetGenerationFlow()
         })
     }
@@ -464,8 +613,10 @@ export const useAppController = () => {
         setAuthTokenState(null)
         queryClient.removeQueries({ queryKey: ['projects'] })
         queryClient.removeQueries({ queryKey: ['profile'] })
+        outputOriginViewRef.current = 'chat'
         setView('chat')
         setMessages([])
+        clearOpenedProject()
         resetGenerationFlow()
     }
 
@@ -476,10 +627,9 @@ export const useAppController = () => {
                 return
             }
 
-            const shouldResetThread = view !== 'chat'
-            if (shouldResetThread) {
-                setView('chat')
-            }
+            outputOriginViewRef.current = view
+            setView('chat')
+            setProjectLoadError(null)
 
             const baseId = Date.now().toString()
             const assistantMessageId = `${baseId}-assistant`
@@ -496,25 +646,22 @@ export const useAppController = () => {
                 status: 'thinking',
             }
 
-            if (shouldResetThread) {
-                setMessages([userMsg, assistantMsg])
-            } else {
-                setMessages((prev) => [...prev, userMsg, assistantMsg])
-            }
-
-            startGeneration(normalizedPrompt, assistantMessageId)
+            setMessages([userMsg, assistantMsg])
+            startGeneration(normalizedPrompt, assistantMessageId, activeProjectId)
         })
     }
 
-    const isHome = view === 'chat' && messages.length === 0
+    const isHome = view === 'chat' && messages.length === 0 && !isProjectOpening
     const showSidebar = !(!isHome && view === 'chat')
     const isProjectsInitialLoading = isProjectsLoading && projects.length === 0
     const projectsErrorMessage = projectsError instanceof Error ? projectsError.message : null
 
     const handleBackFromOutput = () => {
-        setView('chat')
+        const nextView = outputOriginViewRef.current
+        clearOpenedProject()
         setMessages([])
         resetGenerationFlow()
+        setView(nextView)
     }
 
     return {
@@ -539,10 +686,18 @@ export const useAppController = () => {
         projectsErrorMessage,
         isHome,
         showSidebar,
+        activeProjectName,
+        projectVersions,
+        activeProjectVersionId,
+        isProjectOpening,
+        projectLoadError,
         handleNewThread,
         handleNavigate,
         handleSignOut,
         handlePromptSubmit,
         handleBackFromOutput,
+        handleOpenProject,
+        handleSelectVersion,
+        handleDownloadProject,
     }
 }

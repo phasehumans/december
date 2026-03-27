@@ -4,6 +4,7 @@ import { PreviewArea } from './PreviewArea'
 import { CodeWorkspace } from './CodeWorkspace'
 import Canvas from '@/features/canvas/components/Canvas'
 import type { GeneratedProjectFile, PreviewDevice, PreviewTab } from '@/features/preview/types'
+import type { BackendProjectVersionSummary } from '@/features/projects/api/project'
 
 interface OutputScreenMainContentProps {
     activeTab: PreviewTab
@@ -23,6 +24,12 @@ interface OutputScreenMainContentProps {
     iframeRef: React.RefObject<HTMLIFrameElement>
     onIframeMessage: (event: MessageEvent) => void
     showStructureOnly: boolean
+    projectName?: string | null
+    versions?: BackendProjectVersionSummary[]
+    activeVersionId?: string | null
+    isVersionLoading?: boolean
+    onSelectVersion?: (versionId: string) => void
+    onDownload?: () => void
 }
 
 export const OutputScreenMainContent: React.FC<OutputScreenMainContentProps> = ({
@@ -43,6 +50,12 @@ export const OutputScreenMainContent: React.FC<OutputScreenMainContentProps> = (
     iframeRef,
     onIframeMessage,
     showStructureOnly,
+    projectName,
+    versions,
+    activeVersionId,
+    isVersionLoading,
+    onSelectVersion,
+    onDownload,
 }) => {
     return (
         <div className="flex-1 flex flex-col h-full bg-[#0F0F0F] relative overflow-hidden transition-all duration-300 min-h-0">
@@ -55,6 +68,12 @@ export const OutputScreenMainContent: React.FC<OutputScreenMainContentProps> = (
                 onToggleSidebar={onToggleSidebar}
                 onOpenNewTab={onOpenInNewTab}
                 onBack={onBack}
+                projectName={projectName}
+                versions={versions}
+                activeVersionId={activeVersionId}
+                isVersionLoading={isVersionLoading}
+                onSelectVersion={onSelectVersion}
+                onDownload={onDownload}
             />
 
             {activeTab === 'preview' && (

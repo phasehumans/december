@@ -26,11 +26,18 @@ const App: React.FC = () => {
         projectsErrorMessage,
         isHome,
         showSidebar,
+        activeProjectName,
+        projectVersions,
+        activeProjectVersionId,
+        isProjectOpening,
         handleNewThread,
         handleNavigate,
         handleSignOut,
         handlePromptSubmit,
         handleBackFromOutput,
+        handleOpenProject,
+        handleSelectVersion,
+        handleDownloadProject,
     } = useAppController()
 
     return (
@@ -41,6 +48,7 @@ const App: React.FC = () => {
                 setIsMobileSidebarOpen={setIsMobileSidebarOpen}
                 onNewThread={handleNewThread}
                 onNavigate={handleNavigate}
+                onOpenProject={handleOpenProject}
                 isAuthenticated={isAuthenticated}
                 onOpenAuth={() => setShowAuthModal(true)}
                 projects={projects}
@@ -73,10 +81,17 @@ const App: React.FC = () => {
                     isProjectsInitialLoading={isProjectsInitialLoading}
                     isProjectsFetching={isProjectsFetching}
                     projectsErrorMessage={projectsErrorMessage}
+                    projectName={activeProjectName}
+                    projectVersions={projectVersions}
+                    activeProjectVersionId={activeProjectVersionId}
+                    isProjectOpening={isProjectOpening}
                     onPromptSubmit={handlePromptSubmit}
                     onOpenAuth={() => setShowAuthModal(true)}
                     onBackFromOutput={handleBackFromOutput}
                     onNewProject={handleNewThread}
+                    onOpenProject={handleOpenProject}
+                    onSelectVersion={handleSelectVersion}
+                    onDownloadProject={handleDownloadProject}
                     onSignOut={handleSignOut}
                 />
             </div>

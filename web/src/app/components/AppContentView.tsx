@@ -8,6 +8,7 @@ import type { Message } from '@/features/chat/types'
 import type { Project } from '@/features/projects/types'
 import type { ViewState } from '@/app/types'
 import type { GeneratedProjectFile } from '@/features/preview/types'
+import type { BackendProjectVersionSummary } from '@/features/projects/api/project'
 
 interface AppContentViewProps {
     view: ViewState
@@ -22,10 +23,17 @@ interface AppContentViewProps {
     isProjectsInitialLoading: boolean
     isProjectsFetching: boolean
     projectsErrorMessage: string | null
+    projectName: string | null
+    projectVersions: BackendProjectVersionSummary[]
+    activeProjectVersionId: string | null
+    isProjectOpening: boolean
     onPromptSubmit: (prompt: string) => void
     onOpenAuth: () => void
     onBackFromOutput: () => void
     onNewProject: () => void
+    onOpenProject: (projectId: string) => void
+    onSelectVersion: (versionId: string) => void
+    onDownloadProject: () => void
     onSignOut: () => void
 }
 
@@ -72,10 +80,17 @@ export const AppContentView: React.FC<AppContentViewProps> = ({
     isProjectsInitialLoading,
     isProjectsFetching,
     projectsErrorMessage,
+    projectName,
+    projectVersions,
+    activeProjectVersionId,
+    isProjectOpening,
     onPromptSubmit,
     onOpenAuth,
     onBackFromOutput,
     onNewProject,
+    onOpenProject,
+    onSelectVersion,
+    onDownloadProject,
     onSignOut,
 }) => {
     return (
@@ -84,6 +99,7 @@ export const AppContentView: React.FC<AppContentViewProps> = ({
                 <AnimatedPage pageKey="all-projects">
                     <ProjectList
                         onNewProject={onNewProject}
+                        onOpenProject={onOpenProject}
                         projects={projects}
                         isLoading={isProjectsInitialLoading}
                         isFetching={isProjectsFetching}
@@ -118,6 +134,12 @@ export const AppContentView: React.FC<AppContentViewProps> = ({
                             activeGeneratedFilePath={activeGeneratedFilePath}
                             generationPhase={generationPhase}
                             isGenerating={isGenerating}
+                            projectName={projectName}
+                            versions={projectVersions}
+                            activeVersionId={activeProjectVersionId}
+                            isVersionLoading={isProjectOpening}
+                            onSelectVersion={onSelectVersion}
+                            onDownload={onDownloadProject}
                         />
                     </AnimatedPage>
                 ))}

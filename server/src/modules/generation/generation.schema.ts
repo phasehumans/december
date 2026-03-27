@@ -26,6 +26,7 @@ export const generateWebsiteSchema = z
         prompt: z.string().min(5),
         isDB: z.boolean(),
         dbURL: z.string().optional(),
+        projectId: z.string().uuid().optional(),
     })
     .superRefine((data, ctx) => {
         if (data.isDB && !data.dbURL?.trim()) {

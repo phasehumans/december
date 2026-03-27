@@ -11,6 +11,7 @@ interface AppSideNavigationProps {
     setIsMobileSidebarOpen: (isOpen: boolean) => void
     onNewThread: () => void
     onNavigate: (target: ViewState) => void
+    onOpenProject: (projectId: string) => void
     isAuthenticated: boolean
     onOpenAuth: () => void
     projects: Project[]
@@ -23,6 +24,7 @@ export const AppSideNavigation: React.FC<AppSideNavigationProps> = ({
     setIsMobileSidebarOpen,
     onNewThread,
     onNavigate,
+    onOpenProject,
     isAuthenticated,
     onOpenAuth,
     projects,
@@ -38,6 +40,7 @@ export const AppSideNavigation: React.FC<AppSideNavigationProps> = ({
                 onNewThread={onNewThread}
                 onAllProjects={() => onNavigate('all-projects')}
                 onProfile={() => onNavigate('profile')}
+                onOpenProject={onOpenProject}
                 isAuthenticated={isAuthenticated}
                 onOpenAuth={onOpenAuth}
                 projects={projects}
@@ -59,6 +62,7 @@ export const AppSideNavigation: React.FC<AppSideNavigationProps> = ({
                 onNewThread={onNewThread}
                 onAllProjects={() => onNavigate('all-projects')}
                 onProfile={() => onNavigate('profile')}
+                onOpenProject={onOpenProject}
                 isAuthenticated={isAuthenticated}
                 onOpenAuth={onOpenAuth}
                 projects={projects}

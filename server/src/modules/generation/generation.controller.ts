@@ -23,7 +23,7 @@ const generateWebsite = async (req: Request, res: Response) => {
         })
     }
 
-    const { prompt, isDB, dbURL } = parseData.data
+    const { prompt, isDB, dbURL, projectId } = parseData.data
     const userId = req.userId as string | undefined
 
     if (!userId) {
@@ -48,6 +48,7 @@ const generateWebsite = async (req: Request, res: Response) => {
             userId,
             isDB,
             dbURL,
+            projectId,
             onEvent: async (event) => {
                 writeEvent(res, event.type, event.data)
             },
