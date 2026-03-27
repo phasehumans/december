@@ -13,6 +13,7 @@ export const MobileSidebar: React.FC<MobileSidebarProps> = ({
     onNewThread,
     onAllProjects,
     onProfile,
+    onOpenProject,
     isAuthenticated,
     onOpenAuth,
     projects,
@@ -61,6 +62,10 @@ export const MobileSidebar: React.FC<MobileSidebarProps> = ({
                         isLoading={isAuthenticated && isProjectsLoading}
                         loadingCount={3}
                         emptyText="No recent projects"
+                        onOpenProject={(projectId) => {
+                            onOpenProject(projectId)
+                            onClose()
+                        }}
                     />
 
                     <SidebarProjectsSection
@@ -73,6 +78,10 @@ export const MobileSidebar: React.FC<MobileSidebarProps> = ({
                         isLoading={isAuthenticated && isProjectsLoading}
                         loadingCount={2}
                         emptyText="No starred projects"
+                        onOpenProject={(projectId) => {
+                            onOpenProject(projectId)
+                            onClose()
+                        }}
                     />
                 </div>
 

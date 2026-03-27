@@ -1,9 +1,14 @@
-import { putTextFile, currentKey, versionKey } from './project-storage'
+import { currentKey, versionKey, putTextFile } from './project-storage'
 
-type GeneratedFile = {
+export type GeneratedStorageFile = {
     path: string
     content: string
     contentType?: string
+}
+
+export type SavedStorageFile = GeneratedStorageFile & {
+    key: string
+    size: number
 }
 
 function guessContentType(path: string) {
@@ -25,24 +30,33 @@ export async function saveProjectFiles({
 }: {
     projectId: string
     versionId: string
-    files: GeneratedFile[]
+    files: GeneratedStorageFile[]
 }) {
-    await Promise.all(
-        files.flatMap((file) => {
-            const contentType = file.contentType ?? guessContentType(file.path)
+    const savedFiles = files.map((file) => {
+        const contentType = file.contentType ?? guessContentType(file.path)
 
-            return [
-                putTextFile({
-                    key: versionKey(projectId, versionId, file.path),
-                    content: file.content,
-                    contentType,
-                }),
-                putTextFile({
-                    key: currentKey(projectId, file.path),
-                    content: file.content,
-                    contentType,
-                }),
-            ]
-        })
+        return {
+            ...file,
+            contentType,
+            key: versionKey(projectId, versionId, file.path),
+            size: Buffer.byteLength(file.content, 'utf8'),
+        }
+    })
+
+    await Promise.all(
+        savedFiles.flatMap((file) => [
+            putTextFile({
+                key: file.key,
+                content: file.content,
+                contentType: file.contentType,
+            }),
+            putTextFile({
+                key: currentKey(projectId, file.path),
+                content: file.content,
+                contentType: file.contentType,
+            }),
+        ])
     )
+
+    return savedFiles satisfies SavedStorageFile[]
 }

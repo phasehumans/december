@@ -13,9 +13,15 @@ export const OutputHeader: React.FC<OutputHeaderProps> = ({
     onToggleSidebar,
     onOpenNewTab,
     onBack,
+    projectName,
+    versions,
+    activeVersionId,
+    isVersionLoading,
+    onSelectVersion,
+    onDownload,
 }) => {
     return (
-        <header className="h-12 flex items-center justify-between px-3 bg-[#1F1F1F] backdrop-blur-sm shrink-0 z-10">
+        <header className="h-12 flex items-center justify-between px-3 bg-[#1F1F1F] backdrop-blur-sm shrink-0 z-10 gap-3">
             <OutputHeaderViewTabs
                 activeTab={activeTab}
                 setActiveTab={setActiveTab}
@@ -32,7 +38,14 @@ export const OutputHeader: React.FC<OutputHeaderProps> = ({
                 onOpenNewTab={onOpenNewTab}
             />
 
-            <OutputHeaderActions />
+            <OutputHeaderActions
+                projectName={projectName}
+                versions={versions}
+                activeVersionId={activeVersionId}
+                isVersionLoading={isVersionLoading}
+                onSelectVersion={onSelectVersion}
+                onDownload={onDownload}
+            />
         </header>
     )
 }

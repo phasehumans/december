@@ -1,5 +1,6 @@
 import type { RefObject } from 'react'
 import type { Message } from '@/features/chat/types'
+import type { BackendProjectVersionSummary } from '@/features/projects/api/project'
 
 export type PreviewDevice = 'desktop' | 'mobile' | 'tablet'
 export type PreviewTab = 'preview' | 'code' | 'canvas'
@@ -33,6 +34,12 @@ export interface OutputScreenProps {
     generationPhase?: 'thinking' | 'planning' | 'building' | 'done' | null
     isGenerating?: boolean
     showStructureOnly?: boolean
+    projectName?: string | null
+    versions?: BackendProjectVersionSummary[]
+    activeVersionId?: string | null
+    isVersionLoading?: boolean
+    onSelectVersion?: (versionId: string) => void
+    onDownload?: () => void
 }
 
 export interface OutputHeaderProps {
@@ -44,6 +51,12 @@ export interface OutputHeaderProps {
     onToggleSidebar: () => void
     onOpenNewTab: () => void
     onBack?: () => void
+    projectName?: string | null
+    versions?: BackendProjectVersionSummary[]
+    activeVersionId?: string | null
+    isVersionLoading?: boolean
+    onSelectVersion?: (versionId: string) => void
+    onDownload?: () => void
 }
 
 export interface PreviewAreaProps {

@@ -57,5 +57,7 @@ export const mapBackendProjectToUIProject = (project: BackendProject): Project =
         description: project.description ?? '',
         isStarred: project.isStarred,
         updatedAt: formatRelativeUpdatedAt(updatedAt),
+        versionCount: project.versionCount,
+        currentVersionId: project.currentVersionId,
     }
 }

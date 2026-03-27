@@ -16,7 +16,7 @@ export const ProjectListRow: React.FC<ProjectListRowProps> = ({
     return (
         <div
             className="group relative grid cursor-pointer grid-cols-[minmax(0,1fr)_auto_2.5rem_2.5rem] items-center gap-3 rounded-xl border border-transparent px-5 py-4 transition-all duration-200 hover:border-white/5 hover:bg-[#1D1C1B] md:gap-4"
-            onClick={onOpenProject}
+            onClick={() => onOpenProject(project.id)}
         >
             <div className="flex items-center gap-4">
                 <div className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/5 bg-surface text-neutral-500 shadow-sm transition-colors group-hover:text-white md:flex">

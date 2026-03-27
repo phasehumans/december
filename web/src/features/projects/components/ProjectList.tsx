@@ -12,6 +12,7 @@ import { ProjectListModals } from './ProjectListModals'
 
 export const ProjectList: React.FC<ProjectListProps> = ({
     onNewProject,
+    onOpenProject,
     projects,
     isLoading,
     isFetching,
@@ -100,6 +101,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({
                 <ProjectListView
                     projects={projects}
                     onNewProject={onNewProject}
+                    onOpenProject={onOpenProject}
                     isInitialLoading={isInitialLoading}
                     isFetching={isFetching}
                     errorMessage={errorMessage}
