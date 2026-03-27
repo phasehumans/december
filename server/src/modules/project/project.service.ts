@@ -40,6 +40,29 @@ type StoredProjectFile = {
     size: number
 }
 
+const baseProjectSelect = {
+    id: true,
+    name: true,
+    description: true,
+    prompt: true,
+    isStarred: true,
+    projectStatus: true,
+    createdAt: true,
+    updatedAt: true,
+    userId: true,
+} as const
+
+const isVersionSchemaMissing = (error: unknown) => {
+    const message = error instanceof Error ? error.message.toLowerCase() : ''
+
+    return (
+        message.includes('projectversion') ||
+        message.includes('projectmessage') ||
+        message.includes('currentversionid') ||
+        message.includes('versioncount')
+    )
+}
+
 const parseStoredProjectFiles = (value: unknown): StoredProjectFile[] => {
     if (!Array.isArray(value)) {
         return []
@@ -109,6 +132,7 @@ const getAllProjects = async (userId: string) => {
         orderBy: {
             updatedAt: 'desc',
         },
+        select: baseProjectSelect,
     })
 }
 
@@ -119,70 +143,89 @@ const getProjectById = async (data: GetProject) => {
             id: projectId,
             userId,
         },
-        include: {
-            versions: {
-                orderBy: {
-                    versionNumber: 'desc',
-                },
-            },
-        },
+        select: baseProjectSelect,
     })
 
     if (!project) {
         throw new Error('project not found')
     }
 
-    const selectedVersionId =
-        versionId ?? project.currentVersionId ?? project.versions[0]?.id ?? null
+    try {
+        const versions = await prisma.projectVersion.findMany({
+            where: {
+                projectId: project.id,
+            },
+            orderBy: {
+                versionNumber: 'desc',
+            },
+        })
 
-    const activeVersion = selectedVersionId
-        ? await prisma.projectVersion.findFirst({
-              where: {
-                  id: selectedVersionId,
-                  projectId: project.id,
-              },
-              include: {
-                  messages: {
-                      orderBy: {
-                          sequence: 'asc',
+        const selectedVersionId = versionId ?? versions[0]?.id ?? null
+
+        const activeVersion = selectedVersionId
+            ? await prisma.projectVersion.findFirst({
+                  where: {
+                      id: selectedVersionId,
+                      projectId: project.id,
+                  },
+                  include: {
+                      messages: {
+                          orderBy: {
+                              sequence: 'asc',
+                          },
                       },
                   },
-              },
-          })
-        : null
+              })
+            : null
 
-    if (selectedVersionId && !activeVersion) {
-        throw new Error('project version not found')
-    }
+        if (selectedVersionId && !activeVersion) {
+            throw new Error('project version not found')
+        }
 
-    const generatedFiles = activeVersion
-        ? await loadGeneratedFilesFromManifest(parseStoredProjectFiles(activeVersion.manifestJson))
-        : {}
+        const generatedFiles = activeVersion
+            ? await loadGeneratedFilesFromManifest(
+                  parseStoredProjectFiles(activeVersion.manifestJson)
+              )
+            : {}
 
-    return {
-        project,
-        versions: project.versions.map(mapVersionSummary),
-        selectedVersionId: activeVersion?.id ?? null,
-        activeVersion: activeVersion
-            ? {
-                  ...mapVersionSummary(activeVersion),
-                  intent: activeVersion.intentJson,
-                  plan: activeVersion.planJson,
-                  isDatabaseEnabled: activeVersion.isDatabaseEnabled,
-                  databaseUrl: activeVersion.databaseUrl,
-              }
-            : null,
-        chatMessages:
-            activeVersion?.messages.map((message) => ({
-                id: message.id,
-                role: message.role,
-                content: message.content,
-                status: message.status,
-                sequence: message.sequence,
-                createdAt: message.createdAt,
-                updatedAt: message.updatedAt,
-            })) ?? [],
-        generatedFiles,
+        return {
+            project,
+            versions: versions.map(mapVersionSummary),
+            selectedVersionId: activeVersion?.id ?? null,
+            activeVersion: activeVersion
+                ? {
+                      ...mapVersionSummary(activeVersion),
+                      intent: activeVersion.intentJson,
+                      plan: activeVersion.planJson,
+                      isDatabaseEnabled: activeVersion.isDatabaseEnabled,
+                      databaseUrl: activeVersion.databaseUrl,
+                  }
+                : null,
+            chatMessages:
+                activeVersion?.messages.map((message) => ({
+                    id: message.id,
+                    role: message.role,
+                    content: message.content,
+                    status: message.status,
+                    sequence: message.sequence,
+                    createdAt: message.createdAt,
+                    updatedAt: message.updatedAt,
+                })) ?? [],
+            generatedFiles,
+        }
+    } catch (error) {
+        if (!isVersionSchemaMissing(error)) {
+            throw error
+        }
+
+        return {
+            project,
+            versions: [],
+            selectedVersionId: null,
+            activeVersion: null,
+            chatMessages: [],
+            generatedFiles: {},
+        }
     }
 }
 
@@ -197,6 +240,7 @@ const createProject = async (data: CreateProject) => {
             isStarred: false,
             userId,
         },
+        select: baseProjectSelect,
     })
 }
 
@@ -228,6 +272,9 @@ const deleteProject = async (data: DeleteProject) => {
             id: projectId,
             userId,
         },
+        select: {
+            id: true,
+        },
     })
 
     if (!project) {
@@ -236,11 +283,18 @@ const deleteProject = async (data: DeleteProject) => {
 
     await deletePrefix(projectPrefix(projectId))
 
-    return prisma.project.delete({
+    const deleted = await prisma.project.deleteMany({
         where: {
             id: projectId,
+            userId,
         },
     })
+
+    if (deleted.count === 0) {
+        throw new Error('project not found')
+    }
+
+    return { message: 'project deleted' }
 }
 
 const duplicateProject = async (data: DuplicateProject) => {
@@ -251,74 +305,87 @@ const duplicateProject = async (data: DuplicateProject) => {
             id: projectId,
             userId,
         },
-        include: {
-            currentVersion: {
-                include: {
-                    messages: {
-                        orderBy: {
-                            sequence: 'asc',
-                        },
-                    },
-                },
-            },
-        },
+        select: baseProjectSelect,
     })
 
     if (!sourceProject) {
         throw new Error('project not found')
     }
 
+    let currentVersion: any = null
+
+    try {
+        currentVersion = await prisma.projectVersion.findFirst({
+            where: {
+                projectId: sourceProject.id,
+            },
+            orderBy: {
+                versionNumber: 'desc',
+            },
+            include: {
+                messages: {
+                    orderBy: {
+                        sequence: 'asc',
+                    },
+                },
+            },
+        })
+    } catch (error) {
+        if (!isVersionSchemaMissing(error)) {
+            throw error
+        }
+    }
+
     const newProject = await prisma.project.create({
         data: {
             name: `Copy of ${sourceProject.name}`,
             description: sourceProject.description,
-            prompt: sourceProject.currentVersion?.sourcePrompt ?? sourceProject.prompt,
-            projectStatus: sourceProject.currentVersion ? 'READY' : sourceProject.projectStatus,
+            prompt: currentVersion?.sourcePrompt ?? sourceProject.prompt,
+            projectStatus: currentVersion ? 'READY' : sourceProject.projectStatus,
             userId,
         },
+        select: baseProjectSelect,
     })
 
-    if (!sourceProject.currentVersion) {
+    if (!currentVersion) {
         return newProject
     }
 
-    const manifest = parseStoredProjectFiles(sourceProject.currentVersion.manifestJson)
+    const manifest = parseStoredProjectFiles(currentVersion.manifestJson)
     const generatedFiles = await loadGeneratedFilesFromManifest(manifest)
-    const versionId = crypto.randomUUID()
+    const versionRecordId = crypto.randomUUID()
     const savedFiles = await saveProjectFiles({
         projectId: newProject.id,
-        versionId,
+        versionId: versionRecordId,
         files: Object.entries(generatedFiles).map(([path, content]) => ({ path, content })),
     })
 
-    const createdVersion = await prisma.projectVersion.create({
+    await prisma.projectVersion.create({
         data: {
-            id: versionId,
+            id: versionRecordId,
             projectId: newProject.id,
             versionNumber: 1,
             label: 'v1',
-            sourcePrompt: sourceProject.currentVersion.sourcePrompt,
-            summary: sourceProject.currentVersion.summary ?? undefined,
+            sourcePrompt: currentVersion.sourcePrompt,
+            summary: currentVersion.summary ?? undefined,
             status: 'READY',
-            objectStoragePrefix: `projects/${newProject.id}/versions/${versionId}`,
+            objectStoragePrefix: `projects/${newProject.id}/versions/${versionRecordId}`,
             manifestJson: savedFiles.map((file) => ({
                 path: file.path,
                 key: file.key,
                 ...(file.contentType ? { contentType: file.contentType } : {}),
                 size: file.size,
             })),
-            ...(sourceProject.currentVersion.intentJson !== null
-                ? { intentJson: sourceProject.currentVersion.intentJson as any }
+            ...(currentVersion.intentJson !== null
+                ? { intentJson: currentVersion.intentJson as any }
                 : {}),
-            ...(sourceProject.currentVersion.planJson !== null
-                ? { planJson: sourceProject.currentVersion.planJson as any }
+            ...(currentVersion.planJson !== null
+                ? { planJson: currentVersion.planJson as any }
                 : {}),
-            isDatabaseEnabled: sourceProject.currentVersion.isDatabaseEnabled,
-            ...(sourceProject.currentVersion.databaseUrl
-                ? { databaseUrl: sourceProject.currentVersion.databaseUrl }
-                : {}),
+            isDatabaseEnabled: currentVersion.isDatabaseEnabled,
+            ...(currentVersion.databaseUrl ? { databaseUrl: currentVersion.databaseUrl } : {}),
             messages: {
-                create: sourceProject.currentVersion.messages.map((message) => ({
+                create: currentVersion.messages.map((message: any) => ({
                     projectId: newProject.id,
                     role: message.role,
                     content: message.content,
@@ -329,15 +396,26 @@ const duplicateProject = async (data: DuplicateProject) => {
         },
     })
 
-    return prisma.project.update({
-        where: {
-            id: newProject.id,
-        },
-        data: {
-            currentVersionId: createdVersion.id,
-            versionCount: 1,
-        },
-    })
+    try {
+        await prisma.project.update({
+            where: {
+                id: newProject.id,
+            },
+            data: {
+                currentVersionId: versionRecordId,
+                versionCount: 1,
+            },
+            select: {
+                id: true,
+            },
+        })
+    } catch (error) {
+        if (!isVersionSchemaMissing(error)) {
+            throw error
+        }
+    }
+
+    return newProject
 }
 
 const downloadProjectVersion = async (data: GetProject) => {
@@ -359,7 +437,7 @@ const downloadProjectVersion = async (data: GetProject) => {
             .trim()
             .replace(/[^a-z0-9-_]+/gi, '-')
             .replace(/^-+|-+$/g, '') || 'project'
-    const fileName = `${safeProjectName}-${detail.activeVersion.label}.zip`
+    const fileName = `${safeProjectName}.zip`
 
     return {
         fileName,

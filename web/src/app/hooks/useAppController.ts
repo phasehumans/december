@@ -575,7 +575,7 @@ export const useAppController = () => {
         }
 
         try {
-            const result = await projectAPI.downloadProject(activeProjectId, activeProjectVersionId)
+            const result = await projectAPI.downloadProject(activeProjectId)
             const url = window.URL.createObjectURL(result.blob)
             const anchor = document.createElement('a')
             anchor.href = url
