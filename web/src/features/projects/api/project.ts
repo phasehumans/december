@@ -7,8 +7,8 @@ export type BackendProject = {
     prompt: string
     isStarred: boolean
     projectStatus: 'DRAFT' | 'GENERATING' | 'READY' | 'DEPLOYED' | 'FAILED'
-    versionCount: number
-    currentVersionId: string | null
+    versionCount?: number
+    currentVersionId?: string | null
     createdAt: string
     updatedAt: string
     userId: string
@@ -90,7 +90,7 @@ const updateProject = (projectId: string, data: UpdateProjectInput) => {
 }
 
 const deleteProject = (projectId: string) => {
-    return apiRequest<BackendProject>(`/project/${projectId}`, {
+    return apiRequest<{ message: string }>(`/project/${projectId}`, {
         method: 'DELETE',
     })
 }
