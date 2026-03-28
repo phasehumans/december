@@ -1,4 +1,4 @@
-﻿import { API_BASE_URL, ApiError, apiRequest, getAuthToken } from '@/shared/api/client'
+import { API_BASE_URL, ApiError, apiRequest, getAuthToken } from '@/shared/api/client'
 import type {
     BackendProject,
     BackendProjectMessage,
@@ -120,8 +120,6 @@ export type GenerationStreamEvent =
               intent: unknown
               plan: unknown
               generatedFiles: Record<string, string>
-              isDB: boolean
-              dbURL?: string
           }
       }
     | {
@@ -133,8 +131,6 @@ export type GenerationStreamEvent =
 
 type GenerateProjectInput = {
     prompt: string
-    isDB: boolean
-    dbURL?: string
     projectId?: string | null
     signal?: AbortSignal
     onEvent: (event: GenerationStreamEvent) => void
@@ -206,8 +202,6 @@ const parseEventBlock = (block: string) => {
 
 const generateProjectStream = async ({
     prompt,
-    isDB,
-    dbURL,
     projectId,
     signal,
     onEvent,
@@ -219,7 +213,7 @@ const generateProjectStream = async ({
             'Content-Type': 'application/json',
             ...(token ? { Authorization: token } : {}),
         },
-        body: JSON.stringify({ prompt, isDB, dbURL, ...(projectId ? { projectId } : {}) }),
+        body: JSON.stringify({ prompt, ...(projectId ? { projectId } : {}) }),
         signal,
     })
 
