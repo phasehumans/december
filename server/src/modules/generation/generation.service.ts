@@ -1,4 +1,4 @@
-﻿import { z } from 'zod'
+import { z } from 'zod'
 import { prisma } from '../../config/db'
 import { generateProjectFile } from '../../core/agents/build.agent'
 import { applyProjectEdit as applyProjectEditAgent } from '../../core/agents/edit.agent'
@@ -21,8 +21,6 @@ import {
 type GenerateWebsite = {
     prompt: string
     userId: string
-    isDB: boolean
-    dbURL?: string
     projectId?: string
     onEvent?: (event: GenerationStreamEvent) => Promise<void> | void
 }
@@ -139,8 +137,6 @@ type GenerationStreamEvent =
               intent: ProjectIntent
               plan: ProjectPlan
               generatedFiles: Record<string, string>
-              isDB: boolean
-              dbURL?: string
           }
       }
 
@@ -223,20 +219,16 @@ const splitFileContentIntoChunks = (content: string, targetChunkLength = 72) => 
     return chunks
 }
 
-const applyDatabaseSelection = (intent: ProjectIntent, isDB: boolean) => {
-    if (!isDB) {
-        return {
-            ...intent,
-            database: 'none' as const,
-            needsDatabase: false,
-        }
-    }
+const FRONTEND_ONLY_FILE_PREFIX = 'web/'
 
-    return {
-        ...intent,
-        database: 'postgres' as const,
-        needsDatabase: true,
-        needsBackend: true,
+const assertFrontendOnlyPlan = (plan: ProjectPlan) => {
+    const plannedFiles = plan.data?.files ?? []
+    const invalidFile = plannedFiles.find(
+        (file) => !file.path.startsWith(FRONTEND_ONLY_FILE_PREFIX)
+    )
+
+    if (invalidFile) {
+        throw new Error(`plan agent returned non-frontend file: ${invalidFile.path}`)
     }
 }
 
@@ -493,10 +485,8 @@ const initializeGenerationTarget = async (data: GenerateWebsite) => {
                 label: `v${versionNumber}`,
                 sourcePrompt: data.prompt,
                 status: 'GENERATING',
-                objectStoragePrefix: `projects/${project.id}/versions/${versionId}`,
+                objectStoragePrefix: `projects/${project.id}/frontend/versions/${versionId}`,
                 manifestJson: [],
-                isDatabaseEnabled: data.isDB,
-                databaseUrl: data.dbURL,
             },
         })
 
@@ -670,7 +660,7 @@ const persistProjectRevision = async ({
                 sourcePrompt,
                 summary,
                 status: 'READY',
-                objectStoragePrefix: `projects/${project.id}/versions/${versionId}`,
+                objectStoragePrefix: `projects/${project.id}/frontend/versions/${versionId}`,
                 manifestJson: savedFiles.map((file) => ({
                     path: file.path,
                     key: file.key,
@@ -681,8 +671,6 @@ const persistProjectRevision = async ({
                     ? { intentJson: baseVersion.intentJson as any }
                     : {}),
                 ...(baseVersion.planJson !== null ? { planJson: baseVersion.planJson as any } : {}),
-                isDatabaseEnabled: baseVersion.isDatabaseEnabled,
-                ...(baseVersion.databaseUrl ? { databaseUrl: baseVersion.databaseUrl } : {}),
                 messages: {
                     create: nextMessages,
                 },
@@ -741,7 +729,7 @@ const persistProjectRevision = async ({
 }
 
 const generateWebsite = async (data: GenerateWebsite) => {
-    const { prompt, isDB, dbURL, onEvent } = data
+    const { prompt, onEvent } = data
     const userPrompt = cleanPrompt(prompt)
     let project: ProjectRecord | null = null
     let versionId = ''
@@ -784,7 +772,7 @@ const generateWebsite = async (data: GenerateWebsite) => {
             throw new Error('invalid response | prompt agent')
         }
 
-        const intent = applyDatabaseSelection(parseIntent.data.intent, isDB)
+        const intent = parseIntent.data.intent
         assistantMessageContent = appendAssistantMessageContent(
             assistantMessageContent,
             parseIntent.data.message
@@ -820,6 +808,7 @@ const generateWebsite = async (data: GenerateWebsite) => {
 
         const plan = parsePlan.data.plan
         const planData = plan.data as NonNullable<ProjectPlan['data']>
+        assertFrontendOnlyPlan(plan)
         const orderedFiles = getFilesInGenerationOrder(plan)
         const generatedFiles: Record<string, string> = {}
         assistantMessageContent = appendAssistantMessageContent(
@@ -917,8 +906,6 @@ const generateWebsite = async (data: GenerateWebsite) => {
                     })),
                     intentJson: intent as any,
                     planJson: plan as any,
-                    isDatabaseEnabled: isDB,
-                    databaseUrl: dbURL,
                     messages: {
                         create: [
                             {
@@ -980,8 +967,6 @@ const generateWebsite = async (data: GenerateWebsite) => {
             intent,
             plan,
             generatedFiles,
-            isDB,
-            ...(dbURL ? { dbURL } : {}),
         }
 
         await onEvent?.({

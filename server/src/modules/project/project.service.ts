@@ -197,8 +197,6 @@ const getProjectById = async (data: GetProject) => {
                       ...mapVersionSummary(activeVersion),
                       intent: activeVersion.intentJson,
                       plan: activeVersion.planJson,
-                      isDatabaseEnabled: activeVersion.isDatabaseEnabled,
-                      databaseUrl: activeVersion.databaseUrl,
                   }
                 : null,
             chatMessages:
@@ -369,7 +367,7 @@ const duplicateProject = async (data: DuplicateProject) => {
             sourcePrompt: currentVersion.sourcePrompt,
             summary: currentVersion.summary ?? undefined,
             status: 'READY',
-            objectStoragePrefix: `projects/${newProject.id}/versions/${versionRecordId}`,
+            objectStoragePrefix: `projects/${newProject.id}/frontend/versions/${versionRecordId}`,
             manifestJson: savedFiles.map((file) => ({
                 path: file.path,
                 key: file.key,
@@ -382,8 +380,6 @@ const duplicateProject = async (data: DuplicateProject) => {
             ...(currentVersion.planJson !== null
                 ? { planJson: currentVersion.planJson as any }
                 : {}),
-            isDatabaseEnabled: currentVersion.isDatabaseEnabled,
-            ...(currentVersion.databaseUrl ? { databaseUrl: currentVersion.databaseUrl } : {}),
             messages: {
                 create: currentVersion.messages.map((message: any) => ({
                     projectId: newProject.id,
