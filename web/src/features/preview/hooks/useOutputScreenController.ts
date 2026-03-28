@@ -1,8 +1,10 @@
-import React from 'react'
+﻿import React from 'react'
 import { PREVIEW_HTML } from '@/features/preview/constants/preview'
 import type {
     GeneratedProjectFile,
+    OutputOperation,
     PreviewDevice,
+    PreviewRuntimeError,
     PreviewSelectedElement,
     PreviewTab,
 } from '@/features/preview/types'
@@ -12,6 +14,12 @@ interface UseOutputScreenControllerArgs {
     generatedFiles?: Record<string, GeneratedProjectFile>
     activeGeneratedFilePath?: string | null
     generationPhase?: 'thinking' | 'planning' | 'building' | 'done' | null
+    activeOperation?: OutputOperation | null
+    onPromptSubmit: (
+        prompt: string,
+        options?: { selectedElement?: PreviewSelectedElement }
+    ) => Promise<void> | void
+    onRuntimeError?: (error: PreviewRuntimeError) => Promise<void> | void
 }
 
 const getPreviewHtmlFromFiles = (generatedFiles?: Record<string, GeneratedProjectFile>) => {
@@ -27,10 +35,41 @@ const getPreviewHtmlFromFiles = (generatedFiles?: Record<string, GeneratedProjec
     )
 }
 
+const getOperationSteps = (operation: OutputOperation | null | undefined) => {
+    if (operation === 'edit') {
+        return [
+            'Reading the current project files',
+            'Planning a minimal code patch',
+            'Applying targeted file changes',
+            'Refreshing the saved project version',
+        ]
+    }
+
+    if (operation === 'fix') {
+        return [
+            'Capturing the preview runtime error',
+            'Tracing the failing file path',
+            'Applying the smallest reliable fix',
+            'Refreshing the saved project version',
+        ]
+    }
+
+    return [
+        'Analyzing request intent',
+        'Locking implementation plan',
+        'Preparing build order and file tree',
+        'Streaming file generation to the IDE',
+        'Finalizing generated project output',
+    ]
+}
+
 export const useOutputScreenController = ({
     isGenerating,
     generatedFiles,
     generationPhase,
+    activeOperation,
+    onPromptSubmit,
+    onRuntimeError,
 }: UseOutputScreenControllerArgs) => {
     const [activeTab, setActiveTab] = React.useState<PreviewTab>('preview')
     const [device, setDevice] = React.useState<PreviewDevice>('desktop')
@@ -63,6 +102,7 @@ export const useOutputScreenController = ({
 
     React.useEffect(() => {
         if (!isGenerating) {
+            setIsApplyingEdit(false)
             return
         }
 
@@ -74,16 +114,9 @@ export const useOutputScreenController = ({
         setSteps([])
         setIsThoughtsOpen(true)
         hasSwitchedToCodeForBuildRef.current = false
-        setActiveTab('preview')
+        setActiveTab(activeOperation === 'build' || !activeOperation ? 'preview' : 'code')
 
-        const sequences = [
-            'Analyzing request intent',
-            'Locking implementation plan',
-            'Preparing build order and file tree',
-            'Streaming file generation to the IDE',
-            'Finalizing generated project output',
-        ]
-
+        const sequences = getOperationSteps(activeOperation)
         let stepIndex = 0
         const stepInterval = setInterval(() => {
             if (stepIndex < sequences.length) {
@@ -98,7 +131,7 @@ export const useOutputScreenController = ({
             clearInterval(timerInterval)
             clearInterval(stepInterval)
         }
-    }, [isGenerating])
+    }, [activeOperation, isGenerating])
 
     React.useEffect(() => {
         if (!isGenerating && steps.length > 0) {
@@ -135,38 +168,64 @@ export const useOutputScreenController = ({
 
         if (generatedPreviewHtml.trim()) {
             setPreviewHtml(generatedPreviewHtml)
-        }
-    }, [generatedFiles])
-
-    const handleIframeMessage = React.useCallback((event: MessageEvent) => {
-        if (event.data.type === 'element-selected') {
-            setSelectedElement(event.data)
             return
         }
 
-        if (event.data.type === 'selection-cleared') {
-            setSelectedElement(null)
-        }
-    }, [])
+        setPreviewHtml(PREVIEW_HTML)
+    }, [generatedFiles])
 
-    const handleApplyEdit = () => {
-        if (!editPrompt.trim()) {
+    const handleIframeMessage = React.useCallback(
+        (event: MessageEvent) => {
+            if (event.data?.type === 'element-selected') {
+                setSelectedElement(event.data)
+                return
+            }
+
+            if (event.data?.type === 'selection-cleared') {
+                setSelectedElement(null)
+                return
+            }
+
+            if (event.data?.type === 'runtime-error' && onRuntimeError) {
+                void onRuntimeError({
+                    message: event.data.message,
+                    stack: event.data.stack,
+                })
+            }
+        },
+        [onRuntimeError]
+    )
+
+    const handleApplyEdit = React.useCallback(async () => {
+        const nextPrompt = editPrompt.trim()
+
+        if (!nextPrompt) {
             return
         }
 
         setIsApplyingEdit(true)
+        let didApply = false
 
-        setTimeout(() => {
+        try {
+            await Promise.resolve(
+                onPromptSubmit(nextPrompt, {
+                    ...(selectedElement ? { selectedElement } : {}),
+                })
+            )
+            didApply = true
+        } finally {
             setIsApplyingEdit(false)
-            setEditPrompt('')
 
-            if (iframeRef.current?.contentWindow) {
-                iframeRef.current.contentWindow.postMessage({ type: 'apply-changes' }, '*')
+            if (didApply) {
+                setEditPrompt('')
+                setSelectedElement(null)
+
+                if (iframeRef.current?.contentWindow) {
+                    iframeRef.current.contentWindow.postMessage({ type: 'selection-cleared' }, '*')
+                }
             }
-
-            setSelectedElement(null)
-        }, 1000)
-    }
+        }
+    }, [editPrompt, onPromptSubmit, selectedElement])
 
     const handleClearSelection = () => {
         setSelectedElement(null)

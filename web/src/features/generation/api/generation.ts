@@ -1,5 +1,9 @@
-import { API_BASE_URL, ApiError, getAuthToken } from '@/shared/api/client'
-import type { BackendProject, BackendProjectVersionSummary } from '@/features/projects/api/project'
+﻿import { API_BASE_URL, ApiError, apiRequest, getAuthToken } from '@/shared/api/client'
+import type {
+    BackendProject,
+    BackendProjectMessage,
+    BackendProjectVersionSummary,
+} from '@/features/projects/api/project'
 
 export type GenerationMessageStatus = 'thinking' | 'planning' | 'building' | 'done' | 'error'
 
@@ -8,6 +12,22 @@ export interface PlannedBuildFile {
     purpose: string
     generate: boolean
     generator: string
+}
+
+export interface PreviewSelectedElementPayload {
+    tagName: string
+    textContent: string
+}
+
+export interface AppliedProjectChangeResult {
+    project: BackendProject
+    version: Pick<BackendProjectVersionSummary, 'id' | 'versionNumber' | 'label' | 'status'>
+    versions: BackendProjectVersionSummary[]
+    chatMessages: BackendProjectMessage[]
+    generatedFiles: Record<string, string>
+    appliedFiles: string[]
+    deletedFiles: string[]
+    assistantMessage: string
 }
 
 export type GenerationStreamEvent =
@@ -118,6 +138,22 @@ type GenerateProjectInput = {
     projectId?: string | null
     signal?: AbortSignal
     onEvent: (event: GenerationStreamEvent) => void
+}
+
+type ApplyProjectEditInput = {
+    projectId: string
+    versionId?: string | null
+    prompt: string
+    selectedElement?: PreviewSelectedElementPayload | null
+    signal?: AbortSignal
+}
+
+type ApplyProjectFixInput = {
+    projectId: string
+    versionId?: string | null
+    errorMessage: string
+    stack?: string
+    signal?: AbortSignal
 }
 
 const toApiError = async (res: Response) => {
@@ -238,6 +274,34 @@ const generateProjectStream = async ({
     return resultEvent?.data ?? null
 }
 
+const applyProjectEdit = (data: ApplyProjectEditInput) => {
+    return apiRequest<AppliedProjectChangeResult>('/generate/edit', {
+        method: 'POST',
+        body: JSON.stringify({
+            projectId: data.projectId,
+            ...(data.versionId ? { versionId: data.versionId } : {}),
+            prompt: data.prompt,
+            ...(data.selectedElement ? { selectedElement: data.selectedElement } : {}),
+        }),
+        signal: data.signal,
+    })
+}
+
+const applyProjectFix = (data: ApplyProjectFixInput) => {
+    return apiRequest<AppliedProjectChangeResult>('/generate/fix', {
+        method: 'POST',
+        body: JSON.stringify({
+            projectId: data.projectId,
+            ...(data.versionId ? { versionId: data.versionId } : {}),
+            errorMessage: data.errorMessage,
+            ...(data.stack ? { stack: data.stack } : {}),
+        }),
+        signal: data.signal,
+    })
+}
+
 export const generationAPI = {
     generateProjectStream,
+    applyProjectEdit,
+    applyProjectFix,
 }

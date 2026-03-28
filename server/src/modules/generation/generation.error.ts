@@ -1,4 +1,4 @@
-const getErrorMessage = (error: unknown) => {
+﻿const getErrorMessage = (error: unknown) => {
     if (error instanceof Error) {
         return error.message
     }
@@ -52,6 +52,22 @@ export const normalizeGenerationError = (error: unknown, options?: { path?: stri
             publicMessage: options?.path
                 ? `I hit an issue while generating ${getFileLabel(options.path)}. Please retry the build.`
                 : 'I started the build but hit an issue while generating the project files. Please retry the build.',
+        }
+    }
+
+    if (normalizedMessage.includes('edit agent')) {
+        return {
+            internalMessage,
+            publicMessage:
+                'I hit an issue while applying that edit. Please try again with a more specific change request.',
+        }
+    }
+
+    if (normalizedMessage.includes('fix agent')) {
+        return {
+            internalMessage,
+            publicMessage:
+                'I found the preview error but could not repair it automatically. Please try again or adjust the request.',
         }
     }
 

@@ -1,11 +1,16 @@
-import { z } from 'zod'
+﻿import { z } from 'zod'
 import { prisma } from '../../config/db'
 import { generateProjectFile } from '../../core/agents/build.agent'
+import { applyProjectEdit as applyProjectEditAgent } from '../../core/agents/edit.agent'
+import { applyProjectFix as applyProjectFixAgent } from '../../core/agents/fix.agent'
 import { extractProjectPlan } from '../../core/agents/plan.agent'
 import { extractProjectIntent } from '../../core/agents/prompt.agent'
+import { currentKey, deleteObject, getTextFile } from '../../lib/project-storage'
 import { saveProjectFiles } from '../../lib/save-project-files'
 import { cleanPrompt } from '../../utils/cleanPrompt'
 import {
+    applyProjectEditSchema,
+    applyProjectFixSchema,
     plannedProjectFileSchema,
     planAgentResponseSchema,
     projectIntentSchema,
@@ -22,10 +27,31 @@ type GenerateWebsite = {
     onEvent?: (event: GenerationStreamEvent) => Promise<void> | void
 }
 
+type ApplyProjectEditInput = z.infer<typeof applyProjectEditSchema> & {
+    userId: string
+}
+
+type ApplyProjectFixInput = z.infer<typeof applyProjectFixSchema> & {
+    userId: string
+}
+
 type ProjectIntent = z.infer<typeof projectIntentSchema>
 type ProjectPlan = z.infer<typeof projectPlanSchema>
 type PlannedProjectFile = z.infer<typeof plannedProjectFileSchema>
 type ProjectRecord = Awaited<ReturnType<typeof prisma.project.create>>
+type StoredProjectFile = {
+    path: string
+    key: string
+    contentType?: string
+    size: number
+}
+
+type RevisionBase = {
+    project: NonNullable<Awaited<ReturnType<typeof prisma.project.findFirst>>>
+    baseVersion: any
+    baseFiles: Record<string, string>
+    nextVersionNumber: number
+}
 
 type GenerationStreamEvent =
     | {
@@ -348,6 +374,67 @@ const emitFileStream = async (
     })
 }
 
+const parseStoredProjectFiles = (value: unknown): StoredProjectFile[] => {
+    if (!Array.isArray(value)) {
+        return []
+    }
+
+    return value.reduce<StoredProjectFile[]>((files, item) => {
+        if (!item || typeof item !== 'object') {
+            return files
+        }
+
+        const candidate = item as Partial<StoredProjectFile>
+
+        if (typeof candidate.path !== 'string' || typeof candidate.key !== 'string') {
+            return files
+        }
+
+        files.push({
+            path: candidate.path,
+            key: candidate.key,
+            ...(typeof candidate.contentType === 'string'
+                ? { contentType: candidate.contentType }
+                : {}),
+            size: typeof candidate.size === 'number' ? candidate.size : 0,
+        })
+
+        return files
+    }, [])
+}
+
+const loadGeneratedFilesFromManifest = async (manifest: StoredProjectFile[]) => {
+    const files = await Promise.all(
+        manifest.map(async (file) => [file.path, (await getTextFile(file.key)) ?? ''] as const)
+    )
+
+    return Object.fromEntries(files)
+}
+
+const mapVersionSummary = (version: {
+    id: string
+    versionNumber: number
+    label: string | null
+    sourcePrompt: string
+    summary: string | null
+    status: 'GENERATING' | 'READY' | 'FAILED'
+    objectStoragePrefix: string
+    manifestJson: unknown
+    createdAt: Date
+    updatedAt: Date
+}) => ({
+    id: version.id,
+    versionNumber: version.versionNumber,
+    label: version.label ?? `v${version.versionNumber}`,
+    sourcePrompt: version.sourcePrompt,
+    summary: version.summary,
+    status: version.status,
+    objectStoragePrefix: version.objectStoragePrefix,
+    fileCount: parseStoredProjectFiles(version.manifestJson).length,
+    createdAt: version.createdAt,
+    updatedAt: version.updatedAt,
+})
+
 const initializeGenerationTarget = async (data: GenerateWebsite) => {
     const versionId = crypto.randomUUID()
 
@@ -419,6 +506,238 @@ const initializeGenerationTarget = async (data: GenerateWebsite) => {
             hadCurrentVersion: Boolean(existingProject?.currentVersionId),
         }
     })
+}
+
+const getProjectRevisionBase = async ({
+    userId,
+    projectId,
+    versionId,
+}: {
+    userId: string
+    projectId: string
+    versionId?: string
+}): Promise<RevisionBase> => {
+    const project = await prisma.project.findFirst({
+        where: {
+            id: projectId,
+            userId,
+        },
+    })
+
+    if (!project) {
+        throw new Error('project not found')
+    }
+
+    const versions = await prisma.projectVersion.findMany({
+        where: {
+            projectId: project.id,
+        },
+        orderBy: {
+            versionNumber: 'desc',
+        },
+    })
+
+    const selectedVersionId = versionId ?? project.currentVersionId ?? versions[0]?.id
+
+    if (!selectedVersionId) {
+        throw new Error('project version not found')
+    }
+
+    const baseVersion = await prisma.projectVersion.findFirst({
+        where: {
+            id: selectedVersionId,
+            projectId: project.id,
+        },
+        include: {
+            messages: {
+                orderBy: {
+                    sequence: 'asc',
+                },
+            },
+        },
+    })
+
+    if (!baseVersion) {
+        throw new Error('project version not found')
+    }
+
+    const baseFiles = await loadGeneratedFilesFromManifest(
+        parseStoredProjectFiles(baseVersion.manifestJson)
+    )
+
+    return {
+        project,
+        baseVersion,
+        baseFiles,
+        nextVersionNumber: (versions[0]?.versionNumber ?? 0) + 1,
+    }
+}
+
+const mergeProjectFiles = ({
+    currentFiles,
+    updatedFiles,
+    deletedFiles,
+}: {
+    currentFiles: Record<string, string>
+    updatedFiles: Array<{ path: string; content: string }>
+    deletedFiles: string[]
+}) => {
+    const mergedFiles = { ...currentFiles }
+
+    for (const file of updatedFiles) {
+        mergedFiles[file.path] = file.content
+    }
+
+    for (const path of deletedFiles) {
+        delete mergedFiles[path]
+    }
+
+    const appliedFiles = updatedFiles
+        .filter((file) => currentFiles[file.path] !== file.content)
+        .map((file) => file.path)
+    const removedFiles = deletedFiles.filter((path) => path in currentFiles)
+
+    return {
+        mergedFiles,
+        appliedFiles,
+        removedFiles,
+    }
+}
+
+const persistProjectRevision = async ({
+    project,
+    baseVersion,
+    nextVersionNumber,
+    mergedFiles,
+    removedFiles,
+    sourcePrompt,
+    assistantMessage,
+    summary,
+    nextProjectPrompt,
+}: {
+    project: RevisionBase['project']
+    baseVersion: RevisionBase['baseVersion']
+    nextVersionNumber: number
+    mergedFiles: Record<string, string>
+    removedFiles: string[]
+    sourcePrompt: string
+    assistantMessage: string
+    summary: string
+    nextProjectPrompt?: string
+}) => {
+    const versionId = crypto.randomUUID()
+    const savedFiles = await saveProjectFiles({
+        projectId: project.id,
+        versionId,
+        files: Object.entries(mergedFiles).map(([path, content]) => ({
+            path,
+            content,
+        })),
+    })
+
+    await Promise.all(removedFiles.map((path) => deleteObject(currentKey(project.id, path))))
+
+    const nextMessages = [
+        ...baseVersion.messages.map((message: any) => ({
+            projectId: project.id,
+            role: message.role,
+            content: message.content,
+            ...(message.status ? { status: message.status } : {}),
+            sequence: message.sequence,
+        })),
+        {
+            projectId: project.id,
+            role: 'USER' as const,
+            content: sourcePrompt,
+            sequence: baseVersion.messages.length + 1,
+        },
+        {
+            projectId: project.id,
+            role: 'ASSISTANT' as const,
+            content: assistantMessage,
+            status: 'done',
+            sequence: baseVersion.messages.length + 2,
+        },
+    ]
+
+    const persisted = await prisma.$transaction(async (tx) => {
+        const version = await tx.projectVersion.create({
+            data: {
+                id: versionId,
+                projectId: project.id,
+                versionNumber: nextVersionNumber,
+                label: `v${nextVersionNumber}`,
+                sourcePrompt,
+                summary,
+                status: 'READY',
+                objectStoragePrefix: `projects/${project.id}/versions/${versionId}`,
+                manifestJson: savedFiles.map((file) => ({
+                    path: file.path,
+                    key: file.key,
+                    contentType: file.contentType,
+                    size: file.size,
+                })),
+                ...(baseVersion.intentJson !== null
+                    ? { intentJson: baseVersion.intentJson as any }
+                    : {}),
+                ...(baseVersion.planJson !== null ? { planJson: baseVersion.planJson as any } : {}),
+                isDatabaseEnabled: baseVersion.isDatabaseEnabled,
+                ...(baseVersion.databaseUrl ? { databaseUrl: baseVersion.databaseUrl } : {}),
+                messages: {
+                    create: nextMessages,
+                },
+            },
+            include: {
+                messages: {
+                    orderBy: {
+                        sequence: 'asc',
+                    },
+                },
+            },
+        })
+
+        const updatedProject = await tx.project.update({
+            where: {
+                id: project.id,
+            },
+            data: {
+                description: summary,
+                projectStatus: 'READY',
+                currentVersionId: version.id,
+                versionCount: nextVersionNumber,
+                ...(nextProjectPrompt ? { prompt: nextProjectPrompt } : {}),
+            },
+        })
+
+        const versions = await tx.projectVersion.findMany({
+            where: {
+                projectId: project.id,
+            },
+            orderBy: {
+                versionNumber: 'desc',
+            },
+        })
+
+        return {
+            project: updatedProject,
+            version,
+            versions,
+        }
+    })
+
+    return {
+        project: persisted.project,
+        version: {
+            id: persisted.version.id,
+            versionNumber: persisted.version.versionNumber,
+            label: persisted.version.label ?? `v${persisted.version.versionNumber}`,
+            status: persisted.version.status,
+        },
+        versions: persisted.versions.map(mapVersionSummary),
+        chatMessages: persisted.version.messages,
+        generatedFiles: mergedFiles,
+        assistantMessage,
+    }
 }
 
 const generateWebsite = async (data: GenerateWebsite) => {
@@ -725,6 +1044,93 @@ const generateWebsite = async (data: GenerateWebsite) => {
     }
 }
 
+const applyProjectEdit = async (data: ApplyProjectEditInput) => {
+    const base = await getProjectRevisionBase(data)
+    const prompt = cleanPrompt(data.prompt)
+    const editResult = await applyProjectEditAgent({
+        prompt,
+        ...(data.selectedElement ? { selectedElement: data.selectedElement } : {}),
+        project: {
+            name: base.project.name,
+            description: base.project.description,
+            prompt: base.project.prompt,
+        },
+        recentMessages: base.baseVersion.messages.slice(-8).map((message: any) => ({
+            role: message.role,
+            content: message.content,
+        })),
+        files: base.baseFiles,
+    })
+
+    const { mergedFiles, appliedFiles, removedFiles } = mergeProjectFiles({
+        currentFiles: base.baseFiles,
+        updatedFiles: editResult.updatedFiles,
+        deletedFiles: editResult.deletedFiles,
+    })
+
+    const persisted = await persistProjectRevision({
+        project: base.project,
+        baseVersion: base.baseVersion,
+        nextVersionNumber: base.nextVersionNumber,
+        mergedFiles,
+        removedFiles,
+        sourcePrompt: prompt,
+        assistantMessage: editResult.message,
+        summary: editResult.summary,
+        nextProjectPrompt: prompt,
+    })
+
+    return {
+        ...persisted,
+        appliedFiles,
+        deletedFiles: removedFiles,
+    }
+}
+
+const applyProjectFix = async (data: ApplyProjectFixInput) => {
+    const base = await getProjectRevisionBase(data)
+    const errorMessage = data.errorMessage.trim()
+    const fixResult = await applyProjectFixAgent({
+        errorMessage,
+        ...(data.stack ? { stack: data.stack } : {}),
+        project: {
+            name: base.project.name,
+            description: base.project.description,
+            prompt: base.project.prompt,
+        },
+        recentMessages: base.baseVersion.messages.slice(-8).map((message: any) => ({
+            role: message.role,
+            content: message.content,
+        })),
+        files: base.baseFiles,
+    })
+
+    const { mergedFiles, appliedFiles, removedFiles } = mergeProjectFiles({
+        currentFiles: base.baseFiles,
+        updatedFiles: fixResult.updatedFiles,
+        deletedFiles: fixResult.deletedFiles,
+    })
+
+    const persisted = await persistProjectRevision({
+        project: base.project,
+        baseVersion: base.baseVersion,
+        nextVersionNumber: base.nextVersionNumber,
+        mergedFiles,
+        removedFiles,
+        sourcePrompt: `Fix preview error: ${errorMessage}`,
+        assistantMessage: fixResult.message,
+        summary: fixResult.summary,
+    })
+
+    return {
+        ...persisted,
+        appliedFiles,
+        deletedFiles: removedFiles,
+    }
+}
+
 export const generateService = {
     generateWebsite,
+    applyProjectEdit,
+    applyProjectFix,
 }

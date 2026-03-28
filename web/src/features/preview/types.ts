@@ -1,10 +1,11 @@
-import type { RefObject } from 'react'
+﻿import type { RefObject } from 'react'
 import type { Message } from '@/features/chat/types'
 import type { BackendProjectVersionSummary } from '@/features/projects/api/project'
 
 export type PreviewDevice = 'desktop' | 'mobile' | 'tablet'
 export type PreviewTab = 'preview' | 'code' | 'canvas'
 export type GeneratedFileStatus = 'queued' | 'building' | 'done' | 'error'
+export type OutputOperation = 'build' | 'edit' | 'fix'
 
 export interface GeneratedCode {
     html: string
@@ -17,6 +18,11 @@ export interface PreviewSelectedElement {
     textContent: string
 }
 
+export interface PreviewRuntimeError {
+    message: string
+    stack?: string | null
+}
+
 export interface GeneratedProjectFile {
     path: string
     content: string
@@ -27,11 +33,16 @@ export interface GeneratedProjectFile {
 
 export interface OutputScreenProps {
     onBack?: () => void
-    onPromptSubmit: (prompt: string) => void
+    onPromptSubmit: (
+        prompt: string,
+        options?: { selectedElement?: PreviewSelectedElement }
+    ) => Promise<void> | void
+    onRuntimeError?: (error: PreviewRuntimeError) => Promise<void> | void
     messages: Message[]
     generatedFiles?: Record<string, GeneratedProjectFile>
     activeGeneratedFilePath?: string | null
     generationPhase?: 'thinking' | 'planning' | 'building' | 'done' | null
+    activeOperation?: OutputOperation | null
     isGenerating?: boolean
     showStructureOnly?: boolean
     projectName?: string | null
