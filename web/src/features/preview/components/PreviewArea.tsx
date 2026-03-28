@@ -1,9 +1,215 @@
-import React, { useEffect } from 'react'
+﻿import React, { useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { cn } from '@/shared/lib/utils'
+import { PREVIEW_HTML } from '@/features/preview/constants/preview'
 import type { PreviewAreaProps } from '@/features/preview/types'
 
 const loaderDotDelays = [0, 0.14, 0.28]
+
+const previewBridgeStyle = `
+<style>
+    html[data-phasehumans-visual="true"] body {
+        cursor: crosshair;
+    }
+
+    .phasehumans-hover-highlight {
+        outline: 2px solid rgba(255, 255, 255, 0.22) !important;
+        outline-offset: 2px !important;
+    }
+
+    .phasehumans-selected-highlight {
+        outline: 2px solid #ffffff !important;
+        outline-offset: 2px !important;
+        box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.12) !important;
+    }
+</style>`
+
+const previewBridgeScript = `
+<script>
+(() => {
+    if (window.__PHASEHUMANS_PREVIEW__) {
+        return;
+    }
+
+    window.__PHASEHUMANS_PREVIEW__ = true;
+
+    let isVisualMode = false;
+    let hoveredElement = null;
+    let selectedElement = null;
+
+    const clearHover = () => {
+        if (hoveredElement) {
+            hoveredElement.classList.remove('phasehumans-hover-highlight');
+            hoveredElement = null;
+        }
+    };
+
+    const clearSelection = (notifyParent = true) => {
+        if (selectedElement) {
+            selectedElement.classList.remove('phasehumans-selected-highlight');
+            selectedElement = null;
+        }
+
+        if (notifyParent) {
+            window.parent.postMessage({ type: 'selection-cleared' }, '*');
+        }
+    };
+
+    const isSelectableTarget = (target) => {
+        return target instanceof HTMLElement;
+    };
+
+    window.addEventListener('message', (event) => {
+        if (event.data?.type === 'toggle-visual-mode') {
+            isVisualMode = Boolean(event.data.isActive);
+            document.documentElement.setAttribute(
+                'data-phasehumans-visual',
+                isVisualMode ? 'true' : 'false'
+            );
+
+            if (!isVisualMode) {
+                clearHover();
+                clearSelection();
+            }
+        }
+
+        if (event.data?.type === 'selection-cleared') {
+            clearHover();
+            clearSelection(false);
+        }
+    });
+
+    window.addEventListener('error', (event) => {
+        window.parent.postMessage(
+            {
+                type: 'runtime-error',
+                message: event.message || 'Runtime error',
+                stack: event.error?.stack || null,
+            },
+            '*'
+        );
+    });
+
+    window.addEventListener('unhandledrejection', (event) => {
+        const reason = event.reason;
+        const message =
+            reason instanceof Error
+                ? reason.message
+                : typeof reason === 'string'
+                  ? reason
+                  : 'Unhandled promise rejection';
+
+        window.parent.postMessage(
+            {
+                type: 'runtime-error',
+                message,
+                stack: reason instanceof Error ? reason.stack || null : null,
+            },
+            '*'
+        );
+    });
+
+    document.addEventListener(
+        'mouseover',
+        (event) => {
+            if (!isVisualMode || !isSelectableTarget(event.target)) {
+                return;
+            }
+
+            if (hoveredElement === event.target) {
+                return;
+            }
+
+            clearHover();
+            hoveredElement = event.target;
+            hoveredElement.classList.add('phasehumans-hover-highlight');
+        },
+        true
+    );
+
+    document.addEventListener(
+        'mouseout',
+        (event) => {
+            if (!isVisualMode || hoveredElement !== event.target) {
+                return;
+            }
+
+            clearHover();
+        },
+        true
+    );
+
+    document.addEventListener(
+        'click',
+        (event) => {
+            if (!isVisualMode || !isSelectableTarget(event.target)) {
+                return;
+            }
+
+            event.preventDefault();
+            event.stopPropagation();
+
+            clearSelection(false);
+            selectedElement = event.target;
+            selectedElement.classList.add('phasehumans-selected-highlight');
+
+            window.parent.postMessage(
+                {
+                    type: 'element-selected',
+                    tagName: selectedElement.tagName.toLowerCase(),
+                    textContent: (selectedElement.innerText || selectedElement.textContent || '')
+                        .trim()
+                        .slice(0, 160),
+                },
+                '*'
+            );
+        },
+        true
+    );
+})();
+</script>`
+
+const withDocumentShell = (html: string) => {
+    const trimmed = html.trim()
+
+    if (!trimmed) {
+        return PREVIEW_HTML
+    }
+
+    if (!/<html[\s>]/i.test(trimmed)) {
+        return `<!DOCTYPE html><html><head></head><body>${trimmed}</body></html>`
+    }
+
+    if (!/<head[\s>]/i.test(trimmed)) {
+        return trimmed.replace(/<html([^>]*)>/i, '<html$1><head></head>')
+    }
+
+    return trimmed
+}
+
+const injectPreviewBridge = (html: string) => {
+    let documentHtml = withDocumentShell(html)
+
+    if (!/<body[\s>]/i.test(documentHtml)) {
+        documentHtml = documentHtml.replace(/<\/head>/i, '</head><body></body>')
+    }
+
+    if (!/<meta[^>]+name=["']viewport["'][^>]*>/i.test(documentHtml)) {
+        documentHtml = documentHtml.replace(
+            /<head([^>]*)>/i,
+            '<head$1><meta name="viewport" content="width=device-width, initial-scale=1" />'
+        )
+    }
+
+    if (!documentHtml.includes('window.__PHASEHUMANS_PREVIEW__')) {
+        documentHtml = documentHtml.replace(
+            /<\/head>/i,
+            `${previewBridgeStyle}${previewBridgeScript}</head>`
+        )
+    }
+
+    return documentHtml
+}
 
 export const PreviewArea: React.FC<PreviewAreaProps> = ({
     html,
@@ -15,31 +221,12 @@ export const PreviewArea: React.FC<PreviewAreaProps> = ({
     fullscreen = false,
     showStructureOnly = false,
 }) => {
-    // Attach message listener for iframe communication
     useEffect(() => {
         window.addEventListener('message', onMessage)
         return () => window.removeEventListener('message', onMessage)
     }, [onMessage])
 
-    const srcDoc = React.useMemo(() => {
-        if (!fullscreen) {
-            return html
-        }
-
-        const hasViewportMeta = /<meta[^>]+name=["']viewport["'][^>]*>/i.test(html)
-
-        if (hasViewportMeta) {
-            return html
-        }
-
-        const viewportTag = '<meta name="viewport" content="width=device-width, initial-scale=1" />'
-
-        if (/<head[^>]*>/i.test(html)) {
-            return html.replace(/<head([^>]*)>/i, `<head$1>${viewportTag}`)
-        }
-
-        return `<!DOCTYPE html><html><head>${viewportTag}</head><body>${html}</body></html>`
-    }, [html, fullscreen])
+    const srcDoc = React.useMemo(() => injectPreviewBridge(html), [html])
 
     const showLoader = isGenerating
     const showStructurePlaceholder = showStructureOnly && !isGenerating

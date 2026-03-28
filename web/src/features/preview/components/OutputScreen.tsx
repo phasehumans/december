@@ -1,4 +1,4 @@
-import React from 'react'
+﻿import React from 'react'
 import { ChatThread as ChatSidebar } from '@/features/chat/components/ChatThread'
 import { OutputScreenMainContent } from './OutputScreenMainContent'
 import { PreviewArea } from './PreviewArea'
@@ -10,10 +10,12 @@ type MobileOutputTab = 'chat' | 'preview'
 export const OutputScreen: React.FC<OutputScreenProps> = ({
     onBack,
     onPromptSubmit,
+    onRuntimeError,
     messages,
     generatedFiles,
     activeGeneratedFilePath,
     generationPhase,
+    activeOperation,
     isGenerating = false,
     showStructureOnly = false,
     projectName,
@@ -52,6 +54,9 @@ export const OutputScreen: React.FC<OutputScreenProps> = ({
         generatedFiles,
         activeGeneratedFilePath,
         generationPhase,
+        activeOperation,
+        onPromptSubmit,
+        onRuntimeError,
     })
 
     const [mobileActiveTab, setMobileActiveTab] = React.useState<MobileOutputTab>('chat')
@@ -69,7 +74,9 @@ export const OutputScreen: React.FC<OutputScreenProps> = ({
                         <ChatSidebar
                             mode="mobile"
                             messages={messages}
-                            onPromptSubmit={onPromptSubmit}
+                            onPromptSubmit={(prompt) => {
+                                void onPromptSubmit(prompt)
+                            }}
                             onBack={handleBack}
                             isGenerating={isGenerating}
                             steps={steps}
@@ -78,7 +85,9 @@ export const OutputScreen: React.FC<OutputScreenProps> = ({
                             setIsThoughtsOpen={setIsThoughtsOpen}
                             editPrompt={editPrompt}
                             setEditPrompt={setEditPrompt}
-                            handleApplyEdit={handleApplyEdit}
+                            handleApplyEdit={() => {
+                                void handleApplyEdit()
+                            }}
                             isVisualMode={isVisualMode}
                             setIsVisualMode={setIsVisualMode}
                             selectedElement={selectedElement}
@@ -138,7 +147,9 @@ export const OutputScreen: React.FC<OutputScreenProps> = ({
             <div className="hidden md:flex w-full h-full overflow-hidden">
                 <ChatSidebar
                     messages={messages}
-                    onPromptSubmit={onPromptSubmit}
+                    onPromptSubmit={(prompt) => {
+                        void onPromptSubmit(prompt)
+                    }}
                     onBack={handleBack}
                     isGenerating={isGenerating}
                     steps={steps}
@@ -147,7 +158,9 @@ export const OutputScreen: React.FC<OutputScreenProps> = ({
                     setIsThoughtsOpen={setIsThoughtsOpen}
                     editPrompt={editPrompt}
                     setEditPrompt={setEditPrompt}
-                    handleApplyEdit={handleApplyEdit}
+                    handleApplyEdit={() => {
+                        void handleApplyEdit()
+                    }}
                     isVisualMode={isVisualMode}
                     setIsVisualMode={setIsVisualMode}
                     selectedElement={selectedElement}
