@@ -1,4 +1,4 @@
-﻿import { z } from 'zod'
+import { z } from 'zod'
 
 const fileGeneratorSchema = z.enum([
     'static',
@@ -7,9 +7,6 @@ const fileGeneratorSchema = z.enum([
     'component',
     'layout',
     'route',
-    'api',
-    'model',
-    'schema',
     'config',
     'lib',
 ])
@@ -21,22 +18,10 @@ export const plannedProjectFileSchema = z.object({
     generator: fileGeneratorSchema,
 })
 
-export const generateWebsiteSchema = z
-    .object({
-        prompt: z.string().min(5),
-        isDB: z.boolean(),
-        dbURL: z.string().optional(),
-        projectId: z.string().uuid().optional(),
-    })
-    .superRefine((data, ctx) => {
-        if (data.isDB && !data.dbURL?.trim()) {
-            ctx.addIssue({
-                code: z.ZodIssueCode.custom,
-                path: ['dbURL'],
-                message: 'db url is required when database is enabled',
-            })
-        }
-    })
+export const generateWebsiteSchema = z.object({
+    prompt: z.string().min(5),
+    projectId: z.string().uuid().optional(),
+})
 
 export const previewSelectedElementSchema = z.object({
     tagName: z.string().min(1),
@@ -78,27 +63,14 @@ export const projectIntentSchema = z.object({
     experienceType: z.enum(['marketing', 'app', 'hybrid']),
 
     frontendFramework: z.literal('vite-react'),
-    backendFramework: z.literal('express'),
-    runTime: z.literal('bun'),
-
-    databaseProvider: z.literal('neon-postgres'),
-    databaseConnection: z.literal('neon-url'),
-
-    database: z.enum(['postgres', 'none']),
-
-    authStrategy: z.literal('jwt-email-password'),
-    auth: z.enum(['required', 'optional', 'none']),
+    language: z.literal('typescript'),
+    styling: z.literal('tailwindcss'),
+    visualStyle: z.string(),
 
     pages: z.array(z.string()),
     sections: z.array(z.string()),
     coreEntities: z.array(z.string()),
     coreFeatures: z.array(z.string()),
-
-    needsBackend: z.boolean(),
-    needsDatabase: z.boolean(),
-    needsAuthentication: z.boolean(),
-    needsFileStorage: z.boolean(),
-    needsPayments: z.boolean(),
 })
 
 export const extractProjectPlanSchema = projectIntentSchema
@@ -110,20 +82,9 @@ export const projectPlanDataSchema = z
         layoutType: z.enum(['single-page', 'multi-page']),
         needsRouting: z.boolean(),
 
-        installCommands: z.object({
-            web: z.array(z.string()),
-            server: z.array(z.string()),
-        }),
-
-        dependencies: z.object({
-            web: z.array(z.string()),
-            server: z.array(z.string()),
-        }),
-
-        devDependencies: z.object({
-            web: z.array(z.string()),
-            server: z.array(z.string()),
-        }),
+        installCommand: z.string(),
+        dependencies: z.array(z.string()),
+        devDependencies: z.array(z.string()),
 
         frontend: z.object({
             pages: z.array(
@@ -139,40 +100,6 @@ export const projectPlanDataSchema = z
                     name: z.string(),
                     type: z.enum(['layout', 'section', 'shared', 'feature']),
                     purpose: z.string(),
-                })
-            ),
-        }),
-
-        backend: z.object({
-            enabled: z.boolean(),
-
-            modules: z.array(
-                z.object({
-                    name: z.string(),
-                    purpose: z.string(),
-                })
-            ),
-
-            apiResources: z.array(
-                z.object({
-                    name: z.string(),
-                    basePath: z.string(),
-                    purpose: z.string(),
-                })
-            ),
-        }),
-
-        databasePlan: z.object({
-            enabled: z.boolean(),
-
-            orm: z.enum(['prisma', 'none']),
-            validation: z.enum(['zod', 'none']),
-
-            tables: z.array(
-                z.object({
-                    name: z.string(),
-                    purpose: z.string(),
-                    columns: z.array(z.string()),
                 })
             ),
         }),

@@ -46,6 +46,10 @@ const validateGeneratedFileContent = (path: string, content: string) => {
         throw new Error(`markdown fences detected in generated content for ${path}`)
     }
 
+    if (!path.startsWith('web/')) {
+        throw new Error(`frontend-only generation cannot write non-web file: ${path}`)
+    }
+
     if (path.endsWith('.json')) {
         try {
             JSON.parse(normalizedContent)
@@ -58,26 +62,18 @@ const validateGeneratedFileContent = (path: string, content: string) => {
 }
 
 const getPriorityContextPaths = (targetPath: string) => {
-    if (targetPath.startsWith('web/')) {
-        return [
-            'web/package.json',
-            'web/tsconfig.json',
-            'web/vite.config.ts',
-            'web/src/main.tsx',
-            'web/src/App.tsx',
-        ]
+    if (!targetPath.startsWith('web/')) {
+        return []
     }
 
-    if (targetPath.startsWith('server/')) {
-        return [
-            'server/package.json',
-            'server/tsconfig.json',
-            'server/src/index.ts',
-            'server/src/app.ts',
-        ]
-    }
-
-    return []
+    return [
+        'web/package.json',
+        'web/tsconfig.json',
+        'web/vite.config.ts',
+        'web/src/main.tsx',
+        'web/src/App.tsx',
+        'web/src/index.css',
+    ]
 }
 
 const selectRelatedFiles = (targetPath: string, generatedFiles: Record<string, string>) => {
@@ -102,14 +98,18 @@ const selectRelatedFiles = (targetPath: string, generatedFiles: Record<string, s
 }
 
 export const generateProjectFile = async (data: GenerateProjectFileInput) => {
+    if (!data.targetFile.path.startsWith('web/')) {
+        throw new Error(`frontend-only generation cannot target ${data.targetFile.path}`)
+    }
+
     return retryAsync({
         label: `build agent (${data.targetFile.path})`,
         maxAttempts: BUILD_AGENT_MAX_ATTEMPTS,
         task: async (attempt, lastError) => {
             const completion = await openai.chat.completions.create({
-                // model: 'openai/gpt-oss-20b:free',
-                model: 'openai/gpt-5.1-codex-mini',
-                max_tokens: 4000,
+                model: 'openai/gpt-oss-20b:free',
+                // model: 'openai/gpt-5.1-codex-mini',
+                // max_tokens: 4000,
                 temperature: 0,
                 messages: [
                     {
@@ -133,7 +133,7 @@ export const generateProjectFile = async (data: GenerateProjectFileInput) => {
                         ? [
                               {
                                   role: 'system' as const,
-                                  content: `Retry attempt ${attempt}. The previous file response could not be used: ${lastError?.message ?? 'unknown error'}. Regenerate only ${data.targetFile.path} as raw file content with no markdown fences or commentary.`,
+                                  content: `Retry attempt ${attempt}. The previous file response could not be used: ${lastError?.message ?? 'unknown error'}. Regenerate only ${data.targetFile.path} as raw file content with no markdown fences or commentary. Keep the output inside the web/ frontend only.`,
                               },
                           ]
                         : []),
