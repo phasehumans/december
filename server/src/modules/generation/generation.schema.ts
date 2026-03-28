@@ -1,4 +1,4 @@
-import { z } from 'zod'
+﻿import { z } from 'zod'
 
 const fileGeneratorSchema = z.enum([
     'static',
@@ -37,6 +37,25 @@ export const generateWebsiteSchema = z
             })
         }
     })
+
+export const previewSelectedElementSchema = z.object({
+    tagName: z.string().min(1),
+    textContent: z.string().max(500).default(''),
+})
+
+export const applyProjectEditSchema = z.object({
+    projectId: z.string().uuid(),
+    versionId: z.string().uuid().optional(),
+    prompt: z.string().min(1),
+    selectedElement: previewSelectedElementSchema.optional(),
+})
+
+export const applyProjectFixSchema = z.object({
+    projectId: z.string().uuid(),
+    versionId: z.string().uuid().optional(),
+    errorMessage: z.string().min(1),
+    stack: z.string().optional(),
+})
 
 export const projectIntentSchema = z.object({
     prompt: z.string(),
@@ -243,3 +262,55 @@ export const planAgentResponseSchema = z.object({
     message: z.string().min(1),
     plan: projectPlanSchema,
 })
+
+export const projectChangedFileSchema = z.object({
+    path: z.string().min(1),
+    content: z.string(),
+})
+
+const projectChangeAgentResponseSchema = z
+    .object({
+        message: z.string().min(1),
+        summary: z.string().min(1),
+        updatedFiles: z.array(projectChangedFileSchema),
+        deletedFiles: z.array(z.string().min(1)).default([]),
+    })
+    .superRefine((data, ctx) => {
+        const updatedPaths = data.updatedFiles.map((file) => file.path)
+        const deletedPaths = data.deletedFiles
+        const duplicateUpdatedPaths = updatedPaths.filter(
+            (path, index) => updatedPaths.indexOf(path) !== index
+        )
+        const duplicateDeletedPaths = deletedPaths.filter(
+            (path, index) => deletedPaths.indexOf(path) !== index
+        )
+
+        if (duplicateUpdatedPaths.length > 0) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                path: ['updatedFiles'],
+                message: `duplicate updated file path: ${duplicateUpdatedPaths[0]}`,
+            })
+        }
+
+        if (duplicateDeletedPaths.length > 0) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                path: ['deletedFiles'],
+                message: `duplicate deleted file path: ${duplicateDeletedPaths[0]}`,
+            })
+        }
+
+        for (const path of deletedPaths) {
+            if (updatedPaths.includes(path)) {
+                ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    path: ['deletedFiles'],
+                    message: `file cannot be updated and deleted in the same response: ${path}`,
+                })
+            }
+        }
+    })
+
+export const editAgentResponseSchema = projectChangeAgentResponseSchema
+export const fixAgentResponseSchema = projectChangeAgentResponseSchema

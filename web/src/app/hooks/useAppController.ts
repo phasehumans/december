@@ -1,9 +1,12 @@
-import React from 'react'
+﻿import React from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import type { Message } from '@/features/chat/types'
 import type { ViewState } from '@/app/types'
 import { clearAuthToken, getAuthToken } from '@/shared/api/client'
-import { generationAPI } from '@/features/generation/api/generation'
+import {
+    generationAPI,
+    type AppliedProjectChangeResult,
+} from '@/features/generation/api/generation'
 import {
     projectAPI,
     type BackendProjectDetail,
@@ -11,7 +14,12 @@ import {
     type BackendProjectVersionSummary,
 } from '@/features/projects/api/project'
 import { mapBackendProjectToUIProject } from '@/app/mapProject'
-import type { GeneratedProjectFile } from '@/features/preview/types'
+import type {
+    GeneratedProjectFile,
+    OutputOperation,
+    PreviewRuntimeError,
+    PreviewSelectedElement,
+} from '@/features/preview/types'
 
 const getUserFacingGenerationError = (message: string) => {
     const normalizedMessage = message.toLowerCase()
@@ -26,6 +34,14 @@ const getUserFacingGenerationError = (message: string) => {
 
     if (normalizedMessage.includes('understand the request')) {
         return "I couldn't understand the request clearly enough to start the project. Try rephrasing it with the main pages, style, and core features."
+    }
+
+    if (normalizedMessage.includes('edit agent')) {
+        return 'I hit an issue while applying that change. Try again with a narrower follow-up request.'
+    }
+
+    if (normalizedMessage.includes('fix agent')) {
+        return 'I found the preview error but could not repair it automatically. Try a manual follow-up edit instead.'
     }
 
     if (
@@ -81,6 +97,7 @@ export const useAppController = () => {
     const [generationPhase, setGenerationPhase] = React.useState<
         'thinking' | 'planning' | 'building' | 'done' | null
     >(null)
+    const [activeOperation, setActiveOperation] = React.useState<OutputOperation | null>(null)
     const [isGenerating, setIsGenerating] = React.useState(false)
     const [authToken, setAuthTokenState] = React.useState<string | null>(() => getAuthToken())
     const [showAuthModal, setShowAuthModal] = React.useState(false)
@@ -94,11 +111,8 @@ export const useAppController = () => {
     const generationAbortControllerRef = React.useRef<AbortController | null>(null)
     const activeAssistantMessageIdRef = React.useRef<string | null>(null)
     const activeGeneratedFilePathRef = React.useRef<string | null>(null)
-    const activeGenerationPhaseRef = React.useRef<
-        'thinking' | 'planning' | 'building' | 'done' | null
-    >(null)
-    const hasReceivedStreamErrorRef = React.useRef(false)
     const outputOriginViewRef = React.useRef<ViewState>('chat')
+    const lastAutoFixSignatureRef = React.useRef<string | null>(null)
 
     const isAuthenticated = Boolean(authToken)
 
@@ -199,10 +213,15 @@ export const useAppController = () => {
     )
 
     const replaceGeneratedOutput = React.useCallback(
-        (files: Record<string, string>) => {
+        (files: Record<string, string>, preferredPath?: string | null) => {
             const paths = Object.keys(files)
+            const nextActivePath =
+                preferredPath && paths.includes(preferredPath)
+                    ? preferredPath
+                    : (paths[paths.length - 1] ?? null)
+
             setGeneratedFiles(mapStoredFilesToGeneratedFiles(files))
-            setActiveGeneratedFilePath(paths[paths.length - 1] ?? null)
+            setActiveGeneratedFilePath(nextActivePath)
         },
         [setActiveGeneratedFilePath]
     )
@@ -214,9 +233,8 @@ export const useAppController = () => {
 
     const resetGenerationRefs = React.useCallback(() => {
         activeAssistantMessageIdRef.current = null
-        activeGenerationPhaseRef.current = null
-        hasReceivedStreamErrorRef.current = false
         setGenerationPhase(null)
+        setActiveOperation(null)
     }, [])
 
     const clearOpenedProject = React.useCallback(() => {
@@ -226,6 +244,7 @@ export const useAppController = () => {
         setActiveProjectVersionId(null)
         setProjectLoadError(null)
         setIsProjectOpening(false)
+        lastAutoFixSignatureRef.current = null
     }, [])
 
     const abortGenerationRequest = React.useCallback(() => {
@@ -325,6 +344,26 @@ export const useAppController = () => {
             setMessages(detail.chatMessages.map(mapBackendMessageToUIMessage))
             replaceGeneratedOutput(detail.generatedFiles)
             setGenerationPhase(null)
+            setActiveOperation(null)
+            lastAutoFixSignatureRef.current = null
+        },
+        [replaceGeneratedOutput]
+    )
+
+    const hydrateAppliedProjectChange = React.useCallback(
+        (result: AppliedProjectChangeResult) => {
+            const preferredPath =
+                result.appliedFiles[result.appliedFiles.length - 1] ??
+                activeGeneratedFilePathRef.current
+
+            setActiveProjectId(result.project.id)
+            setActiveProjectName(result.project.name)
+            setProjectVersions(result.versions)
+            setActiveProjectVersionId(result.version.id)
+            setProjectLoadError(null)
+            setMessages(result.chatMessages.map(mapBackendMessageToUIMessage))
+            replaceGeneratedOutput(result.generatedFiles, preferredPath)
+            setGenerationPhase('done')
         },
         [replaceGeneratedOutput]
     )
@@ -382,9 +421,8 @@ export const useAppController = () => {
             abortGenerationRequest()
             resetGeneratedOutput()
             activeAssistantMessageIdRef.current = assistantMessageId
-            activeGenerationPhaseRef.current = 'thinking'
-            hasReceivedStreamErrorRef.current = false
             setGenerationPhase('thinking')
+            setActiveOperation('build')
             setIsGenerating(true)
             setProjectLoadError(null)
 
@@ -415,20 +453,17 @@ export const useAppController = () => {
                                     return
                                 case 'phase':
                                     if (event.data.phase === 'planning') {
-                                        activeGenerationPhaseRef.current = 'planning'
                                         setGenerationPhase('planning')
                                         setAssistantStatus(activeMessageId, 'planning')
                                         ensureAssistantSpacing(activeMessageId)
                                     }
 
                                     if (event.data.phase === 'building') {
-                                        activeGenerationPhaseRef.current = 'building'
                                         setGenerationPhase('building')
                                         setAssistantStatus(activeMessageId, 'building')
                                     }
 
                                     if (event.data.phase === 'done') {
-                                        activeGenerationPhaseRef.current = 'done'
                                         setGenerationPhase('done')
                                         setAssistantStatus(activeMessageId, 'done')
                                     }
@@ -436,13 +471,11 @@ export const useAppController = () => {
                                     return
                                 case 'message-start':
                                     if (event.data.status === 'thinking') {
-                                        activeGenerationPhaseRef.current = 'thinking'
                                         setGenerationPhase('thinking')
                                         setAssistantStatus(activeMessageId, 'thinking')
                                     }
 
                                     if (event.data.status === 'planning') {
-                                        activeGenerationPhaseRef.current = 'planning'
                                         setGenerationPhase('planning')
                                         setAssistantStatus(activeMessageId, 'planning')
                                         ensureAssistantSpacing(activeMessageId)
@@ -469,7 +502,6 @@ export const useAppController = () => {
                                     markGeneratedFileError(event.data.path)
                                     return
                                 case 'result':
-                                    activeGenerationPhaseRef.current = 'done'
                                     setGenerationPhase('done')
                                     setAssistantStatus(activeMessageId, 'done')
                                     replaceGeneratedOutput(event.data.generatedFiles)
@@ -485,7 +517,6 @@ export const useAppController = () => {
                                     })
                                     return
                                 case 'error':
-                                    hasReceivedStreamErrorRef.current = true
                                     if (activeGeneratedFilePathRef.current) {
                                         markGeneratedFileError(activeGeneratedFilePathRef.current)
                                     }
@@ -533,6 +564,213 @@ export const useAppController = () => {
             setAssistantError,
             setAssistantStatus,
             startGeneratedFile,
+        ]
+    )
+
+    const handlePromptSubmit = React.useCallback(
+        (prompt: string) => {
+            requireAuthOr(() => {
+                const normalizedPrompt = prompt.trim()
+                if (!normalizedPrompt) {
+                    return
+                }
+
+                outputOriginViewRef.current = view
+                setView('chat')
+                setProjectLoadError(null)
+
+                const baseId = Date.now().toString()
+                const assistantMessageId = `${baseId}-assistant`
+                const userMsg: Message = {
+                    id: baseId,
+                    role: 'user',
+                    content: normalizedPrompt,
+                }
+                const assistantMsg: Message = {
+                    id: assistantMessageId,
+                    role: 'assistant',
+                    content: '',
+                    type: 'text',
+                    status: 'thinking',
+                }
+
+                setMessages([userMsg, assistantMsg])
+                startGeneration(normalizedPrompt, assistantMessageId, activeProjectId)
+            })
+        },
+        [activeProjectId, startGeneration, view, isAuthenticated]
+    )
+
+    const applyProjectChange = React.useCallback(
+        ({
+            kind,
+            prompt,
+            selectedElement,
+            errorMessage,
+            stack,
+            visibleUserMessage,
+        }: {
+            kind: 'edit' | 'fix'
+            prompt?: string
+            selectedElement?: PreviewSelectedElement
+            errorMessage?: string
+            stack?: string | null
+            visibleUserMessage: string
+        }) => {
+            if (!activeProjectId) {
+                return
+            }
+
+            abortGenerationRequest()
+            setProjectLoadError(null)
+
+            const baseId = Date.now().toString()
+            const assistantMessageId = `${baseId}-assistant`
+            const userMsg: Message = {
+                id: baseId,
+                role: 'user',
+                content: visibleUserMessage,
+            }
+            const assistantMsg: Message = {
+                id: assistantMessageId,
+                role: 'assistant',
+                content: '',
+                type: 'text',
+                status: 'thinking',
+            }
+
+            setMessages((prev) => [...prev, userMsg, assistantMsg])
+            activeAssistantMessageIdRef.current = assistantMessageId
+            setGenerationPhase('thinking')
+            setActiveOperation(kind)
+            setIsGenerating(true)
+
+            const abortController = new AbortController()
+            generationAbortControllerRef.current = abortController
+
+            void (async () => {
+                try {
+                    const result =
+                        kind === 'edit'
+                            ? await generationAPI.applyProjectEdit({
+                                  projectId: activeProjectId,
+                                  versionId: activeProjectVersionId,
+                                  prompt: prompt ?? '',
+                                  ...(selectedElement ? { selectedElement } : {}),
+                                  signal: abortController.signal,
+                              })
+                            : await generationAPI.applyProjectFix({
+                                  projectId: activeProjectId,
+                                  versionId: activeProjectVersionId,
+                                  errorMessage: errorMessage ?? '',
+                                  ...(stack ? { stack } : {}),
+                                  signal: abortController.signal,
+                              })
+
+                    if (abortController.signal.aborted) {
+                        return
+                    }
+
+                    hydrateAppliedProjectChange(result)
+                    void queryClient.invalidateQueries({ queryKey: ['projects'] })
+                } catch (error) {
+                    if (abortController.signal.aborted) {
+                        return
+                    }
+
+                    const activeMessageId = activeAssistantMessageIdRef.current
+                    const message =
+                        error instanceof Error
+                            ? error.message
+                            : 'Project update failed unexpectedly.'
+
+                    if (activeMessageId) {
+                        setAssistantError(activeMessageId, message)
+                    }
+                } finally {
+                    if (generationAbortControllerRef.current === abortController) {
+                        generationAbortControllerRef.current = null
+                        resetGenerationRefs()
+                        setIsGenerating(false)
+                    }
+                }
+            })()
+        },
+        [
+            activeProjectId,
+            activeProjectVersionId,
+            abortGenerationRequest,
+            hydrateAppliedProjectChange,
+            queryClient,
+            resetGenerationRefs,
+            setAssistantError,
+        ]
+    )
+
+    const handleOutputPromptSubmit = React.useCallback(
+        (prompt: string, selectedElement?: PreviewSelectedElement) => {
+            requireAuthOr(() => {
+                const normalizedPrompt = prompt.trim()
+
+                if (!normalizedPrompt) {
+                    return
+                }
+
+                if (!activeProjectId) {
+                    handlePromptSubmit(normalizedPrompt)
+                    return
+                }
+
+                outputOriginViewRef.current = view
+                setView('chat')
+                applyProjectChange({
+                    kind: 'edit',
+                    prompt: normalizedPrompt,
+                    selectedElement,
+                    visibleUserMessage: normalizedPrompt,
+                })
+            })
+        },
+        [activeProjectId, applyProjectChange, handlePromptSubmit, view, isAuthenticated]
+    )
+
+    const handlePreviewRuntimeError = React.useCallback(
+        (runtimeError: PreviewRuntimeError) => {
+            requireAuthOr(() => {
+                if (!activeProjectId || isGenerating) {
+                    return
+                }
+
+                const message = runtimeError.message.trim()
+
+                if (!message) {
+                    return
+                }
+
+                const signature = `${activeProjectVersionId ?? 'current'}:${message}`
+
+                if (lastAutoFixSignatureRef.current === signature) {
+                    return
+                }
+
+                lastAutoFixSignatureRef.current = signature
+                outputOriginViewRef.current = view
+                setView('chat')
+                applyProjectChange({
+                    kind: 'fix',
+                    errorMessage: message,
+                    stack: runtimeError.stack,
+                    visibleUserMessage: `Fix preview error: ${message}`,
+                })
+            })
+        },
+        [
+            activeProjectId,
+            activeProjectVersionId,
+            applyProjectChange,
+            isGenerating,
+            view,
+            isAuthenticated,
         ]
     )
 
@@ -589,7 +827,7 @@ export const useAppController = () => {
                 error instanceof Error ? error.message : 'Failed to download project'
             )
         }
-    }, [activeProjectId, activeProjectVersionId])
+    }, [activeProjectId])
 
     const handleNewThread = () => {
         requireAuthOr(() => {
@@ -620,37 +858,6 @@ export const useAppController = () => {
         resetGenerationFlow()
     }
 
-    const handlePromptSubmit = (prompt: string) => {
-        requireAuthOr(() => {
-            const normalizedPrompt = prompt.trim()
-            if (!normalizedPrompt) {
-                return
-            }
-
-            outputOriginViewRef.current = view
-            setView('chat')
-            setProjectLoadError(null)
-
-            const baseId = Date.now().toString()
-            const assistantMessageId = `${baseId}-assistant`
-            const userMsg: Message = {
-                id: baseId,
-                role: 'user',
-                content: normalizedPrompt,
-            }
-            const assistantMsg: Message = {
-                id: assistantMessageId,
-                role: 'assistant',
-                content: '',
-                type: 'text',
-                status: 'thinking',
-            }
-
-            setMessages([userMsg, assistantMsg])
-            startGeneration(normalizedPrompt, assistantMessageId, activeProjectId)
-        })
-    }
-
     const isHome = view === 'chat' && messages.length === 0 && !isProjectOpening
     const showSidebar = !(!isHome && view === 'chat')
     const isProjectsInitialLoading = isProjectsLoading && projects.length === 0
@@ -672,6 +879,7 @@ export const useAppController = () => {
         generatedFiles,
         activeGeneratedFilePath,
         generationPhase,
+        activeOperation,
         isGenerating,
         authToken,
         setAuthTokenState,
@@ -695,6 +903,8 @@ export const useAppController = () => {
         handleNavigate,
         handleSignOut,
         handlePromptSubmit,
+        handleOutputPromptSubmit,
+        handlePreviewRuntimeError,
         handleBackFromOutput,
         handleOpenProject,
         handleSelectVersion,
