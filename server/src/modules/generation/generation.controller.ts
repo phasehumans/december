@@ -1,4 +1,4 @@
-﻿import type { Request, Response } from 'express'
+import type { Request, Response } from 'express'
 import {
     applyProjectEditSchema,
     applyProjectFixSchema,
@@ -33,7 +33,7 @@ const generateWebsite = async (req: Request, res: Response) => {
         })
     }
 
-    const { prompt, isDB, dbURL, projectId } = parseData.data
+    const { prompt, projectId } = parseData.data
     const userId = req.userId as string | undefined
 
     if (!userId) {
@@ -53,8 +53,6 @@ const generateWebsite = async (req: Request, res: Response) => {
         await generateService.generateWebsite({
             prompt,
             userId,
-            isDB,
-            dbURL,
             projectId,
             onEvent: async (event) => {
                 writeEvent(res, event.type, event.data)

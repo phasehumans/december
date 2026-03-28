@@ -14,19 +14,19 @@ function normalizePath(path: string) {
 }
 
 export function currentKey(projectId: string, path: string) {
-    return `projects/${projectId}/current/${normalizePath(path)}`
+    return `projects/${projectId}/frontend/current/${normalizePath(path)}`
 }
 
 export function currentPrefix(projectId: string) {
-    return `projects/${projectId}/current/`
+    return `projects/${projectId}/frontend/current/`
 }
 
 export function versionKey(projectId: string, versionId: string, path: string) {
-    return `projects/${projectId}/versions/${versionId}/${normalizePath(path)}`
+    return `projects/${projectId}/frontend/versions/${versionId}/${normalizePath(path)}`
 }
 
 export function versionPrefix(projectId: string, versionId: string) {
-    return `projects/${projectId}/versions/${versionId}/`
+    return `projects/${projectId}/frontend/versions/${versionId}/`
 }
 
 export function projectPrefix(projectId: string) {

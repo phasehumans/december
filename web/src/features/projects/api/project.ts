@@ -45,8 +45,6 @@ export type BackendProjectDetail = {
         | (BackendProjectVersionSummary & {
               intent: unknown
               plan: unknown
-              isDatabaseEnabled: boolean
-              databaseUrl?: string | null
           })
         | null
     chatMessages: BackendProjectMessage[]

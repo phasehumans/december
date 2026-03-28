@@ -1,4 +1,4 @@
-﻿import React from 'react'
+import React from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import type { Message } from '@/features/chat/types'
 import type { ViewState } from '@/app/types'
@@ -433,7 +433,6 @@ export const useAppController = () => {
                 try {
                     await generationAPI.generateProjectStream({
                         prompt,
-                        isDB: false,
                         projectId,
                         signal: abortController.signal,
                         onEvent: (event) => {
