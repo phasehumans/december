@@ -1,4 +1,4 @@
-import React from 'react'
+﻿import React from 'react'
 import { AuthModal } from './features/auth/components/AuthModal'
 import { AppSideNavigation } from './app/components/AppSideNavigation'
 import { AppContentView } from './app/components/AppContentView'
@@ -13,6 +13,7 @@ const App: React.FC = () => {
         generatedFiles,
         activeGeneratedFilePath,
         generationPhase,
+        activeOperation,
         isGenerating,
         setAuthTokenState,
         showAuthModal,
@@ -34,6 +35,8 @@ const App: React.FC = () => {
         handleNavigate,
         handleSignOut,
         handlePromptSubmit,
+        handleOutputPromptSubmit,
+        handlePreviewRuntimeError,
         handleBackFromOutput,
         handleOpenProject,
         handleSelectVersion,
@@ -75,6 +78,7 @@ const App: React.FC = () => {
                     generatedFiles={generatedFiles}
                     activeGeneratedFilePath={activeGeneratedFilePath}
                     generationPhase={generationPhase}
+                    activeOperation={activeOperation}
                     isGenerating={isGenerating}
                     isAuthenticated={isAuthenticated}
                     projects={projects}
@@ -85,7 +89,9 @@ const App: React.FC = () => {
                     projectVersions={projectVersions}
                     activeProjectVersionId={activeProjectVersionId}
                     isProjectOpening={isProjectOpening}
-                    onPromptSubmit={handlePromptSubmit}
+                    onHomePromptSubmit={handlePromptSubmit}
+                    onOutputPromptSubmit={handleOutputPromptSubmit}
+                    onPreviewRuntimeError={handlePreviewRuntimeError}
                     onOpenAuth={() => setShowAuthModal(true)}
                     onBackFromOutput={handleBackFromOutput}
                     onNewProject={handleNewThread}

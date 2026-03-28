@@ -1,4 +1,4 @@
-import React from 'react'
+﻿import React from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { HomeHero } from '@/features/home/components/HomeHero'
 import { OutputScreen } from '@/features/preview/components/OutputScreen'
@@ -7,7 +7,12 @@ import { ProfileSettings } from '@/features/profile/components/ProfileSettings'
 import type { Message } from '@/features/chat/types'
 import type { Project } from '@/features/projects/types'
 import type { ViewState } from '@/app/types'
-import type { GeneratedProjectFile } from '@/features/preview/types'
+import type {
+    GeneratedProjectFile,
+    OutputOperation,
+    PreviewRuntimeError,
+    PreviewSelectedElement,
+} from '@/features/preview/types'
 import type { BackendProjectVersionSummary } from '@/features/projects/api/project'
 
 interface AppContentViewProps {
@@ -17,6 +22,7 @@ interface AppContentViewProps {
     generatedFiles: Record<string, GeneratedProjectFile>
     activeGeneratedFilePath: string | null
     generationPhase: 'thinking' | 'planning' | 'building' | 'done' | null
+    activeOperation: OutputOperation | null
     isGenerating: boolean
     isAuthenticated: boolean
     projects: Project[]
@@ -27,7 +33,12 @@ interface AppContentViewProps {
     projectVersions: BackendProjectVersionSummary[]
     activeProjectVersionId: string | null
     isProjectOpening: boolean
-    onPromptSubmit: (prompt: string) => void
+    onHomePromptSubmit: (prompt: string) => void
+    onOutputPromptSubmit: (
+        prompt: string,
+        selectedElement?: PreviewSelectedElement
+    ) => Promise<void> | void
+    onPreviewRuntimeError: (error: PreviewRuntimeError) => Promise<void> | void
     onOpenAuth: () => void
     onBackFromOutput: () => void
     onNewProject: () => void
@@ -74,6 +85,7 @@ export const AppContentView: React.FC<AppContentViewProps> = ({
     generatedFiles,
     activeGeneratedFilePath,
     generationPhase,
+    activeOperation,
     isGenerating,
     isAuthenticated,
     projects,
@@ -84,7 +96,9 @@ export const AppContentView: React.FC<AppContentViewProps> = ({
     projectVersions,
     activeProjectVersionId,
     isProjectOpening,
-    onPromptSubmit,
+    onHomePromptSubmit,
+    onOutputPromptSubmit,
+    onPreviewRuntimeError,
     onOpenAuth,
     onBackFromOutput,
     onNewProject,
@@ -118,7 +132,7 @@ export const AppContentView: React.FC<AppContentViewProps> = ({
                 (isHome ? (
                     <AnimatedPage pageKey="chat-home">
                         <HomeHero
-                            onPromptSubmit={onPromptSubmit}
+                            onPromptSubmit={onHomePromptSubmit}
                             isGenerating={isGenerating}
                             isAuthenticated={isAuthenticated}
                             onOpenAuth={onOpenAuth}
@@ -128,11 +142,15 @@ export const AppContentView: React.FC<AppContentViewProps> = ({
                     <AnimatedPage pageKey="chat-output">
                         <OutputScreen
                             onBack={onBackFromOutput}
-                            onPromptSubmit={onPromptSubmit}
+                            onPromptSubmit={(prompt, options) =>
+                                onOutputPromptSubmit(prompt, options?.selectedElement)
+                            }
+                            onRuntimeError={onPreviewRuntimeError}
                             messages={messages}
                             generatedFiles={generatedFiles}
                             activeGeneratedFilePath={activeGeneratedFilePath}
                             generationPhase={generationPhase}
+                            activeOperation={activeOperation}
                             isGenerating={isGenerating}
                             projectName={projectName}
                             versions={projectVersions}
