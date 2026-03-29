@@ -31,6 +31,8 @@ const App: React.FC = () => {
         projectVersions,
         activeProjectVersionId,
         isProjectOpening,
+        previewSession,
+        previewSessionError,
         handleNewThread,
         handleNavigate,
         handleSignOut,
@@ -89,6 +91,8 @@ const App: React.FC = () => {
                     projectVersions={projectVersions}
                     activeProjectVersionId={activeProjectVersionId}
                     isProjectOpening={isProjectOpening}
+                    previewSession={previewSession}
+                    previewSessionError={previewSessionError}
                     onHomePromptSubmit={handlePromptSubmit}
                     onOutputPromptSubmit={handleOutputPromptSubmit}
                     onPreviewRuntimeError={handlePreviewRuntimeError}
