@@ -16,3 +16,4 @@ package-lock.json
 # Generated files
 server/src/db/prisma/generated
 logs
+runtime
