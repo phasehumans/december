@@ -1,4 +1,4 @@
-import { z } from 'zod'
+﻿import { z } from 'zod'
 import { prisma } from '../../config/db'
 import { generateProjectFile } from '../../core/agents/build.agent'
 import { applyProjectEdit as applyProjectEditAgent } from '../../core/agents/edit.agent'
@@ -6,7 +6,9 @@ import { applyProjectFix as applyProjectFixAgent } from '../../core/agents/fix.a
 import { extractProjectPlan } from '../../core/agents/plan.agent'
 import { extractProjectIntent } from '../../core/agents/prompt.agent'
 import { currentKey, deleteObject, getTextFile } from '../../lib/project-storage'
+import { publishGeneratedPreviewManifest, publishStoredPreviewManifest, putPreviewSourceFile } from '../../lib/preview-manifest'
 import { saveProjectFiles } from '../../lib/save-project-files'
+import { runtimeService } from '../runtime/runtime.service'
 import { cleanPrompt } from '../../utils/cleanPrompt'
 import {
     applyProjectEditSchema,
@@ -56,6 +58,11 @@ type GenerationStreamEvent =
           type: 'project-created'
           data: {
               project: ProjectRecord
+              version: {
+                  id: string
+                  versionNumber: number
+                  label: string
+              }
           }
       }
     | {
@@ -229,6 +236,27 @@ const assertFrontendOnlyPlan = (plan: ProjectPlan) => {
 
     if (invalidFile) {
         throw new Error(`plan agent returned non-frontend file: ${invalidFile.path}`)
+    }
+}
+
+const notifyRuntimeOfManifest = async ({
+    projectId,
+    manifest,
+}: {
+    projectId: string
+    manifest: Awaited<ReturnType<typeof publishGeneratedPreviewManifest>> | Awaited<ReturnType<typeof publishStoredPreviewManifest>>
+}) => {
+    if (!manifest) {
+        return
+    }
+
+    try {
+        await runtimeService.notifyManifestPublished({
+            projectId,
+            manifest,
+        })
+    } catch (error) {
+        console.error('[runtime/notify]', error)
     }
 }
 
@@ -627,6 +655,23 @@ const persistProjectRevision = async ({
 
     await Promise.all(removedFiles.map((path) => deleteObject(currentKey(project.id, path))))
 
+    const finalPreviewManifest = await publishStoredPreviewManifest({
+        projectId: project.id,
+        versionId,
+        manifestVersion: 'final',
+        files: savedFiles.map((file) => ({
+            path: file.path,
+            key: file.key,
+            contentType: file.contentType,
+            size: file.size,
+        })),
+    })
+
+    await notifyRuntimeOfManifest({
+        projectId: project.id,
+        manifest: finalPreviewManifest,
+    })
+
     const nextMessages = [
         ...baseVersion.messages.map((message: any) => ({
             projectId: project.id,
@@ -755,6 +800,11 @@ const generateWebsite = async (data: GenerateWebsite) => {
             type: 'project-created',
             data: {
                 project,
+                version: {
+                    id: versionId,
+                    versionNumber,
+                    label: versionLabel,
+                },
             },
         })
 
@@ -811,6 +861,7 @@ const generateWebsite = async (data: GenerateWebsite) => {
         assertFrontendOnlyPlan(plan)
         const orderedFiles = getFilesInGenerationOrder(plan)
         const generatedFiles: Record<string, string> = {}
+        let previewManifestSequence = 0
         assistantMessageContent = appendAssistantMessageContent(
             assistantMessageContent,
             parsePlan.data.message
@@ -859,11 +910,30 @@ const generateWebsite = async (data: GenerateWebsite) => {
 
                 generatedFiles[file.path] = content
 
+                await putPreviewSourceFile({
+                    projectId: project.id,
+                    versionId,
+                    path: file.path,
+                    content,
+                })
+
                 await emitFileStream(onEvent, {
                     file,
                     content,
                     index: fileIndex + 1,
                     total: orderedFiles.length,
+                })
+
+                const previewManifest = await publishGeneratedPreviewManifest({
+                    projectId: project.id,
+                    versionId,
+                    manifestVersion: `build-${String(++previewManifestSequence).padStart(4, '0')}`,
+                    generatedFiles,
+                })
+
+                await notifyRuntimeOfManifest({
+                    projectId: project.id,
+                    manifest: previewManifest,
                 })
             } catch (error) {
                 const message =
@@ -888,6 +958,24 @@ const generateWebsite = async (data: GenerateWebsite) => {
                 path,
                 content,
             })),
+        })
+
+
+        const finalPreviewManifest = await publishStoredPreviewManifest({
+            projectId: project.id,
+            versionId,
+            manifestVersion: 'final',
+            files: savedFiles.map((file) => ({
+                path: file.path,
+                key: file.key,
+                contentType: file.contentType,
+                size: file.size,
+            })),
+        })
+
+        await notifyRuntimeOfManifest({
+            projectId: project.id,
+            manifest: finalPreviewManifest,
         })
 
         const persisted = await prisma.$transaction(async (tx) => {
@@ -1119,3 +1207,7 @@ export const generateService = {
     applyProjectEdit,
     applyProjectFix,
 }
+
+
+
+
