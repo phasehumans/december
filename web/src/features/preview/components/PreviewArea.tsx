@@ -252,7 +252,9 @@ export const PreviewArea: React.FC<PreviewAreaProps> = ({
             previewState === 'Installing' ||
             previewState === 'Starting')
     const showInlineStatus = isLivePreview && previewState && previewState !== 'Healthy'
-    const showFailedState = Boolean(previewSessionError || previewError || previewState === 'Failed')
+    const showFailedState = Boolean(
+        previewSessionError || previewError || previewState === 'Failed'
+    )
     const statusLabel =
         previewError?.message ||
         previewSessionError ||
@@ -312,7 +314,9 @@ export const PreviewArea: React.FC<PreviewAreaProps> = ({
                                     />
                                 ))}
                             </div>
-                            <p className="text-sm text-[#DCDCD9]">{statusLabel ?? 'Preparing preview'}</p>
+                            <p className="text-sm text-[#DCDCD9]">
+                                {statusLabel ?? 'Preparing preview'}
+                            </p>
                         </div>
                     </div>
                 ) : showStructurePlaceholder ? (

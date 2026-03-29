@@ -117,23 +117,26 @@ export const publishGeneratedPreviewManifest = async ({
     manifestVersion: string
     generatedFiles: Record<string, string>
 }) => {
-    const files = Object.entries(generatedFiles).reduce<PreviewManifestFile[]>((entries, [path, content]) => {
-        const workspacePath = toWorkspacePath(path)
+    const files = Object.entries(generatedFiles).reduce<PreviewManifestFile[]>(
+        (entries, [path, content]) => {
+            const workspacePath = toWorkspacePath(path)
 
-        if (!workspacePath) {
+            if (!workspacePath) {
+                return entries
+            }
+
+            entries.push({
+                path: workspacePath,
+                objectKey: versionKey(projectId, versionId, path),
+                size: Buffer.byteLength(content, 'utf8'),
+                contentType: guessContentType(path),
+                sha256: createHash('sha256').update(content).digest('hex'),
+            })
+
             return entries
-        }
-
-        entries.push({
-            path: workspacePath,
-            objectKey: versionKey(projectId, versionId, path),
-            size: Buffer.byteLength(content, 'utf8'),
-            contentType: guessContentType(path),
-            sha256: createHash('sha256').update(content).digest('hex'),
-        })
-
-        return entries
-    }, [])
+        },
+        []
+    )
 
     if (files.length === 0) {
         return null

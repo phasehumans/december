@@ -5,10 +5,7 @@
     extractProjectPlan,
     generateProjectFile,
 } from '../../core/engine/generation'
-import {
-    planAgentResponseSchema,
-    promptAgentResponseSchema,
-} from './generation.schema'
+import { planAgentResponseSchema, promptAgentResponseSchema } from './generation.schema'
 import {
     appendAssistantMessageContent,
     assertFrontendOnlyPlan,
@@ -16,9 +13,17 @@ import {
     mergeProjectFiles,
     toRecentMessages,
 } from './generation.helpers'
-import { initializeGenerationTarget, getProjectRevisionBase, markGenerationFailed, persistProjectRevision } from './generation.repository'
+import {
+    initializeGenerationTarget,
+    getProjectRevisionBase,
+    markGenerationFailed,
+    persistProjectRevision,
+} from './generation.repository'
 import { emitAssistantMessage, emitFileStream } from './generation.stream'
-import { publishFinalPreviewSnapshot, publishIncrementalPreviewSnapshot } from './generation.runtime'
+import {
+    publishFinalPreviewSnapshot,
+    publishIncrementalPreviewSnapshot,
+} from './generation.runtime'
 import type {
     ApplyProjectEditInput,
     ApplyProjectFixInput,
@@ -399,8 +404,3 @@ export const applyProjectFixWorkflow = async (data: ApplyProjectFixInput) => {
         deletedFiles: removedFiles,
     }
 }
-
-
-
-
-
