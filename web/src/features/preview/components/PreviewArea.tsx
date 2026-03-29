@@ -211,6 +211,17 @@ const injectPreviewBridge = (html: string) => {
     return documentHtml
 }
 
+const statusLabels = {
+    WaitingForRunnableVersion: 'Waiting for the first runnable snapshot',
+    Bootstrapping: 'Bootstrapping preview sandbox',
+    Installing: 'Installing dependencies with bun',
+    Starting: 'Starting the Vite dev server',
+    Healthy: 'Live preview is ready',
+    Rebuilding: 'Applying the latest manifest',
+    Failed: 'Preview failed',
+    Stopped: 'Preview stopped',
+} as const
+
 export const PreviewArea: React.FC<PreviewAreaProps> = ({
     html,
     isGenerating,
@@ -220,6 +231,10 @@ export const PreviewArea: React.FC<PreviewAreaProps> = ({
     iframeRef,
     fullscreen = false,
     showStructureOnly = false,
+    previewUrl,
+    previewState,
+    previewError,
+    previewSessionError,
 }) => {
     useEffect(() => {
         window.addEventListener('message', onMessage)
@@ -227,9 +242,22 @@ export const PreviewArea: React.FC<PreviewAreaProps> = ({
     }, [onMessage])
 
     const srcDoc = React.useMemo(() => injectPreviewBridge(html), [html])
-
-    const showLoader = isGenerating
-    const showStructurePlaceholder = showStructureOnly && !isGenerating
+    const isLivePreview = Boolean(previewUrl)
+    const showStructurePlaceholder = showStructureOnly && !isGenerating && !isLivePreview
+    const showFullscreenLoader =
+        !isLivePreview &&
+        (isGenerating ||
+            previewState === 'WaitingForRunnableVersion' ||
+            previewState === 'Bootstrapping' ||
+            previewState === 'Installing' ||
+            previewState === 'Starting')
+    const showInlineStatus = isLivePreview && previewState && previewState !== 'Healthy'
+    const showFailedState = Boolean(previewSessionError || previewError || previewState === 'Failed')
+    const statusLabel =
+        previewError?.message ||
+        previewSessionError ||
+        (previewState ? statusLabels[previewState] : null) ||
+        null
 
     return (
         <div
@@ -262,26 +290,29 @@ export const PreviewArea: React.FC<PreviewAreaProps> = ({
                             : 'w-full h-full rounded-xl border border-[#262626] shadow-2xl'
                 )}
             >
-                {showLoader ? (
+                {showFullscreenLoader ? (
                     <div className="absolute inset-0 z-50 flex items-center justify-center bg-[#171615]">
-                        <div className="flex items-center gap-2">
-                            {loaderDotDelays.map((delay, index) => (
-                                <motion.span
-                                    key={index}
-                                    className="h-2 w-2 rounded-full bg-[#DCDCD9]"
-                                    animate={{
-                                        opacity: [0.35, 0.75, 0.35],
-                                        scale: [0.98, 1.06, 0.98],
-                                        y: [0, -1, 0],
-                                    }}
-                                    transition={{
-                                        duration: 1.1,
-                                        repeat: Infinity,
-                                        ease: 'easeInOut',
-                                        delay,
-                                    }}
-                                />
-                            ))}
+                        <div className="flex flex-col items-center gap-4 text-center px-6">
+                            <div className="flex items-center gap-2">
+                                {loaderDotDelays.map((delay, index) => (
+                                    <motion.span
+                                        key={index}
+                                        className="h-2 w-2 rounded-full bg-[#DCDCD9]"
+                                        animate={{
+                                            opacity: [0.35, 0.75, 0.35],
+                                            scale: [0.98, 1.06, 0.98],
+                                            y: [0, -1, 0],
+                                        }}
+                                        transition={{
+                                            duration: 1.1,
+                                            repeat: Infinity,
+                                            ease: 'easeInOut',
+                                            delay,
+                                        }}
+                                    />
+                                ))}
+                            </div>
+                            <p className="text-sm text-[#DCDCD9]">{statusLabel ?? 'Preparing preview'}</p>
                         </div>
                     </div>
                 ) : showStructurePlaceholder ? (
@@ -301,12 +332,25 @@ export const PreviewArea: React.FC<PreviewAreaProps> = ({
                     <iframe
                         ref={iframeRef}
                         className={cn(
-                            'w-full h-full border-0 transition-opacity',
+                            'w-full h-full border-0 transition-opacity bg-white',
                             isVisualMode ? 'cursor-crosshair' : ''
                         )}
                         title="Preview"
-                        srcDoc={srcDoc}
+                        {...(previewUrl ? { src: previewUrl } : { srcDoc })}
                     />
+                )}
+
+                {showInlineStatus && statusLabel && (
+                    <div className="absolute left-4 top-4 z-40 rounded-full border border-black/10 bg-black/70 px-3 py-1.5 text-xs text-white backdrop-blur">
+                        {statusLabel}
+                    </div>
+                )}
+
+                {showFailedState && statusLabel && !showFullscreenLoader && (
+                    <div className="absolute inset-x-4 bottom-4 z-40 rounded-2xl border border-[#FF8A8A]/30 bg-[#2A1212]/90 px-4 py-3 text-sm text-[#FFD7D7] shadow-xl backdrop-blur">
+                        <div className="font-medium">Preview issue</div>
+                        <div className="mt-1 text-[#F2C7C7]">{statusLabel}</div>
+                    </div>
                 )}
             </div>
         </div>

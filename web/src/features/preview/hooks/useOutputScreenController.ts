@@ -6,6 +6,7 @@ import type {
     PreviewDevice,
     PreviewRuntimeError,
     PreviewSelectedElement,
+    PreviewSessionStatus,
     PreviewTab,
 } from '@/features/preview/types'
 
@@ -20,6 +21,7 @@ interface UseOutputScreenControllerArgs {
         options?: { selectedElement?: PreviewSelectedElement }
     ) => Promise<void> | void
     onRuntimeError?: (error: PreviewRuntimeError) => Promise<void> | void
+    previewSession?: PreviewSessionStatus | null
 }
 
 const getPreviewHtmlFromFiles = (generatedFiles?: Record<string, GeneratedProjectFile>) => {
@@ -70,6 +72,7 @@ export const useOutputScreenController = ({
     activeOperation,
     onPromptSubmit,
     onRuntimeError,
+    previewSession,
 }: UseOutputScreenControllerArgs) => {
     const [activeTab, setActiveTab] = React.useState<PreviewTab>('preview')
     const [device, setDevice] = React.useState<PreviewDevice>('desktop')
@@ -236,6 +239,11 @@ export const useOutputScreenController = ({
     }
 
     const handleOpenInNewTab = () => {
+        if (previewSession?.previewUrl) {
+            window.open(previewSession.previewUrl, '_blank', 'noopener,noreferrer')
+            return
+        }
+
         const newWindow = window.open('', '_blank')
 
         if (newWindow) {

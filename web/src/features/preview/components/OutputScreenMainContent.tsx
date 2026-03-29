@@ -1,9 +1,14 @@
-import React from 'react'
+﻿import React from 'react'
 import { OutputHeader } from './OutputHeader'
 import { PreviewArea } from './PreviewArea'
 import { CodeWorkspace } from './CodeWorkspace'
 import Canvas from '@/features/canvas/components/Canvas'
-import type { GeneratedProjectFile, PreviewDevice, PreviewTab } from '@/features/preview/types'
+import type {
+    GeneratedProjectFile,
+    PreviewDevice,
+    PreviewSessionStatus,
+    PreviewTab,
+} from '@/features/preview/types'
 import type { BackendProjectVersionSummary } from '@/features/projects/api/project'
 
 interface OutputScreenMainContentProps {
@@ -30,6 +35,8 @@ interface OutputScreenMainContentProps {
     isVersionLoading?: boolean
     onSelectVersion?: (versionId: string) => void
     onDownload?: () => void
+    previewSession?: PreviewSessionStatus | null
+    previewSessionError?: string | null
 }
 
 export const OutputScreenMainContent: React.FC<OutputScreenMainContentProps> = ({
@@ -56,6 +63,8 @@ export const OutputScreenMainContent: React.FC<OutputScreenMainContentProps> = (
     isVersionLoading,
     onSelectVersion,
     onDownload,
+    previewSession,
+    previewSessionError,
 }) => {
     return (
         <div className="flex-1 flex flex-col h-full bg-[#0F0F0F] relative overflow-hidden transition-all duration-300 min-h-0">
@@ -85,6 +94,10 @@ export const OutputScreenMainContent: React.FC<OutputScreenMainContentProps> = (
                     onMessage={onIframeMessage}
                     iframeRef={iframeRef}
                     showStructureOnly={showStructureOnly}
+                    previewUrl={previewSession?.previewUrl}
+                    previewState={previewSession?.state ?? null}
+                    previewError={previewSession?.lastError ?? null}
+                    previewSessionError={previewSessionError}
                 />
             )}
 

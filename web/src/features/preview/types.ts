@@ -6,6 +6,21 @@ export type PreviewDevice = 'desktop' | 'mobile' | 'tablet'
 export type PreviewTab = 'preview' | 'code' | 'canvas'
 export type GeneratedFileStatus = 'queued' | 'building' | 'done' | 'error'
 export type OutputOperation = 'build' | 'edit' | 'fix'
+export type PreviewRuntimeLifecycleState =
+    | 'WaitingForRunnableVersion'
+    | 'Bootstrapping'
+    | 'Installing'
+    | 'Starting'
+    | 'Healthy'
+    | 'Rebuilding'
+    | 'Failed'
+    | 'Stopped'
+export type PreviewRuntimeBackendStatus = 'ready' | 'rebuilding' | 'failed'
+export type PreviewRuntimeErrorClass =
+    | 'temporary_partial_generation'
+    | 'stable_compile_runtime'
+    | 'dependency_install'
+    | 'infra_runtime'
 
 export interface GeneratedCode {
     html: string
@@ -21,6 +36,26 @@ export interface PreviewSelectedElement {
 export interface PreviewRuntimeError {
     message: string
     stack?: string | null
+}
+
+export interface PreviewSessionError {
+    class: PreviewRuntimeErrorClass
+    code: string
+    message: string
+    detail?: string | null
+    retryable: boolean
+}
+
+export interface PreviewSessionStatus {
+    previewId: string
+    projectId: string
+    state: PreviewRuntimeLifecycleState
+    backendStatus: PreviewRuntimeBackendStatus
+    currentVersion?: string | null
+    healthyVersion?: string | null
+    previewUrl?: string | null
+    lastError?: PreviewSessionError | null
+    updatedAt: string
 }
 
 export interface GeneratedProjectFile {
@@ -51,6 +86,8 @@ export interface OutputScreenProps {
     isVersionLoading?: boolean
     onSelectVersion?: (versionId: string) => void
     onDownload?: () => void
+    previewSession?: PreviewSessionStatus | null
+    previewSessionError?: string | null
 }
 
 export interface OutputHeaderProps {
@@ -79,6 +116,10 @@ export interface PreviewAreaProps {
     iframeRef: RefObject<HTMLIFrameElement>
     fullscreen?: boolean
     showStructureOnly?: boolean
+    previewUrl?: string | null
+    previewState?: PreviewRuntimeLifecycleState | null
+    previewError?: PreviewSessionError | null
+    previewSessionError?: string | null
 }
 
 export interface PreviewWindowProps {
