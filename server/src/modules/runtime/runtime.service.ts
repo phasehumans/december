@@ -107,12 +107,15 @@ const runtimeRequest = async <T>(path: string, init?: RequestInit) => {
         headers,
     })
 
-    const payload = (await response.json().catch(() => null)) as
-        | { data?: T; error?: { message?: string } }
-        | null
+    const payload = (await response.json().catch(() => null)) as {
+        data?: T
+        error?: { message?: string }
+    } | null
 
     if (!response.ok) {
-        throw new Error(payload?.error?.message || `runtime request failed with status ${response.status}`)
+        throw new Error(
+            payload?.error?.message || `runtime request failed with status ${response.status}`
+        )
     }
 
     if (!payload?.data) {
