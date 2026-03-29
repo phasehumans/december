@@ -24,6 +24,8 @@ export const OutputScreen: React.FC<OutputScreenProps> = ({
     isVersionLoading,
     onSelectVersion,
     onDownload,
+    previewSession,
+    previewSessionError,
 }) => {
     const {
         activeTab,
@@ -57,6 +59,7 @@ export const OutputScreen: React.FC<OutputScreenProps> = ({
         activeOperation,
         onPromptSubmit,
         onRuntimeError,
+        previewSession,
     })
 
     const [mobileActiveTab, setMobileActiveTab] = React.useState<MobileOutputTab>('chat')
@@ -114,6 +117,10 @@ export const OutputScreen: React.FC<OutputScreenProps> = ({
                             iframeRef={iframeRef}
                             fullscreen
                             showStructureOnly={showStructureOnly}
+                            previewUrl={previewSession?.previewUrl}
+                            previewState={previewSession?.state ?? null}
+                            previewError={previewSession?.lastError ?? null}
+                            previewSessionError={previewSessionError}
                         />
                     </div>
                 </div>
@@ -194,6 +201,8 @@ export const OutputScreen: React.FC<OutputScreenProps> = ({
                     isVersionLoading={isVersionLoading}
                     onSelectVersion={onSelectVersion}
                     onDownload={onDownload}
+                    previewSession={previewSession}
+                    previewSessionError={previewSessionError}
                 />
             </div>
         </div>

@@ -12,6 +12,7 @@ import type {
     OutputOperation,
     PreviewRuntimeError,
     PreviewSelectedElement,
+    PreviewSessionStatus,
 } from '@/features/preview/types'
 import type { BackendProjectVersionSummary } from '@/features/projects/api/project'
 
@@ -33,6 +34,8 @@ interface AppContentViewProps {
     projectVersions: BackendProjectVersionSummary[]
     activeProjectVersionId: string | null
     isProjectOpening: boolean
+    previewSession: PreviewSessionStatus | null
+    previewSessionError: string | null
     onHomePromptSubmit: (prompt: string) => void
     onOutputPromptSubmit: (
         prompt: string,
@@ -96,6 +99,8 @@ export const AppContentView: React.FC<AppContentViewProps> = ({
     projectVersions,
     activeProjectVersionId,
     isProjectOpening,
+    previewSession,
+    previewSessionError,
     onHomePromptSubmit,
     onOutputPromptSubmit,
     onPreviewRuntimeError,
@@ -158,6 +163,8 @@ export const AppContentView: React.FC<AppContentViewProps> = ({
                             isVersionLoading={isProjectOpening}
                             onSelectVersion={onSelectVersion}
                             onDownload={onDownloadProject}
+                            previewSession={previewSession}
+                            previewSessionError={previewSessionError}
                         />
                     </AnimatedPage>
                 ))}

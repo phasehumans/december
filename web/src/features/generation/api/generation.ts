@@ -1,4 +1,4 @@
-import { API_BASE_URL, ApiError, apiRequest, getAuthToken } from '@/shared/api/client'
+﻿import { API_BASE_URL, ApiError, apiRequest, getAuthToken } from '@/shared/api/client'
 import type {
     BackendProject,
     BackendProjectMessage,
@@ -41,6 +41,7 @@ export type GenerationStreamEvent =
           type: 'project-created'
           data: {
               project: BackendProject
+              version: Pick<BackendProjectVersionSummary, 'id' | 'versionNumber' | 'label'>
           }
       }
     | {
@@ -299,3 +300,4 @@ export const generationAPI = {
     applyProjectEdit,
     applyProjectFix,
 }
+

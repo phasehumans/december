@@ -1,4 +1,4 @@
-import React from 'react'
+﻿import React from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import type { Message } from '@/features/chat/types'
 import type { ViewState } from '@/app/types'
@@ -14,11 +14,13 @@ import {
     type BackendProjectVersionSummary,
 } from '@/features/projects/api/project'
 import { mapBackendProjectToUIProject } from '@/app/mapProject'
+import { previewAPI } from '@/features/preview/api'
 import type {
     GeneratedProjectFile,
     OutputOperation,
     PreviewRuntimeError,
     PreviewSelectedElement,
+    PreviewSessionStatus,
 } from '@/features/preview/types'
 
 const getUserFacingGenerationError = (message: string) => {
@@ -108,6 +110,8 @@ export const useAppController = () => {
     const [activeProjectVersionId, setActiveProjectVersionId] = React.useState<string | null>(null)
     const [isProjectOpening, setIsProjectOpening] = React.useState(false)
     const [projectLoadError, setProjectLoadError] = React.useState<string | null>(null)
+    const [previewSession, setPreviewSession] = React.useState<PreviewSessionStatus | null>(null)
+    const [previewSessionError, setPreviewSessionError] = React.useState<string | null>(null)
     const generationAbortControllerRef = React.useRef<AbortController | null>(null)
     const activeAssistantMessageIdRef = React.useRef<string | null>(null)
     const activeGeneratedFilePathRef = React.useRef<string | null>(null)
@@ -244,6 +248,8 @@ export const useAppController = () => {
         setActiveProjectVersionId(null)
         setProjectLoadError(null)
         setIsProjectOpening(false)
+        setPreviewSession(null)
+        setPreviewSessionError(null)
         lastAutoFixSignatureRef.current = null
     }, [])
 
@@ -416,6 +422,82 @@ export const useAppController = () => {
         setIsGenerating(false)
     }, [abortGenerationRequest, resetGeneratedOutput, resetGenerationRefs])
 
+    React.useEffect(() => {
+        if (!isAuthenticated || !activeProjectId || !activeProjectVersionId) {
+            setPreviewSession(null)
+            setPreviewSessionError(null)
+            return
+        }
+
+        let isCancelled = false
+        let timeoutHandle: number | null = null
+
+        const schedulePoll = (delay: number) => {
+            timeoutHandle = window.setTimeout(() => {
+                void pollStatus()
+            }, delay)
+        }
+
+        const pollStatus = async () => {
+            try {
+                const nextStatus = await previewAPI.getPreviewStatus(activeProjectId)
+
+                if (isCancelled) {
+                    return
+                }
+
+                setPreviewSession(nextStatus)
+                setPreviewSessionError(null)
+                schedulePoll(nextStatus.backendStatus === 'ready' && !isGenerating ? 4000 : 1500)
+            } catch (error) {
+                if (isCancelled) {
+                    return
+                }
+
+                setPreviewSessionError(
+                    error instanceof Error ? error.message : 'Failed to refresh preview'
+                )
+                schedulePoll(3000)
+            }
+        }
+
+        void (async () => {
+            try {
+                const nextStatus = await previewAPI.startPreview(
+                    activeProjectId,
+                    activeProjectVersionId
+                )
+
+                if (isCancelled) {
+                    return
+                }
+
+                setPreviewSession(nextStatus)
+                setPreviewSessionError(null)
+            } catch (error) {
+                if (isCancelled) {
+                    return
+                }
+
+                setPreviewSessionError(
+                    error instanceof Error ? error.message : 'Failed to start preview'
+                )
+            }
+
+            if (!isCancelled) {
+                schedulePoll(1000)
+            }
+        })()
+
+        return () => {
+            isCancelled = true
+
+            if (timeoutHandle !== null) {
+                window.clearTimeout(timeoutHandle)
+            }
+        }
+    }, [activeProjectId, activeProjectVersionId, isAuthenticated, isGenerating])
+
     const startGeneration = React.useCallback(
         (prompt: string, assistantMessageId: string, projectId?: string | null) => {
             abortGenerationRequest()
@@ -448,6 +530,7 @@ export const useAppController = () => {
                                 case 'project-created':
                                     setActiveProjectId(event.data.project.id)
                                     setActiveProjectName(event.data.project.name)
+                                    setActiveProjectVersionId(event.data.version.id)
                                     void queryClient.invalidateQueries({ queryKey: ['projects'] })
                                     return
                                 case 'phase':
@@ -898,6 +981,8 @@ export const useAppController = () => {
         activeProjectVersionId,
         isProjectOpening,
         projectLoadError,
+        previewSession,
+        previewSessionError,
         handleNewThread,
         handleNavigate,
         handleSignOut,
@@ -910,3 +995,5 @@ export const useAppController = () => {
         handleDownloadProject,
     }
 }
+
+
