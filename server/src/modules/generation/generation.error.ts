@@ -18,12 +18,6 @@ export const normalizeGenerationError = (error: unknown, options?: { path?: stri
     const internalMessage = getErrorMessage(error)
     const normalizedMessage = internalMessage.toLowerCase()
 
-    if(normalizedMessage.includes('token')) {
-        return {
-            internalMessage,
-            publicMessage: 'Tokens over',
-        }
-    }
 
     if (normalizedMessage.includes('unauthorized')) {
         return {

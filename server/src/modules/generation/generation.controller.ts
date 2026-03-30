@@ -42,7 +42,7 @@ const generateWebsite = async (req: Request, res: Response) => {
         res.setHeader('Content-Type', 'text/event-stream')
         res.setHeader('Cache-Control', 'no-cache, no-transform')
         res.setHeader('Connection', 'keep-alive')
-        res.setHeader('X-Accel-Buffering', 'no')        //explicit for nginx
+        res.setHeader('X-Accel-Buffering', 'no') //explicit for nginx
         res.flushHeaders?.()
 
         writeEvent(res, 'connected', { ok: true })
