@@ -16,12 +16,6 @@ const writeEvent = (res: Response, event: string, data: unknown) => {
     res.write(`data: ${JSON.stringify(data)}\n\n`)
 }
 
-const getUnauthorizedResponse = (res: Response) =>
-    res.status(400).json({
-        success: false,
-        message: 'unauthorized',
-    })
-
 const generateWebsite = async (req: Request, res: Response) => {
     const parseData = generateWebsiteSchema.safeParse(req.body)
 
@@ -37,7 +31,10 @@ const generateWebsite = async (req: Request, res: Response) => {
     const userId = req.userId as string | undefined
 
     if (!userId) {
-        return getUnauthorizedResponse(res)
+        return res.status(400).json({
+            success: false,
+            message: 'unauthorized',
+        })
     }
 
     try {
@@ -45,7 +42,7 @@ const generateWebsite = async (req: Request, res: Response) => {
         res.setHeader('Content-Type', 'text/event-stream')
         res.setHeader('Cache-Control', 'no-cache, no-transform')
         res.setHeader('Connection', 'keep-alive')
-        res.setHeader('X-Accel-Buffering', 'no')
+        res.setHeader('X-Accel-Buffering', 'no') //explicit for nginx
         res.flushHeaders?.()
 
         writeEvent(res, 'connected', { ok: true })
@@ -92,7 +89,10 @@ const applyProjectEdit = async (req: Request, res: Response) => {
     }
 
     if (!userId) {
-        return getUnauthorizedResponse(res)
+        return res.status(400).json({
+            success: false,
+            message: 'unauthorized',
+        })
     }
 
     try {
@@ -131,7 +131,10 @@ const applyProjectFix = async (req: Request, res: Response) => {
     }
 
     if (!userId) {
-        return getUnauthorizedResponse(res)
+        return res.status(400).json({
+            success: false,
+            message: 'unauthorized',
+        })
     }
 
     try {

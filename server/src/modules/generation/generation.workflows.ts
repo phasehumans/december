@@ -80,6 +80,8 @@ export const generateWebsite = async (data: GenerateWebsiteInput) => {
         const rawIntentResponse = await extractProjectIntent({ userPrompt })
         const parseIntent = promptAgentResponseSchema.safeParse(rawIntentResponse)
 
+        // console.log(parseIntent)
+
         if (!parseIntent.success) {
             throw new Error('invalid response | prompt agent')
         }
