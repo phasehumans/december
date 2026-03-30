@@ -18,6 +18,7 @@ export const normalizeGenerationError = (error: unknown, options?: { path?: stri
     const internalMessage = getErrorMessage(error)
     const normalizedMessage = internalMessage.toLowerCase()
 
+
     if (normalizedMessage.includes('unauthorized')) {
         return {
             internalMessage,
