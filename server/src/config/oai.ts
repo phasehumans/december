@@ -6,5 +6,6 @@ export const openai = new OpenAI({
     defaultHeaders: {
         'HTTP-Referer': 'http://localhost:4000',
         'X-OpenRouter-Title': 'phasehumans',
+        // 'X-Title': 'phasehumans',
     },
 })
