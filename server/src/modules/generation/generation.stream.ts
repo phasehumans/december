@@ -86,8 +86,8 @@ export const emitAssistantMessage = async (
 
     const chunkRange =
         data.status === 'planning'
-            ? { minLength: 6, maxLength: 12, minDelay: 22, maxDelay: 40 }
-            : { minLength: 8, maxLength: 16, minDelay: 20, maxDelay: 36 }
+            ? { minLength: 8, maxLength: 14, minDelay: 18, maxDelay: 30 }
+            : { minLength: 10, maxLength: 18, minDelay: 16, maxDelay: 28 }
 
     await onEvent({
         type: 'message-start',
@@ -97,7 +97,7 @@ export const emitAssistantMessage = async (
         },
     })
 
-    await sleep(120)
+    await sleep(90)
 
     for (const chunk of splitIntoChunks(data.content, chunkRange.minLength, chunkRange.maxLength)) {
         await onEvent({
@@ -115,7 +115,7 @@ export const emitAssistantMessage = async (
         await sleep(delay)
     }
 
-    await sleep(32)
+    await sleep(24)
 
     await onEvent({
         type: 'message-complete',
