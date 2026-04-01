@@ -180,15 +180,19 @@ export const projectPlanSchema = z
 
 export const generateProjectFileSchema = projectPlanSchema
 
-export const promptAgentResponseSchema = z.object({
-    message: z.string().min(1),
-    intent: projectIntentSchema,
-})
+export const promptAgentResponseSchema = z
+    .object({
+        summary: z.string().min(1),
+        intent: projectIntentSchema,
+    })
+    .strict()
 
-export const planAgentResponseSchema = z.object({
-    message: z.string().min(1),
-    plan: projectPlanSchema,
-})
+export const planAgentResponseSchema = z
+    .object({
+        message: z.string().min(1),
+        plan: projectPlanSchema,
+    })
+    .strict()
 
 export const projectChangedFileSchema = z.object({
     path: z.string().min(1),

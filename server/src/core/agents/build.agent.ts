@@ -1,11 +1,16 @@
 import { z } from 'zod'
 import { openai } from '../../config/oai'
-import { retryAsync } from '../../utils/retry'
+import {
+    assertFrontendWorkspacePath,
+    isFrontendWorkspacePath,
+} from '../../modules/generation/frontend-paths'
 import {
     plannedProjectFileSchema,
     projectIntentSchema,
     projectPlanSchema,
 } from '../../modules/generation/generation.schema'
+import { readChatCompletionText } from '../../utils/readChatCompletionText'
+import { retryAsync } from '../../utils/retry'
 import { BUILD_AGENT_PROMPT } from '../prompts/build.prompt'
 
 type ProjectIntent = z.infer<typeof projectIntentSchema>
@@ -46,9 +51,7 @@ const validateGeneratedFileContent = (path: string, content: string) => {
         throw new Error(`markdown fences detected in generated content for ${path}`)
     }
 
-    if (!path.startsWith('web/')) {
-        throw new Error(`frontend-only generation cannot write non-web file: ${path}`)
-    }
+    assertFrontendWorkspacePath(path, 'generated frontend file')
 
     if (path.endsWith('.json')) {
         try {
@@ -62,17 +65,18 @@ const validateGeneratedFileContent = (path: string, content: string) => {
 }
 
 const getPriorityContextPaths = (targetPath: string) => {
-    if (!targetPath.startsWith('web/')) {
+    if (!isFrontendWorkspacePath(targetPath)) {
         return []
     }
 
     return [
-        'web/package.json',
-        'web/tsconfig.json',
-        'web/vite.config.ts',
-        'web/src/main.tsx',
-        'web/src/App.tsx',
-        'web/src/index.css',
+        'package.json',
+        'tsconfig.json',
+        'vite.config.ts',
+        'index.html',
+        'src/main.tsx',
+        'src/App.tsx',
+        'src/index.css',
     ]
 }
 
@@ -98,9 +102,7 @@ const selectRelatedFiles = (targetPath: string, generatedFiles: Record<string, s
 }
 
 export const generateProjectFile = async (data: GenerateProjectFileInput) => {
-    if (!data.targetFile.path.startsWith('web/')) {
-        throw new Error(`frontend-only generation cannot target ${data.targetFile.path}`)
-    }
+    assertFrontendWorkspacePath(data.targetFile.path, 'target frontend file')
 
     return retryAsync({
         label: `build agent (${data.targetFile.path})`,
@@ -133,14 +135,14 @@ export const generateProjectFile = async (data: GenerateProjectFileInput) => {
                         ? [
                               {
                                   role: 'system' as const,
-                                  content: `Retry attempt ${attempt}. The previous file response could not be used: ${lastError?.message ?? 'unknown error'}. Regenerate only ${data.targetFile.path} as raw file content with no markdown fences or commentary. Keep the output inside the web/ frontend only.`,
+                                  content: `Retry attempt ${attempt}. The previous file response could not be used: ${lastError?.message ?? 'unknown error'}. Regenerate only ${data.targetFile.path} as raw file content with no markdown fences or commentary. Keep the output inside the repo-root frontend workspace, using src/, public/, and allowed root config files only.`,
                               },
                           ]
                         : []),
                 ],
             })
 
-            const content = completion.choices[0]?.message?.content
+            const content = readChatCompletionText(completion)
 
             if (!content) {
                 throw new Error(`no response from build agent for ${data.targetFile.path}`)

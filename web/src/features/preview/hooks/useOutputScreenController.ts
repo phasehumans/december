@@ -1,4 +1,4 @@
-﻿import React from 'react'
+import React from 'react'
 import { PREVIEW_HTML } from '@/features/preview/constants/preview'
 import type {
     GeneratedProjectFile,
@@ -30,9 +30,9 @@ const getPreviewHtmlFromFiles = (generatedFiles?: Record<string, GeneratedProjec
     }
 
     return (
-        generatedFiles['web/index.html']?.content ||
-        generatedFiles['public/index.html']?.content ||
         generatedFiles['index.html']?.content ||
+        generatedFiles['public/index.html']?.content ||
+        generatedFiles['web/index.html']?.content ||
         ''
     )
 }

@@ -48,10 +48,12 @@ Stack Rules:
 
 Path Rules:
 - target file path determines what to generate
-- every generated file must live under web/
+- app source files live under src/
+- optional static assets may live under public/
+- root config files such as package.json, tsconfig.json, vite.config.ts, and index.html stay at the repository root
 - generate imports that match the planned folder structure
 - use slash-separated relative import paths
-- do not reference files outside the planned project roots
+- do not reference files outside the planned frontend workspace
 - if the target is a config file, keep it minimal and valid for the fixed stack
 
 Generator Rules:

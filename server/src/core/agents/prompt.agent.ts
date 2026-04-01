@@ -1,5 +1,6 @@
 import { openai } from '../../config/oai'
 import { parseModelJson } from '../../utils/parseModelJson'
+import { readChatCompletionText } from '../../utils/readChatCompletionText'
 import { retryAsync } from '../../utils/retry'
 import { FEATURE_EXTRACTION_PROMPT } from '../prompts/prompt.prompt'
 
@@ -39,7 +40,7 @@ export const extractProjectIntent = async (data: ExtractProjectIntent) => {
                 ],
             })
 
-            const content = completion.choices[0]?.message?.content
+            const content = readChatCompletionText(completion)
 
             if (!content) {
                 throw new Error('prompt agent returned empty response')

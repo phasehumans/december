@@ -118,7 +118,7 @@ const verifyOtp = async (data: VerifyOpt) => {
         },
         process.env.JWT_SECRET!,
         {
-            expiresIn: '7d',
+            expiresIn: '30d',
         }
     )
 
@@ -154,7 +154,7 @@ const login = async (data: Login) => {
         },
         process.env.JWT_SECRET!,
         {
-            expiresIn: '7d',
+            expiresIn: '30d',
         }
     )
 
@@ -198,7 +198,7 @@ const google = async (data: Google) => {
         },
         process.env.JWT_SECRET!,
         {
-            expiresIn: '7d',
+            expiresIn: '30d',
         }
     )
     return token

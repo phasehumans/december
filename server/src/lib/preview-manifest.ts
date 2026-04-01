@@ -1,4 +1,5 @@
-﻿import { createHash } from 'crypto'
+import { createHash } from 'crypto'
+import { toPreviewWorkspacePath } from '../modules/generation/frontend-paths'
 import { getTextFile, putTextFile, versionKey } from './project-storage'
 
 export type PreviewManifestFile = {
@@ -34,8 +35,6 @@ export type PreviewManifestStoredFile = {
     contentType?: string
 }
 
-const PREVIEW_SOURCE_PREFIX = 'web/'
-
 const guessContentType = (path: string) => {
     if (path.endsWith('.tsx')) return 'text/tsx; charset=utf-8'
     if (path.endsWith('.ts')) return 'text/typescript; charset=utf-8'
@@ -47,9 +46,6 @@ const guessContentType = (path: string) => {
     if (path.endsWith('.svg')) return 'image/svg+xml'
     return 'text/plain; charset=utf-8'
 }
-
-const toWorkspacePath = (path: string) =>
-    path.startsWith(PREVIEW_SOURCE_PREFIX) ? path.slice(PREVIEW_SOURCE_PREFIX.length) : null
 
 const isRunnableSnapshot = (paths: string[]) => {
     const fileSet = new Set(paths)
@@ -119,7 +115,7 @@ export const publishGeneratedPreviewManifest = async ({
 }) => {
     const files = Object.entries(generatedFiles).reduce<PreviewManifestFile[]>(
         (entries, [path, content]) => {
-            const workspacePath = toWorkspacePath(path)
+            const workspacePath = toPreviewWorkspacePath(path)
 
             if (!workspacePath) {
                 return entries
@@ -168,7 +164,7 @@ export const publishStoredPreviewManifest = async ({
     files: PreviewManifestStoredFile[]
 }) => {
     const manifestFiles = files.reduce<PreviewManifestFile[]>((entries, file) => {
-        const workspacePath = toWorkspacePath(file.path)
+        const workspacePath = toPreviewWorkspacePath(file.path)
 
         if (!workspacePath) {
             return entries

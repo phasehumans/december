@@ -1,10 +1,12 @@
-﻿import { z } from 'zod'
+import { z } from 'zod'
 import { openai } from '../../config/oai'
+import { assertFrontendWorkspacePath } from '../../modules/generation/frontend-paths'
 import {
     editAgentResponseSchema,
     previewSelectedElementSchema,
 } from '../../modules/generation/generation.schema'
 import { parseModelJson } from '../../utils/parseModelJson'
+import { readChatCompletionText } from '../../utils/readChatCompletionText'
 import { retryAsync } from '../../utils/retry'
 import { EDIT_AGENT_PROMPT } from '../prompts/edit.prompt'
 
@@ -41,6 +43,8 @@ const stripWrappingCodeFence = (content: string) => {
 }
 
 const validateChangedFileContent = (path: string, content: string) => {
+    assertFrontendWorkspacePath(path, 'edited frontend file')
+
     const normalizedContent = stripWrappingCodeFence(content)
 
     if (normalizedContent.includes('```')) {
@@ -96,7 +100,7 @@ export const applyProjectEdit = async (data: ApplyProjectEditInput) => {
                 ],
             })
 
-            const content = completion.choices[0]?.message?.content
+            const content = readChatCompletionText(completion)
 
             if (!content) {
                 throw new Error('edit agent returned empty response')
@@ -114,6 +118,10 @@ export const applyProjectEdit = async (data: ApplyProjectEditInput) => {
                     ...file,
                     content: validateChangedFileContent(file.path, file.content),
                 })),
+                deletedFiles: parsed.data.deletedFiles.map((path) => {
+                    assertFrontendWorkspacePath(path, 'deleted frontend file')
+                    return path
+                }),
             }
         },
     })

@@ -11,7 +11,7 @@ import {
 import type { CodeFile, CodeFilePath, CodeWorkspaceProps } from '@/features/preview/types'
 
 const getWorkspaceHtmlPath = (paths: CodeFilePath[]) => {
-    const preferredPaths = ['web/index.html', 'public/index.html', 'index.html']
+    const preferredPaths = ['index.html', 'public/index.html', 'web/index.html']
 
     return preferredPaths.find((path) => paths.includes(path)) ?? null
 }
