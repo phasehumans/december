@@ -5,6 +5,22 @@ import { ChatMessageAssistantMeta } from './ChatMessageAssistantMeta'
 import { ChatMessageUserBubble } from './ChatMessageUserBubble'
 import type { ChatMessageProps } from '@/features/chat/types'
 
+const renderBulletText = (text: string) => {
+    const match = text.match(/^\*\*(.+?)\*\*:\s*(.+)$/)
+
+    if (match) {
+        const [, label, value] = match
+        return (
+            <span>
+                <strong className="font-medium text-[#E6E4E3]">{label}:</strong>{' '}
+                <span>{value}</span>
+            </span>
+        )
+    }
+
+    return <span>{text}</span>
+}
+
 const renderContent = (content: string) => {
     const sections = content
         .split(/\n\s*\n/)
@@ -28,7 +44,8 @@ const renderContent = (content: string) => {
                             className="flex items-start gap-2 text-[12px] leading-5 text-[#B7B6B5]"
                         >
                             <span className="mt-[7px] h-1 w-1 shrink-0 rounded-full bg-[#6D6C6B]" />
-                            <span>{line.slice(2).trim()}</span>
+                            {/* <span>{line.slice(2).trim()}</span> */}
+                            <span>{renderBulletText(line.slice(2).trim())}</span>
                         </li>
                     ))}
                 </ul>
