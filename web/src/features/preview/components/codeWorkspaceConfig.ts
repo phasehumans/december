@@ -144,13 +144,13 @@ export const flattenFiles = (nodes: CodeFileTreeNode[]): CodeFile[] =>
     })
 
 const DEFAULT_FILE_PATH_PRIORITIES = [
-    'web/src/App.tsx',
     'src/App.tsx',
-    'web/src/main.tsx',
+    'web/src/App.tsx',
     'src/main.tsx',
-    'web/index.html',
-    'public/index.html',
+    'web/src/main.tsx',
     'index.html',
+    'public/index.html',
+    'web/index.html',
 ]
 
 export const getDefaultCodeFilePath = (paths: CodeFilePath[]): CodeFilePath | null => {

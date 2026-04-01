@@ -1,12 +1,11 @@
-﻿import { cleanPrompt } from '../../utils/cleanPrompt'
+import { cleanPrompt } from '../../utils/cleanPrompt'
+import { assertFrontendWorkspacePath } from './frontend-paths'
 import type {
     ProjectPlan,
     RevisionBase,
     StoredProjectFile,
     VersionSummary,
 } from './generation.types'
-
-const FRONTEND_ONLY_FILE_PREFIX = 'web/'
 
 export const createProjectName = (prompt: string) => {
     const words = cleanPrompt(prompt)
@@ -21,9 +20,14 @@ export const createProjectName = (prompt: string) => {
 
 export const assertFrontendOnlyPlan = (plan: ProjectPlan) => {
     const plannedFiles = plan.data?.files ?? []
-    const invalidFile = plannedFiles.find(
-        (file) => !file.path.startsWith(FRONTEND_ONLY_FILE_PREFIX)
-    )
+    const invalidFile = plannedFiles.find((file) => {
+        try {
+            assertFrontendWorkspacePath(file.path, 'planned frontend file')
+            return false
+        } catch {
+            return true
+        }
+    })
 
     if (invalidFile) {
         throw new Error(`plan agent returned non-frontend file: ${invalidFile.path}`)

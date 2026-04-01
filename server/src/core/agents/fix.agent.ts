@@ -1,6 +1,8 @@
-﻿import { openai } from '../../config/oai'
+import { openai } from '../../config/oai'
+import { assertFrontendWorkspacePath } from '../../modules/generation/frontend-paths'
 import { fixAgentResponseSchema } from '../../modules/generation/generation.schema'
 import { parseModelJson } from '../../utils/parseModelJson'
+import { readChatCompletionText } from '../../utils/readChatCompletionText'
 import { retryAsync } from '../../utils/retry'
 import { FIX_AGENT_PROMPT } from '../prompts/fix.prompt'
 
@@ -35,6 +37,8 @@ const stripWrappingCodeFence = (content: string) => {
 }
 
 const validateChangedFileContent = (path: string, content: string) => {
+    assertFrontendWorkspacePath(path, 'fixed frontend file')
+
     const normalizedContent = stripWrappingCodeFence(content)
 
     if (normalizedContent.includes('```')) {
@@ -92,7 +96,7 @@ export const applyProjectFix = async (data: ApplyProjectFixInput) => {
                 ],
             })
 
-            const content = completion.choices[0]?.message?.content
+            const content = readChatCompletionText(completion)
 
             if (!content) {
                 throw new Error('fix agent returned empty response')
@@ -110,6 +114,10 @@ export const applyProjectFix = async (data: ApplyProjectFixInput) => {
                     ...file,
                     content: validateChangedFileContent(file.path, file.content),
                 })),
+                deletedFiles: parsed.data.deletedFiles.map((path) => {
+                    assertFrontendWorkspacePath(path, 'deleted frontend file')
+                    return path
+                }),
             }
         },
     })

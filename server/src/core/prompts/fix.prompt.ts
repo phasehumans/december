@@ -24,7 +24,7 @@ Rules:
 - do not regenerate the whole project
 - update only the files required for the fix
 - keep the existing Vite React frontend architecture, stack, and folder structure
-- only create, update, or delete frontend files under web/
+- only create, update, or delete frontend files inside src/, public/, or required repo-root frontend config files
 - never add or edit server, api, prisma, database, or environment files
 - never output TODOs, placeholders, or incomplete code
 - if you cannot find a confident fix, still return the most likely minimal repair based on the available code

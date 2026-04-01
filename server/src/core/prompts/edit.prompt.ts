@@ -29,7 +29,7 @@ Rules:
 - prefer surgical edits over rewrites
 - if a new file is required, include it in updatedFiles
 - if a file must be removed, include its path in deletedFiles
-- only create, update, or delete frontend files under web/
+- only create, update, or delete frontend files inside src/, public/, or required repo-root frontend config files
 - never add or edit server, api, prisma, database, or environment files
 - never output TODOs, placeholders, or incomplete code
 - keep the implementation production-lean and consistent with the existing codebase
