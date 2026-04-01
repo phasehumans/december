@@ -1,4 +1,4 @@
-﻿import {
+import {
     applyProjectEdit,
     applyProjectFix,
     extractProjectIntent,
@@ -80,7 +80,7 @@ export const generateWebsite = async (data: GenerateWebsiteInput) => {
         const rawIntentResponse = await extractProjectIntent({ userPrompt })
         const parseIntent = promptAgentResponseSchema.safeParse(rawIntentResponse)
 
-        // console.log(parseIntent)
+        console.log(parseIntent)
 
         if (!parseIntent.success) {
             throw new Error('invalid response | prompt agent')
@@ -89,13 +89,13 @@ export const generateWebsite = async (data: GenerateWebsiteInput) => {
         const intent = parseIntent.data.intent
         assistantMessageContent = appendAssistantMessageContent(
             assistantMessageContent,
-            parseIntent.data.message
+            parseIntent.data.summary
         )
 
         await emitAssistantMessage(onEvent, {
             messageId: `${project.id}:prompt-agent`,
             status: 'thinking',
-            content: parseIntent.data.message,
+            content: parseIntent.data.summary,
         })
 
         await onEvent?.({
@@ -107,6 +107,8 @@ export const generateWebsite = async (data: GenerateWebsiteInput) => {
 
         const rawPlanResponse = await extractProjectPlan(intent)
         const parsePlan = planAgentResponseSchema.safeParse(rawPlanResponse)
+
+        console.log(parsePlan)
 
         if (!parsePlan.success) {
             throw new Error('invalid response | plan agent')

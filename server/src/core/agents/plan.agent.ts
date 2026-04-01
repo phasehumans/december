@@ -1,8 +1,9 @@
 import { z } from 'zod'
 import { openai } from '../../config/oai'
-import { parseModelJson } from '../../utils/parseModelJson'
-import { retryAsync } from '../../utils/retry'
 import { projectIntentSchema } from '../../modules/generation/generation.schema'
+import { parseModelJson } from '../../utils/parseModelJson'
+import { readChatCompletionText } from '../../utils/readChatCompletionText'
+import { retryAsync } from '../../utils/retry'
 import { PLAN_AGENT_PROMPT } from '../prompts/plan.prompt'
 
 type ExtractProjectPlan = z.infer<typeof projectIntentSchema>
@@ -39,7 +40,7 @@ export const extractProjectPlan = async (data: ExtractProjectPlan) => {
                 ],
             })
 
-            const content = completion.choices[0]?.message?.content
+            const content = readChatCompletionText(completion)
 
             if (!content) {
                 throw new Error('no response from plan agent')
