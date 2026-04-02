@@ -14,23 +14,39 @@ function normalizePath(path: string) {
 }
 
 export function currentKey(projectId: string, path: string) {
-    return `projects/${projectId}/frontend/current/${normalizePath(path)}`
+    return `projects/${projectId}/current-version/${normalizePath(path)}`
 }
 
 export function currentPrefix(projectId: string) {
-    return `projects/${projectId}/frontend/current/`
+    return `projects/${projectId}/current-version/`
 }
 
 export function versionKey(projectId: string, versionId: string, path: string) {
-    return `projects/${projectId}/frontend/versions/${versionId}/${normalizePath(path)}`
+    return `projects/${projectId}/previous-version/${versionId}/${normalizePath(path)}`
 }
 
 export function versionPrefix(projectId: string, versionId: string) {
-    return `projects/${projectId}/frontend/versions/${versionId}/`
+    return `projects/${projectId}/previous-version/${versionId}/`
 }
 
 export function projectPrefix(projectId: string) {
     return `projects/${projectId}/`
+}
+
+export function assetKey(projectId: string, path: string) {
+    return `projects/${projectId}/assets/${normalizePath(path)}`
+}
+
+export function assetPrefix(projectId: string) {
+    return `projects/${projectId}/assets/`
+}
+
+export function temporaryCanvasAssetKey(userId: string, path: string) {
+    return `users/${userId}/canvas-temp/${normalizePath(path)}`
+}
+
+export function temporaryCanvasAssetPrefix(userId: string) {
+    return `users/${userId}/canvas-temp/`
 }
 
 export async function putTextFile({
@@ -63,6 +79,55 @@ export async function getTextFile(key: string) {
     return await result.Body?.transformToString()
 }
 
+export async function putBinaryFile({
+    key,
+    content,
+    contentType,
+}: {
+    key: string
+    content: Uint8Array | Buffer
+    contentType?: string
+}) {
+    await s3.send(
+        new PutObjectCommand({
+            Bucket: BUCKET,
+            Key: key,
+            Body: content,
+            ...(contentType ? { ContentType: contentType } : {}),
+        })
+    )
+}
+
+export async function getBinaryFile(key: string) {
+    try {
+        const result = await s3.send(
+            new GetObjectCommand({
+                Bucket: BUCKET,
+                Key: key,
+            })
+        )
+
+        const body = await result.Body?.transformToByteArray()
+
+        if (!body) {
+            return null
+        }
+
+        return {
+            body,
+            contentType: result.ContentType,
+        }
+    } catch (error) {
+        const message = error instanceof Error ? error.message.toLowerCase() : ''
+
+        if (message.includes('nosuchkey') || message.includes('not found')) {
+            return null
+        }
+
+        throw error
+    }
+}
+
 export async function deleteObject(key: string) {
     await s3.send(
         new DeleteObjectCommand({
@@ -93,3 +158,4 @@ export async function listPrefix(prefix: string) {
 
     return result.Contents ?? []
 }
+
