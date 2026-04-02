@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { canvasDocumentSchema } from '../canvas/canvas.persistence'
 
 const fileGeneratorSchema = z.enum([
     'static',
@@ -21,6 +22,7 @@ export const plannedProjectFileSchema = z.object({
 export const generateWebsiteSchema = z.object({
     prompt: z.string().min(5),
     projectId: z.string().uuid().optional(),
+    canvasState: canvasDocumentSchema.optional(),
 })
 
 export const previewSelectedElementSchema = z.object({
@@ -33,6 +35,7 @@ export const applyProjectEditSchema = z.object({
     versionId: z.string().uuid().optional(),
     prompt: z.string().min(1),
     selectedElement: previewSelectedElementSchema.optional(),
+    canvasState: canvasDocumentSchema.optional(),
 })
 
 export const applyProjectFixSchema = z.object({
@@ -245,3 +248,5 @@ const projectChangeAgentResponseSchema = z
 
 export const editAgentResponseSchema = projectChangeAgentResponseSchema
 export const fixAgentResponseSchema = projectChangeAgentResponseSchema
+
+

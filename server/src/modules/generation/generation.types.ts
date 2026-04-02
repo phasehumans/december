@@ -1,5 +1,6 @@
-﻿import { z } from 'zod'
+import { z } from 'zod'
 import { prisma } from '../../config/db'
+import type { CanvasDocument } from '../canvas/canvas.persistence'
 import {
     applyProjectEditSchema,
     applyProjectFixSchema,
@@ -12,9 +13,9 @@ export type GenerateWebsiteInput = {
     prompt: string
     userId: string
     projectId?: string
+    canvasState?: CanvasDocument
     onEvent?: (event: GenerationStreamEvent) => Promise<void> | void
 }
-
 export type ApplyProjectEditInput = z.infer<typeof applyProjectEditSchema> & {
     userId: string
 }
@@ -162,3 +163,6 @@ export type PersistedProjectRevision = {
     generatedFiles: Record<string, string>
     assistantMessage: string
 }
+
+
+
