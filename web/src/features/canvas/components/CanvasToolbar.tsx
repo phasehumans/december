@@ -1,7 +1,7 @@
-import React, { useState } from 'react'
+import React, { useRef, useState } from 'react'
 import { CanvasToolbarTopBar } from './CanvasToolbarTopBar'
 import { CanvasToolbarBottomControls } from './CanvasToolbarBottomControls'
-import { CanvasWebClipModal } from './CanvasWebClipModal'
+import { CanvasWebClipPopover } from './CanvasWebClipPopover'
 import type { CanvasToolbarProps } from '@/features/canvas/types'
 
 export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
@@ -21,7 +21,8 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
     onOpenAuth,
     projectId,
 }) => {
-    const [isWebClipModalOpen, setIsWebClipModalOpen] = useState(false)
+    const [isWebClipPopoverOpen, setIsWebClipPopoverOpen] = useState(false)
+    const webClipButtonRef = useRef<HTMLButtonElement | null>(null)
 
     const handleAuthCheck = (action: () => void) => {
         if (!isAuthenticated && onOpenAuth) {
@@ -33,6 +34,7 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
 
     const handleImageUpload = () => {
         handleAuthCheck(() => {
+            setIsWebClipPopoverOpen(false)
             const input = document.createElement('input')
             input.type = 'file'
             input.accept = 'image/*'
@@ -54,11 +56,14 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
     }
 
     const handleSelectTool = (tool: string) => {
-        handleAuthCheck(() => setActiveTool(tool))
+        handleAuthCheck(() => {
+            setIsWebClipPopoverOpen(false)
+            setActiveTool(tool)
+        })
     }
 
-    const handleOpenWebClipModal = () => {
-        handleAuthCheck(() => setIsWebClipModalOpen(true))
+    const handleToggleWebClipPopover = () => {
+        handleAuthCheck(() => setIsWebClipPopoverOpen((prev) => !prev))
     }
 
     return (
@@ -66,11 +71,12 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
             <div className="absolute top-4 md:top-6 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 w-full px-4 md:px-0 pointer-events-none">
                 <CanvasToolbarTopBar
                     activeTool={activeTool}
-                    isWebClipModalOpen={isWebClipModalOpen}
+                    isWebClipPopoverOpen={isWebClipPopoverOpen}
                     onSelectTool={handleSelectTool}
                     onUploadImage={handleImageUpload}
-                    onOpenWebClipModal={handleOpenWebClipModal}
+                    onToggleWebClipPopover={handleToggleWebClipPopover}
                     onOpenHelp={() => window.open('https://www.youtube.com/@phasehumans', '_blank')}
+                    webClipButtonRef={webClipButtonRef}
                 />
             </div>
 
@@ -83,9 +89,10 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
                 canRedo={canRedo}
             />
 
-            <CanvasWebClipModal
-                isOpen={isWebClipModalOpen}
-                onClose={() => setIsWebClipModalOpen(false)}
+            <CanvasWebClipPopover
+                isOpen={isWebClipPopoverOpen}
+                anchorRef={webClipButtonRef}
+                onClose={() => setIsWebClipPopoverOpen(false)}
                 onInteract={onInteract}
                 onAddItems={onAddItems}
                 projectId={projectId}

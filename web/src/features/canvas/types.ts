@@ -1,4 +1,4 @@
-import type { ComponentType, PointerEvent } from 'react'
+import type { ComponentType, PointerEvent, Ref } from 'react'
 
 export type CanvasAssetSource = 'temporary' | 'project'
 export type CanvasAssetKind = 'upload' | 'web-clip'
@@ -179,4 +179,5 @@ export interface ToolButtonProps {
     isActive?: boolean
     onClick?: () => void
     disabled?: boolean
+    buttonRef?: Ref<HTMLButtonElement>
 }
