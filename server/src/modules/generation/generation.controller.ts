@@ -27,7 +27,7 @@ const generateWebsite = async (req: Request, res: Response) => {
         })
     }
 
-    const { prompt, projectId } = parseData.data
+    const { prompt, projectId, canvasState } = parseData.data
     const userId = req.userId as string | undefined
 
     if (!userId) {
@@ -51,6 +51,7 @@ const generateWebsite = async (req: Request, res: Response) => {
             prompt,
             userId,
             projectId,
+            canvasState,
             onEvent: async (event) => {
                 writeEvent(res, event.type, event.data)
             },
@@ -165,3 +166,5 @@ export const generateContoller = {
     applyProjectEdit,
     applyProjectFix,
 }
+
+

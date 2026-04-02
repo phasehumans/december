@@ -2,6 +2,7 @@ import { prisma } from '../../config/db'
 import { buildProjectZip } from '../../lib/build-project-zip'
 import { saveProjectFiles } from '../../lib/save-project-files'
 import { deletePrefix, getTextFile, projectPrefix } from '../../lib/project-storage'
+import { hydrateCanvasDocument, persistCanvasDocument } from '../canvas/canvas.persistence'
 
 type GetProject = {
     userId: string
@@ -187,6 +188,12 @@ const getProjectById = async (data: GetProject) => {
                   parseStoredProjectFiles(activeVersion.manifestJson)
               )
             : {}
+        const canvasState = activeVersion
+            ? await hydrateCanvasDocument({
+                  canvasState: activeVersion.canvasStateJson,
+                  canvasAssetManifest: activeVersion.canvasAssetManifestJson,
+              })
+            : await hydrateCanvasDocument({})
 
         return {
             project,
@@ -210,6 +217,7 @@ const getProjectById = async (data: GetProject) => {
                     updatedAt: message.updatedAt,
                 })) ?? [],
             generatedFiles,
+            canvasState,
         }
     } catch (error) {
         if (!isVersionSchemaMissing(error)) {
@@ -223,6 +231,7 @@ const getProjectById = async (data: GetProject) => {
             activeVersion: null,
             chatMessages: [],
             generatedFiles: {},
+            canvasState: await hydrateCanvasDocument({}),
         }
     }
 }
@@ -352,6 +361,16 @@ const duplicateProject = async (data: DuplicateProject) => {
     const manifest = parseStoredProjectFiles(currentVersion.manifestJson)
     const generatedFiles = await loadGeneratedFilesFromManifest(manifest)
     const versionRecordId = crypto.randomUUID()
+    const hydratedCanvasState = await hydrateCanvasDocument({
+        canvasState: currentVersion.canvasStateJson,
+        canvasAssetManifest: currentVersion.canvasAssetManifestJson,
+    })
+    const persistedCanvas = await persistCanvasDocument({
+        projectId: newProject.id,
+        userId,
+        versionId: versionRecordId,
+        canvasState: hydratedCanvasState,
+    })
     const savedFiles = await saveProjectFiles({
         projectId: newProject.id,
         versionId: versionRecordId,
@@ -367,13 +386,15 @@ const duplicateProject = async (data: DuplicateProject) => {
             sourcePrompt: currentVersion.sourcePrompt,
             summary: currentVersion.summary ?? undefined,
             status: 'READY',
-            objectStoragePrefix: `projects/${newProject.id}/frontend/versions/${versionRecordId}`,
+            objectStoragePrefix: `projects/${newProject.id}/previous-version/${versionRecordId}`,
             manifestJson: savedFiles.map((file) => ({
                 path: file.path,
                 key: file.key,
                 ...(file.contentType ? { contentType: file.contentType } : {}),
                 size: file.size,
             })),
+            canvasStateJson: persistedCanvas.canvasStateJson as any,
+            canvasAssetManifestJson: persistedCanvas.canvasAssetManifestJson as any,
             ...(currentVersion.intentJson !== null
                 ? { intentJson: currentVersion.intentJson as any }
                 : {}),
@@ -450,3 +471,4 @@ export const projectService = {
     duplicateProject,
     downloadProjectVersion,
 }
+
