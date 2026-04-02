@@ -113,3 +113,4 @@ model ProjectMessage {
 
   @@unique([projectVersionId, sequence])
 }
+
