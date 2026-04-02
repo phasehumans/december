@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import type { CanvasDocument } from '@/features/canvas/types'
 
 export interface PromptSuggestion {
     icon: ReactNode
@@ -11,6 +12,9 @@ export interface HomeHeroProps {
     isGenerating: boolean
     isAuthenticated: boolean
     onOpenAuth: () => void
+    canvasState: CanvasDocument
+    onCanvasStateChange: (document: CanvasDocument) => void
+    projectId?: string | null
 }
 
 export interface PromptInputProps {

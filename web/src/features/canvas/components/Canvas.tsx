@@ -5,10 +5,14 @@ import { CanvasConnectionsLayer } from './CanvasConnectionsLayer'
 import { CanvasTempItemPreview } from './CanvasTempItemPreview'
 import type {
     CanvasConnection,
+    CanvasDocument,
     CanvasItem,
+    CanvasItemDraft,
     CanvasProps,
     CanvasUpdateOptions as UpdateOptions,
 } from '@/features/canvas/types'
+import { createEmptyCanvasDocument } from '@/features/canvas/types'
+
 export interface CanvasRef {
     triggerImageUpload: () => void
 }
@@ -17,19 +21,40 @@ const SHAPE_TOOLS = new Set(['frame', 'square', 'circle', 'line', 'arrow'])
 const DRAW_TOOLS = new Set(['frame', 'square', 'circle', 'line', 'arrow', 'pen'])
 const ONE_SHOT_TOOLS = new Set(['frame', 'square', 'circle', 'line', 'arrow', 'text'])
 
+const cloneState = <T,>(value: T): T => JSON.parse(JSON.stringify(value)) as T
+const createHistoryEntry = (items: CanvasItem[], connections: CanvasConnection[]) => ({
+    items: cloneState(items),
+    connections: cloneState(connections),
+})
+
 export const Canvas = forwardRef<CanvasRef, CanvasProps>((props, ref) => {
-    const { isAuthenticated, onOpenAuth } = props
-    const [items, setItems] = useState<CanvasItem[]>([])
-    const [connections, setConnections] = useState<CanvasConnection[]>([])
-    const [hasInteracted, setHasInteracted] = useState(false)
+    const {
+        isAuthenticated,
+        onOpenAuth,
+        document: canvasDocument,
+        onDocumentChange,
+        projectId,
+    } = props
+    const initialDocumentRef = useRef<CanvasDocument>(canvasDocument ?? createEmptyCanvasDocument())
+    const lastExternalDocumentRef = useRef(JSON.stringify(initialDocumentRef.current))
+    const [items, setItems] = useState<CanvasItem[]>(initialDocumentRef.current.items)
+    const [connections, setConnections] = useState<CanvasConnection[]>(
+        initialDocumentRef.current.connections
+    )
+    const [hasInteracted, setHasInteracted] = useState(initialDocumentRef.current.hasInteracted)
     const [history, setHistory] = useState<
         { items: CanvasItem[]; connections: CanvasConnection[] }[]
-    >([{ items: [], connections: [] }])
+    >([
+        createHistoryEntry(
+            initialDocumentRef.current.items,
+            initialDocumentRef.current.connections
+        ),
+    ])
     const [historyStep, setHistoryStep] = useState(0)
     const [activeTool, setActiveTool] = useState('select')
-    const [scale, setScale] = useState(100)
+    const [scale, setScale] = useState(initialDocumentRef.current.scale)
     const [selectedId, setSelectedId] = useState<string | null>(null)
-    const [pan, setPan] = useState({ x: 0, y: 0 })
+    const [pan, setPan] = useState(initialDocumentRef.current.pan)
     const [isPanning, setIsPanning] = useState(false)
     const [isDrawing, setIsDrawing] = useState(false)
     const [dragStart, setDragStart] = useState<{ x: number; y: number } | null>(null)
@@ -50,20 +75,50 @@ export const Canvas = forwardRef<CanvasRef, CanvasProps>((props, ref) => {
         stateRef.current = { scale, pan, items, connections }
     }, [scale, pan, items, connections])
 
+    useEffect(() => {
+        const nextDocument = canvasDocument ?? createEmptyCanvasDocument()
+        const signature = JSON.stringify(nextDocument)
+
+        if (signature === lastExternalDocumentRef.current) {
+            return
+        }
+
+        lastExternalDocumentRef.current = signature
+        setItems(nextDocument.items)
+        setConnections(nextDocument.connections)
+        setHasInteracted(nextDocument.hasInteracted)
+        setHistory([createHistoryEntry(nextDocument.items, nextDocument.connections)])
+        setHistoryStep(0)
+        setScale(nextDocument.scale)
+        setPan(nextDocument.pan)
+        setSelectedId(null)
+        setConnectionDraft(null)
+        setTempItem(null)
+        setIsDrawing(false)
+        setIsPanning(false)
+        setIsErasing(false)
+    }, [canvasDocument])
+
+    useEffect(() => {
+        onDocumentChange?.({
+            items,
+            connections,
+            pan,
+            scale,
+            hasInteracted,
+        })
+    }, [connections, hasInteracted, items, onDocumentChange, pan, scale])
+
     const markInteraction = () => {
         if (!hasInteracted) setHasInteracted(true)
     }
 
     const addToHistory = (newItems: CanvasItem[], newConnections: CanvasConnection[]) => {
         const newHistory = history.slice(0, historyStep + 1)
-        newHistory.push({
-            items: JSON.parse(JSON.stringify(newItems)),
-            connections: JSON.parse(JSON.stringify(newConnections)),
-        })
+        newHistory.push(createHistoryEntry(newItems, newConnections))
         setHistory(newHistory)
         setHistoryStep(newHistory.length - 1)
     }
-
     const undo = () => {
         if (historyStep <= 0) return
         const prevStep = historyStep - 1
@@ -372,49 +427,63 @@ export const Canvas = forwardRef<CanvasRef, CanvasProps>((props, ref) => {
         stateRef.current = { ...stateRef.current, items: newItems, connections: newConnections }
     }
 
-    const handleAddItem = (type: CanvasItem['type'], content?: string) => {
-        markInteraction()
+    const getInsertionOrigin = (type: CanvasItem['type']) => {
         const viewportCenterX = window.innerWidth / 2
         const viewportCenterY = window.innerHeight / 2
         const centerX = (viewportCenterX - pan.x) / (scale / 100)
         const centerY = (viewportCenterY - pan.y) / (scale / 100)
         const jitter = type !== 'link' ? Math.random() * 40 - 20 : 0
-        const finalX = centerX + jitter - (type === 'image' || type === 'link' ? 130 : 50)
-        const finalY = centerY + jitter - (type === 'image' || type === 'link' ? 120 : 50)
 
+        return {
+            x: centerX + jitter - (type === 'image' || type === 'link' ? 130 : 50),
+            y: centerY + jitter - (type === 'image' || type === 'link' ? 120 : 50),
+        }
+    }
+
+    const handleAddItems = (drafts: CanvasItemDraft[]) => {
+        if (drafts.length === 0) {
+            return
+        }
+
+        markInteraction()
+        const origin = getInsertionOrigin(drafts[0]!.type)
+        const createdItems = drafts.map((draft, index) => ({
+            ...draft,
+            id: `${Date.now()}-${index}-${Math.random().toString(36).slice(2, 6)}`,
+            x: origin.x + index * 28,
+            y: origin.y + index * 28,
+        }))
+        const newItems = [...items, ...createdItems]
+        setItems(newItems)
+        setSelectedId(createdItems[createdItems.length - 1]?.id ?? null)
+        addToHistory(newItems, connections)
+    }
+
+    const handleAddItem = (type: CanvasItem['type'], content?: string) => {
         if (type === 'link' && content) {
-            const newItem: CanvasItem = {
-                id: Date.now().toString(),
-                type: 'image',
-                x: finalX,
-                y: finalY,
-                content: `https://placehold.co/600x400/1C1C1E/FFFFFF?text=${encodeURIComponent(content)}&font=inter`,
-                width: 260,
-                height: 240,
-            }
-            const newItems = [...items, newItem]
-            setItems(newItems)
-            setSelectedId(newItem.id)
-            addToHistory(newItems, connections)
+            handleAddItems([
+                {
+                    type: 'image',
+                    content: `https://placehold.co/600x400/1C1C1E/FFFFFF?text=${encodeURIComponent(content)}&font=inter`,
+                    width: 260,
+                    height: 240,
+                },
+            ])
             return
         }
 
         if (DRAW_TOOLS.has(type)) {
+            markInteraction()
             setActiveTool(type)
             return
         }
 
-        const newItem: CanvasItem = {
-            id: Date.now().toString(),
-            type,
-            x: finalX,
-            y: finalY,
-            content,
-        }
-        const newItems = [...items, newItem]
-        setItems(newItems)
-        setSelectedId(newItem.id)
-        addToHistory(newItems, connections)
+        handleAddItems([
+            {
+                type,
+                ...(content !== undefined ? { content } : {}),
+            },
+        ])
     }
 
     useImperativeHandle(ref, () => ({
@@ -870,6 +939,7 @@ export const Canvas = forwardRef<CanvasRef, CanvasProps>((props, ref) => {
                 activeTool={activeTool}
                 setActiveTool={setActiveTool}
                 onAddItem={handleAddItem}
+                onAddItems={handleAddItems}
                 scale={scale}
                 setScale={setScale}
                 onUndo={undo}
@@ -880,6 +950,7 @@ export const Canvas = forwardRef<CanvasRef, CanvasProps>((props, ref) => {
                 onInteract={markInteraction}
                 isAuthenticated={isAuthenticated}
                 onOpenAuth={onOpenAuth}
+                projectId={projectId}
             />
 
             <div

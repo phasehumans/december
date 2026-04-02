@@ -1,86 +1,137 @@
 import { chromium } from 'playwright'
-import sharp from 'sharp'
-import fs from 'fs/promises'
-import path from 'path'
-import crypto from 'crypto'
+import { mkdir, rm } from 'node:fs/promises'
+import path from 'node:path'
+import os from 'node:os'
+import crypto from 'node:crypto'
 
-import { fileURLToPath } from 'url'
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
+const VIEWPORT = {
+    width: 1440,
+    height: 900,
+}
+const SECTION_HEIGHT = 900
+const TEMP_ROOT = path.resolve(os.tmpdir(), 'phasehumans-web-clips')
+
+let activeDirectory = null
+
+const normalizePath = (value) =>
+    path
+        .resolve(value)
+        .replace(/[\\/]+$/, '')
+        .toLowerCase()
+
+const isSafeTempPath = (value) => {
+    const target = normalizePath(value)
+    const root = normalizePath(TEMP_ROOT)
+    return target === root || target.startsWith(`${root}${path.sep}`)
+}
+
+const cleanupDirectory = async (directory) => {
+    if (!directory || !isSafeTempPath(directory)) {
+        return
+    }
+
+    await rm(directory, { recursive: true, force: true }).catch(() => undefined)
+}
+
+const getPageHeight = async (page) => {
+    return await page.evaluate(() => {
+        const doc = document.documentElement
+        const body = document.body
+
+        return Math.max(
+            doc?.scrollHeight ?? 0,
+            body?.scrollHeight ?? 0,
+            doc?.offsetHeight ?? 0,
+            body?.offsetHeight ?? 0,
+            doc?.clientHeight ?? 0,
+            body?.clientHeight ?? 0,
+            window.innerHeight
+        )
+    })
+}
 
 async function clipper(url) {
     const id = crypto.randomUUID()
-    const dir = path.resolve(__dirname, '../assets/', id)
+    const dir = path.join(TEMP_ROOT, id)
+    activeDirectory = dir
 
-    await fs.mkdir(dir, { recursive: true })
+    await mkdir(dir, { recursive: true })
 
     const fullScreenshotPath = path.join(dir, 'full.png')
-
     const browser = await chromium.launch({
         headless: true,
     })
 
-    const page = await browser.newPage()
+    try {
+        const page = await browser.newPage({
+            ignoreHTTPSErrors: true,
+        })
 
-    await page.setViewportSize({
-        width: 1440,
-        height: 900,
-    })
+        await page.setViewportSize(VIEWPORT)
+        await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 })
+        await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => undefined)
+        await page.waitForTimeout(1000)
 
-    await page.goto(url, { waitUntil: 'domcontentloaded' })
+        const pageHeight = Math.max(Math.ceil(await getPageHeight(page)), VIEWPORT.height)
 
-    await page.waitForTimeout(3000)
+        await page.screenshot({
+            path: fullScreenshotPath,
+            fullPage: true,
+            type: 'png',
+            animations: 'disabled',
+        })
 
-    await page.screenshot({
-        path: fullScreenshotPath,
-        fullPage: true,
-    })
+        const sections = []
 
-    await browser.close()
+        for (let top = 0, index = 1; top < pageHeight; top += SECTION_HEIGHT, index += 1) {
+            const height = Math.min(SECTION_HEIGHT, pageHeight - top)
+            const sectionPath = path.join(dir, `section-${index}.png`)
 
-    const exists = await fs.stat(fullScreenshotPath).catch(() => null)
-
-    if (!exists) {
-        throw new Error('Screenshot was not created')
-    }
-
-    const image = sharp(fullScreenshotPath)
-    const meta = await image.metadata()
-
-    const width = meta.width
-    const height = meta.height
-
-    const sectionHeight = 900
-    const sections = []
-
-    for (let top = 0; top < height; top += sectionHeight) {
-        const sectionPath = path.join(dir, `section-${top}.png`)
-
-        await sharp(fullScreenshotPath)
-            .extract({
-                left: 0,
-                top,
-                width,
-                height: Math.min(sectionHeight, height - top),
+            await page.screenshot({
+                path: sectionPath,
+                type: 'png',
+                animations: 'disabled',
+                clip: {
+                    x: 0,
+                    y: top,
+                    width: VIEWPORT.width,
+                    height,
+                },
             })
-            .toFile(sectionPath)
 
-        sections.push(sectionPath)
-    }
+            sections.push({
+                path: sectionPath,
+                width: VIEWPORT.width,
+                height,
+            })
+        }
 
-    return {
-        full: fullScreenshotPath,
-        sections,
+        return {
+            directory: dir,
+            full: fullScreenshotPath,
+            width: VIEWPORT.width,
+            height: pageHeight,
+            sections,
+        }
+    } finally {
+        await browser.close()
     }
 }
 
 const url = process.argv[2]
 
+if (!url) {
+    console.error('Missing URL argument for clipper worker')
+    process.exit(1)
+}
+
 clipper(url)
     .then((result) => {
+        activeDirectory = null
         console.log(JSON.stringify(result))
     })
-    .catch((err) => {
-        console.error(err)
+    .catch(async (err) => {
+        await cleanupDirectory(activeDirectory)
+        console.error(err instanceof Error ? err.stack || err.message : String(err))
         process.exit(1)
     })

@@ -1,6 +1,7 @@
-﻿import type { RefObject } from 'react'
+import type { RefObject } from 'react'
 import type { Message } from '@/features/chat/types'
 import type { BackendProjectVersionSummary } from '@/features/projects/api/project'
+import type { CanvasDocument } from '@/features/canvas/types'
 
 export type PreviewDevice = 'desktop' | 'mobile' | 'tablet'
 export type PreviewTab = 'preview' | 'code' | 'canvas'
@@ -81,6 +82,9 @@ export interface OutputScreenProps {
     isGenerating?: boolean
     showStructureOnly?: boolean
     projectName?: string | null
+    projectId?: string | null
+    canvasState: CanvasDocument
+    onCanvasStateChange: (document: CanvasDocument) => void
     versions?: BackendProjectVersionSummary[]
     activeVersionId?: string | null
     isVersionLoading?: boolean
