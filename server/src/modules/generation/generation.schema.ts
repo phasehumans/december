@@ -12,12 +12,14 @@ const fileGeneratorSchema = z.enum([
     'lib',
 ])
 
-export const plannedProjectFileSchema = z.object({
-    path: z.string().min(1),
-    purpose: z.string().min(1),
-    generate: z.boolean(),
-    generator: fileGeneratorSchema,
-})
+export const plannedProjectFileSchema = z
+    .object({
+        path: z.string().min(1),
+        purpose: z.string().min(1),
+        generate: z.boolean(),
+        generator: fileGeneratorSchema,
+    })
+    .strict()
 
 export const generateWebsiteSchema = z.object({
     prompt: z.string().min(5),
@@ -25,10 +27,12 @@ export const generateWebsiteSchema = z.object({
     canvasState: canvasDocumentSchema.optional(),
 })
 
-export const previewSelectedElementSchema = z.object({
-    tagName: z.string().min(1),
-    textContent: z.string().max(500).default(''),
-})
+export const previewSelectedElementSchema = z
+    .object({
+        tagName: z.string().min(1),
+        textContent: z.string().max(500).default(''),
+    })
+    .strict()
 
 export const applyProjectEditSchema = z.object({
     projectId: z.string().uuid(),
@@ -78,6 +82,29 @@ export const projectIntentSchema = z.object({
 
 export const extractProjectPlanSchema = projectIntentSchema
 
+const plannedFrontendPageSchema = z
+    .object({
+        name: z.string(),
+        route: z.string(),
+        purpose: z.string(),
+    })
+    .strict()
+
+const plannedFrontendComponentSchema = z
+    .object({
+        name: z.string(),
+        type: z.enum(['layout', 'section', 'shared', 'feature']),
+        purpose: z.string(),
+    })
+    .strict()
+
+const plannedFrontendSchema = z
+    .object({
+        pages: z.array(plannedFrontendPageSchema),
+        components: z.array(plannedFrontendComponentSchema),
+    })
+    .strict()
+
 export const projectPlanDataSchema = z
     .object({
         projectName: z.string(),
@@ -89,28 +116,13 @@ export const projectPlanDataSchema = z
         dependencies: z.array(z.string()),
         devDependencies: z.array(z.string()),
 
-        frontend: z.object({
-            pages: z.array(
-                z.object({
-                    name: z.string(),
-                    route: z.string(),
-                    purpose: z.string(),
-                })
-            ),
-
-            components: z.array(
-                z.object({
-                    name: z.string(),
-                    type: z.enum(['layout', 'section', 'shared', 'feature']),
-                    purpose: z.string(),
-                })
-            ),
-        }),
+        frontend: plannedFrontendSchema,
 
         files: z.array(plannedProjectFileSchema),
         generationOrder: z.array(z.string()),
         constraints: z.array(z.string()),
     })
+    .strict()
     .superRefine((data, ctx) => {
         const filePaths = data.files.map((file) => file.path)
         const uniqueFilePaths = new Set(filePaths)
@@ -163,6 +175,7 @@ export const projectPlanSchema = z
         data: projectPlanDataSchema.nullable(),
         errors: z.array(z.string()),
     })
+    .strict()
     .superRefine((plan, ctx) => {
         if (plan.success && !plan.data) {
             ctx.addIssue({
@@ -248,5 +261,3 @@ const projectChangeAgentResponseSchema = z
 
 export const editAgentResponseSchema = projectChangeAgentResponseSchema
 export const fixAgentResponseSchema = projectChangeAgentResponseSchema
-
-
