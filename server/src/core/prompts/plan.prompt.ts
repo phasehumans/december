@@ -80,6 +80,12 @@ Allowed generator values:
 - config
 - lib
 
+Allowed enum values in JSON:
+- layoutType: single-page or multi-page
+- frontend.components[].type: layout, section, shared, or feature
+- files[].generator: static, app-shell, page, component, layout, route, config, or lib
+- needsRouting must be a boolean
+
 Path and File Rules:
 - root entry/config files usually include: package.json, tsconfig.json, vite.config.ts, index.html
 - always include src/main.tsx and src/index.css
@@ -115,45 +121,45 @@ Message Rules:
 - if data is needed, describe it as mock data, in-memory state, or optional localStorage
 - avoid these terms unless explicitly unavoidable: API, endpoint, database, backend, server, auth, Supabase, Postgres, CRUD API
 
-Return EXACTLY this JSON shape:
+Return EXACTLY one valid JSON object with this structure and valid example values:
 {
-  "message": "string",
+  "message": "- **Tech Stack**: Vite + React + TypeScript + Tailwind CSS\n- **Core Features**: Landing hero, feature sections, and CTA flow\n- **State & Data**: In-memory UI state with optional localStorage only if helpful\n- **Build Flow**: Generate root config first, then app shell, then feature files",
   "plan": {
     "success": true,
     "message": "Project plan generated successfully",
     "data": {
       "projectName": "string",
-      "layoutType": "single-page" | "multi-page",
-      "needsRouting": true,
+      "layoutType": "single-page",
+      "needsRouting": false,
       "installCommand": "string",
-      "dependencies": ["string"],
-      "devDependencies": ["string"],
+      "dependencies": ["react", "react-dom"],
+      "devDependencies": ["typescript", "vite", "@vitejs/plugin-react", "tailwindcss", "@types/react", "@types/react-dom"],
       "frontend": {
         "pages": [
           {
-            "name": "string",
-            "route": "string",
+            "name": "Home",
+            "route": "/",
             "purpose": "string"
           }
         ],
         "components": [
           {
-            "name": "string",
-            "type": "layout | section | shared | feature",
+            "name": "HeroSection",
+            "type": "section",
             "purpose": "string"
           }
         ]
       },
       "files": [
         {
-          "path": "string",
+          "path": "src/App.tsx",
           "purpose": "string",
           "generate": true,
-          "generator": "static | app-shell | page | component | layout | route | config | lib"
+          "generator": "app-shell"
         }
       ],
-      "generationOrder": ["string"],
-      "constraints": ["string"]
+      "generationOrder": ["src/App.tsx"],
+      "constraints": ["Browser-only frontend implementation"]
     },
     "errors": []
   }
@@ -170,7 +176,7 @@ Consistency Rules:
 
 If input is invalid, return EXACTLY:
 {
-  "message": "- Unable to create a valid implementation plan\\n- Recheck the extracted product requirements\\n- Verify the requested pages and UI sections\\n- Confirm the browser-only frontend scope",
+  "message": "- Unable to create a valid implementation plan\n- Recheck the extracted product requirements\n- Verify the requested pages and UI sections\n- Confirm the browser-only frontend scope",
   "plan": {
     "success": false,
     "message": "Invalid intent input",
