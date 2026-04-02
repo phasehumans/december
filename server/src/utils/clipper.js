@@ -1,4 +1,5 @@
 import { chromium } from 'playwright'
+import sharp from 'sharp'
 import { mkdir, rm } from 'node:fs/promises'
 import path from 'node:path'
 import os from 'node:os'
@@ -8,16 +9,14 @@ const VIEWPORT = {
     width: 1440,
     height: 900,
 }
+
 const SECTION_HEIGHT = 900
 const TEMP_ROOT = path.resolve(os.tmpdir(), 'phasehumans-web-clips')
 
 let activeDirectory = null
 
 const normalizePath = (value) =>
-    path
-        .resolve(value)
-        .replace(/[\\/]+$/, '')
-        .toLowerCase()
+    path.resolve(value).replace(/[\\/]+$/, '').toLowerCase()
 
 const isSafeTempPath = (value) => {
     const target = normalizePath(value)
@@ -58,6 +57,7 @@ async function clipper(url) {
     await mkdir(dir, { recursive: true })
 
     const fullScreenshotPath = path.join(dir, 'full.png')
+
     const browser = await chromium.launch({
         headless: true,
     })
@@ -74,6 +74,7 @@ async function clipper(url) {
 
         const pageHeight = Math.max(Math.ceil(await getPageHeight(page)), VIEWPORT.height)
 
+        // Capture ONE deterministic full-page screenshot
         await page.screenshot({
             path: fullScreenshotPath,
             fullPage: true,
@@ -81,27 +82,32 @@ async function clipper(url) {
             animations: 'disabled',
         })
 
+        // Read actual image metadata instead of trusting computed page height blindly
+        const fullImage = sharp(fullScreenshotPath)
+        const metadata = await fullImage.metadata()
+
+        const actualWidth = metadata.width ?? VIEWPORT.width
+        const actualHeight = metadata.height ?? pageHeight
+
         const sections = []
 
-        for (let top = 0, index = 1; top < pageHeight; top += SECTION_HEIGHT, index += 1) {
-            const height = Math.min(SECTION_HEIGHT, pageHeight - top)
+        for (let top = 0, index = 1; top < actualHeight; top += SECTION_HEIGHT, index += 1) {
+            const height = Math.min(SECTION_HEIGHT, actualHeight - top)
             const sectionPath = path.join(dir, `section-${index}.png`)
 
-            await page.screenshot({
-                path: sectionPath,
-                type: 'png',
-                animations: 'disabled',
-                clip: {
-                    x: 0,
-                    y: top,
-                    width: VIEWPORT.width,
+            await sharp(fullScreenshotPath)
+                .extract({
+                    left: 0,
+                    top,
+                    width: actualWidth,
                     height,
-                },
-            })
+                })
+                .png()
+                .toFile(sectionPath)
 
             sections.push({
                 path: sectionPath,
-                width: VIEWPORT.width,
+                width: actualWidth,
                 height,
             })
         }
@@ -109,8 +115,8 @@ async function clipper(url) {
         return {
             directory: dir,
             full: fullScreenshotPath,
-            width: VIEWPORT.width,
-            height: pageHeight,
+            width: actualWidth,
+            height: actualHeight,
             sections,
         }
     } finally {
