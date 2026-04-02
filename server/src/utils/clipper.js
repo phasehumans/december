@@ -13,7 +13,11 @@ const TEMP_ROOT = path.resolve(os.tmpdir(), 'phasehumans-web-clips')
 
 let activeDirectory = null
 
-const normalizePath = (value) => path.resolve(value).replace(/[\\/]+$/, '').toLowerCase()
+const normalizePath = (value) =>
+    path
+        .resolve(value)
+        .replace(/[\\/]+$/, '')
+        .toLowerCase()
 
 const isSafeTempPath = (value) => {
     const target = normalizePath(value)

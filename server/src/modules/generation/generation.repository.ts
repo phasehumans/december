@@ -200,7 +200,8 @@ export const persistProjectRevision = async ({
               })
             : {
                   canvasStateJson: (baseVersion.canvasStateJson ?? undefined) as any,
-                  canvasAssetManifestJson: (baseVersion.canvasAssetManifestJson ?? undefined) as any,
+                  canvasAssetManifestJson: (baseVersion.canvasAssetManifestJson ??
+                      undefined) as any,
               }
 
     await Promise.all(removedFiles.map((path) => deleteObject(currentKey(project.id, path))))
@@ -386,5 +387,3 @@ export const markGenerationFailed = async ({
         })
     })
 }
-
-

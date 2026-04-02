@@ -44,4 +44,3 @@ export interface UseTypewriterProps {
     minimized: boolean
     placeholder?: string
 }
-

@@ -158,4 +158,3 @@ export async function listPrefix(prefix: string) {
 
     return result.Contents ?? []
 }
-

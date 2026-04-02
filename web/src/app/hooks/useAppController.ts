@@ -107,7 +107,9 @@ export const useAppController = () => {
     const [isMobileSidebarOpen, setIsMobileSidebarOpen] = React.useState(false)
     const [activeProjectId, setActiveProjectId] = React.useState<string | null>(null)
     const [activeProjectName, setActiveProjectName] = React.useState<string | null>(null)
-    const [canvasState, setCanvasState] = React.useState<CanvasDocument>(() => createEmptyCanvasDocument())
+    const [canvasState, setCanvasState] = React.useState<CanvasDocument>(() =>
+        createEmptyCanvasDocument()
+    )
     const [projectVersions, setProjectVersions] = React.useState<BackendProjectVersionSummary[]>([])
     const [activeProjectVersionId, setActiveProjectVersionId] = React.useState<string | null>(null)
     const [isProjectOpening, setIsProjectOpening] = React.useState(false)
@@ -503,7 +505,12 @@ export const useAppController = () => {
     }, [activeProjectId, activeProjectVersionId, isAuthenticated, isGenerating])
 
     const startGeneration = React.useCallback(
-        (prompt: string, assistantMessageId: string, projectId?: string | null, nextCanvasState?: CanvasDocument) => {
+        (
+            prompt: string,
+            assistantMessageId: string,
+            projectId?: string | null,
+            nextCanvasState?: CanvasDocument
+        ) => {
             abortGenerationRequest()
             resetGeneratedOutput()
             activeAssistantMessageIdRef.current = assistantMessageId
@@ -821,7 +828,14 @@ export const useAppController = () => {
                 })
             })
         },
-        [activeProjectId, applyProjectChange, canvasState, handlePromptSubmit, view, isAuthenticated]
+        [
+            activeProjectId,
+            applyProjectChange,
+            canvasState,
+            handlePromptSubmit,
+            view,
+            isAuthenticated,
+        ]
     )
 
     const handlePreviewRuntimeError = React.useCallback(
@@ -1006,5 +1020,3 @@ export const useAppController = () => {
         handleDownloadProject,
     }
 }
-
-

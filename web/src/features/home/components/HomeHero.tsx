@@ -67,4 +67,3 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
         </main>
     )
 }
-

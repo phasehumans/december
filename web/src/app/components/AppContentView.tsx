@@ -184,4 +184,3 @@ export const AppContentView: React.FC<AppContentViewProps> = ({
         </AnimatePresence>
     )
 }
-

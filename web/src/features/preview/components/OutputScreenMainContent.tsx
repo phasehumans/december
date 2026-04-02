@@ -120,11 +120,14 @@ export const OutputScreenMainContent: React.FC<OutputScreenMainContentProps> = (
             {activeTab === 'canvas' && (
                 <div className="flex-1 min-h-0 p-2 bg-[#0F0F0F]">
                     <div className="w-full h-full rounded-xl border border-white/10 overflow-hidden">
-                        <Canvas document={canvasState} onDocumentChange={onCanvasStateChange} projectId={projectId} />
+                        <Canvas
+                            document={canvasState}
+                            onDocumentChange={onCanvasStateChange}
+                            projectId={projectId}
+                        />
                     </div>
                 </div>
             )}
         </div>
     )
 }
-

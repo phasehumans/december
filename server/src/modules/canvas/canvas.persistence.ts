@@ -107,7 +107,9 @@ const parseDataUrl = (value: string) => {
     }
 
     const [, contentType = 'application/octet-stream', isBase64, payload = ''] = match
-    const buffer = isBase64 ? Buffer.from(payload, 'base64') : Buffer.from(decodeURIComponent(payload))
+    const buffer = isBase64
+        ? Buffer.from(payload, 'base64')
+        : Buffer.from(decodeURIComponent(payload))
 
     return {
         contentType,
@@ -137,7 +139,11 @@ const persistImageAsset = async ({
     const projectAssetPrefix = assetPrefix(projectId)
     const preferredKind = item.assetKind ?? 'upload'
 
-    if (item.assetKey && item.assetSource === 'project' && item.assetKey.startsWith(projectAssetPrefix)) {
+    if (
+        item.assetKey &&
+        item.assetSource === 'project' &&
+        item.assetKey.startsWith(projectAssetPrefix)
+    ) {
         const existingAsset = await getBinaryFile(item.assetKey)
 
         if (existingAsset) {
@@ -154,7 +160,8 @@ const persistImageAsset = async ({
         const temporaryAsset = await getBinaryFile(item.assetKey)
 
         if (temporaryAsset) {
-            const nextContentType = item.assetContentType ?? temporaryAsset.contentType ?? 'image/png'
+            const nextContentType =
+                item.assetContentType ?? temporaryAsset.contentType ?? 'image/png'
             const nextKey = assetKey(
                 projectId,
                 `canvas/${versionId}/${preferredKind}/${item.id}-${randomUUID()}.${contentTypeToExtension(nextContentType)}`
@@ -276,7 +283,9 @@ export const hydrateCanvasDocument = async ({
     canvasState?: unknown
     canvasAssetManifest?: unknown
 }) => {
-    const normalizedCanvas = normalizeCanvasDocument(canvasState as CanvasDocument | null | undefined)
+    const normalizedCanvas = normalizeCanvasDocument(
+        canvasState as CanvasDocument | null | undefined
+    )
     const parsedAssetManifest = Array.isArray(canvasAssetManifest)
         ? (canvasAssetManifest as CanvasAssetManifestEntry[])
         : []
@@ -296,7 +305,10 @@ export const hydrateCanvasDocument = async ({
 
             const manifestEntry = manifestByKey.get(item.assetKey)
             const contentType =
-                item.assetContentType ?? manifestEntry?.contentType ?? storedAsset.contentType ?? 'image/png'
+                item.assetContentType ??
+                manifestEntry?.contentType ??
+                storedAsset.contentType ??
+                'image/png'
 
             return {
                 ...item,

@@ -471,4 +471,3 @@ export const projectService = {
     duplicateProject,
     downloadProjectVersion,
 }
-

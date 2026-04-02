@@ -214,4 +214,3 @@ export const OutputScreen: React.FC<OutputScreenProps> = ({
         </div>
     )
 }
-
