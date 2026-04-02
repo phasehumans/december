@@ -1,4 +1,5 @@
 import { API_BASE_URL, ApiError, apiRequest, getAuthToken } from '@/shared/api/client'
+import type { CanvasDocument } from '@/features/canvas/types'
 
 export type BackendProject = {
     id: string
@@ -49,6 +50,7 @@ export type BackendProjectDetail = {
         | null
     chatMessages: BackendProjectMessage[]
     generatedFiles: Record<string, string>
+    canvasState: CanvasDocument
 }
 
 type CreateProjectInput = {
@@ -142,3 +144,4 @@ export const projectAPI = {
     duplicateProject,
     downloadProject,
 }
+

@@ -1,5 +1,13 @@
 import type { ComponentType, PointerEvent } from 'react'
 
+export type CanvasAssetSource = 'temporary' | 'project'
+export type CanvasAssetKind = 'upload' | 'web-clip'
+
+export interface CanvasPoint {
+    x: number
+    y: number
+}
+
 export interface CanvasItem {
     id: string
     type:
@@ -19,8 +27,16 @@ export interface CanvasItem {
     height?: number
     content?: string
     color?: string
-    points?: { x: number; y: number }[]
+    points?: CanvasPoint[]
     parentId?: string
+    assetKey?: string
+    assetSource?: CanvasAssetSource
+    assetContentType?: string
+    assetKind?: CanvasAssetKind
+}
+
+export interface CanvasItemDraft extends Omit<CanvasItem, 'id' | 'x' | 'y'> {
+    type: CanvasItem['type']
 }
 
 export interface CanvasConnection {
@@ -31,6 +47,22 @@ export interface CanvasConnection {
     toSide: 'left' | 'right'
 }
 
+export interface CanvasDocument {
+    items: CanvasItem[]
+    connections: CanvasConnection[]
+    pan: CanvasPoint
+    scale: number
+    hasInteracted: boolean
+}
+
+export const createEmptyCanvasDocument = (): CanvasDocument => ({
+    items: [],
+    connections: [],
+    pan: { x: 0, y: 0 },
+    scale: 100,
+    hasInteracted: false,
+})
+
 export interface CanvasRef {
     triggerImageUpload: () => void
 }
@@ -38,6 +70,9 @@ export interface CanvasRef {
 export interface CanvasProps {
     isAuthenticated?: boolean
     onOpenAuth?: () => void
+    document?: CanvasDocument
+    onDocumentChange?: (document: CanvasDocument) => void
+    projectId?: string | null
 }
 
 export interface CanvasUpdateOptions {
@@ -47,13 +82,13 @@ export interface CanvasUpdateOptions {
 export interface ConnectionDraft {
     fromId: string
     fromSide: 'left' | 'right'
-    toPoint?: { x: number; y: number }
+    toPoint?: CanvasPoint
 }
 
 export interface CanvasConnectionsLayerProps {
     connections: CanvasConnection[]
     connectionDraft: ConnectionDraft | null
-    getAnchorPoint: (itemId: string, side: 'left' | 'right') => { x: number; y: number }
+    getAnchorPoint: (itemId: string, side: 'left' | 'right') => CanvasPoint
     getConnectionPath: (x1: number, y1: number, x2: number, y2: number) => string
 }
 
@@ -78,7 +113,7 @@ export interface CanvasItemComponentProps {
     isSelected: boolean
     onSelect: () => void
     onRemove: () => void
-    onDragging?: (delta: { x: number; y: number }) => void
+    onDragging?: (delta: CanvasPoint) => void
     onDragStart?: () => void
     onDragEnd?: () => void
     onConnectStart?: (itemId: string, side: 'left' | 'right', event: PointerEvent) => void
@@ -95,17 +130,17 @@ export type LineHandle = 'start' | 'end'
 export interface CanvasResizeHandlesProps {
     showShapeResizeHandles: boolean
     showLineHandles: boolean
-    lineStart?: { x: number; y: number }
-    lineEnd?: { x: number; y: number }
+    lineStart?: CanvasPoint
+    lineEnd?: CanvasPoint
     onShapeHandleDown: (handle: ShapeHandle, event: PointerEvent<HTMLDivElement>) => void
     onLineHandleDown: (handle: LineHandle, event: PointerEvent<HTMLDivElement>) => void
 }
 
 export interface CanvasTempItemPreviewProps {
     tempItem: CanvasItem
-    buildSmoothPath: (points: { x: number; y: number }[]) => string
-    buildPolylinePath: (points: { x: number; y: number }[]) => string
-    getDraftLinePoints: (item: CanvasItem) => { x: number; y: number }[]
+    buildSmoothPath: (points: CanvasPoint[]) => string
+    buildPolylinePath: (points: CanvasPoint[]) => string
+    getDraftLinePoints: (item: CanvasItem) => CanvasPoint[]
     getTempFramePath: (width: number, height: number) => string
 }
 
@@ -113,6 +148,7 @@ export interface CanvasToolbarProps {
     activeTool: string
     setActiveTool: (tool: string) => void
     onAddItem: (type: CanvasItem['type'], content?: string) => void
+    onAddItems: (items: CanvasItemDraft[]) => void
     scale: number
     setScale: (scale: number | ((prev: number) => number)) => void
     onUndo?: () => void
@@ -123,6 +159,7 @@ export interface CanvasToolbarProps {
     onInteract: () => void
     isAuthenticated?: boolean
     onOpenAuth?: () => void
+    projectId?: string | null
 }
 
 export interface CanvasVectorItemProps {

@@ -1,4 +1,4 @@
-﻿import React from 'react'
+import React from 'react'
 import { OutputHeader } from './OutputHeader'
 import { PreviewArea } from './PreviewArea'
 import { CodeWorkspace } from './CodeWorkspace'
@@ -10,6 +10,7 @@ import type {
     PreviewTab,
 } from '@/features/preview/types'
 import type { BackendProjectVersionSummary } from '@/features/projects/api/project'
+import type { CanvasDocument } from '@/features/canvas/types'
 
 interface OutputScreenMainContentProps {
     activeTab: PreviewTab
@@ -30,6 +31,9 @@ interface OutputScreenMainContentProps {
     onIframeMessage: (event: MessageEvent) => void
     showStructureOnly: boolean
     projectName?: string | null
+    projectId?: string | null
+    canvasState: CanvasDocument
+    onCanvasStateChange: (document: CanvasDocument) => void
     versions?: BackendProjectVersionSummary[]
     activeVersionId?: string | null
     isVersionLoading?: boolean
@@ -58,6 +62,9 @@ export const OutputScreenMainContent: React.FC<OutputScreenMainContentProps> = (
     onIframeMessage,
     showStructureOnly,
     projectName,
+    projectId,
+    canvasState,
+    onCanvasStateChange,
     versions,
     activeVersionId,
     isVersionLoading,
@@ -113,10 +120,11 @@ export const OutputScreenMainContent: React.FC<OutputScreenMainContentProps> = (
             {activeTab === 'canvas' && (
                 <div className="flex-1 min-h-0 p-2 bg-[#0F0F0F]">
                     <div className="w-full h-full rounded-xl border border-white/10 overflow-hidden">
-                        <Canvas />
+                        <Canvas document={canvasState} onDocumentChange={onCanvasStateChange} projectId={projectId} />
                     </div>
                 </div>
             )}
         </div>
     )
 }
+

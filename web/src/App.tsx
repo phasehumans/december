@@ -1,4 +1,4 @@
-﻿import React from 'react'
+import React from 'react'
 import { AuthModal } from './features/auth/components/AuthModal'
 import { AppSideNavigation } from './app/components/AppSideNavigation'
 import { AppContentView } from './app/components/AppContentView'
@@ -27,7 +27,10 @@ const App: React.FC = () => {
         projectsErrorMessage,
         isHome,
         showSidebar,
+        activeProjectId,
         activeProjectName,
+        canvasState,
+        setCanvasState,
         projectVersions,
         activeProjectVersionId,
         isProjectOpening,
@@ -88,6 +91,9 @@ const App: React.FC = () => {
                     isProjectsFetching={isProjectsFetching}
                     projectsErrorMessage={projectsErrorMessage}
                     projectName={activeProjectName}
+                    activeProjectId={activeProjectId}
+                    canvasState={canvasState}
+                    onCanvasStateChange={setCanvasState}
                     projectVersions={projectVersions}
                     activeProjectVersionId={activeProjectVersionId}
                     isProjectOpening={isProjectOpening}
@@ -110,3 +116,7 @@ const App: React.FC = () => {
 }
 
 export default App
+
+
+
+

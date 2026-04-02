@@ -1,4 +1,4 @@
-﻿import React from 'react'
+import React from 'react'
 import { ChatThread as ChatSidebar } from '@/features/chat/components/ChatThread'
 import { OutputScreenMainContent } from './OutputScreenMainContent'
 import { PreviewArea } from './PreviewArea'
@@ -19,6 +19,9 @@ export const OutputScreen: React.FC<OutputScreenProps> = ({
     isGenerating = false,
     showStructureOnly = false,
     projectName,
+    projectId,
+    canvasState,
+    onCanvasStateChange,
     versions,
     activeVersionId,
     isVersionLoading,
@@ -196,6 +199,9 @@ export const OutputScreen: React.FC<OutputScreenProps> = ({
                     onIframeMessage={handleIframeMessage}
                     showStructureOnly={showStructureOnly}
                     projectName={projectName}
+                    projectId={projectId}
+                    canvasState={canvasState}
+                    onCanvasStateChange={onCanvasStateChange}
                     versions={versions}
                     activeVersionId={activeVersionId}
                     isVersionLoading={isVersionLoading}
@@ -208,3 +214,4 @@ export const OutputScreen: React.FC<OutputScreenProps> = ({
         </div>
     )
 }
+
