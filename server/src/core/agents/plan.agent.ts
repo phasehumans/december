@@ -19,8 +19,8 @@ type ChatCompletionWithFinishReason = {
 }
 
 const PLAN_AGENT_MAX_ATTEMPTS = 3
-const PLAN_AGENT_MODEL = 'openai/gpt-5.1-codex-mini'
-const PLAN_AGENT_MAX_TOKENS = 6000
+const PLAN_AGENT_MODEL = 'openai/gpt-oss-20b:free'
+const PLAN_AGENT_MAX_TOKENS = 1600
 
 const validatePlanAgentResponse = (payload: unknown): ExtractProjectPlanResponse => {
     const parsed = planAgentResponseSchema.safeParse(payload)
@@ -58,7 +58,6 @@ export const extractProjectPlan = async (data: ExtractProjectPlan) => {
                 model: PLAN_AGENT_MODEL,
                 max_tokens: PLAN_AGENT_MAX_TOKENS,
                 temperature: 0,
-                response_format: { type: 'json_object' },
                 messages: [
                     {
                         role: 'system',
