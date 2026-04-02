@@ -44,7 +44,12 @@ export const Canvas = forwardRef<CanvasRef, CanvasProps>((props, ref) => {
     const [hasInteracted, setHasInteracted] = useState(initialDocumentRef.current.hasInteracted)
     const [history, setHistory] = useState<
         { items: CanvasItem[]; connections: CanvasConnection[] }[]
-    >([createHistoryEntry(initialDocumentRef.current.items, initialDocumentRef.current.connections)])
+    >([
+        createHistoryEntry(
+            initialDocumentRef.current.items,
+            initialDocumentRef.current.connections
+        ),
+    ])
     const [historyStep, setHistoryStep] = useState(0)
     const [activeTool, setActiveTool] = useState('select')
     const [scale, setScale] = useState(initialDocumentRef.current.scale)
@@ -1007,8 +1012,3 @@ export const Canvas = forwardRef<CanvasRef, CanvasProps>((props, ref) => {
 })
 
 export default Canvas
-
-
-
-
-

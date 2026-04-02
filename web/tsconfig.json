@@ -37,34 +37,34 @@
 
 {
     "compilerOptions": {
-      "lib": ["ESNext", "DOM"],
-      "target": "ESNext",
-      "module": "Preserve",
-      "moduleDetection": "force",
-      "jsx": "react-jsx",
-      "allowJs": true,
-  
-      "moduleResolution": "bundler",
-      "allowImportingTsExtensions": true,
-      "verbatimModuleSyntax": true,
-      "noEmit": true,
-  
-      "strict": true,
-      "skipLibCheck": true,
-      "noFallthroughCasesInSwitch": true,
-      "noUncheckedIndexedAccess": true,
-      "noImplicitOverride": true,
-  
-      "baseUrl": ".",
-      "paths": {
-        "@/*": ["./src/*"]
-      },
-      "ignoreDeprecations": "6.0",
-  
-      "noUnusedLocals": false,
-      "noUnusedParameters": false,
-      "noPropertyAccessFromIndexSignature": false
+        "lib": ["ESNext", "DOM"],
+        "target": "ESNext",
+        "module": "Preserve",
+        "moduleDetection": "force",
+        "jsx": "react-jsx",
+        "allowJs": true,
+
+        "moduleResolution": "bundler",
+        "allowImportingTsExtensions": true,
+        "verbatimModuleSyntax": true,
+        "noEmit": true,
+
+        "strict": true,
+        "skipLibCheck": true,
+        "noFallthroughCasesInSwitch": true,
+        "noUncheckedIndexedAccess": true,
+        "noImplicitOverride": true,
+
+        "baseUrl": ".",
+        "paths": {
+            "@/*": ["./src/*"]
+        },
+        "ignoreDeprecations": "6.0",
+
+        "noUnusedLocals": false,
+        "noUnusedParameters": false,
+        "noPropertyAccessFromIndexSignature": false
     },
-  
+
     "exclude": ["dist", "node_modules"]
-  }
+}

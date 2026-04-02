@@ -163,6 +163,3 @@ export type PersistedProjectRevision = {
     generatedFiles: Record<string, string>
     assistantMessage: string
 }
-
-
-

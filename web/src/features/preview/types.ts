@@ -165,5 +165,3 @@ export interface CodeFileTreeFolderNode {
 }
 
 export type CodeFileTreeNode = CodeFileTreeFileNode | CodeFileTreeFolderNode
-
-

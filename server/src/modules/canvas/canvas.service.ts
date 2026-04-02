@@ -5,11 +5,7 @@ import os from 'os'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import { prisma } from '../../config/db'
-import {
-    assetKey,
-    putBinaryFile,
-    temporaryCanvasAssetKey,
-} from '../../lib/project-storage'
+import { assetKey, putBinaryFile, temporaryCanvasAssetKey } from '../../lib/project-storage'
 
 type CreateWebClipsInput = {
     url: string
@@ -36,7 +32,8 @@ const CLIPPER_WORKER_TIMEOUT_MS = 120000
 const CLIPPER_WORKER_PATH = fileURLToPath(new URL('../../utils/clipper.js', import.meta.url))
 const CLIPPER_TEMP_ROOT = path.resolve(os.tmpdir(), 'phasehumans-web-clips')
 
-const toDataUrl = (buffer: Buffer) => `data:${IMAGE_CONTENT_TYPE};base64,${buffer.toString('base64')}`
+const toDataUrl = (buffer: Buffer) =>
+    `data:${IMAGE_CONTENT_TYPE};base64,${buffer.toString('base64')}`
 
 const sanitizeUrlPathSegment = (value: string) =>
     value
@@ -45,7 +42,10 @@ const sanitizeUrlPathSegment = (value: string) =>
         .replace(/^-+|-+$/g, '') || 'website'
 
 const normalizeComparablePath = (value: string) =>
-    path.resolve(value).replace(/[\\/]+$/, '').toLowerCase()
+    path
+        .resolve(value)
+        .replace(/[\\/]+$/, '')
+        .toLowerCase()
 
 const isSafeClipperPath = (value: string) => {
     const target = normalizeComparablePath(value)
@@ -106,7 +106,10 @@ const parseClipperWorkerOutput = (stdout: string): ClipperWorkerResult => {
         directory: result.directory,
         full: typeof result.full === 'string' ? result.full : '',
         width: typeof result.width === 'number' ? result.width : sections[0]!.width,
-        height: typeof result.height === 'number' ? result.height : sections.reduce((sum, section) => sum + section.height, 0),
+        height:
+            typeof result.height === 'number'
+                ? result.height
+                : sections.reduce((sum, section) => sum + section.height, 0),
         sections,
     }
 }

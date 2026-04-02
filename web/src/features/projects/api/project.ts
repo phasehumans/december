@@ -144,4 +144,3 @@ export const projectAPI = {
     duplicateProject,
     downloadProject,
 }
-

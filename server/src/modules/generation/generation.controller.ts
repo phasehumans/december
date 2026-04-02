@@ -166,5 +166,3 @@ export const generateContoller = {
     applyProjectEdit,
     applyProjectFix,
 }
-
-
