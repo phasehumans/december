@@ -1,8 +1,9 @@
-﻿import { prisma } from '../../config/db'
+import { prisma } from '../../config/db'
 import { currentKey, deleteObject, getTextFile } from '../../lib/project-storage'
 import { saveProjectFiles } from '../../lib/save-project-files'
 import { createProjectName, mapVersionSummary, parseStoredProjectFiles } from './generation.helpers'
 import { publishFinalPreviewSnapshot } from './generation.runtime'
+import { persistCanvasDocument } from '../canvas/canvas.persistence'
 import type {
     GenerateWebsiteInput,
     PersistedProjectRevision,
@@ -77,7 +78,7 @@ export const initializeGenerationTarget = async (data: GenerateWebsiteInput) => 
                 label: `v${versionNumber}`,
                 sourcePrompt: data.prompt,
                 status: 'GENERATING',
-                objectStoragePrefix: `projects/${project.id}/frontend/versions/${versionId}`,
+                objectStoragePrefix: `projects/${project.id}/previous-version/${versionId}`,
                 manifestJson: [],
             },
         })
@@ -157,6 +158,7 @@ export const getProjectRevisionBase = async ({
 
 export const persistProjectRevision = async ({
     project,
+    userId,
     baseVersion,
     nextVersionNumber,
     mergedFiles,
@@ -165,8 +167,10 @@ export const persistProjectRevision = async ({
     assistantMessage,
     summary,
     nextProjectPrompt,
+    canvasState,
 }: {
     project: RevisionBase['project']
+    userId: string
     baseVersion: RevisionBase['baseVersion']
     nextVersionNumber: number
     mergedFiles: Record<string, string>
@@ -175,6 +179,7 @@ export const persistProjectRevision = async ({
     assistantMessage: string
     summary: string
     nextProjectPrompt?: string
+    canvasState?: unknown
 }): Promise<PersistedProjectRevision> => {
     const versionId = crypto.randomUUID()
     const savedFiles = await saveProjectFiles({
@@ -185,6 +190,19 @@ export const persistProjectRevision = async ({
             content,
         })),
     })
+    const persistedCanvas =
+        canvasState !== undefined
+            ? await persistCanvasDocument({
+                  projectId: project.id,
+                  userId,
+                  versionId,
+                  canvasState: canvasState as any,
+              })
+            : {
+                  canvasStateJson: (baseVersion.canvasStateJson ?? undefined) as any,
+                  canvasAssetManifestJson: (baseVersion.canvasAssetManifestJson ??
+                      undefined) as any,
+              }
 
     await Promise.all(removedFiles.map((path) => deleteObject(currentKey(project.id, path))))
 
@@ -232,13 +250,19 @@ export const persistProjectRevision = async ({
                 sourcePrompt,
                 summary,
                 status: 'READY',
-                objectStoragePrefix: `projects/${project.id}/frontend/versions/${versionId}`,
+                objectStoragePrefix: `projects/${project.id}/previous-version/${versionId}`,
                 manifestJson: savedFiles.map((file) => ({
                     path: file.path,
                     key: file.key,
                     contentType: file.contentType,
                     size: file.size,
                 })),
+                ...(persistedCanvas.canvasStateJson !== undefined
+                    ? { canvasStateJson: persistedCanvas.canvasStateJson as any }
+                    : {}),
+                ...(persistedCanvas.canvasAssetManifestJson !== undefined
+                    ? { canvasAssetManifestJson: persistedCanvas.canvasAssetManifestJson as any }
+                    : {}),
                 ...(baseVersion.intentJson !== null
                     ? { intentJson: baseVersion.intentJson as any }
                     : {}),
@@ -299,7 +323,6 @@ export const persistProjectRevision = async ({
         assistantMessage,
     }
 }
-
 export const markGenerationFailed = async ({
     project,
     versionId,

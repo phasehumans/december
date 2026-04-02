@@ -1,4 +1,4 @@
-﻿import React from 'react'
+import React from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import type { Message } from '@/features/chat/types'
 import type { ViewState } from '@/app/types'
@@ -14,6 +14,7 @@ import {
     type BackendProjectVersionSummary,
 } from '@/features/projects/api/project'
 import { mapBackendProjectToUIProject } from '@/app/mapProject'
+import { createEmptyCanvasDocument, type CanvasDocument } from '@/features/canvas/types'
 import { previewAPI } from '@/features/preview/api'
 import type {
     GeneratedProjectFile,
@@ -106,6 +107,9 @@ export const useAppController = () => {
     const [isMobileSidebarOpen, setIsMobileSidebarOpen] = React.useState(false)
     const [activeProjectId, setActiveProjectId] = React.useState<string | null>(null)
     const [activeProjectName, setActiveProjectName] = React.useState<string | null>(null)
+    const [canvasState, setCanvasState] = React.useState<CanvasDocument>(() =>
+        createEmptyCanvasDocument()
+    )
     const [projectVersions, setProjectVersions] = React.useState<BackendProjectVersionSummary[]>([])
     const [activeProjectVersionId, setActiveProjectVersionId] = React.useState<string | null>(null)
     const [isProjectOpening, setIsProjectOpening] = React.useState(false)
@@ -250,6 +254,7 @@ export const useAppController = () => {
         setIsProjectOpening(false)
         setPreviewSession(null)
         setPreviewSessionError(null)
+        setCanvasState(createEmptyCanvasDocument())
         lastAutoFixSignatureRef.current = null
     }, [])
 
@@ -348,6 +353,7 @@ export const useAppController = () => {
             setActiveProjectVersionId(detail.selectedVersionId)
             setProjectLoadError(null)
             setMessages(detail.chatMessages.map(mapBackendMessageToUIMessage))
+            setCanvasState(detail.canvasState ?? createEmptyCanvasDocument())
             replaceGeneratedOutput(detail.generatedFiles)
             setGenerationPhase(null)
             setActiveOperation(null)
@@ -499,7 +505,12 @@ export const useAppController = () => {
     }, [activeProjectId, activeProjectVersionId, isAuthenticated, isGenerating])
 
     const startGeneration = React.useCallback(
-        (prompt: string, assistantMessageId: string, projectId?: string | null) => {
+        (
+            prompt: string,
+            assistantMessageId: string,
+            projectId?: string | null,
+            nextCanvasState?: CanvasDocument
+        ) => {
             abortGenerationRequest()
             resetGeneratedOutput()
             activeAssistantMessageIdRef.current = assistantMessageId
@@ -516,6 +527,7 @@ export const useAppController = () => {
                     await generationAPI.generateProjectStream({
                         prompt,
                         projectId,
+                        canvasState: nextCanvasState,
                         signal: abortController.signal,
                         onEvent: (event) => {
                             const activeMessageId = activeAssistantMessageIdRef.current
@@ -677,10 +689,10 @@ export const useAppController = () => {
                 }
 
                 setMessages([userMsg, assistantMsg])
-                startGeneration(normalizedPrompt, assistantMessageId, activeProjectId)
+                startGeneration(normalizedPrompt, assistantMessageId, activeProjectId, canvasState)
             })
         },
-        [activeProjectId, startGeneration, view, isAuthenticated]
+        [activeProjectId, canvasState, startGeneration, view, isAuthenticated]
     )
 
     const applyProjectChange = React.useCallback(
@@ -698,6 +710,7 @@ export const useAppController = () => {
             errorMessage?: string
             stack?: string | null
             visibleUserMessage: string
+            canvasState?: CanvasDocument
         }) => {
             if (!activeProjectId) {
                 return
@@ -739,6 +752,7 @@ export const useAppController = () => {
                                   versionId: activeProjectVersionId,
                                   prompt: prompt ?? '',
                                   ...(selectedElement ? { selectedElement } : {}),
+                                  ...(canvasState ? { canvasState } : {}),
                                   signal: abortController.signal,
                               })
                             : await generationAPI.applyProjectFix({
@@ -810,10 +824,18 @@ export const useAppController = () => {
                     prompt: normalizedPrompt,
                     selectedElement,
                     visibleUserMessage: normalizedPrompt,
+                    canvasState,
                 })
             })
         },
-        [activeProjectId, applyProjectChange, handlePromptSubmit, view, isAuthenticated]
+        [
+            activeProjectId,
+            applyProjectChange,
+            canvasState,
+            handlePromptSubmit,
+            view,
+            isAuthenticated,
+        ]
     )
 
     const handlePreviewRuntimeError = React.useCallback(
@@ -976,7 +998,10 @@ export const useAppController = () => {
         projectsErrorMessage,
         isHome,
         showSidebar,
+        activeProjectId,
         activeProjectName,
+        canvasState,
+        setCanvasState,
         projectVersions,
         activeProjectVersionId,
         isProjectOpening,

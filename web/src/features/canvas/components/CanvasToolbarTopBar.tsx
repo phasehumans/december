@@ -18,11 +18,12 @@ import { ToolButton } from './ToolButton'
 
 interface CanvasToolbarTopBarProps {
     activeTool: string
-    isLinkInputOpen: boolean
+    isWebClipPopoverOpen: boolean
     onSelectTool: (tool: string) => void
     onUploadImage: () => void
-    onToggleLinkInput: () => void
+    onToggleWebClipPopover: () => void
     onOpenHelp: () => void
+    webClipButtonRef: React.Ref<HTMLButtonElement>
 }
 
 interface ToolbarAction {
@@ -54,11 +55,12 @@ const renderGroup = (actions: ToolbarAction[], wrapperClass = '') => {
 
 export const CanvasToolbarTopBar: React.FC<CanvasToolbarTopBarProps> = ({
     activeTool,
-    isLinkInputOpen,
+    isWebClipPopoverOpen,
     onSelectTool,
     onUploadImage,
-    onToggleLinkInput,
+    onToggleWebClipPopover,
     onOpenHelp,
+    webClipButtonRef,
 }) => {
     const navigationActions: ToolbarAction[] = [
         {
@@ -72,16 +74,6 @@ export const CanvasToolbarTopBar: React.FC<CanvasToolbarTopBarProps> = ({
             label: 'Pan Tool',
             onClick: () => onSelectTool('hand'),
             isActive: activeTool === 'hand',
-        },
-    ]
-
-    const assetActions: ToolbarAction[] = [
-        { icon: ImageIcon, label: 'Upload Image', onClick: onUploadImage },
-        {
-            icon: Globe,
-            label: 'Upload Website',
-            onClick: onToggleLinkInput,
-            isActive: isLinkInputOpen,
         },
     ]
 
@@ -143,7 +135,16 @@ export const CanvasToolbarTopBar: React.FC<CanvasToolbarTopBarProps> = ({
         <div className="pointer-events-auto flex items-center gap-1 p-1 bg-[#171615] border border-white/10 rounded-lg ring-1 ring-white/5 max-w-full overflow-x-auto no-scrollbar">
             {renderGroup(navigationActions, 'flex items-center gap-0.5 pl-0.5')}
             <div className="w-px h-5 bg-white/10 mx-1" />
-            {renderGroup(assetActions)}
+            <div className="flex items-center gap-0.5">
+                <ToolButton icon={ImageIcon} label="Upload Image" onClick={onUploadImage} />
+                <ToolButton
+                    icon={Globe}
+                    label="Upload Website"
+                    onClick={onToggleWebClipPopover}
+                    isActive={isWebClipPopoverOpen}
+                    buttonRef={webClipButtonRef}
+                />
+            </div>
             <div className="w-px h-5 bg-white/10 mx-1" />
             {renderGroup(drawingActions)}
             <div className="w-px h-5 bg-white/10 mx-1" />

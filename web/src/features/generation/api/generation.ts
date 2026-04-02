@@ -1,4 +1,5 @@
-﻿import { API_BASE_URL, ApiError, apiRequest, getAuthToken } from '@/shared/api/client'
+import { API_BASE_URL, ApiError, apiRequest, getAuthToken } from '@/shared/api/client'
+import type { CanvasDocument, CanvasItem } from '@/features/canvas/types'
 import type {
     BackendProject,
     BackendProjectMessage,
@@ -133,24 +134,46 @@ export type GenerationStreamEvent =
 type GenerateProjectInput = {
     prompt: string
     projectId?: string | null
+    canvasState?: CanvasDocument
     signal?: AbortSignal
     onEvent: (event: GenerationStreamEvent) => void
 }
-
 type ApplyProjectEditInput = {
     projectId: string
     versionId?: string | null
     prompt: string
     selectedElement?: PreviewSelectedElementPayload | null
+    canvasState?: CanvasDocument
     signal?: AbortSignal
 }
-
 type ApplyProjectFixInput = {
     projectId: string
     versionId?: string | null
     errorMessage: string
     stack?: string
     signal?: AbortSignal
+}
+
+const stripSerializableCanvasItemContent = (item: CanvasItem): CanvasItem => {
+    if (item.type !== 'image' || !item.assetKey) {
+        return item
+    }
+
+    return {
+        ...item,
+        content: undefined,
+    }
+}
+
+const sanitizeCanvasStateForRequest = (canvasState?: CanvasDocument) => {
+    if (!canvasState) {
+        return undefined
+    }
+
+    return {
+        ...canvasState,
+        items: canvasState.items.map(stripSerializableCanvasItemContent),
+    }
 }
 
 const toApiError = async (res: Response) => {
@@ -204,17 +227,23 @@ const parseEventBlock = (block: string) => {
 const generateProjectStream = async ({
     prompt,
     projectId,
+    canvasState,
     signal,
     onEvent,
 }: GenerateProjectInput) => {
     const token = getAuthToken()
+    const sanitizedCanvasState = sanitizeCanvasStateForRequest(canvasState)
     const res = await fetch(`${API_BASE_URL}/generate`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
             ...(token ? { Authorization: token } : {}),
         },
-        body: JSON.stringify({ prompt, ...(projectId ? { projectId } : {}) }),
+        body: JSON.stringify({
+            prompt,
+            ...(projectId ? { projectId } : {}),
+            ...(sanitizedCanvasState ? { canvasState: sanitizedCanvasState } : {}),
+        }),
         signal,
     })
 
@@ -270,6 +299,8 @@ const generateProjectStream = async ({
 }
 
 const applyProjectEdit = (data: ApplyProjectEditInput) => {
+    const sanitizedCanvasState = sanitizeCanvasStateForRequest(data.canvasState)
+
     return apiRequest<AppliedProjectChangeResult>('/generate/edit', {
         method: 'POST',
         body: JSON.stringify({
@@ -277,6 +308,7 @@ const applyProjectEdit = (data: ApplyProjectEditInput) => {
             ...(data.versionId ? { versionId: data.versionId } : {}),
             prompt: data.prompt,
             ...(data.selectedElement ? { selectedElement: data.selectedElement } : {}),
+            ...(sanitizedCanvasState ? { canvasState: sanitizedCanvasState } : {}),
         }),
         signal: data.signal,
     })

@@ -2,9 +2,19 @@ import React from 'react'
 import { cn } from '@/shared/lib/utils'
 import type { ToolButtonProps } from '@/features/canvas/types'
 
-export const ToolButton: React.FC<ToolButtonProps> = ({ icon: Icon, label, onClick, isActive }) => (
+export const ToolButton: React.FC<ToolButtonProps> = ({
+    icon: Icon,
+    label,
+    onClick,
+    isActive,
+    disabled,
+    buttonRef,
+}) => (
     <button
+        ref={buttonRef}
+        type="button"
         onClick={onClick}
+        disabled={disabled}
         className={cn(
             'group relative p-2.5 rounded-md transition-all duration-200 border border-transparent',
             isActive

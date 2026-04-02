@@ -10,6 +10,9 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
     isGenerating,
     isAuthenticated,
     onOpenAuth,
+    canvasState,
+    onCanvasStateChange,
+    projectId,
 }) => {
     const canvasRef = useRef<CanvasRef>(null)
     const [prompt, setPrompt] = React.useState('')
@@ -55,6 +58,9 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
                         ref={canvasRef}
                         isAuthenticated={isAuthenticated}
                         onOpenAuth={onOpenAuth}
+                        document={canvasState}
+                        onDocumentChange={onCanvasStateChange}
+                        projectId={projectId}
                     />
                 </div>
             </div>

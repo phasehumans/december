@@ -34,6 +34,7 @@ import type {
 import { saveProjectFiles } from '../../lib/save-project-files'
 import { prisma } from '../../config/db'
 import { cleanPrompt } from '../../utils/cleanPrompt'
+import { persistCanvasDocument } from '../canvas/canvas.persistence'
 
 export const generateWebsite = async (data: GenerateWebsiteInput) => {
     const { prompt, onEvent } = data
@@ -57,7 +58,22 @@ export const generateWebsite = async (data: GenerateWebsiteInput) => {
         versionNumber = initializedTarget.version.versionNumber
         versionLabel = initializedTarget.version.label ?? `v${versionNumber}`
         hadCurrentVersion = initializedTarget.hadCurrentVersion
+        const persistedCanvas = await persistCanvasDocument({
+            projectId: project.id,
+            userId: data.userId,
+            versionId,
+            canvasState: data.canvasState,
+        })
 
+        await prisma.projectVersion.update({
+            where: {
+                id: versionId,
+            },
+            data: {
+                canvasStateJson: persistedCanvas.canvasStateJson as any,
+                canvasAssetManifestJson: persistedCanvas.canvasAssetManifestJson as any,
+            },
+        })
         await onEvent?.({
             type: 'project-created',
             data: {
@@ -242,6 +258,8 @@ export const generateWebsite = async (data: GenerateWebsiteInput) => {
                         contentType: file.contentType,
                         size: file.size,
                     })),
+                    canvasStateJson: persistedCanvas.canvasStateJson as any,
+                    canvasAssetManifestJson: persistedCanvas.canvasAssetManifestJson as any,
                     intentJson: intent as any,
                     planJson: plan as any,
                     messages: {
@@ -353,6 +371,7 @@ export const applyProjectEditWorkflow = async (data: ApplyProjectEditInput) => {
 
     const persisted = await persistProjectRevision({
         project: base.project,
+        userId: data.userId,
         baseVersion: base.baseVersion,
         nextVersionNumber: base.nextVersionNumber,
         mergedFiles,
@@ -361,6 +380,7 @@ export const applyProjectEditWorkflow = async (data: ApplyProjectEditInput) => {
         assistantMessage: editResult.message,
         summary: editResult.summary,
         nextProjectPrompt: prompt,
+        canvasState: data.canvasState,
     })
 
     return {
@@ -393,6 +413,7 @@ export const applyProjectFixWorkflow = async (data: ApplyProjectFixInput) => {
 
     const persisted = await persistProjectRevision({
         project: base.project,
+        userId: data.userId,
         baseVersion: base.baseVersion,
         nextVersionNumber: base.nextVersionNumber,
         mergedFiles,
