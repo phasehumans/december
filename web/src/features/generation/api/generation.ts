@@ -1,4 +1,5 @@
-﻿import { API_BASE_URL, ApiError, apiRequest, getAuthToken } from '@/shared/api/client'
+import { API_BASE_URL, ApiError, apiRequest, getAuthToken } from '@/shared/api/client'
+import type { CanvasDocument } from '@/features/canvas/types'
 import type {
     BackendProject,
     BackendProjectMessage,
@@ -133,18 +134,18 @@ export type GenerationStreamEvent =
 type GenerateProjectInput = {
     prompt: string
     projectId?: string | null
+    canvasState?: CanvasDocument
     signal?: AbortSignal
     onEvent: (event: GenerationStreamEvent) => void
 }
-
 type ApplyProjectEditInput = {
     projectId: string
     versionId?: string | null
     prompt: string
     selectedElement?: PreviewSelectedElementPayload | null
+    canvasState?: CanvasDocument
     signal?: AbortSignal
 }
-
 type ApplyProjectFixInput = {
     projectId: string
     versionId?: string | null
@@ -204,6 +205,7 @@ const parseEventBlock = (block: string) => {
 const generateProjectStream = async ({
     prompt,
     projectId,
+    canvasState,
     signal,
     onEvent,
 }: GenerateProjectInput) => {
@@ -214,7 +216,7 @@ const generateProjectStream = async ({
             'Content-Type': 'application/json',
             ...(token ? { Authorization: token } : {}),
         },
-        body: JSON.stringify({ prompt, ...(projectId ? { projectId } : {}) }),
+        body: JSON.stringify({ prompt, ...(projectId ? { projectId } : {}), ...(canvasState ? { canvasState } : {}) }),
         signal,
     })
 
@@ -277,6 +279,7 @@ const applyProjectEdit = (data: ApplyProjectEditInput) => {
             ...(data.versionId ? { versionId: data.versionId } : {}),
             prompt: data.prompt,
             ...(data.selectedElement ? { selectedElement: data.selectedElement } : {}),
+            ...(data.canvasState ? { canvasState: data.canvasState } : {}),
         }),
         signal: data.signal,
     })
@@ -300,3 +303,4 @@ export const generationAPI = {
     applyProjectEdit,
     applyProjectFix,
 }
+

@@ -18,10 +18,10 @@ import { ToolButton } from './ToolButton'
 
 interface CanvasToolbarTopBarProps {
     activeTool: string
-    isLinkInputOpen: boolean
+    isWebClipModalOpen: boolean
     onSelectTool: (tool: string) => void
     onUploadImage: () => void
-    onToggleLinkInput: () => void
+    onOpenWebClipModal: () => void
     onOpenHelp: () => void
 }
 
@@ -54,10 +54,10 @@ const renderGroup = (actions: ToolbarAction[], wrapperClass = '') => {
 
 export const CanvasToolbarTopBar: React.FC<CanvasToolbarTopBarProps> = ({
     activeTool,
-    isLinkInputOpen,
+    isWebClipModalOpen,
     onSelectTool,
     onUploadImage,
-    onToggleLinkInput,
+    onOpenWebClipModal,
     onOpenHelp,
 }) => {
     const navigationActions: ToolbarAction[] = [
@@ -80,8 +80,8 @@ export const CanvasToolbarTopBar: React.FC<CanvasToolbarTopBarProps> = ({
         {
             icon: Globe,
             label: 'Upload Website',
-            onClick: onToggleLinkInput,
-            isActive: isLinkInputOpen,
+            onClick: onOpenWebClipModal,
+            isActive: isWebClipModalOpen,
         },
     ]
 

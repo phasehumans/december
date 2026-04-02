@@ -1,4 +1,4 @@
-﻿import React from 'react'
+import React from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { HomeHero } from '@/features/home/components/HomeHero'
 import { OutputScreen } from '@/features/preview/components/OutputScreen'
@@ -15,6 +15,7 @@ import type {
     PreviewSessionStatus,
 } from '@/features/preview/types'
 import type { BackendProjectVersionSummary } from '@/features/projects/api/project'
+import type { CanvasDocument } from '@/features/canvas/types'
 
 interface AppContentViewProps {
     view: ViewState
@@ -31,6 +32,9 @@ interface AppContentViewProps {
     isProjectsFetching: boolean
     projectsErrorMessage: string | null
     projectName: string | null
+    activeProjectId: string | null
+    canvasState: CanvasDocument
+    onCanvasStateChange: (document: CanvasDocument) => void
     projectVersions: BackendProjectVersionSummary[]
     activeProjectVersionId: string | null
     isProjectOpening: boolean
@@ -96,6 +100,9 @@ export const AppContentView: React.FC<AppContentViewProps> = ({
     isProjectsFetching,
     projectsErrorMessage,
     projectName,
+    activeProjectId,
+    canvasState,
+    onCanvasStateChange,
     projectVersions,
     activeProjectVersionId,
     isProjectOpening,
@@ -141,6 +148,9 @@ export const AppContentView: React.FC<AppContentViewProps> = ({
                             isGenerating={isGenerating}
                             isAuthenticated={isAuthenticated}
                             onOpenAuth={onOpenAuth}
+                            canvasState={canvasState}
+                            onCanvasStateChange={onCanvasStateChange}
+                            projectId={activeProjectId}
                         />
                     </AnimatedPage>
                 ) : (
@@ -158,6 +168,9 @@ export const AppContentView: React.FC<AppContentViewProps> = ({
                             activeOperation={activeOperation}
                             isGenerating={isGenerating}
                             projectName={projectName}
+                            projectId={activeProjectId}
+                            canvasState={canvasState}
+                            onCanvasStateChange={onCanvasStateChange}
                             versions={projectVersions}
                             activeVersionId={activeProjectVersionId}
                             isVersionLoading={isProjectOpening}
@@ -171,3 +184,4 @@ export const AppContentView: React.FC<AppContentViewProps> = ({
         </AnimatePresence>
     )
 }
+

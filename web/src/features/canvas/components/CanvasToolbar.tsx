@@ -1,13 +1,14 @@
 import React, { useState } from 'react'
 import { CanvasToolbarTopBar } from './CanvasToolbarTopBar'
-import { CanvasToolbarLinkPopover } from './CanvasToolbarLinkPopover'
 import { CanvasToolbarBottomControls } from './CanvasToolbarBottomControls'
+import { CanvasWebClipModal } from './CanvasWebClipModal'
 import type { CanvasToolbarProps } from '@/features/canvas/types'
 
 export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
     activeTool,
     setActiveTool,
     onAddItem,
+    onAddItems,
     scale,
     setScale,
     onUndo,
@@ -18,9 +19,9 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
     onInteract,
     isAuthenticated,
     onOpenAuth,
+    projectId,
 }) => {
-    const [isLinkInputOpen, setIsLinkInputOpen] = useState(false)
-    const [linkUrl, setLinkUrl] = useState('')
+    const [isWebClipModalOpen, setIsWebClipModalOpen] = useState(false)
 
     const handleAuthCheck = (action: () => void) => {
         if (!isAuthenticated && onOpenAuth) {
@@ -52,22 +53,12 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
         })
     }
 
-    const handleLinkSubmit = () => {
-        handleAuthCheck(() => {
-            onInteract()
-            if (!linkUrl) return
-            onAddItem('link', linkUrl)
-            setLinkUrl('')
-            setIsLinkInputOpen(false)
-        })
-    }
-
     const handleSelectTool = (tool: string) => {
         handleAuthCheck(() => setActiveTool(tool))
     }
 
-    const handleToggleLinkInput = () => {
-        handleAuthCheck(() => setIsLinkInputOpen(!isLinkInputOpen))
+    const handleOpenWebClipModal = () => {
+        handleAuthCheck(() => setIsWebClipModalOpen(true))
     }
 
     return (
@@ -75,19 +66,11 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
             <div className="absolute top-4 md:top-6 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 w-full px-4 md:px-0 pointer-events-none">
                 <CanvasToolbarTopBar
                     activeTool={activeTool}
-                    isLinkInputOpen={isLinkInputOpen}
+                    isWebClipModalOpen={isWebClipModalOpen}
                     onSelectTool={handleSelectTool}
                     onUploadImage={handleImageUpload}
-                    onToggleLinkInput={handleToggleLinkInput}
+                    onOpenWebClipModal={handleOpenWebClipModal}
                     onOpenHelp={() => window.open('https://www.youtube.com/@phasehumans', '_blank')}
-                />
-
-                <CanvasToolbarLinkPopover
-                    isOpen={isLinkInputOpen}
-                    linkUrl={linkUrl}
-                    setLinkUrl={setLinkUrl}
-                    onSubmit={handleLinkSubmit}
-                    onClose={() => setIsLinkInputOpen(false)}
                 />
             </div>
 
@@ -98,6 +81,14 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
                 onRedo={onRedo}
                 canUndo={canUndo}
                 canRedo={canRedo}
+            />
+
+            <CanvasWebClipModal
+                isOpen={isWebClipModalOpen}
+                onClose={() => setIsWebClipModalOpen(false)}
+                onInteract={onInteract}
+                onAddItems={onAddItems}
+                projectId={projectId}
             />
         </div>
     )
