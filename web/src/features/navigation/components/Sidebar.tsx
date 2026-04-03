@@ -10,6 +10,7 @@ import type { SidebarProps } from '@/features/navigation/types'
 const Sidebar: React.FC<SidebarProps> = ({
     onNewThread,
     onAllProjects,
+    onTemplates,
     onProfile,
     onOpenProject,
     isAuthenticated,
@@ -55,6 +56,12 @@ const Sidebar: React.FC<SidebarProps> = ({
                     label="All Projects"
                     collapsed={isCollapsed}
                     onClick={onAllProjects}
+                />
+                <SidebarNavItem
+                    icon={<Icons.Grid />}
+                    label="Templates"
+                    collapsed={isCollapsed}
+                    onClick={onTemplates}
                 />
             </div>
 
