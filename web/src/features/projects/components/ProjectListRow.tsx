@@ -11,6 +11,7 @@ export const ProjectListRow: React.FC<ProjectListRowProps> = ({
     onToggleMenu,
     onOpenRename,
     onOpenDuplicate,
+    onOpenShare,
     onOpenDelete,
 }) => {
     return (
@@ -71,6 +72,12 @@ export const ProjectListRow: React.FC<ProjectListRowProps> = ({
                             className="mx-1 flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-[13px] text-neutral-300 transition-colors hover:bg-white/5 hover:text-white"
                         >
                             <Icons.Copy className="h-3.5 w-3.5" /> Duplicate
+                        </button>
+                        <button
+                            onClick={(e) => onOpenShare(project, e)}
+                            className="mx-1 flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-[13px] text-neutral-300 transition-colors hover:bg-white/5 hover:text-white"
+                        >
+                            <Icons.ArrowUp className="h-3.5 w-3.5" /> Share
                         </button>
                         <div className="mx-1 my-1 h-px bg-white/5" />
                         <button

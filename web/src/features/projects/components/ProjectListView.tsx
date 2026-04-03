@@ -17,6 +17,7 @@ interface ProjectListViewProps {
     onToggleMenu: (id: string, event: React.MouseEvent) => void
     onOpenRename: (project: Project, event: React.MouseEvent) => void
     onOpenDuplicate: (project: Project, event: React.MouseEvent) => void
+    onOpenShare: (project: Project, event: React.MouseEvent) => void
     onOpenDelete: (project: Project, event: React.MouseEvent) => void
 }
 
@@ -59,6 +60,7 @@ export const ProjectListView: React.FC<ProjectListViewProps> = ({
     onToggleMenu,
     onOpenRename,
     onOpenDuplicate,
+    onOpenShare,
     onOpenDelete,
 }) => {
     const displayedError = actionError ?? errorMessage
@@ -106,6 +108,7 @@ export const ProjectListView: React.FC<ProjectListViewProps> = ({
                             onToggleMenu={onToggleMenu}
                             onOpenRename={onOpenRename}
                             onOpenDuplicate={onOpenDuplicate}
+                            onOpenShare={onOpenShare}
                             onOpenDelete={onOpenDelete}
                         />
                     ))}
