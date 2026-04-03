@@ -6,6 +6,7 @@ import type {
     Project,
     ProjectListProps,
     RenameModalState,
+    ShareModalState,
 } from '@/features/projects/types'
 import { ProjectListView } from './ProjectListView'
 import { ProjectListModals } from './ProjectListModals'
@@ -25,6 +26,10 @@ export const ProjectList: React.FC<ProjectListProps> = ({
         value: '',
     })
     const [duplicateModal, setDuplicateModal] = useState<DuplicateModalState>({
+        isOpen: false,
+        project: null,
+    })
+    const [shareModal, setShareModal] = useState<ShareModalState>({
         isOpen: false,
         project: null,
     })
@@ -73,6 +78,9 @@ export const ProjectList: React.FC<ProjectListProps> = ({
     const openDuplicateModal = (project: Project, event: React.MouseEvent) =>
         openModal(event, () => setDuplicateModal({ isOpen: true, project }))
 
+    const openShareModal = (project: Project, event: React.MouseEvent) =>
+        openModal(event, () => setShareModal({ isOpen: true, project }))
+
     const openDeleteModal = (project: Project, event: React.MouseEvent) =>
         openModal(event, () => setDeleteModal({ isOpen: true, project }))
 
@@ -88,6 +96,10 @@ export const ProjectList: React.FC<ProjectListProps> = ({
     const handleDuplicate = () => {
         if (!duplicateModal.project) return
         duplicateMutation.mutate(duplicateModal.project.id)
+    }
+
+    const handleShare = () => {
+        setShareModal({ isOpen: false, project: null })
     }
 
     const handleDelete = () => {
@@ -112,6 +124,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({
                     onToggleMenu={toggleMenu}
                     onOpenRename={openRenameModal}
                     onOpenDuplicate={openDuplicateModal}
+                    onOpenShare={openShareModal}
                     onOpenDelete={openDeleteModal}
                 />
             </div>
@@ -119,6 +132,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({
             <ProjectListModals
                 renameModal={renameModal}
                 duplicateModal={duplicateModal}
+                shareModal={shareModal}
                 deleteModal={deleteModal}
                 isRenamePending={renameMutation.isPending}
                 isDuplicatePending={duplicateMutation.isPending}
@@ -130,6 +144,8 @@ export const ProjectList: React.FC<ProjectListProps> = ({
                 onRenameSubmit={handleRename}
                 onCloseDuplicate={() => setDuplicateModal((prev) => ({ ...prev, isOpen: false }))}
                 onDuplicateConfirm={handleDuplicate}
+                onCloseShare={() => setShareModal((prev) => ({ ...prev, isOpen: false }))}
+                onShareConfirm={handleShare}
                 onCloseDelete={() => setDeleteModal((prev) => ({ ...prev, isOpen: false }))}
                 onDeleteConfirm={handleDelete}
             />
