@@ -1,4 +1,5 @@
 import React, { useRef } from 'react'
+import { Icons } from '@/shared/components/ui/Icons'
 import PromptInput from './PromptInput'
 import Canvas, { type CanvasRef } from '@/features/canvas/components/Canvas'
 import { HomeHeader } from './HomeHeader'
@@ -21,7 +22,7 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
         <main className="h-full min-h-0 overflow-y-auto no-scrollbar scroll-smooth relative flex flex-col">
             <HomeHeader />
 
-            <div className="flex flex-col items-center justify-center pt-16 md:pt-0 h-[65vh] md:h-[85vh] min-h-[450px] md:min-h-[500px] gap-6 animate-in fade-in duration-500 max-w-4xl mx-auto px-4 w-full shrink-0">
+            <div className="flex flex-col items-center justify-center pt-16 md:pt-0 h-[65vh] md:h-[85vh] min-h-[450px] md:min-h-[500px] gap-6 animate-in fade-in duration-500 max-w-4xl mx-auto px-4 w-full shrink-0 relative">
                 <div className="flex flex-col items-center gap-4 text-center mb-2">
                     <h1 className="text-2xl md:text-4xl font-sohne font-medium tracking-tight text-[#D6D5D4] px-4">
                         What are we building today?
@@ -44,6 +45,20 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
                         isAuthenticated={isAuthenticated}
                         onOpenAuth={onOpenAuth}
                     />
+                    {/* Import Integration */}
+                    <div className="flex items-center justify-center gap-3 mt-8 opacity-0 animate-[fadeIn_1s_ease-out_0.5s_forwards] whitespace-nowrap">
+                        <span className="text-[#656565] text-[14px] font-medium tracking-wide">or import from</span>
+                        <div className="flex items-center gap-2">
+                            <button className="flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-dashed border-[#404040] bg-transparent hover:bg-white/5 hover:border-[#5A5A5A] text-[11px] text-[#A1A1AA] hover:text-white transition-all group">
+                                <Icons.Github className="w-[12px] h-[12px] group-hover:text-white transition-colors" />
+                                <span>GitHub</span>
+                            </button>
+                            <button className="flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-dashed border-[#404040] bg-transparent hover:bg-white/5 hover:border-[#5A5A5A] text-[11px] text-[#A1A1AA] hover:text-white transition-all group">
+                                <Icons.Code className="w-[12px] h-[12px] group-hover:text-white transition-colors" />
+                                <span>Codebase</span>
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
 
