@@ -6,12 +6,14 @@ interface MobileSidebarNavProps {
     onClose: () => void
     onNewThread: () => void
     onAllProjects: () => void
+    onTemplates: () => void
 }
 
 export const MobileSidebarNav: React.FC<MobileSidebarNavProps> = ({
     onClose,
     onNewThread,
     onAllProjects,
+    onTemplates,
 }) => {
     return (
         <div className="flex flex-col gap-1 px-3">
@@ -39,6 +41,15 @@ export const MobileSidebarNav: React.FC<MobileSidebarNavProps> = ({
                 collapsed={false}
                 onClick={() => {
                     onAllProjects()
+                    onClose()
+                }}
+            />
+            <SidebarNavItem
+                icon={<Icons.Grid />}
+                label="Templates"
+                collapsed={false}
+                onClick={() => {
+                    onTemplates()
                     onClose()
                 }}
             />
