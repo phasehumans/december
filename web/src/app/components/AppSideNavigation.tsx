@@ -39,6 +39,7 @@ export const AppSideNavigation: React.FC<AppSideNavigationProps> = ({
             <Sidebar
                 onNewThread={onNewThread}
                 onAllProjects={() => onNavigate('all-projects')}
+                onTemplates={() => onNavigate('templates')}
                 onProfile={() => onNavigate('profile')}
                 onOpenProject={onOpenProject}
                 isAuthenticated={isAuthenticated}
@@ -61,6 +62,7 @@ export const AppSideNavigation: React.FC<AppSideNavigationProps> = ({
                 onClose={() => setIsMobileSidebarOpen(false)}
                 onNewThread={onNewThread}
                 onAllProjects={() => onNavigate('all-projects')}
+                onTemplates={() => onNavigate('templates')}
                 onProfile={() => onNavigate('profile')}
                 onOpenProject={onOpenProject}
                 isAuthenticated={isAuthenticated}
