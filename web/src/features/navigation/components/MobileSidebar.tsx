@@ -12,6 +12,7 @@ export const MobileSidebar: React.FC<MobileSidebarProps> = ({
     onClose,
     onNewThread,
     onAllProjects,
+    onTemplates,
     onProfile,
     onOpenProject,
     isAuthenticated,
@@ -49,6 +50,7 @@ export const MobileSidebar: React.FC<MobileSidebarProps> = ({
                     onClose={onClose}
                     onNewThread={onNewThread}
                     onAllProjects={onAllProjects}
+                    onTemplates={onTemplates}
                 />
 
                 <div className="flex-1 flex flex-col gap-2 px-3 mt-6 overflow-y-auto no-scrollbar font-sans">

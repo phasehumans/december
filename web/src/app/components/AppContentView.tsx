@@ -4,6 +4,7 @@ import { HomeHero } from '@/features/home/components/HomeHero'
 import { OutputScreen } from '@/features/preview/components/OutputScreen'
 import { ProjectList } from '@/features/projects/components/ProjectList'
 import { ProfileSettings } from '@/features/profile/components/ProfileSettings'
+import { TemplatesView } from '@/features/templates/components/TemplatesView'
 import type { Message } from '@/features/chat/types'
 import type { Project } from '@/features/projects/types'
 import type { ViewState } from '@/app/types'
@@ -137,6 +138,12 @@ export const AppContentView: React.FC<AppContentViewProps> = ({
             {view === 'profile' && (
                 <AnimatedPage pageKey="profile">
                     <ProfileSettings onSignOut={onSignOut} />
+                </AnimatedPage>
+            )}
+
+            {view === 'templates' && (
+                <AnimatedPage pageKey="templates">
+                    <TemplatesView />
                 </AnimatedPage>
             )}
 

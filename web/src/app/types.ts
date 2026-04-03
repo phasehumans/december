@@ -1,1 +1,1 @@
-export type ViewState = 'chat' | 'all-projects' | 'profile'
+export type ViewState = 'chat' | 'all-projects' | 'profile' | 'templates'
