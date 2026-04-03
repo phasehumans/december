@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { Icons } from './Icons'
 
 interface PromptFooterProps {
@@ -14,6 +14,8 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
     hasInput,
     isLoading,
 }) => {
+    const [isMicActive, setIsMicActive] = useState(false)
+
     return (
         <div className="flex items-center justify-between px-3 pb-3 mt-1 pl-3">
             <div className="flex items-center gap-3">
@@ -27,6 +29,16 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
             </div>
 
             <div className="flex items-center gap-3">
+                <button
+                    type="button"
+                    onClick={() => setIsMicActive(!isMicActive)}
+                    className={`flex items-center justify-center w-8 h-8 rounded-full hover:bg-white/5 transition-all ${
+                        isMicActive ? 'text-[#FFFFFF]' : 'text-[#727272] hover:text-white'
+                    }`}
+                    title="Voice input"
+                >
+                    <Icons.Microphone className="w-[18px] h-[18px] stroke-[2.5px]" />
+                </button>
                 <button
                     onClick={onSubmit}
                     disabled={!hasInput || isLoading}

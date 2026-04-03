@@ -1,5 +1,5 @@
-import React, { useRef, useEffect } from 'react'
-import { ArrowUp, MousePointer2, X } from 'lucide-react'
+import React, { useRef, useEffect, useState } from 'react'
+import { ArrowUp, MousePointer2, X, Mic } from 'lucide-react'
 import { cn } from '@/shared/lib/utils'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/shared/components/ui/Button'
@@ -16,6 +16,7 @@ export const ChatPromptInput: React.FC<ChatPromptInputProps> = ({
     isApplyingEdit,
 }) => {
     const textareaRef = useRef<HTMLTextAreaElement>(null)
+    const [isMicActive, setIsMicActive] = useState(false)
 
     // Auto-resize textarea
     useEffect(() => {
@@ -93,6 +94,17 @@ export const ChatPromptInput: React.FC<ChatPromptInputProps> = ({
                     </div>
 
                     <div className="flex items-center gap-2">
+                        <button
+                            type="button"
+                            onClick={() => setIsMicActive(!isMicActive)}
+                            className={cn(
+                                'p-2 rounded-full hover:bg-white/5 transition-all',
+                                isMicActive ? 'text-[#FFFFFF]' : 'text-[#727272] hover:text-white'
+                            )}
+                            title="Voice input"
+                        >
+                            <Mic size={18} strokeWidth={2.5} />
+                        </button>
                         <button
                             onClick={onSubmit}
                             disabled={!value.trim() && !isApplyingEdit}
