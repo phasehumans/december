@@ -52,16 +52,16 @@ const Sidebar: React.FC<SidebarProps> = ({
                     onClick={onNewThread}
                 />
                 <SidebarNavItem
-                    icon={<Icons.Grid />}
-                    label="Templates"
-                    collapsed={isCollapsed}
-                    onClick={onTemplates}
-                />
-                <SidebarNavItem
                     icon={<Icons.Folder />}
                     label="All Projects"
                     collapsed={isCollapsed}
                     onClick={onAllProjects}
+                />
+                <SidebarNavItem
+                    icon={<Icons.Grid />}
+                    label="Templates"
+                    collapsed={isCollapsed}
+                    onClick={onTemplates}
                 />
             </div>
 

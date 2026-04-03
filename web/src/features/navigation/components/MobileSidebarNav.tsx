@@ -36,20 +36,20 @@ export const MobileSidebarNav: React.FC<MobileSidebarNavProps> = ({
                 }}
             />
             <SidebarNavItem
-                icon={<Icons.Grid />}
-                label="Templates"
-                collapsed={false}
-                onClick={() => {
-                    onTemplates()
-                    onClose()
-                }}
-            />
-            <SidebarNavItem
                 icon={<Icons.Folder />}
                 label="All Projects"
                 collapsed={false}
                 onClick={() => {
                     onAllProjects()
+                    onClose()
+                }}
+            />
+            <SidebarNavItem
+                icon={<Icons.Grid />}
+                label="Templates"
+                collapsed={false}
+                onClick={() => {
+                    onTemplates()
                     onClose()
                 }}
             />
