@@ -2,8 +2,8 @@ import React, { useRef } from 'react'
 import { Icons } from '@/shared/components/ui/Icons'
 
 interface ScrollableSectionProps {
-    title: string;
-    children: React.ReactNode;
+    title: string
+    children: React.ReactNode
 }
 
 export const ScrollableSection: React.FC<ScrollableSectionProps> = ({ title, children }) => {
@@ -22,14 +22,14 @@ export const ScrollableSection: React.FC<ScrollableSectionProps> = ({ title, chi
             <div className="flex items-center justify-between mb-5">
                 <h2 className="text-[17px] font-medium text-textMain">{title}</h2>
                 <div className="flex items-center gap-2">
-                    <button 
-                        onClick={() => scroll('left')} 
+                    <button
+                        onClick={() => scroll('left')}
                         className="w-8 h-8 rounded-full bg-transparent border border-white/10 flex items-center justify-center text-textMain hover:bg-white/5 transition-all active:scale-95 shadow-sm"
                     >
                         <Icons.ChevronRight className="w-4 h-4 rotate-180" />
                     </button>
-                    <button 
-                        onClick={() => scroll('right')} 
+                    <button
+                        onClick={() => scroll('right')}
                         className="w-8 h-8 rounded-full bg-transparent border border-white/10 flex items-center justify-center text-textMain hover:bg-white/5 transition-all active:scale-95 shadow-sm"
                     >
                         <Icons.ChevronRight className="w-4 h-4" />
@@ -37,8 +37,8 @@ export const ScrollableSection: React.FC<ScrollableSectionProps> = ({ title, chi
                 </div>
             </div>
             <div className="-mx-5 lg:-mx-8 px-5 lg:px-8">
-                <div 
-                    ref={scrollContainerRef} 
+                <div
+                    ref={scrollContainerRef}
                     className="flex gap-4 md:gap-5 overflow-x-auto no-scrollbar pb-4 snap-x snap-mandatory"
                     style={{ scrollBehavior: 'smooth' }}
                 >
