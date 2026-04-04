@@ -40,22 +40,24 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
                     />
 
                     {/* Suggestions */}
-                    <SuggestionsList
+                    {/* <SuggestionsList
                         onSuggestionClick={setPrompt}
                         isAuthenticated={isAuthenticated}
                         onOpenAuth={onOpenAuth}
-                    />
+                    /> */}
                     {/* Import Integration */}
                     <div className="flex items-center justify-center gap-3 mt-8 opacity-0 animate-[fadeIn_1s_ease-out_0.5s_forwards] whitespace-nowrap">
-                        <span className="text-[#656565] text-[14px] font-medium tracking-wide">or import from</span>
+                        <span className="text-[#656565] text-[14px] font-medium tracking-wide">
+                            or start from
+                        </span>
                         <div className="flex items-center gap-2">
                             <button className="flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-dashed border-[#404040] bg-transparent hover:bg-white/5 hover:border-[#5A5A5A] text-[11px] text-[#A1A1AA] hover:text-white transition-all group">
                                 <Icons.Github className="w-[12px] h-[12px] group-hover:text-white transition-colors" />
-                                <span>GitHub</span>
+                                <span>GitHub Repo</span>
                             </button>
                             <button className="flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-dashed border-[#404040] bg-transparent hover:bg-white/5 hover:border-[#5A5A5A] text-[11px] text-[#A1A1AA] hover:text-white transition-all group">
                                 <Icons.Code className="w-[12px] h-[12px] group-hover:text-white transition-colors" />
-                                <span>Codebase</span>
+                                <span>Upload Project</span>
                             </button>
                         </div>
                     </div>

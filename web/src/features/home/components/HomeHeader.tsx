@@ -28,7 +28,7 @@ export const HomeHeader: React.FC = () => {
                     <Icons.YouTube className="w-[22px] h-[22px]" />
                 </a>
             </div>
-            <div className="flex items-center gap-2 mr-[60px] mt-[10px] opacity-0 animate-fadeIn select-none pointer-events-none delay-700">
+            <div className="flex items-center gap-2 mr-[56px] mt-[6px] opacity-0 animate-fadeIn select-none pointer-events-none delay-700">
                 <span className="font-hand text-[20px] text-neutral-400 tracking-wide mt-2">
                     @phasehumans
                 </span>
