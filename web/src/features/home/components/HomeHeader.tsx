@@ -4,7 +4,7 @@ import { Icons } from '@/shared/components/ui/Icons'
 export const HomeHeader: React.FC = () => {
     return (
         <div className="absolute top-4 right-4 md:top-6 md:right-16 z-50 flex flex-col items-end gap-1">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1">
                 <a
                     href="https://x.com/phasehumans"
                     className="text-textMuted hover:text-textMain transition-colors flex items-center justify-center p-1"

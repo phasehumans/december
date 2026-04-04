@@ -23,9 +23,9 @@ export const OutputHeaderActions: React.FC<OutputHeaderActionsProps> = ({
     return (
         <div className="flex items-center gap-3">
             <div className="hidden lg:flex flex-col items-end leading-none mr-1">
-                <span className="max-w-[220px] truncate text-[11px] font-medium uppercase tracking-[0.2em] text-[#6F6E6D]">
+                {/* <span className="max-w-[220px] truncate text-[11px] font-medium uppercase tracking-[0.2em] text-[#6F6E6D]">
                     {projectName ?? 'Project'}
-                </span>
+                </span> */}
             </div>
 
             <div className="flex items-center gap-2">
