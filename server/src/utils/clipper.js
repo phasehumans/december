@@ -1,9 +1,10 @@
-import { chromium } from 'playwright'
-import sharp from 'sharp'
 import { mkdir, rm } from 'node:fs/promises'
 import path from 'node:path'
 import os from 'node:os'
 import crypto from 'node:crypto'
+
+import sharp from 'sharp'
+import { chromium } from 'playwright'
 
 const VIEWPORT = {
     width: 1440,

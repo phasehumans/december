@@ -1,5 +1,10 @@
 import React, { useEffect, useState } from 'react'
+
 import { useProjectListMutations } from '../hooks/useProjectListMutations'
+
+import { ProjectListView } from './ProjectListView'
+import { ProjectListModals } from './ProjectListModals'
+
 import type {
     DeleteModalState,
     DuplicateModalState,
@@ -8,8 +13,6 @@ import type {
     RenameModalState,
     ShareModalState,
 } from '@/features/projects/types'
-import { ProjectListView } from './ProjectListView'
-import { ProjectListModals } from './ProjectListModals'
 
 export const ProjectList: React.FC<ProjectListProps> = ({
     onNewProject,

@@ -1,4 +1,5 @@
 import React from 'react'
+
 import { PromptPlaceholder } from '@/shared/components/ui/PromptPlaceholder'
 
 interface PromptInputPlaceholderProps {

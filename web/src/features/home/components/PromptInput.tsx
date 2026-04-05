@@ -1,7 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react'
+
 import { useTypewriter } from '../hooks/useTypewriter'
-import { PromptFooter } from '@/shared/components/ui/PromptFooter'
+
 import { PromptInputPlaceholder } from './PromptInputPlaceholder'
+
+import { PromptFooter } from '@/shared/components/ui/PromptFooter'
 import type { PromptInputProps } from '@/features/home/types'
 
 const PromptInput: React.FC<PromptInputProps> = ({

@@ -1,4 +1,5 @@
 import React from 'react'
+
 import type { ProjectListRowProps } from '@/features/projects/types'
 import { Icons } from '@/shared/components/ui/Icons'
 

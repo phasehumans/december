@@ -1,6 +1,8 @@
 import React from 'react'
+
 import { SidebarSectionHeader } from './SidebarSectionHeader'
 import { SidebarProjectItem } from './SidebarProjectItem'
+
 import { Skeleton } from '@/shared/components/ui/Skeleton'
 import type { Project } from '@/features/projects/types'
 

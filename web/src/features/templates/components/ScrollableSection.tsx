@@ -1,4 +1,5 @@
 import React, { useRef } from 'react'
+
 import { Icons } from '@/shared/components/ui/Icons'
 
 interface ScrollableSectionProps {

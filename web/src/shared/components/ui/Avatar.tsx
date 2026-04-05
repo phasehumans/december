@@ -1,6 +1,8 @@
 import React from 'react'
-import { cn } from '@/shared/lib/utils'
+
 import { Icons } from './Icons'
+
+import { cn } from '@/shared/lib/utils'
 
 interface AvatarProps {
     src?: string

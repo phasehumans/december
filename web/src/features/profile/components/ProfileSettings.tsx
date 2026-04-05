@@ -1,9 +1,12 @@
 import React from 'react'
+
 import { useProfileSettingsController } from '../hooks/useProfileSettingsController'
+
 import { ProfileNameModal } from './ProfileNameModal'
 import { ProfilePasswordModal } from './ProfilePasswordModal'
 import { ProfileSettingsContent } from './ProfileSettingsContent'
 import { ProfileSettingsSkeleton } from './ProfileSettingsSkeleton'
+
 import type { ProfileSettingsProps } from '@/features/profile/types'
 
 export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut }) => {

@@ -1,4 +1,5 @@
 import React from 'react'
+
 import type { SettingsSectionProps } from '@/features/profile/types'
 
 export const SettingsSection: React.FC<SettingsSectionProps> = ({ title, children }) => {

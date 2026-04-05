@@ -1,7 +1,9 @@
 import React from 'react'
+
 import { OutputHeaderActions } from './OutputHeaderActions'
 import { OutputHeaderCenterControls } from './OutputHeaderCenterControls'
 import { OutputHeaderViewTabs } from './OutputHeaderViewTabs'
+
 import type { OutputHeaderProps } from '@/features/preview/types'
 
 export const OutputHeader: React.FC<OutputHeaderProps> = ({

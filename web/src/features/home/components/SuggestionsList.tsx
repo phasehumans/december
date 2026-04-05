@@ -1,5 +1,7 @@
 import React from 'react'
+
 import { SuggestionButton } from './SuggestionButton'
+
 import type { SuggestionsListProps } from '@/features/home/types'
 
 const SUGGESTIONS = [

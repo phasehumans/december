@@ -6,8 +6,9 @@
  */
 
 import { createRoot } from 'react-dom/client'
-import App from './App'
 import { GoogleOAuthProvider } from '@react-oauth/google'
+
+import App from './App'
 import { QueryProvider } from './shared/providers/query-provider'
 
 const elem = document.getElementById('root')!

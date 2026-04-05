@@ -1,7 +1,9 @@
 import React, { useRef, useState } from 'react'
+
 import { CanvasToolbarTopBar } from './CanvasToolbarTopBar'
 import { CanvasToolbarBottomControls } from './CanvasToolbarBottomControls'
 import { CanvasWebClipPopover } from './CanvasWebClipPopover'
+
 import type { CanvasToolbarProps } from '@/features/canvas/types'
 
 export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({

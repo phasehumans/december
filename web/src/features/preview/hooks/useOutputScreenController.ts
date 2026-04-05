@@ -1,4 +1,5 @@
 import React from 'react'
+
 import { PREVIEW_HTML } from '@/features/preview/constants/preview'
 import type {
     GeneratedProjectFile,

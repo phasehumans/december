@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+
 import type { Project } from '@/features/projects/types'
 
 export interface NavigationState {
