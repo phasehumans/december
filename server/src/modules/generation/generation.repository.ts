@@ -1,9 +1,10 @@
 import { prisma } from '../../config/db'
 import { currentKey, deleteObject, getTextFile } from '../../lib/project-storage'
 import { saveProjectFiles } from '../../lib/save-project-files'
+import { persistCanvasDocument } from '../canvas/canvas.persistence'
+
 import { createProjectName, mapVersionSummary, parseStoredProjectFiles } from './generation.helpers'
 import { publishFinalPreviewSnapshot } from './generation.runtime'
-import { persistCanvasDocument } from '../canvas/canvas.persistence'
 import type {
     GenerateWebsiteInput,
     PersistedProjectRevision,

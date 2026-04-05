@@ -1,8 +1,8 @@
 import React, { useRef, useEffect, useState } from 'react'
 import { ArrowUp, MousePointer2, X, Mic } from 'lucide-react'
-import { cn } from '@/shared/lib/utils'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Button } from '@/shared/components/ui/Button'
+
+import { cn } from '@/shared/lib/utils'
 import type { ChatPromptInputProps } from '@/features/chat/types'
 
 export const ChatPromptInput: React.FC<ChatPromptInputProps> = ({

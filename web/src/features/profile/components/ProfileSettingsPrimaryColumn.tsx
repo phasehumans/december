@@ -1,8 +1,10 @@
 import React from 'react'
-import { Button } from '@/shared/components/ui/Button'
-import { Switch } from '@/shared/components/ui/Switch'
+
 import { SettingsSection } from './SettingsSection'
 import { SettingsRow } from './SettingsRow'
+
+import { Button } from '@/shared/components/ui/Button'
+import { Switch } from '@/shared/components/ui/Switch'
 
 interface ProfileSettingsPrimaryColumnProps {
     resolvedName: string

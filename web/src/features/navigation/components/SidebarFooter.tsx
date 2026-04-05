@@ -1,4 +1,5 @@
 import React from 'react'
+
 import { Icons } from '@/shared/components/ui/Icons'
 import { cn } from '@/shared/lib/utils'
 import type { SidebarFooterProps } from '@/features/navigation/types'

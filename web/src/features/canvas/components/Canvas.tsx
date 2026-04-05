@@ -1,8 +1,10 @@
 import React, { useState, useRef, useEffect, useImperativeHandle, forwardRef } from 'react'
+
 import { CanvasToolbar } from './CanvasToolbar'
 import { CanvasItemComponent } from './CanvasItemComponent'
 import { CanvasConnectionsLayer } from './CanvasConnectionsLayer'
 import { CanvasTempItemPreview } from './CanvasTempItemPreview'
+
 import type {
     CanvasConnection,
     CanvasDocument,

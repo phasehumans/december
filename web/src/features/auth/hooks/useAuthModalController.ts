@@ -1,5 +1,7 @@
 import React from 'react'
+
 import { useAuthMutations } from './useAuthMutations'
+
 import type { AuthMode } from '@/features/auth/types'
 
 interface UseAuthModalControllerArgs {

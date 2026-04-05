@@ -1,4 +1,5 @@
 import React from 'react'
+
 import type { SuggestionButtonProps } from '@/features/home/types'
 
 export const SuggestionButton: React.FC<SuggestionButtonProps> = ({ label, onClick }) => {

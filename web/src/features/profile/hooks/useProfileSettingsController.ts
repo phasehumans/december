@@ -1,4 +1,5 @@
 import React from 'react'
+
 import { useProfileSettingsData } from './useProfileSettingsData'
 
 export const useProfileSettingsController = () => {

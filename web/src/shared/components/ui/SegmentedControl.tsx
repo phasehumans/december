@@ -1,5 +1,6 @@
 import React from 'react'
 import { motion } from 'framer-motion'
+
 import { cn } from '@/shared/lib/utils'
 
 interface SegmentedControlOption<T> {

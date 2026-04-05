@@ -1,12 +1,14 @@
 import React from 'react'
 import { motion } from 'framer-motion'
 import { Type as TextIcon } from 'lucide-react'
-import { cn } from '@/shared/lib/utils'
-import type { CanvasItem, CanvasItemComponentProps } from '@/features/canvas/types'
+
 import { CanvasDeleteButton } from './CanvasDeleteButton'
 import { CanvasFrameItem } from './CanvasFrameItem'
 import { CanvasVectorItem } from './CanvasVectorItem'
 import { CanvasResizeHandles } from './CanvasResizeHandles'
+
+import type { CanvasItem, CanvasItemComponentProps } from '@/features/canvas/types'
+import { cn } from '@/shared/lib/utils'
 
 const getDefaultSizeByType = (type: CanvasItem['type']) => {
     if (type === 'square' || type === 'circle') return { width: 128, height: 128 }

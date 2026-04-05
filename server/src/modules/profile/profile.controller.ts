@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express'
+
 import { profileService } from './profile.service'
 import { changePasswordSchema, updateNameSchema, updateNotificationSchema } from './profile.schema'
-import { success } from 'zod'
 
 const getProfile = async (req: Request, res: Response) => {
     const userId = req.userId as string | undefined

@@ -1,5 +1,6 @@
 import React from 'react'
-import type { CanvasResizeHandlesProps, LineHandle, ShapeHandle } from '@/features/canvas/types'
+
+import type { CanvasResizeHandlesProps } from '@/features/canvas/types'
 
 export const CanvasResizeHandles: React.FC<CanvasResizeHandlesProps> = ({
     showShapeResizeHandles,

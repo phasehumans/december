@@ -1,8 +1,9 @@
-﻿import { loginSchema, signupSchema } from './auth.schema'
-import type { Request, Response } from 'express'
-import { authService } from './auth.service'
+﻿import type { Request, Response } from 'express'
 import axios from 'axios'
 import { OAuth2Client } from 'google-auth-library'
+
+import { authService } from './auth.service'
+import { loginSchema, signupSchema } from './auth.schema'
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID)
 

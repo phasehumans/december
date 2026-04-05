@@ -1,7 +1,9 @@
 import React, { useState, useRef } from 'react'
+
 import { OutputHeader } from './OutputHeader'
 import { PreviewArea } from './PreviewArea'
 import { CodeWorkspace } from './CodeWorkspace'
+
 import Canvas from '@/features/canvas/components/Canvas'
 import type { PreviewWindowProps } from '@/features/preview/types'
 

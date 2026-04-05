@@ -1,4 +1,5 @@
 import React from 'react'
+
 import { CodeWorkspaceEditorPane } from './CodeWorkspaceEditorPane'
 import { CodeWorkspaceFileSidebar } from './CodeWorkspaceFileSidebar'
 import {
@@ -8,6 +9,7 @@ import {
     getLanguageExtension,
     getSharedEditorExtensions,
 } from './codeWorkspaceConfig'
+
 import type { CodeFile, CodeFilePath, CodeWorkspaceProps } from '@/features/preview/types'
 
 const getWorkspaceHtmlPath = (paths: CodeFilePath[]) => {

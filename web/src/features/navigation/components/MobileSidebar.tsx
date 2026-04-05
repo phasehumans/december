@@ -1,9 +1,11 @@
 import React from 'react'
-import { Icons } from '@/shared/components/ui/Icons'
+
 import { SidebarFooter } from './SidebarFooter'
 import { SidebarProjectsSection } from './SidebarProjectsSection'
 import { MobileSidebarHeader } from './MobileSidebarHeader'
 import { MobileSidebarNav } from './MobileSidebarNav'
+
+import { Icons } from '@/shared/components/ui/Icons'
 import { cn } from '@/shared/lib/utils'
 import type { MobileSidebarProps } from '@/features/navigation/types'
 

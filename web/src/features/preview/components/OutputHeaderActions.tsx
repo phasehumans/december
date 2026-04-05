@@ -1,5 +1,6 @@
 import React from 'react'
 import { Download, Github, Globe } from 'lucide-react'
+
 import { Button } from '@/shared/components/ui/Button'
 import type { BackendProjectVersionSummary } from '@/features/projects/api/project'
 

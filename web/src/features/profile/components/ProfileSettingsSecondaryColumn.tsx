@@ -1,8 +1,10 @@
 import React from 'react'
+
+import { SettingsSection } from './SettingsSection'
+
 import { Icons } from '@/shared/components/ui/Icons'
 import { Button } from '@/shared/components/ui/Button'
 import { Badge } from '@/shared/components/ui/Badge'
-import { SettingsSection } from './SettingsSection'
 
 interface ProfileSettingsSecondaryColumnProps {
     isGithubConnected: boolean

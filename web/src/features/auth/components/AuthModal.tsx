@@ -1,9 +1,12 @@
 import React from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X } from 'lucide-react'
+
+import { useAuthModalController } from '../hooks/useAuthModalController'
+
 import { AuthModalAuthStep } from './AuthModalAuthStep'
 import { AuthModalOtpStep } from './AuthModalOtpStep'
-import { useAuthModalController } from '../hooks/useAuthModalController'
+
 import type { AuthModalProps } from '@/features/auth/types'
 
 export const AuthModal: React.FC<AuthModalProps> = ({

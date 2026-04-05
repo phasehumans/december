@@ -1,10 +1,13 @@
 import React, { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Icons } from '@/shared/components/ui/Icons'
+
 import { DUMMY_TEMPLATES, CATEGORIES } from '../data'
+
 import { ScrollableSection } from './ScrollableSection'
 import { CategoryCard } from './CategoryCard'
 import { TemplateCard } from './TemplateCard'
+
+import { Icons } from '@/shared/components/ui/Icons'
 
 export const TemplatesView: React.FC = () => {
     const [searchQuery, setSearchQuery] = useState('')

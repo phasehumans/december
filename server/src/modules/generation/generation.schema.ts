@@ -1,4 +1,5 @@
 import { z } from 'zod'
+
 import { canvasDocumentSchema } from '../canvas/canvas.persistence'
 
 const fileGeneratorSchema = z.enum([

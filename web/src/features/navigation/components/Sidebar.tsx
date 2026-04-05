@@ -1,9 +1,10 @@
 import React, { useState } from 'react'
-import { Icons } from '@/shared/components/ui/Icons'
+
 import { SidebarNavItem } from './SidebarNavItem'
 import { SidebarHeader } from './SidebarHeader'
 import { SidebarFooter } from './SidebarFooter'
-import { SidebarProjectsSection } from './SidebarProjectsSection'
+
+import { Icons } from '@/shared/components/ui/Icons'
 import { cn } from '@/shared/lib/utils'
 import type { SidebarProps } from '@/features/navigation/types'
 
@@ -29,7 +30,8 @@ const Sidebar: React.FC<SidebarProps> = ({
         <div
             className={cn(
                 "hidden md:flex flex-col h-screen bg-sidebar border-r border-white/5 py-5 z-20 transition-[width] duration-300 ease-out font-['Segoe_UI']",
-                isCollapsed ? 'w-[68px]' : 'w-[248px]'
+                isCollapsed ? 'w-[68px]' : 'w-[200px]'
+                // 248
             )}
         >
             <SidebarHeader
@@ -66,7 +68,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             </div>
 
             <div className="flex-1 flex flex-col gap-2 px-3 mt-6 overflow-y-auto no-scrollbar font-sans">
-                <SidebarProjectsSection
+                {/* <SidebarProjectsSection
                     label="Recent"
                     icon={<Icons.Clock />}
                     collapsed={isCollapsed}
@@ -90,7 +92,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                     loadingCount={2}
                     emptyText="No starred projects"
                     onOpenProject={onOpenProject}
-                />
+                /> */}
             </div>
 
             <SidebarFooter

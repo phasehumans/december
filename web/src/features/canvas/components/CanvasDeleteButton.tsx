@@ -1,5 +1,6 @@
 import React from 'react'
 import { X } from 'lucide-react'
+
 import type { CanvasDeleteButtonProps } from '@/features/canvas/types'
 
 export const CanvasDeleteButton: React.FC<CanvasDeleteButtonProps> = ({ onRemove }) => {
