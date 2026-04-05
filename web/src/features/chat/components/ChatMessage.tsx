@@ -1,8 +1,10 @@
 import React from 'react'
 import { motion } from 'framer-motion'
+
 import { ChatMessageActions } from './ChatMessageActions'
 import { ChatMessageAssistantMeta } from './ChatMessageAssistantMeta'
 import { ChatMessageUserBubble } from './ChatMessageUserBubble'
+
 import type { ChatMessageProps } from '@/features/chat/types'
 
 const renderBulletText = (text: string) => {

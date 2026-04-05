@@ -1,5 +1,5 @@
 import React from 'react'
-import { cn } from '@/shared/lib/utils'
+
 import type { SidebarProjectItemProps } from '@/features/navigation/types'
 
 export const SidebarProjectItem: React.FC<SidebarProjectItemProps> = ({ id, title, onClick }) => {

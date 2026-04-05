@@ -1,6 +1,8 @@
 import React from 'react'
-import { Skeleton } from '@/shared/components/ui/Skeleton'
+
 import { ProjectListRow } from './ProjectListRow'
+
+import { Skeleton } from '@/shared/components/ui/Skeleton'
 import type { Project } from '@/features/projects/types'
 
 interface ProjectListViewProps {

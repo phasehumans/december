@@ -1,5 +1,7 @@
 import { createHash } from 'crypto'
+
 import { toPreviewWorkspacePath } from '../modules/generation/frontend-paths'
+
 import { getTextFile, putTextFile, versionKey } from './project-storage'
 
 export type PreviewManifestFile = {

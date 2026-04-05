@@ -1,9 +1,10 @@
 import React, { useRef } from 'react'
-import { Icons } from '@/shared/components/ui/Icons'
+
 import PromptInput from './PromptInput'
-import Canvas, { type CanvasRef } from '@/features/canvas/components/Canvas'
 import { HomeHeader } from './HomeHeader'
-import { SuggestionsList } from './SuggestionsList'
+
+import Canvas, { type CanvasRef } from '@/features/canvas/components/Canvas'
+import { Icons } from '@/shared/components/ui/Icons'
 import type { HomeHeroProps } from '@/features/home/types'
 
 export const HomeHero: React.FC<HomeHeroProps> = ({

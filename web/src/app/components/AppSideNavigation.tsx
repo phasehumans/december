@@ -1,4 +1,5 @@
 import React from 'react'
+
 import Sidebar from '@/features/navigation/components/Sidebar'
 import { MobileSidebar } from '@/features/navigation/components/MobileSidebar'
 import { Icons } from '@/shared/components/ui/Icons'

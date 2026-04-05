@@ -1,6 +1,7 @@
 import express from 'express'
 import dotenv from 'dotenv'
 import cors from 'cors'
+
 import authRouter from './modules/auth/auth.routes'
 import profileRouter from './modules/profile/profile.routes'
 import projectRouter from './modules/project/project.routes'

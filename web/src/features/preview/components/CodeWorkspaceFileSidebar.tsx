@@ -1,5 +1,6 @@
 import React from 'react'
 import { ChevronDown, ChevronRight, FileText, Folder } from 'lucide-react'
+
 import { cn } from '@/shared/lib/utils'
 import type { CodeFilePath, CodeFileTreeNode } from '@/features/preview/types'
 

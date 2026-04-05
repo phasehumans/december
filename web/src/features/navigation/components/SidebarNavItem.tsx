@@ -1,4 +1,5 @@
 import React from 'react'
+
 import { cn } from '@/shared/lib/utils'
 import type { SidebarNavItemProps } from '@/features/navigation/types'
 

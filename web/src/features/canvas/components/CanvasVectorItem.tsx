@@ -1,4 +1,5 @@
 import React from 'react'
+
 import type { CanvasVectorItemProps } from '@/features/canvas/types'
 
 const getStroke = (isSelected: boolean, inactiveColor: string) =>

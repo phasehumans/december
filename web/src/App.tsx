@@ -1,4 +1,5 @@
 import React from 'react'
+
 import { AuthModal } from './features/auth/components/AuthModal'
 import { AppSideNavigation } from './app/components/AppSideNavigation'
 import { AppContentView } from './app/components/AppContentView'

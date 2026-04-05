@@ -1,6 +1,8 @@
 import React from 'react'
-import { Icons } from '@/shared/components/ui/Icons'
+
 import { SidebarNavItem } from './SidebarNavItem'
+
+import { Icons } from '@/shared/components/ui/Icons'
 
 interface MobileSidebarNavProps {
     onClose: () => void

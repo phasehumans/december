@@ -1,4 +1,5 @@
 import React from 'react'
+
 import { Modal } from '@/shared/components/ui/Modal'
 import { Button } from '@/shared/components/ui/Button'
 import type { ProjectDeleteModalProps } from '@/features/projects/types'

@@ -1,4 +1,5 @@
 import { cleanPrompt } from '../../utils/cleanPrompt'
+
 import { assertFrontendWorkspacePath } from './frontend-paths'
 import type {
     ProjectPlan,

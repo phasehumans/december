@@ -5,6 +5,11 @@ import {
     extractProjectPlan,
     generateProjectFile,
 } from '../../core/engine/generation'
+import { saveProjectFiles } from '../../lib/save-project-files'
+import { prisma } from '../../config/db'
+import { cleanPrompt } from '../../utils/cleanPrompt'
+import { persistCanvasDocument } from '../canvas/canvas.persistence'
+
 import { planAgentResponseSchema, promptAgentResponseSchema } from './generation.schema'
 import {
     appendAssistantMessageContent,
@@ -31,10 +36,6 @@ import type {
     ProjectPlan,
     ProjectRecord,
 } from './generation.types'
-import { saveProjectFiles } from '../../lib/save-project-files'
-import { prisma } from '../../config/db'
-import { cleanPrompt } from '../../utils/cleanPrompt'
-import { persistCanvasDocument } from '../canvas/canvas.persistence'
 
 export const generateWebsite = async (data: GenerateWebsiteInput) => {
     const { prompt, onEvent } = data

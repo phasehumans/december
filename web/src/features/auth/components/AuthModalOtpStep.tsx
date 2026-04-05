@@ -1,4 +1,5 @@
 import React from 'react'
+
 import { Logo } from '@/shared/components/Logo'
 import { Button } from '@/shared/components/ui/Button'
 import type { AuthModalOtpStepProps } from '@/features/auth/types'
