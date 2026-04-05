@@ -1,4 +1,5 @@
 import React from 'react'
+
 import { Icons } from '@/shared/components/ui/Icons'
 
 export const HomeHeader: React.FC = () => {

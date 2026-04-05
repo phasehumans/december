@@ -14,6 +14,7 @@ import {
     Circle,
     Info,
 } from 'lucide-react'
+
 import { ToolButton } from './ToolButton'
 
 interface CanvasToolbarTopBarProps {

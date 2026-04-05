@@ -1,7 +1,9 @@
 import React from 'react'
-import { ChatThread as ChatSidebar } from '@/features/chat/components/ChatThread'
+
 import { OutputScreenMainContent } from './OutputScreenMainContent'
 import { PreviewArea } from './PreviewArea'
+
+import { ChatThread as ChatSidebar } from '@/features/chat/components/ChatThread'
 import { useOutputScreenController } from '@/features/preview/hooks/useOutputScreenController'
 import type { OutputScreenProps } from '@/features/preview/types'
 

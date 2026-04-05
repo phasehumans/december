@@ -1,4 +1,5 @@
 import type { Request, Response } from 'express'
+
 import { webClipRequestSchema } from './canvas.schema'
 import { canvasService } from './canvas.service'
 

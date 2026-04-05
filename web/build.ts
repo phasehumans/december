@@ -1,8 +1,9 @@
 #!/usr/bin/env bun
-import plugin from 'bun-plugin-tailwind'
 import { existsSync } from 'fs'
 import { rm } from 'fs/promises'
 import path from 'path'
+
+import plugin from 'bun-plugin-tailwind'
 
 if (process.argv.includes('--help') || process.argv.includes('-h')) {
     console.log(`

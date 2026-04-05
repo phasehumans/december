@@ -1,8 +1,10 @@
 import React from 'react'
-import type { CanvasFrameItemProps } from '@/features/canvas/types'
+
 import { CanvasDeleteButton } from './CanvasDeleteButton'
 import { CanvasFrameTypeSelector } from './CanvasFrameTypeSelector'
 import { CanvasConnectionHandle } from './CanvasConnectionHandle'
+
+import type { CanvasFrameItemProps } from '@/features/canvas/types'
 
 const getFramePath = (widthValue: number, heightValue: number) => {
     const width = Math.max(widthValue, 50)

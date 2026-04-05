@@ -1,5 +1,6 @@
 import React from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
+
 import { cn } from '@/shared/lib/utils'
 import type { PreviewTab } from '@/features/preview/types'
 

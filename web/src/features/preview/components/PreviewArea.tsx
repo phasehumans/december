@@ -1,5 +1,6 @@
 ﻿import React, { useEffect } from 'react'
 import { motion } from 'framer-motion'
+
 import { cn } from '@/shared/lib/utils'
 import { PREVIEW_HTML } from '@/features/preview/constants/preview'
 import type { PreviewAreaProps } from '@/features/preview/types'

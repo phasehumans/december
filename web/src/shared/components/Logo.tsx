@@ -1,5 +1,4 @@
 import React from 'react'
-import { Icons } from '@/shared/components/ui/Icons'
 
 interface LogoProps {
     className?: string

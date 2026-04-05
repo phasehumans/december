@@ -1,5 +1,6 @@
-import { prisma } from '../../config/db'
 import bcrypt from 'bcrypt'
+
+import { prisma } from '../../config/db'
 
 type UpdateName = {
     userId: string

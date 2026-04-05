@@ -1,4 +1,5 @@
 import React from 'react'
+
 import type { CanvasConnectionsLayerProps } from '@/features/canvas/types'
 export const CanvasConnectionsLayer: React.FC<CanvasConnectionsLayerProps> = ({
     connections,

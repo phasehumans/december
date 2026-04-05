@@ -1,4 +1,5 @@
 import React from 'react'
+
 import { Icons } from '@/shared/components/ui/Icons'
 import { cn } from '@/shared/lib/utils'
 import type { SidebarSectionHeaderProps } from '@/features/navigation/types'

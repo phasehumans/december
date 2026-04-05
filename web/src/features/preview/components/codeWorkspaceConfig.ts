@@ -6,6 +6,7 @@ import { indentUnit, HighlightStyle, syntaxHighlighting } from '@codemirror/lang
 import { EditorState, type Extension } from '@codemirror/state'
 import { EditorView, keymap } from '@codemirror/view'
 import { tags } from '@lezer/highlight'
+
 import type {
     CodeFile,
     CodeFileLanguage,

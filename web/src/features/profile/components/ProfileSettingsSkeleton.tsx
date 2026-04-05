@@ -1,6 +1,8 @@
 import React from 'react'
-import { Skeleton } from '@/shared/components/ui/Skeleton'
+
 import { SettingsSection } from './SettingsSection'
+
+import { Skeleton } from '@/shared/components/ui/Skeleton'
 
 export const ProfileSettingsSkeleton: React.FC = () => {
     return (
