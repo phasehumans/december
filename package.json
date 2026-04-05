@@ -11,9 +11,15 @@
         "@playwright/test": "^1.58.2",
         "@types/bun": "latest",
         "husky": "^9.1.7",
+        "lint-staged": "^16.4.0",
         "prettier": "^3.8.1"
     },
     "peerDependencies": {
         "typescript": "^6.0.2"
+    },
+    "lint-staged": {
+        "*.{js,jsx,ts,tsx,json,md,css,html,yml,yaml}": [
+            "prettier --write"
+        ]
     }
 }
