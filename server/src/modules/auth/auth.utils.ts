@@ -44,3 +44,7 @@ export const sendOTP = async (email: string, otp: string) => {
       `,
     })
 }
+
+export const getUsernameFromEmail = (email: string) => {
+    return email.split('@')[0]?.replace(/\d+/g, '')
+}
