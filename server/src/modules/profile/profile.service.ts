@@ -28,7 +28,21 @@ const getProfile = async (data: string) => {
         where: {
             id: data,
         },
+        // select: {
+        //     id: true,
+        //     name: true,
+        //     email: true,
+        //     username: true,
+        //     emailVerified: true,
+        //     receiveNotification: true,
+        //     githubUsername: true,
+        //     githubConnected: true,
+        //     createdAt: true,
+        //     updatedAt: true,
+        // },
     })
+
+    // change object in service itself not in controller
 
     if (!profile) {
         throw new Error('user not found')
