@@ -37,6 +37,7 @@ model User {
   id                  String    @id @default(uuid())
   name                String
   email               String    @unique
+  username            String
   password            String?
   emailVerified       Boolean   @default(false)
   receiveNotification Boolean   @default(true)
@@ -91,7 +92,7 @@ model ProjectVersion {
   projectId String
   project   Project @relation("ProjectVersions", fields: [projectId], references: [id], onDelete: Cascade)
 
-  currentForProjects Project[]       @relation("ProjectCurrentVersion")
+  currentForProjects Project[]        @relation("ProjectCurrentVersion")
   messages           ProjectMessage[]
 
   @@unique([projectId, versionNumber])
@@ -113,4 +114,3 @@ model ProjectMessage {
 
   @@unique([projectVersionId, sequence])
 }
-

@@ -57,6 +57,14 @@ describe('profile.schema', () => {
 
             expect(result.success).toBe(false)
         })
+
+        test('should reject when name is missing', () => {
+            const input = {}
+
+            const result = updateNameSchema.safeParse(input)
+
+            expect(result.success).toBe(false)
+        })
     })
 
     describe('changePasswordSchema', () => {
@@ -109,6 +117,14 @@ describe('profile.schema', () => {
 
             expect(result.success).toBe(true)
         })
+
+        test('should reject when password is missing', () => {
+            const input = {}
+
+            const result = changePasswordSchema.safeParse(input)
+
+            expect(result.success).toBe(false)
+        })
     })
 
     describe('updateNotificationSchema', () => {
@@ -146,6 +162,14 @@ describe('profile.schema', () => {
             const input = {
                 receiveNotification: 0,
             }
+
+            const result = updateNotificationSchema.safeParse(input)
+
+            expect(result.success).toBe(false)
+        })
+
+        test('should reject when receiveNotification is missing', () => {
+            const input = {}
 
             const result = updateNotificationSchema.safeParse(input)
 

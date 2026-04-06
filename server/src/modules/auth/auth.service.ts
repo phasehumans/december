@@ -4,7 +4,8 @@ import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
 
 import { prisma } from '../../config/db'
-import { sendOTP } from '../../utils/sendmail'
+import { sendOTP } from './auth.utils'
+import { getUsernameFromEmail } from './auth.utils'
 
 type Signup = {
     email: string
@@ -40,8 +41,13 @@ const signup = async (data: Signup) => {
         throw new Error('email already exists')
     }
 
+    let userName = getUsernameFromEmail(email)
+
+    if (userName == undefined || userName == '') {
+        userName = 'emptyusername'
+    }
+
     const hashPassword = await bcrypt.hash(password, 10)
-    const userName = email.split('@')[0]?.replace(/\d+/g, '')
     const otp = crypto.randomInt(100000, 1000000).toString()
     const otpHash = await bcrypt.hash(otp, 10)
 
@@ -49,6 +55,7 @@ const signup = async (data: Signup) => {
         data: {
             name: userName!,
             email: email,
+            username: userName,
             password: hashPassword,
             emailVerified: false,
             otpHash: otpHash,
@@ -172,10 +179,17 @@ const google = async (data: Google) => {
         },
     })
 
+    let userName = getUsernameFromEmail(email)
+
+    if (userName == undefined || userName == '') {
+        userName = 'emptyusername'
+    }
+
     if (!user) {
         user = await prisma.user.create({
             data: {
                 email: email,
+                username: userName,
                 emailVerified: true,
                 googleId: sub,
                 name: name,
