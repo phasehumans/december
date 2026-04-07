@@ -7,7 +7,6 @@
         "dev": "bun --watch src/server.ts",
         "start": "bun src/server.ts",
         "test": "bun test",
-        "test:integration": "bun test tests/integration",
         "studio": "bunx prisma studio --browser none --port 5555",
         "studio:test": "bunx dotenv -e .env.test -- bunx prisma studio --browser none --port 5556"
     },
