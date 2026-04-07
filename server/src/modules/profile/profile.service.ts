@@ -12,7 +12,7 @@ type ChangePassword = {
     password: string
 }
 
-type updateNotification = {
+type UpdateNotification = {
     userId: string
     receiveNotification: boolean
 }
@@ -28,7 +28,21 @@ const getProfile = async (data: string) => {
         where: {
             id: data,
         },
+        // select: {
+        //     id: true,
+        //     name: true,
+        //     email: true,
+        //     username: true,
+        //     emailVerified: true,
+        //     receiveNotification: true,
+        //     githubUsername: true,
+        //     githubConnected: true,
+        //     createdAt: true,
+        //     updatedAt: true,
+        // },
     })
+
+    // change object in service itself not in controller
 
     if (!profile) {
         throw new Error('user not found')
@@ -89,8 +103,18 @@ const changePassword = async (data: ChangePassword) => {
     return updatedUser
 }
 
-const updateNotification = async (data: updateNotification) => {
+const updateNotification = async (data: UpdateNotification) => {
     const { userId, receiveNotification } = data
+
+    const existingUser = await prisma.user.findUnique({
+        where: {
+            id: userId,
+        },
+    })
+
+    if (!existingUser) {
+        throw new Error('user not found')
+    }
 
     const updatedUser = await prisma.user.update({
         where: {
@@ -101,10 +125,6 @@ const updateNotification = async (data: updateNotification) => {
         },
     })
 
-    if (!updatedUser) {
-        throw new Error('user not found')
-    }
-
     return updatedUser
 }
 
@@ -112,6 +132,16 @@ const connectGithub = async (data: ConnectGithub) => {
     const { username, accessToken, userId } = data
 
     // console.log("inside service: ", username, accessToken)
+
+    const existingUser = await prisma.user.findUnique({
+        where: {
+            id: userId,
+        },
+    })
+
+    if (!existingUser) {
+        throw new Error('user not found')
+    }
 
     const updatedUser = await prisma.user.update({
         where: {
@@ -123,10 +153,6 @@ const connectGithub = async (data: ConnectGithub) => {
             githubConnected: true,
         },
     })
-
-    if (!updatedUser) {
-        throw new Error('user not found')
-    }
 
     return updatedUser
 }
