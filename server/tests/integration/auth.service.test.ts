@@ -2,16 +2,16 @@ import { describe, it, expect, beforeEach, afterAll, mock } from 'bun:test'
 import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
 
-import { prisma } from '../../../src/config/db'
+import { prisma } from '../../src/config/db'
 
 const sendOTPMock = mock(async (_email: string, _otp: string) => {})
 
-mock.module('../../../src/modules/auth/auth.utils', () => ({
+mock.module('../../src/modules/auth/auth.utils', () => ({
     sendOTP: sendOTPMock,
     getUsernameFromEmail: (email: string) => email.split('@')[0]?.replace(/\d+/g, ''),
 }))
 
-import { authService } from '../../../src/modules/auth/auth.service'
+import { authService } from '../../src/modules/auth/auth.service'
 
 describe('authService integration', () => {
     beforeEach(async () => {
