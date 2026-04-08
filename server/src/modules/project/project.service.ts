@@ -1,8 +1,13 @@
 import { prisma } from '../../config/db'
 import { buildProjectZip } from '../../lib/build-project-zip'
 import { saveProjectFiles } from '../../lib/save-project-files'
-import { deletePrefix, getTextFile, projectPrefix } from '../../lib/project-storage'
+import { deletePrefix, projectPrefix, getTextFile } from '../../lib/project-storage'
 import { hydrateCanvasDocument, persistCanvasDocument } from '../canvas/canvas.persistence'
+import {
+    parseStoredProjectFiles,
+    mapVersionSummary,
+    isVersionSchemaMissing,
+} from '../project/project.utils'
 
 type GetProject = {
     userId: string
@@ -34,13 +39,6 @@ type DuplicateProject = {
     projectId: string
 }
 
-type StoredProjectFile = {
-    path: string
-    key: string
-    contentType?: string
-    size: number
-}
-
 const baseProjectSelect = {
     id: true,
     name: true,
@@ -53,44 +51,11 @@ const baseProjectSelect = {
     userId: true,
 } as const
 
-const isVersionSchemaMissing = (error: unknown) => {
-    const message = error instanceof Error ? error.message.toLowerCase() : ''
-
-    return (
-        message.includes('projectversion') ||
-        message.includes('projectmessage') ||
-        message.includes('currentversionid') ||
-        message.includes('versioncount')
-    )
-}
-
-const parseStoredProjectFiles = (value: unknown): StoredProjectFile[] => {
-    if (!Array.isArray(value)) {
-        return []
-    }
-
-    return value.reduce<StoredProjectFile[]>((files, item) => {
-        if (!item || typeof item !== 'object') {
-            return files
-        }
-
-        const candidate = item as Partial<StoredProjectFile>
-
-        if (typeof candidate.path !== 'string' || typeof candidate.key !== 'string') {
-            return files
-        }
-
-        files.push({
-            path: candidate.path,
-            key: candidate.key,
-            ...(typeof candidate.contentType === 'string'
-                ? { contentType: candidate.contentType }
-                : {}),
-            size: typeof candidate.size === 'number' ? candidate.size : 0,
-        })
-
-        return files
-    }, [])
+export type StoredProjectFile = {
+    path: string
+    key: string
+    contentType?: string
+    size: number
 }
 
 const loadGeneratedFilesFromManifest = async (manifest: StoredProjectFile[]) => {
@@ -100,30 +65,6 @@ const loadGeneratedFilesFromManifest = async (manifest: StoredProjectFile[]) => 
 
     return Object.fromEntries(files)
 }
-
-const mapVersionSummary = (version: {
-    id: string
-    versionNumber: number
-    label: string | null
-    sourcePrompt: string
-    summary: string | null
-    status: string
-    objectStoragePrefix: string
-    manifestJson: unknown
-    createdAt: Date
-    updatedAt: Date
-}) => ({
-    id: version.id,
-    versionNumber: version.versionNumber,
-    label: version.label ?? `v${version.versionNumber}`,
-    sourcePrompt: version.sourcePrompt,
-    summary: version.summary,
-    status: version.status,
-    objectStoragePrefix: version.objectStoragePrefix,
-    fileCount: parseStoredProjectFiles(version.manifestJson).length,
-    createdAt: version.createdAt,
-    updatedAt: version.updatedAt,
-})
 
 const getAllProjects = async (userId: string) => {
     return prisma.project.findMany({
