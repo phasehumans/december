@@ -2,6 +2,7 @@ import { prisma } from '../../config/db'
 import { buildProjectZip } from '../../lib/build-project-zip'
 import { saveProjectFiles } from '../../lib/save-project-files'
 import { deletePrefix, projectPrefix, getTextFile } from '../../lib/project-storage'
+import crypto from 'crypto'
 import { hydrateCanvasDocument, persistCanvasDocument } from '../canvas/canvas.persistence'
 import {
     parseStoredProjectFiles,

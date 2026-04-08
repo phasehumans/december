@@ -393,3 +393,75 @@ describe('project.utils', () => {
         })
     })
 })
+
+describe('project.schema additional coverage', () => {
+    test('should fail if name is too long', () => {
+        const data = {
+            name: 'This Project Name Is Way Too Long',
+            prompt: 'Build app',
+        }
+
+        const result = createProjectSchema.safeParse(data)
+
+        expect(result.success).toBe(false)
+    })
+
+    test('should fail if description is too long', () => {
+        const data = {
+            name: 'My Project',
+            description: 'This description is definitely too long',
+            prompt: 'Build app',
+        }
+
+        const result = createProjectSchema.safeParse(data)
+
+        expect(result.success).toBe(false)
+    })
+})
+
+describe('project.utils additional coverage', () => {
+    test('should ignore a non-string contentType while keeping an otherwise valid file', () => {
+        const result = parseStoredProjectFiles([
+            {
+                path: 'src/index.ts',
+                key: 'file-1',
+                contentType: 123,
+                size: 10,
+            },
+        ])
+
+        expect(result).toEqual([
+            {
+                path: 'src/index.ts',
+                key: 'file-1',
+                size: 10,
+            },
+        ])
+    })
+
+    test('should count only valid manifest entries in mapVersionSummary', () => {
+        const createdAt = new Date('2026-04-08T10:00:00.000Z')
+        const updatedAt = new Date('2026-04-08T11:00:00.000Z')
+
+        const version = {
+            id: 'version-4',
+            versionNumber: 4,
+            label: null,
+            sourcePrompt: 'Build dashboard',
+            summary: 'Ready',
+            status: 'READY',
+            objectStoragePrefix: 'projects/project-1/v4',
+            manifestJson: [
+                { path: 'src/index.ts', key: 'file-1', size: 100 },
+                { path: 'src/app.ts' },
+                'invalid-entry',
+            ],
+            createdAt,
+            updatedAt,
+        }
+
+        const result = mapVersionSummary(version)
+
+        expect(result.fileCount).toBe(1)
+    })
+})
