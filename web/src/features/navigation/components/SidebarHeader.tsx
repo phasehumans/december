@@ -1,32 +1,39 @@
 import React from 'react'
 
 import { Icons } from '@/shared/components/ui/Icons'
-import { Logo } from '@/shared/components/Logo'
-import { cn } from '@/shared/lib/utils'
-import type { SidebarHeaderProps } from '@/features/navigation/types'
 
-export const SidebarHeader: React.FC<SidebarHeaderProps> = ({
-    isCollapsed,
-    onToggleCollapse,
-    onNewThread,
-}) => {
+export const SidebarHeader: React.FC<{ onNewThread?: () => void }> = ({ onNewThread }) => {
     return (
-        <div className="px-4 mb-6 flex items-center justify-between min-h-[40px]">
-            {!isCollapsed && (
-                <div className="cursor-pointer pl-2" onClick={onNewThread}>
-                    <Logo />
-                </div>
-            )}
-            <button
-                onClick={onToggleCollapse}
-                className={cn(
-                    'text-[#91908F] hover:text-[#E8E8E6] transition-colors p-1.5 rounded-md hover:bg-surfaceHover',
-                    isCollapsed ? 'mx-auto' : 'ml-auto'
-                )}
-                title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            >
-                <Icons.SidebarToggle />
-            </button>
+        <div className="px-3 mb-2 mt-0">
+            <div className="bg-[#262626] rounded-[14px] p-1 flex flex-col gap-0.5 -mx-1">
+                <button
+                    onClick={onNewThread}
+                    className="flex items-center gap-2.5 w-full px-2.5 py-1.5 bg-[#171717] rounded-[10px] hover:bg-[#1A1A1A] transition-colors group outline-none"
+                    title="Home"
+                >
+                    <div className="group-hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.2)] transition-all flex items-center justify-center">
+                        <img
+                            src="../../public/logo.png"
+                            alt="PhaseHumans"
+                            className="w-[20px] h-[20px] object-contain drop-shadow-sm"
+                        />
+                    </div>
+                    <span className="font-medium text-[14px] text-[#D6D5D4] tracking-wide">
+                        PhaseHumans
+                    </span>
+                </button>
+                <button
+                    className="flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-[10px] hover:bg-white/[0.04] transition-colors group outline-none"
+                    title="Canvas"
+                >
+                    <div className="text-[#D6D5D4] transition-colors flex items-center justify-center">
+                        <Icons.CanvasIcon className="w-[18px] h-[18px]" />
+                    </div>
+                    <span className="font-medium text-[14px] text-[#D6D5D4] transition-colors">
+                        Canvas
+                    </span>
+                </button>
+            </div>
         </div>
     )
 }
