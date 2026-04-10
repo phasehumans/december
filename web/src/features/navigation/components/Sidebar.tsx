@@ -8,7 +8,7 @@ import { Icons } from '@/shared/components/ui/Icons'
 import { cn } from '@/shared/lib/utils'
 import type { SidebarProps } from '@/features/navigation/types'
 
-const Sidebar: React.FC<SidebarProps> = ({
+const Sidebar: React.FC<SidebarProps & { user?: any }> = ({
     onNewThread,
     onAllProjects,
     onTemplates,
@@ -18,88 +18,96 @@ const Sidebar: React.FC<SidebarProps> = ({
     onOpenAuth,
     projects,
     isProjectsLoading,
+    user,
 }) => {
-    const [isCollapsed, setIsCollapsed] = useState(true)
+    // Keep exact same size (was 200px when open)
+    // No collapse option
     const [recentOpen, setRecentOpen] = useState(true)
-    const [starredOpen, setStarredOpen] = useState(true)
 
-    const recentProjects = isAuthenticated ? projects.slice(0, 3) : []
-    const starredProjects = isAuthenticated ? projects.filter((project) => project.isStarred) : []
+    const recentProjects = isAuthenticated ? projects.slice(0, 5) : []
 
     return (
-        <div
-            className={cn(
-                "hidden md:flex flex-col h-screen bg-sidebar border-r border-white/5 py-5 z-20 transition-[width] duration-300 ease-out font-['Segoe_UI']",
-                isCollapsed ? 'w-[68px]' : 'w-[200px]'
-                // 248
-            )}
-        >
-            <SidebarHeader
-                isCollapsed={isCollapsed}
-                onToggleCollapse={() => setIsCollapsed(!isCollapsed)}
-                onNewThread={onNewThread}
-            />
+        <div className="hidden md:flex flex-col h-screen bg-sidebar border-r border-white/5 pt-2 pb-0 z-20 w-[200px] font-sans">
+            <SidebarHeader onNewThread={onNewThread} />
 
-            <div className="flex flex-col gap-1 px-3">
+            <div className="flex flex-col gap-[4px] px-3">
                 <SidebarNavItem
                     icon={<Icons.Home />}
                     label="Home"
-                    collapsed={isCollapsed}
+                    active={false} // Would be set by router
                     onClick={onNewThread}
                 />
                 <SidebarNavItem
-                    icon={<Icons.NewProject />}
+                    icon={<Icons.Plus />}
                     label="New Project"
-                    collapsed={isCollapsed}
-                    onClick={onNewThread}
+                    onClick={onNewThread} // Replace with proper action if needed
+                />
+                <SidebarNavItem icon={<Icons.Grid />} label="Projects" onClick={onAllProjects} />
+                <SidebarNavItem icon={<Icons.Layout />} label="Templates" onClick={onTemplates} />
+                <SidebarNavItem
+                    icon={<Icons.DesignSystems />}
+                    label="Design Systems"
+                    onClick={() => {}} // Placeholder
                 />
                 <SidebarNavItem
-                    icon={<Icons.Folder />}
-                    label="All Projects"
-                    collapsed={isCollapsed}
-                    onClick={onAllProjects}
-                />
-                <SidebarNavItem
-                    icon={<Icons.Grid />}
-                    label="Templates"
-                    collapsed={isCollapsed}
-                    onClick={onTemplates}
+                    icon={<Icons.DocsBook />}
+                    label="Docs"
+                    onClick={() => {}} // Placeholder
                 />
             </div>
 
-            <div className="flex-1 flex flex-col gap-2 px-3 mt-6 overflow-y-auto no-scrollbar font-sans">
-                {/* <SidebarProjectsSection
-                    label="Recent"
-                    icon={<Icons.Clock />}
-                    collapsed={isCollapsed}
-                    isOpen={recentOpen}
-                    onToggle={() => setRecentOpen(!recentOpen)}
-                    projects={recentProjects}
-                    isLoading={isAuthenticated && isProjectsLoading}
-                    loadingCount={3}
-                    emptyText="No recent projects"
-                    onOpenProject={onOpenProject}
-                />
+            <div className="flex-1 flex flex-col px-3 mt-4 mb-2 overflow-y-auto no-scrollbar font-sans">
+                <div className="mb-3 border-t border-white/5" />
 
-                <SidebarProjectsSection
-                    label="Starred"
-                    icon={<Icons.Star />}
-                    collapsed={isCollapsed}
-                    isOpen={starredOpen}
-                    onToggle={() => setStarredOpen(!starredOpen)}
-                    projects={starredProjects}
-                    isLoading={isAuthenticated && isProjectsLoading}
-                    loadingCount={2}
-                    emptyText="No starred projects"
-                    onOpenProject={onOpenProject}
-                /> */}
+                <div className="flex flex-col mb-2">
+                    <button
+                        onClick={() => setRecentOpen(!recentOpen)}
+                        className="flex items-center justify-between px-3 py-1.5 w-full text-left group outline-none"
+                    >
+                        <span className="font-semibold text-[11px] tracking-widest text-[#969593] group-hover:text-[#D6D5D4] uppercase transition-colors">
+                            Recent Projects
+                        </span>
+                        <div
+                            className={cn(
+                                'text-[#969593] group-hover:text-[#D6D5D4] transition-all opacity-0 group-hover:opacity-100',
+                                recentOpen ? 'rotate-0' : '-rotate-90'
+                            )}
+                        >
+                            <Icons.ChevronDown className="w-3 h-3" />
+                        </div>
+                    </button>
+
+                    {recentOpen && (
+                        <div className="flex flex-col gap-[2px] mt-1 pr-1">
+                            {isAuthenticated
+                                ? isProjectsLoading
+                                    ? null
+                                    : recentProjects.length > 0
+                                      ? recentProjects.map((project) => (
+                                            <button
+                                                key={project.id}
+                                                onClick={() => onOpenProject?.(project.id)}
+                                                className="flex items-center px-3 py-1.5 w-full text-left rounded-lg hover:bg-white/[0.04] transition-colors group"
+                                            >
+                                                <span className="text-[13px] text-[#D6D5D4] truncate transition-colors">
+                                                    {/* @ts-ignore */}
+                                                    {project.name || project.title}
+                                                </span>
+                                            </button>
+                                        ))
+                                      : null
+                                : null}
+                        </div>
+                    )}
+                </div>
             </div>
 
             <SidebarFooter
                 isAuthenticated={isAuthenticated}
-                isCollapsed={isCollapsed}
+                isCollapsed={false}
                 onProfile={onProfile}
                 onOpenAuth={onOpenAuth}
+                user={user}
             />
         </div>
     )

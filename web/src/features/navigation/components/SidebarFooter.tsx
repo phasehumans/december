@@ -1,57 +1,41 @@
 import React from 'react'
 
 import { Icons } from '@/shared/components/ui/Icons'
-import { cn } from '@/shared/lib/utils'
 import type { SidebarFooterProps } from '@/features/navigation/types'
 
-export const SidebarFooter: React.FC<SidebarFooterProps> = ({
+export const SidebarFooter: React.FC<SidebarFooterProps & { user?: { name?: string } }> = ({
     isAuthenticated,
     isCollapsed,
     onProfile,
     onOpenAuth,
+    user,
 }) => {
     return (
-        <div className="px-3 mt-auto mb-2">
-            {isAuthenticated ? (
-                <button
-                    onClick={onProfile}
-                    className={cn(
-                        'flex items-center gap-3 px-3 py-2 rounded-lg transition-all group w-full hover:bg-surface/50 outline-none focus-visible:ring-2 focus-visible:ring-white/20',
-                        isCollapsed ? 'justify-center' : ''
-                    )}
-                >
-                    <div className="flex items-center justify-center w-5 h-5 text-[#91908F] group-hover:text-[#E8E8E6] transition-colors">
-                        <Icons.UserCircle className="w-5 h-5" />
-                    </div>
-                    {!isCollapsed && (
-                        <div className="flex flex-col items-start overflow-hidden font-['Segoe_UI']">
-                            <span className="font-medium text-sm text-[#91908F] group-hover:text-[#E8E8E6] truncate w-full text-left transition-colors">
-                                Account Settings
-                            </span>
+        <div className="mt-auto flex flex-col w-full">
+            <div className="w-full border-t border-white/[0.04]"></div>
+
+            <div className="px-3 pt-1 pb-1.5">
+                {isAuthenticated ? (
+                    <button
+                        onClick={onProfile}
+                        className="flex items-center gap-3 px-3 py-[7px] rounded-lg hover:bg-white/[0.04] transition-colors group w-full outline-none"
+                    >
+                        <div className="flex items-center justify-center w-[18px] h-[18px] text-[#D6D5D4] shrink-0">
+                            <Icons.UserCircle className="w-[18px] h-[18px]" />
                         </div>
-                    )}
-                </button>
-            ) : (
-                !isCollapsed && (
+                        <span className="font-medium text-[14px] text-[#D6D5D4] truncate tracking-tight">
+                            {user?.name ? user.name.split(' ')[0] : 'User'}
+                        </span>
+                    </button>
+                ) : (
                     <button
                         onClick={onOpenAuth}
-                        className="w-full py-2 px-4 bg-[#D6D5D4] text-[#171615] text-[13px] font-medium font-roboto rounded-lg shadow-sm transition-all active:scale-[0.98] flex items-center justify-center hover:bg-white"
+                        className="flex items-center justify-center w-full py-[7px] px-3 bg-white/10 text-[#D6D5D4] text-[14px] font-medium rounded-lg hover:bg-white/15 transition-all"
                     >
                         Sign In
                     </button>
-                )
-            )}
-
-            {/* Show simple icon if collapsed and not authenticated */}
-            {!isAuthenticated && isCollapsed && (
-                <button
-                    onClick={onOpenAuth}
-                    className="flex items-center justify-center w-full p-2.5 rounded-xl hover:bg-[#E8E8E6]/10 text-[#E8E8E6] hover:text-white transition-all"
-                    title="Sign In"
-                >
-                    <Icons.LogOut className="w-5 h-5" />
-                </button>
-            )}
+                )}
+            </div>
         </div>
     )
 }

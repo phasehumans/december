@@ -129,6 +129,29 @@ describe('project.schema', () => {
 
             expect(result.success).toBe(true)
         })
+
+        test('should fail if name is too long', () => {
+            const data = {
+                name: 'This Project Name Is Way Too Long',
+                prompt: 'Build app',
+            }
+
+            const result = createProjectSchema.safeParse(data)
+
+            expect(result.success).toBe(false)
+        })
+
+        test('should fail if description is too long', () => {
+            const data = {
+                name: 'My Project',
+                description: 'This description is definitely too long',
+                prompt: 'Build app',
+            }
+
+            const result = createProjectSchema.safeParse(data)
+
+            expect(result.success).toBe(false)
+        })
     })
 })
 
@@ -392,34 +415,6 @@ describe('project.utils', () => {
             })
         })
     })
-})
-
-describe('project.schema additional coverage', () => {
-    test('should fail if name is too long', () => {
-        const data = {
-            name: 'This Project Name Is Way Too Long',
-            prompt: 'Build app',
-        }
-
-        const result = createProjectSchema.safeParse(data)
-
-        expect(result.success).toBe(false)
-    })
-
-    test('should fail if description is too long', () => {
-        const data = {
-            name: 'My Project',
-            description: 'This description is definitely too long',
-            prompt: 'Build app',
-        }
-
-        const result = createProjectSchema.safeParse(data)
-
-        expect(result.success).toBe(false)
-    })
-})
-
-describe('project.utils additional coverage', () => {
     test('should ignore a non-string contentType while keeping an otherwise valid file', () => {
         const result = parseStoredProjectFiles([
             {
