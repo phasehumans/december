@@ -20,14 +20,6 @@ export const HomeHeader: React.FC = () => {
                 >
                     <Icons.Github className="w-5 h-5" />
                 </a>
-                <a
-                    href="https://youtube.com/@phasehumans"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-textMuted hover:text-textMain transition-colors flex items-center justify-center p-1"
-                >
-                    <Icons.YouTube className="w-[22px] h-[22px]" />
-                </a>
             </div>
             <div className="flex items-center gap-2 mr-[56px] mt-[6px] opacity-0 animate-fadeIn select-none pointer-events-none delay-700">
                 <span className="font-hand text-[20px] text-neutral-400 tracking-wide mt-2">
