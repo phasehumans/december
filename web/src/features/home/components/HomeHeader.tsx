@@ -40,12 +40,6 @@ export const HomeHeader: React.FC = () => {
                         <Icons.Github className="w-5 h-5" />
                     </a>
                 </div>
-                <div className="flex items-center gap-2 mr-2 mt-[6px] opacity-0 animate-fadeIn select-none pointer-events-none delay-700">
-                    <span className="font-hand text-[20px] text-neutral-400 tracking-wide mt-2">
-                        @phasehumans
-                    </span>
-                    <Icons.HandDrawnArrow className="w-10 h-10 text-neutral-400 -mt-3 rotate-[10deg]" />
-                </div>
             </div>
         </div>
     )
