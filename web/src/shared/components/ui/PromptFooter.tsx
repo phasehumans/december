@@ -22,7 +22,7 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
             <div className="flex items-center gap-3">
                 <button
                     onClick={onUpload}
-                    className="flex items-center justify-center w-8 h-8 rounded-full border border-neutral-700 text-[#D5D4D3] hover:text-white hover:border-neutral-500 hover:bg-white/5 transition-all"
+                    className="flex items-center justify-center p-1.5 rounded-md text-[#D5D4D3] hover:text-white hover:bg-white/5 transition-all"
                     title="Add attachment"
                 >
                     <Icons.Plus className="w-4 h-4" />
