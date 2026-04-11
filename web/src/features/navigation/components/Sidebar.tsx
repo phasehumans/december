@@ -30,7 +30,7 @@ const Sidebar: React.FC<SidebarProps & { user?: any }> = ({
         <div className="hidden md:flex flex-col h-screen bg-sidebar border-r border-white/5 pt-2 pb-0 z-20 w-[200px] font-sans">
             <SidebarHeader onNewThread={onNewThread} />
 
-            <div className="flex flex-col gap-[4px] px-3">
+            <div className="flex flex-col gap-[4px] pl-[10px] pr-3">
                 <SidebarNavItem
                     icon={<Icons.Home />}
                     label="Home"
@@ -56,7 +56,7 @@ const Sidebar: React.FC<SidebarProps & { user?: any }> = ({
                 />
             </div>
 
-            <div className="flex-1 flex flex-col px-3 mt-4 mb-2 overflow-y-auto no-scrollbar font-sans">
+            <div className="flex-1 flex flex-col pl-[10px] pr-3 mt-4 mb-2 overflow-y-auto no-scrollbar font-sans">
                 <div className="mb-3 border-t border-white/5" />
 
                 <div className="flex flex-col mb-2">
@@ -87,9 +87,9 @@ const Sidebar: React.FC<SidebarProps & { user?: any }> = ({
                                             <button
                                                 key={project.id}
                                                 onClick={() => onOpenProject?.(project.id)}
-                                                className="flex items-center px-3 py-1.5 w-full text-left rounded-lg hover:bg-white/[0.04] transition-colors group"
+                                                className="flex items-center px-3 py-1.5 w-full text-left rounded-lg hover:bg-[#252422] transition-colors group"
                                             >
-                                                <span className="text-[13px] text-[#D6D5D4] truncate transition-colors">
+                                                <span className="font-semibold text-[11px] tracking-widest text-[#969593] group-hover:text-[#D6D5D4] uppercase transition-colors truncate">
                                                     {/* @ts-ignore */}
                                                     {project.name || project.title}
                                                 </span>
