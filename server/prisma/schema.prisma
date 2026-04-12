@@ -27,21 +27,22 @@ model User {
 }
 
 model Project {
-  id               String           @id @default(uuid())
-  name             String
-  prompt           String
-  createdAt        DateTime         @default(now())
-  updatedAt        DateTime         @updatedAt
-  userId           String
-  description      String?
-  isStarred        Boolean          @default(false)
-  projectStatus    ProjectStatus    @default(DRAFT)
-  currentVersionId String?
-  versionCount     Int              @default(0)
-  currentVersion   ProjectVersion?  @relation("ProjectCurrentVersion", fields: [currentVersionId], references: [id])
-  user             User             @relation(fields: [userId], references: [id])
-  messages         ProjectMessage[]
-  versions         ProjectVersion[] @relation("ProjectVersions")
+  id                 String           @id @default(uuid())
+  name               String
+  prompt             String
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  userId             String
+  description        String?
+  isStarred          Boolean          @default(false)
+  isSharedAsTemplate Boolean          @default(false)
+  projectStatus      ProjectStatus    @default(DRAFT)
+  currentVersionId   String?
+  versionCount       Int              @default(0)
+  currentVersion     ProjectVersion?  @relation("ProjectCurrentVersion", fields: [currentVersionId], references: [id])
+  user               User             @relation(fields: [userId], references: [id])
+  messages           ProjectMessage[]
+  versions           ProjectVersion[] @relation("ProjectVersions")
 }
 
 model ProjectVersion {
