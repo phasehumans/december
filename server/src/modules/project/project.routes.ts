@@ -15,5 +15,6 @@ projectRouter.patch('/:projectId', projectController.updateProject)
 projectRouter.delete('/:projectId', projectController.deleteProject)
 projectRouter.post('/:projectId/duplicate', projectController.duplicateProject)
 projectRouter.post('/:projectId/share', projectController.shareProjectAsTemplate)
+projectRouter.post('/:projectId/remix', projectController.remixProject)
 
 export default projectRouter
