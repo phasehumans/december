@@ -58,7 +58,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.95, y: 10 }}
                         transition={{ type: 'spring', duration: 0.5, bounce: 0.2 }}
-                        className="relative w-full max-w-[360px] bg-[#171615] border border-white/10 rounded-xl p-6 shadow-2xl shadow-black/50"
+                        className="relative w-full max-w-[332px] bg-[#202020] border border-[#333333] rounded-[20px] p-8 shadow-2xl shadow-black/50"
                     >
                         {step === 'auth' ? (
                             <AuthModalAuthStep
@@ -91,9 +91,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
                         <button
                             onClick={onClose}
-                            className="absolute top-3 right-3 text-neutral-600 hover:text-white transition-colors p-1.5 rounded-md hover:bg-white/5"
+                            className="absolute top-4 right-4 text-[#737373] hover:text-[#E5E5E5] transition-colors p-1.5 rounded-md hover:bg-white/5"
                         >
-                            <X size={16} />
+                            <X size={18} />
                         </button>
                     </motion.div>
                 </div>
