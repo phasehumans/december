@@ -23,7 +23,7 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
         const observer = new IntersectionObserver(
             ([entry]) => {
                 const event = new CustomEvent('hero-canvas-intersect', {
-                    detail: entry.isIntersecting,
+                    detail: entry?.isIntersecting,
                 })
                 window.dispatchEvent(event)
             },
