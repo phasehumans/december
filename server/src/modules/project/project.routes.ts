@@ -14,6 +14,6 @@ projectRouter.post('/', projectController.createProject)
 projectRouter.patch('/:projectId', projectController.updateProject)
 projectRouter.delete('/:projectId', projectController.deleteProject)
 projectRouter.post('/:projectId/duplicate', projectController.duplicateProject)
-// add route >> share project to community / templates
+projectRouter.post('/:projectId/share', projectController.shareProjectAsTemplate)
 
 export default projectRouter

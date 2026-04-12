@@ -13,7 +13,7 @@ mock.module('../../src/modules/auth/auth.utils', () => ({
 
 import { authService } from '../../src/modules/auth/auth.service'
 
-describe('authService integration', () => {
+describe('auth.service', () => {
     beforeEach(async () => {
         sendOTPMock.mockClear()
         await prisma.user.deleteMany()
