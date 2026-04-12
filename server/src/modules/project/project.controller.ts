@@ -305,6 +305,39 @@ const shareProjectAsTemplate = async (req: Request, res: Response) => {
     }
 }
 
+const remixProject = async (req: Request, res: Response) => {
+    const userId = req.userId as string | undefined
+    const projectId = req.params.projectId as string | undefined
+
+    if (!userId) {
+        return res.status(400).json({
+            success: false,
+            message: 'unauthorized',
+        })
+    }
+
+    if (!projectId) {
+        return res.status(400).json({
+            success: false,
+            message: 'project id is required',
+        })
+    }
+
+    try {
+        const result = await projectService.remixProject({ userId, projectId })
+        return res.status(200).json({
+            success: true,
+            message: 'project remix successfully',
+            data: result,
+        })
+    } catch (error: any) {
+        return res.status(getErrorStatus(error.message)).json({
+            success: false,
+            errors: error.message,
+        })
+    }
+}
+
 export const projectController = {
     getAllProjects,
     getProjectById,
@@ -314,4 +347,5 @@ export const projectController = {
     duplicateProject,
     downloadProjectVersion,
     shareProjectAsTemplate,
+    remixProject,
 }

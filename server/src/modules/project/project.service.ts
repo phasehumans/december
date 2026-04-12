@@ -45,6 +45,11 @@ type ShareProject = {
     projectId: string
 }
 
+type RemixProject = {
+    userId: string
+    projectId: string
+}
+
 const baseProjectSelect = {
     id: true,
     name: true,
@@ -429,6 +434,8 @@ const shareProjectAsTemplate = async (data: ShareProject) => {
     return { message: 'project shared as template' }
 }
 
+const remixProject = async (data: RemixProject) => {}
+
 export const projectService = {
     getAllProjects,
     getProjectById,
@@ -438,4 +445,5 @@ export const projectService = {
     duplicateProject,
     downloadProjectVersion,
     shareProjectAsTemplate,
+    remixProject,
 }
