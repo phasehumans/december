@@ -20,77 +20,88 @@ export const AuthModalAuthStep: React.FC<AuthModalAuthStepProps> = ({
     onSubmit,
     onToggleAuthMode,
 }) => {
+    const isFormFilled = email.trim().length > 0 && password.length > 0
+
     return (
-        <>
-            <div className="flex flex-col items-center mb-6">
-                <div className="mb-4 scale-90 opacity-90 hover:opacity-100 transition-opacity">
-                    <Logo />
+        <div className="flex flex-col">
+            <div className="flex flex-col items-center mb-[22px]">
+                <div className="mb-[18px] opacity-90 hover:opacity-100 transition-opacity">
+                    <img
+                        src="/logo.png"
+                        alt="PhaseHumans"
+                        className="w-[32px] h-[32px] object-contain drop-shadow-sm"
+                    />
                 </div>
-                <h2 className="text-lg font-medium text-white text-center tracking-tight">
-                    {authMode === 'login' ? 'Welcome back' : 'Create an account'}
+                <h2 className="text-[20px] font-medium text-[#f5f5f5] text-center tracking-tight mb-1.5">
+                    Sign in or create an account
                 </h2>
             </div>
 
-            <div className="flex flex-col gap-3 mb-6">
-                <Button
-                    variant="secondary"
+            <div className="flex flex-col mb-[18px]">
+                <button
+                    type="button"
                     onClick={onGoogleLogin}
-                    className="w-full bg-[#E5E5E5] hover:bg-white text-black border-transparent"
-                    leftIcon={<AuthModalGoogleIcon />}
-                    isLoading={isGooglePending}
                     disabled={isAuthPending}
+                    className="w-full bg-[#E5E5E5] hover:bg-white text-black font-medium h-[44px] rounded-[10px] flex items-center justify-center gap-2.5 transition-colors disabled:opacity-50"
                 >
-                    Continue with Google
-                </Button>
+                    <AuthModalGoogleIcon />
+                    <span className="text-[15px]">Continue with Google</span>
+                </button>
             </div>
 
-            <div className="relative flex items-center justify-center mb-6">
-                <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-white/5"></div>
-                </div>
-                <div className="relative bg-[#171615] px-3 text-[10px] uppercase tracking-widest text-neutral-500 font-medium">
-                    Or
-                </div>
-            </div>
+            <div className="w-full border-t border-[#333333] mb-[18px]"></div>
 
-            <form onSubmit={onSubmit} className="space-y-3">
-                <Input
-                    label="Email address"
+            <form onSubmit={onSubmit} className="flex flex-col gap-2.5">
+                <input
                     type="email"
                     required
-                    placeholder="name@example.com"
+                    placeholder="Enter your email"
                     value={email}
                     onChange={(event) => onEmailChange(event.target.value)}
                     disabled={isAuthPending}
+                    className="w-full bg-[#1A1A1A] border border-[#333333] focus:border-[#555] rounded-[10px] h-[44px] px-3.5 text-[15px] text-white placeholder-[#737373] focus:outline-none transition-colors"
                 />
-                <Input
-                    label="Password"
+
+                <input
                     type="password"
                     required
-                    placeholder="********"
+                    placeholder="Password"
                     value={password}
                     onChange={(event) => onPasswordChange(event.target.value)}
                     disabled={isAuthPending}
+                    className="w-full bg-[#1A1A1A] border border-[#333333] focus:border-[#555] rounded-[10px] h-[44px] px-3.5 text-[15px] text-white placeholder-[#737373] focus:outline-none transition-colors"
                 />
 
-                {errorMessage && <p className="text-xs text-red-400 pt-1">{errorMessage}</p>}
+                {errorMessage && <p className="text-[13px] text-red-500 px-1">{errorMessage}</p>}
 
-                <Button type="submit" className="w-full mt-2" isLoading={isAuthPending}>
-                    <span>{authMode === 'login' ? 'Sign In' : 'Sign Up'}</span>
-                </Button>
+                <button
+                    type="submit"
+                    disabled={isAuthPending}
+                    className={`w-full font-medium h-[44px] rounded-[10px] flex items-center justify-center transition-colors disabled:opacity-50 mt-1 mt-1.5 ${
+                        isFormFilled
+                            ? 'bg-[#E5E5E5] hover:bg-white text-[#111111]'
+                            : 'bg-[#2A2A2A] hover:bg-[#333333] text-[#E5E5E5]'
+                    }`}
+                >
+                    {isAuthPending
+                        ? 'Please wait...'
+                        : authMode === 'login'
+                          ? 'Continue with email'
+                          : 'Sign up with email'}
+                </button>
             </form>
 
-            <div className="mt-6 text-center">
-                <p className="text-xs text-neutral-500 font-medium">
-                    {authMode === 'login' ? "Don't have an account? " : 'Already have an account? '}
-                    <button
-                        onClick={onToggleAuthMode}
-                        className="text-white hover:text-neutral-300 transition-colors font-medium ml-1 underline decoration-transparent hover:decoration-white/50 underline-offset-2"
-                    >
-                        {authMode === 'login' ? 'Sign up' : 'Log in'}
-                    </button>
-                </p>
+            <div className="mt-[22px] flex justify-center">
+                <button
+                    type="button"
+                    onClick={onToggleAuthMode}
+                    className="text-[13px] text-[#A3A3A3] hover:text-white transition-colors underline decoration-transparent hover:decoration-white/50 underline-offset-2"
+                >
+                    {authMode === 'login'
+                        ? "Don't have an account? Sign up"
+                        : 'Already have an account? Log in'}
+                </button>
             </div>
-        </>
+        </div>
     )
 }
