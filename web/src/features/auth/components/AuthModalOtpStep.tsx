@@ -17,22 +17,26 @@ export const AuthModalOtpStep: React.FC<AuthModalOtpStepProps> = ({
     setOtpInputRef,
 }) => {
     return (
-        <>
-            <div className="flex flex-col items-center mb-6">
-                <div className="mb-4 scale-90 opacity-90 hover:opacity-100 transition-opacity">
-                    <Logo />
+        <div className="flex flex-col">
+            <div className="flex flex-col items-center mb-[22px]">
+                <div className="mb-[18px] opacity-90 hover:opacity-100 transition-opacity flex justify-center">
+                    <img
+                        src="/logo.png"
+                        alt="PhaseHumans"
+                        className="w-[32px] h-[32px] object-contain drop-shadow-sm"
+                    />
                 </div>
-                <h2 className="text-lg font-medium text-white text-center tracking-tight">
+                <h2 className="text-[20px] font-medium text-[#f5f5f5] text-center tracking-tight mb-1.5">
                     Verify your email
                 </h2>
-                <p className="text-xs text-neutral-400 text-center mt-2 max-w-[280px]">
+                <p className="text-[14px] text-[#A3A3A3] text-center max-w-[280px]">
                     We sent a verification code to{' '}
-                    <span className="text-white font-medium">{email}</span>. Enter it below to
+                    <span className="text-[#f5f5f5] font-medium">{email}</span>. Enter it below to
                     create your account.
                 </p>
             </div>
 
-            <form onSubmit={onSubmit} className="space-y-4">
+            <form onSubmit={onSubmit} className="flex flex-col gap-2.5">
                 <div className="flex gap-2 justify-center mb-2">
                     {otp.map((digit, index) => (
                         <input
@@ -45,31 +49,34 @@ export const AuthModalOtpStep: React.FC<AuthModalOtpStepProps> = ({
                             onKeyDown={(event) => onKeyDown(index, event)}
                             onPaste={index === 0 ? onPaste : undefined}
                             disabled={isPending}
-                            className="w-10 h-12 text-center text-xl font-medium bg-[#242322] border border-white/10 rounded-lg focus:border-white/30 focus:outline-none text-white transition-all caret-white"
+                            className="w-[46px] h-[52px] text-center text-[20px] font-medium bg-[#1A1A1A] border border-[#333333] focus:border-[#555] rounded-[10px] focus:outline-none text-white transition-colors caret-white"
                         />
                     ))}
                 </div>
 
-                {errorMessage && <p className="text-xs text-red-400 text-center">{errorMessage}</p>}
-
-                <Button
-                    type="submit"
-                    className="w-full mt-2"
-                    disabled={otp.some((digit) => !digit)}
-                    isLoading={isPending}
-                >
-                    <span>Verify & Create Account</span>
-                </Button>
+                {errorMessage && (
+                    <p className="text-[13px] text-red-500 px-1 text-center">{errorMessage}</p>
+                )}
 
                 <button
-                    type="button"
-                    onClick={onBack}
-                    className="w-full text-xs text-neutral-500 hover:text-neutral-300 transition-colors mt-4"
-                    disabled={isPending}
+                    type="submit"
+                    disabled={otp.some((digit) => !digit) || isPending}
+                    className="w-full bg-[#2A2A2A] hover:bg-[#333333] text-[#E5E5E5] font-medium h-[44px] rounded-[10px] flex items-center justify-center transition-colors disabled:opacity-50 mt-1"
                 >
-                    Back to Sign Up
+                    {isPending ? 'Please wait...' : 'Verify & Create Account'}
                 </button>
+
+                <div className="mt-[8px] flex justify-center">
+                    <button
+                        type="button"
+                        onClick={onBack}
+                        className="text-[13px] text-[#A3A3A3] hover:text-white transition-colors underline decoration-transparent hover:decoration-white/50 underline-offset-2"
+                        disabled={isPending}
+                    >
+                        Back to Sign Up
+                    </button>
+                </div>
             </form>
-        </>
+        </div>
     )
 }
