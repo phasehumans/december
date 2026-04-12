@@ -4,7 +4,7 @@ import bcrypt from 'bcrypt'
 import { prisma } from '../../src/config/db'
 import { profileService } from '../../src/modules/profile/profile.service'
 
-describe('Profile Service Integration Tests', () => {
+describe('profile.service', () => {
     let testUserId: string
 
     beforeEach(async () => {
