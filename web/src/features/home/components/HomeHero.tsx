@@ -1,4 +1,4 @@
-import React, { useRef } from 'react'
+import React, { useRef, useEffect } from 'react'
 
 import PromptInput from './PromptInput'
 import { HomeHeader } from './HomeHeader'
@@ -19,17 +19,35 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
     const canvasRef = useRef<CanvasRef>(null)
     const [prompt, setPrompt] = React.useState('')
 
+    useEffect(() => {
+        const observer = new IntersectionObserver(
+            ([entry]) => {
+                const event = new CustomEvent('hero-canvas-intersect', {
+                    detail: entry.isIntersecting,
+                })
+                window.dispatchEvent(event)
+            },
+            { threshold: 0.3 }
+        )
+        const canvasEl = document.getElementById('hero-canvas-container')
+        if (canvasEl) observer.observe(canvasEl)
+        return () => observer.disconnect()
+    }, [])
+
     return (
-        <main className="h-full min-h-0 overflow-y-auto no-scrollbar scroll-smooth relative flex flex-col">
+        <main
+            id="main-scroll-container"
+            className="h-full min-h-0 overflow-y-auto no-scrollbar scroll-smooth relative flex flex-col"
+        >
             <HomeHeader />
 
-            <div className="flex flex-col items-center justify-center pt-16 md:pt-0 h-[65vh] md:h-[85vh] min-h-[450px] md:min-h-[500px] gap-6 animate-in fade-in duration-500 max-w-4xl mx-auto px-4 w-full shrink-0 relative">
+            <div className="flex flex-col items-center justify-start pt-[25vh] md:pt-[30vh] min-h-[100vh] md:min-h-[100vh] gap-6 animate-in fade-in duration-500 max-w-4xl mx-auto px-4 w-full shrink-0 relative">
                 <div className="flex flex-col items-center gap-4 text-center mb-2">
                     <h1 className="text-2xl md:text-4xl font-sohne font-medium tracking-tight text-[#D6D5D4] px-4">
                         What are we building today?
                     </h1>
                 </div>
-                <div className="w-full max-w-[638px] px-2 md:px-0">
+                <div className="w-full max-w-[638px] px-2 md:px-0 relative -top-[1px] -left-[4px]">
                     <PromptInput
                         value={prompt}
                         onChange={setPrompt}
@@ -65,7 +83,10 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
                 </div>
             </div>
 
-            <div className="w-full h-screen bg-background relative shrink-0 p-2">
+            <div
+                id="hero-canvas-container"
+                className="w-full h-screen bg-background relative shrink-0 p-2 mt-[60px]"
+            >
                 <div className="md:hidden w-full text-center pb-4 pt-2">
                     <span className="text-[10px] uppercase tracking-widest text-neutral-500 font-medium bg-white/5 px-3 py-1.5 rounded-full border border-white/5">
                         Best on Desktop

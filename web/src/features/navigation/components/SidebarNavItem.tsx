@@ -10,7 +10,7 @@ export const SidebarNavItem: React.FC<
         onClick={onClick}
         className={cn(
             'flex items-center gap-3 px-3 py-[7px] rounded-lg transition-all group w-full font-sans outline-none focus-visible:ring-2 focus-visible:ring-white/20',
-            active ? 'bg-white/5 text-[#D6D5D4]' : 'hover:bg-white/[0.04] text-[#D6D5D4]'
+            active ? 'bg-white/5 text-[#D6D5D4]' : 'hover:bg-[#252422] text-[#D6D5D4]'
         )}
     >
         <div
