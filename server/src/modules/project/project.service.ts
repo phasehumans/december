@@ -40,6 +40,16 @@ type DuplicateProject = {
     projectId: string
 }
 
+type ShareProject = {
+    userId: string
+    projectId: string
+}
+
+type RemixProject = {
+    userId: string
+    projectId: string
+}
+
 const baseProjectSelect = {
     id: true,
     name: true,
@@ -404,6 +414,28 @@ const downloadProjectVersion = async (data: GetProject) => {
     }
 }
 
+const shareProjectAsTemplate = async (data: ShareProject) => {
+    const { userId, projectId } = data
+
+    const project = await prisma.project.updateMany({
+        where: {
+            id: projectId,
+            userId: userId,
+        },
+        data: {
+            isSharedAsTemplate: true,
+        },
+    })
+
+    if (project.count === 0) {
+        throw new Error('project not found')
+    }
+
+    return { message: 'project shared as template' }
+}
+
+const remixProject = async (data: RemixProject) => {}
+
 export const projectService = {
     getAllProjects,
     getProjectById,
@@ -412,4 +444,6 @@ export const projectService = {
     deleteProject,
     duplicateProject,
     downloadProjectVersion,
+    shareProjectAsTemplate,
+    remixProject,
 }

@@ -23,7 +23,7 @@ export const HomeHeader: React.FC = () => {
                     <span className="bg-[#2F2E2D] text-[#D6D5D4] rounded-full px-2 py-0.5 text-[11px] font-semibold tracking-wide">
                         New
                     </span>
-                    <span className="font-medium">Build visually with Canvas</span>
+                    <span className="font-medium">Start building with Canvas</span>
                     <span className="text-neutral-600 font-light mx-0.5">|</span>
                     <div className="text-[#A09F9D] font-medium flex items-center gap-1 group-hover:text-white transition-colors">
                         Try Canvas <Icons.ArrowRight className="w-3 h-3" />
