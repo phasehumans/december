@@ -54,6 +54,8 @@ model ProjectVersion {
   status              ProjectVersionStatus @default(GENERATING)
   objectStoragePrefix String
   manifestJson        Json
+  canvasStateJson     Json?
+  canvasAssetManifestJson Json?
   intentJson          Json?
   planJson            Json?
   isDatabaseEnabled   Boolean              @default(false)
@@ -103,3 +105,4 @@ enum ProjectMessageRole {
   ASSISTANT
   SYSTEM
 }
+
