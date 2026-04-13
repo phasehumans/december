@@ -9,6 +9,8 @@ type ExtractProjectIntent = {
 }
 
 const PROMPT_AGENT_MAX_ATTEMPTS = 2
+const PROMPT_AGENT_MODEL = 'openai/gpt-oss-20b:free' //model: 'openai/gpt-5.1-codex-mini',
+// const PROMPT_AGENT_MAX_TOKENS = 1200
 
 export const extractProjectIntent = async (data: ExtractProjectIntent) => {
     return retryAsync({
@@ -16,9 +18,7 @@ export const extractProjectIntent = async (data: ExtractProjectIntent) => {
         maxAttempts: PROMPT_AGENT_MAX_ATTEMPTS,
         task: async (attempt, lastError) => {
             const completion = await openai.chat.completions.create({
-                model: 'openai/gpt-oss-20b:free',
-                // model: 'openai/gpt-5.1-codex-mini',
-                // max_tokens: 1200,
+                model: PROMPT_AGENT_MODEL,
                 temperature: 0,
                 messages: [
                     {
