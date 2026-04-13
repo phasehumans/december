@@ -5,7 +5,11 @@ mod http;
 mod sandboxes;
 mod services;
 
-use std::sync::Arc;
+use std::{
+    env, fs,
+    path::PathBuf,
+    sync::Arc,
+};
 
 use tracing::info;
 use tracing_subscriber::{EnvFilter, layer::SubscriberExt, util::SubscriberInitExt};
@@ -20,6 +24,8 @@ use crate::{
 
 #[tokio::main]
 async fn main() -> Result<(), RuntimeServiceError> {
+    load_runtime_env();
+
     tracing_subscriber::registry()
         .with(
             EnvFilter::try_from_default_env()
@@ -57,6 +63,72 @@ async fn main() -> Result<(), RuntimeServiceError> {
                 Some(error.to_string()),
             )
         })
+}
+
+fn load_runtime_env() {
+    for path in candidate_env_paths() {
+        let Ok(contents) = fs::read_to_string(&path) else {
+            continue;
+        };
+
+        for (key, value) in parse_env_assignments(&contents) {
+            if env::var_os(&key).is_none() {
+                unsafe {
+                    env::set_var(key, value);
+                }
+            }
+        }
+
+        break;
+    }
+}
+
+fn candidate_env_paths() -> Vec<PathBuf> {
+    let mut paths = Vec::new();
+
+    if let Ok(current_dir) = env::current_dir() {
+        paths.push(current_dir.join(".env"));
+
+        if let Some(parent) = current_dir.parent() {
+            paths.push(parent.join(".env"));
+        }
+    }
+
+    paths
+}
+
+fn parse_env_assignments(contents: &str) -> Vec<(String, String)> {
+    contents
+        .lines()
+        .filter_map(|line| {
+            let trimmed = line.trim();
+            if trimmed.is_empty() || trimmed.starts_with('#') {
+                return None;
+            }
+
+            let (raw_key, raw_value) = trimmed.split_once('=')?;
+            let key = raw_key.trim();
+            if key.is_empty() {
+                return None;
+            }
+
+            Some((key.to_string(), normalize_env_value(raw_value)))
+        })
+        .collect()
+}
+
+fn normalize_env_value(raw_value: &str) -> String {
+    let value = raw_value.trim();
+
+    if value.len() >= 2 {
+        let first = value.as_bytes()[0];
+        let last = value.as_bytes()[value.len() - 1];
+        if (first == b'"' && last == b'"') || (first == b'\'' && last == b'\'') {
+            return value[1..value.len() - 1].to_string();
+        }
+    }
+
+    value.to_string()
 }
 
 async fn shutdown_signal() {
