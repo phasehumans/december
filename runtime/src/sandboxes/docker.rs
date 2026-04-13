@@ -333,7 +333,7 @@ impl Sandbox for DockerSandbox {
     }
 
     async fn health_check(&self) -> Result<HealthCheckResult, RuntimeServiceError> {
-        let target_url = self.preview_target_url().ok_or_else(|| {
+        let target_url = self.preview_target_url().await.ok_or_else(|| {
             RuntimeServiceError::infra_runtime("preview target URL is unavailable", None)
         })?;
 
@@ -370,8 +370,8 @@ impl Sandbox for DockerSandbox {
         })
     }
 
-    fn preview_target_url(&self) -> Option<String> {
-        let state = self.state.blocking_lock();
+    async fn preview_target_url(&self) -> Option<String> {
+        let state = self.state.lock().await;
         state
             .host_port
             .map(|port| format!("http://127.0.0.1:{port}"))

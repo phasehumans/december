@@ -328,7 +328,7 @@ impl PreviewActor {
         snapshot.current_version = self.current_version.clone();
         snapshot.healthy_version = self.healthy_version.clone();
         snapshot.updated_at = Utc::now();
-        snapshot.preview_target_url = self.sandbox.preview_target_url();
+        snapshot.preview_target_url = self.sandbox.preview_target_url().await;
         snapshot.last_error = error.map(|value| value.structured());
 
         if self.status_tx.send(snapshot.clone()).is_err() {
