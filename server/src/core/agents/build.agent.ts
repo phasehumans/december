@@ -27,6 +27,8 @@ type GenerateProjectFileInput = {
 
 const BUILD_AGENT_MAX_ATTEMPTS = 3
 const BUILD_CONTEXT_LIMIT = 6
+const BUILD_AGENT_MODEL = 'openai/gpt-oss-20b:free'
+// const BUILD_AGENT_MAX_TOKENS = 2000
 
 const stripWrappingCodeFence = (content: string) => {
     const trimmed = content.trim()
@@ -110,9 +112,7 @@ export const generateProjectFile = async (data: GenerateProjectFileInput) => {
         maxAttempts: BUILD_AGENT_MAX_ATTEMPTS,
         task: async (attempt, lastError) => {
             const completion = await openai.chat.completions.create({
-                model: 'openai/gpt-oss-20b:free',
-                // model: 'openai/gpt-5.1-codex-mini',
-                // max_tokens: 4000,
+                model: BUILD_AGENT_MODEL,
                 temperature: 0,
                 messages: [
                     {
