@@ -12,6 +12,7 @@ use bollard::{
         Config as ContainerConfig, CreateContainerOptions, RemoveContainerOptions,
         StartContainerOptions, StopContainerOptions,
     },
+    errors::Error as BollardError,
     exec::{CreateExecOptions, StartExecResults},
     models::{HostConfig, PortBinding},
 };
@@ -150,8 +151,38 @@ impl DockerSandbox {
             .await?;
         Ok(())
     }
-}
 
+    async fn ensure_image_available(&self) -> Result<(), RuntimeServiceError> {
+        match self.docker.inspect_image(&self.config.image).await {
+            Ok(_) => Ok(()),
+            Err(BollardError::DockerResponseServerError { status_code: 404, .. }) => {
+                self.docker
+                    .create_image(
+                        Some(
+                            bollard::query_parameters::CreateImageOptionsBuilder::default()
+                                .from_image(&self.config.image)
+                                .build(),
+                        ),
+                        None,
+                        None,
+                    )
+                    .try_collect::<Vec<_>>()
+                    .await
+                    .map(|_| ())
+                    .map_err(|error| {
+                        RuntimeServiceError::infra_runtime(
+                            "failed to pull preview image",
+                            Some(error.to_string()),
+                        )
+                    })
+            }
+            Err(error) => Err(RuntimeServiceError::infra_runtime(
+                "failed to inspect preview image",
+                Some(error.to_string()),
+            )),
+        }
+    }
+}
 #[async_trait]
 impl Sandbox for DockerSandbox {
     async fn ensure_started(&self, workspace_host_path: &Path) -> Result<(), RuntimeServiceError> {
@@ -162,6 +193,7 @@ impl Sandbox for DockerSandbox {
 
         let host_port = reserve_local_port()?;
         let container_name = self.container_name();
+        self.ensure_image_available().await?;
         let workspace = workspace_host_path.canonicalize().map_err(|error| {
             RuntimeServiceError::infra_runtime(
                 "failed to resolve workspace path",
