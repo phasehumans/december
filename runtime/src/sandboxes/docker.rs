@@ -186,7 +186,10 @@ impl Sandbox for DockerSandbox {
 
         if self
             .docker
-            .inspect_container(&container_name, None)
+            .inspect_container(
+                &container_name,
+                None::<bollard::query_parameters::InspectContainerOptions>,
+            )
             .await
             .is_ok()
         {
