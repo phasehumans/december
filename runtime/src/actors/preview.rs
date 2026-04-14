@@ -101,36 +101,40 @@ impl PreviewActor {
         let mut health_interval = time::interval(self.config.health_poll_interval);
         health_interval.set_missed_tick_behavior(MissedTickBehavior::Skip);
 
-        while let Some(command) = tokio::select! {
-            command = self.command_rx.recv() => command,
-            _ = health_interval.tick() => {
-                if let Err(error) = self.refresh_health().await {
-                    warn!(preview_id = %self.preview_id, error = %error, "preview health refresh failed");
-                }
-                continue;
-            }
-        } {
-            match command {
-                ApplyManifest(manifest_ref) => {
-                    if let Err(error) = self.reconcile(manifest_ref).await {
-                        error!(preview_id = %self.preview_id, error = %error, "preview reconcile failed");
-                        self.fail(error).await;
-                    }
-                }
-                Stop => {
-                    self.transition(PreviewLifecycleState::Stopped, None).await;
-                    let _ = self.sandbox.stop().await;
-                    if self.config.cleanup_workspace_on_stop {
-                        if let Some(workspace_path) = &self.workspace_path {
-                            let _ = cleanup_workspace(workspace_path).await;
+        loop {
+            tokio::select! {
+                command = self.command_rx.recv() => {
+                    let Some(command) = command else {
+                        break;
+                    };
+
+                    match command {
+                        ApplyManifest(manifest_ref) => {
+                            if let Err(error) = self.reconcile(manifest_ref).await {
+                                error!(preview_id = %self.preview_id, error = %error, "preview reconcile failed");
+                                self.fail(error).await;
+                            }
+                        }
+                        Stop => {
+                            self.transition(PreviewLifecycleState::Stopped, None).await;
+                            let _ = self.sandbox.stop().await;
+                            if self.config.cleanup_workspace_on_stop {
+                                if let Some(workspace_path) = &self.workspace_path {
+                                    let _ = cleanup_workspace(workspace_path).await;
+                                }
+                            }
+                            break;
                         }
                     }
-                    break;
+                }
+                _ = health_interval.tick() => {
+                    if let Err(error) = self.refresh_health().await {
+                        warn!(preview_id = %self.preview_id, error = %error, "preview health refresh failed");
+                    }
                 }
             }
         }
     }
-
     async fn reconcile(&mut self, manifest_ref: ManifestRef) -> Result<(), RuntimeServiceError> {
         if !is_newer_manifest(self.last_manifest_ref.as_ref(), &manifest_ref) {
             warn!(
@@ -324,7 +328,7 @@ impl PreviewActor {
         snapshot.current_version = self.current_version.clone();
         snapshot.healthy_version = self.healthy_version.clone();
         snapshot.updated_at = Utc::now();
-        snapshot.preview_target_url = self.sandbox.preview_target_url();
+        snapshot.preview_target_url = self.sandbox.preview_target_url().await;
         snapshot.last_error = error.map(|value| value.structured());
 
         if self.status_tx.send(snapshot.clone()).is_err() {

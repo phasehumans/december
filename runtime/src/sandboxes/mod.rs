@@ -1,4 +1,4 @@
-﻿pub mod docker;
+pub mod docker;
 
 use std::path::Path;
 
@@ -20,5 +20,5 @@ pub trait Sandbox: Send + Sync {
     async fn restart_dev_server(&self) -> Result<(), RuntimeServiceError>;
     async fn stop(&self) -> Result<(), RuntimeServiceError>;
     async fn health_check(&self) -> Result<HealthCheckResult, RuntimeServiceError>;
-    fn preview_target_url(&self) -> Option<String>;
+    async fn preview_target_url(&self) -> Option<String>;
 }

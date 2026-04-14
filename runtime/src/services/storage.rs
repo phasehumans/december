@@ -1,4 +1,4 @@
-use aws_config::{BehaviorVersion, Region, meta::credentials::CredentialsProviderChain};
+use aws_config::{BehaviorVersion, Region};
 use aws_sdk_s3::{Client, config::Credentials};
 
 use crate::{
@@ -25,7 +25,7 @@ impl ObjectStorage {
         let shared = aws_config::defaults(BehaviorVersion::latest())
             .region(Region::new(config.region.clone()))
             .endpoint_url(config.endpoint.clone())
-            .credentials_provider(CredentialsProviderChain::first_try(credentials))
+            .credentials_provider(credentials)
             .load()
             .await;
 
