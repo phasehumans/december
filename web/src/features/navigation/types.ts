@@ -10,6 +10,8 @@ export interface SidebarProps {
     onNewThread: () => void
     onAllProjects: () => void
     onTemplates: () => void
+    onDesignSystems: () => void
+    onDocs: () => void
     onProfile: () => void
     onOpenProject: (projectId: string) => void
     isAuthenticated: boolean
@@ -24,6 +26,8 @@ export interface MobileSidebarProps {
     onNewThread: () => void
     onAllProjects: () => void
     onTemplates: () => void
+    onDesignSystems: () => void
+    onDocs: () => void
     onProfile: () => void
     onOpenProject: (projectId: string) => void
     isAuthenticated: boolean

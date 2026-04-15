@@ -12,6 +12,8 @@ const Sidebar: React.FC<SidebarProps & { user?: any }> = ({
     onNewThread,
     onAllProjects,
     onTemplates,
+    onDesignSystems,
+    onDocs,
     onProfile,
     onOpenProject,
     isAuthenticated,
@@ -47,13 +49,9 @@ const Sidebar: React.FC<SidebarProps & { user?: any }> = ({
                 <SidebarNavItem
                     icon={<Icons.DesignSystems />}
                     label="Design Systems"
-                    onClick={() => {}} // Placeholder
+                    onClick={onDesignSystems}
                 />
-                <SidebarNavItem
-                    icon={<Icons.DocsBook />}
-                    label="Docs"
-                    onClick={() => {}} // Placeholder
-                />
+                <SidebarNavItem icon={<Icons.DocsBook />} label="Docs" onClick={onDocs} />
             </div>
 
             <div className="flex-1 flex flex-col pl-[10px] pr-3 mt-4 mb-2 overflow-y-auto no-scrollbar font-sans">
@@ -78,7 +76,7 @@ const Sidebar: React.FC<SidebarProps & { user?: any }> = ({
                     </button>
 
                     {recentOpen && (
-                        <div className="flex flex-col gap-[2px] mt-1 pr-1">
+                        <div className="flex flex-col gap-[1px] mt-1 pr-1">
                             {isAuthenticated
                                 ? isProjectsLoading
                                     ? null
@@ -87,9 +85,9 @@ const Sidebar: React.FC<SidebarProps & { user?: any }> = ({
                                             <button
                                                 key={project.id}
                                                 onClick={() => onOpenProject?.(project.id)}
-                                                className="flex items-center px-3 py-1.5 w-full text-left rounded-lg hover:bg-[#252422] transition-colors group"
+                                                className="flex items-center px-3 py-0.5 w-full text-left rounded-lg hover:bg-[#252422] transition-colors group"
                                             >
-                                                <span className="font-semibold text-[11px] tracking-widest text-[#969593] group-hover:text-[#D6D5D4] uppercase transition-colors truncate">
+                                                <span className="font-semibold text-[11px] tracking-widest text-[#969593] group-hover:text-[#D6D5D4] lowercase transition-colors truncate">
                                                     {/* @ts-ignore */}
                                                     {project.name || project.title}
                                                 </span>
