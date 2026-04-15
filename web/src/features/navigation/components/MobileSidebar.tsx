@@ -15,6 +15,8 @@ export const MobileSidebar: React.FC<MobileSidebarProps> = ({
     onNewThread,
     onAllProjects,
     onTemplates,
+    onDesignSystems,
+    onDocs,
     onProfile,
     onOpenProject,
     isAuthenticated,
@@ -53,6 +55,8 @@ export const MobileSidebar: React.FC<MobileSidebarProps> = ({
                     onNewThread={onNewThread}
                     onAllProjects={onAllProjects}
                     onTemplates={onTemplates}
+                    onDesignSystems={onDesignSystems}
+                    onDocs={onDocs}
                 />
 
                 <div className="flex-1 flex flex-col gap-2 px-3 mt-6 overflow-y-auto no-scrollbar font-sans">
