@@ -1,7 +1,10 @@
-import React, { useRef, useEffect } from 'react'
+import React, { useRef, useEffect, useState } from 'react'
+import { AnimatePresence } from 'framer-motion'
 
 import PromptInput from './PromptInput'
 import { HomeHeader } from './HomeHeader'
+import { GitHubRepoForm } from './GitHubRepoForm'
+import { UploadProjectForm } from './UploadProjectForm'
 
 import Canvas, { type CanvasRef } from '@/features/canvas/components/Canvas'
 import { Icons } from '@/shared/components/ui/Icons'
@@ -18,6 +21,7 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
 }) => {
     const canvasRef = useRef<CanvasRef>(null)
     const [prompt, setPrompt] = React.useState('')
+    const [activeImportForm, setActiveImportForm] = useState<'github' | 'upload' | null>(null)
 
     useEffect(() => {
         const observer = new IntersectionObserver(
@@ -33,6 +37,10 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
         if (canvasEl) observer.observe(canvasEl)
         return () => observer.disconnect()
     }, [])
+
+    const toggleImportForm = (form: 'github' | 'upload') => {
+        setActiveImportForm((prev) => (prev === form ? null : form))
+    }
 
     return (
         <main
@@ -58,34 +66,69 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
                         onOpenAuth={onOpenAuth}
                     />
 
-                    {/* Suggestions */}
-                    {/* <SuggestionsList
-                        onSuggestionClick={setPrompt}
-                        isAuthenticated={isAuthenticated}
-                        onOpenAuth={onOpenAuth}
-                    /> */}
                     {/* Import Integration */}
                     <div className="flex items-center justify-center gap-3 mt-8 opacity-0 animate-[fadeIn_1s_ease-out_0.5s_forwards] whitespace-nowrap">
                         <span className="text-[#656565] text-[14px] font-medium tracking-wide">
                             or start from
                         </span>
                         <div className="flex items-center gap-2">
-                            <button className="flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-dashed border-[#404040] bg-transparent hover:bg-white/5 hover:border-[#5A5A5A] text-[11px] text-[#A1A1AA] hover:text-white transition-all group">
+                            <button
+                                onClick={() => toggleImportForm('github')}
+                                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-dashed transition-all group ${
+                                    activeImportForm === 'github'
+                                        ? 'border-[#5A5A5A] bg-white/5 text-white'
+                                        : 'border-[#404040] bg-transparent hover:bg-white/5 hover:border-[#5A5A5A] text-[#A1A1AA] hover:text-white'
+                                }`}
+                            >
                                 <Icons.Github className="w-[12px] h-[12px] group-hover:text-white transition-colors" />
-                                <span>GitHub Repo</span>
+                                <span className="text-[11px]">GitHub Repo</span>
                             </button>
-                            <button className="flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-dashed border-[#404040] bg-transparent hover:bg-white/5 hover:border-[#5A5A5A] text-[11px] text-[#A1A1AA] hover:text-white transition-all group">
-                                <Icons.Code className="w-[12px] h-[12px] group-hover:text-white transition-colors" />
-                                <span>Upload Project</span>
+                            <button
+                                onClick={() => toggleImportForm('upload')}
+                                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-dashed transition-all group ${
+                                    activeImportForm === 'upload'
+                                        ? 'border-[#5A5A5A] bg-white/5 text-white'
+                                        : 'border-[#404040] bg-transparent hover:bg-white/5 hover:border-[#5A5A5A] text-[#A1A1AA] hover:text-white'
+                                }`}
+                            >
+                                <Icons.FolderUp className="w-[12px] h-[12px] group-hover:text-white transition-colors" />
+                                <span className="text-[11px]">Upload Project</span>
                             </button>
                         </div>
+                    </div>
+
+                    {/* Import Forms */}
+                    <div className="flex justify-center">
+                        <AnimatePresence mode="wait">
+                            {activeImportForm === 'github' && (
+                                <GitHubRepoForm
+                                    key="github-form"
+                                    onClose={() => setActiveImportForm(null)}
+                                    onSubmitRepo={(url) => {
+                                        console.log('Import repo:', url)
+                                        setActiveImportForm(null)
+                                    }}
+                                />
+                            )}
+                            {activeImportForm === 'upload' && (
+                                <UploadProjectForm
+                                    key="upload-form"
+                                    onClose={() => setActiveImportForm(null)}
+                                    onUpload={(files) => {
+                                        // TODO: implement file upload
+                                        console.log('Upload files:', files)
+                                        setActiveImportForm(null)
+                                    }}
+                                />
+                            )}
+                        </AnimatePresence>
                     </div>
                 </div>
             </div>
 
             <div
                 id="hero-canvas-container"
-                className="w-full h-screen bg-background relative shrink-0 p-2 mt-[60px]"
+                className="w-full h-screen bg-background relative shrink-0 p-2 -mt-[20px]"
             >
                 <div className="md:hidden w-full text-center pb-4 pt-2">
                     <span className="text-[10px] uppercase tracking-widest text-neutral-500 font-medium bg-white/5 px-3 py-1.5 rounded-full border border-white/5">

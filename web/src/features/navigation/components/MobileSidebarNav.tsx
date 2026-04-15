@@ -9,6 +9,8 @@ interface MobileSidebarNavProps {
     onNewThread: () => void
     onAllProjects: () => void
     onTemplates: () => void
+    onDesignSystems: () => void
+    onDocs: () => void
 }
 
 export const MobileSidebarNav: React.FC<MobileSidebarNavProps> = ({
@@ -16,6 +18,8 @@ export const MobileSidebarNav: React.FC<MobileSidebarNavProps> = ({
     onNewThread,
     onAllProjects,
     onTemplates,
+    onDesignSystems,
+    onDocs,
 }) => {
     return (
         <div className="flex flex-col gap-1 px-3">
@@ -52,6 +56,24 @@ export const MobileSidebarNav: React.FC<MobileSidebarNavProps> = ({
                 collapsed={false}
                 onClick={() => {
                     onTemplates()
+                    onClose()
+                }}
+            />
+            <SidebarNavItem
+                icon={<Icons.DesignSystems />}
+                label="Design Systems"
+                collapsed={false}
+                onClick={() => {
+                    onDesignSystems()
+                    onClose()
+                }}
+            />
+            <SidebarNavItem
+                icon={<Icons.DocsBook />}
+                label="Docs"
+                collapsed={false}
+                onClick={() => {
+                    onDocs()
                     onClose()
                 }}
             />

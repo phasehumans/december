@@ -1,6 +1,7 @@
 import React from 'react'
 
 import { AuthModalGoogleIcon } from './AuthModalGoogleIcon'
+import { Icons } from '@/shared/components/ui/Icons'
 
 import { Logo } from '@/shared/components/Logo'
 import { Button } from '@/shared/components/ui/Button'
@@ -25,12 +26,8 @@ export const AuthModalAuthStep: React.FC<AuthModalAuthStepProps> = ({
     return (
         <div className="flex flex-col">
             <div className="flex flex-col items-center mb-[22px]">
-                <div className="mb-[18px] opacity-90 hover:opacity-100 transition-opacity">
-                    <img
-                        src="/logo.png"
-                        alt="PhaseHumans"
-                        className="w-[32px] h-[32px] object-contain drop-shadow-sm"
-                    />
+                <div className="mb-[18px] opacity-90 hover:opacity-100 transition-opacity text-[#D6D5D4]">
+                    <Icons.CanvasIcon className="w-[32px] h-[32px]" />
                 </div>
                 <h2 className="text-[20px] font-medium text-[#f5f5f5] text-center tracking-tight mb-1.5">
                     Sign in or create an account
