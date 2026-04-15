@@ -148,6 +148,22 @@ export const AppContentView: React.FC<AppContentViewProps> = ({
                 </AnimatedPage>
             )}
 
+            {view === 'design-systems' && (
+                <AnimatedPage pageKey="design-systems">
+                    <div className="h-full flex items-center justify-center">
+                        <span className="text-xl font-medium text-[#D6D5D4]">Design Systems</span>
+                    </div>
+                </AnimatedPage>
+            )}
+
+            {view === 'docs' && (
+                <AnimatedPage pageKey="docs">
+                    <div className="h-full flex items-center justify-center">
+                        <span className="text-xl font-medium text-[#D6D5D4]">Docs</span>
+                    </div>
+                </AnimatedPage>
+            )}
+
             {view === 'chat' &&
                 (isHome ? (
                     <AnimatedPage pageKey="chat-home">

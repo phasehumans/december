@@ -35,12 +35,8 @@ export const SidebarHeader: React.FC<{ onNewThread?: () => void }> = ({ onNewThr
                     className="relative flex items-center gap-2.5 w-full px-2.5 h-[32px] rounded-[10px] transition-colors group outline-none hover:bg-white/[0.02]"
                     title="Home"
                 >
-                    <div className="group-hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.2)] transition-all flex items-center justify-center">
-                        <img
-                            src="../../public/logo.png"
-                            alt="PhaseHumans"
-                            className="w-[20px] h-[20px] object-contain drop-shadow-sm"
-                        />
+                    <div className="text-[#D6D5D4] group-hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.2)] transition-all flex items-center justify-center">
+                        <Icons.CanvasIcon className="w-[18px] h-[18px]" />
                     </div>
                     <span className="font-medium text-[14px] text-[#D6D5D4] tracking-wide">
                         PhaseHumans
