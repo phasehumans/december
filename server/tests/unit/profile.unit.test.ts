@@ -5,6 +5,7 @@ import {
     changePasswordSchema,
     updateNotificationSchema,
 } from '../../src/modules/profile/profile.schema'
+import { extractFirstName } from '../../src/modules/profile/profile.utils'
 
 describe('profile.schema', () => {
     describe('updateNameSchema', () => {
@@ -174,6 +175,18 @@ describe('profile.schema', () => {
             const result = updateNotificationSchema.safeParse(input)
 
             expect(result.success).toBe(false)
+        })
+    })
+})
+
+describe('profile.utils', () => {
+    describe('extractFirstName', () => {
+        test('should return the firstname', () => {
+            const input = 'Chaitanya Sonawane'
+
+            const result = extractFirstName(input)
+
+            expect(result).toBe('Chaitanya')
         })
     })
 })
