@@ -1,6 +1,7 @@
 import bcrypt from 'bcrypt'
 
 import { prisma } from '../../config/db'
+import { extractFirstName } from './profile.utils'
 
 type UpdateName = {
     userId: string
@@ -157,10 +158,28 @@ const connectGithub = async (data: ConnectGithub) => {
     return updatedUser
 }
 
+const getQuickInfo = async (data: string) => {
+    const profile = await prisma.user.findUnique({
+        where: {
+            id: data,
+        },
+    })
+
+    if (!profile) {
+        throw new Error('user not found')
+    }
+
+    const firstName = extractFirstName(profile.name)
+    const isGithubConnected = profile.githubConnected
+
+    return { firstName, isGithubConnected }
+}
+
 export const profileService = {
     getProfile,
     updateName,
     changePassword,
     updateNotification,
     connectGithub,
+    getQuickInfo,
 }

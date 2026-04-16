@@ -12,5 +12,6 @@ profileRouter.get('/', profileController.getProfile)
 profileRouter.patch('/update-name', profileController.updateName)
 profileRouter.patch('/change-password', profileController.changePassword)
 profileRouter.patch('/notification', profileController.updateNotification)
+profileRouter.get('/quickinfo', profileController.getQuickInfo)
 
 export default profileRouter
