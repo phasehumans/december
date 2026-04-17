@@ -150,7 +150,7 @@ export const UploadProjectForm: React.FC<UploadProjectFormProps> = ({ onClose, o
                                 </button>
                                 <button
                                     onClick={handleSubmit}
-                                    className="h-[36px] px-6 rounded-[10px] bg-[#D6D5D4] hover:bg-[#EAE9E8] text-[#111] text-[13px] font-medium transition-colors"
+                                    className="h-[36px] px-6 rounded-[10px] bg-[#D6D5D4] hover:bg-[#EAE9E8] text-[#111] text-[13px] font-semibold transition-all"
                                 >
                                     Upload Project
                                 </button>

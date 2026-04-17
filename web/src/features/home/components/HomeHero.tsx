@@ -135,7 +135,7 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
                         Best on Desktop
                     </span>
                 </div>
-                <div className="w-full h-full rounded-3xl overflow-hidden border border-white/10 shadow-2xl relative">
+                <div className="w-full h-full rounded-3xl overflow-hidden border border-white/10 relative">
                     <Canvas
                         ref={canvasRef}
                         isAuthenticated={isAuthenticated}

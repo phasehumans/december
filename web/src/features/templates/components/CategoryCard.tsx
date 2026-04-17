@@ -30,7 +30,7 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({ category, onClick })
     return (
         <motion.button
             onClick={onClick}
-            className="shrink-0 w-[240px] rounded-2xl border border-white/5 bg-[#121212] hover:bg-[#181818] hover:border-white/10 transition-all flex flex-col p-2 text-left group snap-start shadow-md shadow-black/20"
+            className="shrink-0 w-[240px] rounded-2xl border border-white/5 bg-[#121212] hover:bg-[#181818] hover:border-white/10 transition-all flex flex-col p-2 text-left group snap-start"
         >
             <div className="w-full aspect-[16/10] grid grid-cols-2 grid-rows-2 gap-1 mb-3 rounded-xl overflow-hidden relative">
                 {images.map((img, i) => (

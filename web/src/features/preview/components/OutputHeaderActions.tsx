@@ -49,11 +49,7 @@ export const OutputHeaderActions: React.FC<OutputHeaderActionsProps> = ({
                     <Github size={16} />
                 </Button>
 
-                <Button
-                    variant="primary"
-                    size="sm"
-                    className="ml-1 shadow-lg shadow-white/5 bg-white hover:bg-neutral-200 text-black border-none rounded-xl font-semibold hidden md:flex"
-                >
+                <Button className="ml-1 bg-white hover:bg-neutral-200 text-black border-none rounded-xl font-semibold hidden md:flex">
                     <Globe size={14} className="mr-2" />
                     Publish
                 </Button>

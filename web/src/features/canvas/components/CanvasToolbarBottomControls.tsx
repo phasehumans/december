@@ -20,7 +20,7 @@ export const CanvasToolbarBottomControls: React.FC<CanvasToolbarBottomControlsPr
 }) => {
     return (
         <div className="absolute bottom-4 left-4 pointer-events-auto flex items-center gap-2">
-            <div className="flex items-center p-1 bg-[#171615] border border-white/10 rounded-lg shadow-xl shadow-black/20 ring-1 ring-white/5">
+            <div className="flex items-center p-1 bg-[#171615] border border-white/10 rounded-lg ring-1 ring-white/5">
                 <button
                     onClick={() => setScale((s) => Math.max(50, s - 10))}
                     className="w-7 h-7 flex items-center justify-center rounded-md text-neutral-400 hover:text-white hover:bg-white/10 transition-colors"
@@ -40,7 +40,7 @@ export const CanvasToolbarBottomControls: React.FC<CanvasToolbarBottomControlsPr
                 </button>
             </div>
 
-            <div className="flex items-center p-1 bg-[#171615] border border-white/10 rounded-lg shadow-xl shadow-black/20 ring-1 ring-white/5">
+            <div className="flex items-center p-1 bg-[#171615] border border-white/10 rounded-lg ring-1 ring-white/5">
                 <button
                     onClick={onUndo}
                     disabled={!canUndo}

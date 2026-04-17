@@ -22,10 +22,10 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
             <div className="flex items-center gap-3">
                 <button
                     onClick={onUpload}
-                    className="flex items-center justify-center p-1.5 rounded-md text-[#D5D4D3] hover:text-white hover:bg-white/5 transition-all"
+                    className="flex items-center justify-center w-8 h-8 rounded-full text-[#727272] transition-all hover:bg-white/5 hover:text-white"
                     title="Add attachment"
                 >
-                    <Icons.Plus className="w-4 h-4" />
+                    <Icons.Plus className="w-[18px] h-[18px] stroke-[2.5px]" />
                 </button>
             </div>
 
@@ -33,8 +33,10 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
                 <button
                     type="button"
                     onClick={() => setIsMicActive(!isMicActive)}
-                    className={`flex items-center justify-center w-8 h-8 rounded-full hover:bg-white/5 transition-all ${
-                        isMicActive ? 'text-[#FFFFFF]' : 'text-[#727272] hover:text-white'
+                    className={`flex items-center justify-center w-8 h-8 rounded-full transition-all ${
+                        isMicActive
+                            ? 'bg-white/10 text-white'
+                            : 'text-[#727272] hover:bg-white/5 hover:text-white'
                     }`}
                     title="Voice input"
                 >
@@ -44,11 +46,11 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
                     onClick={onSubmit}
                     disabled={!hasInput || isLoading}
                     className={`
-                        flex items-center justify-center w-8 h-8 rounded-full transition-all duration-200 ease-out
+                        flex items-center justify-center w-8 h-8 rounded-full transition-colors duration-200
                         ${
                             hasInput && !isLoading
-                                ? 'bg-[#B2B1B1] text-black hover:scale-110'
-                                : 'bg-[#2C2C2E] text-neutral-500 cursor-not-allowed'
+                                ? 'bg-[#D6D5D4] text-black'
+                                : 'bg-[#2C2C2E] text-[#4A4A4A] cursor-not-allowed'
                         }
                     `}
                 >
