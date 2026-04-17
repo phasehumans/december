@@ -5,14 +5,11 @@ import {
     MousePointer2,
     Square,
     Type as TextIcon,
-    Minus,
     Pen,
     Eraser,
     ArrowRight,
     Hand,
     Frame,
-    Circle,
-    Info,
 } from 'lucide-react'
 
 import { ToolButton } from './ToolButton'
@@ -107,18 +104,6 @@ export const CanvasToolbarTopBar: React.FC<CanvasToolbarTopBarProps> = ({
             isActive: activeTool === 'square',
         },
         {
-            icon: Circle,
-            label: 'Circle',
-            onClick: () => onSelectTool('circle'),
-            isActive: activeTool === 'circle',
-        },
-        {
-            icon: Minus,
-            label: 'Line',
-            onClick: () => onSelectTool('line'),
-            isActive: activeTool === 'line',
-        },
-        {
             icon: ArrowRight,
             label: 'Arrow',
             onClick: () => onSelectTool('arrow'),
@@ -149,12 +134,7 @@ export const CanvasToolbarTopBar: React.FC<CanvasToolbarTopBarProps> = ({
             <div className="w-px h-5 bg-white/10 mx-1" />
             {renderGroup(drawingActions)}
             <div className="w-px h-5 bg-white/10 mx-1" />
-            {renderGroup(shapeActions)}
-            <div className="w-px h-5 bg-white/10 mx-1" />
-            {renderGroup(
-                [{ icon: Info, label: 'How to use', onClick: onOpenHelp }],
-                'flex items-center gap-0.5 pr-0.5'
-            )}
+            {renderGroup(shapeActions, 'flex items-center gap-0.5 pr-0.5')}
         </div>
     )
 }
