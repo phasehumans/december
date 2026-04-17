@@ -25,6 +25,7 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
 }) => {
     const [isWebClipPopoverOpen, setIsWebClipPopoverOpen] = useState(false)
     const webClipButtonRef = useRef<HTMLButtonElement | null>(null)
+    const toolbarRef = useRef<HTMLDivElement | null>(null)
 
     const handleAuthCheck = (action: () => void) => {
         if (!isAuthenticated && onOpenAuth) {
@@ -72,6 +73,7 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
         <div className="absolute inset-0 z-40 pointer-events-none">
             <div className="absolute top-4 md:top-6 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 w-full px-4 md:px-0 pointer-events-none">
                 <CanvasToolbarTopBar
+                    ref={toolbarRef}
                     activeTool={activeTool}
                     isWebClipPopoverOpen={isWebClipPopoverOpen}
                     onSelectTool={handleSelectTool}
@@ -94,6 +96,7 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
             <CanvasWebClipPopover
                 isOpen={isWebClipPopoverOpen}
                 anchorRef={webClipButtonRef}
+                containerRef={toolbarRef}
                 onClose={() => setIsWebClipPopoverOpen(false)}
                 onInteract={onInteract}
                 onAddItems={onAddItems}
