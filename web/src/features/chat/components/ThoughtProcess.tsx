@@ -60,7 +60,7 @@ export const ThoughtProcess: React.FC<ThoughtProcessProps> = ({
                                         className={cn(
                                             'mt-1.5 w-1 h-1 rounded-full shrink-0 transition-all duration-300',
                                             isGenerating && idx === steps.length - 1
-                                                ? 'bg-white shadow-[0_0_5px_rgba(255,255,255,0.5)]'
+                                                ? 'bg-white'
                                                 : 'bg-neutral-800'
                                         )}
                                     />

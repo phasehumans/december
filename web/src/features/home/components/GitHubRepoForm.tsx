@@ -118,11 +118,10 @@ export const GitHubRepoForm: React.FC<GitHubRepoFormProps> = ({ onClose, onSubmi
                                     className="w-full bg-[#141312] border border-[#2E2D2C] focus:border-[#454443] rounded-[10px] h-[40px] pl-9 pr-3.5 text-[13px] text-[#D6D5D4] placeholder-[#4A4A4A] outline-none transition-colors"
                                 />
                             </div>
-                            {/* Submit */}
                             <button
                                 onClick={handleSubmit}
                                 disabled={!selectedRepo}
-                                className="h-[40px] px-5 rounded-[10px] bg-[#D6D5D4] hover:bg-[#EAE9E8] text-[#111] text-[13px] font-medium disabled:opacity-40 disabled:pointer-events-none transition-colors duration-200 shrink-0"
+                                className="h-[40px] px-5 rounded-[10px] bg-[#D6D5D4] hover:bg-[#EAE9E8] text-[#111] text-[13px] font-semibold disabled:opacity-40 disabled:pointer-events-none transition-all duration-200 shrink-0"
                             >
                                 Import
                             </button>

@@ -54,7 +54,7 @@ export const AppSideNavigation: React.FC<AppSideNavigationProps> = ({
             <div className="md:hidden fixed top-4 left-4 z-50">
                 <button
                     onClick={() => setIsMobileSidebarOpen(true)}
-                    className="p-2 bg-[#1F1F1F] rounded-md border border-white/10 text-white shadow-lg"
+                    className="p-2 bg-[#1F1F1F] rounded-md border border-white/10 text-white"
                 >
                     <Icons.SidebarToggle />
                 </button>

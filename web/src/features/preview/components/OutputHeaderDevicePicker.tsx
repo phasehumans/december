@@ -35,7 +35,7 @@ export const OutputHeaderDevicePicker: React.FC<OutputHeaderDevicePickerProps> =
                             initial={{ opacity: 0, y: 5 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: 5 }}
-                            className="absolute top-full left-0 mt-2 w-48 bg-[#1C1C1C] border border-white/10 rounded-xl shadow-xl overflow-hidden z-50 p-1"
+                            className="absolute top-full left-0 mt-2 w-48 bg-[#1C1C1C] border border-white/10 rounded-xl overflow-hidden z-50 p-1"
                         >
                             <button
                                 onClick={() => {

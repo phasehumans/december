@@ -194,19 +194,18 @@ export const CanvasWebClipPopover: React.FC<CanvasWebClipPopoverProps> = ({
     return createPortal(
         <div
             ref={popoverRef}
-            className="fixed z-[70] rounded-xl border border-white/10 bg-[#171615] p-3 shadow-2xl ring-1 ring-white/5 pointer-events-auto"
+            className="fixed z-[70] rounded-[14px] border border-[#2E2D2C] bg-[#171615] p-2 pointer-events-auto"
             style={{
                 top: position.top,
                 left: position.left,
                 width: position.width,
             }}
         >
-            <div className="flex items-center gap-2">
-                <div className="relative min-w-0 flex-1">
-                    <Globe
-                        size={14}
-                        className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500"
-                    />
+            <div className="flex items-center gap-1.5">
+                <div className="relative flex-1">
+                    <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none">
+                        <Globe className="w-[12px] h-[12px] text-[#656565]" />
+                    </div>
                     <input
                         autoFocus
                         type="url"
@@ -220,18 +219,21 @@ export const CanvasWebClipPopover: React.FC<CanvasWebClipPopoverProps> = ({
                                 void handleSubmit()
                             }
                         }}
-                        className="h-10 w-full rounded-lg border border-white/10 bg-[#242323] pl-9 pr-3 text-sm text-white placeholder-neutral-600 outline-none transition focus:border-white/20 focus:ring-1 focus:ring-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="w-full bg-[#141312] border border-[#2E2D2C] focus:border-[#454443] rounded-[7px] h-[34px] pl-7 pr-2.5 text-[11.5px] text-[#D6D5D4] placeholder-[#4A4A4A] outline-none transition-colors disabled:opacity-50"
                     />
                 </div>
-                <Button
+                <button
                     type="button"
-                    size="sm"
+                    disabled={isSubmitting || !url.trim()}
                     onClick={() => void handleSubmit()}
-                    isLoading={isSubmitting}
-                    className="shrink-0"
+                    className="h-[34px] px-3.5 rounded-[7px] bg-[#D6D5D4] hover:bg-[#EAE9E8] text-[#111] text-[11.5px] font-medium disabled:opacity-40 transition-colors shrink-0 flex items-center justify-center min-w-[75px]"
                 >
-                    Get Clips
-                </Button>
+                    {isSubmitting ? (
+                        <div className="w-2.5 h-2.5 border-2 border-[#111]/20 border-t-[#111] rounded-full animate-spin" />
+                    ) : (
+                        'Get Clips'
+                    )}
+                </button>
             </div>
             {error && <p className="mt-2 text-xs text-red-400">{error}</p>}
         </div>,

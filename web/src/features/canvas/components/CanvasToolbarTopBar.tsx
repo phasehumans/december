@@ -7,7 +7,7 @@ import {
     Type as TextIcon,
     Pen,
     Eraser,
-    ArrowRight,
+    MoveUpRight,
     Hand,
     Frame,
 } from 'lucide-react'
@@ -104,7 +104,7 @@ export const CanvasToolbarTopBar: React.FC<CanvasToolbarTopBarProps> = ({
             isActive: activeTool === 'square',
         },
         {
-            icon: ArrowRight,
+            icon: MoveUpRight,
             label: 'Arrow',
             onClick: () => onSelectTool('arrow'),
             isActive: activeTool === 'arrow',

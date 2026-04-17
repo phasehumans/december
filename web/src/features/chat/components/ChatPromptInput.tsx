@@ -37,7 +37,7 @@ export const ChatPromptInput: React.FC<ChatPromptInputProps> = ({
         <div className="p-2 bg-[#1F1F1F] shrink-0 z-30">
             <div
                 className={cn(
-                    'w-full bg-[#1E1D1C] rounded-[17px] border border-[#363534] transition-all shadow-lg relative overflow-hidden group flex flex-col focus-within:border-neutral-500'
+                    'w-full bg-[#1E1D1C] rounded-[17px] border border-[#363534] transition-all relative overflow-hidden group flex flex-col focus-within:border-neutral-500'
                 )}
             >
                 {/* Integrated Selected Element Display */}
@@ -107,13 +107,14 @@ export const ChatPromptInput: React.FC<ChatPromptInputProps> = ({
                         </button>
                         <button
                             onClick={onSubmit}
-                            disabled={!value.trim() && !isApplyingEdit}
-                            className={cn(
-                                'p-2 rounded-full transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed',
-                                value.trim() && !isApplyingEdit
-                                    ? 'bg-white text-black hover:bg-neutral-200'
-                                    : 'bg-[#27272A] text-neutral-500'
-                            )}
+                            className={`
+                                flex items-center justify-center w-8 h-8 rounded-full transition-colors duration-200
+                                ${
+                                    value.trim() && !isApplyingEdit
+                                        ? 'bg-[#D6D5D4] text-black'
+                                        : 'bg-[#2C2C2E] text-[#4A4A4A] cursor-not-allowed'
+                                }
+                            `}
                         >
                             <ArrowUp size={18} strokeWidth={2.5} />
                         </button>
