@@ -55,9 +55,6 @@ const updateNotification = (data: updateNotificationInput) => {
     })
 }
 
-//     updateNotification,
-// }
-
 const getQuickInfo = () => {
     return apiRequest<QuickInfo>('/profile/quickinfo')
 }

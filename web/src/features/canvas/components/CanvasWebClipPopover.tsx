@@ -9,6 +9,7 @@ import { Button } from '@/shared/components/ui/Button'
 interface CanvasWebClipPopoverProps {
     isOpen: boolean
     anchorRef: React.RefObject<HTMLButtonElement | null>
+    containerRef?: React.RefObject<HTMLDivElement | null>
     onClose: () => void
     onInteract: () => void
     onAddItems: (items: CanvasItemDraft[]) => void
@@ -52,6 +53,7 @@ const mapClipToCanvasItem = (clip: {
 export const CanvasWebClipPopover: React.FC<CanvasWebClipPopoverProps> = ({
     isOpen,
     anchorRef,
+    containerRef,
     onClose,
     onInteract,
     onAddItems,
@@ -83,13 +85,19 @@ export const CanvasWebClipPopover: React.FC<CanvasWebClipPopoverProps> = ({
 
         const updatePosition = () => {
             const anchor = anchorRef.current
+            const container = containerRef?.current
             if (!anchor) {
                 return
             }
 
             const horizontalPadding = 12
-            const width = Math.min(420, window.innerWidth - horizontalPadding * 2)
-            const rect = anchor.getBoundingClientRect()
+            const width = Math.min(440, window.innerWidth - horizontalPadding * 2)
+
+            // If containerRef is provided (the toolbar), align with it
+            // Otherwise align with the anchor button
+            const targetElement = container || anchor
+            const rect = targetElement.getBoundingClientRect()
+
             const unclampedLeft = rect.left + rect.width / 2 - width / 2
             const left = Math.min(
                 Math.max(unclampedLeft, horizontalPadding),
@@ -97,7 +105,7 @@ export const CanvasWebClipPopover: React.FC<CanvasWebClipPopoverProps> = ({
             )
 
             setPosition({
-                top: rect.bottom + 10,
+                top: rect.bottom + 8,
                 left,
                 width,
             })
@@ -112,7 +120,7 @@ export const CanvasWebClipPopover: React.FC<CanvasWebClipPopoverProps> = ({
             window.removeEventListener('resize', updatePosition)
             window.removeEventListener('scroll', updatePosition, true)
         }
-    }, [anchorRef, isOpen])
+    }, [anchorRef, containerRef, isOpen])
 
     React.useEffect(() => {
         if (!isOpen) {
@@ -194,7 +202,7 @@ export const CanvasWebClipPopover: React.FC<CanvasWebClipPopoverProps> = ({
     return createPortal(
         <div
             ref={popoverRef}
-            className="fixed z-[70] rounded-[14px] border border-[#2E2D2C] bg-[#171615] p-2 pointer-events-auto"
+            className="fixed z-[70] rounded-[14px] border border-white/10 bg-[#171615]/90 backdrop-blur-xl p-1.5 pointer-events-auto animate-popoverIn"
             style={{
                 top: position.top,
                 left: position.left,
@@ -203,8 +211,8 @@ export const CanvasWebClipPopover: React.FC<CanvasWebClipPopoverProps> = ({
         >
             <div className="flex items-center gap-1.5">
                 <div className="relative flex-1">
-                    <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none">
-                        <Globe className="w-[12px] h-[12px] text-[#656565]" />
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <Globe className="w-3.5 h-3.5 text-[#656565]" strokeWidth={2} />
                     </div>
                     <input
                         autoFocus
@@ -219,23 +227,23 @@ export const CanvasWebClipPopover: React.FC<CanvasWebClipPopoverProps> = ({
                                 void handleSubmit()
                             }
                         }}
-                        className="w-full bg-[#141312] border border-[#2E2D2C] focus:border-[#454443] rounded-[7px] h-[34px] pl-7 pr-2.5 text-[11.5px] text-[#D6D5D4] placeholder-[#4A4A4A] outline-none transition-colors disabled:opacity-50"
+                        className="w-full bg-[#0D0D0B] border border-white/5 focus:border-white/20 rounded-[10px] h-10 pl-9 pr-3 text-[13px] text-[#D6D5D4] placeholder-[#4A4A4A] outline-none transition-all disabled:opacity-50 font-medium"
                     />
                 </div>
                 <button
                     type="button"
                     disabled={isSubmitting || !url.trim()}
                     onClick={() => void handleSubmit()}
-                    className="h-[34px] px-3.5 rounded-[7px] bg-[#D6D5D4] hover:bg-[#EAE9E8] text-[#111] text-[11.5px] font-medium disabled:opacity-40 transition-colors shrink-0 flex items-center justify-center min-w-[75px]"
+                    className="h-10 px-4 rounded-[10px] bg-[#D6D5D4] hover:bg-white text-[#111] text-[13px] font-semibold disabled:opacity-30 disabled:grayscale transition-all shrink-0 flex items-center justify-center min-w-[90px] shadow-sm active:scale-[0.98]"
                 >
                     {isSubmitting ? (
-                        <div className="w-2.5 h-2.5 border-2 border-[#111]/20 border-t-[#111] rounded-full animate-spin" />
+                        <div className="w-3.5 h-3.5 border-2 border-[#111]/20 border-t-[#111] rounded-full animate-spin" />
                     ) : (
                         'Get Clips'
                     )}
                 </button>
             </div>
-            {error && <p className="mt-2 text-xs text-red-400">{error}</p>}
+            {error && <p className="mt-2.5 px-2 text-[11px] text-red-500 font-medium">{error}</p>}
         </div>,
         document.body
     )
