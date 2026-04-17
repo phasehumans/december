@@ -10,7 +10,7 @@ export const CanvasDeleteButton: React.FC<CanvasDeleteButtonProps> = ({ onRemove
                 e.stopPropagation()
                 onRemove()
             }}
-            className="absolute -top-3 -right-3 z-50 scale-75 rounded-full border border-white/10 bg-black p-1.5 text-neutral-400 opacity-0 shadow-xl transition-all hover:scale-100 hover:border-white/20 hover:bg-neutral-800 hover:text-white group-hover:opacity-100"
+            className="absolute -top-2.5 -right-2.5 z-50 flex items-center justify-center w-[22px] h-[22px] rounded-full border border-[#2E2D2C] bg-[#141312] text-[#656565] opacity-0 transition-all duration-200 hover:bg-[#242322] hover:text-[#D6D5D4] hover:border-[#454443] group-hover:opacity-100"
             title="Remove item"
             onPointerDown={(e) => e.stopPropagation()}
         >

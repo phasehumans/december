@@ -328,7 +328,7 @@ export const CanvasItemComponent: React.FC<CanvasItemComponentProps> = ({
                     className={cn(
                         'absolute -inset-[3px] rounded-2xl border transition-all duration-200 pointer-events-none z-0',
                         isSelected
-                            ? 'border-neutral-400/50 shadow-[0_0_0_1px_rgba(255,255,255,0.05)] opacity-100'
+                            ? 'border-neutral-400/50 opacity-100'
                             : 'border-transparent opacity-0 group-hover:opacity-100 group-hover:border-white/10'
                     )}
                 />
@@ -374,9 +374,9 @@ export const CanvasItemComponent: React.FC<CanvasItemComponentProps> = ({
                 )}
 
                 {item.type === 'image' && (
-                    <div className="flex h-full flex-col overflow-hidden rounded-xl border border-white/10 bg-[#1C1C1E] shadow-xl ring-1 ring-black/40 transition-colors group-hover:border-neutral-700">
+                    <div className="flex h-full flex-col overflow-hidden rounded-[14px] border border-[#2E2D2C] bg-[#171615] transition-colors group-hover:border-[#454443]">
                         {!isChild && <CanvasDeleteButton onRemove={onRemove} />}
-                        <div className="relative h-[65%] w-full overflow-hidden border-b border-white/5 bg-[#111] group/img">
+                        <div className="relative h-[65%] w-full overflow-hidden border-b border-[#2E2D2C] bg-[#141312] group/img">
                             <img
                                 src={item.content}
                                 alt=""
@@ -385,9 +385,9 @@ export const CanvasItemComponent: React.FC<CanvasItemComponentProps> = ({
                             />
                             {isChild && <div className="absolute inset-0 bg-transparent" />}
                         </div>
-                        <div className="flex flex-1 flex-col bg-[#222] p-3">
+                        <div className="flex flex-1 flex-col bg-[#171615] p-3.5">
                             <textarea
-                                className="h-full w-full resize-none bg-transparent text-[13px] leading-relaxed text-[#E8E8E6] placeholder-neutral-500/70 focus:outline-none font-sans"
+                                className="h-full w-full resize-none bg-transparent text-[13px] leading-relaxed text-[#D6D5D4] placeholder-[#656565] focus:outline-none font-medium"
                                 placeholder="Describe how to use this image..."
                                 onKeyDown={(e) => e.stopPropagation()}
                                 onPointerDown={(e) => e.stopPropagation()}

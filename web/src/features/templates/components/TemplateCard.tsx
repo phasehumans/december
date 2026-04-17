@@ -22,7 +22,7 @@ export const TemplateCard: React.FC<TemplateCardProps> = ({ template }) => {
     return (
         <div className="group flex flex-col gap-3.5 cursor-pointer w-full transition-all duration-300">
             {/* Image Container with depth and premium corners */}
-            <div className="relative aspect-[16/10] bg-[#111] overflow-hidden rounded-2xl border border-white/5 group-hover:border-white/15 transition-all duration-300 shadow-md shadow-black/20 group-hover:shadow-xl group-hover:shadow-black/40">
+            <div className="relative aspect-[16/10] bg-[#111] overflow-hidden rounded-2xl border border-white/5 group-hover:border-white/15 transition-all duration-300">
                 <img
                     src={template.image}
                     alt={template.title}
@@ -37,7 +37,7 @@ export const TemplateCard: React.FC<TemplateCardProps> = ({ template }) => {
                     <motion.div
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
-                        className="bg-white text-black shadow-xl h-10 px-5 rounded-full text-[13px] font-medium transition-all flex items-center gap-2 scale-95 group-hover:scale-100 duration-300 ease-out"
+                        className="bg-white text-black h-10 px-5 rounded-full text-[13px] font-medium transition-all flex items-center gap-2 group-hover:opacity-100 duration-300 ease-out"
                     >
                         <span>Remix</span>
                         <Icons.ArrowRight className="w-3.5 h-3.5 opacity-80" />

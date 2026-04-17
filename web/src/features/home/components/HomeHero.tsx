@@ -49,7 +49,7 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
         >
             <HomeHeader />
 
-            <div className="flex flex-col items-center justify-start pt-[25vh] md:pt-[30vh] min-h-[100vh] md:min-h-[100vh] gap-6 animate-in fade-in duration-500 max-w-4xl mx-auto px-4 w-full shrink-0 relative">
+            <div className="flex flex-col items-center justify-start pt-[25vh] md:pt-[30vh] min-h-[105vh] md:min-h-[105vh] gap-6 animate-in fade-in duration-500 max-w-4xl mx-auto px-4 w-full shrink-0 relative">
                 <div className="flex flex-col items-center gap-4 text-center mb-2">
                     <h1 className="text-2xl md:text-4xl font-sohne font-medium tracking-tight text-[#D6D5D4] px-4">
                         What are we building today?
@@ -135,7 +135,7 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
                         Best on Desktop
                     </span>
                 </div>
-                <div className="w-full h-full rounded-3xl overflow-hidden border border-white/10 shadow-2xl relative">
+                <div className="w-full h-full rounded-3xl overflow-hidden border border-white/10 relative">
                     <Canvas
                         ref={canvasRef}
                         isAuthenticated={isAuthenticated}

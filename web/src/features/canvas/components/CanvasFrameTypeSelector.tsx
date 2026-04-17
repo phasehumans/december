@@ -55,7 +55,7 @@ export const CanvasFrameTypeSelector: React.FC<CanvasFrameTypeSelectorProps> = (
 
                 {isDropdownOpen && (
                     <div
-                        className="absolute top-full left-0 z-[100] mt-1 flex w-[160px] flex-col overflow-hidden rounded-md border border-white/10 bg-[#1C1C1E] py-1 shadow-2xl"
+                        className="absolute top-full left-0 z-[100] mt-1 flex w-[160px] flex-col overflow-hidden rounded-md border border-white/10 bg-[#1C1C1E] py-1"
                         onPointerDown={(event) => event.stopPropagation()}
                     >
                         {FRAME_TYPES.map((option) => (

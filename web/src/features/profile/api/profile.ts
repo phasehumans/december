@@ -13,6 +13,11 @@ export type Profile = {
     githubUsername?: string
 }
 
+export type QuickInfo = {
+    firstName: string
+    githubConnected: boolean
+}
+
 type UpdateNameInput = {
     name: string
 }
@@ -50,9 +55,14 @@ const updateNotification = (data: updateNotificationInput) => {
     })
 }
 
+const getQuickInfo = () => {
+    return apiRequest<QuickInfo>('/profile/quickinfo')
+}
+
 export const profileAPI = {
     getProfile,
     updateName,
     changePassword,
     updateNotification,
+    getQuickInfo,
 }
