@@ -5,14 +5,11 @@ import {
     MousePointer2,
     Square,
     Type as TextIcon,
-    Minus,
     Pen,
     Eraser,
-    ArrowRight,
+    MoveUpRight,
     Hand,
     Frame,
-    Circle,
-    Info,
 } from 'lucide-react'
 
 import { ToolButton } from './ToolButton'
@@ -54,107 +51,98 @@ const renderGroup = (actions: ToolbarAction[], wrapperClass = '') => {
     )
 }
 
-export const CanvasToolbarTopBar: React.FC<CanvasToolbarTopBarProps> = ({
-    activeTool,
-    isWebClipPopoverOpen,
-    onSelectTool,
-    onUploadImage,
-    onToggleWebClipPopover,
-    onOpenHelp,
-    webClipButtonRef,
-}) => {
-    const navigationActions: ToolbarAction[] = [
+export const CanvasToolbarTopBar = React.forwardRef<HTMLDivElement, CanvasToolbarTopBarProps>(
+    (
         {
-            icon: MousePointer2,
-            label: 'Selector',
-            onClick: () => onSelectTool('select'),
-            isActive: activeTool === 'select',
+            activeTool,
+            isWebClipPopoverOpen,
+            onSelectTool,
+            onUploadImage,
+            onToggleWebClipPopover,
+            onOpenHelp,
+            webClipButtonRef,
         },
-        {
-            icon: Hand,
-            label: 'Pan Tool',
-            onClick: () => onSelectTool('hand'),
-            isActive: activeTool === 'hand',
-        },
-    ]
+        ref
+    ) => {
+        const navigationActions: ToolbarAction[] = [
+            {
+                icon: MousePointer2,
+                label: 'Selector',
+                onClick: () => onSelectTool('select'),
+                isActive: activeTool === 'select',
+            },
+            {
+                icon: Hand,
+                label: 'Pan Tool',
+                onClick: () => onSelectTool('hand'),
+                isActive: activeTool === 'hand',
+            },
+        ]
 
-    const drawingActions: ToolbarAction[] = [
-        {
-            icon: Frame,
-            label: 'Frame Tool',
-            onClick: () => onSelectTool('frame'),
-            isActive: activeTool === 'frame',
-        },
-        {
-            icon: Pen,
-            label: 'Pen Tool',
-            onClick: () => onSelectTool('pen'),
-            isActive: activeTool === 'pen',
-        },
-        {
-            icon: Eraser,
-            label: 'Eraser Tool',
-            onClick: () => onSelectTool('eraser'),
-            isActive: activeTool === 'eraser',
-        },
-    ]
+        const drawingActions: ToolbarAction[] = [
+            {
+                icon: Frame,
+                label: 'Frame Tool',
+                onClick: () => onSelectTool('frame'),
+                isActive: activeTool === 'frame',
+            },
+            {
+                icon: Pen,
+                label: 'Pen Tool',
+                onClick: () => onSelectTool('pen'),
+                isActive: activeTool === 'pen',
+            },
+            {
+                icon: Eraser,
+                label: 'Eraser Tool',
+                onClick: () => onSelectTool('eraser'),
+                isActive: activeTool === 'eraser',
+            },
+        ]
 
-    const shapeActions: ToolbarAction[] = [
-        {
-            icon: Square,
-            label: 'Rectangle',
-            onClick: () => onSelectTool('square'),
-            isActive: activeTool === 'square',
-        },
-        {
-            icon: Circle,
-            label: 'Circle',
-            onClick: () => onSelectTool('circle'),
-            isActive: activeTool === 'circle',
-        },
-        {
-            icon: Minus,
-            label: 'Line',
-            onClick: () => onSelectTool('line'),
-            isActive: activeTool === 'line',
-        },
-        {
-            icon: ArrowRight,
-            label: 'Arrow',
-            onClick: () => onSelectTool('arrow'),
-            isActive: activeTool === 'arrow',
-        },
-        {
-            icon: TextIcon,
-            label: 'Text',
-            onClick: () => onSelectTool('text'),
-            isActive: activeTool === 'text',
-        },
-    ]
+        const shapeActions: ToolbarAction[] = [
+            {
+                icon: Square,
+                label: 'Rectangle',
+                onClick: () => onSelectTool('square'),
+                isActive: activeTool === 'square',
+            },
+            {
+                icon: MoveUpRight,
+                label: 'Arrow',
+                onClick: () => onSelectTool('arrow'),
+                isActive: activeTool === 'arrow',
+            },
+            {
+                icon: TextIcon,
+                label: 'Text',
+                onClick: () => onSelectTool('text'),
+                isActive: activeTool === 'text',
+            },
+        ]
 
-    return (
-        <div className="pointer-events-auto flex items-center gap-1 p-1 bg-[#171615] border border-white/10 rounded-lg ring-1 ring-white/5 max-w-full overflow-x-auto no-scrollbar">
-            {renderGroup(navigationActions, 'flex items-center gap-0.5 pl-0.5')}
-            <div className="w-px h-5 bg-white/10 mx-1" />
-            <div className="flex items-center gap-0.5">
-                <ToolButton icon={ImageIcon} label="Upload Image" onClick={onUploadImage} />
-                <ToolButton
-                    icon={Globe}
-                    label="Upload Website"
-                    onClick={onToggleWebClipPopover}
-                    isActive={isWebClipPopoverOpen}
-                    buttonRef={webClipButtonRef}
-                />
+        return (
+            <div
+                ref={ref}
+                className="pointer-events-auto flex items-center gap-1 p-1 bg-[#171615] border border-white/10 rounded-lg ring-1 ring-white/5 max-w-full overflow-x-auto no-scrollbar"
+            >
+                {renderGroup(navigationActions, 'flex items-center gap-0.5 pl-0.5')}
+                <div className="w-px h-5 bg-white/10 mx-1" />
+                <div className="flex items-center gap-0.5">
+                    <ToolButton icon={ImageIcon} label="Upload Image" onClick={onUploadImage} />
+                    <ToolButton
+                        icon={Globe}
+                        label="Upload Website"
+                        onClick={onToggleWebClipPopover}
+                        isActive={isWebClipPopoverOpen}
+                        buttonRef={webClipButtonRef}
+                    />
+                </div>
+                <div className="w-px h-5 bg-white/10 mx-1" />
+                {renderGroup(drawingActions)}
+                <div className="w-px h-5 bg-white/10 mx-1" />
+                {renderGroup(shapeActions, 'flex items-center gap-0.5 pr-0.5')}
             </div>
-            <div className="w-px h-5 bg-white/10 mx-1" />
-            {renderGroup(drawingActions)}
-            <div className="w-px h-5 bg-white/10 mx-1" />
-            {renderGroup(shapeActions)}
-            <div className="w-px h-5 bg-white/10 mx-1" />
-            {renderGroup(
-                [{ icon: Info, label: 'How to use', onClick: onOpenHelp }],
-                'flex items-center gap-0.5 pr-0.5'
-            )}
-        </div>
-    )
-}
+        )
+    }
+)

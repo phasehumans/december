@@ -5,15 +5,6 @@ import { useQuery } from '@tanstack/react-query'
 import { Icons } from '@/shared/components/ui/Icons'
 import { profileAPI } from '@/features/profile/api/profile'
 
-// Mock repos for when GitHub is connected
-const MOCK_REPOS = [
-    { name: 'my-portfolio', url: 'https://github.com/user/my-portfolio' },
-    { name: 'ecommerce-app', url: 'https://github.com/user/ecommerce-app' },
-    { name: 'blog-platform', url: 'https://github.com/user/blog-platform' },
-    { name: 'weather-dashboard', url: 'https://github.com/user/weather-dashboard' },
-    { name: 'task-manager', url: 'https://github.com/user/task-manager' },
-]
-
 interface GitHubRepoFormProps {
     onClose: () => void
     onSubmitRepo?: (repoUrl: string) => void
@@ -21,16 +12,21 @@ interface GitHubRepoFormProps {
 
 export const GitHubRepoForm: React.FC<GitHubRepoFormProps> = ({ onClose, onSubmitRepo }) => {
     const [selectedRepo, setSelectedRepo] = useState('')
-    const [isDropdownOpen, setIsDropdownOpen] = useState(false)
     const [connectError, setConnectError] = useState<string | null>(null)
 
-    // Fetch profile to check GitHub connection status
-    const { data: profile, isLoading: isProfileLoading } = useQuery({
+    // Fetch quickInfo to check GitHub connection status
+    const { data: quickInfo, isLoading: isQuickInfoLoading } = useQuery({
+        queryKey: ['quickinfo'],
+        queryFn: profileAPI.getQuickInfo,
+    })
+
+    // Profile for github auth state ID
+    const { data: profile } = useQuery({
         queryKey: ['profile'],
         queryFn: profileAPI.getProfile,
     })
 
-    const isGithubConnected = profile?.githubConnected ?? false
+    const isGithubConnected = profile?.githubConnected || (quickInfo?.githubConnected ?? false)
 
     const handleConnectGithub = () => {
         try {
@@ -59,13 +55,13 @@ export const GitHubRepoForm: React.FC<GitHubRepoFormProps> = ({ onClose, onSubmi
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -8, scale: 0.98 }}
             transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-            className="w-full max-w-[638px] mt-3 rounded-[14px] bg-[#1A1918] border border-[#2E2D2C] overflow-hidden shadow-xl shadow-black/30"
+            className="w-full max-w-[638px] mt-3 rounded-[14px] bg-[#171615] border border-[#242322]"
         >
             {/* Header */}
-            <div className="flex items-center justify-between px-4 py-2.5 border-b border-[#2E2D2C]">
+            <div className="flex items-center justify-between px-4 py-2.5 bg-[#242322] rounded-t-[13px]">
                 <div className="flex items-center gap-2.5">
-                    <Icons.Github className="w-[16px] h-[16px] text-[#A1A1AA]" />
-                    <span className="text-[13px] font-medium text-[#D6D5D4]">
+                    <Icons.Github className="w-[16px] h-[16px] text-[#989796]" />
+                    <span className="text-[13px] font-medium text-[#989796]">
                         Import from GitHub
                     </span>
                 </div>
@@ -79,7 +75,7 @@ export const GitHubRepoForm: React.FC<GitHubRepoFormProps> = ({ onClose, onSubmi
 
             {/* Body */}
             <div className="px-4 py-3.5">
-                {isProfileLoading ? (
+                {isQuickInfoLoading ? (
                     /* Loading State */
                     <div className="flex items-center justify-center py-6">
                         <div className="w-5 h-5 border-2 border-[#2E2D2C] border-t-[#656565] rounded-full animate-spin" />
@@ -88,7 +84,7 @@ export const GitHubRepoForm: React.FC<GitHubRepoFormProps> = ({ onClose, onSubmi
                     /* Not Connected State — styled like upload drop zone */
                     <div
                         onClick={handleConnectGithub}
-                        className="relative flex flex-col items-center justify-center gap-2.5 py-5 px-6 rounded-[12px] border-2 border-dashed border-[#2E2D2C] hover:border-[#454443] hover:bg-white/[0.015] cursor-pointer transition-all duration-200 ease-out"
+                        className="relative flex flex-col items-center justify-center gap-2.5 px-6 rounded-[12px] border-2 border-dashed border-[#2E2D2C] hover:border-[#454443] hover:bg-white/[0.015] cursor-pointer transition-all duration-200 ease-out h-[160px]"
                     >
                         <div className="w-9 h-9 rounded-full bg-[#252422] flex items-center justify-center">
                             <Icons.Github className="w-[17px] h-[17px] text-[#656565]" />
@@ -107,72 +103,32 @@ export const GitHubRepoForm: React.FC<GitHubRepoFormProps> = ({ onClose, onSubmi
                         )}
                     </div>
                 ) : (
-                    /* Connected State — show repo selector */
-                    <div className="flex flex-col gap-3">
-                        {/* Connected badge */}
-                        <div className="flex items-center gap-2 px-1">
-                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                            <span className="text-[12px] text-[#656565]">
-                                Connected as{' '}
-                                <span className="text-[#A1A1AA]">
-                                    {profile?.githubUsername || 'user'}
-                                </span>
-                            </span>
-                        </div>
-
-                        {/* Repo Dropdown */}
-                        <div className="relative">
-                            <button
-                                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                                className="w-full flex items-center justify-between bg-[#141312] border border-[#2E2D2C] hover:border-[#454443] rounded-[10px] h-[40px] px-3.5 text-[13px] transition-colors"
-                            >
-                                <div className="flex items-center gap-2.5">
-                                    <Icons.Github className="w-[13px] h-[13px] text-[#4A4A4A]" />
-                                    <span
-                                        className={
-                                            selectedRepo ? 'text-[#D6D5D4]' : 'text-[#4A4A4A]'
-                                        }
-                                    >
-                                        {selectedRepo
-                                            ? MOCK_REPOS.find((r) => r.url === selectedRepo)
-                                                  ?.name || selectedRepo
-                                            : 'Select a repository...'}
-                                    </span>
+                    /* Connected State — Manual Repo Input */
+                    <div className="relative flex flex-col justify-center px-6 rounded-[12px] border-2 border-dashed border-[#2E2D2C] h-[160px]">
+                        <div className="flex items-center gap-2">
+                            <div className="relative flex-1">
+                                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                                    <Icons.Github className="w-[14px] h-[14px] text-[#656565]" />
                                 </div>
-                                <Icons.ChevronDown
-                                    className={`w-3.5 h-3.5 text-[#656565] transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`}
+                                <input
+                                    type="text"
+                                    value={selectedRepo}
+                                    onChange={(e) => setSelectedRepo(e.target.value)}
+                                    placeholder="https://github.com/user/repo"
+                                    className="w-full bg-[#141312] border border-[#2E2D2C] focus:border-[#454443] rounded-[10px] h-[40px] pl-9 pr-3.5 text-[13px] text-[#D6D5D4] placeholder-[#4A4A4A] outline-none transition-colors"
                                 />
+                            </div>
+                            <button
+                                onClick={handleSubmit}
+                                disabled={!selectedRepo}
+                                className="h-[40px] px-5 rounded-[10px] bg-[#D6D5D4] hover:bg-[#EAE9E8] text-[#111] text-[13px] font-semibold disabled:opacity-40 disabled:pointer-events-none transition-all duration-200 shrink-0"
+                            >
+                                Import
                             </button>
-
-                            {isDropdownOpen && (
-                                <div className="absolute top-[calc(100%+4px)] left-0 right-0 bg-[#1A1918] border border-[#2E2D2C] rounded-[10px] overflow-hidden z-10 max-h-[160px] overflow-y-auto no-scrollbar shadow-xl">
-                                    {MOCK_REPOS.map((repo) => (
-                                        <button
-                                            key={repo.url}
-                                            onClick={() => {
-                                                setSelectedRepo(repo.url)
-                                                setIsDropdownOpen(false)
-                                            }}
-                                            className={`w-full flex items-center gap-2.5 px-3.5 py-2.5 text-left hover:bg-white/5 transition-colors ${selectedRepo === repo.url ? 'bg-white/[0.03]' : ''}`}
-                                        >
-                                            <Icons.Github className="w-[13px] h-[13px] text-[#4A4A4A] shrink-0" />
-                                            <span className="text-[13px] text-[#D6D5D4] truncate">
-                                                {repo.name}
-                                            </span>
-                                        </button>
-                                    ))}
-                                </div>
-                            )}
                         </div>
-
-                        {/* Submit */}
-                        <button
-                            onClick={handleSubmit}
-                            disabled={!selectedRepo}
-                            className="w-full h-[40px] rounded-[10px] bg-[#E5E5E5] hover:bg-white text-[#111] text-[13px] font-medium disabled:opacity-30 disabled:hover:bg-[#E5E5E5] transition-colors"
-                        >
-                            Import Repository
-                        </button>
+                        <p className="text-[12px] text-[#656565] mt-3 ml-1">
+                            Enter the URL of your repository or any public GitHub repository.
+                        </p>
                     </div>
                 )}
             </div>

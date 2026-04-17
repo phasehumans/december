@@ -58,7 +58,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.95, y: 10 }}
                         transition={{ type: 'spring', duration: 0.5, bounce: 0.2 }}
-                        className="relative w-full max-w-[332px] bg-[#202020] border border-[#333333] rounded-[20px] p-8 shadow-2xl shadow-black/50"
+                        className="relative w-full max-w-[332px] bg-[#202020] border border-[#333333] rounded-[20px] p-8"
                     >
                         {step === 'auth' ? (
                             <AuthModalAuthStep
