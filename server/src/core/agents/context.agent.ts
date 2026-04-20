@@ -2,28 +2,28 @@ import { openai } from '../../config/oai'
 import { parseModelJson } from '../../utils/parseModelJson'
 import { readChatCompletionText } from '../../utils/readChatCompletionText'
 import { retryAsync } from '../../utils/retry'
-import { FEATURE_EXTRACTION_PROMPT } from '../prompts/prompt.prompt'
+import { CONTEXT_AGENT_PROMPT } from '../prompts/context.prompt'
 
 type ExtractProjectIntent = {
     userPrompt: string
 }
 
-const PROMPT_AGENT_MAX_ATTEMPTS = 2
-const PROMPT_AGENT_MODEL = 'openai/gpt-oss-20b:free' //model: 'openai/gpt-5.1-codex-mini',
+const CONTEXT_AGENT_MAX_ATTEMPTS = 2
+const CONTEXT_AGENT_MODEL = 'openai/gpt-oss-20b:free' //model: 'openai/gpt-5.1-codex-mini',
 // const PROMPT_AGENT_MAX_TOKENS = 1200
 
 export const extractProjectIntent = async (data: ExtractProjectIntent) => {
     return retryAsync({
-        label: 'prompt agent',
-        maxAttempts: PROMPT_AGENT_MAX_ATTEMPTS,
+        label: 'context agent',
+        maxAttempts: CONTEXT_AGENT_MAX_ATTEMPTS,
         task: async (attempt, lastError) => {
             const completion = await openai.chat.completions.create({
-                model: PROMPT_AGENT_MODEL,
+                model: CONTEXT_AGENT_MODEL,
                 temperature: 0,
                 messages: [
                     {
                         role: 'system',
-                        content: FEATURE_EXTRACTION_PROMPT,
+                        content: CONTEXT_AGENT_PROMPT,
                     },
                     {
                         role: 'user',
@@ -43,10 +43,10 @@ export const extractProjectIntent = async (data: ExtractProjectIntent) => {
             const content = readChatCompletionText(completion)
 
             if (!content) {
-                throw new Error('prompt agent returned empty response')
+                throw new Error('context agent returned empty response')
             }
 
-            return parseModelJson(content, 'prompt agent')
+            return parseModelJson(content, 'context agent')
         },
     })
 }
