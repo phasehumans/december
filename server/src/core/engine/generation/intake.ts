@@ -1,4 +1,4 @@
-﻿import { extractProjectIntent as extractProjectIntentAgent } from '../../agents/prompt.agent'
+﻿import { extractProjectIntent as extractProjectIntentAgent } from '../../agents/context.agent'
 import { extractProjectPlan as extractProjectPlanAgent } from '../../agents/plan.agent'
 import type { ProjectIntent } from '../../../modules/generation/generation.types'
 
