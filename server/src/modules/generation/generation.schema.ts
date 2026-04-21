@@ -61,7 +61,7 @@ export const projectIntentSchema = z.object({
 
     appType: z.enum(['landing-page', 'dashboard', 'portfolio & blog', 'saas-app', 'ecommerce']),
 
-    frontendFramework: z.literal('vite-react'),
+    frontendFramework: z.literal('bun-react'),
     language: z.literal('typescript'),
     styling: z.literal('tailwindcss'),
     visualStyle: z.string(),
