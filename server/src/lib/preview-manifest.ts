@@ -1,6 +1,6 @@
 import { createHash } from 'crypto'
 
-import { toPreviewWorkspacePath } from '../modules/generation/frontend-paths'
+import { toPreviewWorkspacePath } from '../modules/generation/generation.utils'
 
 import { getTextFile, putTextFile, versionKey } from './project-storage'
 

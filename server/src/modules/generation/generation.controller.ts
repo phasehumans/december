@@ -1,10 +1,6 @@
 import type { Request, Response } from 'express'
 
-import {
-    applyProjectEditSchema,
-    applyProjectFixSchema,
-    generateWebsiteSchema,
-} from './generation.schema'
+import { generateWebsiteSchema } from './generation.schema'
 import { generateService } from './generation.service'
 import { normalizeGenerationError } from './generation.error'
 
@@ -78,92 +74,6 @@ const generateWebsite = async (req: Request, res: Response) => {
     }
 }
 
-const applyProjectEdit = async (req: Request, res: Response) => {
-    const parseData = applyProjectEditSchema.safeParse(req.body)
-    const userId = req.userId as string | undefined
-
-    if (!parseData.success) {
-        return res.status(400).json({
-            success: false,
-            message: 'validation failed',
-            errors: parseData.error.flatten().fieldErrors,
-        })
-    }
-
-    if (!userId) {
-        return res.status(400).json({
-            success: false,
-            message: 'unauthorized',
-        })
-    }
-
-    try {
-        const result = await generateService.applyProjectEdit({
-            ...parseData.data,
-            userId,
-        })
-
-        return res.status(200).json({
-            success: true,
-            message: 'project updated',
-            data: result,
-        })
-    } catch (error) {
-        const normalizedError = normalizeGenerationError(error)
-        console.error('[generation/edit]', normalizedError.internalMessage)
-
-        return res.status(500).json({
-            success: false,
-            message: normalizedError.publicMessage,
-            errors: normalizedError.internalMessage,
-        })
-    }
-}
-
-const applyProjectFix = async (req: Request, res: Response) => {
-    const parseData = applyProjectFixSchema.safeParse(req.body)
-    const userId = req.userId as string | undefined
-
-    if (!parseData.success) {
-        return res.status(400).json({
-            success: false,
-            message: 'validation failed',
-            errors: parseData.error.flatten().fieldErrors,
-        })
-    }
-
-    if (!userId) {
-        return res.status(400).json({
-            success: false,
-            message: 'unauthorized',
-        })
-    }
-
-    try {
-        const result = await generateService.applyProjectFix({
-            ...parseData.data,
-            userId,
-        })
-
-        return res.status(200).json({
-            success: true,
-            message: 'project fixed',
-            data: result,
-        })
-    } catch (error) {
-        const normalizedError = normalizeGenerationError(error)
-        console.error('[generation/fix]', normalizedError.internalMessage)
-
-        return res.status(500).json({
-            success: false,
-            message: normalizedError.publicMessage,
-            errors: normalizedError.internalMessage,
-        })
-    }
-}
-
 export const generateContoller = {
     generateWebsite,
-    applyProjectEdit,
-    applyProjectFix,
 }
