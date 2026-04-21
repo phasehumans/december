@@ -35,40 +35,31 @@ export const previewSelectedElementSchema = z
     })
     .strict()
 
-export const applyProjectEditSchema = z.object({
-    projectId: z.string().uuid(),
-    versionId: z.string().uuid().optional(),
-    prompt: z.string().min(1),
-    selectedElement: previewSelectedElementSchema.optional(),
-    canvasState: canvasDocumentSchema.optional(),
-})
-
-export const applyProjectFixSchema = z.object({
-    projectId: z.string().uuid(),
-    versionId: z.string().uuid().optional(),
-    errorMessage: z.string().min(1),
-    stack: z.string().optional(),
-})
+// Context AGENT ResJSON
+// {
+//     "summary": "string",
+//     "intent": {
+//       "prompt": "string",
+//       "summary": "string",
+//       "projectName": "string",
+//       "appType": ""landing-page" | "dashboard" | "portfolio & blog" | "saas-app" | "ecommerce" |",
+//       "frontendFramework": "vite-react",
+//       "language": "typescript",
+//       "styling": "tailwindcss",
+//       "visualStyle": "string",
+//       "pages": ["string"],
+//       "sections": ["string"],
+//       "coreEntities": ["string"],
+//       "coreFeatures": ["string"]
+//     }
+//   }
 
 export const projectIntentSchema = z.object({
     prompt: z.string(),
     summary: z.string(),
+    projectName: z.string(),
 
-    appType: z.enum([
-        'landing-page',
-        'dashboard',
-        'portfolio',
-        'saas-app',
-        'blog',
-        'ecommerce',
-        'marketplace',
-        'booking-platform',
-        'crm',
-        'social-app',
-        'admin-panel',
-    ]),
-
-    experienceType: z.enum(['marketing', 'app', 'hybrid']),
+    appType: z.enum(['landing-page', 'dashboard', 'portfolio & blog', 'saas-app', 'ecommerce']),
 
     frontendFramework: z.literal('vite-react'),
     language: z.literal('typescript'),

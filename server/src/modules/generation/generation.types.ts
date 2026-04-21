@@ -4,8 +4,6 @@ import { prisma } from '../../config/db'
 import type { CanvasDocument } from '../canvas/canvas.persistence'
 
 import {
-    applyProjectEditSchema,
-    applyProjectFixSchema,
     plannedProjectFileSchema,
     projectIntentSchema,
     projectPlanSchema,
@@ -17,13 +15,6 @@ export type GenerateWebsiteInput = {
     projectId?: string
     canvasState?: CanvasDocument
     onEvent?: (event: GenerationStreamEvent) => Promise<void> | void
-}
-export type ApplyProjectEditInput = z.infer<typeof applyProjectEditSchema> & {
-    userId: string
-}
-
-export type ApplyProjectFixInput = z.infer<typeof applyProjectFixSchema> & {
-    userId: string
 }
 
 export type ProjectIntent = z.infer<typeof projectIntentSchema>

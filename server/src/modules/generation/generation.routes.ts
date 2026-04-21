@@ -7,8 +7,6 @@ import { generateContoller } from './generation.controller'
 const generateRouter = Router()
 
 generateRouter.use(authMiddleware)
-generateRouter.post('/edit', generateContoller.applyProjectEdit)
-generateRouter.post('/fix', generateContoller.applyProjectFix)
 generateRouter.post('/', generateContoller.generateWebsite)
 
 export default generateRouter
