@@ -1,6 +1,4 @@
 import {
-    applyProjectEdit,
-    applyProjectFix,
     extractProjectIntent,
     extractProjectPlan,
     generateProjectFile,
@@ -15,15 +13,8 @@ import {
     appendAssistantMessageContent,
     assertFrontendOnlyPlan,
     getFilesInGenerationOrder,
-    mergeProjectFiles,
-    toRecentMessages,
 } from './generation.helpers'
-import {
-    initializeGenerationTarget,
-    getProjectRevisionBase,
-    markGenerationFailed,
-    persistProjectRevision,
-} from './generation.repository'
+import { initializeGenerationTarget, markGenerationFailed } from './generation.repository'
 import { emitAssistantMessage, emitFileStream } from './generation.stream'
 import {
     publishFinalPreviewSnapshot,
