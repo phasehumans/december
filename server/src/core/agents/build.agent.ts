@@ -4,7 +4,7 @@ import { openai } from '../../config/oai'
 import {
     assertFrontendWorkspacePath,
     isFrontendWorkspacePath,
-} from '../../modules/generation/frontend-paths'
+} from '../../modules/generation/generation.utils'
 import {
     plannedProjectFileSchema,
     projectIntentSchema,

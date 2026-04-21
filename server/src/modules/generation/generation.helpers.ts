@@ -1,6 +1,6 @@
-import { cleanPrompt } from '../../utils/cleanPrompt'
+import { cleanPrompt } from './generation.utils'
 
-import { assertFrontendWorkspacePath } from './frontend-paths'
+import { assertFrontendWorkspacePath } from './generation.utils'
 import type {
     ProjectPlan,
     RevisionBase,

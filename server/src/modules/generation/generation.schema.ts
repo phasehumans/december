@@ -35,42 +35,14 @@ export const previewSelectedElementSchema = z
     })
     .strict()
 
-export const applyProjectEditSchema = z.object({
-    projectId: z.string().uuid(),
-    versionId: z.string().uuid().optional(),
-    prompt: z.string().min(1),
-    selectedElement: previewSelectedElementSchema.optional(),
-    canvasState: canvasDocumentSchema.optional(),
-})
-
-export const applyProjectFixSchema = z.object({
-    projectId: z.string().uuid(),
-    versionId: z.string().uuid().optional(),
-    errorMessage: z.string().min(1),
-    stack: z.string().optional(),
-})
-
 export const projectIntentSchema = z.object({
     prompt: z.string(),
     summary: z.string(),
+    projectName: z.string(),
 
-    appType: z.enum([
-        'landing-page',
-        'dashboard',
-        'portfolio',
-        'saas-app',
-        'blog',
-        'ecommerce',
-        'marketplace',
-        'booking-platform',
-        'crm',
-        'social-app',
-        'admin-panel',
-    ]),
+    appType: z.enum(['landing-page', 'dashboard', 'portfolio & blog', 'saas-app', 'ecommerce']),
 
-    experienceType: z.enum(['marketing', 'app', 'hybrid']),
-
-    frontendFramework: z.literal('vite-react'),
+    frontendFramework: z.literal('bun-react'),
     language: z.literal('typescript'),
     styling: z.literal('tailwindcss'),
     visualStyle: z.string(),

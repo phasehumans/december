@@ -1,13 +1,11 @@
 import {
-    applyProjectEdit,
-    applyProjectFix,
     extractProjectIntent,
     extractProjectPlan,
     generateProjectFile,
 } from '../../core/engine/generation'
 import { saveProjectFiles } from '../../lib/save-project-files'
 import { prisma } from '../../config/db'
-import { cleanPrompt } from '../../utils/cleanPrompt'
+import { cleanPrompt } from '../generation/generation.utils'
 import { persistCanvasDocument } from '../canvas/canvas.persistence'
 
 import { planAgentResponseSchema, promptAgentResponseSchema } from './generation.schema'
@@ -15,27 +13,14 @@ import {
     appendAssistantMessageContent,
     assertFrontendOnlyPlan,
     getFilesInGenerationOrder,
-    mergeProjectFiles,
-    toRecentMessages,
 } from './generation.helpers'
-import {
-    initializeGenerationTarget,
-    getProjectRevisionBase,
-    markGenerationFailed,
-    persistProjectRevision,
-} from './generation.repository'
+import { initializeGenerationTarget, markGenerationFailed } from './generation.repository'
 import { emitAssistantMessage, emitFileStream } from './generation.stream'
 import {
     publishFinalPreviewSnapshot,
     publishIncrementalPreviewSnapshot,
 } from './generation.runtime'
-import type {
-    ApplyProjectEditInput,
-    ApplyProjectFixInput,
-    GenerateWebsiteInput,
-    ProjectPlan,
-    ProjectRecord,
-} from './generation.types'
+import type { GenerateWebsiteInput, ProjectPlan, ProjectRecord } from './generation.types'
 
 export const generateWebsite = async (data: GenerateWebsiteInput) => {
     const { prompt, onEvent } = data
@@ -126,6 +111,7 @@ export const generateWebsite = async (data: GenerateWebsiteInput) => {
         const parsePlan = planAgentResponseSchema.safeParse(rawPlanResponse)
 
         console.log(parsePlan)
+        console.dir(parsePlan, { depth: null, colors: true })
 
         if (!parsePlan.success) {
             throw new Error('invalid response | plan agent')
@@ -346,87 +332,5 @@ export const generateWebsite = async (data: GenerateWebsiteInput) => {
         }
 
         throw error
-    }
-}
-
-export const applyProjectEditWorkflow = async (data: ApplyProjectEditInput) => {
-    const base = await getProjectRevisionBase(data)
-    const prompt = cleanPrompt(data.prompt)
-    const editResult = await applyProjectEdit({
-        prompt,
-        ...(data.selectedElement ? { selectedElement: data.selectedElement } : {}),
-        project: {
-            name: base.project.name,
-            description: base.project.description,
-            prompt: base.project.prompt,
-        },
-        recentMessages: toRecentMessages(base.baseVersion),
-        files: base.baseFiles,
-    })
-
-    const { mergedFiles, appliedFiles, removedFiles } = mergeProjectFiles({
-        currentFiles: base.baseFiles,
-        updatedFiles: editResult.updatedFiles,
-        deletedFiles: editResult.deletedFiles,
-    })
-
-    const persisted = await persistProjectRevision({
-        project: base.project,
-        userId: data.userId,
-        baseVersion: base.baseVersion,
-        nextVersionNumber: base.nextVersionNumber,
-        mergedFiles,
-        removedFiles,
-        sourcePrompt: prompt,
-        assistantMessage: editResult.message,
-        summary: editResult.summary,
-        nextProjectPrompt: prompt,
-        canvasState: data.canvasState,
-    })
-
-    return {
-        ...persisted,
-        appliedFiles,
-        deletedFiles: removedFiles,
-    }
-}
-
-export const applyProjectFixWorkflow = async (data: ApplyProjectFixInput) => {
-    const base = await getProjectRevisionBase(data)
-    const errorMessage = data.errorMessage.trim()
-    const fixResult = await applyProjectFix({
-        errorMessage,
-        ...(data.stack ? { stack: data.stack } : {}),
-        project: {
-            name: base.project.name,
-            description: base.project.description,
-            prompt: base.project.prompt,
-        },
-        recentMessages: toRecentMessages(base.baseVersion),
-        files: base.baseFiles,
-    })
-
-    const { mergedFiles, appliedFiles, removedFiles } = mergeProjectFiles({
-        currentFiles: base.baseFiles,
-        updatedFiles: fixResult.updatedFiles,
-        deletedFiles: fixResult.deletedFiles,
-    })
-
-    const persisted = await persistProjectRevision({
-        project: base.project,
-        userId: data.userId,
-        baseVersion: base.baseVersion,
-        nextVersionNumber: base.nextVersionNumber,
-        mergedFiles,
-        removedFiles,
-        sourcePrompt: `Fix preview error: ${errorMessage}`,
-        assistantMessage: fixResult.message,
-        summary: fixResult.summary,
-    })
-
-    return {
-        ...persisted,
-        appliedFiles,
-        deletedFiles: removedFiles,
     }
 }
