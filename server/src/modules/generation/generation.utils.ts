@@ -6,17 +6,16 @@ export const cleanPrompt = (input: string): string => {
 }
 
 const ROOT_FRONTEND_FILE_PATTERNS = [
+    /^\.gitignore$/,
+    /^build\.ts$/,
+    /^bun-env\.d\.ts$/,
+    /^README\.md$/,
+    /^tsconfig\.json$/,
     /^package\.json$/,
-    /^index\.html$/,
-    /^tsconfig(?:\.[^/]+)?\.json$/,
-    /^vite\.config\.(?:[cm]?[jt]s)$/,
-    /^postcss\.config\.(?:[cm]?[jt]s)$/,
-    /^tailwind\.config\.(?:[cm]?[jt]s)$/,
-    /^eslint\.config\.(?:[cm]?[jt]s)$/,
 ]
 
 const FRONTEND_DIRECTORY_PREFIXES = ['src/', 'public/']
-const DISALLOWED_PREFIXES = ['server/', 'api/', 'prisma/', '.git/']
+const DISALLOWED_PREFIXES = ['server/', 'api/', 'prisma/']
 const DISALLOWED_EXACT_PATHS = new Set([
     '.env',
     '.env.local',

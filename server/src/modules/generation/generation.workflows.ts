@@ -111,6 +111,7 @@ export const generateWebsite = async (data: GenerateWebsiteInput) => {
         const parsePlan = planAgentResponseSchema.safeParse(rawPlanResponse)
 
         console.log(parsePlan)
+        console.dir(parsePlan, { depth: null, colors: true })
 
         if (!parsePlan.success) {
             throw new Error('invalid response | plan agent')

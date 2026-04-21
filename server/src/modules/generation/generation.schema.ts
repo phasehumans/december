@@ -35,25 +35,6 @@ export const previewSelectedElementSchema = z
     })
     .strict()
 
-// Context AGENT ResJSON
-// {
-//     "summary": "string",
-//     "intent": {
-//       "prompt": "string",
-//       "summary": "string",
-//       "projectName": "string",
-//       "appType": ""landing-page" | "dashboard" | "portfolio & blog" | "saas-app" | "ecommerce" |",
-//       "frontendFramework": "vite-react",
-//       "language": "typescript",
-//       "styling": "tailwindcss",
-//       "visualStyle": "string",
-//       "pages": ["string"],
-//       "sections": ["string"],
-//       "coreEntities": ["string"],
-//       "coreFeatures": ["string"]
-//     }
-//   }
-
 export const projectIntentSchema = z.object({
     prompt: z.string(),
     summary: z.string(),
