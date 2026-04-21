@@ -69,7 +69,7 @@ ALLOWED VALUES:
 
 APP TYPE MAPPING:
 - brochure, agency, startup site, product launch, company site => "landing-page"
-- personal site, resume, showcase, creator site, artcile , content  => "portfolio & blog"
+- personal site, resume, showcase, creator site, article , content  => "portfolio & blog"
 - store, shop, product catalog with cart or checkout => "ecommerce"
 - analytics-heavy or operational internal interface => "dashboard"
 - tool or platform with logged-in workflows that does not clearly match another type => "saas-app"
