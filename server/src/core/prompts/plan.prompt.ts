@@ -76,6 +76,15 @@ Planning Rules:
 - generationOrder must be dependency-safe for a one-file-at-a-time builder
 - generationOrder must contain every file where generate = true exactly once
 
+Project Name Hard Rule:
+- every valid plan MUST include a meaningful projectName
+- projectName MUST be 2 to 4 words
+- projectName MUST be human-readable, relevant to the requested UI, and written in title case
+- do not use placeholders, vague labels, or tech-stack names
+- bad examples: "My App", "React App", "Frontend Project", "Demo", "Project Builder"
+- good examples: "Course Marketplace", "Habit Tracker Dashboard", "Campus Event Portal"
+- if projectName is not meaningful or is outside 2 to 4 words, the plan is invalid and must be corrected before returning JSON
+
 Dependency Rules:
 - always include dependencies needed for a Bun React frontend only
 - always include: react, react-dom, bun-plugin-tailwind, tailwindcss
@@ -101,8 +110,30 @@ Allowed enum values in JSON:
 - files[].generator: static, app-shell, page, component, layout, route, config, or lib
 - needsRouting must be a boolean
 
+Root File Hard Rule:
+- every valid project plan MUST include these root files in files[] with generate = true:
+  .gitignore
+  build.ts
+  bun-env.d.ts
+  README.md
+  tsconfig.json
+  package.json
+- generationOrder MUST always start with these exact files in this exact order:
+  .gitignore
+  build.ts
+  bun-env.d.ts
+  README.md
+  tsconfig.json
+  package.json
+- this fixed root-file prefix is mandatory and overrides normal dependency-based ordering
+- no other file may appear before these 6 files in generationOrder
+- after these 6 files, continue with the remaining files in dependency-safe order
+- if this rule is violated, the plan is invalid and must be corrected before returning JSON
+
 Path and File Rules:
 - root entry/config files always include: .gitignore, build.ts, bun-env.d.ts, README.md, tsconfig.json, package.json
+- these 6 root files are mandatory in every valid plan
+- all 6 must appear in files[] with generate = true
 - always include src/frontend.tsx and src/index.css
 - include src/App.tsx for single-page apps or as the routed shell for multi-page apps
 - include src/index.html as the Bun HTML shell
@@ -111,6 +142,22 @@ Path and File Rules:
 - keep mock data, constants, helpers, browser storage helpers, or app utilities under src/lib/ when needed
 - do not include duplicate paths
 - do not include files that are not needed for the first working version
+
+Generation Order Rules:
+- generationOrder MUST include every file where generate = true exactly once
+- generationOrder MUST begin with this exact fixed prefix:
+  .gitignore
+  build.ts
+  bun-env.d.ts
+  README.md
+  tsconfig.json
+  package.json
+- after the fixed prefix, order remaining files so the one-file-at-a-time generator can build safely
+- prefer config before shell, shell before routes/pages, and shared components before feature components when practical
+- do not place a file before another file it clearly depends on
+- if a file is listed in files[] with generate = true but missing from generationOrder, the plan is invalid
+- if generationOrder includes a file not present in files[] with generate = true, the plan is invalid
+- if the root-file prefix is missing, reordered, or interrupted, the plan is invalid
 
 Message Rules:
 - message should be 6 to 10 short lines separated by newline characters
@@ -163,9 +210,19 @@ Message Preferred Phrases:
 - "This doesn't need a separate page yet"
 - "Config first, then shell, then feature files"
 
+Validation Rules:
+- files[] must include all mandatory root files
+- every file in generationOrder must exist in files[] with generate = true
+- every file in files[] with generate = true must appear exactly once in generationOrder
+- generationOrder must start with the exact fixed root-file prefix
+- source files must stay under src/
+- root files must stay at the repository root
+- do not include backend or infra files
+- if any validation rule fails, self-correct before returning final JSON
+
 Return EXACTLY one valid JSON object with this structure and valid example values:
 {
-  "message": "This can stay single-page unless a separate dashboard screen is clearly needed\\nI don't need routing for the first pass\\nThe first files should be config plus the app shell\\nApp.tsx should stay thin once repeated sections start stacking\\nHero and feature blocks deserve extraction before styling gets messy\\nAny forms can stay local state for the demo\\nI only add localStorage if returning state improves the UX\\nConfig first, then shell, then feature files",
+  "message": "The first files should be the fixed root config set\\nThis can stay single-page unless a separate dashboard is clearly needed\\nI don't need routing for the first pass\\nApp.tsx should stay thin once repeated sections start stacking\\nHero and feature blocks deserve extraction before styling gets messy\\nAny forms can stay local state for the demo\\nI only add localStorage if returning state improves the UX\\nConfig first, then shell, then feature files",
   "plan": {
     "success": true,
     "message": "Project plan generated successfully",
@@ -194,14 +251,83 @@ Return EXACTLY one valid JSON object with this structure and valid example value
       },
       "files": [
         {
+          "path": ".gitignore",
+          "purpose": "Git ignore rules for the Bun React project",
+          "generate": true,
+          "generator": "config"
+        },
+        {
+          "path": "build.ts",
+          "purpose": "Bun build entry for bundling the frontend app",
+          "generate": true,
+          "generator": "config"
+        },
+        {
+          "path": "bun-env.d.ts",
+          "purpose": "Type definitions for Bun runtime globals",
+          "generate": true,
+          "generator": "config"
+        },
+        {
+          "path": "README.md",
+          "purpose": "Project overview, setup steps, and run instructions",
+          "generate": true,
+          "generator": "static"
+        },
+        {
+          "path": "tsconfig.json",
+          "purpose": "TypeScript compiler configuration",
+          "generate": true,
+          "generator": "config"
+        },
+        {
+          "path": "package.json",
+          "purpose": "Dependencies, scripts, and project metadata",
+          "generate": true,
+          "generator": "config"
+        },
+        {
+          "path": "src/index.html",
+          "purpose": "Bun HTML entry shell for mounting the React app",
+          "generate": true,
+          "generator": "static"
+        },
+        {
+          "path": "src/frontend.tsx",
+          "purpose": "React entry point that mounts the app",
+          "generate": true,
+          "generator": "app-shell"
+        },
+        {
+          "path": "src/index.css",
+          "purpose": "Global Tailwind and base application styles",
+          "generate": true,
+          "generator": "static"
+        },
+        {
           "path": "src/App.tsx",
-          "purpose": "string",
+          "purpose": "Main app shell that composes the visible UI",
           "generate": true,
           "generator": "app-shell"
         }
       ],
-      "generationOrder": ["src/App.tsx"],
-      "constraints": ["Browser-only frontend implementation"]
+      "generationOrder": [
+        ".gitignore",
+        "build.ts",
+        "bun-env.d.ts",
+        "README.md",
+        "tsconfig.json",
+        "package.json",
+        "src/index.html",
+        "src/index.css",
+        "src/frontend.tsx",
+        "src/App.tsx"
+      ],
+      "constraints": [
+        "Browser-only frontend implementation",
+        "No backend or server code",
+        "Mandatory fixed root-file prefix in generation order"
+      ]
     },
     "errors": []
   }
@@ -209,8 +335,11 @@ Return EXACTLY one valid JSON object with this structure and valid example value
 
 Consistency Rules:
 - source files must be under "src/"
-- root-level files such as package.json, tsconfig.json, build.ts, and bunfig.toml must remain at the repository root when needed
+- root-level files such as package.json, tsconfig.json, build.ts, bun-env.d.ts, README.md, and .gitignore must remain at the repository root
 - Bun HTML entry should be planned as src/index.html
+- generationOrder must always begin with:
+  .gitignore, build.ts, bun-env.d.ts, README.md, tsconfig.json, package.json
+- this fixed root-file prefix overrides all other ordering preferences
 - do not include any "server/", "api/", "web/", "prisma/", ".env", or database-related files
 - installCommand should install only the planned frontend dependencies and devDependencies
 - keep plan small and implementation-ready:
