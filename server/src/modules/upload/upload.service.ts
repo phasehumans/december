@@ -9,13 +9,13 @@ type UploadRepo = {
 const uploadRepo = async (data: UploadRepo) => {
     const { userId, repoURL } = data
 
-    const result = parseGitHubRepoUrl(repoURL)
+    const parseData = parseGitHubRepoUrl(repoURL)
 
-    if (result.ok == false) {
-        throw new Error(result.error)
+    if (parseData.ok === false) {
+        throw new Error(parseData.error)
     }
 
-    const { owner, repo, normalizedUrl } = result
+    const { owner, repo } = parseData
 
     const user = await prisma.user.findUnique({
         where: {
@@ -31,9 +31,23 @@ const uploadRepo = async (data: UploadRepo) => {
         throw new Error('access token not found')
     }
 
-    const accestoken = user.githubToken as string
+    const accesstoken = user.githubToken
 
-    const res = await verifyGitHubRepoAccess(owner, repo, accestoken)
+    const repoAccessInfo = await verifyGitHubRepoAccess(owner, repo, accesstoken)
+
+    if (repoAccessInfo.ok === false) {
+        throw new Error(repoAccessInfo.error)
+    }
+
+    const {
+        owner: verfiedOwner,
+        repo: verifiedRepo,
+        normalizedUrl,
+        defaultBranch,
+        visibility,
+    } = repoAccessInfo
+
+    // return res
 }
 
 const uploadZip = async () => {}
