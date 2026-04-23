@@ -11,6 +11,38 @@ type ParsedGitHubRepo =
           code: 'EMPTY_INPUT' | 'INVALID_URL' | 'NOT_GITHUB' | 'NOT_REPO_URL'
       }
 
+export type VerifiedGitHubRepoAccess =
+    | {
+          ok: true
+          owner: string
+          repo: string
+          normalizedUrl: string
+          cloneUrl: string
+          defaultBranch: string | null
+          archived: boolean
+          disabled: boolean
+          visibility: 'public' | 'private'
+          canAccess: true
+      }
+    | {
+          ok: false
+          error: string
+          code: 'NOT_FOUND_OR_NO_ACCESS' | 'RATE_LIMITED' | 'GITHUB_API_ERROR' | 'NETWORK_ERROR'
+      }
+
+type GitHubRepoApiResponse = {
+    name?: string
+    html_url?: string
+    clone_url?: string
+    default_branch?: string
+    private?: boolean
+    archived?: boolean
+    disabled?: boolean
+    owner?: {
+        login?: string
+    }
+}
+
 export function parseGitHubRepoUrl(repoUrl: string): ParsedGitHubRepo {
     const raw = repoUrl.trim()
 
@@ -95,5 +127,82 @@ export function parseGitHubRepoUrl(repoUrl: string): ParsedGitHubRepo {
         owner,
         repo,
         normalizedUrl: `https://github.com/${owner}/${repo}`,
+    }
+}
+
+export async function verifyGitHubRepoAccess(
+    owner: string,
+    repo: string,
+    accessToken?: string
+): Promise<VerifiedGitHubRepoAccess> {
+    const headers: Record<string, string> = {
+        Accept: 'application/vnd.github+json',
+        'User-Agent': 'phasehumans',
+    }
+
+    if (accessToken) {
+        headers['Authorization'] = `Bearer ${accessToken}`
+    }
+
+    let response: Response
+
+    try {
+        response = await fetch(`https://api.github.com/repos/${owner}/${repo}`, {
+            method: 'GET',
+            headers,
+        })
+    } catch {
+        return {
+            ok: false,
+            error: 'Network error while contacting GitHub',
+            code: 'NETWORK_ERROR',
+        }
+    }
+
+    if (response.status === 404) {
+        return {
+            ok: false,
+            error: 'Repository not found or you do not have access',
+            code: 'NOT_FOUND_OR_NO_ACCESS',
+        }
+    }
+
+    if (response.status === 403) {
+        const remaining = response.headers.get('x-ratelimit-remaining')
+
+        if (remaining === '0') {
+            return {
+                ok: false,
+                error: 'GitHub API rate limit exceeded',
+                code: 'RATE_LIMITED',
+            }
+        }
+    }
+
+    if (!response.ok) {
+        return {
+            ok: false,
+            error: `GitHub API error: ${response.status}`,
+            code: 'GITHUB_API_ERROR',
+        }
+    }
+
+    const data = (await response.json()) as GitHubRepoApiResponse
+
+    const resolvedOwner = data.owner?.login ?? owner
+    const resolvedRepo = data.name ?? repo
+    const isPrivate = Boolean(data.private)
+
+    return {
+        ok: true,
+        owner: resolvedOwner,
+        repo: resolvedRepo,
+        normalizedUrl: data.html_url ?? `https://github.com/${resolvedOwner}/${resolvedRepo}`,
+        cloneUrl: data.clone_url ?? `https://github.com/${resolvedOwner}/${resolvedRepo}.git`,
+        defaultBranch: data.default_branch ?? null,
+        archived: Boolean(data.archived),
+        disabled: Boolean(data.disabled),
+        visibility: isPrivate ? 'private' : 'public',
+        canAccess: true,
     }
 }
