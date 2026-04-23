@@ -1,4 +1,5 @@
 import { prisma } from '../../config/db'
+import { downloadGitHubRepoArchive } from './downloadzip'
 import { parseGitHubRepoUrl, verifyGitHubRepoAccess } from './upload.utils'
 
 type UploadRepo = {
@@ -39,15 +40,18 @@ const uploadRepo = async (data: UploadRepo) => {
         throw new Error(repoAccessInfo.error)
     }
 
-    const {
-        owner: verfiedOwner,
-        repo: verifiedRepo,
-        normalizedUrl,
-        defaultBranch,
-        visibility,
-    } = repoAccessInfo
+    const { owner: verfiedOwner, repo: verifiedRepo, defaultBranch } = repoAccessInfo
 
-    // return res
+    const ref = defaultBranch ?? 'main'
+
+    const downloadZipDetails = await downloadGitHubRepoArchive(
+        verfiedOwner,
+        verifiedRepo,
+        accesstoken,
+        ref
+    )
+
+    return { downloadZipDetails }
 }
 
 const uploadZip = async () => {}
