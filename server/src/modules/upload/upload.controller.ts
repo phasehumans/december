@@ -3,7 +3,9 @@ import { uploadRepoSchema } from './upload.schema'
 import { success } from 'zod'
 import { uploadService } from './upload.service'
 
-const uploadRepo = async (req: Request, res: Response) => {
+const listGithubRepos = async (req: Request, res: Response) => {}
+
+const importFromGithub = async (req: Request, res: Response) => {
     const userId = req.userId as string | undefined
     const parseData = uploadRepoSchema.safeParse(req.body)
 
@@ -25,7 +27,7 @@ const uploadRepo = async (req: Request, res: Response) => {
     try {
         const { repoURL } = parseData.data
 
-        const result = await uploadService.uploadRepo({ repoURL, userId })
+        const result = await uploadService.importFromGithub({ repoURL, userId })
         return res.status(200).json({
             success: true,
             message: 'upload successfully',
@@ -39,9 +41,10 @@ const uploadRepo = async (req: Request, res: Response) => {
     }
 }
 
-const uploadZip = async (req: Request, res: Response) => {}
+const importFromZip = async (req: Request, res: Response) => {}
 
 export const uploadController = {
-    uploadRepo,
-    uploadZip,
+    listGithubRepos,
+    importFromGithub,
+    importFromZip,
 }
