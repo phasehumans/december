@@ -5,7 +5,8 @@ import { uploadController } from './upload.controller'
 const uploadRouter = Router()
 
 uploadRouter.use(authMiddleware)
-uploadRouter.post('/repo', uploadController.uploadRepo)
-uploadRouter.post('/zip', uploadController.uploadZip)
+uploadRouter.get('/github/repos', uploadController.listGithubRepos)
+uploadRouter.post('/imports/github', uploadController.importFromGithub)
+uploadRouter.post('/imports/zip', uploadController.importFromZip)
 
 export default uploadRouter

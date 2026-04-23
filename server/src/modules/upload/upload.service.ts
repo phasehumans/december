@@ -7,7 +7,9 @@ type UploadRepo = {
     repoURL: string
 }
 
-const uploadRepo = async (data: UploadRepo) => {
+const listGithubRepos = async () => {}
+
+const importFromGithub = async (data: UploadRepo) => {
     const { userId, repoURL } = data
 
     const parseData = parseGitHubRepoUrl(repoURL)
@@ -54,9 +56,9 @@ const uploadRepo = async (data: UploadRepo) => {
     return { downloadZipDetails }
 }
 
-const uploadZip = async () => {}
+const importFromZip = async () => {}
 
 export const uploadService = {
-    uploadRepo,
-    uploadZip,
+    importFromGithub,
+    importFromZip,
 }
