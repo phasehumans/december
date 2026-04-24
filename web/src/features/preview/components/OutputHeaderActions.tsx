@@ -50,14 +50,14 @@ export const OutputHeaderActions: React.FC<OutputHeaderActionsProps> = ({
                     variant="ghost"
                     size="icon"
                     title="Download Code"
-                    className="text-[#91908F] hover:text-white hidden md:flex h-8 w-8"
+                    className="text-[#91908F] hover:text-white hidden md:flex h-8 w-8 disabled:opacity-100 disabled:text-[#91908F]"
                     onClick={onDownload}
                     disabled={isDownloadDisabled}
                 >
                     <Download size={16} />
                 </Button>
 
-                <Button className="ml-2 bg-[#171615] text-[#D6D5D4] border border-[#363534] rounded-xl font-medium hidden md:flex px-4 py-1.5 h-auto transition-colors">
+                <Button className="ml-2 bg-[#171615] hover:bg-[#1E1D1B] text-[#D6D5D4] hover:text-white border border-[#363534] rounded-xl font-medium hidden md:flex px-4 py-1.5 h-auto transition-colors">
                     Publish
                 </Button>
             </div>
