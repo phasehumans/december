@@ -27,7 +27,7 @@ export const CodeWorkspaceEditorPane: React.FC<CodeWorkspaceEditorPaneProps> = (
     onChange,
 }) => {
     return (
-        <div className="flex-1 min-w-0 min-h-0 bg-[#1e1e1e] flex flex-col">
+        <div className="flex-1 min-w-0 min-h-0 bg-[#171615] flex flex-col">
             <CodeWorkspaceEditorHeader
                 activeFile={activeFile}
                 openFiles={openFiles}
