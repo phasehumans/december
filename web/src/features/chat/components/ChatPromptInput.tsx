@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react'
-import { ArrowUp, MousePointer2, X, Mic } from 'lucide-react'
+import { ArrowUp, MousePointer2, X, Mic, Plus, Wand2 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 
 import { cn } from '@/shared/lib/utils'
@@ -34,7 +34,7 @@ export const ChatPromptInput: React.FC<ChatPromptInputProps> = ({
     }
 
     return (
-        <div className="p-2 bg-[#1F1F1F] shrink-0 z-30">
+        <div className="p-2 bg-[#171615] shrink-0 z-30">
             <div
                 className={cn(
                     'w-full bg-[#1E1D1C] rounded-[17px] border border-[#363534] transition-all relative overflow-hidden group flex flex-col focus-within:border-neutral-500'
@@ -73,23 +73,28 @@ export const ChatPromptInput: React.FC<ChatPromptInputProps> = ({
                     onChange={(e) => onChange(e.target.value)}
                     onKeyDown={handleKeyDown}
                     placeholder={selectedElement ? 'Describe changes...' : 'Ask PhaseHumans...'}
-                    className="w-full bg-transparent text-[15px] text-neutral-200 pl-5 pr-12 py-3 min-h-[54px] max-h-[200px] resize-none outline-none placeholder-neutral-500 font-medium leading-relaxed scrollbar-hide caret-white"
+                    className="w-full bg-transparent text-[15px] text-neutral-200 pl-5 pr-12 py-3.5 min-h-[64px] max-h-[200px] resize-none outline-none placeholder-neutral-500 font-medium leading-relaxed scrollbar-hide caret-white"
                     rows={1}
                 />
 
                 <div className="flex items-center justify-between px-2 pb-2">
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-2">
+                        <button
+                            className="p-1 rounded-full text-[#727272] hover:text-white hover:bg-white/5 transition-all"
+                            title="Add attachment"
+                        >
+                            <Plus size={18} strokeWidth={2.5} />
+                        </button>
                         <button
                             onClick={onToggleVisualMode}
                             className={cn(
-                                'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all select-none border hidden md:flex',
+                                'flex items-center px-3 py-1.5 rounded-full text-xs font-medium transition-all select-none border border-dashed hidden md:flex',
                                 isVisualMode
-                                    ? 'bg-white text-black border-white'
-                                    : 'text-neutral-400 border-transparent hover:text-white hover:bg-white/5'
+                                    ? 'bg-white/10 text-white border-neutral-500'
+                                    : 'text-[#727272] border-[#363534] hover:text-white hover:border-neutral-500'
                             )}
                         >
-                            <MousePointer2 size={14} />
-                            <span>Visual edits</span>
+                            <span>Visual Edits</span>
                         </button>
                     </div>
 

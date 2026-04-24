@@ -24,7 +24,7 @@ const ViewModeTab: React.FC<{
             className={cn(
                 'flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-medium transition-all border',
                 activeTab === tab
-                    ? 'bg-[#27272A] text-white border-white/10'
+                    ? 'bg-[#171615] text-white border-[#363534]'
                     : 'text-[#91908F] border-transparent hover:text-white hover:bg-white/5'
             )}
         >

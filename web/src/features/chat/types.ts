@@ -52,6 +52,7 @@ export interface ChatSidebarProps {
     isCollapsed: boolean
     onClose?: () => void
     mode?: 'sidebar' | 'mobile'
+    projectName?: string | null
 }
 
 export interface ThoughtProcessProps {

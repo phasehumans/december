@@ -1,5 +1,5 @@
 import React from 'react'
-import { Download, Github, Globe } from 'lucide-react'
+import { Download, Globe, Share2, Settings } from 'lucide-react'
 
 import { Button } from '@/shared/components/ui/Button'
 import type { BackendProjectVersionSummary } from '@/features/projects/api/project'
@@ -29,28 +29,35 @@ export const OutputHeaderActions: React.FC<OutputHeaderActionsProps> = ({
                 </span> */}
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-0.5">
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    title="Settings"
+                    className="text-[#91908F] hover:text-white hidden md:flex h-8 w-8"
+                >
+                    <Settings size={16} />
+                </Button>
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    title="Share"
+                    className="text-[#91908F] hover:text-white hidden md:flex h-8 w-8"
+                >
+                    <Share2 size={16} />
+                </Button>
                 <Button
                     variant="ghost"
                     size="icon"
                     title="Download Code"
-                    className="text-[#91908F] hover:text-white hidden md:flex"
+                    className="text-[#91908F] hover:text-white hidden md:flex h-8 w-8"
                     onClick={onDownload}
                     disabled={isDownloadDisabled}
                 >
                     <Download size={16} />
                 </Button>
-                <Button
-                    variant="ghost"
-                    size="icon"
-                    title="Sync to GitHub"
-                    className="text-[#91908F] hover:text-white hidden md:flex"
-                >
-                    <Github size={16} />
-                </Button>
 
-                <Button className="ml-1 bg-white hover:bg-neutral-200 text-black border-none rounded-xl font-semibold hidden md:flex">
-                    <Globe size={14} className="mr-2" />
+                <Button className="ml-2 bg-[#171615] text-[#D6D5D4] border border-[#363534] rounded-xl font-medium hidden md:flex px-4 py-1.5 h-auto transition-colors">
                     Publish
                 </Button>
             </div>
