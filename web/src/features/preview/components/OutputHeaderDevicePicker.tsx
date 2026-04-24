@@ -18,7 +18,7 @@ export const OutputHeaderDevicePicker: React.FC<OutputHeaderDevicePickerProps> =
     const [isDeviceMenuOpen, setIsDeviceMenuOpen] = useState(false)
 
     return (
-        <div className="hidden md:flex items-center bg-[#1C1C1C] rounded-lg border border-white/5 h-9 px-1.5 relative group focus-within:border-white/20 transition-colors min-w-[320px]">
+        <div className="hidden md:flex items-center bg-[#1A1A1A] rounded-xl border border-[#363534] h-9 px-1.5 relative group focus-within:border-[#525150] transition-colors min-w-[320px]">
             <div className="relative">
                 <button
                     onClick={() => setIsDeviceMenuOpen(!isDeviceMenuOpen)}

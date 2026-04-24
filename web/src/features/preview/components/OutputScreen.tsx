@@ -72,7 +72,7 @@ export const OutputScreen: React.FC<OutputScreenProps> = ({
 
     return (
         <div className="w-full h-full bg-black text-white font-sans overflow-hidden">
-            <div className="md:hidden flex h-full min-h-0 flex-col bg-[#0F0F0F]">
+            <div className="md:hidden flex h-full min-h-0 flex-col bg-[#171615]">
                 <div className="flex-1 min-h-0 px-2 pt-2 pb-2 overflow-hidden">
                     <div
                         className={
@@ -103,6 +103,7 @@ export const OutputScreen: React.FC<OutputScreenProps> = ({
                             isApplyingEdit={isApplyingEdit}
                             isCollapsed={false}
                             onClose={() => {}}
+                            projectName={projectName}
                         />
                     </div>
 
@@ -131,7 +132,7 @@ export const OutputScreen: React.FC<OutputScreenProps> = ({
                 </div>
 
                 <div className="shrink-0 px-2 pb-2">
-                    <div className="grid grid-cols-2 gap-1 rounded-2xl border border-white/10 bg-[#1F1F1F] p-1">
+                    <div className="grid grid-cols-2 gap-1 rounded-2xl border border-white/10 bg-[#171615] p-1">
                         <button
                             onClick={() => setMobileActiveTab('chat')}
                             className={`rounded-xl px-3 py-2 text-sm font-medium transition-colors ${
@@ -180,6 +181,7 @@ export const OutputScreen: React.FC<OutputScreenProps> = ({
                     isApplyingEdit={isApplyingEdit}
                     isCollapsed={isChatSidebarCollapsed}
                     onClose={() => setIsChatSidebarCollapsed(true)}
+                    projectName={projectName}
                 />
 
                 <OutputScreenMainContent

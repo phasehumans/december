@@ -109,7 +109,7 @@ export const CodeWorkspaceFileSidebar: React.FC<CodeWorkspaceFileSidebarProps> =
         })
 
     return (
-        <aside className="w-64 shrink-0 border-r border-[#2d2d2d] bg-[#1e1e1e] flex flex-col min-h-0">
+        <aside className="w-64 shrink-0 border-r border-[#2d2d2d] bg-[#171615] flex flex-col min-h-0">
             <div className="h-10 px-3 flex items-center justify-between border-b border-[#2d2d2d]">
                 <span className="text-[11px] tracking-[0.08em] uppercase text-[#c5c5c5]">
                     File Explrer
