@@ -1,9 +1,31 @@
 import type { Request, Response } from 'express'
 import { uploadRepoSchema } from './upload.schema'
-import { success } from 'zod'
 import { uploadService } from './upload.service'
 
-const listGithubRepos = async (req: Request, res: Response) => {}
+const getUserGithubRepos = async (req: Request, res: Response) => {
+    const userId = req.userId as string | undefined
+
+    if (!userId) {
+        return res.status(400).json({
+            success: false,
+            message: 'unauthorized',
+        })
+    }
+
+    try {
+        const result = await uploadService.listGithubRepos(userId)
+        return res.status(200).json({
+            success: true,
+            message: 'repos fetched successfully',
+            data: result,
+        })
+    } catch (error: any) {
+        return res.status(500).json({
+            success: false,
+            error: error.message,
+        })
+    }
+}
 
 const importFromGithub = async (req: Request, res: Response) => {
     const userId = req.userId as string | undefined
@@ -44,7 +66,7 @@ const importFromGithub = async (req: Request, res: Response) => {
 const importFromZip = async (req: Request, res: Response) => {}
 
 export const uploadController = {
-    listGithubRepos,
+    getUserGithubRepos,
     importFromGithub,
     importFromZip,
 }
