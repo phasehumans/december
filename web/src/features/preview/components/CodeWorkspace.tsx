@@ -165,23 +165,25 @@ export const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({
     }
 
     return (
-        <div className="flex-1 min-h-0 flex overflow-hidden bg-[#1e1e1e] border-t border-[#2d2d2d]">
-            <CodeWorkspaceFileSidebar
-                tree={workspaceTree}
-                selectedFile={selectedFile ?? ''}
-                onSelectFile={handleSelectFile}
-                onPinFile={handlePinFile}
-            />
+        <div className="flex-1 min-h-0 flex overflow-hidden p-0.5 pb-2 justify-center items-center">
+            <div className="w-full h-full flex overflow-hidden rounded-xl border border-[#262626] shadow-2xl bg-[#171615]">
+                <CodeWorkspaceFileSidebar
+                    tree={workspaceTree}
+                    selectedFile={selectedFile ?? ''}
+                    onSelectFile={handleSelectFile}
+                    onPinFile={handlePinFile}
+                />
 
-            <CodeWorkspaceEditorPane
-                activeFile={activeFile}
-                openFiles={openFiles}
-                onSelectOpenFile={handleSelectFile}
-                onCloseOpenFile={handleCloseOpenFile}
-                value={activeFile ? (files[activeFile.path] ?? '') : ''}
-                extensions={editorExtensions}
-                onChange={handleChange}
-            />
+                <CodeWorkspaceEditorPane
+                    activeFile={activeFile}
+                    openFiles={openFiles}
+                    onSelectOpenFile={handleSelectFile}
+                    onCloseOpenFile={handleCloseOpenFile}
+                    value={activeFile ? (files[activeFile.path] ?? '') : ''}
+                    extensions={editorExtensions}
+                    onChange={handleChange}
+                />
+            </div>
         </div>
     )
 }

@@ -24,6 +24,7 @@ export const ChatThread: React.FC<ChatSidebarProps> = ({
     isCollapsed,
     onClose,
     mode = 'sidebar',
+    projectName,
 }) => {
     const scrollContainerRef = React.useRef<HTMLDivElement | null>(null)
 
@@ -87,10 +88,10 @@ export const ChatThread: React.FC<ChatSidebarProps> = ({
 
     if (mode === 'mobile') {
         return (
-            <div className="h-full bg-[#1F1F1F] rounded-2xl border border-white/10 flex flex-col overflow-hidden font-sans min-h-0">
+            <div className="h-full bg-[#171615] rounded-2xl border border-white/10 flex flex-col overflow-hidden font-sans min-h-0">
                 <div
                     ref={scrollContainerRef}
-                    className="flex-1 overflow-y-auto p-4 pb-0 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/10 hover:[&::-webkit-scrollbar-thumb]:bg-white/20"
+                    className="flex-1 overflow-y-auto overflow-x-hidden p-4 pb-0 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/10 hover:[&::-webkit-scrollbar-thumb]:bg-white/20"
                 >
                     {messagesList}
                 </div>
@@ -103,7 +104,7 @@ export const ChatThread: React.FC<ChatSidebarProps> = ({
     return (
         <aside
             className={cn(
-                'h-full bg-[#1F1F1F] flex flex-col overflow-hidden shrink-0 z-20 transition-all duration-300 ease-in-out font-sans',
+                'h-full bg-[#171615] flex flex-col overflow-hidden shrink-0 z-20 transition-all duration-300 ease-in-out font-sans',
                 isCollapsed
                     ? 'w-0 border-r-0'
                     : 'w-full md:w-[340px] absolute md:relative inset-0 md:inset-auto'
@@ -113,13 +114,12 @@ export const ChatThread: React.FC<ChatSidebarProps> = ({
                 <div className="flex items-center gap-2">
                     <button
                         onClick={onBack}
-                        className="flex items-center gap-2 text-[#91908F] hover:text-white transition-colors text-sm font-medium group"
+                        className="flex items-center text-sm font-medium tracking-wide text-[#91908F] hover:text-white transition-colors"
                         title="Back to Home"
                     >
-                        <div className="p-1 rounded-md bg-white/5 group-hover:bg-white/10 transition-colors">
-                            <ChevronLeft size={14} />
-                        </div>
-                        <span>Back</span>
+                        <span>phasehumans</span>
+                        <span className="mx-1 opacity-40">/</span>
+                        <span className="text-[#D6D5D4]">{projectName ?? 'projectname'}</span>
                     </button>
                 </div>
                 <button onClick={onClose} className="md:hidden p-2 text-[#91908F] hover:text-white">
@@ -130,7 +130,7 @@ export const ChatThread: React.FC<ChatSidebarProps> = ({
             <div className="flex-1 flex flex-col overflow-hidden min-w-[340px]">
                 <div
                     ref={scrollContainerRef}
-                    className="flex-1 overflow-y-auto p-5 pb-0 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/10 hover:[&::-webkit-scrollbar-thumb]:bg-white/20"
+                    className="flex-1 overflow-y-auto overflow-x-hidden p-5 pb-0 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/10 hover:[&::-webkit-scrollbar-thumb]:bg-white/20"
                 >
                     {messagesList}
                 </div>

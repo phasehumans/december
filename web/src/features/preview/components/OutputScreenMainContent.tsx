@@ -76,7 +76,7 @@ export const OutputScreenMainContent: React.FC<OutputScreenMainContentProps> = (
     previewSessionError,
 }) => {
     return (
-        <div className="flex-1 flex flex-col h-full bg-[#0F0F0F] relative overflow-hidden transition-all duration-300 min-h-0">
+        <div className="flex-1 flex flex-col h-full bg-[#171615] relative overflow-hidden transition-all duration-300 min-h-0">
             <OutputHeader
                 activeTab={activeTab}
                 setActiveTab={setActiveTab}
@@ -120,8 +120,8 @@ export const OutputScreenMainContent: React.FC<OutputScreenMainContentProps> = (
             )}
 
             {activeTab === 'canvas' && (
-                <div className="flex-1 min-h-0 p-2 bg-[#0F0F0F]">
-                    <div className="w-full h-full rounded-xl border border-white/10 overflow-hidden">
+                <div className="flex-1 min-h-0 flex items-center justify-center p-0.5 pb-2 bg-[#171615]">
+                    <div className="w-full h-full rounded-xl border border-[#262626] shadow-2xl overflow-hidden">
                         <Canvas
                             document={canvasState}
                             onDocumentChange={onCanvasStateChange}
