@@ -1,5 +1,6 @@
 import { prisma } from '../../config/db'
 import { downloadGitHubRepoArchive } from './downloadzip'
+import { extractUploadedZipArchive } from './extractzip'
 import { parseGitHubRepoUrl, verifyGitHubRepoAccess } from './upload.utils'
 
 type UploadRepo = {
@@ -20,6 +21,17 @@ type GithubRepo = {
         login: string
         avatarUrl: string
     }
+}
+
+type UploadedZipFile = {
+    originalname: string
+    mimetype: string
+    buffer: Buffer
+}
+
+type ImportFromZip = {
+    userId: string
+    zipFile: UploadedZipFile
 }
 
 const listGithubRepos = async (data: string): Promise<GithubRepo[]> => {
@@ -125,7 +137,27 @@ const importFromGithub = async (data: UploadRepo) => {
     return { downloadZipDetails }
 }
 
-const importFromZip = async () => {}
+const importFromZip = async (data: ImportFromZip) => {
+    const { userId, zipFile } = data
+
+    const user = await prisma.user.findUnique({
+        where: {
+            id: userId,
+        },
+    })
+
+    if (!user) {
+        throw new Error('user not found')
+    }
+
+    const downloadZipDetails = await extractUploadedZipArchive(zipFile)
+
+    if (downloadZipDetails.ok === false) {
+        throw new Error(downloadZipDetails.error)
+    }
+
+    return { downloadZipDetails }
+}
 
 export const uploadService = {
     listGithubRepos,
