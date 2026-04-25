@@ -63,7 +63,41 @@ const importFromGithub = async (req: Request, res: Response) => {
     }
 }
 
-const importFromZip = async (req: Request, res: Response) => {}
+const importFromZip = async (req: Request, res: Response) => {
+    const userId = req.userId as string | undefined
+    const file = (req as any).file
+    if (!userId) {
+        return res.status(400).json({
+            success: false,
+            message: 'unauthorized',
+        })
+    }
+
+    if (!file) {
+        return res.status(400).json({
+            success: false,
+            message: 'zip file is required',
+        })
+    }
+
+    try {
+        const result = await uploadService.importFromZip({
+            zipFile: file,
+            userId,
+        })
+
+        return res.status(200).json({
+            success: true,
+            message: 'upload successfully',
+            data: result,
+        })
+    } catch (error: any) {
+        return res.status(500).json({
+            success: false,
+            errors: error.message,
+        })
+    }
+}
 
 export const uploadController = {
     getUserGithubRepos,

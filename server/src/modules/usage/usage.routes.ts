@@ -4,6 +4,8 @@ import { usageController } from './usage.controller'
 const usageRouter = Router()
 
 usageRouter.use(authMiddleware)
-usageRouter.get('/show-usage', usageController.getCurrentUsage)
+usageRouter.get('/', usageController.getCurrentUsage)
+usageRouter.get('/check', usageController.checkEnoughCredits)
+usageRouter.post('/', usageController.recordUsageEvent)
 
 export default usageRouter
