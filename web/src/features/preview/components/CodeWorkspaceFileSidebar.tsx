@@ -1,5 +1,6 @@
 import React from 'react'
 import { ChevronDown, ChevronRight, FileText, Folder } from 'lucide-react'
+// ChevronRight is still used for folder expansion in the tree, ChevronDown for open state
 
 import { cn } from '@/shared/lib/utils'
 import type { CodeFilePath, CodeFileTreeNode } from '@/features/preview/types'
@@ -110,19 +111,10 @@ export const CodeWorkspaceFileSidebar: React.FC<CodeWorkspaceFileSidebarProps> =
 
     return (
         <aside className="w-64 shrink-0 border-r border-[#2d2d2d] bg-[#171615] flex flex-col min-h-0">
-            <div className="h-10 px-3 flex items-center justify-between border-b border-[#2d2d2d]">
+            <div className="h-10 px-3 flex items-center border-b border-[#2d2d2d]">
                 <span className="text-[11px] tracking-[0.08em] uppercase text-[#c5c5c5]">
-                    File Explrer
+                    File Explorer
                 </span>
-                <button
-                    type="button"
-                    onClick={handleToggleAllFolders}
-                    className="p-1 rounded text-[#9b9b9b] hover:text-[#d4d4d4] hover:bg-[#2a2d2e] transition-colors"
-                    title={isFullyExpanded ? 'Collapse all folders' : 'Expand all folders'}
-                    aria-label={isFullyExpanded ? 'Collapse all folders' : 'Expand all folders'}
-                >
-                    {isFullyExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                </button>
             </div>
 
             <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-1.5 space-y-0.5">

@@ -34,10 +34,10 @@ export const ChatPromptInput: React.FC<ChatPromptInputProps> = ({
     }
 
     return (
-        <div className="p-2 bg-[#171615] shrink-0 z-30">
+        <div className="px-2 pb-2 bg-[#171615] shrink-0 z-30 flex justify-end">
             <div
                 className={cn(
-                    'w-full bg-[#1E1D1C] rounded-[17px] border border-[#363534] transition-all relative overflow-hidden group flex flex-col focus-within:border-neutral-500'
+                    'w-full bg-[#1E1D1C] rounded-[17px] border border-[#363534] transition-all relative overflow-hidden group flex flex-col'
                 )}
             >
                 {/* Integrated Selected Element Display */}
