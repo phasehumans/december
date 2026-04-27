@@ -1,5 +1,5 @@
 import React from 'react'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft } from 'lucide-react'
 
 import { cn } from '@/shared/lib/utils'
 import type { PreviewTab } from '@/features/preview/types'
@@ -48,18 +48,6 @@ export const OutputHeaderViewTabs: React.FC<OutputHeaderViewTabsProps> = ({
             >
                 <ChevronLeft size={20} />
             </button>
-
-            <div className="hidden md:block">
-                {isSidebarCollapsed && (
-                    <button
-                        onClick={onToggleSidebar}
-                        className="p-1.5 text-[#91908F] hover:text-white hover:bg-white/5 rounded-md mr-1"
-                        title="Open Sidebar"
-                    >
-                        <ChevronRight size={18} />
-                    </button>
-                )}
-            </div>
 
             <div className="hidden md:flex items-center gap-2">
                 <ViewModeTab
