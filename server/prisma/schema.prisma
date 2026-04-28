@@ -37,6 +37,7 @@ model Project {
   description        String?
   isStarred          Boolean          @default(false)
   isSharedAsTemplate Boolean          @default(false)
+  projectCategory  ProjectCategory @default(NONE)
   projectStatus      ProjectStatus    @default(DRAFT)
   currentVersionId   String?
   versionCount       Int              @default(0)
@@ -145,3 +146,11 @@ enum ProjectImportStatus {
   FAILED
 }
 
+enum ProjectCategory {
+  LANDING_PAGE
+  DASHBOARD
+  PORTFOLIO_BLOG
+  SAAS_APP
+  ECOMMERCE
+  NONE
+}
