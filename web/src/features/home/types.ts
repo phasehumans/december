@@ -16,6 +16,12 @@ export interface HomeHeroProps {
     canvasState: CanvasDocument
     onCanvasStateChange: (document: CanvasDocument) => void
     projectId?: string | null
+    onImportGithub?: (repoUrl: string) => Promise<void> | void
+    onImportZip?: (file: File) => Promise<void> | void
+    importState?: {
+        status: 'idle' | 'loading' | 'failed' | 'ready'
+        message?: string | null
+    }
 }
 
 export interface PromptInputProps {

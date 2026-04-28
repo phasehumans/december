@@ -152,6 +152,12 @@ export const useOutputScreenController = ({
     }, [generationPhase])
 
     React.useEffect(() => {
+        if (!isGenerating && previewSession?.backendStatus === 'ready') {
+            setActiveTab('preview')
+        }
+    }, [isGenerating, previewSession?.backendStatus])
+
+    React.useEffect(() => {
         if (iframeRef.current?.contentWindow) {
             iframeRef.current.contentWindow.postMessage(
                 {

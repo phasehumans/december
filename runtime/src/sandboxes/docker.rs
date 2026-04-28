@@ -155,27 +155,28 @@ impl DockerSandbox {
     async fn ensure_image_available(&self) -> Result<(), RuntimeServiceError> {
         match self.docker.inspect_image(&self.config.image).await {
             Ok(_) => Ok(()),
-            Err(BollardError::DockerResponseServerError { status_code: 404, .. }) => {
-                self.docker
-                    .create_image(
-                        Some(
-                            bollard::query_parameters::CreateImageOptionsBuilder::default()
-                                .from_image(&self.config.image)
-                                .build(),
-                        ),
-                        None,
-                        None,
+            Err(BollardError::DockerResponseServerError {
+                status_code: 404, ..
+            }) => self
+                .docker
+                .create_image(
+                    Some(
+                        bollard::query_parameters::CreateImageOptionsBuilder::default()
+                            .from_image(&self.config.image)
+                            .build(),
+                    ),
+                    None,
+                    None,
+                )
+                .try_collect::<Vec<_>>()
+                .await
+                .map(|_| ())
+                .map_err(|error| {
+                    RuntimeServiceError::infra_runtime(
+                        "failed to pull preview image",
+                        Some(error.to_string()),
                     )
-                    .try_collect::<Vec<_>>()
-                    .await
-                    .map(|_| ())
-                    .map_err(|error| {
-                        RuntimeServiceError::infra_runtime(
-                            "failed to pull preview image",
-                            Some(error.to_string()),
-                        )
-                    })
-            }
+                }),
             Err(error) => Err(RuntimeServiceError::infra_runtime(
                 "failed to inspect preview image",
                 Some(error.to_string()),

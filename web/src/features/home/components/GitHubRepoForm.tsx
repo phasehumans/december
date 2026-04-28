@@ -7,10 +7,19 @@ import { profileAPI } from '@/features/profile/api/profile'
 
 interface GitHubRepoFormProps {
     onClose: () => void
-    onSubmitRepo?: (repoUrl: string) => void
+    onSubmitRepo?: (repoUrl: string) => Promise<void> | void
+    isImporting?: boolean
+    importMessage?: string | null
+    importError?: string | null
 }
 
-export const GitHubRepoForm: React.FC<GitHubRepoFormProps> = ({ onClose, onSubmitRepo }) => {
+export const GitHubRepoForm: React.FC<GitHubRepoFormProps> = ({
+    onClose,
+    onSubmitRepo,
+    isImporting = false,
+    importMessage,
+    importError,
+}) => {
     const [selectedRepo, setSelectedRepo] = useState('')
     const [connectError, setConnectError] = useState<string | null>(null)
 
@@ -115,19 +124,22 @@ export const GitHubRepoForm: React.FC<GitHubRepoFormProps> = ({ onClose, onSubmi
                                     value={selectedRepo}
                                     onChange={(e) => setSelectedRepo(e.target.value)}
                                     placeholder="https://github.com/user/repo"
+                                    disabled={isImporting}
                                     className="w-full bg-[#141312] border border-[#2E2D2C] focus:border-[#454443] rounded-[10px] h-[40px] pl-9 pr-3.5 text-[13px] text-[#D6D5D4] placeholder-[#4A4A4A] outline-none transition-colors"
                                 />
                             </div>
                             <button
                                 onClick={handleSubmit}
-                                disabled={!selectedRepo}
+                                disabled={!selectedRepo || isImporting}
                                 className="h-[40px] px-5 rounded-[10px] bg-[#D6D5D4] hover:bg-[#EAE9E8] text-[#111] text-[13px] font-semibold disabled:opacity-40 disabled:pointer-events-none transition-all duration-200 shrink-0"
                             >
-                                Import
+                                {isImporting ? 'Importing' : 'Import'}
                             </button>
                         </div>
                         <p className="text-[12px] text-[#656565] mt-3 ml-1">
-                            Enter the URL of your repository or any public GitHub repository.
+                            {importError ||
+                                importMessage ||
+                                'Enter the URL of your repository or any public GitHub repository.'}
                         </p>
                     </div>
                 )}

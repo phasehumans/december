@@ -5,11 +5,7 @@ mod http;
 mod sandboxes;
 mod services;
 
-use std::{
-    env, fs,
-    path::PathBuf,
-    sync::Arc,
-};
+use std::{env, fs, path::PathBuf, sync::Arc};
 
 use tracing::info;
 use tracing_subscriber::{EnvFilter, layer::SubscriberExt, util::SubscriberInitExt};
