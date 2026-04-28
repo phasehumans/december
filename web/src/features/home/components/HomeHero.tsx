@@ -18,6 +18,9 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
     canvasState,
     onCanvasStateChange,
     projectId,
+    onImportGithub,
+    onImportZip,
+    importState,
 }) => {
     const canvasRef = useRef<CanvasRef>(null)
     const [prompt, setPrompt] = React.useState('')
@@ -104,21 +107,28 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
                                 <GitHubRepoForm
                                     key="github-form"
                                     onClose={() => setActiveImportForm(null)}
-                                    onSubmitRepo={(url) => {
-                                        console.log('Import repo:', url)
-                                        setActiveImportForm(null)
-                                    }}
+                                    onSubmitRepo={onImportGithub}
+                                    isImporting={importState?.status === 'loading'}
+                                    importMessage={importState?.message}
+                                    importError={
+                                        importState?.status === 'failed'
+                                            ? importState.message
+                                            : null
+                                    }
                                 />
                             )}
                             {activeImportForm === 'upload' && (
                                 <UploadProjectForm
                                     key="upload-form"
                                     onClose={() => setActiveImportForm(null)}
-                                    onUpload={(files) => {
-                                        // TODO: implement file upload
-                                        console.log('Upload files:', files)
-                                        setActiveImportForm(null)
-                                    }}
+                                    onUpload={(file) => onImportZip?.(file)}
+                                    isImporting={importState?.status === 'loading'}
+                                    importMessage={importState?.message}
+                                    importError={
+                                        importState?.status === 'failed'
+                                            ? importState.message
+                                            : null
+                                    }
                                 />
                             )}
                         </AnimatePresence>

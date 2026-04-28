@@ -1,6 +1,24 @@
 import type { Request, Response } from 'express'
-import { uploadRepoSchema } from './upload.schema'
+import { importIdParamSchema, uploadRepoSchema } from './upload.schema'
 import { uploadService } from './upload.service'
+
+const getErrorStatus = (message: string) => {
+    const normalized = message.toLowerCase()
+
+    if (normalized.includes('not found')) return 404
+    if (
+        normalized.includes('required') ||
+        normalized.includes('invalid') ||
+        normalized.includes('only zip') ||
+        normalized.includes('too large') ||
+        normalized.includes('access token') ||
+        normalized.includes('github')
+    ) {
+        return 400
+    }
+
+    return 500
+}
 
 const getUserGithubRepos = async (req: Request, res: Response) => {
     const userId = req.userId as string | undefined
@@ -50,13 +68,13 @@ const importFromGithub = async (req: Request, res: Response) => {
         const { repoURL } = parseData.data
 
         const result = await uploadService.importFromGithub({ repoURL, userId })
-        return res.status(200).json({
+        return res.status(202).json({
             success: true,
-            message: 'upload successfully',
+            message: 'import queued',
             data: result,
         })
     } catch (error: any) {
-        return res.status(500).json({
+        return res.status(getErrorStatus(error.message)).json({
             success: false,
             errors: error.message,
         })
@@ -86,13 +104,89 @@ const importFromZip = async (req: Request, res: Response) => {
             userId,
         })
 
-        return res.status(200).json({
+        return res.status(202).json({
             success: true,
-            message: 'upload successfully',
+            message: 'import queued',
             data: result,
         })
     } catch (error: any) {
-        return res.status(500).json({
+        return res.status(getErrorStatus(error.message)).json({
+            success: false,
+            errors: error.message,
+        })
+    }
+}
+
+const getImportStatus = async (req: Request, res: Response) => {
+    const userId = req.userId as string | undefined
+    const parseParams = importIdParamSchema.safeParse(req.params)
+
+    if (!userId) {
+        return res.status(400).json({
+            success: false,
+            message: 'unauthorized',
+        })
+    }
+
+    if (!parseParams.success) {
+        return res.status(400).json({
+            success: false,
+            message: 'validation failed',
+            errors: parseParams.error.flatten().fieldErrors,
+        })
+    }
+
+    try {
+        const result = await uploadService.getImportStatus({
+            userId,
+            importId: parseParams.data.id,
+        })
+
+        return res.status(200).json({
+            success: true,
+            message: 'import status fetched',
+            data: result,
+        })
+    } catch (error: any) {
+        return res.status(getErrorStatus(error.message)).json({
+            success: false,
+            errors: error.message,
+        })
+    }
+}
+
+const retryImport = async (req: Request, res: Response) => {
+    const userId = req.userId as string | undefined
+    const parseParams = importIdParamSchema.safeParse(req.params)
+
+    if (!userId) {
+        return res.status(400).json({
+            success: false,
+            message: 'unauthorized',
+        })
+    }
+
+    if (!parseParams.success) {
+        return res.status(400).json({
+            success: false,
+            message: 'validation failed',
+            errors: parseParams.error.flatten().fieldErrors,
+        })
+    }
+
+    try {
+        const result = await uploadService.retryImport({
+            userId,
+            importId: parseParams.data.id,
+        })
+
+        return res.status(202).json({
+            success: true,
+            message: 'import retry queued',
+            data: result,
+        })
+    } catch (error: any) {
+        return res.status(getErrorStatus(error.message)).json({
             success: false,
             errors: error.message,
         })
@@ -103,4 +197,6 @@ export const uploadController = {
     getUserGithubRepos,
     importFromGithub,
     importFromZip,
+    getImportStatus,
+    retryImport,
 }

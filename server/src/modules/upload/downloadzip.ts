@@ -1,8 +1,8 @@
 import { mkdir, readdir } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { randomUUID } from 'node:crypto'
-import AdmZip from 'adm-zip'
+
+import { extractZipSafely, importStagingRootDir } from './import-project.utils'
 
 export type DownloadedGitHubRepoArchive =
     | {
@@ -40,11 +40,7 @@ export async function downloadGitHubRepoArchive(
         ? `https://api.github.com/repos/${owner}/${repo}/zipball/${encodeURIComponent(resolvedRef)}`
         : `https://api.github.com/repos/${owner}/${repo}/zipball`
 
-    const tempRootDir = join(
-        process.cwd(),
-        '.phasehumans-imports',
-        `${owner}-${repo}-${randomUUID()}`
-    )
+    const tempRootDir = join(importStagingRootDir(), `${owner}-${repo}-${randomUUID()}`)
 
     const zipFilePath = join(tempRootDir, 'repo.zip')
     const extractDir = join(tempRootDir, 'extracted')
@@ -131,12 +127,11 @@ export async function downloadGitHubRepoArchive(
     }
 
     try {
-        const zip = new AdmZip(zipBuffer)
-        zip.extractAllTo(extractDir, true)
-    } catch {
+        await extractZipSafely(zipBuffer, extractDir)
+    } catch (error) {
         return {
             ok: false,
-            error: 'Failed to extract repository archive',
+            error: error instanceof Error ? error.message : 'Failed to extract repository archive',
             code: 'EXTRACT_FAILED',
         }
     }

@@ -52,6 +52,12 @@ interface AppContentViewProps {
     onBackFromOutput: () => void
     onNewProject: () => void
     onOpenProject: (projectId: string) => void
+    onImportGithub: (repoUrl: string) => Promise<void> | void
+    onImportZip: (file: File) => Promise<void> | void
+    importState: {
+        status: 'idle' | 'loading' | 'failed' | 'ready'
+        message?: string | null
+    }
     onSelectVersion: (versionId: string) => void
     onDownloadProject: () => void
     onSignOut: () => void
@@ -117,6 +123,9 @@ export const AppContentView: React.FC<AppContentViewProps> = ({
     onBackFromOutput,
     onNewProject,
     onOpenProject,
+    onImportGithub,
+    onImportZip,
+    importState,
     onSelectVersion,
     onDownloadProject,
     onSignOut,
@@ -175,6 +184,9 @@ export const AppContentView: React.FC<AppContentViewProps> = ({
                             canvasState={canvasState}
                             onCanvasStateChange={onCanvasStateChange}
                             projectId={activeProjectId}
+                            onImportGithub={onImportGithub}
+                            onImportZip={onImportZip}
+                            importState={importState}
                         />
                     </AnimatedPage>
                 ) : (

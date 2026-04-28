@@ -37,12 +37,15 @@ const App: React.FC = () => {
         isProjectOpening,
         previewSession,
         previewSessionError,
+        importState,
         handleNewThread,
         handleNavigate,
         handleSignOut,
         handlePromptSubmit,
         handleOutputPromptSubmit,
         handlePreviewRuntimeError,
+        handleImportGithub,
+        handleImportZip,
         handleBackFromOutput,
         handleOpenProject,
         handleSelectVersion,
@@ -100,9 +103,12 @@ const App: React.FC = () => {
                     isProjectOpening={isProjectOpening}
                     previewSession={previewSession}
                     previewSessionError={previewSessionError}
+                    importState={importState}
                     onHomePromptSubmit={handlePromptSubmit}
                     onOutputPromptSubmit={handleOutputPromptSubmit}
                     onPreviewRuntimeError={handlePreviewRuntimeError}
+                    onImportGithub={handleImportGithub}
+                    onImportZip={handleImportZip}
                     onOpenAuth={() => setShowAuthModal(true)}
                     onBackFromOutput={handleBackFromOutput}
                     onNewProject={handleNewThread}
