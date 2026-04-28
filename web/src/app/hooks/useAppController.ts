@@ -17,6 +17,7 @@ import {
 import { mapBackendProjectToUIProject } from '@/app/mapProject'
 import { createEmptyCanvasDocument, type CanvasDocument } from '@/features/canvas/types'
 import { previewAPI } from '@/features/preview/api'
+import { importsAPI, type ProjectImportStatus } from '@/features/home/api'
 import type {
     GeneratedProjectFile,
     OutputOperation,
@@ -87,6 +88,15 @@ const mapStoredFilesToGeneratedFiles = (files: Record<string, string>) =>
         ])
     )
 
+const getImportStatusMessage = (status: ProjectImportStatus) => {
+    if (status.status === 'PENDING') return 'Queued for import'
+    if (status.status === 'VALIDATING') return 'Extracting project archive'
+    if (status.status === 'UPLOADING') return 'Uploading project files'
+    if (status.status === 'STARTING_RUNTIME') return 'Starting preview runtime'
+    if (status.status === 'READY') return 'Preview is ready'
+    return status.errorMessage || 'Import failed'
+}
+
 export const useAppController = () => {
     const queryClient = useQueryClient()
 
@@ -117,6 +127,10 @@ export const useAppController = () => {
     const [projectLoadError, setProjectLoadError] = React.useState<string | null>(null)
     const [previewSession, setPreviewSession] = React.useState<PreviewSessionStatus | null>(null)
     const [previewSessionError, setPreviewSessionError] = React.useState<string | null>(null)
+    const [importState, setImportState] = React.useState<{
+        status: 'idle' | 'loading' | 'failed' | 'ready'
+        message?: string | null
+    }>({ status: 'idle', message: null })
     const generationAbortControllerRef = React.useRef<AbortController | null>(null)
     const activeAssistantMessageIdRef = React.useRef<string | null>(null)
     const activeGeneratedFilePathRef = React.useRef<string | null>(null)
@@ -420,6 +434,186 @@ export const useAppController = () => {
             }
         },
         [abortGenerationRequest, hydrateProjectDetail, resetGenerationRefs]
+    )
+
+    const beginImportOutput = React.useCallback(
+        (message: string) => {
+            const assistantMessageId = `${Date.now()}-import-assistant`
+
+            outputOriginViewRef.current = view
+            setView('chat')
+            setMessages([
+                {
+                    id: assistantMessageId,
+                    role: 'assistant',
+                    content: message,
+                    type: 'text',
+                    status: 'building',
+                },
+            ])
+            resetGeneratedOutput()
+            setGenerationPhase(null)
+            setActiveOperation('build')
+            setIsGenerating(true)
+            setProjectLoadError(null)
+        },
+        [resetGeneratedOutput, view]
+    )
+
+    const pollImportUntilComplete = React.useCallback(
+        async (
+            importId: string,
+            onStatus?: (status: ProjectImportStatus) => Promise<void> | void
+        ) => {
+            const startedAt = Date.now()
+            const timeoutMs = 3 * 60 * 1000
+
+            while (Date.now() - startedAt < timeoutMs) {
+                const status = await importsAPI.getImportStatus(importId)
+
+                setImportState({
+                    status: status.status === 'FAILED' ? 'failed' : 'loading',
+                    message: getImportStatusMessage(status),
+                })
+
+                await onStatus?.(status)
+
+                if (status.status === 'READY') {
+                    return status
+                }
+
+                if (status.status === 'FAILED') {
+                    throw new Error(status.errorMessage || 'Import failed')
+                }
+
+                await new Promise((resolve) => window.setTimeout(resolve, 1500))
+            }
+
+            throw new Error('Import timed out while preparing the preview')
+        },
+        []
+    )
+
+    const handleImportGithub = React.useCallback(
+        async (repoUrl: string) => {
+            await requireAuthOr(async () => {
+                beginImportOutput('Importing GitHub repository')
+                setImportState({ status: 'loading', message: 'Validating GitHub repository' })
+                let openedProjectId: string | null = null
+
+                try {
+                    const queuedImport = await importsAPI.importGithub(repoUrl)
+                    const completedImport = await pollImportUntilComplete(
+                        queuedImport.id,
+                        async (status) => {
+                            if (!status.projectId || openedProjectId === status.projectId) {
+                                return
+                            }
+
+                            openedProjectId = status.projectId
+                            void queryClient.invalidateQueries({ queryKey: ['projects'] })
+                            await openProject({
+                                projectId: status.projectId,
+                                versionId: status.projectVersionId,
+                                originView: view,
+                                abortActiveGeneration: false,
+                            })
+                        }
+                    )
+
+                    if (!completedImport.projectId) {
+                        throw new Error('Import completed without a project')
+                    }
+
+                    setImportState({ status: 'ready', message: 'Opening imported project' })
+                    queryClient.invalidateQueries({ queryKey: ['projects'] })
+                    await openProject({
+                        projectId: completedImport.projectId,
+                        versionId: completedImport.projectVersionId,
+                        originView: view,
+                        abortActiveGeneration: false,
+                    })
+                } catch (error) {
+                    setImportState({
+                        status: 'failed',
+                        message: error instanceof Error ? error.message : 'Import failed',
+                    })
+                } finally {
+                    resetGenerationRefs()
+                    setIsGenerating(false)
+                }
+            })
+        },
+        [
+            beginImportOutput,
+            openProject,
+            pollImportUntilComplete,
+            queryClient,
+            requireAuthOr,
+            resetGenerationRefs,
+            view,
+        ]
+    )
+
+    const handleImportZip = React.useCallback(
+        async (file: File) => {
+            await requireAuthOr(async () => {
+                beginImportOutput('Importing zip project')
+                setImportState({ status: 'loading', message: 'Uploading zip archive' })
+                let openedProjectId: string | null = null
+
+                try {
+                    const queuedImport = await importsAPI.importZip(file)
+                    const completedImport = await pollImportUntilComplete(
+                        queuedImport.id,
+                        async (status) => {
+                            if (!status.projectId || openedProjectId === status.projectId) {
+                                return
+                            }
+
+                            openedProjectId = status.projectId
+                            void queryClient.invalidateQueries({ queryKey: ['projects'] })
+                            await openProject({
+                                projectId: status.projectId,
+                                versionId: status.projectVersionId,
+                                originView: view,
+                                abortActiveGeneration: false,
+                            })
+                        }
+                    )
+
+                    if (!completedImport.projectId) {
+                        throw new Error('Import completed without a project')
+                    }
+
+                    setImportState({ status: 'ready', message: 'Opening imported project' })
+                    queryClient.invalidateQueries({ queryKey: ['projects'] })
+                    await openProject({
+                        projectId: completedImport.projectId,
+                        versionId: completedImport.projectVersionId,
+                        originView: view,
+                        abortActiveGeneration: false,
+                    })
+                } catch (error) {
+                    setImportState({
+                        status: 'failed',
+                        message: error instanceof Error ? error.message : 'Import failed',
+                    })
+                } finally {
+                    resetGenerationRefs()
+                    setIsGenerating(false)
+                }
+            })
+        },
+        [
+            beginImportOutput,
+            openProject,
+            pollImportUntilComplete,
+            queryClient,
+            requireAuthOr,
+            resetGenerationRefs,
+            view,
+        ]
     )
 
     const resetGenerationFlow = React.useCallback(() => {
@@ -1009,12 +1203,15 @@ export const useAppController = () => {
         projectLoadError,
         previewSession,
         previewSessionError,
+        importState,
         handleNewThread,
         handleNavigate,
         handleSignOut,
         handlePromptSubmit,
         handleOutputPromptSubmit,
         handlePreviewRuntimeError,
+        handleImportGithub,
+        handleImportZip,
         handleBackFromOutput,
         handleOpenProject,
         handleSelectVersion,

@@ -1,7 +1,8 @@
 import { mkdir, readdir } from 'node:fs/promises'
 import { join } from 'node:path'
 import { randomUUID } from 'node:crypto'
-import AdmZip from 'adm-zip'
+
+import { extractZipSafely, importStagingRootDir } from './import-project.utils'
 
 type UploadedZipFile = {
     originalname: string
@@ -45,11 +46,7 @@ export async function extractUploadedZipArchive(
 
     const repoName = zipFile.originalname.replace(/\.zip$/i, '') || 'uploaded-repo'
 
-    const tempRootDir = join(
-        process.cwd(),
-        '.phasehumans-imports',
-        `uploaded-${repoName}-${randomUUID()}`
-    )
+    const tempRootDir = join(importStagingRootDir(), `uploaded-${repoName}-${randomUUID()}`)
 
     const zipFilePath = join(tempRootDir, 'repo.zip')
     const extractDir = join(tempRootDir, 'extracted')
@@ -76,12 +73,11 @@ export async function extractUploadedZipArchive(
     }
 
     try {
-        const zip = new AdmZip(zipFile.buffer)
-        zip.extractAllTo(extractDir, true)
-    } catch {
+        await extractZipSafely(zipFile.buffer, extractDir)
+    } catch (error) {
         return {
             ok: false,
-            error: 'Failed to extract uploaded zip file',
+            error: error instanceof Error ? error.message : 'Failed to extract uploaded zip file',
             code: 'EXTRACT_FAILED',
         }
     }

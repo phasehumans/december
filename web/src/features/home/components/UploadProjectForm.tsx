@@ -5,10 +5,19 @@ import { Icons } from '@/shared/components/ui/Icons'
 
 interface UploadProjectFormProps {
     onClose: () => void
-    onUpload?: (files: FileList) => void
+    onUpload?: (file: File) => Promise<void> | void
+    isImporting?: boolean
+    importMessage?: string | null
+    importError?: string | null
 }
 
-export const UploadProjectForm: React.FC<UploadProjectFormProps> = ({ onClose, onUpload }) => {
+export const UploadProjectForm: React.FC<UploadProjectFormProps> = ({
+    onClose,
+    onUpload,
+    isImporting = false,
+    importMessage,
+    importError,
+}) => {
     const fileInputRef = useRef<HTMLInputElement>(null)
     const [isDragOver, setIsDragOver] = useState(false)
     const [selectedFiles, setSelectedFiles] = useState<File[]>([])
@@ -17,7 +26,7 @@ export const UploadProjectForm: React.FC<UploadProjectFormProps> = ({ onClose, o
         e.preventDefault()
         setIsDragOver(false)
         if (e.dataTransfer.files.length > 0) {
-            setSelectedFiles(Array.from(e.dataTransfer.files))
+            setSelectedFiles([e.dataTransfer.files[0]!])
         }
     }
 
@@ -32,13 +41,15 @@ export const UploadProjectForm: React.FC<UploadProjectFormProps> = ({ onClose, o
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files.length > 0) {
-            setSelectedFiles(Array.from(e.target.files))
+            setSelectedFiles([e.target.files[0]!])
         }
     }
 
     const handleSubmit = () => {
-        if (selectedFiles.length > 0 && fileInputRef.current?.files) {
-            onUpload?.(fileInputRef.current.files)
+        const file = selectedFiles[0]
+
+        if (file) {
+            onUpload?.(file)
         }
     }
 
@@ -103,7 +114,7 @@ export const UploadProjectForm: React.FC<UploadProjectFormProps> = ({ onClose, o
                         </div>
                         <div className="text-center">
                             <p className="text-[13px] font-medium text-[#D6D5D4] mb-0.5">
-                                Drop your project folder here
+                                Drop your project zip here
                             </p>
                             <p className="text-[12px] text-[#4A4A4A]">
                                 or{' '}
@@ -115,10 +126,7 @@ export const UploadProjectForm: React.FC<UploadProjectFormProps> = ({ onClose, o
                         <input
                             ref={fileInputRef}
                             type="file"
-                            // @ts-ignore - webkitdirectory is not in the standard types
-                            webkitdirectory=""
-                            directory=""
-                            multiple
+                            accept=".zip,application/zip,application/x-zip-compressed"
                             onChange={handleFileChange}
                             className="hidden"
                         />
@@ -131,30 +139,36 @@ export const UploadProjectForm: React.FC<UploadProjectFormProps> = ({ onClose, o
                                 <div className="flex items-center gap-2">
                                     <Icons.FolderUp className="w-[15px] h-[15px] text-[#A1A1AA]" />
                                     <span className="text-[14px] font-medium text-[#D6D5D4] max-w-[200px] truncate">
-                                        {selectedFiles[0]?.webkitRelativePath.split('/')[0] ||
-                                            selectedFiles[0]?.name ||
-                                            'Project Folder'}
+                                        {selectedFiles[0]?.name || 'Project.zip'}
                                     </span>
                                 </div>
                                 <p className="text-[12px] text-[#656565]">
-                                    {selectedFiles.length} file{selectedFiles.length > 1 ? 's' : ''}{' '}
-                                    selected
+                                    {selectedFiles[0]
+                                        ? formatFileSize(selectedFiles[0].size)
+                                        : 'Ready to upload'}
                                 </p>
                             </div>
                             <div className="flex items-center gap-3 mt-2">
                                 <button
                                     onClick={() => setSelectedFiles([])}
+                                    disabled={isImporting}
                                     className="h-[36px] px-4 rounded-[10px] bg-[#252422] hover:bg-[#2E2D2C] text-[#A1A1AA] text-[13px] font-medium transition-colors"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     onClick={handleSubmit}
+                                    disabled={isImporting}
                                     className="h-[36px] px-6 rounded-[10px] bg-[#D6D5D4] hover:bg-[#EAE9E8] text-[#111] text-[13px] font-semibold transition-all"
                                 >
-                                    Upload Project
+                                    {isImporting ? 'Importing' : 'Upload Project'}
                                 </button>
                             </div>
+                            {(importError || importMessage) && (
+                                <p className="text-[12px] text-[#656565] mt-1 max-w-[420px] truncate">
+                                    {importError || importMessage}
+                                </p>
+                            )}
                         </div>
                     </div>
                 )}

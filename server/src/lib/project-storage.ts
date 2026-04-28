@@ -7,7 +7,7 @@ import {
 
 import { s3 } from '../config/s3'
 
-const BUCKET = process.env.S3_BUCKET!
+const BUCKET = process.env.S3_BUCKET || 'phasehumans'
 
 function normalizePath(path: string) {
     return path.replace(/^\/+/, '')
@@ -31,6 +31,18 @@ export function versionPrefix(projectId: string, versionId: string) {
 
 export function projectPrefix(projectId: string) {
     return `projects/${projectId}/`
+}
+
+export function importPrefix(userId: string, importId: string) {
+    return `imports/${userId}/${importId}/source/`
+}
+
+export function importObjectKey(userId: string, importId: string, path: string) {
+    return `${importPrefix(userId, importId)}${normalizePath(path)}`
+}
+
+export function storageBucket() {
+    return BUCKET
 }
 
 export function assetKey(projectId: string, path: string) {
