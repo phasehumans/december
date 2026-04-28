@@ -100,11 +100,12 @@ const toApiError = async (res: Response) => {
 export const apiRequest = async <T>(path: string, options: RequestOptions = {}) => {
     const { includeAuth = true, headers, ...rest } = options
     const token = includeAuth ? getAuthToken() : null
+    const isFormData = typeof FormData !== 'undefined' && rest.body instanceof FormData
 
     const res = await fetch(`${API_BASE_URL}${path}`, {
         ...rest,
         headers: {
-            'Content-Type': 'application/json',
+            ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
             ...(token ? { Authorization: token } : {}),
             ...headers,
         },

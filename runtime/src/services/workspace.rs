@@ -67,7 +67,7 @@ pub async fn sync_workspace(
             })?;
         }
 
-        let content = storage.fetch_text(&entry.object_key).await?;
+        let content = storage.fetch_bytes(&entry.object_key).await?;
         fs::write(&absolute_path, content).await.map_err(|error| {
             RuntimeServiceError::infra_runtime(
                 "failed to write synced workspace file",

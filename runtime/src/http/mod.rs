@@ -48,7 +48,10 @@ pub fn build_router(app_state: AppState) -> Router {
     Router::new()
         .route("/healthz", get(health_check))
         .route("/previews/start", post(start_preview))
-        .route("/previews/{id}/manifest-published", post(manifest_published))
+        .route(
+            "/previews/{id}/manifest-published",
+            post(manifest_published),
+        )
         .route("/previews/{id}/status", get(get_preview_status))
         .route("/previews/{id}/display", get(display_preview))
         .route("/previews/{id}", delete(delete_preview))

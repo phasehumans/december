@@ -24,6 +24,7 @@ model User {
   receiveNotification Boolean   @default(true)
   username            String
   projects            Project[]
+  imports             ProjectImport[]
 }
 
 model Project {
@@ -86,6 +87,30 @@ model ProjectMessage {
   @@unique([projectVersionId, sequence])
 }
 
+model ProjectImport {
+  id               String              @id @default(uuid())
+  userId           String
+  sourceType       ProjectImportSource
+  sourceUrl        String?
+  sourceFileName   String?
+  bucket           String?
+  objectPrefix     String?
+  status           ProjectImportStatus @default(PENDING)
+  framework        String?
+  projectId        String?
+  projectVersionId String?
+  previewUrl       String?
+  errorMessage     String?
+  errorsJson       Json?
+  attempts         Int                 @default(0)
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  user             User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([userId, status])
+}
+
 enum ProjectStatus {
   DRAFT
   GENERATING
@@ -104,5 +129,19 @@ enum ProjectMessageRole {
   USER
   ASSISTANT
   SYSTEM
+}
+
+enum ProjectImportSource {
+  GITHUB
+  ZIP
+}
+
+enum ProjectImportStatus {
+  PENDING
+  VALIDATING
+  UPLOADING
+  STARTING_RUNTIME
+  READY
+  FAILED
 }
 

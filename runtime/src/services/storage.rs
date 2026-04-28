@@ -50,6 +50,17 @@ impl ObjectStorage {
     }
 
     pub async fn fetch_text(&self, key: &str) -> Result<String, RuntimeServiceError> {
+        let bytes = self.fetch_bytes(key).await?;
+
+        String::from_utf8(bytes).map_err(|error| {
+            RuntimeServiceError::infra_runtime(
+                "object storage payload is not valid UTF-8",
+                Some(error.to_string()),
+            )
+        })
+    }
+
+    pub async fn fetch_bytes(&self, key: &str) -> Result<Vec<u8>, RuntimeServiceError> {
         let response = self
             .client
             .get_object()
@@ -71,11 +82,6 @@ impl ObjectStorage {
             )
         })?;
 
-        String::from_utf8(collected.into_bytes().to_vec()).map_err(|error| {
-            RuntimeServiceError::infra_runtime(
-                "object storage payload is not valid UTF-8",
-                Some(error.to_string()),
-            )
-        })
+        Ok(collected.into_bytes().to_vec())
     }
 }
