@@ -1,4 +1,5 @@
 import { prisma } from '../../config/db'
+import type { ProjectCategory } from '../../generated/prisma/enums'
 
 const getAllTemplates = async () => {
     const templates = await prisma.project.findMany({
@@ -6,6 +7,10 @@ const getAllTemplates = async () => {
             isSharedAsTemplate: true,
         },
     })
+
+    if (templates.length === 0) {
+        throw new Error('no templates found')
+    }
 
     return templates
 }
@@ -25,10 +30,23 @@ const getTemplateById = async (data: string) => {
     return template
 }
 
-const getTemplateByCategory = (data: string) => {}
+const getTemplatesByCategory = async (data: ProjectCategory) => {
+    const templates = await prisma.project.findMany({
+        where: {
+            isSharedAsTemplate: true,
+            projectCategory: data,
+        },
+    })
+
+    if (templates.length === 0) {
+        throw new Error('no templates found for this category')
+    }
+
+    return templates
+}
 
 export const templateService = {
     getAllTemplates,
     getTemplateById,
-    getTemplateByCategory,
+    getTemplatesByCategory,
 }
