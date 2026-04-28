@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express'
 import { templateService } from './template.service'
-import { success } from 'zod'
+import { ProjectCategory } from '../../generated/prisma/enums'
 
 const getAllTemplates = async (req: Request, res: Response) => {
     const userId = req.userId as string | undefined
@@ -60,9 +60,9 @@ const getTemplateById = async (req: Request, res: Response) => {
     }
 }
 
-const getTemplateByCategory = async (req: Request, res: Response) => {
+const getTemplatesByCategory = async (req: Request, res: Response) => {
     const userId = req.userId as string | undefined
-    const category = req.params.category as string | undefined
+    const categoryParam = req.params.category as string | undefined
 
     if (!userId) {
         return res.status(400).json({
@@ -71,17 +71,24 @@ const getTemplateByCategory = async (req: Request, res: Response) => {
         })
     }
 
-    if (!category) {
+    if (!categoryParam) {
         return res.status(400).json({
             success: false,
-            message: 'category is needed',
+            message: 'category is required',
         })
     }
 
-    // TODO >> check the category must from this 5-6 enums
+    if (!Object.values(ProjectCategory).includes(categoryParam as ProjectCategory)) {
+        return res.status(400).json({
+            success: false,
+            message: 'invalid category',
+        })
+    }
+
+    const category = categoryParam as ProjectCategory
 
     try {
-        const result = await templateService.getTemplateByCategory(category)
+        const result = await templateService.getTemplatesByCategory(category)
         return res.status(200).json({
             success: true,
             message: 'templates fetched successfully',
@@ -100,6 +107,6 @@ const remixProject = async () => {}
 export const templateController = {
     getAllTemplates,
     getTemplateById,
-    getTemplateByCategory,
+    getTemplatesByCategory,
     remixProject,
 }
