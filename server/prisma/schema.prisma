@@ -8,23 +8,24 @@ datasource db {
 }
 
 model User {
-  id                  String    @id @default(uuid())
+  id                  String          @id @default(uuid())
   name                String
-  email               String    @unique
+  email               String          @unique
   password            String?
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
-  emailVerified       Boolean   @default(false)
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+  emailVerified       Boolean         @default(false)
   googleId            String?
   otpExpiresAt        DateTime?
   otpHash             String?
   githubToken         String?
   githubUsername      String?
-  githubConnected     Boolean   @default(false)
-  receiveNotification Boolean   @default(true)
+  githubConnected     Boolean         @default(false)
+  receiveNotification Boolean         @default(true)
   username            String
   projects            Project[]
   imports             ProjectImport[]
+  likedProjects       ProjectLike[]
 }
 
 model Project {
@@ -37,7 +38,7 @@ model Project {
   description        String?
   isStarred          Boolean          @default(false)
   isSharedAsTemplate Boolean          @default(false)
-  projectCategory  ProjectCategory @default(NONE)
+  projectCategory    ProjectCategory  @default(NONE)
   projectStatus      ProjectStatus    @default(DRAFT)
   currentVersionId   String?
   versionCount       Int              @default(0)
@@ -45,29 +46,30 @@ model Project {
   user               User             @relation(fields: [userId], references: [id])
   messages           ProjectMessage[]
   versions           ProjectVersion[] @relation("ProjectVersions")
+  likes              ProjectLike[]
 }
 
 model ProjectVersion {
-  id                  String               @id @default(uuid())
-  versionNumber       Int
-  label               String?
-  sourcePrompt        String
-  summary             String?
-  status              ProjectVersionStatus @default(GENERATING)
-  objectStoragePrefix String
-  manifestJson        Json
-  canvasStateJson     Json?
+  id                      String               @id @default(uuid())
+  versionNumber           Int
+  label                   String?
+  sourcePrompt            String
+  summary                 String?
+  status                  ProjectVersionStatus @default(GENERATING)
+  objectStoragePrefix     String
+  manifestJson            Json
+  canvasStateJson         Json?
   canvasAssetManifestJson Json?
-  intentJson          Json?
-  planJson            Json?
-  isDatabaseEnabled   Boolean              @default(false)
-  databaseUrl         String?
-  createdAt           DateTime             @default(now())
-  updatedAt           DateTime             @updatedAt
-  projectId           String
-  currentForProjects  Project[]            @relation("ProjectCurrentVersion")
-  messages            ProjectMessage[]
-  project             Project              @relation("ProjectVersions", fields: [projectId], references: [id], onDelete: Cascade)
+  intentJson              Json?
+  planJson                Json?
+  isDatabaseEnabled       Boolean              @default(false)
+  databaseUrl             String?
+  createdAt               DateTime             @default(now())
+  updatedAt               DateTime             @updatedAt
+  projectId               String
+  currentForProjects      Project[]            @relation("ProjectCurrentVersion")
+  messages                ProjectMessage[]
+  project                 Project              @relation("ProjectVersions", fields: [projectId], references: [id], onDelete: Cascade)
 
   @@unique([projectId, versionNumber])
 }
@@ -110,6 +112,20 @@ model ProjectImport {
 
   @@index([userId, createdAt])
   @@index([userId, status])
+}
+
+model ProjectLike {
+  id        String   @id @default(uuid())
+  userId    String
+  projectId String
+  createdAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, projectId])
+  @@index([userId])
+  @@index([projectId])
 }
 
 enum ProjectStatus {
