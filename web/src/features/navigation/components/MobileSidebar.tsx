@@ -100,6 +100,10 @@ export const MobileSidebar: React.FC<MobileSidebarProps> = ({
                         onProfile()
                         onClose()
                     }}
+                    onDocs={() => {
+                        onDocs()
+                        onClose()
+                    }}
                     onOpenAuth={() => {
                         onOpenAuth()
                         onClose()
