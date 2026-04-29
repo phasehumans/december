@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express'
 import { templateService } from './template.service'
 import { ProjectCategory } from '../../generated/prisma/enums'
+import { success } from 'zod'
 
 const getAllTemplates = async (req: Request, res: Response) => {
     const userId = req.userId as string | undefined
@@ -102,11 +103,82 @@ const getTemplatesByCategory = async (req: Request, res: Response) => {
     }
 }
 
-const remixProject = async () => {}
+const remixTemplate = async (req: Request, res: Response) => {}
+
+const likeTemplate = async (req: Request, res: Response) => {
+    const userId = req.userId as string | undefined
+    const templateId = req.params.templateId as string | undefined
+
+    if (!userId) {
+        return res.status(400).json({
+            success: false,
+            message: 'unauthorized',
+        })
+    }
+
+    if (!templateId) {
+        return res.status(400).json({
+            success: false,
+            message: 'templateId is required',
+        })
+    }
+
+    try {
+        const result = await templateService.likeTemplate({ userId, templateId })
+        return res.status(200).json({
+            success: true,
+            message: 'liked successfully',
+            data: result,
+        })
+    } catch (error: any) {
+        return res.status(500).json({
+            success: false,
+            error: error.message,
+        })
+    }
+}
+
+const dislikeTemplate = async (req: Request, res: Response) => {
+    const userId = req.userId as string | undefined
+    const templateId = req.params.templateId as string | undefined
+
+    if (!userId) {
+        return res.status(400).json({
+            success: false,
+            message: 'unauthorized',
+        })
+    }
+
+    if (!templateId) {
+        return res.status(400).json({
+            success: false,
+            message: 'templateId is required',
+        })
+    }
+
+    try {
+        const result = await templateService.dislikeTemplate({ userId, templateId })
+        return res.status(200).json({
+            success: true,
+            message: 'disliked successfully',
+            data: result,
+        })
+    } catch (error: any) {
+        return res.status(500).json({
+            success: false,
+            error: error.message,
+        })
+    }
+}
+
+const featuredTemplates = async (req: Request, res: Response) => {}
 
 export const templateController = {
     getAllTemplates,
     getTemplateById,
     getTemplatesByCategory,
-    remixProject,
+    remixTemplate,
+    likeTemplate,
+    dislikeTemplate,
+    featuredTemplates,
 }
