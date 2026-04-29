@@ -46,6 +46,7 @@ export interface SidebarFooterProps {
     isAuthenticated: boolean
     isCollapsed: boolean
     onProfile: () => void
+    onDocs?: () => void
     onOpenAuth: () => void
 }
 

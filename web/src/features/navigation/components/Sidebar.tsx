@@ -104,6 +104,7 @@ const Sidebar: React.FC<SidebarProps & { user?: any }> = ({
                 isAuthenticated={isAuthenticated}
                 isCollapsed={false}
                 onProfile={onProfile}
+                onDocs={onDocs}
                 onOpenAuth={onOpenAuth}
                 user={user}
             />
