@@ -1,7 +1,13 @@
 import type { Request, Response } from 'express'
 
 import { profileService } from './profile.service'
-import { changePasswordSchema, updateNameSchema, updateNotificationSchema } from './profile.schema'
+import {
+    changePasswordSchema,
+    updateNameSchema,
+    updateNotificationSchema,
+    updateUsernameSchema,
+} from './profile.schema'
+import { success } from 'zod'
 
 const getProfile = async (req: Request, res: Response) => {
     const userId = req.userId as string | undefined
@@ -66,6 +72,42 @@ const updateName = async (req: Request, res: Response) => {
     }
 }
 
+const updatedUsername = async (req: Request, res: Response) => {
+    const userId = req.userId as string | undefined
+    const parseData = updateUsernameSchema.safeParse(req.body)
+
+    if (!userId) {
+        return res.status(400).json({
+            success: false,
+            message: 'unauthorized',
+        })
+    }
+
+    if (!parseData.success) {
+        return res.status(400).json({
+            success: false,
+            message: 'validation failed',
+            errors: parseData.error.flatten().fieldErrors,
+        })
+    }
+
+    const { username } = parseData.data
+
+    try {
+        const result = await profileService.updateUsername({ userId, username })
+        return res.status(200).json({
+            success: true,
+            message: 'username updated successfully',
+            data: result,
+        })
+    } catch (error: any) {
+        return res.status(500).json({
+            success: false,
+            errors: error.message,
+        })
+    }
+}
+
 const changePassword = async (req: Request, res: Response) => {
     const userId = req.userId as string | undefined
     const parseData = changePasswordSchema.safeParse(req.body)
@@ -105,7 +147,8 @@ const changePassword = async (req: Request, res: Response) => {
     }
 }
 
-const updateNotification = async (req: Request, res: Response) => {
+const updateNotifications = async (req: Request, res: Response) => {
+    const userId = req.userId as string | undefined
     const parseData = updateNotificationSchema.safeParse(req.body)
 
     if (!parseData.success) {
@@ -116,9 +159,6 @@ const updateNotification = async (req: Request, res: Response) => {
         })
     }
 
-    const { receiveNotification } = parseData.data
-    const userId = req.userId as string | undefined
-
     if (!userId) {
         return res.status(400).json({
             success: false,
@@ -126,11 +166,18 @@ const updateNotification = async (req: Request, res: Response) => {
         })
     }
 
+    const { notifyProjectActivity, notifyProductUpdates, notifySecurityAlerts } = parseData.data
+
     try {
-        const result = await profileService.updateNotification({ receiveNotification, userId })
+        const result = await profileService.updateNotifications({
+            notifyProjectActivity,
+            notifyProductUpdates,
+            notifySecurityAlerts,
+            userId,
+        })
         return res.status(200).json({
             success: true,
-            message: 'notification preferences updated',
+            message: 'notifications preferences updated',
             data: result,
         })
     } catch (error: any) {
@@ -224,8 +271,9 @@ const getQuickInfo = async (req: Request, res: Response) => {
 export const profileController = {
     getProfile,
     updateName,
+    updatedUsername,
     changePassword,
-    updateNotification,
+    updateNotifications,
     connectGithub,
     getQuickInfo,
 }
