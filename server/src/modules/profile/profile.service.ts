@@ -32,6 +32,19 @@ type ConnectGithub = {
     username: string
 }
 
+type Signout = {
+    userId: string
+    sessionId: string
+}
+
+type SignoutAll = {
+    userId: string
+}
+
+type DeleteAccount = {
+    userId: string
+}
+
 const getProfile = async (data: string) => {
     const profile = await prisma.user.findUnique({
         where: {
@@ -249,11 +262,80 @@ const getQuickInfo = async (data: string) => {
     return { firstName, isGithubConnected }
 }
 
-const signout = async () => {}
+const signout = async (data: Signout) => {
+    const { userId, sessionId } = data
 
-const signoutAll = async () => {}
+    const existingSession = await prisma.session.findFirst({
+        where: {
+            id: sessionId,
+            userId,
+            isRevoked: false,
+        },
+    })
 
-const deleteAccount = async () => {}
+    if (!existingSession) {
+        // optional: don't throw, just silently succeed
+        return
+    }
+
+    await prisma.session.update({
+        where: {
+            id: sessionId,
+        },
+        data: {
+            isRevoked: true,
+            revokedAt: new Date(),
+        },
+    })
+}
+
+const signoutAll = async (data: SignoutAll) => {
+    const { userId } = data
+
+    await prisma.session.updateMany({
+        where: {
+            userId,
+            isRevoked: false,
+        },
+        data: {
+            isRevoked: true,
+            revokedAt: new Date(),
+        },
+    })
+}
+
+const deleteAccount = async (data: DeleteAccount) => {
+    const { userId } = data
+
+    const existingUser = await prisma.user.findUnique({
+        where: {
+            id: userId,
+        },
+    })
+
+    if (!existingUser) {
+        throw new AppError('User not found', 404)
+    }
+
+    await prisma.$transaction([
+        prisma.session.updateMany({
+            where: {
+                userId,
+                isRevoked: false,
+            },
+            data: {
+                isRevoked: true,
+                revokedAt: new Date(),
+            },
+        }),
+
+        prisma.user.delete({
+            where: {
+                id: userId,
+            },
+        }),
+    ])
+}
 
 export const profileService = {
     getProfile,

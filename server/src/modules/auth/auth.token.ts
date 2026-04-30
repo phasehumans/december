@@ -2,7 +2,7 @@ import type { Response } from 'express'
 import jwt, { type SignOptions } from 'jsonwebtoken'
 import bcrypt from 'bcrypt'
 
-type TokenPayload = {
+export type TokenPayload = {
     userId: string
     sessionId: string
     iat?: number
