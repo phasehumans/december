@@ -21,3 +21,17 @@ export const updateNotificationSchema = z.object({
     notifyProductUpdates: z.boolean().optional(),
     notifySecurityAlerts: z.boolean().optional(),
 })
+
+export const chatSuggestionsSchema = z.object({
+    chatSuggestions: z.boolean(),
+})
+
+export enum GenerationSound {
+    FIRST_GENERATION = 'FIRST_GENERATION',
+    ALWAYS = 'ALWAYS',
+    NEVER = 'NEVER',
+}
+
+export const generationSoundSchema = z.object({
+    generationSound: z.nativeEnum(GenerationSound),
+})

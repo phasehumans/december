@@ -3,6 +3,7 @@ import bcrypt from 'bcrypt'
 import { prisma } from '../../config/db'
 import { extractFirstName } from './profile.utils'
 import { AppError } from '../../utils/appError'
+import type { GenerationSound } from './profile.schema'
 
 type UpdateName = {
     userId: string
@@ -43,6 +44,16 @@ type SignoutAll = {
 
 type DeleteAccount = {
     userId: string
+}
+
+type ChatSuggestions = {
+    userId: string
+    chatSuggestions: boolean
+}
+
+type GenerationSoundType = {
+    userId: string
+    generationSound: GenerationSound
 }
 
 const getProfile = async (data: string) => {
@@ -245,7 +256,7 @@ const connectGithub = async (data: ConnectGithub) => {
     return updatedUser
 }
 
-const getQuickInfo = async (data: string) => {
+const getInfo = async (data: string) => {
     const profile = await prisma.user.findUnique({
         where: {
             id: data,
@@ -337,6 +348,92 @@ const deleteAccount = async (data: DeleteAccount) => {
     ])
 }
 
+const chatSuggestions = async (data: ChatSuggestions) => {
+    const { userId, chatSuggestions } = data
+
+    const existingUser = await prisma.user.findUnique({
+        where: {
+            id: userId,
+        },
+    })
+
+    if (!existingUser) {
+        throw new AppError('user not found')
+    }
+
+    if (existingUser.chatSuggestions == chatSuggestions) {
+        throw new AppError('same input')
+    }
+
+    const updatedUser = await prisma.user.update({
+        where: {
+            id: userId,
+        },
+        data: {
+            chatSuggestions: chatSuggestions,
+        },
+    })
+
+    return updatedUser
+}
+
+const generationSound = async (data: GenerationSoundType) => {
+    const { userId, generationSound } = data
+
+    const existingUser = await prisma.user.findUnique({
+        where: {
+            id: userId,
+        },
+    })
+
+    if (!existingUser) {
+        throw new AppError('user not found')
+    }
+
+    if (existingUser.generationSound == generationSound) {
+        throw new AppError('same input')
+    }
+
+    const updatedUser = await prisma.user.update({
+        where: {
+            id: userId,
+        },
+        data: {
+            generationSound: generationSound,
+        },
+    })
+
+    return updatedUser
+}
+
+const getProfileCard = async (data: string) => {
+    const profile = await prisma.user.findUnique({
+        where: {
+            id: data,
+        },
+        // select: {
+        //     id: true,
+        //     name: true,
+        //     email: true,
+        //     username: true,
+        //     emailVerified: true,
+        //     receiveNotification: true,
+        //     githubUsername: true,
+        //     githubConnected: true,
+        //     createdAt: true,
+        //     updatedAt: true,
+        // },
+    })
+
+    // change object in service itself not in controller
+
+    if (!profile) {
+        throw new Error('user not found')
+    }
+
+    return profile
+}
+
 export const profileService = {
     getProfile,
     updateName,
@@ -344,8 +441,11 @@ export const profileService = {
     changePassword,
     updateNotifications,
     connectGithub,
-    getQuickInfo,
+    getInfo,
     signout,
     signoutAll,
     deleteAccount,
+    chatSuggestions,
+    generationSound,
+    getProfileCard,
 }
