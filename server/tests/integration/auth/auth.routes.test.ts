@@ -22,6 +22,7 @@ mock.module('axios', () => ({
     default: {
         post: axiosPostMock,
     },
+    post: axiosPostMock,
 }))
 
 mock.module('google-auth-library', () => ({
@@ -39,7 +40,7 @@ const createTestApp = () => {
     return app
 }
 
-describe('auth routes integration', () => {
+describe('auth.routes integration', () => {
     let app: ReturnType<typeof createTestApp>
 
     beforeEach(async () => {
@@ -298,9 +299,6 @@ describe('auth routes integration', () => {
         })
     })
 
-    // =========================
-    // POST /auth/login
-    // =========================
     describe('POST /auth/login', () => {
         it('should return 200 and token on valid login', async () => {
             const email = 'login@example.com'
@@ -404,9 +402,6 @@ describe('auth routes integration', () => {
         })
     })
 
-    // =========================
-    // POST /auth/google
-    // =========================
     describe('POST /auth/google', () => {
         it('should return 200 and token on valid google login for new user', async () => {
             axiosPostMock.mockResolvedValue({
