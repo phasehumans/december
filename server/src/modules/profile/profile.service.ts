@@ -249,6 +249,12 @@ const getQuickInfo = async (data: string) => {
     return { firstName, isGithubConnected }
 }
 
+const signout = async () => {}
+
+const signoutAll = async () => {}
+
+const deleteAccount = async () => {}
+
 export const profileService = {
     getProfile,
     updateName,
@@ -257,4 +263,7 @@ export const profileService = {
     updateNotifications,
     connectGithub,
     getQuickInfo,
+    signout,
+    signoutAll,
+    deleteAccount,
 }

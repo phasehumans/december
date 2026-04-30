@@ -13,8 +13,8 @@ profileRouter.patch('/name', profileController.updateName)
 profileRouter.patch('/username', profileController.updatedUsername)
 profileRouter.patch('/password', profileController.changePassword)
 profileRouter.patch('/notifications', profileController.updateNotifications)
-profileRouter.post('/signout')
-profileRouter.post('/signout/all')
-profileRouter.delete('/')
+profileRouter.post('/signout', profileController.signout)
+profileRouter.post('/signout/all', profileController.signoutAll)
+profileRouter.delete('/', profileController.deleteAccount)
 
 export default profileRouter
