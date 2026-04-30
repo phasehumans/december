@@ -7,9 +7,10 @@ import {
     updateNotificationSchema,
     updateUsernameSchema,
 } from './profile.schema'
+import { authCookie } from '../auth/auth.cookie'
 
 const getProfile = async (req: Request, res: Response) => {
-    const userId = req.userId as string | undefined
+    const userId = req.user?.userId as string | undefined
 
     if (!userId) {
         return res.status(400).json({
@@ -34,7 +35,7 @@ const getProfile = async (req: Request, res: Response) => {
 }
 
 const updateName = async (req: Request, res: Response) => {
-    const userId = req.userId as string | undefined
+    const userId = req.user?.userId as string | undefined
     const parseData = updateNameSchema.safeParse(req.body)
 
     if (!parseData.success) {
@@ -72,7 +73,7 @@ const updateName = async (req: Request, res: Response) => {
 }
 
 const updatedUsername = async (req: Request, res: Response) => {
-    const userId = req.userId as string | undefined
+    const userId = req.user?.userId as string | undefined
     const parseData = updateUsernameSchema.safeParse(req.body)
 
     if (!userId) {
@@ -108,7 +109,7 @@ const updatedUsername = async (req: Request, res: Response) => {
 }
 
 const changePassword = async (req: Request, res: Response) => {
-    const userId = req.userId as string | undefined
+    const userId = req.user?.userId as string | undefined
     const parseData = changePasswordSchema.safeParse(req.body)
 
     if (!parseData.success) {
@@ -147,7 +148,7 @@ const changePassword = async (req: Request, res: Response) => {
 }
 
 const updateNotifications = async (req: Request, res: Response) => {
-    const userId = req.userId as string | undefined
+    const userId = req.user?.userId as string | undefined
     const parseData = updateNotificationSchema.safeParse(req.body)
 
     if (!parseData.success) {
@@ -243,7 +244,7 @@ const connectGithub = async (req: Request, res: Response) => {
 }
 
 const getQuickInfo = async (req: Request, res: Response) => {
-    const userId = req.userId as string | undefined
+    const userId = req.user?.userId as string | undefined
 
     if (!userId) {
         return res.status(400).json({
@@ -267,11 +268,94 @@ const getQuickInfo = async (req: Request, res: Response) => {
     }
 }
 
-const signout = async (req: Request, res: Response) => {}
+const signout = async (req: Request, res: Response) => {
+    const userId = req.user?.userId
+    const sessionId = req.user?.sessionId
 
-const signoutAll = async (req: Request, res: Response) => {}
+    if (!userId || !sessionId) {
+        return res.status(401).json({
+            success: false,
+            message: 'Unauthorized',
+        })
+    }
 
-const deleteAccount = async (req: Request, res: Response) => {}
+    try {
+        await profileService.signout({
+            userId,
+            sessionId,
+        })
+
+        authCookie.clearAuthCookies(res)
+
+        return res.status(200).json({
+            success: true,
+            message: 'Signed out successfully',
+        })
+    } catch (error: any) {
+        return res.status(500).json({
+            success: false,
+            message: error.message || 'Failed to sign out',
+        })
+    }
+}
+
+const signoutAll = async (req: Request, res: Response) => {
+    const userId = req.user?.userId
+
+    if (!userId) {
+        return res.status(401).json({
+            success: false,
+            message: 'Unauthorized',
+        })
+    }
+
+    try {
+        await profileService.signoutAll({
+            userId,
+        })
+
+        authCookie.clearAuthCookies(res)
+
+        return res.status(200).json({
+            success: true,
+            message: 'Signed out from all devices successfully',
+        })
+    } catch (error: any) {
+        return res.status(500).json({
+            success: false,
+            message: error.message || 'Failed to sign out from all devices',
+        })
+    }
+}
+
+const deleteAccount = async (req: Request, res: Response) => {
+    const userId = req.user?.userId
+
+    if (!userId) {
+        return res.status(401).json({
+            success: false,
+            message: 'Unauthorized',
+        })
+    }
+
+    try {
+        await profileService.deleteAccount({
+            userId,
+        })
+
+        authCookie.clearAuthCookies(res)
+
+        return res.status(200).json({
+            success: true,
+            message: 'Account deleted successfully',
+        })
+    } catch (error: any) {
+        return res.status(500).json({
+            success: false,
+            message: error.message || 'Failed to delete account',
+        })
+    }
+}
 
 export const profileController = {
     getProfile,
