@@ -4,6 +4,7 @@ import { OAuth2Client } from 'google-auth-library'
 
 import { authService } from './auth.service'
 import { loginSchema, signupSchema } from './auth.schema'
+import { AppError } from '../../utils/appError'
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID)
 
@@ -22,7 +23,7 @@ const signup = async (req: Request, res: Response) => {
         const result = await authService.signup(parseData.data)
         return res.status(201).json({
             success: true,
-            message: 'opt sent to email',
+            message: 'otp sent to email',
             data: result,
         })
     } catch (error: any) {
@@ -50,10 +51,19 @@ const verifyOtp = async (req: Request, res: Response) => {
             message: 'email verified successfully',
             data: result,
         })
-    } catch (error: any) {
+    } catch (error) {
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({
+                success: false,
+                message: 'otp verification failed',
+                errors: error.message,
+            })
+        }
+
         return res.status(500).json({
             success: false,
-            errors: error.message,
+            message: 'otp verification failed',
+            errors: error instanceof Error ? error.message : 'unknown error',
         })
     }
 }

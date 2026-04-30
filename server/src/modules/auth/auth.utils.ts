@@ -8,39 +8,165 @@ export const sendOTP = async (email: string, otp: string) => {
         to: email,
         subject: 'Your Verification Code',
         html: `
-      <div style="font-family: Arial, sans-serif; background-color: #f4f6f8; padding: 40px 20px;">
-        <div style="max-width: 500px; margin: auto; background: #ffffff; border-radius: 12px; padding: 30px; box-shadow: 0 5px 20px rgba(0,0,0,0.05);">
-          
-          <h2 style="margin: 0 0 10px; color: #111;">Verify your email</h2>
-          <p style="margin: 0 0 25px; color: #555; font-size: 14px;">
-            Use the verification code below to complete your sign in.
-          </p>
-  
-          <div style="
-            background: #f1f5f9;
-            padding: 20px;
-            text-align: center;
-            border-radius: 10px;
-            letter-spacing: 6px;
-            font-size: 28px;
-            font-weight: bold;
-            color: #111;
-          ">
-            ${otp}
-          </div>
-  
-          <p style="margin-top: 25px; font-size: 13px; color: #777;">
-            This code will expire in <strong>10 minutes</strong>.
-          </p>
-  
-          <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;" />
-  
-          <p style="font-size: 12px; color: #999;">
-            If you didn’t request this, you can safely ignore this email.
-          </p>
-  
-        </div>
-      </div>
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="UTF-8" />
+            <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+            <title>Phasehumans Verification Code</title>
+          </head>
+          <body style="margin:0; padding:0; background:#1E1D1B; font-family:Arial, Helvetica, sans-serif;">
+            <table
+              role="presentation"
+              width="100%"
+              cellspacing="0"
+              cellpadding="0"
+              border="0"
+              style="background:#1E1D1B; margin:0; padding:40px 16px;"
+            >
+              <tr>
+                <td align="center">
+                  <table
+                    role="presentation"
+                    width="100%"
+                    cellspacing="0"
+                    cellpadding="0"
+                    border="0"
+                    style="
+                      max-width:560px;
+                      background:#171615;
+                      border:1px solid #2A2927;
+                      border-radius:20px;
+                      overflow:hidden;
+                    "
+                  >
+                    <!-- Header -->
+                    <tr>
+                      <td style="padding:36px 32px 20px; text-align:center;">
+                        <h1
+                          style="
+                            margin:0;
+                            font-size:26px;
+                            line-height:32px;
+                            font-weight:600;
+                            color:#F5F5F4;
+                            letter-spacing:-0.3px;
+                          "
+                        >
+                          phasehumans
+                        </h1>
+        
+                        <p
+                          style="
+                            margin:14px 0 0;
+                            font-size:14px;
+                            line-height:22px;
+                            color:#A8A29E;
+                          "
+                        >
+                          Verify your email
+                        </p>
+                      </td>
+                    </tr>
+        
+                    <!-- Divider -->
+                    <tr>
+                      <td style="padding:0 32px;">
+                        <div style="height:1px; background:#2A2927;"></div>
+                      </td>
+                    </tr>
+        
+                    <!-- Body -->
+                    <tr>
+                      <td style="padding:28px 32px 32px;">
+                        <p
+                          style="
+                            margin:0 0 20px;
+                            font-size:15px;
+                            line-height:24px;
+                            color:#D6D3D1;
+                            text-align:center;
+                          "
+                        >
+                          Use the verification code below to continue.
+                        </p>
+        
+                        <!-- OTP Box -->
+                        <div style="margin:0 0 24px; text-align:center;">
+                          <div
+                            style="
+                              display:inline-block;
+                              min-width:220px;
+                              padding:18px 24px;
+                              background:#1E1D1B;
+                              border:1px solid #2A2927;
+                              border-radius:14px;
+                              color:#FAFAF9;
+                              font-size:34px;
+                              line-height:40px;
+                              font-weight:700;
+                              letter-spacing:10px;
+                              font-family:'Courier New', monospace;
+                              text-align:center;
+                            "
+                          >
+                            ${otp}
+                          </div>
+                        </div>
+        
+                        <p
+                          style="
+                            margin:0 0 8px;
+                            font-size:14px;
+                            line-height:22px;
+                            color:#D6D3D1;
+                            text-align:center;
+                          "
+                        >
+                          This code will expire in <strong style="color:#FAFAF9;">10 minutes</strong>.
+                        </p>
+        
+                        <p
+                          style="
+                            margin:0;
+                            font-size:13px;
+                            line-height:22px;
+                            color:#78716C;
+                            text-align:center;
+                          "
+                        >
+                          If you didn’t request this, you can safely ignore this email.
+                        </p>
+                      </td>
+                    </tr>
+        
+                    <!-- Footer -->
+                    <tr>
+                      <td
+                        style="
+                          padding:18px 32px 24px;
+                          border-top:1px solid #2A2927;
+                          text-align:center;
+                        "
+                      >
+                        <p
+                          style="
+                            margin:0;
+                            font-size:12px;
+                            line-height:18px;
+                            color:#78716C;
+                          "
+                        >
+                          Automated email from Phasehumans
+                        </p>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+          </body>
+        </html>
       `,
     })
 }
