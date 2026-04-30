@@ -8,24 +8,26 @@ datasource db {
 }
 
 model User {
-  id                  String          @id @default(uuid())
-  name                String
-  email               String          @unique
-  password            String?
-  createdAt           DateTime        @default(now())
-  updatedAt           DateTime        @updatedAt
-  emailVerified       Boolean         @default(false)
-  googleId            String?
-  otpExpiresAt        DateTime?
-  otpHash             String?
-  githubToken         String?
-  githubUsername      String?
-  githubConnected     Boolean         @default(false)
-  receiveNotification Boolean         @default(true)
-  username            String
-  projects            Project[]
-  imports             ProjectImport[]
-  likedProjects       ProjectLike[]
+  id                    String          @id @default(uuid())
+  name                  String
+  username              String          @unique
+  email                 String          @unique
+  password              String?
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+  emailVerified         Boolean         @default(false)
+  googleId              String?
+  otpExpiresAt          DateTime?
+  otpHash               String?
+  githubToken           String?
+  githubUsername        String?
+  githubConnected       Boolean         @default(false)
+  notifyProjectActivity Boolean         @default(true)
+  notifyProductUpdates  Boolean         @default(false)
+  notifySecurityAlerts  Boolean         @default(true)
+  projects              Project[]
+  imports               ProjectImport[]
+  likedProjects         ProjectLike[]
 }
 
 model Project {
