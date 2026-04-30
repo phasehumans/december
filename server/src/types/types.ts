@@ -1,11 +1,11 @@
-import 'express'
+import type { TokenPayload } from '../modules/auth/auth.token'
 
 declare global {
     namespace Express {
         interface Request {
-            userId?: {
-                userId: string
-            }
+            user?: Pick<TokenPayload, 'userId' | 'sessionId'>
         }
     }
 }
+
+export {}
