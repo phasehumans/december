@@ -1,8 +1,9 @@
 import type { Request, Response } from 'express'
-
 import { profileService } from './profile.service'
 import {
     changePasswordSchema,
+    chatSuggestionsSchema,
+    generationSoundSchema,
     updateNameSchema,
     updateNotificationSchema,
     updateUsernameSchema,
@@ -243,7 +244,7 @@ const connectGithub = async (req: Request, res: Response) => {
     }
 }
 
-const getQuickInfo = async (req: Request, res: Response) => {
+const getInfo = async (req: Request, res: Response) => {
     const userId = req.user?.userId as string | undefined
 
     if (!userId) {
@@ -254,7 +255,7 @@ const getQuickInfo = async (req: Request, res: Response) => {
     }
 
     try {
-        const result = await profileService.getQuickInfo(userId)
+        const result = await profileService.getInfo(userId)
         return res.status(200).json({
             success: true,
             message: 'info fetched successfully',
@@ -357,6 +358,103 @@ const deleteAccount = async (req: Request, res: Response) => {
     }
 }
 
+const chatSuggestions = async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
+    const parseData = chatSuggestionsSchema.safeParse(req.body)
+
+    if (!userId) {
+        return res.status(400).json({
+            success: false,
+            message: 'unauthorized',
+        })
+    }
+
+    if (!parseData.success) {
+        return res.status(400).json({
+            success: false,
+            message: 'validation failed',
+            errors: parseData.error.flatten().fieldErrors,
+        })
+    }
+
+    const { chatSuggestions } = parseData.data
+
+    try {
+        const result = await profileService.chatSuggestions({ userId, chatSuggestions })
+        return res.status(200).json({
+            success: true,
+            message: 'chat suggestions updated successfully',
+            data: result,
+        })
+    } catch (error: any) {
+        return res.status(500).json({
+            success: false,
+            errors: error.message,
+        })
+    }
+}
+
+const generationSound = async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
+    const parseData = generationSoundSchema.safeParse(req.body)
+
+    if (!userId) {
+        return res.status(400).json({
+            success: false,
+            message: 'unauthorized',
+        })
+    }
+
+    if (!parseData.success) {
+        return res.status(400).json({
+            success: false,
+            message: 'validation failed',
+            errors: parseData.error.flatten().fieldErrors,
+        })
+    }
+
+    const { generationSound } = parseData.data
+
+    try {
+        const result = await profileService.generationSound({ userId, generationSound })
+        return res.status(200).json({
+            success: true,
+            message: 'generation sound prefernce updated successfully',
+            data: result,
+        })
+    } catch (error: any) {
+        return res.status(500).json({
+            success: false,
+            errors: error.message,
+        })
+    }
+}
+
+const getProfileCard = async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
+
+    if (!userId) {
+        return res.status(400).json({
+            success: false,
+            message: 'unauthorized',
+        })
+    }
+
+    try {
+        const result = await profileService.getProfileCard(userId)
+        return res.status(200).json({
+            success: true,
+            message: 'profile fetched successfully',
+            data: result,
+        })
+    } catch (error: any) {
+        return res.status(400).json({
+            success: false,
+            errors: error.message,
+        })
+    }
+}
+
 export const profileController = {
     getProfile,
     updateName,
@@ -364,8 +462,11 @@ export const profileController = {
     changePassword,
     updateNotifications,
     connectGithub,
-    getQuickInfo,
+    getInfo,
     signout,
     signoutAll,
     deleteAccount,
+    chatSuggestions,
+    generationSound,
+    getProfileCard,
 }
