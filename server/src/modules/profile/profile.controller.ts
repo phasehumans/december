@@ -7,7 +7,6 @@ import {
     updateNotificationSchema,
     updateUsernameSchema,
 } from './profile.schema'
-import { success } from 'zod'
 
 const getProfile = async (req: Request, res: Response) => {
     const userId = req.userId as string | undefined
@@ -268,6 +267,12 @@ const getQuickInfo = async (req: Request, res: Response) => {
     }
 }
 
+const signout = async (req: Request, res: Response) => {}
+
+const signoutAll = async (req: Request, res: Response) => {}
+
+const deleteAccount = async (req: Request, res: Response) => {}
+
 export const profileController = {
     getProfile,
     updateName,
@@ -276,4 +281,7 @@ export const profileController = {
     updateNotifications,
     connectGithub,
     getQuickInfo,
+    signout,
+    signoutAll,
+    deleteAccount,
 }
