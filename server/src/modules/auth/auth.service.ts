@@ -6,6 +6,7 @@ import jwt from 'jsonwebtoken'
 import { prisma } from '../../config/db'
 import { sendOTP } from './auth.utils'
 import { getUsernameFromEmail } from './auth.utils'
+import { AppError } from '../../utils/appError'
 
 type Signup = {
     email: string
@@ -38,7 +39,7 @@ const signup = async (data: Signup) => {
     })
 
     if (existingUser) {
-        throw new Error('email already exists')
+        throw new AppError('email already exists', 409)
     }
 
     let userName = getUsernameFromEmail(email)
@@ -78,15 +79,15 @@ const verifyOtp = async (data: VerifyOpt) => {
     })
 
     if (!user) {
-        throw new Error('user not found')
+        throw new AppError('user not found', 404)
     }
 
     if (user.emailVerified) {
-        throw new Error('email already verified')
+        throw new AppError('email already verified', 400)
     }
 
     if (!user.otpHash || !user.otpExpiresAt) {
-        throw new Error('otp not found, request new one')
+        throw new AppError('otp not found, request new one', 400)
     }
 
     if (user.otpExpiresAt < new Date()) {
@@ -101,13 +102,13 @@ const verifyOtp = async (data: VerifyOpt) => {
             },
         })
 
-        throw new Error('otp expired')
+        throw new AppError('otp expired', 400)
     }
 
     const isValid = await bcrypt.compare(otp, user.otpHash)
 
     if (!isValid) {
-        throw new Error('invalid otp')
+        throw new AppError('invalid otp', 401)
     }
 
     await prisma.user.update({
@@ -144,17 +145,17 @@ const login = async (data: Login) => {
     })
 
     if (!existingUser) {
-        throw new Error('invalid email or password')
+        throw new AppError('invalid email or password', 401)
     }
 
     if (!existingUser.emailVerified) {
-        throw new Error('please verify your email')
+        throw new AppError('please verify your email', 401)
     }
 
     const isPasswordMatch = await bcrypt.compare(password, existingUser.password!)
 
     if (!isPasswordMatch) {
-        throw new Error('invalid email or password')
+        throw new AppError('invalid email or password', 401)
     }
 
     const token = jwt.sign(
@@ -202,6 +203,9 @@ const google = async (data: Google) => {
             },
             data: {
                 googleId: sub,
+                emailVerified: true,
+                otpHash: null,
+                otpExpiresAt: null,
             },
         })
     } else if (user.googleId != sub) {
