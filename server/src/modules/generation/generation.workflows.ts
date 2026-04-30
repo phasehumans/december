@@ -2,7 +2,7 @@ import {
     extractProjectIntent,
     extractProjectPlan,
     generateProjectFile,
-} from '../../orchestration/engine/generation'
+} from '../../core/engine/generation'
 import { saveProjectFiles } from '../../lib/save-project-files'
 import { prisma } from '../../config/db'
 import { cleanPrompt } from '../generation/generation.utils'

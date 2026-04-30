@@ -6,6 +6,7 @@ import jwt from 'jsonwebtoken'
 import { prisma } from '../../config/db'
 import { sendOTP } from './auth.utils'
 import { getUsernameFromEmail } from './auth.utils'
+import { AppError } from '../../utils/appError'
 
 type Signup = {
     email: string
@@ -78,7 +79,7 @@ const verifyOtp = async (data: VerifyOpt) => {
     })
 
     if (!user) {
-        throw new Error('user not found')
+        throw new AppError('user not found', 404)
     }
 
     if (user.emailVerified) {
@@ -202,6 +203,9 @@ const google = async (data: Google) => {
             },
             data: {
                 googleId: sub,
+                emailVerified: true,
+                otpHash: null,
+                otpExpiresAt: null,
             },
         })
     } else if (user.googleId != sub) {
