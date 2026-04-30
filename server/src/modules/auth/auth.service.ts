@@ -1,32 +1,41 @@
 import crypto from 'crypto'
-
 import bcrypt from 'bcrypt'
-import jwt from 'jsonwebtoken'
 
 import { prisma } from '../../config/db'
-import { sendOTP } from './auth.utils'
-import { getUsernameFromEmail } from './auth.utils'
+import { sendOTP, getNameFromEmail, getUsername } from './auth.utils'
 import { AppError } from '../../utils/appError'
+import { authToken } from './auth.token'
+import { authSession, deleteSessionById, isSessionExpired } from './auth.session'
 
 type Signup = {
     email: string
     password: string
 }
 
-type VerifyOpt = {
+type VerifyOtp = {
     email: string
     otp: string
+    userAgent?: string
+    ipAddress?: string
 }
 
 type Login = {
     email: string
     password: string
+    userAgent?: string
+    ipAddress?: string
 }
 
 type Google = {
     name: string
     email: string
     sub: string
+    userAgent?: string
+    ipAddress?: string
+}
+
+type RefreshSession = {
+    refreshToken?: string
 }
 
 const signup = async (data: Signup) => {
@@ -42,10 +51,11 @@ const signup = async (data: Signup) => {
         throw new AppError('email already exists', 409)
     }
 
-    let userName = getUsernameFromEmail(email)
+    let name = getNameFromEmail(email)
+    let username = getUsername()
 
-    if (userName == undefined || userName == '') {
-        userName = 'emptyusername'
+    if (!name) {
+        name = username
     }
 
     const hashPassword = await bcrypt.hash(password, 10)
@@ -54,9 +64,9 @@ const signup = async (data: Signup) => {
 
     const newUser = await prisma.user.create({
         data: {
-            name: userName!,
+            name: name,
             email: email,
-            username: userName,
+            username: username,
             password: hashPassword,
             emailVerified: false,
             otpHash: otpHash,
@@ -64,13 +74,15 @@ const signup = async (data: Signup) => {
         },
     })
 
+    // console.log(otp)
+
     await sendOTP(newUser.email, otp)
 
     return { message: 'otp sent successfully' }
 }
 
-const verifyOtp = async (data: VerifyOpt) => {
-    const { email, otp } = data
+const verifyOtp = async (data: VerifyOtp) => {
+    const { email, otp, userAgent, ipAddress } = data
 
     const user = await prisma.user.findUnique({
         where: {
@@ -80,6 +92,10 @@ const verifyOtp = async (data: VerifyOpt) => {
 
     if (!user) {
         throw new AppError('user not found', 404)
+    }
+
+    if (user.deletedAt) {
+        throw new AppError('account has been deleted', 403)
     }
 
     if (user.emailVerified) {
@@ -95,7 +111,6 @@ const verifyOtp = async (data: VerifyOpt) => {
             where: {
                 id: user.id,
             },
-
             data: {
                 otpHash: null,
                 otpExpiresAt: null,
@@ -122,25 +137,45 @@ const verifyOtp = async (data: VerifyOpt) => {
         },
     })
 
-    const token = jwt.sign(
-        {
-            userId: user.id,
-        },
-        process.env.JWT_SECRET!,
-        {
-            expiresIn: '30d',
-        }
-    )
+    const sessionId = crypto.randomUUID()
 
-    return token
+    const accessToken = authToken.generateAccessToken({
+        userId: user.id,
+        sessionId,
+    })
+
+    const refreshToken = authToken.generateRefreshToken({
+        userId: user.id,
+        sessionId,
+    })
+
+    const refreshTokenHash = authSession.hashRefreshToken(refreshToken)
+
+    await prisma.session.create({
+        data: {
+            id: sessionId,
+            userId: user.id,
+            refreshTokenHash: refreshTokenHash,
+            userAgent: userAgent,
+            ipAddress: ipAddress,
+            expiresAt: authSession.getRefreshTokenExpiryDate(),
+        },
+    })
+
+    // console.log(accessToken, refreshToken)
+
+    return {
+        accessToken,
+        refreshToken,
+    }
 }
 
 const login = async (data: Login) => {
-    const { email, password } = data
+    const { email, password, userAgent, ipAddress } = data
 
     const existingUser = await prisma.user.findUnique({
         where: {
-            email: email,
+            email,
         },
     })
 
@@ -148,31 +183,60 @@ const login = async (data: Login) => {
         throw new AppError('invalid email or password', 401)
     }
 
+    if (existingUser.deletedAt) {
+        throw new AppError('account has been deleted', 403)
+    }
+
     if (!existingUser.emailVerified) {
         throw new AppError('please verify your email', 401)
     }
 
-    const isPasswordMatch = await bcrypt.compare(password, existingUser.password!)
+    if (!existingUser.password) {
+        throw new AppError('please continue with google login', 401)
+    }
+
+    const isPasswordMatch = await bcrypt.compare(password, existingUser.password)
 
     if (!isPasswordMatch) {
         throw new AppError('invalid email or password', 401)
     }
 
-    const token = jwt.sign(
-        {
-            userId: existingUser.id,
-        },
-        process.env.JWT_SECRET!,
-        {
-            expiresIn: '30d',
-        }
-    )
+    const sessionId = crypto.randomUUID()
 
-    return token
+    const accessToken = authToken.generateAccessToken({
+        userId: existingUser.id,
+        sessionId,
+    })
+
+    const refreshToken = authToken.generateRefreshToken({
+        userId: existingUser.id,
+        sessionId,
+    })
+
+    const refreshTokenHash = authSession.hashRefreshToken(refreshToken)
+
+    await prisma.session.create({
+        data: {
+            id: sessionId,
+            userId: existingUser.id,
+            refreshTokenHash: refreshTokenHash,
+            userAgent: userAgent,
+            ipAddress: ipAddress,
+            expiresAt: authSession.getRefreshTokenExpiryDate(),
+        },
+    })
+
+    console.log('accessToken: ', accessToken)
+    console.log('refreshToken: ', refreshToken)
+
+    return {
+        accessToken,
+        refreshToken,
+    }
 }
 
 const google = async (data: Google) => {
-    const { name, email, sub } = data
+    const { name, email, sub, userAgent, ipAddress } = data
 
     let user = await prisma.user.findUnique({
         where: {
@@ -180,22 +244,20 @@ const google = async (data: Google) => {
         },
     })
 
-    let userName = getUsernameFromEmail(email)
-
-    if (userName == undefined || userName == '') {
-        userName = 'emptyusername'
-    }
+    let username = getUsername()
 
     if (!user) {
         user = await prisma.user.create({
             data: {
                 email: email,
-                username: userName,
+                username: username,
                 emailVerified: true,
                 googleId: sub,
                 name: name,
             },
         })
+    } else if (user.deletedAt) {
+        throw new AppError('account has been deleted', 403)
     } else if (!user.googleId) {
         user = await prisma.user.update({
             where: {
@@ -208,20 +270,136 @@ const google = async (data: Google) => {
                 otpExpiresAt: null,
             },
         })
-    } else if (user.googleId != sub) {
-        throw new Error('google id mismatch')
+    } else if (user.googleId !== sub) {
+        throw new AppError('google id mismatch', 400)
     }
 
-    const token = jwt.sign(
-        {
+    const sessionId = crypto.randomUUID()
+
+    const accessToken = authToken.generateAccessToken({
+        userId: user.id,
+        sessionId,
+    })
+
+    const refreshToken = authToken.generateRefreshToken({
+        userId: user.id,
+        sessionId,
+    })
+
+    const refreshTokenHash = authSession.hashRefreshToken(refreshToken)
+
+    await prisma.session.create({
+        data: {
+            id: sessionId,
             userId: user.id,
+            refreshTokenHash,
+            userAgent: userAgent,
+            ipAddress: ipAddress,
+            expiresAt: authSession.getRefreshTokenExpiryDate(),
         },
-        process.env.JWT_SECRET!,
-        {
-            expiresIn: '30d',
-        }
+    })
+
+    return {
+        accessToken,
+        refreshToken,
+    }
+}
+
+const refreshSession = async (data: RefreshSession) => {
+    const { refreshToken } = data
+
+    if (!refreshToken) {
+        throw new AppError('Refresh token is required', 401)
+    }
+
+    let payload: { userId: string; sessionId: string }
+
+    try {
+        payload = authToken.verifyRefreshToken(refreshToken)
+    } catch {
+        throw new AppError('Invalid or expired refresh token', 401)
+    }
+
+    const { userId, sessionId } = payload
+
+    const session = await prisma.session.findUnique({
+        where: {
+            id: sessionId,
+        },
+    })
+
+    if (!session) {
+        throw new AppError('Session not found', 401)
+    }
+
+    if (session.userId !== userId) {
+        await deleteSessionById(session.id)
+        throw new AppError('Invalid session', 401)
+    }
+
+    if (isSessionExpired(session.expiresAt)) {
+        await deleteSessionById(session.id)
+        throw new AppError('Session expired', 401)
+    }
+
+    const isRefreshTokenValid = await authToken.compareTokenHash(
+        refreshToken,
+        session.refreshTokenHash
     )
-    return token
+
+    if (!isRefreshTokenValid) {
+        await deleteSessionById(session.id)
+        throw new AppError('Invalid refresh token', 401)
+    }
+
+    const user = await prisma.user.findUnique({
+        where: {
+            id: userId,
+        },
+    })
+
+    if (!user) {
+        await deleteSessionById(session.id)
+        throw new AppError('User not found', 401)
+    }
+
+    if (user.deletedAt) {
+        await deleteSessionById(session.id)
+        throw new AppError('Account no longer exists', 401)
+    }
+
+    if (user.scheduledDeleteAt) {
+        await deleteSessionById(session.id)
+        throw new AppError('Account is scheduled for deletion', 401)
+    }
+
+    const accessToken = authToken.generateAccessToken({
+        userId: user.id,
+        sessionId: session.id,
+    })
+
+    const newRefreshToken = authToken.generateRefreshToken({
+        userId: user.id,
+        sessionId: session.id,
+    })
+
+    const newRefreshTokenHash = await authToken.hashToken(newRefreshToken)
+
+    await prisma.session.update({
+        where: {
+            id: session.id,
+        },
+        data: {
+            refreshTokenHash: newRefreshTokenHash,
+            expiresAt: authToken.getRefreshTokenExpiryDate(),
+            // lastUsedAt: new Date(), // enable if your schema has it
+        },
+    })
+
+    return {
+        accessToken,
+        refreshToken: newRefreshToken,
+    }
 }
 
 export const authService = {
@@ -229,4 +407,5 @@ export const authService = {
     verifyOtp,
     login,
     google,
+    refreshSession,
 }

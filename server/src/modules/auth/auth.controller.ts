@@ -1,12 +1,12 @@
-﻿import type { Request, Response } from 'express'
+﻿import type { Request, Response, NextFunction } from 'express'
 import axios from 'axios'
 import { OAuth2Client } from 'google-auth-library'
 
 import { authService } from './auth.service'
 import { loginSchema, signupSchema } from './auth.schema'
 import { AppError } from '../../utils/appError'
-
-// const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID)
+import { authCookie } from './auth.cookie'
+import { authToken } from './auth.token'
 
 const signup = async (req: Request, res: Response) => {
     const parseData = signupSchema.safeParse(req.body)
@@ -34,6 +34,7 @@ const signup = async (req: Request, res: Response) => {
                 errors: error.message,
             })
         }
+
         return res.status(500).json({
             success: false,
             message: 'signup failed',
@@ -53,11 +54,16 @@ const verifyOtp = async (req: Request, res: Response) => {
     }
 
     try {
-        const result = await authService.verifyOtp({ email, otp })
+        const userAgent = req.get('user-agent') || 'unknown'
+        const ipAddress =
+            (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
+            req.socket.remoteAddress ||
+            'unknown'
+        const result = await authService.verifyOtp({ email, otp, userAgent, ipAddress })
+        authCookie.setAuthCookies(res, result.accessToken, result.refreshToken)
         return res.status(200).json({
             success: true,
             message: 'email verified successfully',
-            data: result,
         })
     } catch (error) {
         if (error instanceof AppError) {
@@ -88,11 +94,18 @@ const login = async (req: Request, res: Response) => {
     }
 
     try {
-        const result = await authService.login(parseData.data)
+        const userAgent = req.get('user-agent') || 'unknown'
+        const ipAddress =
+            (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
+            req.socket.remoteAddress ||
+            'unknown'
+
+        const { email, password } = parseData.data
+        const result = await authService.login({ email, password, userAgent, ipAddress })
+        authCookie.setAuthCookies(res, result.accessToken, result.refreshToken)
         return res.status(200).json({
             success: true,
             message: 'login successful',
-            data: result,
         })
     } catch (error) {
         if (error instanceof AppError) {
@@ -178,11 +191,17 @@ const google = async (req: Request, res: Response) => {
             })
         }
 
-        const result = await authService.google({ email, name, sub })
+        const userAgent = req.get('user-agent') || 'unknown'
+        const ipAddress =
+            (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
+            req.socket.remoteAddress ||
+            'unknown'
+
+        const result = await authService.google({ email, name, sub, userAgent, ipAddress })
+        authCookie.setAuthCookies(res, result.accessToken, result.refreshToken)
         return res.status(200).json({
             success: true,
             message: 'login successful',
-            data: result,
         })
     } catch (error: any) {
         if (error instanceof AppError) {
@@ -203,9 +222,34 @@ const google = async (req: Request, res: Response) => {
     }
 }
 
+const refreshSession = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const result = await authService.refreshSession({
+            refreshToken: req.cookies?.refreshToken,
+        })
+
+        authToken.setAccessTokenCookie(res, result.accessToken)
+        authToken.setRefreshTokenCookie(res, result.refreshToken)
+
+        return res.status(200).json({
+            success: true,
+            message: 'Session refreshed successfully',
+        })
+    } catch (error) {
+        authToken.clearAuthCookies(res)
+
+        if (error instanceof AppError) {
+            return next(error)
+        }
+
+        return next(new AppError('Failed to refresh session', 401))
+    }
+}
+
 export const authController = {
     signup,
     verifyOtp,
     login,
     google,
+    refreshSession,
 }

@@ -1,10 +1,16 @@
 import type { Request, Response } from 'express'
 
 import { profileService } from './profile.service'
-import { changePasswordSchema, updateNameSchema, updateNotificationSchema } from './profile.schema'
+import {
+    changePasswordSchema,
+    updateNameSchema,
+    updateNotificationSchema,
+    updateUsernameSchema,
+} from './profile.schema'
+import { authCookie } from '../auth/auth.cookie'
 
 const getProfile = async (req: Request, res: Response) => {
-    const userId = req.userId as string | undefined
+    const userId = req.user?.userId as string | undefined
 
     if (!userId) {
         return res.status(400).json({
@@ -29,7 +35,7 @@ const getProfile = async (req: Request, res: Response) => {
 }
 
 const updateName = async (req: Request, res: Response) => {
-    const userId = req.userId as string | undefined
+    const userId = req.user?.userId as string | undefined
     const parseData = updateNameSchema.safeParse(req.body)
 
     if (!parseData.success) {
@@ -66,8 +72,44 @@ const updateName = async (req: Request, res: Response) => {
     }
 }
 
+const updatedUsername = async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
+    const parseData = updateUsernameSchema.safeParse(req.body)
+
+    if (!userId) {
+        return res.status(400).json({
+            success: false,
+            message: 'unauthorized',
+        })
+    }
+
+    if (!parseData.success) {
+        return res.status(400).json({
+            success: false,
+            message: 'validation failed',
+            errors: parseData.error.flatten().fieldErrors,
+        })
+    }
+
+    const { username } = parseData.data
+
+    try {
+        const result = await profileService.updateUsername({ userId, username })
+        return res.status(200).json({
+            success: true,
+            message: 'username updated successfully',
+            data: result,
+        })
+    } catch (error: any) {
+        return res.status(500).json({
+            success: false,
+            errors: error.message,
+        })
+    }
+}
+
 const changePassword = async (req: Request, res: Response) => {
-    const userId = req.userId as string | undefined
+    const userId = req.user?.userId as string | undefined
     const parseData = changePasswordSchema.safeParse(req.body)
 
     if (!parseData.success) {
@@ -105,7 +147,8 @@ const changePassword = async (req: Request, res: Response) => {
     }
 }
 
-const updateNotification = async (req: Request, res: Response) => {
+const updateNotifications = async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
     const parseData = updateNotificationSchema.safeParse(req.body)
 
     if (!parseData.success) {
@@ -116,9 +159,6 @@ const updateNotification = async (req: Request, res: Response) => {
         })
     }
 
-    const { receiveNotification } = parseData.data
-    const userId = req.userId as string | undefined
-
     if (!userId) {
         return res.status(400).json({
             success: false,
@@ -126,11 +166,18 @@ const updateNotification = async (req: Request, res: Response) => {
         })
     }
 
+    const { notifyProjectActivity, notifyProductUpdates, notifySecurityAlerts } = parseData.data
+
     try {
-        const result = await profileService.updateNotification({ receiveNotification, userId })
+        const result = await profileService.updateNotifications({
+            notifyProjectActivity,
+            notifyProductUpdates,
+            notifySecurityAlerts,
+            userId,
+        })
         return res.status(200).json({
             success: true,
-            message: 'notification preferences updated',
+            message: 'notifications preferences updated',
             data: result,
         })
     } catch (error: any) {
@@ -197,7 +244,7 @@ const connectGithub = async (req: Request, res: Response) => {
 }
 
 const getQuickInfo = async (req: Request, res: Response) => {
-    const userId = req.userId as string | undefined
+    const userId = req.user?.userId as string | undefined
 
     if (!userId) {
         return res.status(400).json({
@@ -221,11 +268,104 @@ const getQuickInfo = async (req: Request, res: Response) => {
     }
 }
 
+const signout = async (req: Request, res: Response) => {
+    const userId = req.user?.userId
+    const sessionId = req.user?.sessionId
+
+    if (!userId || !sessionId) {
+        return res.status(401).json({
+            success: false,
+            message: 'Unauthorized',
+        })
+    }
+
+    try {
+        await profileService.signout({
+            userId,
+            sessionId,
+        })
+
+        authCookie.clearAuthCookies(res)
+
+        return res.status(200).json({
+            success: true,
+            message: 'Signed out successfully',
+        })
+    } catch (error: any) {
+        return res.status(500).json({
+            success: false,
+            message: error.message || 'Failed to sign out',
+        })
+    }
+}
+
+const signoutAll = async (req: Request, res: Response) => {
+    const userId = req.user?.userId
+
+    if (!userId) {
+        return res.status(401).json({
+            success: false,
+            message: 'Unauthorized',
+        })
+    }
+
+    try {
+        await profileService.signoutAll({
+            userId,
+        })
+
+        authCookie.clearAuthCookies(res)
+
+        return res.status(200).json({
+            success: true,
+            message: 'Signed out from all devices successfully',
+        })
+    } catch (error: any) {
+        return res.status(500).json({
+            success: false,
+            message: error.message || 'Failed to sign out from all devices',
+        })
+    }
+}
+
+const deleteAccount = async (req: Request, res: Response) => {
+    const userId = req.user?.userId
+
+    if (!userId) {
+        return res.status(401).json({
+            success: false,
+            message: 'Unauthorized',
+        })
+    }
+
+    try {
+        await profileService.deleteAccount({
+            userId,
+        })
+
+        authCookie.clearAuthCookies(res)
+
+        return res.status(200).json({
+            success: true,
+            message: 'Account deleted successfully',
+        })
+    } catch (error: any) {
+        return res.status(500).json({
+            success: false,
+            message: error.message || 'Failed to delete account',
+        })
+    }
+}
+
 export const profileController = {
     getProfile,
     updateName,
+    updatedUsername,
     changePassword,
-    updateNotification,
+    updateNotifications,
     connectGithub,
     getQuickInfo,
+    signout,
+    signoutAll,
+    deleteAccount,
 }

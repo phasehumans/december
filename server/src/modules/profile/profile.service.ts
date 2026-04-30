@@ -2,10 +2,16 @@ import bcrypt from 'bcrypt'
 
 import { prisma } from '../../config/db'
 import { extractFirstName } from './profile.utils'
+import { AppError } from '../../utils/appError'
 
 type UpdateName = {
     userId: string
     name: string
+}
+
+type UpdateUsername = {
+    userId: string
+    username: string
 }
 
 type ChangePassword = {
@@ -15,13 +21,28 @@ type ChangePassword = {
 
 type UpdateNotification = {
     userId: string
-    receiveNotification: boolean
+    notifyProjectActivity?: boolean
+    notifyProductUpdates?: boolean
+    notifySecurityAlerts?: boolean
 }
 
 type ConnectGithub = {
     userId: string
     accessToken: string
     username: string
+}
+
+type Signout = {
+    userId: string
+    sessionId: string
+}
+
+type SignoutAll = {
+    userId: string
+}
+
+type DeleteAccount = {
+    userId: string
 }
 
 const getProfile = async (data: string) => {
@@ -77,6 +98,52 @@ const updateName = async (data: UpdateName) => {
     return updatedUser
 }
 
+const updateUsername = async (data: UpdateUsername) => {
+    const { userId, username } = data
+
+    const existingUser = await prisma.user.findUnique({
+        where: {
+            id: userId,
+        },
+    })
+
+    if (!existingUser) {
+        throw new AppError('user not found')
+    }
+
+    if (username === existingUser.username) {
+        throw new AppError('username is same')
+    }
+
+    const existingUsername = await prisma.user.findUnique({
+        where: {
+            username: username,
+        },
+    })
+
+    if (existingUsername) {
+        throw new AppError(`${username} is already taken, try another one`)
+    }
+
+    try {
+        const updatedUser = await prisma.user.update({
+            where: { id: userId },
+            data: {
+                username: username,
+            },
+        })
+
+        return updatedUser
+    } catch (error: any) {
+        // Race condition safety
+        if (error.code === 'P2002') {
+            throw new AppError(`${username} is already taken, try another one`)
+        }
+
+        throw error
+    }
+}
+
 const changePassword = async (data: ChangePassword) => {
     const { password, userId } = data
 
@@ -104,8 +171,8 @@ const changePassword = async (data: ChangePassword) => {
     return updatedUser
 }
 
-const updateNotification = async (data: UpdateNotification) => {
-    const { userId, receiveNotification } = data
+const updateNotifications = async (data: UpdateNotification) => {
+    const { userId, notifyProductUpdates, notifyProjectActivity, notifySecurityAlerts } = data
 
     const existingUser = await prisma.user.findUnique({
         where: {
@@ -114,16 +181,36 @@ const updateNotification = async (data: UpdateNotification) => {
     })
 
     if (!existingUser) {
-        throw new Error('user not found')
+        throw new AppError('user not found')
+    }
+
+    const updateData: {
+        notifyProjectActivity?: boolean
+        notifyProductUpdates?: boolean
+        notifySecurityAlerts?: boolean
+    } = {}
+
+    if (notifyProjectActivity !== undefined) {
+        updateData.notifyProjectActivity = notifyProjectActivity
+    }
+
+    if (notifyProductUpdates !== undefined) {
+        updateData.notifyProductUpdates = notifyProductUpdates
+    }
+
+    if (notifySecurityAlerts !== undefined) {
+        updateData.notifySecurityAlerts = notifySecurityAlerts
+    }
+
+    if (Object.keys(updateData).length === 0) {
+        throw new AppError('at least one notification setting must be provided')
     }
 
     const updatedUser = await prisma.user.update({
         where: {
             id: userId,
         },
-        data: {
-            receiveNotification: receiveNotification,
-        },
+        data: updateData,
     })
 
     return updatedUser
@@ -175,11 +262,90 @@ const getQuickInfo = async (data: string) => {
     return { firstName, isGithubConnected }
 }
 
+const signout = async (data: Signout) => {
+    const { userId, sessionId } = data
+
+    const existingSession = await prisma.session.findFirst({
+        where: {
+            id: sessionId,
+            userId,
+            isRevoked: false,
+        },
+    })
+
+    if (!existingSession) {
+        // optional: don't throw, just silently succeed
+        return
+    }
+
+    await prisma.session.update({
+        where: {
+            id: sessionId,
+        },
+        data: {
+            isRevoked: true,
+            revokedAt: new Date(),
+        },
+    })
+}
+
+const signoutAll = async (data: SignoutAll) => {
+    const { userId } = data
+
+    await prisma.session.updateMany({
+        where: {
+            userId,
+            isRevoked: false,
+        },
+        data: {
+            isRevoked: true,
+            revokedAt: new Date(),
+        },
+    })
+}
+
+const deleteAccount = async (data: DeleteAccount) => {
+    const { userId } = data
+
+    const existingUser = await prisma.user.findUnique({
+        where: {
+            id: userId,
+        },
+    })
+
+    if (!existingUser) {
+        throw new AppError('User not found', 404)
+    }
+
+    await prisma.$transaction([
+        prisma.session.updateMany({
+            where: {
+                userId,
+                isRevoked: false,
+            },
+            data: {
+                isRevoked: true,
+                revokedAt: new Date(),
+            },
+        }),
+
+        prisma.user.delete({
+            where: {
+                id: userId,
+            },
+        }),
+    ])
+}
+
 export const profileService = {
     getProfile,
     updateName,
+    updateUsername,
     changePassword,
-    updateNotification,
+    updateNotifications,
     connectGithub,
     getQuickInfo,
+    signout,
+    signoutAll,
+    deleteAccount,
 }
