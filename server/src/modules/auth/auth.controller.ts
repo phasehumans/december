@@ -4,8 +4,9 @@ import { OAuth2Client } from 'google-auth-library'
 
 import { authService } from './auth.service'
 import { loginSchema, signupSchema } from './auth.schema'
+import { AppError } from '../../utils/appError'
 
-const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID)
+// const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID)
 
 const signup = async (req: Request, res: Response) => {
     const parseData = signupSchema.safeParse(req.body)
@@ -22,13 +23,21 @@ const signup = async (req: Request, res: Response) => {
         const result = await authService.signup(parseData.data)
         return res.status(201).json({
             success: true,
-            message: 'opt sent to email',
+            message: 'otp sent to email',
             data: result,
         })
-    } catch (error: any) {
-        return res.status(409).json({
+    } catch (error) {
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({
+                success: false,
+                message: 'signup failed',
+                errors: error.message,
+            })
+        }
+        return res.status(500).json({
             success: false,
-            errors: error.message,
+            message: 'signup failed',
+            errors: error instanceof Error ? error.message : 'unknown error',
         })
     }
 }
@@ -50,10 +59,19 @@ const verifyOtp = async (req: Request, res: Response) => {
             message: 'email verified successfully',
             data: result,
         })
-    } catch (error: any) {
+    } catch (error) {
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({
+                success: false,
+                message: 'otp verification failed',
+                errors: error.message,
+            })
+        }
+
         return res.status(500).json({
             success: false,
-            errors: error.message,
+            message: 'otp verification failed',
+            errors: error instanceof Error ? error.message : 'unknown error',
         })
     }
 }
@@ -76,10 +94,19 @@ const login = async (req: Request, res: Response) => {
             message: 'login successful',
             data: result,
         })
-    } catch (error: any) {
-        return res.status(401).json({
+    } catch (error) {
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({
+                success: false,
+                message: 'login failed',
+                errors: error.message,
+            })
+        }
+
+        return res.status(500).json({
             success: false,
-            errors: error.message,
+            message: 'login failed',
+            errors: error instanceof Error ? error.message : 'unknown error',
         })
     }
 }
@@ -119,6 +146,8 @@ const google = async (req: Request, res: Response) => {
             })
         }
 
+        const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID)
+
         const ticket = await client.verifyIdToken({
             idToken: id_token,
             audience: process.env.GOOGLE_CLIENT_ID,
@@ -156,11 +185,20 @@ const google = async (req: Request, res: Response) => {
             data: result,
         })
     } catch (error: any) {
-        console.log(error)
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({
+                success: false,
+                message: 'google login failed',
+                errors: error.message,
+            })
+        }
+
         return res.status(500).json({
             success: false,
             message: 'google login failed',
-            errors: error?.response?.data?.error_description || error.message,
+            errors:
+                error?.response?.data?.error_description ||
+                (error instanceof Error ? error.message : 'unknown error'),
         })
     }
 }
