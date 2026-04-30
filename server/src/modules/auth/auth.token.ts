@@ -1,10 +1,25 @@
+import type { Response } from 'express'
 import jwt, { type SignOptions } from 'jsonwebtoken'
+import bcrypt from 'bcrypt'
 
 type TokenPayload = {
     userId: string
-    sessionId?: string
+    sessionId: string
     iat?: number
     exp?: number
+}
+
+const ACCESS_TOKEN_COOKIE_NAME = 'accessToken'
+const REFRESH_TOKEN_COOKIE_NAME = 'refreshToken'
+
+const isProduction = process.env.NODE_ENV === 'production'
+
+const getAccessTokenMaxAge = () => {
+    return 15 * 60 * 1000 // 15 minutes
+}
+
+const getRefreshTokenMaxAge = () => {
+    return 30 * 24 * 60 * 60 * 1000 // 30 days
 }
 
 const generateAccessToken = (payload: TokenPayload) => {
@@ -16,9 +31,16 @@ const generateAccessToken = (payload: TokenPayload) => {
 
     const expiresIn = (process.env.ACCESS_TOKEN_EXPIRES_IN || '15m') as SignOptions['expiresIn']
 
-    return jwt.sign(payload, secret, {
-        expiresIn,
-    })
+    return jwt.sign(
+        {
+            userId: payload.userId,
+            sessionId: payload.sessionId,
+        },
+        secret,
+        {
+            expiresIn,
+        }
+    )
 }
 
 const generateRefreshToken = (payload: TokenPayload) => {
@@ -28,11 +50,18 @@ const generateRefreshToken = (payload: TokenPayload) => {
         throw new Error('REFRESH_TOKEN_SECRET is not defined')
     }
 
-    const expiresIn = (process.env.REFRESH_TOKEN_EXPIRES_IN || '7d') as SignOptions['expiresIn']
+    const expiresIn = (process.env.REFRESH_TOKEN_EXPIRES_IN || '30d') as SignOptions['expiresIn']
 
-    return jwt.sign(payload, secret, {
-        expiresIn,
-    })
+    return jwt.sign(
+        {
+            userId: payload.userId,
+            sessionId: payload.sessionId,
+        },
+        secret,
+        {
+            expiresIn,
+        }
+    )
 }
 
 const verifyAccessToken = (token: string) => {
@@ -55,9 +84,63 @@ const verifyRefreshToken = (token: string) => {
     return jwt.verify(token, secret) as TokenPayload
 }
 
+const hashToken = async (token: string) => {
+    return bcrypt.hash(token, 10)
+}
+
+const compareTokenHash = async (token: string, hashedToken: string) => {
+    return bcrypt.compare(token, hashedToken)
+}
+
+const getRefreshTokenExpiryDate = () => {
+    return new Date(Date.now() + getRefreshTokenMaxAge())
+}
+
+const setAccessTokenCookie = (res: Response, accessToken: string) => {
+    res.cookie(ACCESS_TOKEN_COOKIE_NAME, accessToken, {
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: 'lax',
+        maxAge: getAccessTokenMaxAge(),
+        path: '/',
+    })
+}
+
+const setRefreshTokenCookie = (res: Response, refreshToken: string) => {
+    res.cookie(REFRESH_TOKEN_COOKIE_NAME, refreshToken, {
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: 'lax',
+        maxAge: getRefreshTokenMaxAge(),
+        path: '/auth',
+    })
+}
+
+const clearAuthCookies = (res: Response) => {
+    res.clearCookie(ACCESS_TOKEN_COOKIE_NAME, {
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: 'lax',
+        path: '/',
+    })
+
+    res.clearCookie(REFRESH_TOKEN_COOKIE_NAME, {
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: 'lax',
+        path: '/auth',
+    })
+}
+
 export const authToken = {
     generateAccessToken,
     generateRefreshToken,
     verifyAccessToken,
     verifyRefreshToken,
+    hashToken,
+    compareTokenHash,
+    getRefreshTokenExpiryDate,
+    setAccessTokenCookie,
+    setRefreshTokenCookie,
+    clearAuthCookies,
 }
