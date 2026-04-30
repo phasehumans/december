@@ -5,7 +5,7 @@ import { prisma } from '../../config/db'
 import { sendOTP, getNameFromEmail, getUsername } from './auth.utils'
 import { AppError } from '../../utils/appError'
 import { authToken } from './auth.token'
-import { authSession } from './auth.session'
+import { authSession, deleteSessionById, isSessionExpired } from './auth.session'
 
 type Signup = {
     email: string
@@ -32,6 +32,10 @@ type Google = {
     sub: string
     userAgent?: string
     ipAddress?: string
+}
+
+type RefreshSession = {
+    refreshToken?: string
 }
 
 const signup = async (data: Signup) => {
@@ -69,6 +73,8 @@ const signup = async (data: Signup) => {
             otpExpiresAt: new Date(Date.now() + 10 * 60 * 1000),
         },
     })
+
+    // console.log(otp)
 
     await sendOTP(newUser.email, otp)
 
@@ -156,6 +162,8 @@ const verifyOtp = async (data: VerifyOtp) => {
         },
     })
 
+    // console.log(accessToken, refreshToken)
+
     return {
         accessToken,
         refreshToken,
@@ -217,6 +225,9 @@ const login = async (data: Login) => {
             expiresAt: authSession.getRefreshTokenExpiryDate(),
         },
     })
+
+    console.log('accessToken: ', accessToken)
+    console.log('refreshToken: ', refreshToken)
 
     return {
         accessToken,
@@ -294,9 +305,107 @@ const google = async (data: Google) => {
     }
 }
 
+const refreshSession = async (data: RefreshSession) => {
+    const { refreshToken } = data
+
+    if (!refreshToken) {
+        throw new AppError('Refresh token is required', 401)
+    }
+
+    let payload: { userId: string; sessionId: string }
+
+    try {
+        payload = authToken.verifyRefreshToken(refreshToken)
+    } catch {
+        throw new AppError('Invalid or expired refresh token', 401)
+    }
+
+    const { userId, sessionId } = payload
+
+    const session = await prisma.session.findUnique({
+        where: {
+            id: sessionId,
+        },
+    })
+
+    if (!session) {
+        throw new AppError('Session not found', 401)
+    }
+
+    if (session.userId !== userId) {
+        await deleteSessionById(session.id)
+        throw new AppError('Invalid session', 401)
+    }
+
+    if (isSessionExpired(session.expiresAt)) {
+        await deleteSessionById(session.id)
+        throw new AppError('Session expired', 401)
+    }
+
+    const isRefreshTokenValid = await authToken.compareTokenHash(
+        refreshToken,
+        session.refreshTokenHash
+    )
+
+    if (!isRefreshTokenValid) {
+        await deleteSessionById(session.id)
+        throw new AppError('Invalid refresh token', 401)
+    }
+
+    const user = await prisma.user.findUnique({
+        where: {
+            id: userId,
+        },
+    })
+
+    if (!user) {
+        await deleteSessionById(session.id)
+        throw new AppError('User not found', 401)
+    }
+
+    if (user.deletedAt) {
+        await deleteSessionById(session.id)
+        throw new AppError('Account no longer exists', 401)
+    }
+
+    if (user.scheduledDeleteAt) {
+        await deleteSessionById(session.id)
+        throw new AppError('Account is scheduled for deletion', 401)
+    }
+
+    const accessToken = authToken.generateAccessToken({
+        userId: user.id,
+        sessionId: session.id,
+    })
+
+    const newRefreshToken = authToken.generateRefreshToken({
+        userId: user.id,
+        sessionId: session.id,
+    })
+
+    const newRefreshTokenHash = await authToken.hashToken(newRefreshToken)
+
+    await prisma.session.update({
+        where: {
+            id: session.id,
+        },
+        data: {
+            refreshTokenHash: newRefreshTokenHash,
+            expiresAt: authToken.getRefreshTokenExpiryDate(),
+            // lastUsedAt: new Date(), // enable if your schema has it
+        },
+    })
+
+    return {
+        accessToken,
+        refreshToken: newRefreshToken,
+    }
+}
+
 export const authService = {
     signup,
     verifyOtp,
     login,
     google,
+    refreshSession,
 }

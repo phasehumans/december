@@ -1,5 +1,27 @@
 import crypto from 'crypto'
 
+import { prisma } from '../../config/db'
+
+export const isSessionExpired = (expiresAt: Date) => {
+    return expiresAt.getTime() <= Date.now()
+}
+
+export const deleteSessionById = async (sessionId: string) => {
+    await prisma.session.deleteMany({
+        where: {
+            id: sessionId,
+        },
+    })
+}
+
+export const deleteAllUserSessions = async (userId: string) => {
+    await prisma.session.deleteMany({
+        where: {
+            userId,
+        },
+    })
+}
+
 const hashRefreshToken = (refreshToken: string) => {
     return crypto.createHash('sha256').update(refreshToken).digest('hex')
 }
