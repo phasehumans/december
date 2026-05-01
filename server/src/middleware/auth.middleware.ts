@@ -5,21 +5,25 @@ import type { TokenPayload } from '../modules/auth/auth.token'
 
 export const authMiddleware = async (req: Request, res: Response, next: NextFunction) => {
     try {
+        let token: string | undefined
+
         const authHeader = req.headers.authorization
 
-        if (!authHeader || Array.isArray(authHeader)) {
+        if (authHeader && !Array.isArray(authHeader)) {
+            const [scheme, extractedToken] = authHeader.split(' ')
+            if (scheme === 'Bearer' && extractedToken) {
+                token = extractedToken
+            }
+        }
+
+        if (!token) {
+            token = req.cookies?.accessToken
+        }
+
+        if (!token) {
             return res.status(401).json({
                 success: false,
                 message: 'Unauthorized',
-            })
-        }
-
-        const [scheme, token] = authHeader.split(' ')
-
-        if (scheme !== 'Bearer' || !token) {
-            return res.status(401).json({
-                success: false,
-                message: 'Invalid authorization format',
             })
         }
 
