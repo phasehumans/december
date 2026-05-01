@@ -9,6 +9,75 @@ import {
     updateUsernameSchema,
 } from './profile.schema'
 import { authCookie } from '../auth/auth.cookie'
+import { AppError } from '../../utils/appError'
+
+const getInfo = async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
+
+    if (!userId) {
+        return res.status(400).json({
+            success: false,
+            message: 'unauthorized',
+        })
+    }
+
+    try {
+        const result = await profileService.getInfo(userId)
+        return res.status(200).json({
+            success: true,
+            message: 'info fetched successfully',
+            data: result,
+        })
+    } catch (error) {
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({
+                success: false,
+                message: 'failed to fetch info',
+                errors: error.message,
+            })
+        }
+
+        return res.status(500).json({
+            success: false,
+            message: 'failes to fetch info',
+            errors: error instanceof Error ? error.message : 'unknown error',
+        })
+    }
+}
+
+const getProfileCard = async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
+
+    if (!userId) {
+        return res.status(400).json({
+            success: false,
+            message: 'unauthorized',
+        })
+    }
+
+    try {
+        const result = await profileService.getProfileCard(userId)
+        return res.status(200).json({
+            success: true,
+            message: 'profile card fetched successfully',
+            data: result,
+        })
+    } catch (error) {
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({
+                success: false,
+                message: 'failed to fetch profile card',
+                errors: error.message,
+            })
+        }
+
+        return res.status(500).json({
+            success: false,
+            message: 'failed to fetch profile card',
+            errors: error instanceof Error ? error.message : 'unknown error',
+        })
+    }
+}
 
 const getProfile = async (req: Request, res: Response) => {
     const userId = req.user?.userId as string | undefined
@@ -27,10 +96,19 @@ const getProfile = async (req: Request, res: Response) => {
             message: 'profile fetched successfully',
             data: result,
         })
-    } catch (error: any) {
-        return res.status(400).json({
+    } catch (error) {
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({
+                success: false,
+                message: 'failed to fetch profile',
+                errors: error.message,
+            })
+        }
+
+        return res.status(500).json({
             success: false,
-            errors: error.message,
+            message: 'failed to fetch profile',
+            errors: error instanceof Error ? error.message : 'unknown error',
         })
     }
 }
@@ -56,24 +134,30 @@ const updateName = async (req: Request, res: Response) => {
 
     const { name } = parseData.data
     try {
-        const result = await profileService.updateName({
-            userId,
-            name,
-        })
+        const result = await profileService.updateName({ userId, name })
         return res.status(200).json({
             success: true,
             message: 'name updated successfully',
             data: result,
         })
-    } catch (error: any) {
-        return res.status(400).json({
+    } catch (error) {
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({
+                success: false,
+                message: 'failed to update name',
+                errors: error.message,
+            })
+        }
+
+        return res.status(500).json({
             success: false,
-            errors: error.message,
+            message: 'failed to update name',
+            errors: error instanceof Error ? error.message : 'unknown error',
         })
     }
 }
 
-const updatedUsername = async (req: Request, res: Response) => {
+const updateUsername = async (req: Request, res: Response) => {
     const userId = req.user?.userId as string | undefined
     const parseData = updateUsernameSchema.safeParse(req.body)
 
@@ -101,10 +185,19 @@ const updatedUsername = async (req: Request, res: Response) => {
             message: 'username updated successfully',
             data: result,
         })
-    } catch (error: any) {
+    } catch (error) {
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({
+                success: false,
+                message: 'failed to update username',
+                errors: error.message,
+            })
+        }
+
         return res.status(500).json({
             success: false,
-            errors: error.message,
+            message: 'failed to update username',
+            errors: error instanceof Error ? error.message : 'unknown error',
         })
     }
 }
@@ -140,10 +233,19 @@ const changePassword = async (req: Request, res: Response) => {
             message: 'password changed successfully',
             data: result,
         })
-    } catch (error: any) {
-        return res.status(400).json({
+    } catch (error) {
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({
+                success: false,
+                message: 'failed to update password',
+                errors: error.message,
+            })
+        }
+
+        return res.status(500).json({
             success: false,
-            errors: error.message,
+            message: 'failed to update password',
+            errors: error instanceof Error ? error.message : 'unknown error',
         })
     }
 }
@@ -181,10 +283,19 @@ const updateNotifications = async (req: Request, res: Response) => {
             message: 'notifications preferences updated',
             data: result,
         })
-    } catch (error: any) {
+    } catch (error) {
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({
+                success: false,
+                message: 'failed to update notifications preferences',
+                errors: error.message,
+            })
+        }
+
         return res.status(500).json({
             success: false,
-            errors: error.message,
+            message: 'failed to update notifications preferences',
+            errors: error instanceof Error ? error.message : 'unknown error',
         })
     }
 }
@@ -234,37 +345,21 @@ const connectGithub = async (req: Request, res: Response) => {
 
         // console.log(accessToken, username)
 
-        const result = await profileService.connectGithub({ userId, accessToken, username })
+        await profileService.connectGithub({ userId, accessToken, username })
         return res.redirect('http://localhost:3000')
-    } catch (error: any) {
+    } catch (error) {
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({
+                success: false,
+                message: 'failed to connect with github',
+                errors: error.message,
+            })
+        }
+
         return res.status(500).json({
             success: false,
-            errors: error.message,
-        })
-    }
-}
-
-const getInfo = async (req: Request, res: Response) => {
-    const userId = req.user?.userId as string | undefined
-
-    if (!userId) {
-        return res.status(400).json({
-            success: false,
-            message: 'unauthorized',
-        })
-    }
-
-    try {
-        const result = await profileService.getInfo(userId)
-        return res.status(200).json({
-            success: true,
-            message: 'info fetched successfully',
-            data: result,
-        })
-    } catch (error: any) {
-        return res.status(400).json({
-            success: false,
-            errors: error.message,
+            message: 'failed to connect with github',
+            errors: error instanceof Error ? error.message : 'unknown error',
         })
     }
 }
@@ -276,26 +371,31 @@ const signout = async (req: Request, res: Response) => {
     if (!userId || !sessionId) {
         return res.status(401).json({
             success: false,
-            message: 'Unauthorized',
+            message: 'unauthorized',
         })
     }
 
     try {
-        await profileService.signout({
-            userId,
-            sessionId,
-        })
-
+        await profileService.signout({ userId, sessionId })
         authCookie.clearAuthCookies(res)
 
         return res.status(200).json({
             success: true,
-            message: 'Signed out successfully',
+            message: 'signed out successfully',
         })
-    } catch (error: any) {
+    } catch (error) {
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({
+                success: false,
+                message: 'failed to sign out',
+                errors: error.message,
+            })
+        }
+
         return res.status(500).json({
             success: false,
-            message: error.message || 'Failed to sign out',
+            message: 'failed to sign out',
+            errors: error instanceof Error ? error.message : 'unknown error',
         })
     }
 }
@@ -306,25 +406,31 @@ const signoutAll = async (req: Request, res: Response) => {
     if (!userId) {
         return res.status(401).json({
             success: false,
-            message: 'Unauthorized',
+            message: 'unauthorized',
         })
     }
 
     try {
-        await profileService.signoutAll({
-            userId,
-        })
-
+        await profileService.signoutAll({ userId })
         authCookie.clearAuthCookies(res)
 
         return res.status(200).json({
             success: true,
-            message: 'Signed out from all devices successfully',
+            message: 'signed out from all devices successfully',
         })
-    } catch (error: any) {
+    } catch (error) {
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({
+                success: false,
+                message: 'failed to signed out from all devices',
+                errors: error.message,
+            })
+        }
+
         return res.status(500).json({
             success: false,
-            message: error.message || 'Failed to sign out from all devices',
+            message: 'failed to signed out from all devices',
+            errors: error instanceof Error ? error.message : 'unknown error',
         })
     }
 }
@@ -335,25 +441,31 @@ const deleteAccount = async (req: Request, res: Response) => {
     if (!userId) {
         return res.status(401).json({
             success: false,
-            message: 'Unauthorized',
+            message: 'unauthorized',
         })
     }
 
     try {
-        await profileService.deleteAccount({
-            userId,
-        })
-
+        await profileService.deleteAccount({ userId })
         authCookie.clearAuthCookies(res)
 
         return res.status(200).json({
             success: true,
-            message: 'Account deleted successfully',
+            message: 'account deleted successfully',
         })
-    } catch (error: any) {
+    } catch (error) {
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({
+                success: false,
+                message: 'failed to delete account',
+                errors: error.message,
+            })
+        }
+
         return res.status(500).json({
             success: false,
-            message: error.message || 'Failed to delete account',
+            message: 'failed to delete account',
+            errors: error instanceof Error ? error.message : 'unknown error',
         })
     }
 }
@@ -386,10 +498,19 @@ const chatSuggestions = async (req: Request, res: Response) => {
             message: 'chat suggestions updated successfully',
             data: result,
         })
-    } catch (error: any) {
+    } catch (error) {
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({
+                success: false,
+                message: 'failed to update chat suggestions',
+                errors: error.message,
+            })
+        }
+
         return res.status(500).json({
             success: false,
-            errors: error.message,
+            message: 'failed to update chat suggestions',
+            errors: error instanceof Error ? error.message : 'unknown error',
         })
     }
 }
@@ -419,54 +540,38 @@ const generationSound = async (req: Request, res: Response) => {
         const result = await profileService.generationSound({ userId, generationSound })
         return res.status(200).json({
             success: true,
-            message: 'generation sound prefernce updated successfully',
+            message: 'generation sound preference updated successfully',
             data: result,
         })
-    } catch (error: any) {
+    } catch (error) {
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({
+                success: false,
+                message: 'failed to update generation sound preference',
+                errors: error.message,
+            })
+        }
+
         return res.status(500).json({
             success: false,
-            errors: error.message,
-        })
-    }
-}
-
-const getProfileCard = async (req: Request, res: Response) => {
-    const userId = req.user?.userId as string | undefined
-
-    if (!userId) {
-        return res.status(400).json({
-            success: false,
-            message: 'unauthorized',
-        })
-    }
-
-    try {
-        const result = await profileService.getProfileCard(userId)
-        return res.status(200).json({
-            success: true,
-            message: 'profile fetched successfully',
-            data: result,
-        })
-    } catch (error: any) {
-        return res.status(400).json({
-            success: false,
-            errors: error.message,
+            message: 'failed to update generation sound preference',
+            errors: error instanceof Error ? error.message : 'unknown error',
         })
     }
 }
 
 export const profileController = {
+    getInfo,
+    getProfileCard,
     getProfile,
     updateName,
-    updatedUsername,
+    updateUsername,
     changePassword,
     updateNotifications,
     connectGithub,
-    getInfo,
     signout,
     signoutAll,
     deleteAccount,
     chatSuggestions,
     generationSound,
-    getProfileCard,
 }

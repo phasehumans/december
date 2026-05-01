@@ -1,5 +1,6 @@
 import express from 'express'
 import cors from 'cors'
+import cookieParser from 'cookie-parser'
 
 import authRouter from './modules/auth/auth.routes'
 import profileRouter from './modules/profile/profile.routes'
@@ -14,6 +15,7 @@ import templateRouter from './modules/template/template.routes'
 const app = express()
 
 app.use(express.json({ limit: '25mb' }))
+app.use(cookieParser())
 app.use(express.urlencoded({ extended: true, limit: '25mb' }))
 app.use(
     cors({

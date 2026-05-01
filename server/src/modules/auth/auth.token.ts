@@ -1,6 +1,7 @@
 import type { Response } from 'express'
 import jwt, { type SignOptions } from 'jsonwebtoken'
 import bcrypt from 'bcrypt'
+import { randomUUID } from 'crypto'
 
 export type TokenPayload = {
     userId: string
@@ -56,6 +57,7 @@ const generateRefreshToken = (payload: TokenPayload) => {
         {
             userId: payload.userId,
             sessionId: payload.sessionId,
+            jti: randomUUID(),
         },
         secret,
         {
@@ -92,10 +94,6 @@ const compareTokenHash = async (token: string, hashedToken: string) => {
     return bcrypt.compare(token, hashedToken)
 }
 
-const getRefreshTokenExpiryDate = () => {
-    return new Date(Date.now() + getRefreshTokenMaxAge())
-}
-
 const setAccessTokenCookie = (res: Response, accessToken: string) => {
     res.cookie(ACCESS_TOKEN_COOKIE_NAME, accessToken, {
         httpOnly: true,
@@ -112,7 +110,7 @@ const setRefreshTokenCookie = (res: Response, refreshToken: string) => {
         secure: isProduction,
         sameSite: 'lax',
         maxAge: getRefreshTokenMaxAge(),
-        path: '/auth',
+        path: '/',
     })
 }
 
@@ -128,7 +126,7 @@ const clearAuthCookies = (res: Response) => {
         httpOnly: true,
         secure: isProduction,
         sameSite: 'lax',
-        path: '/auth',
+        path: '/',
     })
 }
 
@@ -139,7 +137,6 @@ export const authToken = {
     verifyRefreshToken,
     hashToken,
     compareTokenHash,
-    getRefreshTokenExpiryDate,
     setAccessTokenCookie,
     setRefreshTokenCookie,
     clearAuthCookies,
