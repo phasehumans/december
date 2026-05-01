@@ -20,8 +20,8 @@ model User {
   otpExpiresAt  DateTime?
   otpHash       String?
 
-  deletedAt         DateTime?
-  scheduledDeleteAt DateTime?
+  isDeleted Boolean   @default(false)
+  deletedAt DateTime?
 
   githubToken     String?
   githubUsername  String?

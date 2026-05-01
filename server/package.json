@@ -8,7 +8,8 @@
         "start": "bun src/server.ts",
         "test": "bun test",
         "studio": "bunx prisma studio --browser none --port 5555",
-        "studio:test": "bunx dotenv -e .env.test -- bunx prisma studio --browser none --port 5556"
+        "studio:test": "bunx dotenv -e .env.test -- bunx prisma studio --browser none --port 5556",
+        "test:migrate": "dotenv -e .env.test -- prisma migrate deploy"
     },
     "devDependencies": {
         "@types/adm-zip": "^0.5.8",

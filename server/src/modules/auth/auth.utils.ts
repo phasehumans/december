@@ -15,14 +15,15 @@ export const sendOTP = async (email: string, otp: string) => {
             <meta name="viewport" content="width=device-width, initial-scale=1.0" />
             <title>Phasehumans Verification Code</title>
           </head>
-          <body style="margin:0; padding:0; background:#1E1D1B; font-family:Arial, Helvetica, sans-serif;">
+
+          <body style="margin:0; padding:0; background:#ffffff; font-family:Arial, Helvetica, sans-serif;">
             <table
               role="presentation"
               width="100%"
               cellspacing="0"
               cellpadding="0"
               border="0"
-              style="background:#1E1D1B; margin:0; padding:40px 16px;"
+              style="background:#ffffff; margin:0; padding:40px 16px;"
             >
               <tr>
                 <td align="center">
@@ -55,7 +56,7 @@ export const sendOTP = async (email: string, otp: string) => {
                         >
                           phasehumans
                         </h1>
-        
+
                         <p
                           style="
                             margin:14px 0 0;
@@ -68,14 +69,14 @@ export const sendOTP = async (email: string, otp: string) => {
                         </p>
                       </td>
                     </tr>
-        
+
                     <!-- Divider -->
                     <tr>
                       <td style="padding:0 32px;">
                         <div style="height:1px; background:#2A2927;"></div>
                       </td>
                     </tr>
-        
+
                     <!-- Body -->
                     <tr>
                       <td style="padding:28px 32px 32px;">
@@ -90,7 +91,7 @@ export const sendOTP = async (email: string, otp: string) => {
                         >
                           Use the verification code below to continue.
                         </p>
-        
+
                         <!-- OTP Box -->
                         <div style="margin:0 0 24px; text-align:center;">
                           <div
@@ -113,7 +114,7 @@ export const sendOTP = async (email: string, otp: string) => {
                             ${otp}
                           </div>
                         </div>
-        
+
                         <p
                           style="
                             margin:0 0 8px;
@@ -125,7 +126,7 @@ export const sendOTP = async (email: string, otp: string) => {
                         >
                           This code will expire in <strong style="color:#FAFAF9;">10 minutes</strong>.
                         </p>
-        
+
                         <p
                           style="
                             margin:0;
@@ -139,7 +140,7 @@ export const sendOTP = async (email: string, otp: string) => {
                         </p>
                       </td>
                     </tr>
-        
+
                     <!-- Footer -->
                     <tr>
                       <td
