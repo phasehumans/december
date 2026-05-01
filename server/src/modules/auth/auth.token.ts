@@ -94,10 +94,6 @@ const compareTokenHash = async (token: string, hashedToken: string) => {
     return bcrypt.compare(token, hashedToken)
 }
 
-const getRefreshTokenExpiryDate = () => {
-    return new Date(Date.now() + getRefreshTokenMaxAge())
-}
-
 const setAccessTokenCookie = (res: Response, accessToken: string) => {
     res.cookie(ACCESS_TOKEN_COOKIE_NAME, accessToken, {
         httpOnly: true,
@@ -141,7 +137,6 @@ export const authToken = {
     verifyRefreshToken,
     hashToken,
     compareTokenHash,
-    getRefreshTokenExpiryDate,
     setAccessTokenCookie,
     setRefreshTokenCookie,
     clearAuthCookies,

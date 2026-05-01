@@ -233,7 +233,7 @@ const refreshSession = async (req: Request, res: Response, next: NextFunction) =
 
         return res.status(200).json({
             success: true,
-            message: 'Session refreshed successfully',
+            message: 'session refreshed successfully',
         })
     } catch (error) {
         authToken.clearAuthCookies(res)
@@ -242,7 +242,7 @@ const refreshSession = async (req: Request, res: Response, next: NextFunction) =
             return next(error)
         }
 
-        return next(new AppError('Failed to refresh session', 401))
+        return next(new AppError('failed to refresh session', 401))
     }
 }
 
