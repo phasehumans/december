@@ -1,191 +1,354 @@
-// import { describe, it, expect, beforeEach, afterAll } from 'bun:test'
-// import bcrypt from 'bcrypt'
+import { describe, it, expect, beforeEach, afterAll } from 'bun:test'
+import bcrypt from 'bcrypt'
 
-// import { prisma } from '../../src/config/db'
-// import { profileService } from '../../src/modules/profile/profile.service'
+import { prisma } from '../../../src/config/db'
+import { profileService } from '../../../src/modules/profile/profile.service'
+import { GenerationSound } from '../../../src/modules/profile/profile.schema'
 
-// describe('profile.service', () => {
-//     let testUserId: string
+const createSession = async (userId: string, overrides = {}) => {
+    return prisma.session.create({
+        data: {
+            userId,
+            refreshTokenHash: 'test-hash',
+            expiresAt: new Date(Date.now() + 1000 * 60 * 60), // 1 hour
+            isRevoked: false,
+            ...overrides,
+        },
+    })
+}
 
-//     beforeEach(async () => {
-//         await prisma.user.deleteMany()
+describe('profile.service.integration', () => {
+    let userId: string
 
-//         const hashedPassword = await bcrypt.hash('oldpassword123', 10)
+    beforeEach(async () => {
+        await prisma.session.deleteMany()
+        await prisma.user.deleteMany()
 
-//         const user = await prisma.user.create({
-//             data: {
-//                 email: 'profiletest@example.com',
-//                 password: hashedPassword,
-//                 name: 'Old Name',
-//                 username: 'profiletest',
-//                 emailVerified: true,
-//                 receiveNotification: true,
-//                 githubConnected: false,
-//             },
-//         })
+        const user = await prisma.user.create({
+            data: {
+                name: 'Chaitanya Sonawane',
+                email: 'test@example.com',
+                username: 'chaitanya',
+                password: await bcrypt.hash('Password123', 10),
+                emailVerified: true,
+                notifyProductUpdates: false,
+                notifyProjectActivity: false,
+                notifySecurityAlerts: false,
+                chatSuggestions: false,
+                generationSound: GenerationSound.NEVER,
+                githubConnected: false,
+                isDeleted: false,
+            },
+        })
 
-//         testUserId = user.id
-//     })
+        userId = user.id
+    })
 
-//     afterAll(async () => {
-//         await prisma.user.deleteMany()
-//         await prisma.$disconnect()
-//     })
+    afterAll(async () => {
+        await prisma.$disconnect()
+    })
 
-//     describe('getProfile', () => {
-//         it('should return user profile when user exists', async () => {
-//             const profile = await profileService.getProfile(testUserId)
+    describe('getInfo', () => {
+        it('should return firstName and github status', async () => {
+            const result = await profileService.getInfo(userId)
 
-//             expect(profile).toBeDefined()
-//             expect(profile.id).toBe(testUserId)
-//             expect(profile.email).toBe('profiletest@example.com')
-//             expect(profile.name).toBe('Old Name')
-//             expect(profile.username).toBe('profiletest')
-//         })
+            expect(result.firstName).toBe('Chaitanya')
+            expect(result.isGithubConnected).toBe(false)
+        })
 
-//         it('should throw error if user does not exist', async () => {
-//             await expect(profileService.getProfile('non-existent-id')).rejects.toThrow(
-//                 'user not found'
-//             )
-//         })
-//     })
+        it('should throw if user not found', async () => {
+            await expect(profileService.getInfo('invalid-id')).rejects.toThrow('user not found')
+        })
+    })
 
-//     describe('updateName', () => {
-//         it('should update user name successfully', async () => {
-//             const updatedUser = await profileService.updateName({
-//                 userId: testUserId,
-//                 name: 'New Name',
-//             })
+    describe('getProfile', () => {
+        it('should return full profile', async () => {
+            const result = await profileService.getProfile(userId)
 
-//             expect(updatedUser.name).toBe('New Name')
+            expect(result.id).toBe(userId)
+            expect(result.email).toBe('test@example.com')
+        })
 
-//             const dbUser = await prisma.user.findUnique({
-//                 where: { id: testUserId },
-//             })
+        it('should fail if deleted user', async () => {
+            await prisma.user.update({
+                where: { id: userId },
+                data: { isDeleted: true },
+            })
 
-//             expect(dbUser?.name).toBe('New Name')
-//         })
+            await expect(profileService.getProfile(userId)).rejects.toThrow('user not found')
+        })
+    })
 
-//         it('should throw error if user does not exist', async () => {
-//             await expect(
-//                 profileService.updateName({
-//                     userId: 'non-existent-id',
-//                     name: 'New Name',
-//                 })
-//             ).rejects.toThrow('user not found')
-//         })
-//     })
+    describe('updateName', () => {
+        it('should update name successfully', async () => {
+            const result = await profileService.updateName({
+                userId,
+                name: 'New Name',
+            })
 
-//     describe('changePassword', () => {
-//         it('should change password successfully and hash it', async () => {
-//             const updatedUser = await profileService.changePassword({
-//                 userId: testUserId,
-//                 password: 'newpassword123',
-//             })
+            expect(result.name).toBe('New Name')
 
-//             expect(updatedUser.password).toBeDefined()
-//             expect(updatedUser.password).not.toBe('newpassword123')
+            const db = await prisma.user.findUnique({ where: { id: userId } })
+            expect(db!.name).toBe('New Name')
+        })
 
-//             const isMatch = await bcrypt.compare('newpassword123', updatedUser!.password!)
+        it('should fail if user not found', async () => {
+            await expect(
+                profileService.updateName({
+                    userId: 'invalid',
+                    name: 'test',
+                })
+            ).rejects.toThrow('user not found')
+        })
+    })
 
-//             expect(isMatch).toBe(true)
+    describe('updateUsername', () => {
+        it('should update username successfully', async () => {
+            const result = await profileService.updateUsername({
+                userId,
+                username: 'new_username',
+            })
 
-//             const dbUser = await prisma.user.findUnique({
-//                 where: { id: testUserId },
-//             })
+            expect(result.username).toBe('new_username')
+        })
 
-//             expect(dbUser).toBeDefined()
+        it('should fail if same username', async () => {
+            await expect(
+                profileService.updateUsername({
+                    userId,
+                    username: 'chaitanya',
+                })
+            ).rejects.toThrow('new username must be different')
+        })
 
-//             const isDbMatch = await bcrypt.compare('newpassword123', dbUser!.password!)
+        it('should fail if username taken', async () => {
+            await prisma.user.create({
+                data: {
+                    name: 'other',
+                    email: 'other@example.com',
+                    username: 'taken_username',
+                    password: 'test',
+                },
+            })
 
-//             expect(isDbMatch).toBe(true)
-//         })
+            await expect(
+                profileService.updateUsername({
+                    userId,
+                    username: 'taken_username',
+                })
+            ).rejects.toThrow('already taken')
+        })
+    })
 
-//         it('should throw error if user does not exist', async () => {
-//             await expect(
-//                 profileService.changePassword({
-//                     userId: 'non-existent-id',
-//                     password: 'newpassword123',
-//                 })
-//             ).rejects.toThrow('user not found')
-//         })
-//     })
+    describe('changePassword', () => {
+        it('should hash and update password', async () => {
+            const result = await profileService.changePassword({
+                userId,
+                password: 'NewPass123',
+            })
 
-//     describe('updateNotification', () => {
-//         it('should update receiveNotification to false', async () => {
-//             const updatedUser = await profileService.updateNotification({
-//                 userId: testUserId,
-//                 receiveNotification: false,
-//             })
+            const isValid = await bcrypt.compare('NewPass123', result.password!)
 
-//             expect(updatedUser.receiveNotification).toBe(false)
+            expect(isValid).toBe(true)
+        })
 
-//             const dbUser = await prisma.user.findUnique({
-//                 where: { id: testUserId },
-//             })
+        it('should fail if user not found', async () => {
+            await expect(
+                profileService.changePassword({
+                    userId: 'invalid',
+                    password: 'test123',
+                })
+            ).rejects.toThrow('user not found')
+        })
+    })
 
-//             expect(dbUser?.receiveNotification).toBe(false)
-//         })
+    describe('updateNotifications', () => {
+        it('should update single field', async () => {
+            const result = await profileService.updateNotifications({
+                userId,
+                notifyProductUpdates: true,
+            })
 
-//         it('should update receiveNotification to true', async () => {
-//             await prisma.user.update({
-//                 where: { id: testUserId },
-//                 data: { receiveNotification: false },
-//             })
+            expect(result.notifyProductUpdates).toBe(true)
+        })
 
-//             const updatedUser = await profileService.updateNotification({
-//                 userId: testUserId,
-//                 receiveNotification: true,
-//             })
+        it('should update multiple fields', async () => {
+            const result = await profileService.updateNotifications({
+                userId,
+                notifyProductUpdates: true,
+                notifySecurityAlerts: true,
+            })
 
-//             expect(updatedUser.receiveNotification).toBe(true)
+            expect(result.notifyProductUpdates).toBe(true)
+            expect(result.notifySecurityAlerts).toBe(true)
+        })
 
-//             const dbUser = await prisma.user.findUnique({
-//                 where: { id: testUserId },
-//             })
+        it('should fail if no fields provided', async () => {
+            await expect(profileService.updateNotifications({ userId })).rejects.toThrow(
+                'at least one notification setting must be provided'
+            )
+        })
+    })
 
-//             expect(dbUser?.receiveNotification).toBe(true)
-//         })
+    describe('connectGithub', () => {
+        it('should connect github successfully', async () => {
+            const result = await profileService.connectGithub({
+                userId,
+                username: 'githubUser',
+                accessToken: 'token123',
+            })
 
-//         it('should throw error if user does not exist', async () => {
-//             await expect(
-//                 profileService.updateNotification({
-//                     userId: 'non-existent-id',
-//                     receiveNotification: false,
-//                 })
-//             ).rejects.toThrow('user not found')
-//         })
-//     })
+            expect(result.githubConnected).toBe(true)
+            expect(result.githubUsername).toBe('githubUser')
+        })
 
-//     describe('connectGithub', () => {
-//         it('should connect github successfully', async () => {
-//             const updatedUser = await profileService.connectGithub({
-//                 userId: testUserId,
-//                 username: 'chaitanya-github',
-//                 accessToken: 'github-access-token-123',
-//             })
+        it('should fail if user not found', async () => {
+            await expect(
+                profileService.connectGithub({
+                    userId: 'invalid',
+                    username: 'x',
+                    accessToken: 'y',
+                })
+            ).rejects.toThrow('user not found')
+        })
+    })
 
-//             expect(updatedUser.githubUsername).toBe('chaitanya-github')
-//             expect(updatedUser.githubToken).toBe('github-access-token-123')
-//             expect(updatedUser.githubConnected).toBe(true)
+    describe('signout', () => {
+        it('should revoke session', async () => {
+            const session = await createSession(userId)
 
-//             const dbUser = await prisma.user.findUnique({
-//                 where: { id: testUserId },
-//             })
+            await profileService.signout({
+                userId,
+                sessionId: session.id,
+            })
 
-//             expect(dbUser?.githubUsername).toBe('chaitanya-github')
-//             expect(dbUser?.githubToken).toBe('github-access-token-123')
-//             expect(dbUser?.githubConnected).toBe(true)
-//         })
+            const updated = await prisma.session.findUnique({
+                where: { id: session.id },
+            })
 
-//         it('should throw error if user does not exist', async () => {
-//             await expect(
-//                 profileService.connectGithub({
-//                     userId: 'non-existent-id',
-//                     username: 'chaitanya-github',
-//                     accessToken: 'github-access-token-123',
-//                 })
-//             ).rejects.toThrow('user not found')
-//         })
-//     })
-// })
+            expect(updated!.isRevoked).toBe(true)
+        })
+
+        it('should silently pass if session not found', async () => {
+            await profileService.signout({
+                userId,
+                sessionId: 'invalid',
+            })
+        })
+    })
+
+    describe('signoutAll', () => {
+        it('should revoke all sessions', async () => {
+            await prisma.session.createMany({
+                data: [
+                    {
+                        userId,
+                        refreshTokenHash: 'hash1',
+                        expiresAt: new Date(Date.now() + 10000),
+                        isRevoked: false,
+                    },
+                    {
+                        userId,
+                        refreshTokenHash: 'hash2',
+                        expiresAt: new Date(Date.now() + 10000),
+                        isRevoked: false,
+                    },
+                ],
+            })
+
+            await profileService.signoutAll({ userId })
+
+            const sessions = await prisma.session.findMany({
+                where: { userId },
+            })
+
+            expect(sessions.length).toBe(2)
+            expect(sessions.every((s) => s.isRevoked)).toBe(true)
+        })
+    })
+
+    describe('deleteAccount', () => {
+        it('should soft delete user and revoke sessions', async () => {
+            await prisma.session.create({
+                data: {
+                    userId,
+                    refreshTokenHash: 'hash1',
+                    expiresAt: new Date(Date.now() + 10000),
+                    isRevoked: false,
+                },
+            })
+
+            await profileService.deleteAccount({ userId })
+
+            const user = await prisma.user.findUnique({
+                where: { id: userId },
+            })
+
+            const sessions = await prisma.session.findMany({
+                where: { userId },
+            })
+
+            expect(user).not.toBeNull()
+            expect(user!.isDeleted).toBe(true)
+            expect(user!.deletedAt).toBeTruthy()
+
+            expect(sessions.length).toBe(1)
+            expect(sessions.every((s) => s.isRevoked)).toBe(true)
+            expect(sessions.every((s) => s.revokedAt !== null)).toBe(true)
+        })
+
+        it('should fail if already deleted', async () => {
+            await prisma.user.update({
+                where: { id: userId },
+                data: {
+                    isDeleted: true,
+                    deletedAt: new Date(),
+                },
+            })
+
+            await expect(profileService.deleteAccount({ userId })).rejects.toThrow(
+                'user account is already deleted'
+            )
+        })
+    })
+
+    describe('chatSuggestions', () => {
+        it('should update preference', async () => {
+            const result = await profileService.chatSuggestions({
+                userId,
+                chatSuggestions: true,
+            })
+
+            expect(result.chatSuggestions).toBe(true)
+        })
+
+        it('should fail if same value', async () => {
+            await expect(
+                profileService.chatSuggestions({
+                    userId,
+                    chatSuggestions: false,
+                })
+            ).rejects.toThrow('must be different')
+        })
+    })
+
+    describe('generationSound', () => {
+        it('should update generation sound', async () => {
+            const result = await profileService.generationSound({
+                userId,
+                generationSound: GenerationSound.ALWAYS,
+            })
+
+            expect(result.generationSound).toBe(GenerationSound.ALWAYS)
+        })
+
+        it('should fail if same value', async () => {
+            await expect(
+                profileService.generationSound({
+                    userId,
+                    generationSound: GenerationSound.NEVER,
+                })
+            ).rejects.toThrow('must be different')
+        })
+    })
+})

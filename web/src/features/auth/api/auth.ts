@@ -28,7 +28,7 @@ const signup = (data: SignupInput) => {
 }
 
 const verifyOtp = (data: VerifyOtpInput) => {
-    return apiRequest<string>('/auth/verify-otp', {
+    return apiRequest<string>('/auth/verify', {
         method: 'POST',
         includeAuth: false,
         body: JSON.stringify(data),

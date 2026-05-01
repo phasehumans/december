@@ -129,9 +129,11 @@ describe('profile.schema', () => {
     })
 
     describe('updateNotificationSchema', () => {
-        test('should accept receiveNotification as true', () => {
+        test('should accept all fields as true', () => {
             const input = {
-                receiveNotification: true,
+                notifyProjectActivity: true,
+                notifyProductUpdates: true,
+                notifySecurityAlerts: true,
             }
 
             const result = updateNotificationSchema.safeParse(input)
@@ -139,9 +141,11 @@ describe('profile.schema', () => {
             expect(result.success).toBe(true)
         })
 
-        test('should accept receiveNotification as false', () => {
+        test('should accept all fields as false', () => {
             const input = {
-                receiveNotification: false,
+                notifyProjectActivity: false,
+                notifyProductUpdates: false,
+                notifySecurityAlerts: false,
             }
 
             const result = updateNotificationSchema.safeParse(input)
@@ -149,28 +153,49 @@ describe('profile.schema', () => {
             expect(result.success).toBe(true)
         })
 
-        test('should reject receiveNotification as when its string', () => {
+        test('should accept partial fields (since all are optional)', () => {
             const input = {
-                receiveNotification: 'true',
+                notifyProjectActivity: true,
             }
 
             const result = updateNotificationSchema.safeParse(input)
 
-            expect(result.success).toBe(false)
+            expect(result.success).toBe(true)
         })
 
-        test('should reject receiveNotification as in binary(0,1)', () => {
-            const input = {
-                receiveNotification: 0,
-            }
-
-            const result = updateNotificationSchema.safeParse(input)
-
-            expect(result.success).toBe(false)
-        })
-
-        test('should reject when receiveNotification is missing', () => {
+        test('should accept empty object (all fields optional)', () => {
             const input = {}
+
+            const result = updateNotificationSchema.safeParse(input)
+
+            expect(result.success).toBe(true)
+        })
+
+        test('should reject when any field is not boolean (string)', () => {
+            const input = {
+                notifyProjectActivity: 'true',
+            }
+
+            const result = updateNotificationSchema.safeParse(input)
+
+            expect(result.success).toBe(false)
+        })
+
+        test('should reject when any field is not boolean (number)', () => {
+            const input = {
+                notifyProductUpdates: 1,
+            }
+
+            const result = updateNotificationSchema.safeParse(input)
+
+            expect(result.success).toBe(false)
+        })
+
+        test('should reject multiple invalid fields', () => {
+            const input = {
+                notifyProjectActivity: 'true',
+                notifySecurityAlerts: 0,
+            }
 
             const result = updateNotificationSchema.safeParse(input)
 
