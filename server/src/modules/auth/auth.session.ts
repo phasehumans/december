@@ -1,5 +1,3 @@
-import crypto from 'crypto'
-
 import { prisma } from '../../config/db'
 
 export const isSessionExpired = (expiresAt: Date) => {

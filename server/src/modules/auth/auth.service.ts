@@ -74,7 +74,7 @@ const signup = async (data: Signup) => {
         },
     })
 
-    // console.log(otp)
+    console.log(otp)
 
     await sendOTP(newUser.email, otp)
 
@@ -144,6 +144,7 @@ const verifyOtp = async (data: VerifyOtp) => {
         sessionId,
     })
 
+    // added jti; to grab specific token
     const refreshToken = authToken.generateRefreshToken({
         userId: user.id,
         sessionId,
@@ -391,8 +392,7 @@ const refreshSession = async (data: RefreshSession) => {
         },
         data: {
             refreshTokenHash: newRefreshTokenHash,
-            expiresAt: authToken.getRefreshTokenExpiryDate(),
-            // lastUsedAt: new Date(), // enable if your schema has it
+            expiresAt: authSession.getRefreshTokenExpiryDate(),
         },
     })
 
