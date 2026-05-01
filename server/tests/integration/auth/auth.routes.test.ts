@@ -245,7 +245,7 @@ describe('auth.routes.integration', () => {
 
             const res = await request(app)
                 .post('/auth/refresh')
-                .set('Cookie', buildCookieHeader(login)) // ✅ FIXED
+                .set('Cookie', buildCookieHeader(login))
 
             expect(res.status).toBe(200)
 

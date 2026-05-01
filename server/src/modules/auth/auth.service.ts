@@ -94,7 +94,7 @@ const verifyOtp = async (data: VerifyOtp) => {
         throw new AppError('user not found', 404)
     }
 
-    if (user.deletedAt) {
+    if (user.deletedAt || user.isDeleted) {
         throw new AppError('account has been deleted', 403)
     }
 
@@ -184,7 +184,8 @@ const login = async (data: Login) => {
         throw new AppError('invalid email or password', 401)
     }
 
-    if (existingUser.deletedAt) {
+    // add CTA to contact support @ for recover account
+    if (existingUser.deletedAt || existingUser.isDeleted) {
         throw new AppError('account has been deleted', 403)
     }
 
@@ -257,7 +258,7 @@ const google = async (data: Google) => {
                 name: name,
             },
         })
-    } else if (user.deletedAt) {
+    } else if (user.deletedAt || user.isDeleted) {
         throw new AppError('account has been deleted', 403)
     } else if (!user.googleId) {
         user = await prisma.user.update({
@@ -364,14 +365,9 @@ const refreshSession = async (data: RefreshSession) => {
         throw new AppError('user not found', 401)
     }
 
-    if (user.deletedAt) {
+    if (user.deletedAt || user.isDeleted) {
         await deleteSessionById(session.id)
         throw new AppError('account no longer exists', 401)
-    }
-
-    if (user.scheduledDeleteAt) {
-        await deleteSessionById(session.id)
-        throw new AppError('account is scheduled for deletion', 401)
     }
 
     const accessToken = authToken.generateAccessToken({
