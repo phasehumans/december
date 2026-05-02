@@ -17,6 +17,11 @@ import { useProfileSettingsController } from '../hooks/useProfileSettingsControl
 import { ProfileNameModal } from './ProfileNameModal'
 import { ProfilePasswordModal } from './ProfilePasswordModal'
 import { ProfileSettingsContent } from './ProfileSettingsContent'
+import { ProfileGeneralSettings } from './ProfileGeneralSettings'
+import { ProfileBillingSettings } from './ProfileBillingSettings'
+import { ProfileUsageSettings } from './ProfileUsageSettings'
+import { ProfileApiKeysSettings } from './ProfileApiKeysSettings'
+import { ProfileIntegrationsSettings } from './ProfileIntegrationsSettings'
 import { ProfileSettingsSkeleton } from './ProfileSettingsSkeleton'
 import { ProfileDeleteAccountModal } from './ProfileDeleteAccountModal'
 import { ProfileSignOutAllSessionsModal } from './ProfileSignOutAllSessionsModal'
@@ -202,7 +207,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                         </div>
 
                         {isProfileLoading && !profile ? (
-                            <ProfileSettingsSkeleton />
+                            <ProfileSettingsSkeleton activeTab={activeTab} />
                         ) : activeTab === 'Account' ? (
                             <ProfileSettingsContent
                                 profile={profile}
@@ -224,6 +229,19 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                                 onOpenSignOutAllSessionsModal={() =>
                                     setSignOutAllSessionsModalOpen(true)
                                 }
+                            />
+                        ) : activeTab === 'General' ? (
+                            <ProfileGeneralSettings />
+                        ) : activeTab === 'Billing' ? (
+                            <ProfileBillingSettings />
+                        ) : activeTab === 'Usage' ? (
+                            <ProfileUsageSettings />
+                        ) : activeTab === 'API Keys' ? (
+                            <ProfileApiKeysSettings />
+                        ) : activeTab === 'Integrations' ? (
+                            <ProfileIntegrationsSettings
+                                isGithubConnected={isGithubConnected}
+                                onConnectGithub={connectGithub}
                             />
                         ) : (
                             <div className="flex flex-col gap-6">
