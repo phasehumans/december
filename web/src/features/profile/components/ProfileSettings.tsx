@@ -2,17 +2,14 @@ import React from 'react'
 import {
     ChevronLeft,
     UserCircle,
-    Settings,
-    Palette,
-    Bot,
-    Keyboard,
-    Bell,
-    Monitor,
+    SlidersHorizontal,
+    CreditCard,
+    Activity,
+    KeyRound,
+    BookText,
+    FileClock,
+    ArrowUpRight,
     Plug,
-    Building2,
-    BookOpen,
-    Code2,
-    ExternalLink,
 } from 'lucide-react'
 
 import { useProfileSettingsController } from '../hooks/useProfileSettingsController'
@@ -70,14 +67,14 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
               : null)
 
     return (
-        <div className="flex w-full h-full bg-[#100E12] overflow-hidden">
-            <div className="flex w-full h-full bg-[#171615] rounded-[24px] border border-white/5 m-2 md:m-4 overflow-hidden">
+        <div className="flex w-full h-full bg-[#100E12] overflow-hidden p-1 md:p-[6px]">
+            <div className="flex w-full h-full bg-[#171615] rounded-lg border border-[#242323] overflow-hidden">
                 {/* Settings Sidebar */}
-                <div className="w-[240px] shrink-0 border-r border-white/5 flex flex-col py-4">
+                <div className="w-[240px] shrink-0 border-r border-[#242323] flex flex-col py-4">
                     <div className="px-4 mb-6">
                         <button
                             onClick={onBack}
-                            className="flex items-center text-[#969593] hover:text-[#D6D5D4] text-[13px] font-medium transition-colors"
+                            className="flex items-center text-[#7B7A79] hover:text-[#D6D5D4] hover:bg-[#2B2A29] px-2 py-1 -ml-2 rounded-lg text-[13px] font-medium transition-colors"
                         >
                             <ChevronLeft className="w-4 h-4 mr-2" />
                             Home
@@ -85,71 +82,55 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                     </div>
 
                     <div className="flex-1 overflow-y-auto px-3 flex flex-col gap-[2px]">
-                        <div className="px-3 py-2 text-[11px] font-medium text-[#969593] mb-1">
-                            Account
+                        <div className="px-3 py-2 text-[12px] font-medium text-[#7B7A79] mb-1">
+                            Settings
                         </div>
 
-                        <button className="flex items-center gap-3 px-3 py-2 rounded-xl bg-[#252422] text-[#D6D5D4] text-[13px] font-medium">
+                        <button className="flex items-center gap-3 px-3 py-1.5 rounded-xl bg-[#2B2A29] text-[#D6D5C9] text-[13px] font-medium transition-colors">
                             <UserCircle className="w-[18px] h-[18px]" strokeWidth={1.5} />
                             Account
                         </button>
-                        <button className="flex items-center gap-3 px-3 py-2 rounded-xl text-[#969593] hover:bg-white/[0.04] hover:text-[#D6D5D4] text-[13px] font-medium transition-colors">
-                            <Settings className="w-[18px] h-[18px]" strokeWidth={1.5} />
-                            Preferences
+                        <button className="flex items-center gap-3 px-3 py-1.5 rounded-xl text-[#D6D5C9] hover:bg-[#2B2A29] text-[13px] font-medium transition-colors">
+                            <SlidersHorizontal className="w-[18px] h-[18px]" strokeWidth={1.5} />
+                            General
                         </button>
-                        <button className="flex items-center gap-3 px-3 py-2 rounded-xl text-[#969593] hover:bg-white/[0.04] hover:text-[#D6D5D4] text-[13px] font-medium transition-colors">
-                            <Palette className="w-[18px] h-[18px]" strokeWidth={1.5} />
-                            Personalisation
+                        <button className="flex items-center gap-3 px-3 py-1.5 rounded-xl text-[#D6D5C9] hover:bg-[#2B2A29] text-[13px] font-medium transition-colors">
+                            <Plug className="w-[18px] h-[18px] rotate-45" strokeWidth={1.5} />
+                            Integrations
                         </button>
-                        <button className="flex items-center gap-3 px-3 py-2 rounded-xl text-[#969593] hover:bg-white/[0.04] hover:text-[#D6D5D4] text-[13px] font-medium transition-colors">
-                            <Bot className="w-[18px] h-[18px]" strokeWidth={1.5} />
-                            Assistant
+                        <button className="flex items-center gap-3 px-3 py-1.5 rounded-xl text-[#D6D5C9] hover:bg-[#2B2A29] text-[13px] font-medium transition-colors">
+                            <CreditCard className="w-[18px] h-[18px]" strokeWidth={1.5} />
+                            Billing
                         </button>
-                        <button className="flex items-center gap-3 px-3 py-2 rounded-xl text-[#969593] hover:bg-white/[0.04] hover:text-[#D6D5D4] text-[13px] font-medium transition-colors">
-                            <Keyboard className="w-[18px] h-[18px]" strokeWidth={1.5} />
-                            Shortcuts
+                        <button className="flex items-center gap-3 px-3 py-1.5 rounded-xl text-[#D6D5C9] hover:bg-[#2B2A29] text-[13px] font-medium transition-colors">
+                            <Activity className="w-[18px] h-[18px]" strokeWidth={1.5} />
+                            Usage
                         </button>
-                        <button className="flex items-center gap-3 px-3 py-2 rounded-xl text-[#969593] hover:bg-white/[0.04] hover:text-[#D6D5D4] text-[13px] font-medium transition-colors">
-                            <Bell className="w-[18px] h-[18px]" strokeWidth={1.5} />
-                            Notifications
-                        </button>
-                        <button className="flex items-center gap-3 px-3 py-2 rounded-xl text-[#969593] hover:bg-white/[0.04] hover:text-[#D6D5D4] text-[13px] font-medium transition-colors">
-                            <Monitor className="w-[18px] h-[18px]" strokeWidth={1.5} />
-                            Computer
-                        </button>
-                        <button className="flex items-center gap-3 px-3 py-2 rounded-xl text-[#969593] hover:bg-white/[0.04] hover:text-[#D6D5D4] text-[13px] font-medium transition-colors">
-                            <Plug className="w-[18px] h-[18px]" strokeWidth={1.5} />
-                            Connectors
+                        <button className="flex items-center gap-3 px-3 py-1.5 rounded-xl text-[#D6D5C9] hover:bg-[#2B2A29] text-[13px] font-medium transition-colors">
+                            <KeyRound className="w-[18px] h-[18px]" strokeWidth={1.5} />
+                            API Keys
                         </button>
 
-                        <div className="px-3 py-2 text-[11px] font-medium text-[#969593] mt-4 mb-1">
-                            Enterprise
+                        <div className="px-3 py-2 text-[12px] font-medium text-[#7B7A79] mt-4 mb-1">
+                            Resources
                         </div>
-                        <button className="flex items-center gap-3 px-3 py-2 rounded-xl text-[#969593] hover:bg-white/[0.04] hover:text-[#D6D5D4] text-[13px] font-medium transition-colors">
-                            <Building2 className="w-[18px] h-[18px]" strokeWidth={1.5} />
-                            Upgrade to Enterprise
-                        </button>
-                        <button className="flex items-center justify-between px-3 py-2 rounded-xl text-[#969593] hover:bg-white/[0.04] hover:text-[#D6D5D4] text-[13px] font-medium transition-colors group">
+                        <button className="flex items-center justify-between px-3 py-1.5 rounded-xl text-[#D6D5C9] hover:bg-[#2B2A29] text-[13px] font-medium transition-colors group">
                             <div className="flex items-center gap-3">
-                                <BookOpen className="w-[18px] h-[18px]" strokeWidth={1.5} />
-                                Learn more
+                                <BookText className="w-[18px] h-[18px]" strokeWidth={1.5} />
+                                Documentation
                             </div>
-                            <ExternalLink
-                                className="w-3.5 h-3.5 text-[#969593]"
+                            <ArrowUpRight
+                                className="w-[14px] h-[14px] text-[#D6D5C9]"
                                 strokeWidth={1.5}
                             />
                         </button>
-
-                        <div className="px-3 py-2 text-[11px] font-medium text-[#969593] mt-4 mb-1">
-                            API
-                        </div>
-                        <button className="flex items-center justify-between px-3 py-2 rounded-xl text-[#969593] hover:bg-white/[0.04] hover:text-[#D6D5D4] text-[13px] font-medium transition-colors group">
+                        <button className="flex items-center justify-between px-3 py-1.5 rounded-xl text-[#D6D5C9] hover:bg-[#2B2A29] text-[13px] font-medium transition-colors group">
                             <div className="flex items-center gap-3">
-                                <Code2 className="w-[18px] h-[18px]" strokeWidth={1.5} />
-                                API Platform
+                                <FileClock className="w-[18px] h-[18px]" strokeWidth={1.5} />
+                                Changelog
                             </div>
-                            <ExternalLink
-                                className="w-3.5 h-3.5 text-[#969593]"
+                            <ArrowUpRight
+                                className="w-[14px] h-[14px] text-[#D6D5C9]"
                                 strokeWidth={1.5}
                             />
                         </button>
