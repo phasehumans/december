@@ -22,6 +22,10 @@ import { ProfileSettingsSkeleton } from './ProfileSettingsSkeleton'
 import type { ProfileSettingsProps } from '@/features/profile/types'
 
 export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onBack }) => {
+    const [activeTab, setActiveTab] = React.useState('Account')
+    const [usernameModalOpen, setUsernameModalOpen] = React.useState(false)
+    const [tempUsername, setTempUsername] = React.useState('')
+
     const {
         profile,
         isProfileLoading,
@@ -70,7 +74,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
         <div className="flex w-full h-full bg-[#100E12] overflow-hidden p-1 md:p-[6px]">
             <div className="flex w-full h-full bg-[#171615] rounded-lg border border-[#242323] overflow-hidden">
                 {/* Settings Sidebar */}
-                <div className="w-[240px] shrink-0 border-r border-[#242323] flex flex-col py-4">
+                <div className="w-[220px] shrink-0 border-r border-[#242323] flex flex-col py-4">
                     <div className="px-4 mb-6">
                         <button
                             onClick={onBack}
@@ -86,27 +90,69 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                             Settings
                         </div>
 
-                        <button className="flex items-center gap-3 px-3 py-1.5 rounded-xl bg-[#2B2A29] text-[#D6D5C9] text-[13px] font-medium transition-colors">
+                        <button
+                            onClick={() => setActiveTab('Account')}
+                            className={`flex items-center gap-3 px-3 py-1.5 rounded-xl text-[13px] font-medium transition-colors ${
+                                activeTab === 'Account'
+                                    ? 'bg-[#2B2A29] text-[#D6D5C9]'
+                                    : 'text-[#D6D5C9] hover:bg-[#2B2A29]'
+                            }`}
+                        >
                             <UserCircle className="w-[18px] h-[18px]" strokeWidth={1.5} />
                             Account
                         </button>
-                        <button className="flex items-center gap-3 px-3 py-1.5 rounded-xl text-[#D6D5C9] hover:bg-[#2B2A29] text-[13px] font-medium transition-colors">
+                        <button
+                            onClick={() => setActiveTab('General')}
+                            className={`flex items-center gap-3 px-3 py-1.5 rounded-xl text-[13px] font-medium transition-colors ${
+                                activeTab === 'General'
+                                    ? 'bg-[#2B2A29] text-[#D6D5C9]'
+                                    : 'text-[#D6D5C9] hover:bg-[#2B2A29]'
+                            }`}
+                        >
                             <SlidersHorizontal className="w-[18px] h-[18px]" strokeWidth={1.5} />
                             General
                         </button>
-                        <button className="flex items-center gap-3 px-3 py-1.5 rounded-xl text-[#D6D5C9] hover:bg-[#2B2A29] text-[13px] font-medium transition-colors">
+                        <button
+                            onClick={() => setActiveTab('Integrations')}
+                            className={`flex items-center gap-3 px-3 py-1.5 rounded-xl text-[13px] font-medium transition-colors ${
+                                activeTab === 'Integrations'
+                                    ? 'bg-[#2B2A29] text-[#D6D5C9]'
+                                    : 'text-[#D6D5C9] hover:bg-[#2B2A29]'
+                            }`}
+                        >
                             <Plug className="w-[18px] h-[18px] rotate-45" strokeWidth={1.5} />
                             Integrations
                         </button>
-                        <button className="flex items-center gap-3 px-3 py-1.5 rounded-xl text-[#D6D5C9] hover:bg-[#2B2A29] text-[13px] font-medium transition-colors">
+                        <button
+                            onClick={() => setActiveTab('Billing')}
+                            className={`flex items-center gap-3 px-3 py-1.5 rounded-xl text-[13px] font-medium transition-colors ${
+                                activeTab === 'Billing'
+                                    ? 'bg-[#2B2A29] text-[#D6D5C9]'
+                                    : 'text-[#D6D5C9] hover:bg-[#2B2A29]'
+                            }`}
+                        >
                             <CreditCard className="w-[18px] h-[18px]" strokeWidth={1.5} />
                             Billing
                         </button>
-                        <button className="flex items-center gap-3 px-3 py-1.5 rounded-xl text-[#D6D5C9] hover:bg-[#2B2A29] text-[13px] font-medium transition-colors">
+                        <button
+                            onClick={() => setActiveTab('Usage')}
+                            className={`flex items-center gap-3 px-3 py-1.5 rounded-xl text-[13px] font-medium transition-colors ${
+                                activeTab === 'Usage'
+                                    ? 'bg-[#2B2A29] text-[#D6D5C9]'
+                                    : 'text-[#D6D5C9] hover:bg-[#2B2A29]'
+                            }`}
+                        >
                             <Activity className="w-[18px] h-[18px]" strokeWidth={1.5} />
                             Usage
                         </button>
-                        <button className="flex items-center gap-3 px-3 py-1.5 rounded-xl text-[#D6D5C9] hover:bg-[#2B2A29] text-[13px] font-medium transition-colors">
+                        <button
+                            onClick={() => setActiveTab('API Keys')}
+                            className={`flex items-center gap-3 px-3 py-1.5 rounded-xl text-[13px] font-medium transition-colors ${
+                                activeTab === 'API Keys'
+                                    ? 'bg-[#2B2A29] text-[#D6D5C9]'
+                                    : 'text-[#D6D5C9] hover:bg-[#2B2A29]'
+                            }`}
+                        >
                             <KeyRound className="w-[18px] h-[18px]" strokeWidth={1.5} />
                             API Keys
                         </button>
@@ -153,19 +199,30 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
 
                         {isProfileLoading && !profile ? (
                             <ProfileSettingsSkeleton />
-                        ) : (
+                        ) : activeTab === 'Account' ? (
                             <ProfileSettingsContent
+                                profile={profile}
                                 resolvedName={resolvedName}
                                 hasProfile={Boolean(profile)}
                                 isGithubConnected={isGithubConnected}
                                 emailNotifications={emailNotifications}
                                 isNotificationPending={updateNotificationMutation.isPending}
                                 onOpenNameModal={openNameModal}
+                                onOpenUsernameModal={() => {
+                                    setTempUsername(profile?.githubUsername || 'phasehuman')
+                                    setUsernameModalOpen(true)
+                                }}
                                 onOpenPasswordModal={openPasswordModal}
                                 onNotificationToggle={handleNotificationToggle}
                                 onConnectGithub={connectGithub}
                                 onSignOut={onSignOut}
                             />
+                        ) : (
+                            <div className="flex flex-col gap-6">
+                                <h1 className="text-[20px] font-medium text-[#D6D5C9]">
+                                    {activeTab}
+                                </h1>
+                            </div>
                         )}
                     </div>
                 </div>
@@ -178,6 +235,20 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                 onClose={() => setNameModalOpen(false)}
                 onChange={setTempName}
                 onSave={handleSaveName}
+            />
+
+            <ProfileNameModal
+                isOpen={usernameModalOpen}
+                value={tempUsername}
+                isPending={false} // Currently no backend logic for this
+                title="Change Username"
+                label="Username"
+                onClose={() => setUsernameModalOpen(false)}
+                onChange={setTempUsername}
+                onSave={() => {
+                    // MOCK SAVE for now
+                    setUsernameModalOpen(false)
+                }}
             />
 
             <ProfilePasswordModal
