@@ -147,7 +147,7 @@ export const AppContentView: React.FC<AppContentViewProps> = ({
 
             {view === 'profile' && (
                 <AnimatedPage pageKey="profile">
-                    <ProfileSettings onSignOut={onSignOut} />
+                    <ProfileSettings onSignOut={onSignOut} onBack={onNewProject} />
                 </AnimatedPage>
             )}
 
