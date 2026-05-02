@@ -34,6 +34,8 @@ export interface ProfileNameModalProps {
     isOpen: boolean
     value: string
     isPending: boolean
+    title?: string
+    label?: string
     onClose: () => void
     onChange: (value: string) => void
     onSave: () => void
