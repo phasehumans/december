@@ -34,26 +34,6 @@ export const ProfileSettingsContent: React.FC<ProfileSettingsContentProps> = ({
             <div className="flex flex-col mb-6">
                 <h1 className="text-[16px] font-medium mb-3">Account</h1>
                 <div className="flex flex-col gap-2 border-t border-[#242323] pt-4">
-                    {/* Avatar Row */}
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-[#242323] flex items-center justify-center">
-                                <UserCircle className="w-5 h-5 text-[#7B7A79]" />
-                            </div>
-                            <div className="flex flex-col">
-                                <span className="text-[14px] text-[#D6D5C9]">
-                                    {profile?.name || resolvedName}
-                                </span>
-                                <span className="text-[13px] text-[#7B7A79]">
-                                    {profile?.githubUsername || 'phasehuman'}
-                                </span>
-                            </div>
-                        </div>
-                        <button className="px-4 py-1.5 rounded-lg border border-[#383736] text-[13px] text-[#D6D5C9] hover:bg-[#242323] transition-colors">
-                            Change avatar
-                        </button>
-                    </div>
-
                     {/* Full Name Row */}
                     <div className="flex items-center justify-between">
                         <div className="flex flex-col gap-0.5">
