@@ -7,6 +7,8 @@ import { profileAPI } from '@/features/profile/api/profile'
 import type { SidebarFooterProps } from '@/features/navigation/types'
 import { UserProfilePopover } from './UserProfilePopover'
 import { NotificationsPopover } from './NotificationsPopover'
+import { ProfileCardModal } from '@/features/profile/components/ProfileCardModal'
+import { ProfileFeedbackModal } from '@/features/profile/components/ProfileFeedbackModal'
 import { Bell } from 'lucide-react'
 
 export const SidebarFooter: React.FC<SidebarFooterProps & { user?: { name?: string } }> = ({
@@ -83,49 +85,17 @@ export const SidebarFooter: React.FC<SidebarFooterProps & { user?: { name?: stri
                             onClose={() => setIsNotifPopoverOpen(false)}
                         />
 
-                        {isProfileModalOpen && (
-                            <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50">
-                                <div className="bg-[#171615] border border-white/10 p-6 rounded-2xl shadow-2xl relative">
-                                    <button
-                                        className="absolute top-4 right-4 text-white/50 hover:text-white"
-                                        onClick={() => setIsProfileModalOpen(false)}
-                                    >
-                                        <Icons.X className="w-5 h-5" />
-                                    </button>
-                                    <h2 className="text-xl font-semibold text-white mb-4">
-                                        profile card
-                                    </h2>
-                                </div>
-                            </div>
-                        )}
+                        <ProfileCardModal
+                            isOpen={isProfileModalOpen}
+                            onClose={() => setIsProfileModalOpen(false)}
+                            userName={profile?.name || quickInfo?.firstName || 'phasehuman'}
+                            onSettings={onProfile}
+                        />
 
-                        {isFeedbackModalOpen && (
-                            <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50">
-                                <div className="bg-[#171615] border border-white/10 p-6 rounded-2xl shadow-2xl relative w-[400px]">
-                                    <button
-                                        className="absolute top-4 right-4 text-white/50 hover:text-white"
-                                        onClick={() => setIsFeedbackModalOpen(false)}
-                                    >
-                                        <Icons.X className="w-5 h-5" />
-                                    </button>
-                                    <h2 className="text-xl font-semibold text-white mb-4">
-                                        Feedback
-                                    </h2>
-                                    <textarea
-                                        className="w-full bg-[#252422] border border-white/10 rounded-lg p-3 text-white outline-none resize-none h-32 mb-4"
-                                        placeholder="What's on your mind?"
-                                    />
-                                    <div className="flex justify-end">
-                                        <button
-                                            className="px-4 py-2 bg-white text-black font-medium rounded-lg"
-                                            onClick={() => setIsFeedbackModalOpen(false)}
-                                        >
-                                            Submit
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
+                        <ProfileFeedbackModal
+                            isOpen={isFeedbackModalOpen}
+                            onClose={() => setIsFeedbackModalOpen(false)}
+                        />
                     </>
                 )}
             </div>
