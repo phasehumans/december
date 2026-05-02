@@ -1,15 +1,40 @@
 import React from 'react'
+import {
+    ChevronLeft,
+    UserCircle,
+    SlidersHorizontal,
+    CreditCard,
+    Activity,
+    KeyRound,
+    BookText,
+    FileClock,
+    ArrowUpRight,
+    Plug,
+} from 'lucide-react'
 
 import { useProfileSettingsController } from '../hooks/useProfileSettingsController'
 
 import { ProfileNameModal } from './ProfileNameModal'
 import { ProfilePasswordModal } from './ProfilePasswordModal'
 import { ProfileSettingsContent } from './ProfileSettingsContent'
+import { ProfileGeneralSettings } from './ProfileGeneralSettings'
+import { ProfileBillingSettings } from './ProfileBillingSettings'
+import { ProfileUsageSettings } from './ProfileUsageSettings'
+import { ProfileApiKeysSettings } from './ProfileApiKeysSettings'
+import { ProfileIntegrationsSettings } from './ProfileIntegrationsSettings'
 import { ProfileSettingsSkeleton } from './ProfileSettingsSkeleton'
+import { ProfileDeleteAccountModal } from './ProfileDeleteAccountModal'
+import { ProfileSignOutAllSessionsModal } from './ProfileSignOutAllSessionsModal'
 
 import type { ProfileSettingsProps } from '@/features/profile/types'
 
-export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut }) => {
+export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onBack }) => {
+    const [activeTab, setActiveTab] = React.useState('Account')
+    const [usernameModalOpen, setUsernameModalOpen] = React.useState(false)
+    const [tempUsername, setTempUsername] = React.useState('')
+    const [deleteAccountModalOpen, setDeleteAccountModalOpen] = React.useState(false)
+    const [signOutAllSessionsModalOpen, setSignOutAllSessionsModalOpen] = React.useState(false)
+
     const {
         profile,
         isProfileLoading,
@@ -55,45 +80,178 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut }) =
               : null)
 
     return (
-        <div className="relative h-full w-full flex-1 overflow-y-auto bg-background px-8 pb-8 pt-20 font-sans no-scrollbar md:p-16">
-            <div className="relative z-10 mx-auto min-h-[520px] max-w-6xl">
-                <div className="mb-12 flex items-start justify-between gap-4">
-                    <div>
-                        <h1 className="mb-2 text-3xl font-medium tracking-tight text-textMain">
-                            Settings
-                        </h1>
-                        <p className="max-w-md text-sm text-neutral-500">
-                            Manage your account settings
-                        </p>
+        <div className="flex w-full h-full bg-[#100E12] overflow-hidden p-1.5 md:p-[8px]">
+            <div className="flex w-full h-full bg-[#171615] rounded-lg border border-[#242323] overflow-hidden">
+                {/* Settings Sidebar */}
+                <div className="w-[220px] shrink-0 border-r border-[#242323] flex flex-col py-4">
+                    <div className="px-4 mb-6">
+                        <button
+                            onClick={onBack}
+                            className="flex items-center text-[#7B7A79] hover:text-[#D6D5D4] hover:bg-[#1E1D1B] px-2 py-1 -ml-2 rounded-lg text-[13px] font-medium transition-colors"
+                        >
+                            <ChevronLeft className="w-4 h-4 mr-2" />
+                            Home
+                        </button>
                     </div>
-                    <div className="flex flex-col items-end gap-2">
-                        {isProfileFetching && !isProfileLoading && (
-                            <div className="text-xs text-neutral-500">Syncing profile...</div>
-                        )}
-                        {profileErrorMessage && (
-                            <div className="max-w-[26rem] truncate rounded-full border border-red-500/35 bg-red-500/15 px-4 py-1 text-xs font-medium text-red-200">
-                                {profileErrorMessage}
+
+                    <div className="flex-1 overflow-y-auto px-3 flex flex-col gap-[2px]">
+                        <div className="px-3 py-2 text-[12px] font-medium text-[#7B7A79] mb-1">
+                            Settings
+                        </div>
+
+                        <button
+                            onClick={() => setActiveTab('Account')}
+                            className={`flex items-center gap-3 px-3 py-1.5 rounded-xl text-[13px] font-medium transition-colors ${
+                                activeTab === 'Account'
+                                    ? 'bg-[#242323] text-[#D6D5C9]'
+                                    : 'text-[#D6D5C9] hover:bg-[#1E1D1B]'
+                            }`}
+                        >
+                            <UserCircle className="w-[18px] h-[18px]" strokeWidth={1.5} />
+                            Account
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('General')}
+                            className={`flex items-center gap-3 px-3 py-1.5 rounded-xl text-[13px] font-medium transition-colors ${
+                                activeTab === 'General'
+                                    ? 'bg-[#242323] text-[#D6D5C9]'
+                                    : 'text-[#D6D5C9] hover:bg-[#1E1D1B]'
+                            }`}
+                        >
+                            <SlidersHorizontal className="w-[18px] h-[18px]" strokeWidth={1.5} />
+                            General
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('Integrations')}
+                            className={`flex items-center gap-3 px-3 py-1.5 rounded-xl text-[13px] font-medium transition-colors ${
+                                activeTab === 'Integrations'
+                                    ? 'bg-[#242323] text-[#D6D5C9]'
+                                    : 'text-[#D6D5C9] hover:bg-[#1E1D1B]'
+                            }`}
+                        >
+                            <Plug className="w-[18px] h-[18px] rotate-45" strokeWidth={1.5} />
+                            Integrations
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('Billing')}
+                            className={`flex items-center gap-3 px-3 py-1.5 rounded-xl text-[13px] font-medium transition-colors ${
+                                activeTab === 'Billing'
+                                    ? 'bg-[#242323] text-[#D6D5C9]'
+                                    : 'text-[#D6D5C9] hover:bg-[#1E1D1B]'
+                            }`}
+                        >
+                            <CreditCard className="w-[18px] h-[18px]" strokeWidth={1.5} />
+                            Billing
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('Usage')}
+                            className={`flex items-center gap-3 px-3 py-1.5 rounded-xl text-[13px] font-medium transition-colors ${
+                                activeTab === 'Usage'
+                                    ? 'bg-[#242323] text-[#D6D5C9]'
+                                    : 'text-[#D6D5C9] hover:bg-[#1E1D1B]'
+                            }`}
+                        >
+                            <Activity className="w-[18px] h-[18px]" strokeWidth={1.5} />
+                            Usage
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('API Keys')}
+                            className={`flex items-center gap-3 px-3 py-1.5 rounded-xl text-[13px] font-medium transition-colors ${
+                                activeTab === 'API Keys'
+                                    ? 'bg-[#242323] text-[#D6D5C9]'
+                                    : 'text-[#D6D5C9] hover:bg-[#1E1D1B]'
+                            }`}
+                        >
+                            <KeyRound className="w-[18px] h-[18px]" strokeWidth={1.5} />
+                            API Keys
+                        </button>
+
+                        <div className="px-3 py-2 text-[12px] font-medium text-[#7B7A79] mt-4 mb-1">
+                            Resources
+                        </div>
+                        <button className="flex items-center justify-between px-3 py-1.5 rounded-xl text-[#D6D5C9] hover:bg-[#1E1D1B] text-[13px] font-medium transition-colors group">
+                            <div className="flex items-center gap-3">
+                                <BookText className="w-[18px] h-[18px]" strokeWidth={1.5} />
+                                Documentation
+                            </div>
+                            <ArrowUpRight
+                                className="w-[14px] h-[14px] text-[#D6D5C9]"
+                                strokeWidth={1.5}
+                            />
+                        </button>
+                        <button className="flex items-center justify-between px-3 py-1.5 rounded-xl text-[#D6D5C9] hover:bg-[#1E1D1B] text-[13px] font-medium transition-colors group">
+                            <div className="flex items-center gap-3">
+                                <FileClock className="w-[18px] h-[18px]" strokeWidth={1.5} />
+                                Changelog
+                            </div>
+                            <ArrowUpRight
+                                className="w-[14px] h-[14px] text-[#D6D5C9]"
+                                strokeWidth={1.5}
+                            />
+                        </button>
+                    </div>
+                </div>
+
+                {/* Main Content */}
+                <div className="flex-1 overflow-y-auto [&::-webkit-scrollbar]:w-[12px] [&::-webkit-scrollbar-track]:bg-[#171615] [&::-webkit-scrollbar-thumb]:bg-[#383736] [&::-webkit-scrollbar-thumb]:bg-clip-padding [&::-webkit-scrollbar-thumb]:border-[4px] [&::-webkit-scrollbar-thumb]:border-solid [&::-webkit-scrollbar-thumb]:border-transparent [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-[#4A4948]">
+                    <div className="w-full flex justify-center px-8 md:px-16 py-8 md:py-12 relative z-10">
+                        <div className="flex flex-col items-end gap-2 absolute top-12 right-16">
+                            {isProfileFetching && !isProfileLoading && (
+                                <div className="text-xs text-neutral-500">Syncing profile...</div>
+                            )}
+                            {profileErrorMessage && (
+                                <div className="max-w-[26rem] truncate rounded-full border border-red-500/35 bg-red-500/15 px-4 py-1 text-xs font-medium text-red-200">
+                                    {profileErrorMessage}
+                                </div>
+                            )}
+                        </div>
+
+                        {isProfileLoading && !profile ? (
+                            <ProfileSettingsSkeleton activeTab={activeTab} />
+                        ) : activeTab === 'Account' ? (
+                            <ProfileSettingsContent
+                                profile={profile}
+                                resolvedName={resolvedName}
+                                hasProfile={Boolean(profile)}
+                                isGithubConnected={isGithubConnected}
+                                emailNotifications={emailNotifications}
+                                isNotificationPending={updateNotificationMutation.isPending}
+                                onOpenNameModal={openNameModal}
+                                onOpenUsernameModal={() => {
+                                    setTempUsername(profile?.githubUsername || 'phasehuman')
+                                    setUsernameModalOpen(true)
+                                }}
+                                onOpenPasswordModal={openPasswordModal}
+                                onNotificationToggle={handleNotificationToggle}
+                                onConnectGithub={connectGithub}
+                                onSignOut={onSignOut}
+                                onOpenDeleteAccountModal={() => setDeleteAccountModalOpen(true)}
+                                onOpenSignOutAllSessionsModal={() =>
+                                    setSignOutAllSessionsModalOpen(true)
+                                }
+                            />
+                        ) : activeTab === 'General' ? (
+                            <ProfileGeneralSettings />
+                        ) : activeTab === 'Billing' ? (
+                            <ProfileBillingSettings />
+                        ) : activeTab === 'Usage' ? (
+                            <ProfileUsageSettings />
+                        ) : activeTab === 'API Keys' ? (
+                            <ProfileApiKeysSettings />
+                        ) : activeTab === 'Integrations' ? (
+                            <ProfileIntegrationsSettings
+                                isGithubConnected={isGithubConnected}
+                                onConnectGithub={connectGithub}
+                            />
+                        ) : (
+                            <div className="flex flex-col gap-6">
+                                <h1 className="text-[20px] font-medium text-[#D6D5C9]">
+                                    {activeTab}
+                                </h1>
                             </div>
                         )}
                     </div>
                 </div>
-
-                {isProfileLoading && !profile ? (
-                    <ProfileSettingsSkeleton />
-                ) : (
-                    <ProfileSettingsContent
-                        resolvedName={resolvedName}
-                        hasProfile={Boolean(profile)}
-                        isGithubConnected={isGithubConnected}
-                        emailNotifications={emailNotifications}
-                        isNotificationPending={updateNotificationMutation.isPending}
-                        onOpenNameModal={openNameModal}
-                        onOpenPasswordModal={openPasswordModal}
-                        onNotificationToggle={handleNotificationToggle}
-                        onConnectGithub={connectGithub}
-                        onSignOut={onSignOut}
-                    />
-                )}
             </div>
 
             <ProfileNameModal
@@ -103,6 +261,20 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut }) =
                 onClose={() => setNameModalOpen(false)}
                 onChange={setTempName}
                 onSave={handleSaveName}
+            />
+
+            <ProfileNameModal
+                isOpen={usernameModalOpen}
+                value={tempUsername}
+                isPending={false} // Currently no backend logic for this
+                title="Change Username"
+                label="Username"
+                onClose={() => setUsernameModalOpen(false)}
+                onChange={setTempUsername}
+                onSave={() => {
+                    // MOCK SAVE for now
+                    setUsernameModalOpen(false)
+                }}
             />
 
             <ProfilePasswordModal
@@ -120,6 +292,24 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut }) =
                 onConfirmPasswordChange={setConfirmPassword}
                 onToggleShowCurrentPass={() => setShowCurrentPass((prev) => !prev)}
                 onToggleShowNewPass={() => setShowNewPass((prev) => !prev)}
+            />
+
+            <ProfileDeleteAccountModal
+                isOpen={deleteAccountModalOpen}
+                onClose={() => setDeleteAccountModalOpen(false)}
+                onConfirm={() => {
+                    // MOCK DELETION
+                    setDeleteAccountModalOpen(false)
+                }}
+            />
+
+            <ProfileSignOutAllSessionsModal
+                isOpen={signOutAllSessionsModalOpen}
+                onClose={() => setSignOutAllSessionsModalOpen(false)}
+                onConfirm={() => {
+                    // MOCK SIGN OUT ALL SESSIONS
+                    setSignOutAllSessionsModalOpen(false)
+                }}
             />
         </div>
     )
