@@ -9,15 +9,22 @@ export const ProfileNameModal: React.FC<ProfileNameModalProps> = ({
     isOpen,
     value,
     isPending,
+    title,
+    label,
     onClose,
     onChange,
     onSave,
 }) => {
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title="Change Name" maxWidth="max-w-[420px]">
+        <Modal
+            isOpen={isOpen}
+            onClose={onClose}
+            title={title || 'Change Name'}
+            maxWidth="max-w-[420px]"
+        >
             <div className="space-y-4">
                 <Input
-                    label="Display Name"
+                    label={label || 'Display Name'}
                     value={value}
                     onChange={(e) => onChange(e.target.value)}
                     autoFocus

@@ -5,10 +5,11 @@ import {
     Settings,
     CreditCard,
     BookOpen,
-    Keyboard,
-    Coins,
+    MessageSquare,
+    CircleDollarSign,
     LogOut,
     UserCircle,
+    ExternalLink,
 } from 'lucide-react'
 import { cn } from '@/shared/lib/utils'
 
@@ -18,7 +19,9 @@ interface UserProfilePopoverProps {
     onClose: () => void
     userName?: string
     userEmail?: string
-    onProfile?: () => void
+    onSettings?: () => void
+    onProfileModal?: () => void
+    onFeedbackModal?: () => void
     onDocs?: () => void
 }
 
@@ -28,7 +31,9 @@ export const UserProfilePopover: React.FC<UserProfilePopoverProps> = ({
     onClose,
     userName = 'phasehuman',
     userEmail = 'dev.chaitanyasonawane@gmail.com',
-    onProfile,
+    onSettings,
+    onProfileModal,
+    onFeedbackModal,
     onDocs,
 }) => {
     const popoverRef = React.useRef<HTMLDivElement | null>(null)
@@ -52,7 +57,7 @@ export const UserProfilePopover: React.FC<UserProfilePopoverProps> = ({
             setPosition({
                 bottom: window.innerHeight - rect.top + 8,
                 left: rect.left,
-                width: 240, // Fixed width for the profile menu
+                width: 280, // Decreased width by 20px
             })
         }
 
@@ -100,18 +105,23 @@ export const UserProfilePopover: React.FC<UserProfilePopoverProps> = ({
     }
 
     const menuItems = [
-        { icon: User, label: 'Profile', action: onProfile },
-        { icon: Settings, label: 'Settings', action: () => console.log('Settings') },
-        { icon: CreditCard, label: 'Pricing', action: () => console.log('Pricing') },
-        { icon: BookOpen, label: 'Docs', action: onDocs },
-        { icon: Keyboard, label: 'Keyboard shortcuts', action: () => console.log('Shortcuts') },
-        { icon: Coins, label: 'Credits option', action: () => console.log('Credits') },
+        { icon: User, label: 'Profile', action: onProfileModal },
+        { icon: Settings, label: 'Settings', action: onSettings },
+        {
+            icon: CreditCard,
+            label: 'Pricing',
+            action: () => console.log('Pricing'),
+            external: true,
+        },
+        { icon: BookOpen, label: 'Documentation', action: onDocs, external: true },
+        { icon: MessageSquare, label: 'Feedback', action: onFeedbackModal },
+        { icon: CircleDollarSign, label: 'Credits', action: () => console.log('Credit') },
     ]
 
     return createPortal(
         <div
             ref={popoverRef}
-            className="fixed z-[100] rounded-[16px] border border-white/10 bg-[#171615] shadow-2xl p-1.5 pointer-events-auto animate-in fade-in zoom-in-95 duration-200"
+            className="fixed z-[100] rounded-2xl border border-[#2E2D2C] bg-[#1E1D1C] shadow-2xl p-2 pointer-events-auto animate-in fade-in zoom-in-95 duration-200"
             style={{
                 bottom: position.bottom,
                 left: position.left,
@@ -119,24 +129,24 @@ export const UserProfilePopover: React.FC<UserProfilePopoverProps> = ({
             }}
         >
             {/* User Info Header */}
-            <div className="flex items-center gap-3 px-3 py-2.5 mb-1">
-                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-white/5 text-[#D6D5D4] shrink-0 overflow-hidden">
-                    <UserCircle className="w-5 h-5" />
+            <div className="flex items-center gap-3 px-3 py-1.5 mb-1">
+                <div className="flex items-center justify-center w-8 h-8 text-[#D6D5D4] shrink-0 overflow-hidden">
+                    <UserCircle className="w-6 h-6" />
                 </div>
                 <div className="flex flex-col min-w-0">
-                    <span className="text-[13px] font-semibold text-[#D6D5D4] truncate leading-tight">
+                    <span className="text-[14px] font-medium text-[#CBCACA] truncate leading-tight">
                         {userName}
                     </span>
-                    <span className="text-[11px] text-[#656565] truncate leading-tight mt-0.5">
+                    <span className="text-[12px] text-[#969593] truncate leading-tight mt-0.5">
                         {userEmail}
                     </span>
                 </div>
             </div>
 
-            <div className="h-[1px] bg-white/[0.04] mx-1 mb-1" />
+            <div className="h-[1px] bg-[#2B2A29] mx-1 mb-1.5 mt-1" />
 
             {/* Menu Items */}
-            <div className="flex flex-col gap-0.5">
+            <div className="flex flex-col gap-0">
                 {menuItems.map((item, index) => (
                     <button
                         key={index}
@@ -146,20 +156,28 @@ export const UserProfilePopover: React.FC<UserProfilePopoverProps> = ({
                             }
                             onClose()
                         }}
-                        className="flex items-center gap-3 w-full px-3 py-2 rounded-[10px] hover:bg-white/[0.04] transition-colors group text-left"
+                        className="flex items-center justify-between w-full px-3 py-1.5 rounded-xl hover:bg-[#252422] transition-colors group text-left"
                     >
-                        <item.icon
-                            className="w-4 h-4 text-[#969593] group-hover:text-[#D6D5D4] transition-colors"
-                            strokeWidth={2}
-                        />
-                        <span className="text-[13px] text-[#969593] group-hover:text-[#D6D5D4] transition-colors font-medium">
-                            {item.label}
-                        </span>
+                        <div className="flex items-center gap-3">
+                            <item.icon
+                                className="w-[18px] h-[18px] text-[#CBCACA] group-hover:text-white transition-colors"
+                                strokeWidth={1.5}
+                            />
+                            <span className="text-[14px] text-[#CBCACA] group-hover:text-white transition-colors">
+                                {item.label}
+                            </span>
+                        </div>
+                        {item.shortcut && (
+                            <span className="text-[12px] text-[#969593]">{item.shortcut}</span>
+                        )}
+                        {item.external && (
+                            <ExternalLink className="w-[14px] h-[14px] text-[#969593] group-hover:text-[#CBCACA] transition-colors" />
+                        )}
                     </button>
                 ))}
             </div>
 
-            <div className="h-[1px] bg-white/[0.04] mx-1 my-1" />
+            <div className="h-[1px] bg-[#2B2A29] mx-1 my-1" />
 
             {/* Sign Out Section */}
             <button
@@ -167,13 +185,13 @@ export const UserProfilePopover: React.FC<UserProfilePopoverProps> = ({
                     console.log('Sign Out')
                     onClose()
                 }}
-                className="flex items-center gap-3 w-full px-3 py-2 rounded-[10px] hover:bg-white/[0.04] transition-colors group text-left"
+                className="flex items-center gap-3 w-full px-3 py-1.5 rounded-xl hover:bg-[#252422] transition-colors group text-left mb-0.5"
             >
                 <LogOut
-                    className="w-4 h-4 text-[#969593] group-hover:text-[#D6D5D4] transition-colors"
-                    strokeWidth={2}
+                    className="w-[18px] h-[18px] text-[#CBCACA] group-hover:text-white transition-colors"
+                    strokeWidth={1.5}
                 />
-                <span className="text-[13px] text-[#969593] group-hover:text-[#D6D5D4] transition-colors font-medium">
+                <span className="text-[14px] text-[#CBCACA] group-hover:text-white transition-colors">
                     Sign out
                 </span>
             </button>
