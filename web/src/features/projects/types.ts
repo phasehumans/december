@@ -8,6 +8,7 @@ export interface Project {
     isStarred: boolean
     versionCount: number
     currentVersionId: string | null
+    status?: 'Draft' | 'Generated' | 'Published' | 'Template'
 }
 
 export interface ProjectListProps {

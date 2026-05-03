@@ -51,10 +51,21 @@ const getCookies = (res: request.Response): string[] => {
 
 const buildCookieHeader = (res: request.Response): string => {
     const cookies = getCookies(res)
+    return cookies.map((c) => c.split(';')[0]).join('; ')
+}
 
-    return cookies
-        .map((c) => c.split(';')[0]) // remove metadata
-        .join('; ')
+const createUser = async (overrides: Record<string, unknown> = {}) => {
+    return prisma.user.create({
+        data: {
+            name: 'Test User',
+            email: `test-${crypto.randomUUID()}@example.com`,
+            username: `user-${crypto.randomUUID()}`,
+            password: await bcrypt.hash('Password123', 10),
+            emailVerified: true,
+            isDeleted: false,
+            ...overrides,
+        },
+    })
 }
 
 describe('auth.routes.integration', () => {
@@ -62,7 +73,6 @@ describe('auth.routes.integration', () => {
 
     beforeEach(async () => {
         app = createApp()
-
         sendOTPMock.mockClear()
         axiosPostMock.mockReset()
         verifyIdTokenMock.mockReset()
@@ -92,14 +102,70 @@ describe('auth.routes.integration', () => {
             expect(sendOTPMock).toHaveBeenCalled()
         })
 
-        it('should fail on invalid body', async () => {
+        it('should fail on invalid email', async () => {
             const res = await request(app).post('/auth/signup').send({
                 email: 'bad',
+                password: 'Password123',
+            })
+
+            expect(res.status).toBe(400)
+            expect(res.body.success).toBe(false)
+        })
+
+        it('should fail on short password', async () => {
+            const res = await request(app).post('/auth/signup').send({
+                email: 'test@example.com',
                 password: '123',
             })
 
             expect(res.status).toBe(400)
             expect(res.body.success).toBe(false)
+        })
+
+        it('should fail on empty body', async () => {
+            const res = await request(app).post('/auth/signup').send({})
+
+            expect(res.status).toBe(400)
+            expect(res.body.success).toBe(false)
+        })
+
+        it('should fail on missing password', async () => {
+            const res = await request(app).post('/auth/signup').send({
+                email: 'test@example.com',
+            })
+
+            expect(res.status).toBe(400)
+        })
+
+        it('should fail on missing email', async () => {
+            const res = await request(app).post('/auth/signup').send({
+                password: 'Password123',
+            })
+
+            expect(res.status).toBe(400)
+        })
+
+        it('should fail on duplicate email', async () => {
+            await createUser({ email: 'dup@example.com', username: 'dup_user' })
+
+            const res = await request(app).post('/auth/signup').send({
+                email: 'dup@example.com',
+                password: 'Password123',
+            })
+
+            expect(res.status).toBe(409)
+            expect(res.body.success).toBe(false)
+        })
+
+        it('should fail on password longer than 20 chars', async () => {
+            const res = await request(app)
+                .post('/auth/signup')
+                .send({
+                    email: 'test@example.com',
+                    password: 'a'.repeat(21),
+                })
+
+            expect(res.status).toBe(400)
         })
     })
 
@@ -107,16 +173,12 @@ describe('auth.routes.integration', () => {
         it('should verify and set cookies', async () => {
             const otp = '123456'
 
-            await prisma.user.create({
-                data: {
-                    name: 'verify',
-                    email: 'verify@example.com',
-                    username: 'verify',
-                    password: await bcrypt.hash('Password123', 10),
-                    emailVerified: false,
-                    otpHash: await bcrypt.hash(otp, 10),
-                    otpExpiresAt: new Date(Date.now() + 10000),
-                },
+            await createUser({
+                email: 'verify@example.com',
+                username: 'verify',
+                emailVerified: false,
+                otpHash: await bcrypt.hash(otp, 10),
+                otpExpiresAt: new Date(Date.now() + 10000),
             })
 
             const res = await request(app).post('/auth/verify').send({
@@ -128,7 +190,6 @@ describe('auth.routes.integration', () => {
             expect(res.body.success).toBe(true)
 
             const cookies = getCookies(res)
-
             expect(cookies.some((c) => c.includes('accessToken'))).toBe(true)
             expect(cookies.some((c) => c.includes('refreshToken'))).toBe(true)
         })
@@ -140,20 +201,67 @@ describe('auth.routes.integration', () => {
 
             expect(res.status).toBe(400)
         })
+
+        it('should fail if email missing', async () => {
+            const res = await request(app).post('/auth/verify').send({
+                otp: '123456',
+            })
+
+            expect(res.status).toBe(400)
+        })
+
+        it('should fail with wrong otp', async () => {
+            await createUser({
+                email: 'wrongotp@example.com',
+                username: 'wrongotp',
+                emailVerified: false,
+                otpHash: await bcrypt.hash('123456', 10),
+                otpExpiresAt: new Date(Date.now() + 10000),
+            })
+
+            const res = await request(app).post('/auth/verify').send({
+                email: 'wrongotp@example.com',
+                otp: '000000',
+            })
+
+            expect(res.status).toBe(401)
+        })
+
+        it('should fail with expired otp', async () => {
+            const otp = '123456'
+            await createUser({
+                email: 'expiredotp@example.com',
+                username: 'expiredotp',
+                emailVerified: false,
+                otpHash: await bcrypt.hash(otp, 10),
+                otpExpiresAt: new Date(Date.now() - 5000),
+            })
+
+            const res = await request(app).post('/auth/verify').send({
+                email: 'expiredotp@example.com',
+                otp,
+            })
+
+            expect(res.status).toBe(401)
+        })
+
+        it('should fail if user does not exist', async () => {
+            const res = await request(app).post('/auth/verify').send({
+                email: 'ghost@example.com',
+                otp: '123456',
+            })
+
+            expect(res.status).toBe(404)
+        })
     })
 
     describe('POST /auth/login', () => {
         it('should login and set cookies', async () => {
             const password = 'Password123'
 
-            await prisma.user.create({
-                data: {
-                    name: 'login',
-                    email: 'login@example.com',
-                    username: 'login',
-                    password: await bcrypt.hash(password, 10),
-                    emailVerified: true,
-                },
+            await createUser({
+                email: 'login@example.com',
+                username: 'login',
             })
 
             const res = await request(app).post('/auth/login').send({
@@ -165,25 +273,58 @@ describe('auth.routes.integration', () => {
             expect(res.body.success).toBe(true)
 
             const cookies = getCookies(res)
-
             expect(cookies.some((c) => c.includes('accessToken'))).toBe(true)
             expect(cookies.some((c) => c.includes('refreshToken'))).toBe(true)
         })
 
         it('should fail with wrong password', async () => {
-            await prisma.user.create({
-                data: {
-                    name: 'wrong',
-                    email: 'wrong@example.com',
-                    username: 'wrong',
-                    password: await bcrypt.hash('Correct123', 10),
-                    emailVerified: true,
-                },
+            await createUser({
+                email: 'wrong@example.com',
+                username: 'wrong',
             })
 
             const res = await request(app).post('/auth/login').send({
                 email: 'wrong@example.com',
                 password: 'Wrong123',
+            })
+
+            expect(res.status).toBe(401)
+        })
+
+        it('should fail with non-existent user', async () => {
+            const res = await request(app).post('/auth/login').send({
+                email: 'ghost@example.com',
+                password: 'Password123',
+            })
+
+            expect(res.status).toBe(401)
+        })
+
+        it('should fail on empty body', async () => {
+            const res = await request(app).post('/auth/login').send({})
+
+            expect(res.status).toBe(400)
+        })
+
+        it('should fail on invalid email format', async () => {
+            const res = await request(app).post('/auth/login').send({
+                email: 'notanemail',
+                password: 'Password123',
+            })
+
+            expect(res.status).toBe(400)
+        })
+
+        it('should fail for soft-deleted user', async () => {
+            await createUser({
+                email: 'softdel@example.com',
+                username: 'softdel_login',
+                isDeleted: true,
+            })
+
+            const res = await request(app).post('/auth/login').send({
+                email: 'softdel@example.com',
+                password: 'Password123',
             })
 
             expect(res.status).toBe(401)
@@ -212,7 +353,6 @@ describe('auth.routes.integration', () => {
             expect(res.status).toBe(200)
 
             const cookies = getCookies(res)
-
             expect(cookies.some((c) => c.includes('accessToken'))).toBe(true)
             expect(cookies.some((c) => c.includes('refreshToken'))).toBe(true)
         })
@@ -222,20 +362,25 @@ describe('auth.routes.integration', () => {
 
             expect(res.status).toBe(400)
         })
+
+        it('should fail if google token exchange fails', async () => {
+            axiosPostMock.mockRejectedValue(new Error('token exchange failed'))
+
+            const res = await request(app).post('/auth/google').send({
+                code: 'bad-code',
+            })
+
+            expect(res.status).toBe(500)
+        })
     })
 
     describe('POST /auth/refresh', () => {
         it('should refresh tokens and rotate cookies', async () => {
             const password = 'Password123'
 
-            await prisma.user.create({
-                data: {
-                    name: 'refresh',
-                    email: 'refresh@example.com',
-                    username: 'refresh',
-                    password: await bcrypt.hash(password, 10),
-                    emailVerified: true,
-                },
+            await createUser({
+                email: 'refresh@example.com',
+                username: 'refresh',
             })
 
             const login = await request(app).post('/auth/login').send({
@@ -250,7 +395,6 @@ describe('auth.routes.integration', () => {
             expect(res.status).toBe(200)
 
             const newCookies = getCookies(res)
-
             expect(newCookies.some((c) => c.includes('accessToken'))).toBe(true)
             expect(newCookies.some((c) => c.includes('refreshToken'))).toBe(true)
         })
@@ -263,9 +407,20 @@ describe('auth.routes.integration', () => {
             expect(res.status).toBe(401)
 
             const cookies = getCookies(res)
-
             expect(cookies.some((c) => c.includes('accessToken=;'))).toBe(true)
             expect(cookies.some((c) => c.includes('refreshToken=;'))).toBe(true)
+        })
+
+        it('should fail without any cookie', async () => {
+            const res = await request(app).post('/auth/refresh')
+
+            expect(res.status).toBe(401)
+        })
+
+        it('should fail with empty refreshToken cookie', async () => {
+            const res = await request(app).post('/auth/refresh').set('Cookie', 'refreshToken=')
+
+            expect(res.status).toBe(401)
         })
     })
 })
