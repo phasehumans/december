@@ -17,17 +17,7 @@ export const ProfileDeleteAccountModal: React.FC<ProfileDeleteAccountModalProps>
     onConfirm,
 }) => {
     return (
-        <Modal
-            isOpen={isOpen}
-            onClose={onClose}
-            title={
-                <div className="flex items-center gap-2 text-red-500">
-                    <AlertCircle className="w-5 h-5" />
-                    <span>Delete Account</span>
-                </div>
-            }
-            maxWidth="max-w-[425px]"
-        >
+        <Modal isOpen={isOpen} onClose={onClose} title="Delete Account" maxWidth="max-w-[425px]">
             <div className="space-y-4">
                 <p className="text-[14px] text-[#7B7A79]">
                     Are you sure you want to delete your account? This action will permanently

@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { UserCircle } from 'lucide-react'
 import type { Profile } from '../types'
 
@@ -22,12 +22,23 @@ interface ProfileSettingsContentProps {
 export const ProfileSettingsContent: React.FC<ProfileSettingsContentProps> = ({
     profile,
     resolvedName,
+    hasProfile,
+    isGithubConnected,
+    emailNotifications,
+    isNotificationPending,
     onOpenNameModal,
     onOpenUsernameModal,
+    onOpenPasswordModal,
+    onNotificationToggle,
+    onConnectGithub,
     onSignOut,
     onOpenSignOutAllSessionsModal,
     onOpenDeleteAccountModal,
 }) => {
+    // Dummy states for the UI-only toggles
+    const [productUpdates, setProductUpdates] = useState(true)
+    const [securityAlerts, setSecurityAlerts] = useState(true)
+
     return (
         <div className="flex flex-col w-full max-w-[680px] text-[#D6D5C9]">
             {/* Account */}
@@ -105,21 +116,83 @@ export const ProfileSettingsContent: React.FC<ProfileSettingsContentProps> = ({
                 </div>
             </div>
 
-            {/* Security */}
+            {/* Notifications */}
             <div className="flex flex-col mb-6">
-                <h2 className="text-[16px] font-medium text-[#D6D5C9] mb-3">Security</h2>
-                <div className="flex items-center justify-between border-t border-[#242323] pt-4">
-                    <div className="flex flex-col gap-0.5">
-                        <span className="text-[14px] text-[#D6D5C9]">
-                            Two-factor authentication
-                        </span>
-                        <span className="text-[13px] text-[#7B7A79]">
-                            Add an extra layer of security to your account
-                        </span>
+                <h2 className="text-[16px] font-medium text-[#D6D5C9] mb-3">Notifications</h2>
+                <div className="flex flex-col gap-6 border-t border-[#242323] pt-6 pb-2">
+                    <div className="flex items-center justify-between">
+                        <div className="flex flex-col gap-0.5">
+                            <span className="text-[14px] text-[#D6D5C9]">Project activity</span>
+                            <span className="text-[13px] text-[#7B7A79]">
+                                Get email updates when someone interacts with your projects
+                            </span>
+                        </div>
+                        <button
+                            role="switch"
+                            onClick={() => onNotificationToggle(!emailNotifications)}
+                            className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                                emailNotifications
+                                    ? 'bg-[#242323]'
+                                    : 'bg-[#100E12] border-[#383736]'
+                            }`}
+                        >
+                            <span
+                                className={`pointer-events-none inline-block h-4 w-4 transform rounded-full shadow ring-0 transition duration-200 ease-in-out ${
+                                    emailNotifications
+                                        ? 'translate-x-4 bg-[#D6D5C9]'
+                                        : 'translate-x-0 bg-[#383736]'
+                                }`}
+                            />
+                        </button>
                     </div>
-                    <button className="px-4 py-1.5 rounded-lg border border-[#383736] text-[13px] text-[#D6D5C9] hover:bg-[#242323] transition-colors">
-                        Set up
-                    </button>
+
+                    <div className="flex items-center justify-between">
+                        <div className="flex flex-col gap-0.5">
+                            <span className="text-[14px] text-[#D6D5C9]">Product updates</span>
+                            <span className="text-[13px] text-[#7B7A79]">
+                                Get email updates about new features and improvements
+                            </span>
+                        </div>
+                        <button
+                            role="switch"
+                            onClick={() => setProductUpdates(!productUpdates)}
+                            className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                                productUpdates ? 'bg-[#242323]' : 'bg-[#100E12] border-[#383736]'
+                            }`}
+                        >
+                            <span
+                                className={`pointer-events-none inline-block h-4 w-4 transform rounded-full shadow ring-0 transition duration-200 ease-in-out ${
+                                    productUpdates
+                                        ? 'translate-x-4 bg-[#D6D5C9]'
+                                        : 'translate-x-0 bg-[#383736]'
+                                }`}
+                            />
+                        </button>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                        <div className="flex flex-col gap-0.5">
+                            <span className="text-[14px] text-[#D6D5C9]">Security alerts</span>
+                            <span className="text-[13px] text-[#7B7A79]">
+                                Get email updates for important security notices
+                            </span>
+                        </div>
+                        <button
+                            role="switch"
+                            onClick={() => setSecurityAlerts(!securityAlerts)}
+                            className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                                securityAlerts ? 'bg-[#242323]' : 'bg-[#100E12] border-[#383736]'
+                            }`}
+                        >
+                            <span
+                                className={`pointer-events-none inline-block h-4 w-4 transform rounded-full shadow ring-0 transition duration-200 ease-in-out ${
+                                    securityAlerts
+                                        ? 'translate-x-4 bg-[#D6D5C9]'
+                                        : 'translate-x-0 bg-[#383736]'
+                                }`}
+                            />
+                        </button>
+                    </div>
                 </div>
             </div>
 

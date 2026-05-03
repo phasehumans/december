@@ -1,357 +1,240 @@
 import React, { useState } from 'react'
-import { ChevronDown } from 'lucide-react'
+import { ChevronDown, Volume1, Volume2, VolumeX, FilePlus, Trash2 } from 'lucide-react'
 
 export const ProfileGeneralSettings: React.FC = () => {
-    const [theme, setTheme] = useState<'Light' | 'Dark' | 'System'>('System')
-    const [autosuggest, setAutosuggest] = useState(true)
-    const [aiDataRetention, setAiDataRetention] = useState(true)
-    const [emailDeepResearch, setEmailDeepResearch] = useState(true)
-    const [emailComputerTasks, setEmailComputerTasks] = useState(true)
-    const [emailScheduledTasks, setEmailScheduledTasks] = useState(true)
-    const [emailSharedThreads, setEmailSharedThreads] = useState(true)
-    const [emailSharedFiles, setEmailSharedFiles] = useState(true)
+    const [chatSuggestions, setChatSuggestions] = useState(true)
+    const [generationSound, setGenerationSound] = useState<'FIRST_GENERATION' | 'ALWAYS' | 'NEVER'>(
+        'FIRST_GENERATION'
+    )
+    const [activeMemory, setActiveMemory] = useState(false)
+    const [activeSkill, setActiveSkill] = useState(false)
 
     return (
-        <div className="flex flex-col w-full max-w-[680px] text-[#D6D5C9]">
-            {/* Appearance */}
-            <div className="flex flex-col mb-8">
-                <h1 className="text-[16px] font-medium mb-4">Appearance</h1>
-                <div className="flex flex-col gap-7 border-t border-[#242323] pt-6">
-                    {/* Theme */}
-                    <div className="flex items-start justify-between">
-                        <div className="flex flex-col gap-0.5">
-                            <span className="text-[14px] text-[#D6D5C9]">Theme</span>
-                            <span className="text-[13px] text-[#7B7A79]">
-                                How phasehumans looks on your device
-                            </span>
-                        </div>
-                        <div className="flex items-center gap-4">
-                            {/* Light Card */}
-                            <button
-                                onClick={() => setTheme('Light')}
-                                className="flex flex-col items-center gap-2 group"
-                            >
-                                <div
-                                    className={`w-[84px] h-[58px] rounded-lg border overflow-hidden flex items-center justify-center transition-colors ${theme === 'Light' ? 'border-[#D6D5C9]' : 'border-[#242323] group-hover:border-[#4A4948]'}`}
-                                >
-                                    <div className="w-full h-full flex bg-[#F9F9F9]">
-                                        <div className="w-[18px] h-full border-r border-[#E5E5E5] flex flex-col gap-1 p-1">
-                                            <div className="w-1.5 h-1.5 rounded-full bg-[#E5E5E5]"></div>
-                                            <div className="w-1.5 h-1.5 rounded-full bg-[#E5E5E5]"></div>
-                                            <div className="w-1.5 h-1.5 rounded-full bg-[#E5E5E5]"></div>
-                                        </div>
-                                        <div className="flex-1 p-2.5 flex flex-col justify-center gap-2">
-                                            <div className="w-10 h-[3px] bg-[#A3A3A3] rounded-full"></div>
-                                            <div className="flex justify-between items-center w-full">
-                                                <div className="w-6 h-[2px] bg-[#E5E5E5] rounded-full"></div>
-                                                <div className="w-1.5 h-1.5 rounded-full bg-[#3FA69C]"></div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <span
-                                    className={`text-[12px] ${theme === 'Light' ? 'text-[#D6D5C9]' : 'text-[#7B7A79]'}`}
-                                >
-                                    Light
-                                </span>
-                            </button>
-
-                            {/* Dark Card */}
-                            <button
-                                onClick={() => setTheme('Dark')}
-                                className="flex flex-col items-center gap-2 group"
-                            >
-                                <div
-                                    className={`w-[84px] h-[58px] rounded-lg border overflow-hidden flex items-center justify-center transition-colors ${theme === 'Dark' ? 'border-[#D6D5C9]' : 'border-[#242323] group-hover:border-[#4A4948]'}`}
-                                >
-                                    <div className="w-full h-full flex bg-[#171615]">
-                                        <div className="w-[18px] h-full border-r border-[#242323] flex flex-col gap-1 p-1">
-                                            <div className="w-1.5 h-1.5 rounded-full bg-[#242323]"></div>
-                                            <div className="w-1.5 h-1.5 rounded-full bg-[#242323]"></div>
-                                            <div className="w-1.5 h-1.5 rounded-full bg-[#242323]"></div>
-                                        </div>
-                                        <div className="flex-1 p-2.5 flex flex-col justify-center gap-2">
-                                            <div className="w-10 h-[3px] bg-[#4A4948] rounded-full"></div>
-                                            <div className="flex justify-between items-center w-full">
-                                                <div className="w-6 h-[2px] bg-[#242323] rounded-full"></div>
-                                                <div className="w-1.5 h-1.5 rounded-full bg-[#3FA69C]"></div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <span
-                                    className={`text-[12px] ${theme === 'Dark' ? 'text-[#D6D5C9]' : 'text-[#7B7A79]'}`}
-                                >
-                                    Dark
-                                </span>
-                            </button>
-
-                            {/* System Card */}
-                            <button
-                                onClick={() => setTheme('System')}
-                                className="flex flex-col items-center gap-2 group"
-                            >
-                                <div
-                                    className={`w-[84px] h-[58px] rounded-lg border overflow-hidden flex items-center justify-center transition-colors ${theme === 'System' ? 'border-[#D6D5C9]' : 'border-[#242323] group-hover:border-[#4A4948]'}`}
-                                >
-                                    <div className="w-full h-full flex">
-                                        <div className="w-1/2 h-full bg-[#F9F9F9] flex border-r border-[#242323]">
-                                            <div className="w-full h-full border-r border-[#E5E5E5] flex flex-col gap-1 p-1">
-                                                <div className="w-1.5 h-1.5 rounded-full bg-[#E5E5E5]"></div>
-                                                <div className="w-1.5 h-1.5 rounded-full bg-[#E5E5E5]"></div>
-                                                <div className="w-1.5 h-1.5 rounded-full bg-[#E5E5E5]"></div>
-                                            </div>
-                                        </div>
-                                        <div className="w-1/2 h-full bg-[#171615] flex">
-                                            <div className="flex-1 p-2.5 flex flex-col justify-end items-end pb-3">
-                                                <div className="w-1.5 h-1.5 rounded-full bg-[#3FA69C]"></div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <span
-                                    className={`text-[12px] ${theme === 'System' ? 'text-[#D6D5C9]' : 'text-[#7B7A79]'}`}
-                                >
-                                    System
-                                </span>
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* Answer font */}
-                    <div className="flex items-center justify-between">
-                        <div className="flex flex-col gap-0.5">
-                            <span className="text-[14px] text-[#D6D5C9]">Answer font</span>
-                            <span className="text-[13px] text-[#7B7A79]">
-                                Font style for AI response text
-                            </span>
-                        </div>
-                        <button className="flex items-center justify-between gap-3 px-3 py-1.5 rounded-lg border border-[#383736] hover:bg-[#1E1D1B] transition-colors">
-                            <span className="text-[13px] text-[#D6D5C9]">Serif</span>
-                            <ChevronDown className="w-4 h-4 text-[#7B7A79]" />
-                        </button>
-                    </div>
-                </div>
-            </div>
-
+        <div className="flex flex-col w-full max-w-[800px] text-[#D6D5C9]">
             {/* Preferences */}
-            <div className="flex flex-col mb-8">
+            <div className="flex flex-col mb-10">
                 <h1 className="text-[16px] font-medium mb-4">Preferences</h1>
                 <div className="flex flex-col gap-7 border-t border-[#242323] pt-6">
-                    {/* Language */}
+                    {/* Chat suggestions */}
                     <div className="flex items-center justify-between">
                         <div className="flex flex-col gap-0.5">
-                            <span className="text-[14px] text-[#D6D5C9]">Language</span>
+                            <span className="text-[14px] text-[#D6D5C9]">Chat suggestions</span>
                             <span className="text-[13px] text-[#7B7A79]">
-                                The language used in the user interface
-                            </span>
-                        </div>
-                        <button className="flex items-center justify-between gap-3 px-3 py-1.5 rounded-lg border border-[#383736] hover:bg-[#1E1D1B] transition-colors">
-                            <span className="text-[13px] text-[#D6D5C9]">Default</span>
-                            <ChevronDown className="w-4 h-4 text-[#7B7A79]" />
-                        </button>
-                    </div>
-
-                    {/* Preferred response language */}
-                    <div className="flex items-center justify-between">
-                        <div className="flex flex-col gap-0.5">
-                            <span className="text-[14px] text-[#D6D5C9]">
-                                Preferred response language
-                            </span>
-                            <span className="text-[13px] text-[#7B7A79]">
-                                The language used for AI responses
-                            </span>
-                        </div>
-                        <button className="flex items-center justify-between gap-3 px-3 py-1.5 rounded-lg border border-[#383736] hover:bg-[#1E1D1B] transition-colors">
-                            <span className="text-[13px] text-[#D6D5C9]">
-                                Automatic (detect input)
-                            </span>
-                            <ChevronDown className="w-4 h-4 text-[#7B7A79]" />
-                        </button>
-                    </div>
-
-                    {/* Autosuggest */}
-                    <div className="flex items-center justify-between">
-                        <div className="flex flex-col gap-0.5">
-                            <span className="text-[14px] text-[#D6D5C9]">Autosuggest</span>
-                            <span className="text-[13px] text-[#7B7A79]">
-                                Enable dropdown and tab-complete suggestions while typing a query
+                                Show helpful suggestions in the chat interface to enhance your
+                                experience.
                             </span>
                         </div>
                         <button
-                            onClick={() => setAutosuggest(!autosuggest)}
-                            className={`relative w-[36px] h-[20px] rounded-full transition-colors ${autosuggest ? 'bg-[#3FA69C]' : 'bg-[#383736]'}`}
+                            role="switch"
+                            onClick={() => setChatSuggestions(!chatSuggestions)}
+                            className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                                chatSuggestions ? 'bg-[#242323]' : 'bg-[#100E12] border-[#383736]'
+                            }`}
                         >
                             <span
-                                className={`absolute top-[2px] left-[2px] w-[16px] h-[16px] bg-white rounded-full transition-transform ${autosuggest ? 'translate-x-[16px]' : 'translate-x-0'}`}
+                                className={`pointer-events-none inline-block h-4 w-4 transform rounded-full shadow ring-0 transition duration-200 ease-in-out ${
+                                    chatSuggestions
+                                        ? 'translate-x-4 bg-[#D6D5C9]'
+                                        : 'translate-x-0 bg-[#383736]'
+                                }`}
                             />
                         </button>
                     </div>
 
-                    {/* Keyboard shortcut hints */}
-                    <div className="flex items-center justify-between">
-                        <div className="flex flex-col gap-0.5">
-                            <span className="text-[14px] text-[#D6D5C9]">
-                                Keyboard shortcut hints
-                            </span>
-                            <span className="text-[13px] text-[#7B7A79]">
-                                Display keyboard shortcuts as symbols (⌘↑) or full key names
-                                (Cmd+Shift)
-                            </span>
-                        </div>
-                        <button className="flex items-center justify-between gap-3 px-3 py-1.5 rounded-lg border border-[#383736] hover:bg-[#1E1D1B] transition-colors">
-                            <span className="text-[13px] text-[#D6D5C9]">Text</span>
-                            <ChevronDown className="w-4 h-4 text-[#7B7A79]" />
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            {/* Artificial Intelligence */}
-            <div className="flex flex-col mb-8">
-                <h1 className="text-[16px] font-medium mb-4">Artificial Intelligence</h1>
-                <div className="flex flex-col gap-7 border-t border-[#242323] pt-6">
-                    {/* Image generation model */}
-                    <div className="flex items-center justify-between">
-                        <div className="flex flex-col gap-0.5">
-                            <span className="text-[14px] text-[#D6D5C9]">
-                                Image generation model
-                            </span>
-                        </div>
-                        <button className="px-4 py-1.5 rounded-lg border border-[#383736] text-[13px] text-[#D6D5C9] hover:bg-[#1E1D1B] transition-colors">
-                            Upgrade to select
-                        </button>
-                    </div>
-
-                    {/* Video generation model */}
-                    <div className="flex items-center justify-between">
-                        <div className="flex flex-col gap-0.5">
-                            <span className="text-[14px] text-[#D6D5C9]">
-                                Video generation model
-                            </span>
-                        </div>
-                        <button className="px-4 py-1.5 rounded-lg border border-[#383736] text-[13px] text-[#D6D5C9] hover:bg-[#1E1D1B] transition-colors">
-                            Upgrade to Max
-                        </button>
-                    </div>
-
-                    {/* AI data retention */}
+                    {/* Generation complete sound */}
                     <div className="flex items-start justify-between">
-                        <div className="flex flex-col gap-0.5 max-w-[85%]">
-                            <span className="text-[14px] text-[#D6D5C9]">AI data retention</span>
-                            <span className="text-[13px] text-[#7B7A79] leading-relaxed">
-                                AI Data Retention allows phasehumans to use your searches to improve
-                                AI models. Turn this setting off if you wish to exclude your data
-                                from this process.
+                        <div className="flex flex-col gap-0.5 max-w-[60%]">
+                            <span className="text-[14px] text-[#D6D5C9]">
+                                Generation complete sound
+                            </span>
+                            <span className="text-[13px] text-[#7B7A79]">
+                                Plays a satisfying sound notification when a generation is finished.
                             </span>
                         </div>
-                        <button
-                            onClick={() => setAiDataRetention(!aiDataRetention)}
-                            className={`relative w-[36px] h-[20px] rounded-full transition-colors mt-1 ${aiDataRetention ? 'bg-[#3FA69C]' : 'bg-[#383736]'}`}
-                        >
-                            <span
-                                className={`absolute top-[2px] left-[2px] w-[16px] h-[16px] bg-white rounded-full transition-transform ${aiDataRetention ? 'translate-x-[16px]' : 'translate-x-0'}`}
-                            />
-                        </button>
+                        <div className="flex flex-col gap-3">
+                            <button
+                                onClick={() => setGenerationSound('FIRST_GENERATION')}
+                                className="flex items-center gap-3 text-[13px] font-medium transition-colors hover:text-[#D6D5C9] group"
+                            >
+                                <div
+                                    className={`flex items-center justify-center w-4 h-4 rounded-full border ${generationSound === 'FIRST_GENERATION' ? 'border-[#D6D5C9]' : 'border-[#383736] group-hover:border-[#7B7A79]'}`}
+                                >
+                                    {generationSound === 'FIRST_GENERATION' && (
+                                        <div className="w-2 h-2 rounded-full bg-[#D6D5C9]" />
+                                    )}
+                                </div>
+                                <Volume1 className="w-4 h-4 text-[#7B7A79]" />
+                                <span
+                                    className={
+                                        generationSound === 'FIRST_GENERATION'
+                                            ? 'text-[#D6D5C9]'
+                                            : 'text-[#7B7A79]'
+                                    }
+                                >
+                                    First generation
+                                </span>
+                            </button>
+                            <button
+                                onClick={() => setGenerationSound('ALWAYS')}
+                                className="flex items-center gap-3 text-[13px] font-medium transition-colors hover:text-[#D6D5C9] group"
+                            >
+                                <div
+                                    className={`flex items-center justify-center w-4 h-4 rounded-full border ${generationSound === 'ALWAYS' ? 'border-[#D6D5C9]' : 'border-[#383736] group-hover:border-[#7B7A79]'}`}
+                                >
+                                    {generationSound === 'ALWAYS' && (
+                                        <div className="w-2 h-2 rounded-full bg-[#D6D5C9]" />
+                                    )}
+                                </div>
+                                <Volume2 className="w-4 h-4 text-[#7B7A79]" />
+                                <span
+                                    className={
+                                        generationSound === 'ALWAYS'
+                                            ? 'text-[#D6D5C9]'
+                                            : 'text-[#7B7A79]'
+                                    }
+                                >
+                                    Always
+                                </span>
+                            </button>
+                            <button
+                                onClick={() => setGenerationSound('NEVER')}
+                                className="flex items-center gap-3 text-[13px] font-medium transition-colors hover:text-[#D6D5C9] group"
+                            >
+                                <div
+                                    className={`flex items-center justify-center w-4 h-4 rounded-full border ${generationSound === 'NEVER' ? 'border-[#D6D5C9]' : 'border-[#383736] group-hover:border-[#7B7A79]'}`}
+                                >
+                                    {generationSound === 'NEVER' && (
+                                        <div className="w-2 h-2 rounded-full bg-[#D6D5C9]" />
+                                    )}
+                                </div>
+                                <VolumeX className="w-4 h-4 text-[#7B7A79]" />
+                                <span
+                                    className={
+                                        generationSound === 'NEVER'
+                                            ? 'text-[#D6D5C9]'
+                                            : 'text-[#7B7A79]'
+                                    }
+                                >
+                                    Never
+                                </span>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            {/* Email settings */}
-            <div className="flex flex-col mb-8">
-                <h1 className="text-[16px] font-medium mb-4">Email settings</h1>
-                <div className="flex flex-col gap-7 border-t border-[#242323] pt-6">
-                    {/* Deep research and file creation */}
-                    <div className="flex items-center justify-between">
-                        <div className="flex flex-col gap-0.5">
-                            <span className="text-[14px] text-[#D6D5C9]">
-                                Deep research and file creation
-                            </span>
-                            <span className="text-[13px] text-[#7B7A79]">
-                                Get email updates when your research is ready
-                            </span>
-                        </div>
-                        <button
-                            onClick={() => setEmailDeepResearch(!emailDeepResearch)}
-                            className={`relative w-[36px] h-[20px] rounded-full transition-colors ${emailDeepResearch ? 'bg-[#3FA69C]' : 'bg-[#383736]'}`}
-                        >
-                            <span
-                                className={`absolute top-[2px] left-[2px] w-[16px] h-[16px] bg-white rounded-full transition-transform ${emailDeepResearch ? 'translate-x-[16px]' : 'translate-x-0'}`}
-                            />
-                        </button>
-                    </div>
+            {/* Memories */}
+            <div className="flex flex-col mb-10">
+                <h1 className="text-[16px] font-medium mb-4">Memories</h1>
+                <div className="flex flex-col gap-4 border border-[#242323] rounded-xl p-5 bg-[#171615]">
+                    <p className="text-[13px] text-[#7B7A79] mb-4 leading-relaxed">
+                        Teach phasehumans your preferences and conventions. MEMORY.md is always read
+                        at the start of every chat; other files are loaded on demand.
+                    </p>
 
-                    {/* Computer Tasks */}
-                    <div className="flex items-center justify-between">
-                        <div className="flex flex-col gap-0.5">
-                            <span className="text-[14px] text-[#D6D5C9]">Computer Tasks</span>
-                            <span className="text-[13px] text-[#7B7A79]">
-                                Get email updates when your computer task is ready
-                            </span>
+                    {!activeMemory ? (
+                        <div>
+                            <button
+                                onClick={() => setActiveMemory(true)}
+                                className="flex items-center gap-2 px-4 py-2 border border-[#383736] rounded-lg text-[14px] font-medium text-[#D6D5C9] hover:bg-[#242323] transition-colors w-fit shadow-sm"
+                            >
+                                <FilePlus className="w-4 h-4" />
+                                Create MEMORY.md
+                            </button>
                         </div>
-                        <button
-                            onClick={() => setEmailComputerTasks(!emailComputerTasks)}
-                            className={`relative w-[36px] h-[20px] rounded-full transition-colors ${emailComputerTasks ? 'bg-[#3FA69C]' : 'bg-[#383736]'}`}
-                        >
-                            <span
-                                className={`absolute top-[2px] left-[2px] w-[16px] h-[16px] bg-white rounded-full transition-transform ${emailComputerTasks ? 'translate-x-[16px]' : 'translate-x-0'}`}
-                            />
-                        </button>
-                    </div>
+                    ) : (
+                        <div className="flex flex-col border border-[#242323] rounded-xl overflow-hidden bg-[#100E12]">
+                            <div className="flex items-center justify-between px-4 py-3 bg-[#100E12]">
+                                <span className="text-[13px] font-medium text-[#D6D5C9]">
+                                    MEMORY.md
+                                </span>
+                                <span className="text-[12px] text-[#4A4948]">0 chars</span>
+                            </div>
+                            <div className="w-full h-[1px] bg-[#242323]" />
+                            <div className="p-4 bg-[#100E12]">
+                                <textarea
+                                    className="w-full h-[200px] bg-[#100E12] border border-[#242323] rounded-xl p-4 text-[13.5px] text-[#808080] font-mono leading-[1.6] resize-none focus:outline-none focus:border-[#4A4948] transition-colors caret-[#D6D5C9]"
+                                    placeholder='Keep this short — summarize key preferences and link to reference files for details (e.g. "See patterns.md for React conventions").'
+                                    spellCheck={false}
+                                ></textarea>
+                                <div className="flex items-center gap-4 mt-4">
+                                    <button className="px-5 py-1.5 border border-[#D6D5C9] text-[#D6D5C9] rounded-lg text-[14px] font-medium hover:bg-[#D6D5C9] hover:text-[#100E12] transition-colors">
+                                        Save
+                                    </button>
+                                    <button
+                                        onClick={() => setActiveMemory(false)}
+                                        className="flex items-center gap-2 px-3 py-1.5 text-[#7B7A79] hover:text-[#D6D5C9] transition-colors text-[14px] font-medium rounded-lg"
+                                    >
+                                        <Trash2 className="w-[18px] h-[18px]" />
+                                        Delete
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
 
-                    {/* Scheduled Tasks */}
-                    <div className="flex items-center justify-between">
-                        <div className="flex flex-col gap-0.5">
-                            <span className="text-[14px] text-[#D6D5C9]">Scheduled Tasks</span>
-                            <span className="text-[13px] text-[#7B7A79]">
-                                Get email updates when your scheduled tasks complete
-                            </span>
-                        </div>
-                        <button
-                            onClick={() => setEmailScheduledTasks(!emailScheduledTasks)}
-                            className={`relative w-[36px] h-[20px] rounded-full transition-colors ${emailScheduledTasks ? 'bg-[#3FA69C]' : 'bg-[#383736]'}`}
-                        >
-                            <span
-                                className={`absolute top-[2px] left-[2px] w-[16px] h-[16px] bg-white rounded-full transition-transform ${emailScheduledTasks ? 'translate-x-[16px]' : 'translate-x-0'}`}
-                            />
-                        </button>
-                    </div>
+            {/* Custom Skills */}
+            <div className="flex flex-col mb-10">
+                <h1 className="text-[16px] font-medium mb-4">Custom Skills</h1>
+                <div className="flex flex-col gap-4 border border-[#242323] rounded-xl p-5 bg-[#171615]">
+                    <p className="text-[13px] text-[#7B7A79] mb-4 leading-relaxed">
+                        Create reusable skills that phasehumans can apply during conversations. Each
+                        skill has a SKILL.md that defines when it triggers and what instructions to
+                        follow.
+                    </p>
 
-                    {/* Shared threads */}
-                    <div className="flex items-center justify-between">
-                        <div className="flex flex-col gap-0.5">
-                            <span className="text-[14px] text-[#D6D5C9]">Shared threads</span>
-                            <span className="text-[13px] text-[#7B7A79]">
-                                Get email updates when someone shares a thread with you
-                            </span>
+                    {!activeSkill ? (
+                        <div>
+                            <button
+                                onClick={() => setActiveSkill(true)}
+                                className="flex items-center gap-2 px-4 py-2 border border-[#383736] rounded-lg text-[14px] font-medium text-[#D6D5C9] hover:bg-[#242323] transition-colors w-fit shadow-sm"
+                            >
+                                <FilePlus className="w-4 h-4" />
+                                Create a skill
+                            </button>
                         </div>
-                        <button
-                            onClick={() => setEmailSharedThreads(!emailSharedThreads)}
-                            className={`relative w-[36px] h-[20px] rounded-full transition-colors ${emailSharedThreads ? 'bg-[#3FA69C]' : 'bg-[#383736]'}`}
-                        >
-                            <span
-                                className={`absolute top-[2px] left-[2px] w-[16px] h-[16px] bg-white rounded-full transition-transform ${emailSharedThreads ? 'translate-x-[16px]' : 'translate-x-0'}`}
-                            />
-                        </button>
-                    </div>
+                    ) : (
+                        <div className="flex flex-col border border-[#242323] rounded-xl overflow-hidden bg-[#100E12]">
+                            <div className="flex items-center justify-between px-4 py-3 bg-[#100E12]">
+                                <span className="text-[13px] font-medium text-[#D6D5C9]">
+                                    skill / <span className="text-white">SKILL.md</span>
+                                </span>
+                                <span className="text-[12px] text-[#4A4948]">345 chars</span>
+                            </div>
+                            <div className="w-full h-[1px] bg-[#242323]" />
+                            <div className="p-4 bg-[#100E12]">
+                                <textarea
+                                    className="w-full h-[320px] bg-[#100E12] border border-[#242323] rounded-xl p-4 text-[13.5px] text-[#D6D5C9] font-mono leading-[1.6] resize-none focus:outline-none focus:border-[#4A4948] transition-colors caret-[#D6D5C9]"
+                                    defaultValue={`---
+name: skill
+description: Describe what this skill does and when phasehumans should use it. Be specific - this is how phasehumans decides to trigger the skill.
+---
 
-                    {/* Shared files */}
-                    <div className="flex items-center justify-between">
-                        <div className="flex flex-col gap-0.5">
-                            <span className="text-[14px] text-[#D6D5C9]">Shared files</span>
-                            <span className="text-[13px] text-[#7B7A79]">
-                                Get email updates when someone shares a file with you
-                            </span>
+# skill
+
+## Instructions
+
+Write the steps phasehumans should follow when this skill is triggered.
+Focus on what phasehumans wouldn't already know - domain-specific details, preferred patterns, or exact sequences.`}
+                                    spellCheck={false}
+                                ></textarea>
+                                <div className="flex items-center gap-4 mt-4">
+                                    <button className="px-5 py-1.5 border border-[#D6D5C9] text-[#D6D5C9] rounded-lg text-[14px] font-medium hover:bg-[#D6D5C9] hover:text-[#100E12] transition-colors">
+                                        Save
+                                    </button>
+                                    <button
+                                        onClick={() => setActiveSkill(false)}
+                                        className="flex items-center gap-2 px-3 py-1.5 text-[#7B7A79] hover:text-[#D6D5C9] transition-colors text-[14px] font-medium rounded-lg"
+                                    >
+                                        <Trash2 className="w-[18px] h-[18px]" />
+                                        Delete
+                                    </button>
+                                </div>
+                            </div>
                         </div>
-                        <button
-                            onClick={() => setEmailSharedFiles(!emailSharedFiles)}
-                            className={`relative w-[36px] h-[20px] rounded-full transition-colors ${emailSharedFiles ? 'bg-[#3FA69C]' : 'bg-[#383736]'}`}
-                        >
-                            <span
-                                className={`absolute top-[2px] left-[2px] w-[16px] h-[16px] bg-white rounded-full transition-transform ${emailSharedFiles ? 'translate-x-[16px]' : 'translate-x-0'}`}
-                            />
-                        </button>
-                    </div>
+                    )}
                 </div>
             </div>
         </div>
