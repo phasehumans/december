@@ -5,6 +5,7 @@ import { HomeHero } from '@/features/home/components/HomeHero'
 import { OutputScreen } from '@/features/preview/components/OutputScreen'
 import { ProjectList } from '@/features/projects/components/ProjectList'
 import { ProfileSettings } from '@/features/profile/components/ProfileSettings'
+import { DocsPage } from '@/features/docs/components/DocsPage'
 import { TemplatesView } from '@/features/templates/components/TemplatesView'
 import type { Message } from '@/features/chat/types'
 import type { Project } from '@/features/projects/types'
@@ -167,9 +168,7 @@ export const AppContentView: React.FC<AppContentViewProps> = ({
 
             {view === 'docs' && (
                 <AnimatedPage pageKey="docs">
-                    <div className="h-full flex items-center justify-center">
-                        <span className="text-xl font-medium text-[#D6D5D4]">Docs</span>
-                    </div>
+                    <DocsPage onBack={onNewProject} />
                 </AnimatedPage>
             )}
 
