@@ -20,12 +20,7 @@ export const ProfileSignOutAllSessionsModal: React.FC<ProfileSignOutAllSessionsM
         <Modal
             isOpen={isOpen}
             onClose={onClose}
-            title={
-                <div className="flex items-center gap-2">
-                    <AlertCircle className="w-5 h-5 text-yellow-500" />
-                    <span>Sign Out All Sessions</span>
-                </div>
-            }
+            title="Sign Out All Sessions"
             maxWidth="max-w-[425px]"
         >
             <div className="space-y-4">

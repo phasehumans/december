@@ -32,7 +32,7 @@ const Sidebar: React.FC<SidebarProps & { user?: any }> = ({
         <div className="hidden md:flex flex-col h-screen bg-sidebar border-r border-white/5 pt-2 pb-0 z-20 w-[200px] font-sans">
             <SidebarHeader onNewThread={onNewThread} />
 
-            <div className="flex flex-col gap-[4px] pl-[10px] pr-3">
+            <div className="flex flex-col gap-[2px] pl-[10px] pr-3">
                 <SidebarNavItem
                     icon={<Icons.Home />}
                     label="Home"

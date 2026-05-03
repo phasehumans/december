@@ -111,15 +111,15 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                             Account
                         </button>
                         <button
-                            onClick={() => setActiveTab('General')}
+                            onClick={() => setActiveTab('Preferences')}
                             className={`flex items-center gap-3 px-3 py-1.5 rounded-xl text-[13px] font-medium transition-colors ${
-                                activeTab === 'General'
+                                activeTab === 'Preferences'
                                     ? 'bg-[#242323] text-[#D6D5C9]'
                                     : 'text-[#D6D5C9] hover:bg-[#1E1D1B]'
                             }`}
                         >
                             <SlidersHorizontal className="w-[18px] h-[18px]" strokeWidth={1.5} />
-                            General
+                            Preferences
                         </button>
                         <button
                             onClick={() => setActiveTab('Integrations')}
@@ -230,7 +230,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                                     setSignOutAllSessionsModalOpen(true)
                                 }
                             />
-                        ) : activeTab === 'General' ? (
+                        ) : activeTab === 'Preferences' ? (
                             <ProfileGeneralSettings />
                         ) : activeTab === 'Billing' ? (
                             <ProfileBillingSettings />
