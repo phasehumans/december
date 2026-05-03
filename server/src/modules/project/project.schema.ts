@@ -6,11 +6,18 @@ export const createProjectSchema = z.object({
     prompt: z.string().min(3),
 })
 
-export const updateProjectSchema = z.object({
-    rename: z.string().optional(),
-    isStarred: z.boolean().optional(),
+export const renameProjectSchema = z.object({
+    rename: z.string(),
 })
 
-export const projectVersionQuerySchema = z.object({
+export const getProjectByIdSchema = z.object({
     versionId: z.string().uuid().optional(),
+})
+
+export const downloadProjectVersionSchema = z.object({
+    versionId: z.string().uuid().optional(),
+})
+
+export const toogleStarProjectSchema = z.object({
+    isStarred: z.boolean(),
 })

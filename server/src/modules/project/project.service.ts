@@ -9,6 +9,8 @@ import {
     mapVersionSummary,
     isVersionSchemaMissing,
 } from '../project/project.utils'
+import { AppError } from '../../utils/appError'
+import { Prisma } from '../../generated/prisma/client'
 
 type GetProject = {
     userId: string
@@ -23,11 +25,10 @@ type CreateProject = {
     userId: string
 }
 
-type UpdateProject = {
+type RenameProject = {
     projectId: string
     userId: string
-    rename?: string
-    isStarred?: boolean
+    rename: string
 }
 
 type DeleteProject = {
@@ -45,22 +46,23 @@ type ShareProject = {
     projectId: string
 }
 
-type RemixProject = {
+type ToogleStarProject = {
     userId: string
     projectId: string
+    isStarred: boolean
 }
 
-const baseProjectSelect = {
-    id: true,
-    name: true,
-    description: true,
-    prompt: true,
-    isStarred: true,
-    projectStatus: true,
-    createdAt: true,
-    updatedAt: true,
-    userId: true,
-} as const
+// const baseProjectSelect = {
+//     id: true,
+//     name: true,
+//     description: true,
+//     prompt: true,
+//     isStarred: true,
+//     projectStatus: true,
+//     createdAt: true,
+//     updatedAt: true,
+//     userId: true,
+// } as const
 
 export type StoredProjectFile = {
     path: string
@@ -78,29 +80,53 @@ const loadGeneratedFilesFromManifest = async (manifest: StoredProjectFile[]) => 
 }
 
 const getAllProjects = async (userId: string) => {
-    return prisma.project.findMany({
+    const user = await prisma.user.findUnique({
         where: {
-            userId,
+            id: userId,
+            isDeleted: false,
         },
-        orderBy: {
-            updatedAt: 'desc',
-        },
-        select: baseProjectSelect,
     })
+
+    if (!user) {
+        throw new AppError('user not found', 404)
+    }
+
+    try {
+        const projects = await prisma.project.findMany({
+            where: {
+                userId: userId,
+            },
+        })
+
+        return projects
+    } catch (error) {
+        throw new AppError('database error while fetching projects', 500)
+    }
 }
 
 const getProjectById = async (data: GetProject) => {
     const { userId, projectId, versionId } = data
+
+    const user = await prisma.user.findUnique({
+        where: {
+            id: userId,
+            isDeleted: false,
+        },
+    })
+
+    if (!user) {
+        throw new AppError('user not found', 404)
+    }
+
     const project = await prisma.project.findFirst({
         where: {
             id: projectId,
-            userId,
+            userId: userId,
         },
-        select: baseProjectSelect,
     })
 
     if (!project) {
-        throw new Error('project not found')
+        throw new AppError('project not found', 404)
     }
 
     try {
@@ -132,7 +158,7 @@ const getProjectById = async (data: GetProject) => {
             : null
 
         if (selectedVersionId && !activeVersion) {
-            throw new Error('project version not found')
+            throw new AppError('project version not found', 404)
         }
 
         const generatedFiles = activeVersion
@@ -191,45 +217,92 @@ const getProjectById = async (data: GetProject) => {
 const createProject = async (data: CreateProject) => {
     const { name, description, prompt, userId } = data
 
-    return prisma.project.create({
-        data: {
-            name,
-            description,
-            prompt,
-            isStarred: false,
-            userId,
-        },
-        select: baseProjectSelect,
-    })
-}
-
-const updateProject = async (data: UpdateProject) => {
-    const { projectId, userId, rename, isStarred } = data
-
-    const project = await prisma.project.updateMany({
+    const user = await prisma.user.findUnique({
         where: {
-            id: projectId,
-            userId,
-        },
-        data: {
-            ...(rename !== undefined && { name: rename }),
-            ...(isStarred !== undefined && { isStarred }),
+            id: userId,
+            isDeleted: false,
         },
     })
 
-    if (project.count === 0) {
-        throw new Error('project not found')
+    if (!user) {
+        throw new AppError('user not found', 404)
     }
 
-    return { message: 'project updated' }
+    try {
+        const project = await prisma.project.create({
+            data: {
+                name,
+                description,
+                prompt,
+                isStarred: false,
+                userId,
+            },
+        })
+
+        return project
+    } catch (error) {
+        throw new AppError('failed to create project', 500)
+    }
+}
+
+const renameProject = async (data: RenameProject) => {
+    const { projectId, userId, rename } = data
+
+    const user = await prisma.user.findUnique({
+        where: {
+            id: userId,
+            isDeleted: false,
+        },
+    })
+
+    if (!user) {
+        throw new AppError('user not found', 404)
+    }
+
+    try {
+        await prisma.project.update({
+            where: {
+                id: projectId,
+                userId,
+            },
+            data: {
+                name: rename,
+            },
+        })
+
+        return { message: 'project updated' }
+    } catch (error) {
+        if (error instanceof Prisma.PrismaClientKnownRequestError) {
+            if (error.code === 'P2025') {
+                throw new AppError('project not found', 404)
+            }
+
+            if (error.code === 'P2002') {
+                throw new AppError('duplicate field value', 400)
+            }
+        }
+        throw new AppError('failed to rename project', 500)
+    }
 }
 
 const deleteProject = async (data: DeleteProject) => {
     const { userId, projectId } = data
+
+    const user = await prisma.user.findUnique({
+        where: {
+            id: userId,
+            isDeleted: false,
+        },
+    })
+
+    if (!user) {
+        throw new AppError('user not found', 404)
+    }
+
     const project = await prisma.project.findFirst({
         where: {
             id: projectId,
-            userId,
+            userId: userId,
         },
         select: {
             id: true,
@@ -237,20 +310,24 @@ const deleteProject = async (data: DeleteProject) => {
     })
 
     if (!project) {
-        throw new Error('project not found')
+        throw new AppError('project not found', 404)
     }
 
-    await deletePrefix(projectPrefix(projectId))
+    try {
+        await prisma.project.delete({
+            where: {
+                id: projectId,
+                userId,
+            },
+        })
+    } catch (error) {
+        throw new AppError('failed to delete project', 500)
+    }
 
-    const deleted = await prisma.project.deleteMany({
-        where: {
-            id: projectId,
-            userId,
-        },
-    })
-
-    if (deleted.count === 0) {
-        throw new Error('project not found')
+    try {
+        await deletePrefix(projectPrefix(projectId)) // delete from obj store
+    } catch (error) {
+        console.log('failed to delete project files')
     }
 
     return { message: 'project deleted' }
@@ -264,11 +341,10 @@ const duplicateProject = async (data: DuplicateProject) => {
             id: projectId,
             userId,
         },
-        select: baseProjectSelect,
     })
 
     if (!sourceProject) {
-        throw new Error('project not found')
+        throw new AppError('project not found', 404)
     }
 
     let currentVersion: any = null
@@ -301,9 +377,8 @@ const duplicateProject = async (data: DuplicateProject) => {
             description: sourceProject.description,
             prompt: currentVersion?.sourcePrompt ?? sourceProject.prompt,
             projectStatus: currentVersion ? 'READY' : sourceProject.projectStatus,
-            userId,
+            userId: userId,
         },
-        select: baseProjectSelect,
     })
 
     if (!currentVersion) {
@@ -391,7 +466,7 @@ const downloadProjectVersion = async (data: GetProject) => {
     const detail = await getProjectById(data)
 
     if (!detail.activeVersion) {
-        throw new Error('project version not found')
+        throw new AppError('project version not found', 404)
     }
 
     const zip = buildProjectZip(
@@ -417,10 +492,14 @@ const downloadProjectVersion = async (data: GetProject) => {
 const shareProjectAsTemplate = async (data: ShareProject) => {
     const { userId, projectId } = data
 
+    // updateMany w/ single query >> atomic | check user and then project and then update project >> not atomic
     const project = await prisma.project.updateMany({
         where: {
             id: projectId,
             userId: userId,
+            user: {
+                isDeleted: false,
+            },
         },
         data: {
             isSharedAsTemplate: true,
@@ -428,22 +507,43 @@ const shareProjectAsTemplate = async (data: ShareProject) => {
     })
 
     if (project.count === 0) {
-        throw new Error('project not found')
+        throw new AppError('project not found', 404)
     }
 
     return { message: 'project shared as template' }
 }
 
-const remixProject = async (data: RemixProject) => {}
+const toggleStarProject = async (data: ToogleStarProject) => {
+    const { userId, projectId, isStarred } = data
+
+    const project = await prisma.project.updateMany({
+        where: {
+            id: projectId,
+            userId: userId,
+            user: {
+                isDeleted: false,
+            },
+        },
+        data: {
+            isStarred,
+        },
+    })
+
+    if (project.count === 0) {
+        throw new AppError('project not found', 404)
+    }
+
+    return { message: 'project isStarred state updated' }
+}
 
 export const projectService = {
     getAllProjects,
     getProjectById,
     createProject,
-    updateProject,
+    renameProject,
     deleteProject,
     duplicateProject,
     downloadProjectVersion,
     shareProjectAsTemplate,
-    remixProject,
+    toggleStarProject,
 }
