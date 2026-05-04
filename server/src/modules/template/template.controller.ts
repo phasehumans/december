@@ -1,10 +1,10 @@
 import type { Request, Response } from 'express'
 import { templateService } from './template.service'
-import { ProjectCategory } from '../../generated/prisma/enums'
-import { success } from 'zod'
+import { AppError } from '../../utils/appError'
+import { toggleLikeSchema } from './template.schema'
 
 const getAllTemplates = async (req: Request, res: Response) => {
-    const userId = req.userId as string | undefined
+    const userId = req.user?.userId as string | undefined
 
     if (!userId) {
         return res.status(400).json({
@@ -21,15 +21,24 @@ const getAllTemplates = async (req: Request, res: Response) => {
             data: result,
         })
     } catch (error: any) {
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({
+                success: false,
+                message: 'failed to fetch templates',
+                errors: error.message,
+            })
+        }
+
         return res.status(500).json({
             success: false,
-            error: error.message,
+            message: 'failed to fetch templates',
+            errors: error instanceof Error ? error.message : 'unknown error',
         })
     }
 }
 
 const getTemplateById = async (req: Request, res: Response) => {
-    const userId = req.userId as string | undefined
+    const userId = req.user?.userId as string | undefined
     const templateId = req.params.templateId as string | undefined
 
     if (!userId) {
@@ -50,20 +59,28 @@ const getTemplateById = async (req: Request, res: Response) => {
         const result = await templateService.getTemplateById(templateId)
         return res.status(200).json({
             success: true,
-            message: 'templates fetched successfully',
+            message: 'template fetched successfully',
             data: result,
         })
     } catch (error: any) {
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({
+                success: false,
+                message: 'failed to fetch template',
+                errors: error.message,
+            })
+        }
+
         return res.status(500).json({
             success: false,
-            error: error.message,
+            message: 'failed to fetch template',
+            errors: error instanceof Error ? error.message : 'unknown error',
         })
     }
 }
 
-const getTemplatesByCategory = async (req: Request, res: Response) => {
-    const userId = req.userId as string | undefined
-    const categoryParam = req.params.category as string | undefined
+const getFeaturedTemplates = async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
 
     if (!userId) {
         return res.status(400).json({
@@ -72,41 +89,32 @@ const getTemplatesByCategory = async (req: Request, res: Response) => {
         })
     }
 
-    if (!categoryParam) {
-        return res.status(400).json({
-            success: false,
-            message: 'category is required',
-        })
-    }
-
-    if (!Object.values(ProjectCategory).includes(categoryParam as ProjectCategory)) {
-        return res.status(400).json({
-            success: false,
-            message: 'invalid category',
-        })
-    }
-
-    const category = categoryParam as ProjectCategory
-
     try {
-        const result = await templateService.getTemplatesByCategory(category)
+        const result = await templateService.getFeaturedTemplates()
         return res.status(200).json({
             success: true,
-            message: 'templates fetched successfully',
+            message: 'featured templates fetched successfully',
             data: result,
         })
     } catch (error: any) {
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({
+                success: false,
+                message: 'failed to fetch featured templates',
+                errors: error.message,
+            })
+        }
+
         return res.status(500).json({
             success: false,
-            error: error.message,
+            message: 'failed to fetch featured templates',
+            errors: error instanceof Error ? error.message : 'unknown error',
         })
     }
 }
 
-const remixTemplate = async (req: Request, res: Response) => {}
-
-const likeTemplate = async (req: Request, res: Response) => {
-    const userId = req.userId as string | undefined
+const remixTemplate = async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
     const templateId = req.params.templateId as string | undefined
 
     if (!userId) {
@@ -124,23 +132,33 @@ const likeTemplate = async (req: Request, res: Response) => {
     }
 
     try {
-        const result = await templateService.likeTemplate({ userId, templateId })
+        const result = await templateService.remixTemplate({ userId, templateId })
         return res.status(200).json({
             success: true,
-            message: 'liked successfully',
+            message: 'remix template successfully',
             data: result,
         })
     } catch (error: any) {
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({
+                success: false,
+                message: 'failed to remix template',
+                errors: error.message,
+            })
+        }
+
         return res.status(500).json({
             success: false,
-            error: error.message,
+            message: 'failed to remix template',
+            errors: error instanceof Error ? error.message : 'unknown error',
         })
     }
 }
 
-const dislikeTemplate = async (req: Request, res: Response) => {
-    const userId = req.userId as string | undefined
+const toggleLike = async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
     const templateId = req.params.templateId as string | undefined
+    const parseData = toggleLikeSchema.safeParse(req.body)
 
     if (!userId) {
         return res.status(400).json({
@@ -156,29 +174,44 @@ const dislikeTemplate = async (req: Request, res: Response) => {
         })
     }
 
+    if (!parseData.success) {
+        return res.status(400).json({
+            success: false,
+            message: 'validation failed',
+            errors: parseData.error.flatten().fieldErrors,
+        })
+    }
+
+    const { isLiked } = parseData.data
+
     try {
-        const result = await templateService.dislikeTemplate({ userId, templateId })
+        const result = await templateService.toggleLike({ userId, templateId, isLiked })
         return res.status(200).json({
             success: true,
-            message: 'disliked successfully',
+            message: 'updated like state successfully',
             data: result,
         })
     } catch (error: any) {
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({
+                success: false,
+                message: 'failed to update like state',
+                errors: error.message,
+            })
+        }
+
         return res.status(500).json({
             success: false,
-            error: error.message,
+            message: 'failed to update like state',
+            errors: error instanceof Error ? error.message : 'unknown error',
         })
     }
 }
-
-const featuredTemplates = async (req: Request, res: Response) => {}
 
 export const templateController = {
     getAllTemplates,
     getTemplateById,
-    getTemplatesByCategory,
+    getFeaturedTemplates,
     remixTemplate,
-    likeTemplate,
-    dislikeTemplate,
-    featuredTemplates,
+    toggleLike,
 }
