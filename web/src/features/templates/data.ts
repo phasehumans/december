@@ -7,6 +7,66 @@ export const CATEGORIES = [
     { id: 'ecommerce', label: 'E-commerce' },
 ]
 
+export const SORT_OPTIONS = [
+    { id: 'popular', label: 'Most Popular' },
+    { id: 'newest', label: 'Newest' },
+    { id: 'oldest', label: 'Oldest' },
+    { id: 'most_liked', label: 'Most Liked' },
+]
+
+export const FEATURED_TEMPLATES = [
+    {
+        id: 'f1',
+        title: 'Nano Banana Pro Playground',
+        category: 'apps',
+        views: '5.7K',
+        likes: 638,
+        author: 'nano_dev',
+        authorAvatar: 'https://i.pravatar.cc/40?img=3',
+        image: 'https://images.unsplash.com/photo-1618761714954-0b8cd0026356?auto=format&fit=crop&q=80&w=900&h=560',
+    },
+    {
+        id: 'f2',
+        title: 'Pointer AI Landing Page',
+        category: 'landing',
+        views: '19.4K',
+        likes: 1700,
+        author: 'pointer_inc',
+        authorAvatar: 'https://i.pravatar.cc/40?img=12',
+        image: 'https://images.unsplash.com/photo-1677442136019-21780ecad995?auto=format&fit=crop&q=80&w=900&h=560',
+    },
+    {
+        id: 'f3',
+        title: 'An Unusual Hero',
+        category: 'landing',
+        views: '2.3K',
+        likes: 340,
+        author: 'design_studio',
+        authorAvatar: 'https://i.pravatar.cc/40?img=20',
+        image: 'https://images.unsplash.com/photo-1634017839464-5c339ebe3cb4?auto=format&fit=crop&q=80&w=900&h=560',
+    },
+    {
+        id: 'f4',
+        title: 'Analytics Suite Pro',
+        category: 'dashboards',
+        views: '12.1K',
+        likes: 1800,
+        author: 'openai',
+        authorAvatar: 'https://i.pravatar.cc/40?img=7',
+        image: 'https://images.unsplash.com/photo-1504868584819-f8e8b4b6d7e3?auto=format&fit=crop&q=80&w=900&h=560',
+    },
+    {
+        id: 'f5',
+        title: 'Web3 Wallet Connect',
+        category: 'apps',
+        views: '45.1K',
+        likes: 4200,
+        author: 'block_dev',
+        authorAvatar: 'https://i.pravatar.cc/40?img=15',
+        image: 'https://images.unsplash.com/photo-1621504450181-5d156f082e6c?auto=format&fit=crop&q=80&w=900&h=560',
+    },
+]
+
 export const DUMMY_TEMPLATES = [
     {
         id: '1',
