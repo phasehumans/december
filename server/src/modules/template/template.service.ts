@@ -7,6 +7,11 @@ type ToggleLike = {
     isLiked: boolean
 }
 
+type RemixTemplate = {
+    userId: string
+    templateId: string
+}
+
 const getAllTemplates = async () => {
     try {
         const templates = await prisma.project.findMany({
@@ -24,26 +29,10 @@ const getTemplateById = async (data: string) => {
     const template = await prisma.project.findUnique({
         where: {
             id: data,
-            isSharedAsTemplate: true,
         },
     })
 
-    /* 
-    const template = await prisma.project.findUnique({
-        where: { id: data },
-    })
-    
-    if (!template || !template.isSharedAsTemplate) {
-        throw new AppError('template not found')
-    }
-
-    Uses DB index → faster
-Cleaner logic
-No unnecessary filtering in DB
-    
-    */
-
-    if (!template) {
+    if (!template || template.isSharedAsTemplate == false) {
         throw new AppError('template not found', 404)
     }
 
@@ -64,7 +53,32 @@ const getFeaturedTemplates = async () => {
     }
 }
 
-const remixTemplate = async () => {}
+const remixTemplate = async (data: RemixTemplate) => {
+    // add COW (copy on write) to copy the files ; TODO
+    const { userId, templateId } = data
+
+    const user = await prisma.user.findUnique({
+        where: {
+            id: userId,
+        },
+    })
+
+    // better optimize; findunique uses indexing,
+    // if search w/ isDeleted, reduce optimisation due to unneccassary filteing
+    if (!user || user.isDeleted == true) {
+        throw new AppError('user not found', 404)
+    }
+
+    const template = await prisma.project.findUnique({
+        where: {
+            id: templateId,
+        },
+    })
+
+    if (!template || template.isSharedAsTemplate == false) {
+        throw new AppError('template not found', 404)
+    }
+}
 
 const toggleLike = async (data: ToggleLike) => {
     const { userId, templateId, isLiked } = data

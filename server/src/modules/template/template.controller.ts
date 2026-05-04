@@ -2,7 +2,6 @@ import type { Request, Response } from 'express'
 import { templateService } from './template.service'
 import { AppError } from '../../utils/appError'
 import { toggleLikeSchema } from './template.schema'
-import { success } from 'zod'
 
 const getAllTemplates = async (req: Request, res: Response) => {
     const userId = req.user?.userId as string | undefined
@@ -114,7 +113,47 @@ const getFeaturedTemplates = async (req: Request, res: Response) => {
     }
 }
 
-const remixTemplate = async (req: Request, res: Response) => {}
+const remixTemplate = async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
+    const templateId = req.params.templateId as string | undefined
+
+    if (!userId) {
+        return res.status(400).json({
+            success: false,
+            message: 'unauthorized',
+        })
+    }
+
+    if (!templateId) {
+        return res.status(400).json({
+            success: false,
+            message: 'templateId is required',
+        })
+    }
+
+    try {
+        const result = await templateService.remixTemplate({ userId, templateId })
+        return res.status(200).json({
+            success: true,
+            message: 'remix template successfully',
+            data: result,
+        })
+    } catch (error: any) {
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({
+                success: false,
+                message: 'failed to remix template',
+                errors: error.message,
+            })
+        }
+
+        return res.status(500).json({
+            success: false,
+            message: 'failed to remix template',
+            errors: error instanceof Error ? error.message : 'unknown error',
+        })
+    }
+}
 
 const toggleLike = async (req: Request, res: Response) => {
     const userId = req.user?.userId as string | undefined
