@@ -21,19 +21,19 @@ export const ScrollableSection: React.FC<ScrollableSectionProps> = ({ title, chi
     return (
         <div className="mb-14 relative group/section">
             <div className="flex items-center justify-between mb-5">
-                <h2 className="text-[17px] font-medium text-textMain">{title}</h2>
+                <h2 className="text-[15px] font-medium text-[#D6D5C9]">{title}</h2>
                 <div className="flex items-center gap-2">
                     <button
                         onClick={() => scroll('left')}
-                        className="w-8 h-8 rounded-full bg-transparent border border-white/10 flex items-center justify-center text-textMain hover:bg-white/5 transition-all active:scale-95 shadow-sm"
+                        className="w-7 h-7 rounded-full border border-[#383736] bg-[#171615] flex items-center justify-center text-[#D6D5C9] hover:bg-[#1E1D1B] transition-all active:scale-95"
                     >
-                        <Icons.ChevronRight className="w-4 h-4 rotate-180" />
+                        <Icons.ChevronRight className="w-3.5 h-3.5 rotate-180" />
                     </button>
                     <button
                         onClick={() => scroll('right')}
-                        className="w-8 h-8 rounded-full bg-transparent border border-white/10 flex items-center justify-center text-textMain hover:bg-white/5 transition-all active:scale-95 shadow-sm"
+                        className="w-7 h-7 rounded-full border border-[#383736] bg-[#171615] flex items-center justify-center text-[#D6D5C9] hover:bg-[#1E1D1B] transition-all active:scale-95"
                     >
-                        <Icons.ChevronRight className="w-4 h-4" />
+                        <Icons.ChevronRight className="w-3.5 h-3.5" />
                     </button>
                 </div>
             </div>

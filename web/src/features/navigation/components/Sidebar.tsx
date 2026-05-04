@@ -51,7 +51,7 @@ const Sidebar: React.FC<SidebarProps & { user?: any }> = ({
                     label="Design Systems"
                     onClick={onDesignSystems}
                 />
-                <SidebarNavItem icon={<Icons.DocsBook />} label="Docs" onClick={onDocs} />
+                <SidebarNavItem icon={<Icons.DocsBook />} label="Documentation" onClick={onDocs} />
             </div>
 
             <div className="flex-1 flex flex-col pl-[10px] pr-3 mt-4 mb-2 overflow-y-auto no-scrollbar font-sans">
