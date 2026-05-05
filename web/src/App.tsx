@@ -4,7 +4,6 @@ import { AuthModal } from './features/auth/components/AuthModal'
 import { AppSideNavigation } from './app/components/AppSideNavigation'
 import { AppContentView } from './app/components/AppContentView'
 import { useAppController } from './app/hooks/useAppController'
-import { setAuthToken } from './shared/api/client'
 
 const App: React.FC = () => {
     const {
@@ -16,7 +15,7 @@ const App: React.FC = () => {
         generationPhase,
         activeOperation,
         isGenerating,
-        setAuthTokenState,
+        setIsAuthenticated,
         showAuthModal,
         setShowAuthModal,
         isMobileSidebarOpen,
@@ -70,9 +69,8 @@ const App: React.FC = () => {
             <AuthModal
                 isOpen={showAuthModal}
                 onClose={() => setShowAuthModal(false)}
-                onAuthSuccess={(token) => {
-                    setAuthToken(token)
-                    setAuthTokenState(token)
+                onAuthSuccess={() => {
+                    setIsAuthenticated(true)
                     setShowAuthModal(false)
                     queryClient.invalidateQueries({ queryKey: ['projects'] })
                     queryClient.invalidateQueries({ queryKey: ['profile'] })

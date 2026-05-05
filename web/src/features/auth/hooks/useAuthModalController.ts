@@ -7,7 +7,7 @@ import type { AuthMode } from '@/features/auth/types'
 interface UseAuthModalControllerArgs {
     isOpen: boolean
     initialMode: AuthMode
-    onAuthSuccess: (token: string) => void
+    onAuthSuccess: () => void
 }
 
 export const useAuthModalController = ({

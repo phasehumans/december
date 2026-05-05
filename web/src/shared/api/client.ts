@@ -1,7 +1,7 @@
 type ApiEnvelope<T> = {
     success: boolean
     message?: string
-    data: T
+    data?: T
     errors?: unknown
 }
 
@@ -51,30 +51,6 @@ export class ApiError extends Error {
     }
 }
 
-export const getAuthToken = () => {
-    if (typeof window === 'undefined') {
-        return null
-    }
-
-    return localStorage.getItem('token')
-}
-
-export const setAuthToken = (token: string) => {
-    if (typeof window === 'undefined') {
-        return
-    }
-
-    localStorage.setItem('token', token)
-}
-
-export const clearAuthToken = () => {
-    if (typeof window === 'undefined') {
-        return
-    }
-
-    localStorage.removeItem('token')
-}
-
 const toApiError = async (res: Response) => {
     let payload: { message?: string; errors?: unknown } | null = null
 
@@ -97,24 +73,65 @@ const toApiError = async (res: Response) => {
     return new ApiError(message, res.status, payload?.errors)
 }
 
+export const refreshAuthSession = async () => {
+    try {
+        const res = await fetch(`${API_BASE_URL}/auth/refresh`, {
+            method: 'POST',
+            credentials: 'include',
+        })
+
+        return res.ok
+    } catch {
+        return false
+    }
+}
+
+export const apiFetch = async (
+    path: string,
+    options: RequestInit = {},
+    retryOnUnauthorized = true
+) => {
+    const res = await fetch(`${API_BASE_URL}${path}`, {
+        ...options,
+        credentials: 'include',
+    })
+
+    if (res.status !== 401 || !retryOnUnauthorized) {
+        return res
+    }
+
+    const refreshed = await refreshAuthSession()
+
+    if (!refreshed) {
+        return res
+    }
+
+    return fetch(`${API_BASE_URL}${path}`, {
+        ...options,
+        credentials: 'include',
+    })
+}
+
 export const apiRequest = async <T>(path: string, options: RequestOptions = {}) => {
     const { includeAuth = true, headers, ...rest } = options
-    const token = includeAuth ? getAuthToken() : null
     const isFormData = typeof FormData !== 'undefined' && rest.body instanceof FormData
 
-    const res = await fetch(`${API_BASE_URL}${path}`, {
-        ...rest,
-        headers: {
-            ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
-            ...(token ? { Authorization: token } : {}),
-            ...headers,
+    const res = await apiFetch(
+        path,
+        {
+            ...rest,
+            headers: {
+                ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
+                ...headers,
+            },
         },
-    })
+        includeAuth
+    )
 
     if (!res.ok) {
         throw await toApiError(res)
     }
 
     const payload = (await res.json()) as ApiEnvelope<T>
-    return payload.data
+    return payload.data as T
 }

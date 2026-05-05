@@ -1,4 +1,4 @@
-import { API_BASE_URL, ApiError, apiRequest, getAuthToken } from '@/shared/api/client'
+import { ApiError, apiFetch, apiRequest } from '@/shared/api/client'
 import type { CanvasDocument } from '@/features/canvas/types'
 
 export type BackendProject = {
@@ -102,13 +102,7 @@ const duplicateProject = (projectId: string) => {
 }
 
 const downloadProject = async (projectId: string, versionId?: string | null) => {
-    const token = getAuthToken()
-    const res = await fetch(
-        `${API_BASE_URL}/project/${projectId}/download${buildVersionQuery(versionId)}`,
-        {
-            headers: token ? { Authorization: token } : undefined,
-        }
-    )
+    const res = await apiFetch(`/project/${projectId}/download${buildVersionQuery(versionId)}`, {})
 
     if (!res.ok) {
         let payload: { message?: string; errors?: unknown } | null = null
