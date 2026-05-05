@@ -39,7 +39,7 @@ export const SidebarHeader: React.FC<{ onNewThread?: () => void }> = ({ onNewThr
                         <Icons.CanvasIcon className="w-[18px] h-[18px]" />
                     </div>
                     <span className="font-medium text-[14px] text-[#D6D5D4] tracking-wide">
-                        PhaseHumans
+                        December
                     </span>
                 </button>
                 <button
