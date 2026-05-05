@@ -30,10 +30,8 @@ server/src/db/prisma/generated/
 docker-compose.override.yml
 
 Thumbs.db
-refui
-guide.md
 
-infra/minio/docker/minio/data/
+infra/minio/data/
 infra/postgres/data/
 runtime/data
 .phasehumans--imports/

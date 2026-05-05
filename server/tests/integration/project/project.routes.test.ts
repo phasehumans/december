@@ -7,10 +7,6 @@ import express, { Router } from 'express'
 import { prisma } from '../../../src/config/db'
 import { projectController } from '../../../src/modules/project/project.controller'
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
 const TEST_USER_ID = 'test-project-user-id'
 const TEST_SESSION_ID = 'test-project-session-id'
 
@@ -58,10 +54,6 @@ const createTestProject = async (
     })
 }
 
-// ---------------------------------------------------------------------------
-// App setup
-// ---------------------------------------------------------------------------
-
 describe('project.routes.integration', () => {
     let app: express.Application
 
@@ -102,9 +94,6 @@ describe('project.routes.integration', () => {
         await prisma.$disconnect()
     })
 
-    // -----------------------------------------------------------------------
-    // GET / — getAllProjects
-    // -----------------------------------------------------------------------
     describe('GET /', () => {
         it('should return 200 and empty array when user has no projects', async () => {
             const res = await request(app).get('/api/v1/projects')
@@ -165,9 +154,6 @@ describe('project.routes.integration', () => {
         })
     })
 
-    // -----------------------------------------------------------------------
-    // GET /:projectId — getProjectById
-    // -----------------------------------------------------------------------
     describe('GET /:projectId', () => {
         it('should return 200 and project data', async () => {
             const project = await createTestProject()
@@ -240,9 +226,6 @@ describe('project.routes.integration', () => {
         })
     })
 
-    // -----------------------------------------------------------------------
-    // POST / — createProject
-    // -----------------------------------------------------------------------
     describe('POST /', () => {
         it('should return 201 and created project on success', async () => {
             const res = await request(app).post('/api/v1/projects').send({
@@ -358,9 +341,6 @@ describe('project.routes.integration', () => {
         })
     })
 
-    // -----------------------------------------------------------------------
-    // PATCH /:projectId — renameProject
-    // -----------------------------------------------------------------------
     describe('PATCH /:projectId', () => {
         it('should return 200 on successful rename', async () => {
             const project = await createTestProject()
@@ -422,9 +402,6 @@ describe('project.routes.integration', () => {
         })
     })
 
-    // -----------------------------------------------------------------------
-    // DELETE /:projectId — deleteProject
-    // -----------------------------------------------------------------------
     describe('DELETE /:projectId', () => {
         it('should return 200 on successful delete', async () => {
             const project = await createTestProject()
@@ -481,9 +458,6 @@ describe('project.routes.integration', () => {
         })
     })
 
-    // -----------------------------------------------------------------------
-    // POST /:projectId/duplicate — duplicateProject
-    // -----------------------------------------------------------------------
     describe('POST /:projectId/duplicate', () => {
         it('should return 200 and duplicated project', async () => {
             const project = await createTestProject()
@@ -539,9 +513,6 @@ describe('project.routes.integration', () => {
         })
     })
 
-    // -----------------------------------------------------------------------
-    // GET /:projectId/download — downloadProjectVersion
-    // -----------------------------------------------------------------------
     describe('GET /:projectId/download', () => {
         it('should return 404 when no version exists for the project', async () => {
             const project = await createTestProject()
@@ -569,9 +540,6 @@ describe('project.routes.integration', () => {
         })
     })
 
-    // -----------------------------------------------------------------------
-    // POST /:projectId/share — shareProjectAsTemplate
-    // -----------------------------------------------------------------------
     describe('POST /:projectId/share', () => {
         it('should return 200 and share project as template', async () => {
             const project = await createTestProject()
@@ -616,9 +584,6 @@ describe('project.routes.integration', () => {
         })
     })
 
-    // -----------------------------------------------------------------------
-    // POST /:projectId/star — toggleStarProject
-    // -----------------------------------------------------------------------
     describe('POST /:projectId/star', () => {
         it('should return 200 when starring a project (isStarred: true)', async () => {
             const project = await createTestProject()

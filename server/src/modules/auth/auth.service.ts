@@ -74,7 +74,7 @@ const signup = async (data: Signup) => {
         },
     })
 
-    console.log(otp)
+    // console.log(otp)
 
     await sendOTP(newUser.email, otp)
 
@@ -117,7 +117,7 @@ const verifyOtp = async (data: VerifyOtp) => {
             },
         })
 
-        throw new AppError('otp expired', 400)
+        throw new AppError('otp expired', 401)
     }
 
     const isValid = await bcrypt.compare(otp, user.otpHash)
@@ -186,7 +186,7 @@ const login = async (data: Login) => {
 
     // add CTA to contact support @ for recover account
     if (existingUser.deletedAt || existingUser.isDeleted) {
-        throw new AppError('account has been deleted', 403)
+        throw new AppError('account has been deleted', 401)
     }
 
     if (!existingUser.emailVerified) {

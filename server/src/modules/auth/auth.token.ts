@@ -36,6 +36,7 @@ const generateAccessToken = (payload: TokenPayload) => {
         {
             userId: payload.userId,
             sessionId: payload.sessionId,
+            jti: randomUUID(),
         },
         secret,
         {

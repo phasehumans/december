@@ -14,14 +14,7 @@ import {
     mapVersionSummary,
 } from '../../src/modules/project/project.utils'
 
-// ---------------------------------------------------------------------------
-// project.schema
-// ---------------------------------------------------------------------------
-
 describe('project.schema', () => {
-    // -----------------------------------------------------------------------
-    // createProjectSchema
-    // -----------------------------------------------------------------------
     describe('createProjectSchema', () => {
         test('should pass with all valid fields', () => {
             const data = {
@@ -124,9 +117,6 @@ describe('project.schema', () => {
         })
     })
 
-    // -----------------------------------------------------------------------
-    // renameProjectSchema
-    // -----------------------------------------------------------------------
     describe('renameProjectSchema', () => {
         test('should pass with a valid rename string', () => {
             const data = { rename: 'New Name' }
@@ -153,9 +143,6 @@ describe('project.schema', () => {
         })
     })
 
-    // -----------------------------------------------------------------------
-    // getProjectByIdSchema
-    // -----------------------------------------------------------------------
     describe('getProjectByIdSchema', () => {
         test('should pass without versionId (all optional)', () => {
             expect(getProjectByIdSchema.safeParse({}).success).toBe(true)
@@ -182,9 +169,6 @@ describe('project.schema', () => {
         })
     })
 
-    // -----------------------------------------------------------------------
-    // downloadProjectVersionSchema
-    // -----------------------------------------------------------------------
     describe('downloadProjectVersionSchema', () => {
         test('should pass without versionId', () => {
             expect(downloadProjectVersionSchema.safeParse({}).success).toBe(true)
@@ -201,9 +185,6 @@ describe('project.schema', () => {
         })
     })
 
-    // -----------------------------------------------------------------------
-    // toogleStarProjectSchema
-    // -----------------------------------------------------------------------
     describe('toogleStarProjectSchema', () => {
         test('should pass with isStarred true', () => {
             expect(toogleStarProjectSchema.safeParse({ isStarred: true }).success).toBe(true)
@@ -231,14 +212,7 @@ describe('project.schema', () => {
     })
 })
 
-// ---------------------------------------------------------------------------
-// project.utils
-// ---------------------------------------------------------------------------
-
 describe('project.utils', () => {
-    // -----------------------------------------------------------------------
-    // isVersionSchemaMissing
-    // -----------------------------------------------------------------------
     describe('isVersionSchemaMissing', () => {
         test('should return true when message includes "ProjectVersion"', () => {
             expect(
@@ -305,9 +279,6 @@ describe('project.utils', () => {
         })
     })
 
-    // -----------------------------------------------------------------------
-    // parseStoredProjectFiles
-    // -----------------------------------------------------------------------
     describe('parseStoredProjectFiles', () => {
         test('should return empty array when input is not an array (string)', () => {
             expect(parseStoredProjectFiles('not-an-array')).toEqual([])
@@ -398,7 +369,7 @@ describe('project.utils', () => {
             const result = parseStoredProjectFiles([
                 { path: 'src/index.ts', key: 'file-1', contentType: 'application/json', size: 50 },
             ])
-            expect(result[0].contentType).toBe('application/json')
+            expect(result![0]!.contentType).toBe('application/json')
         })
 
         test('should omit contentType when it is a number', () => {
@@ -444,29 +415,26 @@ describe('project.utils', () => {
                 { path: 'src/c.ts', key: 'key-c', size: 30 },
             ])
             expect(result).toHaveLength(3)
-            expect(result[0].path).toBe('src/a.ts')
-            expect(result[1].path).toBe('src/b.ts')
-            expect(result[2].path).toBe('src/c.ts')
+            expect(result![0]!.path).toBe('src/a.ts')
+            expect(result![1]!.path).toBe('src/b.ts')
+            expect(result![2]!.path).toBe('src/c.ts')
         })
 
         test('should handle very large size numbers correctly', () => {
             const result = parseStoredProjectFiles([
                 { path: 'src/big.ts', key: 'big-key', size: Number.MAX_SAFE_INTEGER },
             ])
-            expect(result[0].size).toBe(Number.MAX_SAFE_INTEGER)
+            expect(result![0]!.size).toBe(Number.MAX_SAFE_INTEGER)
         })
 
         test('should handle size of 0 explicitly', () => {
             const result = parseStoredProjectFiles([
                 { path: 'src/empty.ts', key: 'empty-key', size: 0 },
             ])
-            expect(result[0].size).toBe(0)
+            expect(result![0]!.size).toBe(0)
         })
     })
 
-    // -----------------------------------------------------------------------
-    // mapVersionSummary
-    // -----------------------------------------------------------------------
     describe('mapVersionSummary', () => {
         const baseVersion = {
             id: 'version-1',
