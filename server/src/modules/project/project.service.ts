@@ -52,18 +52,6 @@ type ToogleStarProject = {
     isStarred: boolean
 }
 
-// const baseProjectSelect = {
-//     id: true,
-//     name: true,
-//     description: true,
-//     prompt: true,
-//     isStarred: true,
-//     projectStatus: true,
-//     createdAt: true,
-//     updatedAt: true,
-//     userId: true,
-// } as const
-
 export type StoredProjectFile = {
     path: string
     key: string
@@ -71,7 +59,7 @@ export type StoredProjectFile = {
     size: number
 }
 
-const loadGeneratedFilesFromManifest = async (manifest: StoredProjectFile[]) => {
+export const loadGeneratedFilesFromManifest = async (manifest: StoredProjectFile[]) => {
     const files = await Promise.all(
         manifest.map(async (file) => [file.path, (await getTextFile(file.key)) ?? ''] as const)
     )
@@ -336,10 +324,20 @@ const deleteProject = async (data: DeleteProject) => {
 const duplicateProject = async (data: DuplicateProject) => {
     const { projectId, userId } = data
 
+    const user = await prisma.user.findUnique({
+        where: {
+            id: userId,
+        },
+    })
+
+    if (!user || user.isDeleted == true) {
+        throw new AppError('user not found', 404)
+    }
+
     const sourceProject = await prisma.project.findFirst({
         where: {
             id: projectId,
-            userId,
+            userId: userId,
         },
     })
 
