@@ -172,7 +172,7 @@ const toggleLike = async (data: ToggleLike) => {
     })
 
     if (!template) {
-        throw new AppError('template not found')
+        throw new AppError('template not found', 404)
     }
 
     const existing = await prisma.projectLike.findUnique({

@@ -1,12 +1,11 @@
 services:
     postgres:
         image: postgres:16
-        container_name: phasehumans-postgres
         restart: unless-stopped
         environment:
             POSTGRES_USER: postgres
             POSTGRES_PASSWORD: postgres
-            POSTGRES_DB: phasehumans
+            POSTGRES_DB: december
         ports:
             - '5432:5432'
         volumes:
@@ -14,14 +13,15 @@ services:
 
     postgres-test:
         image: postgres:16
-        container_name: phasehumans-postgres-test
         restart: no
         environment:
             POSTGRES_USER: postgres
             POSTGRES_PASSWORD: postgres
-            POSTGRES_DB: phasehumans_test
+            POSTGRES_DB: december_test
         ports:
             - '5434:5432'
+        tmpfs:
+            - /var/lib/postgresql/data
 
 volumes:
     postgres_data:

@@ -180,7 +180,7 @@ describe('auth.service.integration', () => {
 
             const sessions = await prisma.session.findMany({ where: { userId: user.id } })
             expect(sessions.length).toBe(1)
-            expect(sessions[0].isRevoked).toBe(false)
+            expect(sessions![0]!.isRevoked).toBe(false)
         })
     })
 
@@ -228,7 +228,7 @@ describe('auth.service.integration', () => {
 
             await expect(
                 authService.login({ email: 'deleted@example.com', password: 'Password123' })
-            ).rejects.toThrow('invalid email or password')
+            ).rejects.toThrow('account has been deleted')
         })
 
         it('should fail if user is not email-verified', async () => {
