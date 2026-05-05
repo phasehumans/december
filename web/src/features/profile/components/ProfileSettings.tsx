@@ -154,7 +154,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                             <Activity className="w-[18px] h-[18px]" strokeWidth={1.5} />
                             Usage
                         </button>
-                        <button
+                        {/* <button
                             onClick={() => setActiveTab('API Keys')}
                             className={`flex items-center gap-3 px-3 py-1.5 rounded-xl text-[13px] font-medium transition-colors ${
                                 activeTab === 'API Keys'
@@ -164,7 +164,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                         >
                             <KeyRound className="w-[18px] h-[18px]" strokeWidth={1.5} />
                             API Keys
-                        </button>
+                        </button> */}
 
                         <div className="px-3 py-2 text-[12px] font-medium text-[#7B7A79] mt-4 mb-1">
                             Resources

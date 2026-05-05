@@ -46,11 +46,6 @@ const Sidebar: React.FC<SidebarProps & { user?: any }> = ({
                 />
                 <SidebarNavItem icon={<Icons.Grid />} label="Projects" onClick={onAllProjects} />
                 <SidebarNavItem icon={<Icons.Layout />} label="Templates" onClick={onTemplates} />
-                <SidebarNavItem
-                    icon={<Icons.DesignSystems />}
-                    label="Design Systems"
-                    onClick={onDesignSystems}
-                />
                 <SidebarNavItem icon={<Icons.DocsBook />} label="Documentation" onClick={onDocs} />
             </div>
 
