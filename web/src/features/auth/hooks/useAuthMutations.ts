@@ -5,7 +5,7 @@ import { authAPI } from '@/features/auth/api/auth'
 
 type UseAuthMutationsOptions = {
     onRequireOtp: () => void
-    onAuthSuccess: (token: string) => void
+    onAuthSuccess: () => void
     setErrorMessage: (message: string | null) => void
 }
 
@@ -35,9 +35,9 @@ export const useAuthMutations = ({
 
     const loginMutation = useMutation({
         mutationFn: authAPI.login,
-        onSuccess: (token) => {
+        onSuccess: () => {
             setErrorMessage(null)
-            onAuthSuccess(token)
+            onAuthSuccess()
         },
         onError: (error) => {
             setErrorMessage(getErrorMessage(error))
@@ -46,9 +46,9 @@ export const useAuthMutations = ({
 
     const verifyOtpMutation = useMutation({
         mutationFn: authAPI.verifyOtp,
-        onSuccess: (token) => {
+        onSuccess: () => {
             setErrorMessage(null)
-            onAuthSuccess(token)
+            onAuthSuccess()
         },
         onError: (error) => {
             setErrorMessage(getErrorMessage(error))
@@ -57,9 +57,9 @@ export const useAuthMutations = ({
 
     const googleMutation = useMutation({
         mutationFn: authAPI.google,
-        onSuccess: (token) => {
+        onSuccess: () => {
             setErrorMessage(null)
-            onAuthSuccess(token)
+            onAuthSuccess()
         },
         onError: (error) => {
             setErrorMessage(getErrorMessage(error))
