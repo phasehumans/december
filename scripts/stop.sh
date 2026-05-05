@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-SESSION_NAME="phasehumans"
+SESSION_NAME="december"
 
 if tmux has-session -t "$SESSION_NAME" 2>/dev/null; then
   tmux kill-session -t "$SESSION_NAME"
