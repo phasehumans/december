@@ -1,5 +1,9 @@
 import { prisma } from '../../config/db'
+import { saveProjectFiles } from '../../lib/save-project-files'
 import { AppError } from '../../utils/appError'
+import { loadGeneratedFilesFromManifest } from '../project/project.service'
+import { parseStoredProjectFiles } from '../project/project.utils'
+import crypto from 'crypto'
 
 type ToggleLike = {
     userId: string
@@ -78,6 +82,72 @@ const remixTemplate = async (data: RemixTemplate) => {
     if (!template || template.isSharedAsTemplate == false) {
         throw new AppError('template not found', 404)
     }
+
+    const currentVersion = await prisma.projectVersion.findFirst({
+        where: {
+            projectId: template.id,
+        },
+        orderBy: {
+            versionNumber: 'desc',
+        },
+    })
+
+    const newProject = await prisma.project.create({
+        data: {
+            name: `Remix of ${template.name}`,
+            description: template.description,
+            prompt: currentVersion?.sourcePrompt ?? template.prompt,
+            projectStatus: currentVersion ? 'READY' : template.projectStatus,
+            userId: userId,
+        },
+    })
+
+    if (!currentVersion) {
+        return newProject
+    }
+
+    const manifest = parseStoredProjectFiles(currentVersion.manifestJson)
+    const generatedFiles = await loadGeneratedFilesFromManifest(manifest)
+
+    const versionRecordId = crypto.randomUUID()
+
+    const savedFiles = await saveProjectFiles({
+        projectId: newProject.id,
+        versionId: versionRecordId,
+        files: Object.entries(generatedFiles).map(([path, content]) => ({
+            path,
+            content,
+        })),
+    })
+
+    await prisma.projectVersion.create({
+        data: {
+            id: versionRecordId,
+            projectId: newProject.id,
+            versionNumber: 1,
+            label: 'v1',
+            sourcePrompt: currentVersion.sourcePrompt,
+            status: 'READY',
+            objectStoragePrefix: `projects/${newProject.id}/v1/${versionRecordId}`,
+
+            manifestJson: savedFiles.map((file) => ({
+                path: file.path,
+                key: file.key,
+                size: file.size,
+                ...(file.contentType ? { contentType: file.contentType } : {}),
+            })),
+        },
+    })
+
+    await prisma.project.update({
+        where: { id: newProject.id },
+        data: {
+            currentVersionId: versionRecordId,
+            versionCount: 1,
+        },
+    })
+
+    return newProject
 }
 
 const toggleLike = async (data: ToggleLike) => {
