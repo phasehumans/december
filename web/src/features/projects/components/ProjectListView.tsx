@@ -55,6 +55,67 @@ const ProjectListAreaSkeleton: React.FC = () => {
     )
 }
 
+const EmptyProjectsState: React.FC<{ onNewProject: () => void }> = ({ onNewProject }) => {
+    return (
+        <div className="flex min-h-[420px] flex-col items-center justify-center px-6 py-16 text-center">
+            <div className="relative mb-6 h-28 w-32">
+                <svg
+                    viewBox="0 0 128 112"
+                    fill="none"
+                    className="h-full w-full text-[#8A8987]"
+                    aria-hidden="true"
+                >
+                    <path
+                        d="M28 42.5 64 22l36 20.5v43L64 106 28 85.5v-43Z"
+                        stroke="currentColor"
+                        strokeWidth="2.4"
+                        strokeLinejoin="round"
+                    />
+                    <path
+                        d="M28 42.5 64 63l36-20.5M64 63v43"
+                        stroke="currentColor"
+                        strokeWidth="2.4"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                    />
+                    <path
+                        d="m46 32 36 20.5"
+                        stroke="currentColor"
+                        strokeWidth="2.4"
+                        strokeLinecap="round"
+                    />
+                    <path
+                        d="M22 22c5.5-8.5 14.2-13 26-13M94 13c6.4 1.8 11.6 5.5 15.5 11"
+                        stroke="#4C4B49"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                    />
+                    <path
+                        d="M14 63c-4 4.8-6 10.2-6 16M116 71c3.8 4.1 5.8 8.8 6 14"
+                        stroke="#383736"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                    />
+                </svg>
+                <div className="absolute left-2 top-7 h-2 w-2 rounded-full bg-[#6F6E6C]" />
+                <div className="absolute right-5 top-5 h-1.5 w-1.5 rounded-full bg-[#4C4B49]" />
+                <div className="absolute bottom-5 right-2 h-2 w-2 rounded-full bg-[#5C5B59]" />
+            </div>
+
+            <h2 className="text-[17px] font-medium text-[#D6D5C9]">No projects</h2>
+            <p className="mt-2 max-w-sm text-[13px] leading-6 text-[#7B7A79]">
+                Projects you create or import will appear here.
+            </p>
+            <button
+                onClick={onNewProject}
+                className="mt-5 rounded-lg border border-[#383736] bg-[#1A1918] px-4 py-2 text-[13px] font-medium text-[#D6D5C9] transition-colors hover:bg-[#242323]"
+            >
+                New project
+            </button>
+        </div>
+    )
+}
+
 export const ProjectListView: React.FC<ProjectListViewProps> = ({
     projects,
     onNewProject,
@@ -86,30 +147,12 @@ export const ProjectListView: React.FC<ProjectListViewProps> = ({
         return () => document.removeEventListener('mousedown', handleClickOutside)
     }, [])
 
-    const statuses = ['Draft', 'Generated', 'Published'] as const
-    const mockProjects: Project[] = Array.from({ length: 25 }).map((_, index) => {
-        if (projects[index]) {
-            return {
-                ...projects[index],
-                status: statuses[index % 3],
-            }
-        }
-
-        const relativeTime = index % 2 === 0 ? `${index + 1} hr ago` : `${index + 2} days ago`
-
-        return {
-            id: `mock-${index}`,
-            title: `Sample Project ${index + 1}`,
-            description: 'This is a sample project description.',
-            updatedAt: relativeTime,
-            isStarred: index % 5 === 0,
-            versionCount: 1,
-            currentVersionId: null,
-            status: statuses[index % 3],
-        }
-    })
+    React.useEffect(() => {
+        setVisibleCount(10)
+    }, [projects.length])
 
     const displayedError = actionError ?? errorMessage
+    const hasProjects = projects.length > 0
 
     return (
         <>
@@ -132,91 +175,97 @@ export const ProjectListView: React.FC<ProjectListViewProps> = ({
                 </div>
             </div>
 
-            {/* Search and Filters */}
-            <div className="flex items-center mb-4 w-full relative z-10">
-                <div className="relative w-full max-w-[480px]">
-                    <Icons.Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#7B7A79]" />
-                    <input
-                        type="text"
-                        placeholder="Search projects..."
-                        className="w-full bg-[#171615] hover:bg-[#1E1D1B] focus:bg-[#1E1D1B] border border-[#383736] rounded-lg pl-9 pr-4 py-1.5 text-[13px] text-[#D6D5C9] placeholder:text-[#7B7A79] focus:outline-none focus:border-[#7B7A79] transition-colors"
-                    />
-                </div>
+            {hasProjects && (
+                <>
+                    <div className="relative z-10 mb-4 flex w-full items-center">
+                        <div className="relative w-full max-w-[480px]">
+                            <Icons.Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#7B7A79]" />
+                            <input
+                                type="text"
+                                placeholder="Search projects..."
+                                className="w-full rounded-lg border border-[#383736] bg-[#171615] py-1.5 pl-9 pr-4 text-[13px] text-[#D6D5C9] transition-colors placeholder:text-[#7B7A79] hover:bg-[#1E1D1B] focus:border-[#7B7A79] focus:bg-[#1E1D1B] focus:outline-none"
+                            />
+                        </div>
 
-                <div className="flex-1" />
+                        <div className="flex-1" />
 
-                <div className="flex items-center gap-2" ref={dropdownRef}>
-                    {/* Sort Dropdown */}
-                    <div className="relative">
-                        <button
-                            onClick={() =>
-                                setActiveDropdown(activeDropdown === 'sort' ? null : 'sort')
-                            }
-                            className="flex items-center gap-2 px-4 py-1.5 rounded-full border border-[#383736] bg-[#171615] text-[13px] text-[#D6D5C9] hover:bg-[#1E1D1B] transition-colors"
-                        >
-                            Sort: Newest{' '}
-                            <Icons.ChevronDown className="h-3.5 w-3.5 text-[#7B7A79]" />
-                        </button>
-                        {activeDropdown === 'sort' && (
-                            <div className="absolute right-0 top-full mt-2 w-48 rounded-xl border border-[#383736] bg-[#1E1D1C] py-2 shadow-xl z-50">
-                                <div className="px-3 pb-2 text-[12px] font-medium text-[#7B7A79] border-b border-[#383736] mb-1">
-                                    Sort by
-                                </div>
-                                <button className="w-full flex items-center justify-between px-3 py-1.5 text-[13px] text-[#D6D5C9] hover:bg-[#242323]">
-                                    Newest first <Icons.Check className="h-4 w-4" />
+                        <div className="flex items-center gap-2" ref={dropdownRef}>
+                            <div className="relative">
+                                <button
+                                    onClick={() =>
+                                        setActiveDropdown(activeDropdown === 'sort' ? null : 'sort')
+                                    }
+                                    className="flex items-center gap-2 rounded-full border border-[#383736] bg-[#171615] px-4 py-1.5 text-[13px] text-[#D6D5C9] transition-colors hover:bg-[#1E1D1B]"
+                                >
+                                    Sort: Newest{' '}
+                                    <Icons.ChevronDown className="h-3.5 w-3.5 text-[#7B7A79]" />
                                 </button>
-                                <button className="w-full flex items-center justify-between px-3 py-1.5 text-[13px] text-[#D6D5C9] hover:bg-[#242323]">
-                                    Oldest first
-                                </button>
+                                {activeDropdown === 'sort' && (
+                                    <div className="absolute right-0 top-full z-50 mt-2 w-48 rounded-xl border border-[#383736] bg-[#1E1D1C] py-2 shadow-xl">
+                                        <div className="mb-1 border-b border-[#383736] px-3 pb-2 text-[12px] font-medium text-[#7B7A79]">
+                                            Sort by
+                                        </div>
+                                        <button className="flex w-full items-center justify-between px-3 py-1.5 text-[13px] text-[#D6D5C9] hover:bg-[#242323]">
+                                            Newest first <Icons.Check className="h-4 w-4" />
+                                        </button>
+                                        <button className="flex w-full items-center justify-between px-3 py-1.5 text-[13px] text-[#D6D5C9] hover:bg-[#242323]">
+                                            Oldest first
+                                        </button>
+                                    </div>
+                                )}
                             </div>
-                        )}
+
+                            <div className="relative">
+                                <button
+                                    onClick={() =>
+                                        setActiveDropdown(
+                                            activeDropdown === 'status' ? null : 'status'
+                                        )
+                                    }
+                                    className="flex items-center gap-2 rounded-full border border-[#383736] bg-[#171615] px-4 py-1.5 text-[13px] text-[#D6D5C9] transition-colors hover:bg-[#1E1D1B]"
+                                >
+                                    Status: Any{' '}
+                                    <Icons.ChevronDown className="h-3.5 w-3.5 text-[#7B7A79]" />
+                                </button>
+                                {activeDropdown === 'status' && (
+                                    <div className="absolute right-0 top-full z-50 mt-2 w-48 rounded-xl border border-[#383736] bg-[#1E1D1C] py-2 shadow-xl">
+                                        <div className="mb-1 border-b border-[#383736] px-3 pb-2 text-[12px] font-medium text-[#7B7A79]">
+                                            Publish status
+                                        </div>
+                                        <button className="flex w-full items-center justify-between px-3 py-1.5 text-[13px] text-[#D6D5C9] hover:bg-[#242323]">
+                                            Draft
+                                        </button>
+                                        <button className="flex w-full items-center justify-between px-3 py-1.5 text-[13px] text-[#D6D5C9] hover:bg-[#242323]">
+                                            Generated <Icons.Check className="h-4 w-4" />
+                                        </button>
+                                        <button className="flex w-full items-center justify-between px-3 py-1.5 text-[13px] text-[#D6D5C9] hover:bg-[#242323]">
+                                            Published
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
                     </div>
 
-                    {/* Status Dropdown */}
-                    <div className="relative">
-                        <button
-                            onClick={() =>
-                                setActiveDropdown(activeDropdown === 'status' ? null : 'status')
-                            }
-                            className="flex items-center gap-2 px-4 py-1.5 rounded-full border border-[#383736] bg-[#171615] text-[13px] text-[#D6D5C9] hover:bg-[#1E1D1B] transition-colors"
-                        >
-                            Status: Any <Icons.ChevronDown className="h-3.5 w-3.5 text-[#7B7A79]" />
-                        </button>
-                        {activeDropdown === 'status' && (
-                            <div className="absolute right-0 top-full mt-2 w-48 rounded-xl border border-[#383736] bg-[#1E1D1C] py-2 shadow-xl z-50">
-                                <div className="px-3 pb-2 text-[12px] font-medium text-[#7B7A79] border-b border-[#383736] mb-1">
-                                    Publish status
-                                </div>
-                                <button className="w-full flex items-center justify-between px-3 py-1.5 text-[13px] text-[#D6D5C9] hover:bg-[#242323]">
-                                    Draft
-                                </button>
-                                <button className="w-full flex items-center justify-between px-3 py-1.5 text-[13px] text-[#D6D5C9] hover:bg-[#242323]">
-                                    Generated <Icons.Check className="h-4 w-4" />
-                                </button>
-                                <button className="w-full flex items-center justify-between px-3 py-1.5 text-[13px] text-[#D6D5C9] hover:bg-[#242323]">
-                                    Published
-                                </button>
-                            </div>
-                        )}
+                    <div className="mb-2 grid grid-cols-[minmax(0,2fr)_minmax(100px,1fr)_minmax(150px,1fr)_minmax(150px,1fr)_8rem_2.5rem] gap-3 border-b border-[#242323] px-5 py-3 text-[13px] font-medium text-[#D6D5C9] select-none md:gap-4">
+                        <div>Name</div>
+                        <div>Status</div>
+                        <div>Created at</div>
+                        <div>Created by</div>
+                        <div className="text-center">Starred projects</div>
+                        <div></div>
                     </div>
-                </div>
-            </div>
-
-            <div className="mb-2 grid grid-cols-[minmax(0,2fr)_minmax(100px,1fr)_minmax(150px,1fr)_minmax(150px,1fr)_8rem_2.5rem] gap-3 border-b border-[#242323] px-5 py-3 text-[13px] font-medium text-[#D6D5C9] select-none md:gap-4">
-                <div>Name</div>
-                <div>Status</div>
-                <div>Created at</div>
-                <div>Created by</div>
-                <div className="text-center">Starred projects</div>
-                <div></div>
-            </div>
+                </>
+            )}
 
             {isInitialLoading ? (
                 <ProjectListAreaSkeleton />
+            ) : !hasProjects ? (
+                <EmptyProjectsState onNewProject={onNewProject} />
             ) : (
                 <div className="flex flex-col">
                     <div className="min-h-[420px] flex flex-col gap-1 pb-4">
-                        {mockProjects.slice(0, visibleCount).map((project) => (
+                        {projects.slice(0, visibleCount).map((project) => (
                             <ProjectListRow
                                 key={project.id}
                                 project={project}
@@ -233,14 +282,11 @@ export const ProjectListView: React.FC<ProjectListViewProps> = ({
                         ))}
                     </div>
 
-                    {/* Load More */}
-                    {visibleCount < mockProjects.length && (
+                    {visibleCount < projects.length && (
                         <div className="flex justify-center pt-2 mb-8">
                             <button
                                 onClick={() =>
-                                    setVisibleCount((prev) =>
-                                        Math.min(prev + 10, mockProjects.length)
-                                    )
+                                    setVisibleCount((prev) => Math.min(prev + 10, projects.length))
                                 }
                                 className="px-4 py-1.5 rounded-md border border-[#383736] text-[13px] text-[#D6D5C9] hover:bg-[#1E1D1B] transition-colors"
                             >
