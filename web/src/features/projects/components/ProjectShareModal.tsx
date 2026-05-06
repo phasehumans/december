@@ -7,6 +7,7 @@ import type { ProjectShareModalProps } from '@/features/projects/types'
 export const ProjectShareModal: React.FC<ProjectShareModalProps> = ({
     isOpen,
     projectTitle,
+    isPending,
     onClose,
     onConfirm,
 }) => {
@@ -30,10 +31,12 @@ export const ProjectShareModal: React.FC<ProjectShareModalProps> = ({
                     in the Community Templates page so other users can discover and remix it.
                 </p>
                 <div className="mt-4 flex items-center justify-end gap-3">
-                    <Button variant="ghost" type="button" onClick={onClose}>
+                    <Button variant="ghost" type="button" onClick={onClose} disabled={isPending}>
                         Cancel
                     </Button>
-                    <Button type="submit">Share</Button>
+                    <Button type="submit" isLoading={isPending}>
+                        Share
+                    </Button>
                 </div>
             </form>
         </Modal>
