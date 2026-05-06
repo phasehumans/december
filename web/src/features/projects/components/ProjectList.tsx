@@ -49,11 +49,12 @@ export const ProjectList: React.FC<ProjectListProps> = ({
         return () => window.removeEventListener('click', handleClickOutside)
     }, [menuOpenId])
 
-    const { toggleStarMutation, renameMutation, duplicateMutation, deleteMutation } =
+    const { toggleStarMutation, renameMutation, duplicateMutation, shareMutation, deleteMutation } =
         useProjectListMutations({
             setActionError,
             onRenameMutate: () => setRenameModal({ isOpen: false, project: null, value: '' }),
             onDuplicateMutate: () => setDuplicateModal({ isOpen: false, project: null }),
+            onShareMutate: () => setShareModal({ isOpen: false, project: null }),
             onDeleteMutate: () => setDeleteModal({ isOpen: false, project: null }),
         })
 
@@ -67,6 +68,18 @@ export const ProjectList: React.FC<ProjectListProps> = ({
     const toggleMenu = (id: string, event: React.MouseEvent) => {
         event.stopPropagation()
         setMenuOpenId((prev) => (prev === id ? null : id))
+    }
+
+    const openProjectFromMenu = (projectId: string, event: React.MouseEvent) => {
+        event.stopPropagation()
+        setMenuOpenId(null)
+        onOpenProject(projectId)
+    }
+
+    const toggleStarFromMenu = (project: Project, event: React.MouseEvent) => {
+        event.stopPropagation()
+        setMenuOpenId(null)
+        toggleStarMutation.mutate({ projectId: project.id, isStarred: !project.isStarred })
     }
 
     const openModal = (event: React.MouseEvent, setter: () => void) => {
@@ -102,7 +115,8 @@ export const ProjectList: React.FC<ProjectListProps> = ({
     }
 
     const handleShare = () => {
-        setShareModal({ isOpen: false, project: null })
+        if (!shareModal.project) return
+        shareMutation.mutate(shareModal.project.id)
     }
 
     const handleDelete = () => {
@@ -125,6 +139,8 @@ export const ProjectList: React.FC<ProjectListProps> = ({
                     isTogglePending={toggleStarMutation.isPending}
                     onToggleStar={toggleStar}
                     onToggleMenu={toggleMenu}
+                    onOpenProjectFromMenu={openProjectFromMenu}
+                    onToggleStarFromMenu={toggleStarFromMenu}
                     onOpenRename={openRenameModal}
                     onOpenDuplicate={openDuplicateModal}
                     onOpenShare={openShareModal}
@@ -139,6 +155,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({
                 deleteModal={deleteModal}
                 isRenamePending={renameMutation.isPending}
                 isDuplicatePending={duplicateMutation.isPending}
+                isSharePending={shareMutation.isPending}
                 isDeletePending={deleteMutation.isPending}
                 onCloseRename={() => setRenameModal((prev) => ({ ...prev, isOpen: false }))}
                 onRenameChange={(nextValue) =>

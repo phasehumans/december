@@ -48,6 +48,8 @@ export interface ProjectListRowProps {
     onOpenProject: (projectId: string) => void
     onToggleStar: (id: string, event: MouseEvent) => void
     onToggleMenu: (id: string, event: MouseEvent) => void
+    onOpenProjectFromMenu: (projectId: string, event: MouseEvent) => void
+    onToggleStarFromMenu: (project: Project, event: MouseEvent) => void
     onOpenRename: (project: Project, event: MouseEvent) => void
     onOpenDuplicate: (project: Project, event: MouseEvent) => void
     onOpenShare: (project: Project, event: MouseEvent) => void
@@ -82,6 +84,7 @@ export interface ProjectDuplicateModalProps {
 export interface ProjectShareModalProps {
     isOpen: boolean
     projectTitle?: string
+    isPending: boolean
     onClose: () => void
     onConfirm: () => void
 }

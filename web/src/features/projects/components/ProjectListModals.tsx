@@ -19,6 +19,7 @@ interface ProjectListModalsProps {
     deleteModal: DeleteModalState
     isRenamePending: boolean
     isDuplicatePending: boolean
+    isSharePending: boolean
     isDeletePending: boolean
     onCloseRename: () => void
     onRenameChange: (nextValue: string) => void
@@ -38,6 +39,7 @@ export const ProjectListModals: React.FC<ProjectListModalsProps> = ({
     deleteModal,
     isRenamePending,
     isDuplicatePending,
+    isSharePending,
     isDeletePending,
     onCloseRename,
     onRenameChange,
@@ -71,6 +73,7 @@ export const ProjectListModals: React.FC<ProjectListModalsProps> = ({
             <ProjectShareModal
                 isOpen={shareModal.isOpen}
                 projectTitle={shareModal.project?.title}
+                isPending={isSharePending}
                 onClose={onCloseShare}
                 onConfirm={onShareConfirm}
             />

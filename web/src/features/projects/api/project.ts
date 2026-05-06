@@ -60,8 +60,7 @@ type CreateProjectInput = {
 }
 
 type UpdateProjectInput = {
-    rename?: string
-    isStarred?: boolean
+    rename: string
 }
 
 const buildVersionQuery = (versionId?: string | null) =>
@@ -89,6 +88,13 @@ const updateProject = (projectId: string, data: UpdateProjectInput) => {
     })
 }
 
+const toggleStarProject = (projectId: string, isStarred: boolean) => {
+    return apiRequest<{ message: string }>(`/project/${projectId}/star`, {
+        method: 'POST',
+        body: JSON.stringify({ isStarred }),
+    })
+}
+
 const deleteProject = (projectId: string) => {
     return apiRequest<{ message: string }>(`/project/${projectId}`, {
         method: 'DELETE',
@@ -97,6 +103,12 @@ const deleteProject = (projectId: string) => {
 
 const duplicateProject = (projectId: string) => {
     return apiRequest<BackendProject>(`/project/${projectId}/duplicate`, {
+        method: 'POST',
+    })
+}
+
+const shareProjectAsTemplate = (projectId: string) => {
+    return apiRequest<{ message: string }>(`/project/${projectId}/share`, {
         method: 'POST',
     })
 }
@@ -136,5 +148,7 @@ export const projectAPI = {
     updateProject,
     deleteProject,
     duplicateProject,
+    shareProjectAsTemplate,
+    toggleStarProject,
     downloadProject,
 }

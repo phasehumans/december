@@ -9,6 +9,7 @@ type UseProjectListMutationsOptions = {
     setActionError: (message: string | null) => void
     onRenameMutate: () => void
     onDuplicateMutate: () => void
+    onShareMutate: () => void
     onDeleteMutate: () => void
 }
 
@@ -24,13 +25,14 @@ export const useProjectListMutations = ({
     setActionError,
     onRenameMutate,
     onDuplicateMutate,
+    onShareMutate,
     onDeleteMutate,
 }: UseProjectListMutationsOptions) => {
     const queryClient = useQueryClient()
 
     const toggleStarMutation = useMutation({
         mutationFn: ({ projectId, isStarred }: { projectId: string; isStarred: boolean }) =>
-            projectAPI.updateProject(projectId, { isStarred }),
+            projectAPI.toggleStarProject(projectId, isStarred),
         onMutate: async ({ projectId, isStarred }) => {
             setActionError(null)
             await queryClient.cancelQueries({ queryKey: projectQueryKey })
@@ -112,6 +114,23 @@ export const useProjectListMutations = ({
         },
     })
 
+    const shareMutation = useMutation({
+        mutationFn: (projectId: string) => projectAPI.shareProjectAsTemplate(projectId),
+        onMutate: async () => {
+            setActionError(null)
+            onShareMutate()
+        },
+        onError: (error) => {
+            setActionError(getErrorMessage(error, 'Failed to share project as template'))
+        },
+        onSuccess: () => {
+            setActionError(null)
+        },
+        onSettled: () => {
+            queryClient.invalidateQueries({ queryKey: projectQueryKey })
+        },
+    })
+
     const deleteMutation = useMutation({
         mutationFn: (projectId: string) => projectAPI.deleteProject(projectId),
         onMutate: async (projectId) => {
@@ -147,6 +166,7 @@ export const useProjectListMutations = ({
         toggleStarMutation,
         renameMutation,
         duplicateMutation,
+        shareMutation,
         deleteMutation,
     }
 }
