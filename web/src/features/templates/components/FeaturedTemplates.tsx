@@ -3,9 +3,23 @@ import { motion } from 'framer-motion'
 
 import { Icons } from '@/shared/components/ui/Icons'
 import { TemplateCard } from './TemplateCard'
-import { FEATURED_TEMPLATES } from '../data'
+import type { Template } from '@/features/templates/types'
 
-export const FeaturedTemplates: React.FC = () => {
+interface FeaturedTemplatesProps {
+    templates: Template[]
+    likePendingTemplateId: string | null
+    remixPendingTemplateId: string | null
+    onToggleLike: (template: Template) => void
+    onRemix: (template: Template) => void
+}
+
+export const FeaturedTemplates: React.FC<FeaturedTemplatesProps> = ({
+    templates,
+    likePendingTemplateId,
+    remixPendingTemplateId,
+    onToggleLike,
+    onRemix,
+}) => {
     const scrollRef = useRef<HTMLDivElement>(null)
 
     const scroll = (dir: 'left' | 'right') => {
@@ -39,7 +53,7 @@ export const FeaturedTemplates: React.FC = () => {
                     ref={scrollRef}
                     className="flex gap-x-5 md:gap-x-6 overflow-x-auto no-scrollbar pb-3 snap-x snap-mandatory"
                 >
-                    {FEATURED_TEMPLATES.map((template, i) => (
+                    {templates.map((template, i) => (
                         <motion.div
                             key={template.id}
                             initial={{ opacity: 0, y: 8 }}
@@ -47,7 +61,13 @@ export const FeaturedTemplates: React.FC = () => {
                             transition={{ delay: i * 0.05, duration: 0.25 }}
                             className="shrink-0 w-[280px] md:w-[calc(50%-10px)] lg:w-[calc(33.333%-16px)] snap-start"
                         >
-                            <TemplateCard template={template} />
+                            <TemplateCard
+                                template={template}
+                                isLikePending={likePendingTemplateId === template.id}
+                                isRemixPending={remixPendingTemplateId === template.id}
+                                onToggleLike={onToggleLike}
+                                onRemix={onRemix}
+                            />
                         </motion.div>
                     ))}
                 </div>

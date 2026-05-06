@@ -154,7 +154,7 @@ export const AppContentView: React.FC<AppContentViewProps> = ({
 
             {view === 'templates' && (
                 <AnimatedPage pageKey="templates">
-                    <TemplatesView />
+                    <TemplatesView onOpenProject={onOpenProject} />
                 </AnimatedPage>
             )}
 
