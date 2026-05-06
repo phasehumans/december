@@ -12,6 +12,8 @@ import {
     Plug,
 } from 'lucide-react'
 
+import { Icons } from '@/shared/components/ui/Icons'
+
 import { useProfileSettingsController } from '../hooks/useProfileSettingsController'
 
 import { ProfileNameModal } from './ProfileNameModal'
@@ -171,7 +173,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                         </div>
                         <button className="flex items-center justify-between px-3 py-1.5 rounded-xl text-[#D6D5C9] hover:bg-[#1E1D1B] text-[13px] font-medium transition-colors group">
                             <div className="flex items-center gap-3">
-                                <BookText className="w-[18px] h-[18px]" strokeWidth={1.5} />
+                                <Icons.DocsBook className="w-[18px] h-[18px]" strokeWidth={1.5} />
                                 Documentation
                             </div>
                             <ArrowUpRight

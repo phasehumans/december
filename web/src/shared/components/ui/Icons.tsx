@@ -7,12 +7,40 @@ export const Icons = {
             <circle cx="12" cy="12" r="10" />
         </svg>
     ),
-    PhaseLogoSvg: (props: any) => (
-        <svg {...props} viewBox="0 0 100 100" fill="currentColor">
-            <path d="M53.8,11.2 C57.3,10.6 63.8,18.5 68.3,27.1 C73.5,37.1 82.6,50.7 85.5,58.8 C85.6,59.3 85.8,59.9 85.9,60.5 C83.2,59.2 78.4,57.1 72.8,54.7 C66.0,51.8 59.4,49.2 55.4,47.9 C56.6,33.5 56.4,19.0 53.8,11.2 Z" />
-            <path d="M53.4,51.4 C58.2,53.0 66.5,56.3 75.3,60.1 C80.6,62.4 84.8,64.3 85.4,64.8 C83.2,70.5 76.5,80.1 69.3,86.6 C64.2,91.3 54.1,95.5 45.4,94.2 C45.3,94.2 44.9,94.1 44.4,94.0 C45.8,80.7 48.0,66.5 53.4,51.4 Z" />
-            <path d="M49.4,51.6 C44.8,64.5 42.1,77.5 40.5,91.9 C33.1,88.7 26.6,80.1 23.3,71.7 C21.4,66.9 22.0,62.8 23.9,59.5 C25.0,57.7 26.6,55.9 28.5,54.2 C35.4,53.9 42.4,53.0 49.4,51.6 Z" />
-            <path d="M50.1,11.1 C52.2,18.0 52.4,31.7 51.5,45.7 C44.8,47.1 38.0,48.0 31.4,48.4 C32.1,43.2 34.0,37.8 37.0,32.3 C40.8,25.6 44.9,16.8 50.1,11.1 Z" />
+    DecemberLogo: (props: any) => (
+        <svg
+            {...props}
+            viewBox="5 4 14 16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            {/* Arm up */}
+            <line x1="12" y1="12" x2="12" y2="5.3" />
+            <line x1="12" y1="7.5" x2="13.9" y2="6.4" />
+            <line x1="12" y1="7.5" x2="10.1" y2="6.4" />
+            {/* Arm upper-right */}
+            <line x1="12" y1="12" x2="17.8" y2="8.65" />
+            <line x1="15.9" y1="9.75" x2="17.8" y2="10.85" />
+            <line x1="15.9" y1="9.75" x2="15.9" y2="7.55" />
+            {/* Arm lower-right */}
+            <line x1="12" y1="12" x2="17.8" y2="15.35" />
+            <line x1="15.9" y1="14.25" x2="15.9" y2="16.45" />
+            <line x1="15.9" y1="14.25" x2="17.8" y2="13.15" />
+            {/* Arm down */}
+            <line x1="12" y1="12" x2="12" y2="18.7" />
+            <line x1="12" y1="16.5" x2="10.1" y2="17.6" />
+            <line x1="12" y1="16.5" x2="13.9" y2="17.6" />
+            {/* Arm lower-left */}
+            <line x1="12" y1="12" x2="6.2" y2="15.35" />
+            <line x1="8.1" y1="14.25" x2="6.2" y2="13.15" />
+            <line x1="8.1" y1="14.25" x2="8.1" y2="16.45" />
+            {/* Arm upper-left */}
+            <line x1="12" y1="12" x2="6.2" y2="8.65" />
+            <line x1="8.1" y1="9.75" x2="8.1" y2="7.55" />
+            <line x1="8.1" y1="9.75" x2="6.2" y2="10.85" />
         </svg>
     ),
     Layers: (props: any) => (
@@ -27,7 +55,7 @@ export const Icons = {
             strokeLinecap="round"
             strokeLinejoin="round"
         >
-            <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+            <polygon points="12 2 2 7 12 12 22 7 12 2" strokeDasharray="4 4"></polygon>
             <polyline points="2 12 12 17 22 12"></polyline>
             <polyline points="2 17 12 22 22 17"></polyline>
         </svg>
@@ -87,15 +115,10 @@ export const Icons = {
             width="20"
             height="20"
             viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
+            fill="currentColor"
+            stroke="none"
         >
-            <circle cx="12" cy="12" r="10" />
-            <circle cx="12" cy="10" r="3" />
-            <path d="M7 20.662V19a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v1.662" />
+            <path d="M12 12a5 5 0 1 1 0-10 5 5 0 0 1 0 10Zm0 2c-5.33 0-8 2.67-8 8v2h16v-2c0-5.33-2.67-8-8-8Z" />
         </svg>
     ),
     Folder: (props: any) => (
@@ -111,6 +134,89 @@ export const Icons = {
             strokeLinejoin="round"
         >
             <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+        </svg>
+    ),
+    Folders: (props: any) => (
+        <svg
+            {...props}
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            <path d="M9 7V5a2 2 0 0 1 2-2h4l2 2h5a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-1" />
+            <path d="M5 10h4l2 2h5a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2z" />
+        </svg>
+    ),
+    Claude: (props: any) => (
+        <svg
+            {...props}
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            <path d="M12 2v20M2 12h20M4.93 4.93l14.14 14.14M4.93 19.07l14.14-14.14M8.46 2.54l7.08 18.92M2.54 15.54l18.92-7.08M2.54 8.46l18.92 7.08M15.54 2.54L8.46 21.46" />
+        </svg>
+    ),
+    OpenAI: (props: any) => (
+        <svg
+            {...props}
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            <circle cx="12" cy="12" r="10" />
+            <line x1="14.31" x2="20.05" y1="8" y2="17.94" />
+            <line x1="9.69" x2="21.17" y1="8" y2="8" />
+            <line x1="7.38" x2="13.12" y1="12" y2="2.06" />
+            <line x1="9.69" x2="3.95" y1="16" y2="6.06" />
+            <line x1="14.31" x2="2.83" y1="16" y2="16" />
+            <line x1="16.62" x2="10.88" y1="12" y2="21.94" />
+        </svg>
+    ),
+    Gemini: (props: any) => (
+        <svg
+            {...props}
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            <path d="M12 2c0 5.5-4.5 10-10 10 5.5 0 10 4.5 10 10 0-5.5 4.5-10 10-10-5.5 0-10-4.5-10-10z" />
+        </svg>
+    ),
+    Deepseek: (props: any) => (
+        <svg
+            {...props}
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            <path d="M9 4h3a8 8 0 0 1 8 8v0a8 8 0 0 1-8 8H9z" />
+            <line x1="9" x2="9" y1="4" y2="20" />
         </svg>
     ),
     Clock: (props: any) => (
@@ -179,6 +285,22 @@ export const Icons = {
             <line x1="9" y1="21" x2="9" y2="9" />
         </svg>
     ),
+    Bookmark: (props: any) => (
+        <svg
+            {...props}
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            <path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z" />
+            <line x1="8" x2="16" y1="7" y2="7" />
+        </svg>
+    ),
     Compass: (props: any) => (
         <svg
             {...props}
@@ -241,7 +363,11 @@ export const Icons = {
             strokeLinecap="round"
             strokeLinejoin="round"
         >
-            <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-0-5H20"></path>
+            <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
+            <path d="M14 2v4a2 2 0 0 0 2 2h4" />
+            <path d="M10 9H8" />
+            <path d="M16 13H8" />
+            <path d="M16 17H8" />
         </svg>
     ),
     CanvasIcon: (props: any) => (
