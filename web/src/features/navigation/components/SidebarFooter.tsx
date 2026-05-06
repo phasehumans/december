@@ -51,19 +51,23 @@ export const SidebarFooter: React.FC<SidebarFooterProps & { user?: { name?: stri
                                 onClick={() => setIsPopoverOpen(!isPopoverOpen)}
                                 className="flex-1 flex items-center gap-3 px-3 py-[7px] rounded-lg hover:bg-[#252422] transition-colors group outline-none min-w-0"
                             >
-                                <div className="flex items-center justify-center w-[18px] h-[18px] text-[#D6D5D4] shrink-0">
-                                    <Icons.UserCircle className="w-[18px] h-[18px]" />
+                                <div className="flex items-center justify-center w-[28px] h-[28px] rounded-full bg-white/[0.04] text-[#8F8E8D] shrink-0">
+                                    <Icons.UserCircle className="w-[12px] h-[12px]" />
                                 </div>
-                                <span className="font-medium text-[14px] text-[#D6D5D4] truncate tracking-tight">
-                                    {quickInfo?.firstName || 'Profile'}
+                                <span className="font-medium text-[14px] text-[#CAC9C9] truncate tracking-tight text-left w-full">
+                                    {user?.name ||
+                                        profile?.name ||
+                                        quickInfo?.name ||
+                                        quickInfo?.firstName ||
+                                        'Profile'}
                                 </span>
                             </button>
                             <button
                                 ref={notifAnchorRef}
                                 onClick={() => setIsNotifPopoverOpen(!isNotifPopoverOpen)}
-                                className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-[#252422] text-[#969593] hover:text-[#CBCACA] transition-colors shrink-0 outline-none"
+                                className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-[#252422] text-[#8F8E8D] hover:text-[#CBCACA] transition-colors shrink-0 outline-none"
                             >
-                                <Bell className="w-[18px] h-[18px]" strokeWidth={2} />
+                                <Bell className="w-[14px] h-[14px]" strokeWidth={2} />
                             </button>
                         </div>
 
@@ -83,6 +87,7 @@ export const SidebarFooter: React.FC<SidebarFooterProps & { user?: { name?: stri
                             isOpen={isNotifPopoverOpen}
                             anchorRef={notifAnchorRef}
                             onClose={() => setIsNotifPopoverOpen(false)}
+                            onSettings={onProfile}
                         />
 
                         <ProfileCardModal

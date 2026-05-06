@@ -36,12 +36,14 @@ export const HomeHeader: React.FC = () => {
                 <div className="flex items-center gap-1">
                     <a
                         href="https://x.com/phasehumans"
+                        target="_blank"
+                        rel="noopener noreferrer"
                         className="text-textMuted hover:text-textMain transition-colors flex items-center justify-center p-1"
                     >
                         <Icons.XLogo className="w-[15px] h-[15px]" />
                     </a>
                     <a
-                        href="https://github.com/phasehumans/phasehumans.dev"
+                        href="https://github.com/phasehumans/december"
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-textMuted hover:text-textMain transition-colors flex items-center justify-center p-1"
