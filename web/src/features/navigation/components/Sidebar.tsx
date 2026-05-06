@@ -44,8 +44,8 @@ const Sidebar: React.FC<SidebarProps & { user?: any }> = ({
                     label="New Project"
                     onClick={onNewThread} // Replace with proper action if needed
                 />
-                <SidebarNavItem icon={<Icons.Grid />} label="Projects" onClick={onAllProjects} />
-                <SidebarNavItem icon={<Icons.Layout />} label="Templates" onClick={onTemplates} />
+                <SidebarNavItem icon={<Icons.Folder />} label="Projects" onClick={onAllProjects} />
+                <SidebarNavItem icon={<Icons.Bookmark />} label="Templates" onClick={onTemplates} />
                 <SidebarNavItem icon={<Icons.DocsBook />} label="Documentation" onClick={onDocs} />
             </div>
 
@@ -57,12 +57,12 @@ const Sidebar: React.FC<SidebarProps & { user?: any }> = ({
                         onClick={() => setRecentOpen(!recentOpen)}
                         className="flex items-center justify-between px-3 py-1.5 w-full text-left group outline-none"
                     >
-                        <span className="font-semibold text-[11px] tracking-widest text-[#969593] group-hover:text-[#D6D5D4] uppercase transition-colors">
+                        <span className="font-medium text-[13px] whitespace-nowrap transition-colors tracking-tight text-[#8F8E8D] group-hover:text-[#CBCACA]">
                             Recent Projects
                         </span>
                         <div
                             className={cn(
-                                'text-[#969593] group-hover:text-[#D6D5D4] transition-all opacity-0 group-hover:opacity-100',
+                                'text-[#8F8E8D] group-hover:text-[#D6D5D4] transition-all opacity-0 group-hover:opacity-100',
                                 recentOpen ? 'rotate-0' : '-rotate-90'
                             )}
                         >
@@ -82,7 +82,7 @@ const Sidebar: React.FC<SidebarProps & { user?: any }> = ({
                                                 onClick={() => onOpenProject?.(project.id)}
                                                 className="flex items-center px-3 py-0.5 w-full text-left rounded-lg hover:bg-[#252422] transition-colors group"
                                             >
-                                                <span className="font-semibold text-[11px] tracking-widest text-[#969593] group-hover:text-[#D6D5D4] lowercase transition-colors truncate">
+                                                <span className="font-medium text-[13px] transition-colors tracking-tight text-[#8F8E8D] group-hover:text-[#CBCACA] truncate">
                                                     {/* @ts-ignore */}
                                                     {project.name || project.title}
                                                 </span>

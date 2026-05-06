@@ -2,15 +2,15 @@ import React from 'react'
 import { createPortal } from 'react-dom'
 import {
     User,
-    Settings,
-    CreditCard,
-    BookOpen,
-    MessageSquare,
-    CircleDollarSign,
     LogOut,
     UserCircle,
     ExternalLink,
+    Settings as SettingsIcon,
+    MessageSquare,
+    CreditCard,
+    CircleDollarSign,
 } from 'lucide-react'
+import { Icons } from '@/shared/components/ui/Icons'
 import { cn } from '@/shared/lib/utils'
 
 interface UserProfilePopoverProps {
@@ -106,15 +106,15 @@ export const UserProfilePopover: React.FC<UserProfilePopoverProps> = ({
 
     const menuItems = [
         { icon: User, label: 'Profile', action: onProfileModal },
-        { icon: Settings, label: 'Settings', action: onSettings },
+        { icon: SettingsIcon, label: 'Settings', action: onSettings },
+        { icon: MessageSquare, label: 'Feedback', action: onFeedbackModal },
         {
             icon: CreditCard,
             label: 'Pricing',
             action: () => console.log('Pricing'),
             external: true,
         },
-        { icon: BookOpen, label: 'Documentation', action: onDocs, external: true },
-        { icon: MessageSquare, label: 'Feedback', action: onFeedbackModal },
+        { icon: Icons.DocsBook, label: 'Documentation', action: onDocs, external: true },
         { icon: CircleDollarSign, label: 'Credits', action: () => console.log('Credit') },
     ]
 
