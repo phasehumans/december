@@ -1,4 +1,4 @@
-import { API_BASE_URL, ApiError, apiRequest, getAuthToken } from '@/shared/api/client'
+import { ApiError, apiFetch, apiRequest } from '@/shared/api/client'
 import type { CanvasDocument, CanvasItem } from '@/features/canvas/types'
 import type {
     BackendProject,
@@ -231,13 +231,11 @@ const generateProjectStream = async ({
     signal,
     onEvent,
 }: GenerateProjectInput) => {
-    const token = getAuthToken()
     const sanitizedCanvasState = sanitizeCanvasStateForRequest(canvasState)
-    const res = await fetch(`${API_BASE_URL}/generate`, {
+    const res = await apiFetch('/generate', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            ...(token ? { Authorization: token } : {}),
         },
         body: JSON.stringify({
             prompt,

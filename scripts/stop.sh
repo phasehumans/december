@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 
-SESSION_NAME="phasehumans"
+SESSION_NAME="december"
 
 if tmux has-session -t "$SESSION_NAME" 2>/dev/null; then
   tmux kill-session -t "$SESSION_NAME"
-  echo "[phasehumans] Stopped tmux session '$SESSION_NAME'."
+  echo "[december] Stopped tmux session '$SESSION_NAME'."
 else
-  echo "[phasehumans] No running session named '$SESSION_NAME'."
+  echo "[december] No running session named '$SESSION_NAME'."
 fi

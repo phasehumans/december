@@ -13,9 +13,20 @@ export type Profile = {
     githubUsername?: string
 }
 
+type BackendProfile = Omit<Profile, 'receiveNotification'> & {
+    notifyProjectActivity?: boolean
+    notifyProductUpdates?: boolean
+    notifySecurityAlerts?: boolean
+}
+
 export type QuickInfo = {
     firstName: string
     githubConnected: boolean
+}
+
+type BackendQuickInfo = {
+    firstName: string
+    isGithubConnected: boolean
 }
 
 type UpdateNameInput = {
@@ -31,32 +42,57 @@ type updateNotificationInput = {
 }
 
 const getProfile = () => {
-    return apiRequest<Profile>('/profile')
+    return apiRequest<BackendProfile>('/profile').then((profile) => ({
+        ...profile,
+        receiveNotification: profile.notifySecurityAlerts ?? true,
+    }))
 }
 
 const updateName = (data: UpdateNameInput) => {
-    return apiRequest<Profile>('/profile/update-name', {
+    return apiRequest<BackendProfile>('/profile/name', {
         method: 'PATCH',
         body: JSON.stringify(data),
-    })
+    }).then((profile) => ({
+        ...profile,
+        receiveNotification: profile.notifySecurityAlerts ?? true,
+    }))
 }
 
 const changePassword = (data: ChangePasswordInput) => {
-    return apiRequest<Profile>('/profile/change-password', {
+    return apiRequest<BackendProfile>('/profile/password', {
         method: 'PATCH',
         body: JSON.stringify(data),
-    })
+    }).then((profile) => ({
+        ...profile,
+        receiveNotification: profile.notifySecurityAlerts ?? true,
+    }))
 }
 
 const updateNotification = (data: updateNotificationInput) => {
-    return apiRequest<Profile>('/profile/notification', {
+    return apiRequest<BackendProfile>('/profile/notifications', {
         method: 'PATCH',
-        body: JSON.stringify(data),
-    })
+        body: JSON.stringify({
+            notifyProjectActivity: data.receiveNotification,
+            notifyProductUpdates: data.receiveNotification,
+            notifySecurityAlerts: data.receiveNotification,
+        }),
+    }).then((profile) => ({
+        ...profile,
+        receiveNotification: profile.notifySecurityAlerts ?? true,
+    }))
 }
 
 const getQuickInfo = () => {
-    return apiRequest<QuickInfo>('/profile/quickinfo')
+    return apiRequest<BackendQuickInfo>('/profile/info').then((info) => ({
+        firstName: info.firstName,
+        githubConnected: info.isGithubConnected,
+    }))
+}
+
+const signout = () => {
+    return apiRequest<void>('/profile/signout', {
+        method: 'POST',
+    })
 }
 
 export const profileAPI = {
@@ -65,4 +101,5 @@ export const profileAPI = {
     changePassword,
     updateNotification,
     getQuickInfo,
+    signout,
 }
