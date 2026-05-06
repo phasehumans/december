@@ -36,7 +36,7 @@ export const SidebarHeader: React.FC<{ onNewThread?: () => void }> = ({ onNewThr
                     title="Home"
                 >
                     <div className="text-[#D6D5D4] transition-all flex items-center justify-center">
-                        <Icons.CanvasIcon className="w-[18px] h-[18px]" />
+                        <Icons.DecemberLogo className="w-[18px] h-[18px]" />
                     </div>
                     <span className="font-medium text-[14px] text-[#D6D5D4] tracking-wide">
                         December
