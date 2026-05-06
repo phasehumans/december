@@ -28,7 +28,7 @@ const signup = (data: SignupInput) => {
 }
 
 const verifyOtp = (data: VerifyOtpInput) => {
-    return apiRequest<string>('/auth/verify', {
+    return apiRequest<void>('/auth/verify', {
         method: 'POST',
         includeAuth: false,
         body: JSON.stringify(data),
@@ -36,7 +36,7 @@ const verifyOtp = (data: VerifyOtpInput) => {
 }
 
 const login = (data: LoginInput) => {
-    return apiRequest<string>('/auth/login', {
+    return apiRequest<void>('/auth/login', {
         method: 'POST',
         includeAuth: false,
         body: JSON.stringify(data),
@@ -44,7 +44,7 @@ const login = (data: LoginInput) => {
 }
 
 const google = (data: GoogleInput) => {
-    return apiRequest<string>('/auth/google', {
+    return apiRequest<void>('/auth/google', {
         method: 'POST',
         includeAuth: false,
         body: JSON.stringify(data),

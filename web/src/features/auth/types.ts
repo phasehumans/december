@@ -7,7 +7,7 @@ export interface AuthModalProps {
     isOpen: boolean
     onClose: () => void
     initialMode?: AuthMode
-    onAuthSuccess: (token: string) => void
+    onAuthSuccess: () => void
 }
 
 export interface SignupInput {

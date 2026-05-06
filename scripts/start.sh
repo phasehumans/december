@@ -2,7 +2,7 @@
 
 set -e
 
-SESSION_NAME="phasehumans"
+SESSION_NAME="december"
 
 # Resolve project root from script location
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -54,26 +54,26 @@ if tmux has-session -t "$SESSION_NAME" 2>/dev/null; then
   exit 0
 fi
 
-echo "[phasehumans] Starting runtime..."
+echo "[december] Starting runtime..."
 tmux new-session -d -s "$SESSION_NAME" -n runtime
 tmux send-keys -t "$SESSION_NAME:runtime" "cd \"$RUNTIME_DIR\" && echo '[runtime] starting...' && cargo run" C-m
 
 sleep 2
 
-echo "[phasehumans] Starting server..."
+echo "[december] Starting server..."
 tmux new-window -t "$SESSION_NAME" -n server
 tmux send-keys -t "$SESSION_NAME:server" "cd \"$SERVER_DIR\" && echo '[server] starting...' && bun run dev" C-m
 
-echo "[phasehumans] Waiting 10 seconds before starting web..."
+echo "[december] Waiting 10 seconds before starting web..."
 sleep 10
 
-echo "[phasehumans] Starting web..."
+echo "[december] Starting web..."
 tmux new-window -t "$SESSION_NAME" -n web
 tmux send-keys -t "$SESSION_NAME:web" "cd \"$WEB_DIR\" && echo '[web] starting...' && bun run dev" C-m
 
 tmux select-window -t "$SESSION_NAME:runtime"
 
-echo "[phasehumans] All services started."
-echo "[phasehumans] Attaching to tmux session..."
+echo "[december] All services started."
+echo "[december] Attaching to tmux session..."
 
 exec tmux attach -t "$SESSION_NAME"

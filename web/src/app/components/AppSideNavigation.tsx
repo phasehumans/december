@@ -45,7 +45,7 @@ export const AppSideNavigation: React.FC<AppSideNavigationProps> = ({
                 onDocs={() => onNavigate('docs')}
                 onProfile={() => onNavigate('profile')}
                 onOpenProject={onOpenProject}
-                isAuthenticated={true} // FORCED TRUE FOR DEV
+                isAuthenticated={isAuthenticated}
                 onOpenAuth={onOpenAuth}
                 projects={projects}
                 isProjectsLoading={isProjectsInitialLoading}
@@ -70,7 +70,7 @@ export const AppSideNavigation: React.FC<AppSideNavigationProps> = ({
                 onDocs={() => onNavigate('docs')}
                 onProfile={() => onNavigate('profile')}
                 onOpenProject={onOpenProject}
-                isAuthenticated={true} // FORCED TRUE FOR DEV
+                isAuthenticated={isAuthenticated}
                 onOpenAuth={onOpenAuth}
                 projects={projects}
                 isProjectsLoading={isProjectsInitialLoading}

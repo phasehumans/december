@@ -42,6 +42,11 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
     }, [])
 
     const toggleImportForm = (form: 'github' | 'upload') => {
+        if (!isAuthenticated) {
+            onOpenAuth()
+            return
+        }
+
         setActiveImportForm((prev) => (prev === form ? null : form))
     }
 

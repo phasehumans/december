@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 
 import type { Message } from '@/features/chat/types'
 import type { ViewState } from '@/app/types'
-import { clearAuthToken, getAuthToken } from '@/shared/api/client'
+import { refreshAuthSession } from '@/shared/api/client'
 import {
     generationAPI,
     type AppliedProjectChangeResult,
@@ -18,6 +18,7 @@ import { mapBackendProjectToUIProject } from '@/app/mapProject'
 import { createEmptyCanvasDocument, type CanvasDocument } from '@/features/canvas/types'
 import { previewAPI } from '@/features/preview/api'
 import { importsAPI, type ProjectImportStatus } from '@/features/home/api'
+import { profileAPI } from '@/features/profile/api/profile'
 import type {
     GeneratedProjectFile,
     OutputOperation,
@@ -113,7 +114,7 @@ export const useAppController = () => {
     >(null)
     const [activeOperation, setActiveOperation] = React.useState<OutputOperation | null>(null)
     const [isGenerating, setIsGenerating] = React.useState(false)
-    const [authToken, setAuthTokenState] = React.useState<string | null>(() => getAuthToken())
+    const [isAuthenticated, setIsAuthenticated] = React.useState(false)
     const [showAuthModal, setShowAuthModal] = React.useState(false)
     const [isMobileSidebarOpen, setIsMobileSidebarOpen] = React.useState(false)
     const [activeProjectId, setActiveProjectId] = React.useState<string | null>(null)
@@ -137,7 +138,27 @@ export const useAppController = () => {
     const outputOriginViewRef = React.useRef<ViewState>('chat')
     const lastAutoFixSignatureRef = React.useRef<string | null>(null)
 
-    const isAuthenticated = Boolean(authToken)
+    React.useEffect(() => {
+        let isMounted = true
+
+        const restoreSession = async () => {
+            const refreshed = await refreshAuthSession()
+
+            if (!isMounted || !refreshed) {
+                return
+            }
+
+            setIsAuthenticated(true)
+            queryClient.invalidateQueries({ queryKey: ['projects'] })
+            queryClient.invalidateQueries({ queryKey: ['profile'] })
+        }
+
+        void restoreSession()
+
+        return () => {
+            isMounted = false
+        }
+    }, [queryClient])
 
     const {
         data: projects = [],
@@ -1146,8 +1167,10 @@ export const useAppController = () => {
 
     const handleSignOut = () => {
         abortGenerationRequest()
-        clearAuthToken()
-        setAuthTokenState(null)
+        void profileAPI.signout().catch(() => {
+            // Local cleanup should still happen if the server session is already invalid.
+        })
+        setIsAuthenticated(false)
         queryClient.removeQueries({ queryKey: ['projects'] })
         queryClient.removeQueries({ queryKey: ['profile'] })
         outputOriginViewRef.current = 'chat'
@@ -1180,8 +1203,7 @@ export const useAppController = () => {
         generationPhase,
         activeOperation,
         isGenerating,
-        authToken,
-        setAuthTokenState,
+        setIsAuthenticated,
         showAuthModal,
         setShowAuthModal,
         isMobileSidebarOpen,
