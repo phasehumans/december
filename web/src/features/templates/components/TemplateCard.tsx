@@ -1,17 +1,36 @@
-import React, { useState } from 'react'
-import { motion } from 'framer-motion'
+import React from 'react'
 
 import { Icons } from '@/shared/components/ui/Icons'
 import { cn } from '@/shared/lib/utils'
+import type { Template } from '@/features/templates/types'
 
 interface TemplateCardProps {
-    template: any
+    template: Template
+    isLikePending?: boolean
+    isRemixPending?: boolean
+    onToggleLike: (template: Template) => void
+    onRemix: (template: Template) => void
 }
 
-export const TemplateCard: React.FC<TemplateCardProps> = ({ template }) => {
-    const [isLiked, setIsLiked] = useState(false)
+const previewImages = [
+    'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&q=80&w=900&h=560',
+    'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&q=80&w=900&h=560',
+    'https://images.unsplash.com/photo-1499951360447-b19be8fe80f5?auto=format&fit=crop&q=80&w=900&h=560',
+    'https://images.unsplash.com/photo-1555421689-491a97ff2040?auto=format&fit=crop&q=80&w=900&h=560',
+]
 
-    // Format numbers nicely (e.g., 1800 -> 1.8K)
+const getPreviewImage = (templateId: string) => {
+    const sum = Array.from(templateId).reduce((acc, char) => acc + char.charCodeAt(0), 0)
+    return previewImages[sum % previewImages.length]!
+}
+
+export const TemplateCard: React.FC<TemplateCardProps> = ({
+    template,
+    isLikePending = false,
+    isRemixPending = false,
+    onToggleLike,
+    onRemix,
+}) => {
     const formatLikes = (count: number) => {
         if (count >= 1000) {
             return (count / 1000).toFixed(1) + 'K'
@@ -24,7 +43,7 @@ export const TemplateCard: React.FC<TemplateCardProps> = ({ template }) => {
             {/* Image Container */}
             <div className="relative aspect-[16/10] bg-[#111] overflow-hidden rounded-xl border border-[#242323] transition-all duration-300">
                 <img
-                    src={template.image}
+                    src={getPreviewImage(template.id)}
                     alt={template.title}
                     className="w-full h-full object-cover transition-transform duration-700 ease-[0.25,1,0.5,1]"
                 />
@@ -53,25 +72,35 @@ export const TemplateCard: React.FC<TemplateCardProps> = ({ template }) => {
                     <button
                         onClick={(e) => {
                             e.stopPropagation()
-                            setIsLiked(!isLiked)
+                            onToggleLike(template)
                         }}
+                        disabled={isLikePending}
                         className={
                             'flex items-center gap-1.5 transition-colors cursor-pointer active:scale-95 group/btn ' +
-                            (isLiked ? 'text-[#D6D5C9]' : 'text-[#7B7A79] hover:text-[#D6D5C9]')
+                            (template.isLiked
+                                ? 'text-[#D6D5C9]'
+                                : 'text-[#7B7A79] hover:text-[#D6D5C9]')
                         }
                     >
                         <Icons.Heart
                             className={cn(
                                 'w-3.5 h-3.5 transition-transform group-hover/btn:scale-110',
-                                isLiked && 'fill-[#D6D5C9]'
+                                template.isLiked && 'fill-[#D6D5C9]'
                             )}
                         />
                         <span className="text-[11px] font-medium">
-                            {formatLikes(template.likes + (isLiked ? 1 : 0))}
+                            {formatLikes(template.likeCount)}
                         </span>
                     </button>
 
-                    <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-[#383736] bg-[#171615] text-[11px] font-medium text-[#D6D5C9] hover:bg-[#1E1D1B] hover:border-[#4B4A49] transition-all active:scale-[0.98] group/remix">
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation()
+                            onRemix(template)
+                        }}
+                        disabled={isRemixPending}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-[#383736] bg-[#171615] text-[11px] font-medium text-[#D6D5C9] hover:bg-[#1E1D1B] hover:border-[#4B4A49] transition-all active:scale-[0.98] group/remix disabled:opacity-70"
+                    >
                         <Icons.Remix className="w-3 h-3 opacity-70 group-hover/remix:opacity-100 transition-opacity" />
                         Remix
                     </button>

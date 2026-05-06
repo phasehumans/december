@@ -2,16 +2,23 @@ import React from 'react'
 
 import { Modal } from '@/shared/components/ui/Modal'
 import { Button } from '@/shared/components/ui/Button'
-import type { ProjectShareModalProps } from '@/features/projects/types'
 
-export const ProjectShareModal: React.FC<ProjectShareModalProps> = ({
+interface TemplateRemixModalProps {
+    isOpen: boolean
+    templateTitle?: string
+    isPending: boolean
+    onClose: () => void
+    onConfirm: () => void
+}
+
+export const TemplateRemixModal: React.FC<TemplateRemixModalProps> = ({
     isOpen,
-    projectTitle,
+    templateTitle,
     isPending,
     onClose,
     onConfirm,
 }) => {
-    const displayTitle = projectTitle?.trim() ? `"${projectTitle}"` : 'this project'
+    const displayTitle = templateTitle?.trim() ? `"${templateTitle}"` : 'this template'
 
     const handleSubmit = (event: React.FormEvent) => {
         event.preventDefault()
@@ -22,20 +29,20 @@ export const ProjectShareModal: React.FC<ProjectShareModalProps> = ({
         <Modal
             isOpen={isOpen}
             onClose={onClose}
-            title="Share project"
-            description="Share this project in the Community Templates page."
+            title="Remix template"
+            description="Create a new project from this template."
         >
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-                <p className="text-sm leading-relaxed text-neutral-400">
-                    This will share <span className="font-medium text-white">{displayTitle}</span>{' '}
-                    in the Community Templates page so other users can discover and remix it.
+                <p className="text-sm text-neutral-400 leading-relaxed">
+                    A new project will be created from{' '}
+                    <span className="text-white font-medium">{displayTitle}</span>.
                 </p>
                 <div className="mt-4 flex items-center justify-end gap-3">
                     <Button variant="ghost" type="button" onClick={onClose} disabled={isPending}>
                         Cancel
                     </Button>
                     <Button type="submit" isLoading={isPending}>
-                        Share
+                        Continue
                     </Button>
                 </div>
             </form>

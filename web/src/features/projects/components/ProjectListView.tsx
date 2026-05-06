@@ -18,6 +18,8 @@ interface ProjectListViewProps {
     isTogglePending: boolean
     onToggleStar: (id: string, event: React.MouseEvent) => void
     onToggleMenu: (id: string, event: React.MouseEvent) => void
+    onOpenProjectFromMenu: (projectId: string, event: React.MouseEvent) => void
+    onToggleStarFromMenu: (project: Project, event: React.MouseEvent) => void
     onOpenRename: (project: Project, event: React.MouseEvent) => void
     onOpenDuplicate: (project: Project, event: React.MouseEvent) => void
     onOpenShare: (project: Project, event: React.MouseEvent) => void
@@ -107,6 +109,8 @@ export const ProjectListView: React.FC<ProjectListViewProps> = ({
     isTogglePending,
     onToggleStar,
     onToggleMenu,
+    onOpenProjectFromMenu,
+    onToggleStarFromMenu,
     onOpenRename,
     onOpenDuplicate,
     onOpenShare,
@@ -253,6 +257,8 @@ export const ProjectListView: React.FC<ProjectListViewProps> = ({
                                 onOpenProject={onOpenProject}
                                 onToggleStar={onToggleStar}
                                 onToggleMenu={onToggleMenu}
+                                onOpenProjectFromMenu={onOpenProjectFromMenu}
+                                onToggleStarFromMenu={onToggleStarFromMenu}
                                 onOpenRename={onOpenRename}
                                 onOpenDuplicate={onOpenDuplicate}
                                 onOpenShare={onOpenShare}
