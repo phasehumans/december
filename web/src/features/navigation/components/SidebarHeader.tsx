@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 
 import { Icons } from '@/shared/components/ui/Icons'
+import { cn } from '@/shared/lib/utils'
 
 export const SidebarHeader: React.FC<{ onNewThread?: () => void }> = ({ onNewThread }) => {
     const [activeTab, setActiveTab] = useState<'home' | 'canvas'>('home')
@@ -35,10 +36,24 @@ export const SidebarHeader: React.FC<{ onNewThread?: () => void }> = ({ onNewThr
                     className="relative flex items-center gap-2.5 w-full px-2.5 h-[32px] rounded-[10px] transition-colors group outline-none hover:bg-white/[0.02]"
                     title="Home"
                 >
-                    <div className="text-[#D6D5D4] transition-all flex items-center justify-center">
+                    <div
+                        className={cn(
+                            'transition-all flex items-center justify-center',
+                            activeTab === 'home'
+                                ? 'text-[#D6D5D4]'
+                                : 'text-[#8F8E8D] group-hover:text-[#D6D5D4]'
+                        )}
+                    >
                         <Icons.DecemberLogo className="w-[18px] h-[18px]" />
                     </div>
-                    <span className="font-medium text-[14px] text-[#D6D5D4] tracking-wide">
+                    <span
+                        className={cn(
+                            'font-medium text-[14px] tracking-wide transition-colors',
+                            activeTab === 'home'
+                                ? 'text-[#D6D5D4]'
+                                : 'text-[#8F8E8D] group-hover:text-[#D6D5D4]'
+                        )}
+                    >
                         December
                     </span>
                 </button>
@@ -53,10 +68,24 @@ export const SidebarHeader: React.FC<{ onNewThread?: () => void }> = ({ onNewThr
                     className="relative flex items-center gap-2.5 w-full px-2.5 h-[32px] rounded-[10px] transition-colors group outline-none hover:bg-white/[0.02]"
                     title="Canvas"
                 >
-                    <div className="text-[#D6D5D4] transition-colors flex items-center justify-center">
+                    <div
+                        className={cn(
+                            'transition-colors flex items-center justify-center',
+                            activeTab === 'canvas'
+                                ? 'text-[#D6D5D4]'
+                                : 'text-[#8F8E8D] group-hover:text-[#D6D5D4]'
+                        )}
+                    >
                         <Icons.CanvasIcon className="w-[18px] h-[18px]" />
                     </div>
-                    <span className="font-medium text-[14px] text-[#D6D5D4] transition-colors">
+                    <span
+                        className={cn(
+                            'font-medium text-[14px] transition-colors',
+                            activeTab === 'canvas'
+                                ? 'text-[#D6D5D4]'
+                                : 'text-[#8F8E8D] group-hover:text-[#D6D5D4]'
+                        )}
+                    >
                         Canvas
                     </span>
                 </button>

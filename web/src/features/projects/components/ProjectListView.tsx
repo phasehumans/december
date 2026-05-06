@@ -78,28 +78,7 @@ const EmptyProjectsState: React.FC<{ onNewProject: () => void }> = ({ onNewProje
                         strokeLinecap="round"
                         strokeLinejoin="round"
                     />
-                    <path
-                        d="m46 32 36 20.5"
-                        stroke="currentColor"
-                        strokeWidth="2.4"
-                        strokeLinecap="round"
-                    />
-                    <path
-                        d="M22 22c5.5-8.5 14.2-13 26-13M94 13c6.4 1.8 11.6 5.5 15.5 11"
-                        stroke="#4C4B49"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                    />
-                    <path
-                        d="M14 63c-4 4.8-6 10.2-6 16M116 71c3.8 4.1 5.8 8.8 6 14"
-                        stroke="#383736"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                    />
                 </svg>
-                <div className="absolute left-2 top-7 h-2 w-2 rounded-full bg-[#6F6E6C]" />
-                <div className="absolute right-5 top-5 h-1.5 w-1.5 rounded-full bg-[#4C4B49]" />
-                <div className="absolute bottom-5 right-2 h-2 w-2 rounded-full bg-[#5C5B59]" />
             </div>
 
             <h2 className="text-[17px] font-medium text-[#D6D5C9]">No projects</h2>

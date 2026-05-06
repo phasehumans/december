@@ -75,7 +75,7 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
                     />
 
                     {/* Import Integration */}
-                    <div className="flex items-center justify-center gap-3 mt-8 opacity-0 animate-[fadeIn_1s_ease-out_0.5s_forwards] whitespace-nowrap">
+                    <div className="flex items-center justify-center gap-3 mt-8 animate-in fade-in duration-300 whitespace-nowrap">
                         <span className="text-[#656565] text-[14px] font-medium tracking-wide">
                             or start from
                         </span>
