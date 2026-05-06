@@ -1,8 +1,6 @@
 import React from 'react'
 import { motion } from 'framer-motion'
 
-import { DUMMY_TEMPLATES } from '../data'
-
 interface CategoryCardProps {
     category: { id: string; label: string }
     onClick: () => void
@@ -10,19 +8,46 @@ interface CategoryCardProps {
 
 export const CategoryCard: React.FC<CategoryCardProps> = ({ category, onClick }) => {
     const getMockImages = (catId: string) => {
-        const fallbacks: string[] = [
-            'https://images.unsplash.com/photo-1618761714954-0b8cd0026356',
-            'https://images.unsplash.com/photo-1555421689-491a97ff2040',
-            'https://images.unsplash.com/photo-1499951360447-b19be8fe80f5',
-            'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d',
-        ]
-        const categoryTemps: string[] = DUMMY_TEMPLATES.filter((t) => t.category === catId).map(
-            (t) => t.image as string
-        )
-        while (categoryTemps.length < 4) {
-            categoryTemps.push(fallbacks[categoryTemps.length % fallbacks.length] as string)
+        const fallbacks: Record<string, string[]> = {
+            apps: [
+                'https://images.unsplash.com/photo-1618761714954-0b8cd0026356',
+                'https://images.unsplash.com/photo-1677442136019-21780ecad995',
+                'https://images.unsplash.com/photo-1621504450181-5d156f082e6c',
+                'https://images.unsplash.com/photo-1499951360447-b19be8fe80f5',
+            ],
+            landing: [
+                'https://images.unsplash.com/photo-1460925895917-afdab827c52f',
+                'https://images.unsplash.com/photo-1555421689-491a97ff2040',
+                'https://images.unsplash.com/photo-1499951360447-b19be8fe80f5',
+                'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d',
+            ],
+            dashboards: [
+                'https://images.unsplash.com/photo-1504868584819-f8e8b4b6d7e3',
+                'https://images.unsplash.com/photo-1551288049-bebda4e38f71',
+                'https://images.unsplash.com/photo-1555421689-491a97ff2040',
+                'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40',
+            ],
+            components: [
+                'https://images.unsplash.com/photo-1499951360447-b19be8fe80f5',
+                'https://images.unsplash.com/photo-1555421689-491a97ff2040',
+                'https://images.unsplash.com/photo-1460925895917-afdab827c52f',
+                'https://images.unsplash.com/photo-1618761714954-0b8cd0026356',
+            ],
+            login: [
+                'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d',
+                'https://images.unsplash.com/photo-1499951360447-b19be8fe80f5',
+                'https://images.unsplash.com/photo-1555421689-491a97ff2040',
+                'https://images.unsplash.com/photo-1618761714954-0b8cd0026356',
+            ],
+            ecommerce: [
+                'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d',
+                'https://images.unsplash.com/photo-1555421689-491a97ff2040',
+                'https://images.unsplash.com/photo-1460925895917-afdab827c52f',
+                'https://images.unsplash.com/photo-1621504450181-5d156f082e6c',
+            ],
         }
-        return categoryTemps.slice(0, 4)
+
+        return fallbacks[catId] || fallbacks.apps
     }
 
     const images = getMockImages(category.id)

@@ -16,42 +16,165 @@ type RemixTemplate = {
     templateId: string
 }
 
-const getAllTemplates = async () => {
+type TemplateWithLikeMeta = {
+    id: string
+    name: string
+    description: string | null
+    prompt: string
+    isFeatured: boolean
+    projectCategory: string
+    createdAt: Date
+    updatedAt: Date
+    userId: string
+    authorName: string
+    authorUsername: string
+    likeCount: number
+    isLiked: boolean
+}
+
+const mapTemplateWithLikeMeta = (
+    template: {
+        id: string
+        name: string
+        description: string | null
+        prompt: string
+        isFeatured: boolean
+        projectCategory: any
+        createdAt: Date
+        updatedAt: Date
+        userId: string
+        user: {
+            name: string
+            username: string
+        }
+        likes: Array<{
+            userId: string
+            isLiked: boolean
+        }>
+    },
+    viewerUserId: string
+): TemplateWithLikeMeta => {
+    const likeCount = template.likes.filter((like) => like.isLiked).length
+    const viewerLike = template.likes.find((like) => like.userId === viewerUserId)
+
+    return {
+        id: template.id,
+        name: template.name,
+        description: template.description,
+        prompt: template.prompt,
+        isFeatured: template.isFeatured,
+        projectCategory: template.projectCategory,
+        createdAt: template.createdAt,
+        updatedAt: template.updatedAt,
+        userId: template.userId,
+        authorName: template.user.name,
+        authorUsername: template.user.username,
+        likeCount,
+        isLiked: viewerLike?.isLiked ?? false,
+    }
+}
+
+const getAllTemplates = async (userId?: string) => {
     try {
         const templates = await prisma.project.findMany({
             where: {
                 isSharedAsTemplate: true,
             },
+            orderBy: {
+                updatedAt: 'desc',
+            },
+            include: {
+                user: {
+                    select: {
+                        name: true,
+                        username: true,
+                    },
+                },
+                likes: {
+                    select: {
+                        userId: true,
+                        isLiked: true,
+                    },
+                },
+            },
         })
-        return templates
+
+        if (!userId) {
+            return templates
+        }
+
+        return templates.map((template) => mapTemplateWithLikeMeta(template, userId))
     } catch (error) {
         throw new AppError('database error while fetching templates', 500)
     }
 }
 
-const getTemplateById = async (data: string) => {
-    const template = await prisma.project.findUnique({
+const getTemplateById = async (data: string | { userId: string; templateId: string }) => {
+    const userId = typeof data === 'string' ? undefined : data.userId
+    const templateId = typeof data === 'string' ? data : data.templateId
+    const template = await prisma.project.findFirst({
         where: {
-            id: data,
+            id: templateId,
+            isSharedAsTemplate: true,
+        },
+        include: {
+            user: {
+                select: {
+                    name: true,
+                    username: true,
+                },
+            },
+            likes: {
+                select: {
+                    userId: true,
+                    isLiked: true,
+                },
+            },
         },
     })
 
-    if (!template || template.isSharedAsTemplate == false) {
+    if (!template) {
         throw new AppError('template not found', 404)
     }
 
-    return template
+    if (!userId) {
+        return template
+    }
+
+    return mapTemplateWithLikeMeta(template, userId)
 }
 
-const getFeaturedTemplates = async () => {
+const getFeaturedTemplates = async (userId?: string) => {
     try {
         const templates = await prisma.project.findMany({
             where: {
                 isSharedAsTemplate: true,
                 isFeatured: true,
             },
+            orderBy: {
+                updatedAt: 'desc',
+            },
+            include: {
+                user: {
+                    select: {
+                        name: true,
+                        username: true,
+                    },
+                },
+                likes: {
+                    select: {
+                        userId: true,
+                        isLiked: true,
+                    },
+                },
+            },
         })
-        return templates
+
+        if (!userId) {
+            return templates
+        }
+
+        return templates.map((template) => mapTemplateWithLikeMeta(template, userId))
     } catch (error) {
         throw new AppError('database error while fetching featured templates', 500)
     }
@@ -164,7 +287,7 @@ const toggleLike = async (data: ToggleLike) => {
         throw new AppError('user not found', 404)
     }
 
-    const template = await prisma.project.findUnique({
+    const template = await prisma.project.findFirst({
         where: {
             id: templateId,
             isSharedAsTemplate: true,

@@ -14,7 +14,7 @@ const getAllTemplates = async (req: Request, res: Response) => {
     }
 
     try {
-        const result = await templateService.getAllTemplates()
+        const result = await templateService.getAllTemplates(userId)
         return res.status(200).json({
             success: true,
             message: 'templates fetched successfully',
@@ -56,7 +56,7 @@ const getTemplateById = async (req: Request, res: Response) => {
     }
 
     try {
-        const result = await templateService.getTemplateById(templateId)
+        const result = await templateService.getTemplateById({ userId, templateId })
         return res.status(200).json({
             success: true,
             message: 'template fetched successfully',
@@ -90,7 +90,7 @@ const getFeaturedTemplates = async (req: Request, res: Response) => {
     }
 
     try {
-        const result = await templateService.getFeaturedTemplates()
+        const result = await templateService.getFeaturedTemplates(userId)
         return res.status(200).json({
             success: true,
             message: 'featured templates fetched successfully',

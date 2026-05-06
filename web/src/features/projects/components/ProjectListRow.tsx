@@ -10,6 +10,8 @@ export const ProjectListRow: React.FC<ProjectListRowProps> = ({
     onOpenProject,
     onToggleStar,
     onToggleMenu,
+    onOpenProjectFromMenu,
+    onToggleStarFromMenu,
     onOpenRename,
     onOpenDuplicate,
     onOpenShare,
@@ -77,7 +79,10 @@ export const ProjectListRow: React.FC<ProjectListRowProps> = ({
                         className="absolute right-0 top-9 z-30 flex w-56 flex-col rounded-xl border border-[#383736] bg-[#1E1D1C] p-1.5 shadow-xl"
                         onClick={(e) => e.stopPropagation()}
                     >
-                        <button className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-[14px] text-[#D6D5C9] transition-colors hover:bg-[#252422]">
+                        <button
+                            onClick={(e) => onOpenProjectFromMenu(project.id, e)}
+                            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-[14px] text-[#D6D5C9] transition-colors hover:bg-[#252422]"
+                        >
                             <Icons.ExternalLink className="h-4 w-4 text-[#7B7A79]" /> Open in new
                             tab
                         </button>
@@ -93,8 +98,12 @@ export const ProjectListRow: React.FC<ProjectListRowProps> = ({
                         >
                             <Icons.Copy className="h-4 w-4 text-[#7B7A79]" /> Duplicate
                         </button>
-                        <button className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-[14px] text-[#D6D5C9] transition-colors hover:bg-[#252422]">
-                            <Icons.Star className="h-4 w-4 text-[#7B7A79]" /> Add to favourites
+                        <button
+                            onClick={(e) => onToggleStarFromMenu(project, e)}
+                            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-[14px] text-[#D6D5C9] transition-colors hover:bg-[#252422]"
+                        >
+                            <Icons.Star className="h-4 w-4 text-[#7B7A79]" />{' '}
+                            {project.isStarred ? 'Remove from favourites' : 'Add to favourites'}
                         </button>
                         <button className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-[14px] text-[#D6D5C9] transition-colors hover:bg-[#252422]">
                             <Icons.Settings className="h-4 w-4 text-[#7B7A79]" /> Settings
