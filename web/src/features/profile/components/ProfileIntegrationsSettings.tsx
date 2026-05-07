@@ -9,7 +9,7 @@ interface ProfileIntegrationsSettingsProps {
 const mockRepos = [
     {
         name: 'web-app',
-        fullName: 'phasehumans/web-app',
+        fullName: 'december/web-app',
         description: 'Main web application frontend built with React and TypeScript.',
         language: 'TypeScript',
         languageColor: '#3178c6',
@@ -19,8 +19,8 @@ const mockRepos = [
     },
     {
         name: 'core-api',
-        fullName: 'phasehumans/core-api',
-        description: 'Backend API service powering the phasehumans platform.',
+        fullName: 'december/core-api',
+        description: 'Backend API service powering the december platform.',
         language: 'TypeScript',
         languageColor: '#3178c6',
         branch: 'main',
@@ -29,8 +29,8 @@ const mockRepos = [
     },
     {
         name: 'documentation',
-        fullName: 'phasehumans/documentation',
-        description: 'Official docs and guides for phasehumans developers.',
+        fullName: 'december/documentation',
+        description: 'Official docs and guides for december developers.',
         language: 'MDX',
         languageColor: '#fcb32c',
         branch: 'main',
@@ -39,7 +39,7 @@ const mockRepos = [
     },
     {
         name: 'design-system',
-        fullName: 'phasehumans/design-system',
+        fullName: 'december/design-system',
         description: 'Shared component library and design tokens.',
         language: 'TypeScript',
         languageColor: '#3178c6',
@@ -49,8 +49,8 @@ const mockRepos = [
     },
     {
         name: 'cli-tools',
-        fullName: 'phasehumans/cli-tools',
-        description: 'Command-line utilities for the phasehumans workflow.',
+        fullName: 'december/cli-tools',
+        description: 'Command-line utilities for the december workflow.',
         language: 'Go',
         languageColor: '#00ADD8',
         branch: 'main',
@@ -95,7 +95,7 @@ const integrations = [
     {
         id: 'vercel',
         name: 'Vercel',
-        description: 'Deploy and manage your projects directly from phasehumans.',
+        description: 'Deploy and manage your projects directly from december.',
         Icon: VercelIcon,
         iconColor: '#D6D5C9',
         connectLabel: 'Connect',
@@ -205,7 +205,7 @@ export const ProfileIntegrationsSettings: React.FC<ProfileIntegrationsSettingsPr
                                 Connect GitHub to see your repos
                             </span>
                             <span className="text-[13px] text-[#7B7A79] max-w-[320px]">
-                                Import any repository to start working on it with phasehumans.
+                                Import any repository to start working on it with december.
                             </span>
                         </div>
                         <button
@@ -275,8 +275,7 @@ export const ProfileIntegrationsSettings: React.FC<ProfileIntegrationsSettingsPr
                         {/* Footer CTA */}
                         <div className="px-4 py-4 bg-[#171615] border-t border-[#242323] flex items-center justify-between">
                             <span className="text-[13px] text-[#7B7A79]">
-                                Import a repo to start collaborating with phasehumans on any
-                                codebase.
+                                Import a repo to start collaborating with december on any codebase.
                             </span>
                             <button className="flex items-center gap-2 px-4 py-1.5 rounded-lg bg-[#242323] hover:bg-[#383736] border border-[#383736] text-[13px] font-medium text-[#D6D5C9] transition-colors shrink-0 ml-4">
                                 Browse all repos

@@ -99,7 +99,7 @@ const runtimeRequest = async <T>(path: string, init?: RequestInit) => {
     headers.set('Content-Type', 'application/json')
 
     if (runtimeSharedSecret) {
-        headers.set('x-phasehumans-runtime-secret', runtimeSharedSecret)
+        headers.set('x-december-runtime-secret', runtimeSharedSecret)
     }
 
     const response = await fetch(`${runtimeBaseUrl}${path}`, {

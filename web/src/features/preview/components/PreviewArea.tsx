@@ -9,16 +9,16 @@ const loaderDotDelays = [0, 0.14, 0.28]
 
 const previewBridgeStyle = `
 <style>
-    html[data-phasehumans-visual="true"] body {
+    html[data-december-visual="true"] body {
         cursor: crosshair;
     }
 
-    .phasehumans-hover-highlight {
+    .december-hover-highlight {
         outline: 2px solid rgba(255, 255, 255, 0.22) !important;
         outline-offset: 2px !important;
     }
 
-    .phasehumans-selected-highlight {
+    .december-selected-highlight {
         outline: 2px solid #ffffff !important;
         outline-offset: 2px !important;
         box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.12) !important;
@@ -28,11 +28,11 @@ const previewBridgeStyle = `
 const previewBridgeScript = `
 <script>
 (() => {
-    if (window.__PHASEHUMANS_PREVIEW__) {
+    if (window.__DECEMBER_PREVIEW__) {
         return;
     }
 
-    window.__PHASEHUMANS_PREVIEW__ = true;
+    window.__DECEMBER_PREVIEW__ = true;
 
     let isVisualMode = false;
     let hoveredElement = null;
@@ -40,14 +40,14 @@ const previewBridgeScript = `
 
     const clearHover = () => {
         if (hoveredElement) {
-            hoveredElement.classList.remove('phasehumans-hover-highlight');
+            hoveredElement.classList.remove('december-hover-highlight');
             hoveredElement = null;
         }
     };
 
     const clearSelection = (notifyParent = true) => {
         if (selectedElement) {
-            selectedElement.classList.remove('phasehumans-selected-highlight');
+            selectedElement.classList.remove('december-selected-highlight');
             selectedElement = null;
         }
 
@@ -64,7 +64,7 @@ const previewBridgeScript = `
         if (event.data?.type === 'toggle-visual-mode') {
             isVisualMode = Boolean(event.data.isActive);
             document.documentElement.setAttribute(
-                'data-phasehumans-visual',
+                'data-december-visual',
                 isVisualMode ? 'true' : 'false'
             );
 
@@ -123,7 +123,7 @@ const previewBridgeScript = `
 
             clearHover();
             hoveredElement = event.target;
-            hoveredElement.classList.add('phasehumans-hover-highlight');
+            hoveredElement.classList.add('december-hover-highlight');
         },
         true
     );
@@ -152,7 +152,7 @@ const previewBridgeScript = `
 
             clearSelection(false);
             selectedElement = event.target;
-            selectedElement.classList.add('phasehumans-selected-highlight');
+            selectedElement.classList.add('december-selected-highlight');
 
             window.parent.postMessage(
                 {
@@ -202,7 +202,7 @@ const injectPreviewBridge = (html: string) => {
         )
     }
 
-    if (!documentHtml.includes('window.__PHASEHUMANS_PREVIEW__')) {
+    if (!documentHtml.includes('window.__DECEMBER_PREVIEW__')) {
         documentHtml = documentHtml.replace(
             /<\/head>/i,
             `${previewBridgeStyle}${previewBridgeScript}</head>`

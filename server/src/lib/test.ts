@@ -7,14 +7,14 @@ await saveProjectFiles({
         {
             path: 'src/app/page.tsx',
             content: `export default function Page() {
-  return <div>Hello Phasehumans 🚀</div>;
+  return <div>Hello December 🚀</div>;
 }`,
         },
         {
             path: 'package.json',
             content: JSON.stringify(
                 {
-                    name: 'phasehumans-project',
+                    name: 'december-project',
                     private: true,
                     version: '0.0.1',
                 },

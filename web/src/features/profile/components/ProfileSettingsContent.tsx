@@ -95,13 +95,13 @@ export const ProfileSettingsContent: React.FC<ProfileSettingsContentProps> = ({
                 <div className="flex items-center justify-between border-t border-[#242323] pt-4">
                     <div className="flex flex-col gap-0.5">
                         <span className="text-[14px] text-[#D6D5C9] flex items-center gap-2">
-                            Unlock the most powerful search experience with Phasehumans
+                            Unlock the most powerful search experience with December
                             <span className="px-2 py-0.5 rounded-md text-[10px] bg-[#242323] text-[#D6D5C9] uppercase font-bold tracking-wider">
                                 Pro
                             </span>
                         </span>
                         <span className="text-[13px] text-[#7B7A79]">
-                            Get the most out of Phasehumans with Pro.{' '}
+                            Get the most out of December with Pro.{' '}
                             <a
                                 href="#"
                                 className="text-[#7B7A79] hover:text-[#D6D5C9] hover:underline transition-colors"

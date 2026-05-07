@@ -157,7 +157,7 @@ fn ensure_internal_auth(
     };
 
     let provided_secret = headers
-        .get("x-phasehumans-runtime-secret")
+        .get("x-december-runtime-secret")
         .and_then(|value| value.to_str().ok());
 
     if provided_secret == Some(expected_secret.as_str()) {

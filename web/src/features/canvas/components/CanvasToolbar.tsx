@@ -79,7 +79,7 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
                     onSelectTool={handleSelectTool}
                     onUploadImage={handleImageUpload}
                     onToggleWebClipPopover={handleToggleWebClipPopover}
-                    onOpenHelp={() => window.open('https://www.youtube.com/@phasehumans', '_blank')}
+                    onOpenHelp={() => window.open('https://www.youtube.com/@december', '_blank')}
                     webClipButtonRef={webClipButtonRef}
                 />
             </div>

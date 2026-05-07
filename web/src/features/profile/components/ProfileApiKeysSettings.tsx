@@ -15,7 +15,7 @@ export const ProfileApiKeysSettings: React.FC = () => {
                 <div className="flex flex-col border-t border-[#242323] pt-6">
                     <p className="text-[13px] text-[#7B7A79] leading-relaxed mb-8 max-w-[95%]">
                         Manage your model and platform API keys. While in beta, API calls will
-                        consume your phasehumans credits. By using the API, you agree to our{' '}
+                        consume your december credits. By using the API, you agree to our{' '}
                         <a
                             href="#"
                             className="text-[#D6D5C9] hover:text-white hover:underline transition-colors"
@@ -27,7 +27,7 @@ export const ProfileApiKeysSettings: React.FC = () => {
                             href="#"
                             className="text-[#D6D5C9] hover:text-white hover:underline transition-colors inline-flex items-center gap-1"
                         >
-                            phasehumans API <ArrowUpRight className="w-3 h-3" />
+                            december API <ArrowUpRight className="w-3 h-3" />
                         </a>
                         .
                     </p>

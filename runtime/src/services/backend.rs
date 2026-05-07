@@ -60,7 +60,7 @@ impl BackendCallbackClient {
         });
 
         if let Some(secret) = &self.config.secret {
-            request = request.header("x-phasehumans-runtime-secret", secret);
+            request = request.header("x-december-runtime-secret", secret);
         }
 
         let response = request.send().await.map_err(|error| {

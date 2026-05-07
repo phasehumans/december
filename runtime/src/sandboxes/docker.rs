@@ -146,7 +146,7 @@ impl DockerSandbox {
         let _ = self
             .run_shell(
                 container_name,
-                "if [ -f /workspace/.phasehumans/dev-server.pid ]; then kill $(cat /workspace/.phasehumans/dev-server.pid) >/dev/null 2>&1 || true; rm -f /workspace/.phasehumans/dev-server.pid; fi",
+                "if [ -f /workspace/.december/dev-server.pid ]; then kill $(cat /workspace/.december/dev-server.pid) >/dev/null 2>&1 || true; rm -f /workspace/.december/dev-server.pid; fi",
             )
             .await?;
         Ok(())
@@ -262,7 +262,7 @@ impl Sandbox for DockerSandbox {
                     cmd: Some(vec![
                         "sh".to_string(),
                         "-lc".to_string(),
-                        "mkdir -p /workspace/.phasehumans && while sleep 3600; do :; done"
+                        "mkdir -p /workspace/.december && while sleep 3600; do :; done"
                             .to_string(),
                     ]),
                     ..Default::default()
@@ -330,7 +330,7 @@ impl Sandbox for DockerSandbox {
         let (exit_code, output) = self
             .run_shell(
                 &container_name,
-                "mkdir -p /workspace/.phasehumans && cd /workspace && nohup bun run dev --host 0.0.0.0 --port 4173 > /workspace/.phasehumans/dev-server.log 2>&1 & echo $! > /workspace/.phasehumans/dev-server.pid",
+                "mkdir -p /workspace/.december && cd /workspace && nohup bun run dev --host 0.0.0.0 --port 4173 > /workspace/.december/dev-server.log 2>&1 & echo $! > /workspace/.december/dev-server.pid",
             )
             .await?;
 

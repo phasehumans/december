@@ -117,7 +117,7 @@ export const ChatThread: React.FC<ChatSidebarProps> = ({
                         className="flex items-center text-sm font-medium tracking-wide text-[#91908F] hover:text-white transition-colors"
                         title="Back to Home"
                     >
-                        <span>phasehumans</span>
+                        <span>december</span>
                         <span className="mx-1 opacity-40">/</span>
                         <span className="text-[#D6D5D4]">{projectName ?? 'projectname'}</span>
                     </button>

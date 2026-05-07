@@ -19,7 +19,7 @@ impl ObjectStorage {
             config.secret_access_key.clone(),
             None,
             None,
-            "phasehumans-runtime",
+            "december-runtime",
         );
 
         let shared = aws_config::defaults(BehaviorVersion::latest())

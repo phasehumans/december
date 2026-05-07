@@ -236,7 +236,7 @@ describe('auth.utils', () => {
         })
 
         test('should remove numbers in between', () => {
-            expect(getNameFromEmail('phase123humans@gmail.com')).toBe('phasehumans')
+            expect(getNameFromEmail('phase123humans@gmail.com')).toBe('december')
         })
 
         test('should return empty string if only numbers', () => {
