@@ -21,7 +21,7 @@ const getErrorStatus = (message: string) => {
 }
 
 const getUserGithubRepos = async (req: Request, res: Response) => {
-    const userId = req.userId as string | undefined
+    const userId = req.user?.userId as string | undefined
 
     if (!userId) {
         return res.status(400).json({
@@ -46,7 +46,7 @@ const getUserGithubRepos = async (req: Request, res: Response) => {
 }
 
 const importFromGithub = async (req: Request, res: Response) => {
-    const userId = req.userId as string | undefined
+    const userId = req.user?.userId as string | undefined
     const parseData = uploadRepoSchema.safeParse(req.body)
 
     if (!userId) {
@@ -82,7 +82,7 @@ const importFromGithub = async (req: Request, res: Response) => {
 }
 
 const importFromZip = async (req: Request, res: Response) => {
-    const userId = req.userId as string | undefined
+    const userId = req.user?.userId as string | undefined
     const file = (req as any).file
     if (!userId) {
         return res.status(400).json({
@@ -118,7 +118,7 @@ const importFromZip = async (req: Request, res: Response) => {
 }
 
 const getImportStatus = async (req: Request, res: Response) => {
-    const userId = req.userId as string | undefined
+    const userId = req.user?.userId as string | undefined
     const parseParams = importIdParamSchema.safeParse(req.params)
 
     if (!userId) {
@@ -156,7 +156,7 @@ const getImportStatus = async (req: Request, res: Response) => {
 }
 
 const retryImport = async (req: Request, res: Response) => {
-    const userId = req.userId as string | undefined
+    const userId = req.user?.userId as string | undefined
     const parseParams = importIdParamSchema.safeParse(req.params)
 
     if (!userId) {
