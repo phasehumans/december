@@ -4,7 +4,7 @@ import { webClipRequestSchema } from './canvas.schema'
 import { canvasService } from './canvas.service'
 
 const createWebClips = async (req: Request, res: Response) => {
-    const userId = req.userId as string | undefined
+    const userId = req.user?.userId as string | undefined
     const parseData = webClipRequestSchema.safeParse(req.body)
 
     if (!userId) {

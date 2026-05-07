@@ -2,7 +2,7 @@ import type { Request, Response } from 'express'
 import { usageService } from './usage.service'
 
 const getCurrentUsage = async (req: Request, res: Response) => {
-    const userId = req.userId as string | undefined
+    const userId = req.user?.userId as string | undefined
 
     if (!userId) {
         return res.status(400).json({
@@ -27,7 +27,7 @@ const getCurrentUsage = async (req: Request, res: Response) => {
 }
 
 const checkEnoughCredits = async (req: Request, res: Response) => {
-    const userId = req.userId as string | undefined
+    const userId = req.user?.userId as string | undefined
 
     if (!userId) {
         return res.status(400).json({

@@ -12,7 +12,7 @@ const getErrorStatus = (message: string) =>
 
 const startPreview = async (req: Request, res: Response) => {
     const parseData = startPreviewSchema.safeParse(req.body)
-    const userId = req.userId as string | undefined
+    const userId = req.user?.userId as string | undefined
 
     if (!parseData.success) {
         return res.status(400).json({
@@ -51,7 +51,7 @@ const startPreview = async (req: Request, res: Response) => {
 
 const getPreviewStatus = async (req: Request, res: Response) => {
     const parseParams = previewIdParamSchema.safeParse(req.params)
-    const userId = req.userId as string | undefined
+    const userId = req.user?.userId as string | undefined
 
     if (!parseParams.success) {
         return res.status(400).json({
@@ -89,7 +89,7 @@ const getPreviewStatus = async (req: Request, res: Response) => {
 
 const deletePreview = async (req: Request, res: Response) => {
     const parseParams = previewIdParamSchema.safeParse(req.params)
-    const userId = req.userId as string | undefined
+    const userId = req.user?.userId as string | undefined
 
     if (!parseParams.success) {
         return res.status(400).json({
