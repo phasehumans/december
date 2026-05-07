@@ -7,7 +7,7 @@ export const s3 = new S3Client({
         ? process.env.S3_FORCE_PATH_STYLE === 'true'
         : true,
     credentials: {
-        accessKeyId: process.env.S3_ACCESS_KEY || 'phasehumansadmin',
+        accessKeyId: process.env.S3_ACCESS_KEY || 'decemberadmin',
         secretAccessKey: process.env.S3_SECRET_KEY || 'minio@2004',
     },
 })

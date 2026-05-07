@@ -5,7 +5,7 @@ export const openai = new OpenAI({
     apiKey: process.env.OPENROUTER_API_KEY,
     defaultHeaders: {
         'HTTP-Referer': 'http://localhost:4000',
-        'X-OpenRouter-Title': 'phasehumans',
-        // 'X-Title': 'phasehumans',
+        'X-OpenRouter-Title': 'december',
+        // 'X-Title': 'december',
     },
 })
