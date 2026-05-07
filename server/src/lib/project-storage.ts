@@ -7,7 +7,7 @@ import {
 
 import { s3 } from '../config/s3'
 
-const BUCKET = process.env.S3_BUCKET || 'phasehumans'
+const BUCKET = process.env.S3_BUCKET || 'december-storage'
 
 function normalizePath(path: string) {
     return path.replace(/^\/+/, '')

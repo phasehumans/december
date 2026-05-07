@@ -4,7 +4,7 @@ const resend = new Resend(process.env.RESEND_API_KEY)
 
 export const sendOTP = async (email: string, otp: string) => {
     await resend.emails.send({
-        from: 'Chaitanya <onboarding@resend.dev>',
+        from: 'Chaitanya Sonawane <onboarding@resend.dev>',
         to: email,
         subject: 'Your Verification Code',
         html: `
@@ -13,7 +13,7 @@ export const sendOTP = async (email: string, otp: string) => {
           <head>
             <meta charset="UTF-8" />
             <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-            <title>Phasehumans Verification Code</title>
+            <title>December Verification Code</title>
           </head>
 
           <body style="margin:0; padding:0; background:#ffffff; font-family:Arial, Helvetica, sans-serif;">
@@ -54,7 +54,7 @@ export const sendOTP = async (email: string, otp: string) => {
                             letter-spacing:-0.3px;
                           "
                         >
-                          phasehumans
+                          December
                         </h1>
 
                         <p
@@ -158,7 +158,7 @@ export const sendOTP = async (email: string, otp: string) => {
                             color:#78716C;
                           "
                         >
-                          Automated email from Phasehumans
+                          Automated email from December
                         </p>
                       </td>
                     </tr>

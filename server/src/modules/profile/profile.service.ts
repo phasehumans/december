@@ -67,7 +67,7 @@ const getInfo = async (data: string) => {
         throw new AppError('user not found', 404)
     }
 
-    const firstName = extractFirstName(profile.name)
+    const firstName = profile.name || 'Profile'
     const isGithubConnected = profile.githubConnected
 
     return { firstName, isGithubConnected }
