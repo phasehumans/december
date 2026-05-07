@@ -61,7 +61,7 @@ export async function downloadGitHubRepoArchive(
     try {
         const headers: Record<string, string> = {
             Authorization: `Bearer ${accessToken}`,
-            'User-Agent': 'phasehumans',
+            'User-Agent': 'december',
         }
 
         response = await fetch(zipUrl, {

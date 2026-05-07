@@ -137,7 +137,7 @@ const SharePanel: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     const [copied, setCopied] = useState(false)
     const [email, setEmail] = useState('')
     const [access, setAccess] = useState<'private' | 'anyone' | 'team'>('anyone')
-    const shareUrl = 'https://phasehumans.dev/p/my-project'
+    const shareUrl = 'https://december.dev/p/my-project'
 
     const handleCopy = () => {
         navigator.clipboard.writeText(shareUrl).catch(() => {})
@@ -239,7 +239,7 @@ const PublishPanel: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                     onChange={(e) => setDomain(e.target.value)}
                 />
                 <p className="text-[11px] text-[#3E3D3C] mt-1.5 leading-relaxed">
-                    Leave blank to publish on phasehumans.dev
+                    Leave blank to publish on december.dev
                 </p>
             </div>
 

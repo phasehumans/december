@@ -137,7 +137,7 @@ export async function verifyGitHubRepoAccess(
 ): Promise<VerifiedGitHubRepoAccess> {
     const headers: Record<string, string> = {
         Accept: 'application/vnd.github+json',
-        'User-Agent': 'phasehumans',
+        'User-Agent': 'december',
     }
 
     if (accessToken) {

@@ -16,9 +16,9 @@ package-lock.json
 # Generated files
 server/src/db/prisma/generated
 server/src/generated/prisma
-.phasehumans-imports
-.phasehumans--imports
-server/.phasehumans-imports
-server/.phasehumans--imports
+.december-imports
+.december--imports
+server/.december-imports
+server/.december--imports
 logs
 runtime

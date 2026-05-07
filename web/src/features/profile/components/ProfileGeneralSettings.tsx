@@ -128,8 +128,8 @@ export const ProfileGeneralSettings: React.FC = () => {
                 <h1 className="text-[16px] font-medium mb-4">Memories</h1>
                 <div className="flex flex-col gap-4 border border-[#242323] rounded-xl p-5 bg-[#171615]">
                     <p className="text-[13px] text-[#7B7A79] mb-4 leading-relaxed">
-                        Teach phasehumans your preferences and conventions. MEMORY.md is always read
-                        at the start of every chat; other files are loaded on demand.
+                        Teach december your preferences and conventions. MEMORY.md is always read at
+                        the start of every chat; other files are loaded on demand.
                     </p>
 
                     {!activeMemory ? (
@@ -180,7 +180,7 @@ export const ProfileGeneralSettings: React.FC = () => {
                 <h1 className="text-[16px] font-medium mb-4">Custom Skills</h1>
                 <div className="flex flex-col gap-4 border border-[#242323] rounded-xl p-5 bg-[#171615]">
                     <p className="text-[13px] text-[#7B7A79] mb-4 leading-relaxed">
-                        Create reusable skills that phasehumans can apply during conversations. Each
+                        Create reusable skills that december can apply during conversations. Each
                         skill has a SKILL.md that defines when it triggers and what instructions to
                         follow.
                     </p>
@@ -209,15 +209,15 @@ export const ProfileGeneralSettings: React.FC = () => {
                                     className="w-full h-[320px] bg-[#100E12] border border-[#242323] rounded-xl p-4 text-[13.5px] text-[#D6D5C9] font-mono leading-[1.6] resize-none focus:outline-none focus:border-[#4A4948] transition-colors caret-[#D6D5C9]"
                                     defaultValue={`---
 name: skill
-description: Describe what this skill does and when phasehumans should use it. Be specific - this is how phasehumans decides to trigger the skill.
+description: Describe what this skill does and when december should use it. Be specific - this is how december decides to trigger the skill.
 ---
 
 # skill
 
 ## Instructions
 
-Write the steps phasehumans should follow when this skill is triggered.
-Focus on what phasehumans wouldn't already know - domain-specific details, preferred patterns, or exact sequences.`}
+Write the steps december should follow when this skill is triggered.
+Focus on what december wouldn't already know - domain-specific details, preferred patterns, or exact sequences.`}
                                     spellCheck={false}
                                 ></textarea>
                                 <div className="flex items-center gap-4 mt-4">

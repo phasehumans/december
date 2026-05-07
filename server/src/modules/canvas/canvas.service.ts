@@ -31,7 +31,7 @@ type ClipperWorkerResult = {
 const IMAGE_CONTENT_TYPE = 'image/png'
 const CLIPPER_WORKER_TIMEOUT_MS = 120000
 const CLIPPER_WORKER_PATH = fileURLToPath(new URL('../../utils/clipper.js', import.meta.url))
-const CLIPPER_TEMP_ROOT = path.resolve(os.tmpdir(), 'phasehumans-web-clips')
+const CLIPPER_TEMP_ROOT = path.resolve(os.tmpdir(), 'december-web-clips')
 
 const toDataUrl = (buffer: Buffer) =>
     `data:${IMAGE_CONTENT_TYPE};base64,${buffer.toString('base64')}`

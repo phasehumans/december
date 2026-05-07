@@ -29,7 +29,7 @@ const MAX_UNCOMPRESSED_BYTES = 150 * 1024 * 1024
 const MAX_FILES = 2500
 const MAX_FILE_BYTES = 20 * 1024 * 1024
 const MAX_COMPRESSION_RATIO = 25
-export const IMPORT_STAGING_DIR = '.phasehumans--imports'
+export const IMPORT_STAGING_DIR = '.december--imports'
 
 const IGNORED_DIRS = new Set([
     '.git',

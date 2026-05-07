@@ -75,12 +75,12 @@ impl AppConfig {
             .unwrap_or(false);
 
         let s3 = ObjectStorageConfig {
-            bucket: env::var("S3_BUCKET").unwrap_or_else(|_| "phasehumans".to_string()),
+            bucket: env::var("S3_BUCKET").unwrap_or_else(|_| "december".to_string()),
             endpoint: env::var("S3_ENDPOINT")
                 .unwrap_or_else(|_| "http://127.0.0.1:9000".to_string()),
             region: env::var("S3_REGION").unwrap_or_else(|_| "us-east-1".to_string()),
             access_key_id: env::var("S3_ACCESS_KEY")
-                .unwrap_or_else(|_| "phasehumansadmin".to_string()),
+                .unwrap_or_else(|_| "decemberadmin".to_string()),
             secret_access_key: env::var("S3_SECRET_KEY")
                 .unwrap_or_else(|_| "minio@2004".to_string()),
             force_path_style: env::var("S3_FORCE_PATH_STYLE")
@@ -97,7 +97,7 @@ impl AppConfig {
         let docker = DockerConfig {
             image: env::var("PREVIEW_DOCKER_IMAGE").unwrap_or_else(|_| "oven/bun:1".to_string()),
             container_prefix: env::var("PREVIEW_DOCKER_CONTAINER_PREFIX")
-                .unwrap_or_else(|_| "phasehumans-preview".to_string()),
+                .unwrap_or_else(|_| "december-preview".to_string()),
             workdir_in_container: "/workspace".to_string(),
             container_port: 4173,
         };

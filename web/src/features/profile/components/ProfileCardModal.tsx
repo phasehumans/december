@@ -20,7 +20,7 @@ export const ProfileCardModal: React.FC<ProfileCardModalProps> = ({
 
     const [currentAvatarSeed, setCurrentAvatarSeed] = useState(() => {
         if (typeof window !== 'undefined') {
-            const saved = localStorage.getItem('phasehumans_avatar_seed')
+            const saved = localStorage.getItem('december_avatar_seed')
             if (saved) return saved
         }
         return userName
@@ -69,7 +69,7 @@ export const ProfileCardModal: React.FC<ProfileCardModalProps> = ({
         const randomSeed = Math.random().toString(36).substring(2, 8)
         setCurrentAvatarSeed(randomSeed)
         if (typeof window !== 'undefined') {
-            localStorage.setItem('phasehumans_avatar_seed', randomSeed)
+            localStorage.setItem('december_avatar_seed', randomSeed)
         }
     }
 
@@ -105,7 +105,7 @@ export const ProfileCardModal: React.FC<ProfileCardModalProps> = ({
                         className="relative z-10 text-[#D6D5C9] font-mono text-[24px] md:text-[28px] tracking-tight opacity-90"
                         style={{ textShadow: '0 4px 12px rgba(0,0,0,0.8)' }}
                     >
-                        phasehumans.dev/@{displayUsername}
+                        december.dev/@{displayUsername}
                     </h1>
 
                     <button

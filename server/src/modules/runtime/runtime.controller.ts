@@ -129,7 +129,7 @@ const receiveRuntimeStatus = async (req: Request, res: Response) => {
     const parseParams = previewIdParamSchema.safeParse(req.params)
     const parseBody = runtimeStatusCallbackSchema.safeParse(req.body)
     const expectedSecret = process.env.RUNTIME_SHARED_SECRET
-    const receivedSecret = req.header('x-phasehumans-runtime-secret')
+    const receivedSecret = req.header('x-december-runtime-secret')
 
     if (expectedSecret && receivedSecret !== expectedSecret) {
         return res.status(401).json({

@@ -90,7 +90,7 @@ const CodeBlock: React.FC<{ code: string; language?: string }> = ({ code, langua
 )
 
 export const DocsPage: React.FC<DocsPageProps> = ({ onBack }) => {
-    const [activeTab, setActiveTab] = useState('Welcome to Phasehumans')
+    const [activeTab, setActiveTab] = useState('Welcome to December')
     const [isInitialLoading, setIsInitialLoading] = useState(true)
 
     // Simulate loading effect only on initial mount
@@ -126,15 +126,15 @@ export const DocsPage: React.FC<DocsPageProps> = ({ onBack }) => {
                                     Getting started
                                 </div>
                                 <button
-                                    onClick={() => setActiveTab('Welcome to Phasehumans')}
+                                    onClick={() => setActiveTab('Welcome to December')}
                                     className={`flex items-center gap-3 px-3 py-1.5 rounded-xl text-[13px] font-medium transition-colors ${
-                                        activeTab === 'Welcome to Phasehumans'
+                                        activeTab === 'Welcome to December'
                                             ? 'bg-[#242323] text-[#D6D5C9]'
                                             : 'text-[#7B7A79] hover:text-[#D6D5C9] hover:bg-[#1E1D1B]'
                                     }`}
                                 >
                                     <Rocket className="w-[16px] h-[16px]" strokeWidth={1.5} />
-                                    Welcome to Phasehumans
+                                    Welcome to December
                                 </button>
                                 <button
                                     onClick={() => setActiveTab('Create an account')}
@@ -161,7 +161,7 @@ export const DocsPage: React.FC<DocsPageProps> = ({ onBack }) => {
 
                                 {/* Workspace */}
                                 <div className="px-3 py-2 text-[12px] font-semibold text-[#7B7A79] mt-4 mb-1 uppercase tracking-wider">
-                                    Phasehumans workspace
+                                    December workspace
                                 </div>
                                 <button
                                     onClick={() => setActiveTab('Workspace')}
@@ -188,7 +188,7 @@ export const DocsPage: React.FC<DocsPageProps> = ({ onBack }) => {
 
                                 {/* Dashboard */}
                                 <div className="px-3 py-2 text-[12px] font-semibold text-[#7B7A79] mt-4 mb-1 uppercase tracking-wider">
-                                    Phasehumans dashboard
+                                    December dashboard
                                 </div>
                                 <button
                                     onClick={() => setActiveTab('Dashboard overview')}
@@ -230,14 +230,14 @@ export const DocsPage: React.FC<DocsPageProps> = ({ onBack }) => {
                     <div className="w-full max-w-[800px] mx-auto px-8 md:px-16 py-8 md:py-16 text-[#D6D5C9]">
                         {isInitialLoading ? (
                             <DocsSkeleton />
-                        ) : activeTab === 'Welcome to Phasehumans' ? (
+                        ) : activeTab === 'Welcome to December' ? (
                             <div className="flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
                                 <div className="flex flex-col gap-3">
                                     <h1 className="text-[32px] md:text-[40px] font-semibold text-white tracking-tight">
-                                        Welcome to Phasehumans
+                                        Welcome to December
                                     </h1>
                                     <p className="text-[16px] md:text-[18px] text-[#A3A299] leading-relaxed">
-                                        Phasehumans is a full-stack AI development platform for
+                                        December is a full-stack AI development platform for
                                         building, iterating on, and deploying web applications using
                                         natural language, with real code, security, and enterprise
                                         governance.
@@ -246,7 +246,7 @@ export const DocsPage: React.FC<DocsPageProps> = ({ onBack }) => {
 
                                 <div className="flex flex-col gap-4 mt-2">
                                     <h2 className="text-[20px] font-medium text-white border-b border-[#242323] pb-2">
-                                        Who Phasehumans is for
+                                        Who December is for
                                     </h2>
                                     <ul className="list-none flex flex-col gap-3 text-[15px] text-[#A3A299]">
                                         <li className="flex gap-3 items-start">
@@ -274,8 +274,8 @@ export const DocsPage: React.FC<DocsPageProps> = ({ onBack }) => {
                                                 <strong className="text-[#D6D5C9]">
                                                     Developers
                                                 </strong>{' '}
-                                                using Phasehumans to quickly set up projects,
-                                                internal tools, and early prototypes.
+                                                using December to quickly set up projects, internal
+                                                tools, and early prototypes.
                                             </span>
                                         </li>
                                         <li className="flex gap-3 items-start">
@@ -293,7 +293,7 @@ export const DocsPage: React.FC<DocsPageProps> = ({ onBack }) => {
 
                                 <div className="flex flex-col gap-4 mt-4">
                                     <h2 className="text-[20px] font-medium text-white border-b border-[#242323] pb-2">
-                                        How Phasehumans fits into your workflow
+                                        How December fits into your workflow
                                     </h2>
                                     <ol className="list-decimal pl-5 flex flex-col gap-4 text-[15px] text-[#A3A299] marker:text-[#7B7A79] marker:font-medium">
                                         <li className="pl-2">
@@ -333,9 +333,9 @@ export const DocsPage: React.FC<DocsPageProps> = ({ onBack }) => {
                                         Create an account
                                     </h1>
                                     <p className="text-[16px] text-[#A3A299] leading-relaxed">
-                                        Getting started with Phasehumans is simple. You can create
-                                        an account using your existing credentials to start
-                                        generating applications in seconds.
+                                        Getting started with December is simple. You can create an
+                                        account using your existing credentials to start generating
+                                        applications in seconds.
                                     </p>
                                 </div>
 
@@ -354,7 +354,7 @@ export const DocsPage: React.FC<DocsPageProps> = ({ onBack }) => {
                                                     GitHub (Recommended)
                                                 </strong>
                                                 <p className="text-[13px] text-[#A3A299] leading-relaxed">
-                                                    Automatically links your Phasehumans account to
+                                                    Automatically links your December account to
                                                     your GitHub profile, allowing seamless
                                                     repository syncing.
                                                 </p>
@@ -371,8 +371,8 @@ export const DocsPage: React.FC<DocsPageProps> = ({ onBack }) => {
                                         </div>
                                     </div>
                                     <Callout title="Early Access" type="tip">
-                                        Currently, Phasehumans is rolling out to early access users.
-                                        If you do not have an invite code, you may be placed on the
+                                        Currently, December is rolling out to early access users. If
+                                        you do not have an invite code, you may be placed on the
                                         waitlist upon registration.
                                     </Callout>
                                 </div>
@@ -384,7 +384,7 @@ export const DocsPage: React.FC<DocsPageProps> = ({ onBack }) => {
                                         Plans and credits
                                     </h1>
                                     <p className="text-[16px] text-[#A3A299] leading-relaxed">
-                                        Phasehumans offers flexible pricing tiers designed to scale
+                                        December offers flexible pricing tiers designed to scale
                                         with your needs, from solo developers building side projects
                                         to enterprise teams requiring governance.
                                     </p>
@@ -460,7 +460,7 @@ export const DocsPage: React.FC<DocsPageProps> = ({ onBack }) => {
                                     </h1>
                                     <p className="text-[16px] text-[#A3A299] leading-relaxed">
                                         Your Workspace is the central hub where you and your team
-                                        collaborate on Phasehumans projects. It organizes your
+                                        collaborate on December projects. It organizes your
                                         applications, settings, and shared resources.
                                     </p>
                                 </div>
@@ -511,8 +511,8 @@ phase workspace invite --email user@example.com --role editor`}
                                     <ul className="list-disc pl-5 flex flex-col gap-2 text-[15px] text-[#A3A299]">
                                         <li>
                                             <strong className="text-[#D6D5C9]">API Keys:</strong>{' '}
-                                            Generate and revoke Phasehumans API keys for
-                                            programmatic access.
+                                            Generate and revoke December API keys for programmatic
+                                            access.
                                         </li>
                                         <li>
                                             <strong className="text-[#D6D5C9]">
@@ -577,7 +577,7 @@ phase workspace invite --email user@example.com --role editor`}
                                         Security & privacy
                                     </h1>
                                     <p className="text-[16px] text-[#A3A299] leading-relaxed">
-                                        Phasehumans is built from the ground up with enterprise
+                                        December is built from the ground up with enterprise
                                         security in mind. We prioritize the protection of your
                                         intellectual property and user data.
                                     </p>

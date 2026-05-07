@@ -35,7 +35,7 @@ export const HomeHeader: React.FC = () => {
             <div className="flex-1 flex flex-col items-end gap-1 pointer-events-auto">
                 <div className="flex items-center gap-1">
                     <a
-                        href="https://x.com/phasehumans"
+                        href="https://x.com/december"
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-textMuted hover:text-textMain transition-colors flex items-center justify-center p-1"
@@ -43,7 +43,7 @@ export const HomeHeader: React.FC = () => {
                         <Icons.XLogo className="w-[15px] h-[15px]" />
                     </a>
                     <a
-                        href="https://github.com/phasehumans/december"
+                        href="https://github.com/december/december"
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-textMuted hover:text-textMain transition-colors flex items-center justify-center p-1"

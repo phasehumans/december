@@ -15,7 +15,7 @@ pub async fn ensure_workspace(
     preview_id: &str,
 ) -> Result<PathBuf, RuntimeServiceError> {
     let path = root.join(preview_id);
-    fs::create_dir_all(path.join(".phasehumans"))
+    fs::create_dir_all(path.join(".december"))
         .await
         .map_err(|error| {
             RuntimeServiceError::infra_runtime(
@@ -35,7 +35,7 @@ pub async fn sync_workspace(
     let file_map = manifest.file_map();
 
     for path in &diff.removed {
-        if path.starts_with(".phasehumans/") {
+        if path.starts_with(".december/") {
             continue;
         }
 

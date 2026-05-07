@@ -56,7 +56,7 @@ export const ProfileBillingSettings: React.FC = () => {
                                     $5.00
                                 </span>
                                 <span className="text-[12px] text-[#7B7A79] truncate mt-1">
-                                    phasehumans User
+                                    december User
                                 </span>
                             </div>
                         </div>

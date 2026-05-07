@@ -12,7 +12,7 @@ const VIEWPORT = {
 }
 
 const SECTION_HEIGHT = 900
-const TEMP_ROOT = path.resolve(os.tmpdir(), 'phasehumans-web-clips')
+const TEMP_ROOT = path.resolve(os.tmpdir(), 'december-web-clips')
 
 let activeDirectory = null
 
