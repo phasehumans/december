@@ -23,6 +23,7 @@ interface UserProfilePopoverProps {
     onProfileModal?: () => void
     onFeedbackModal?: () => void
     onDocs?: () => void
+    onSignOut?: () => void
 }
 
 export const UserProfilePopover: React.FC<UserProfilePopoverProps> = ({
@@ -35,6 +36,7 @@ export const UserProfilePopover: React.FC<UserProfilePopoverProps> = ({
     onProfileModal,
     onFeedbackModal,
     onDocs,
+    onSignOut,
 }) => {
     const popoverRef = React.useRef<HTMLDivElement | null>(null)
     const [position, setPosition] = React.useState<{
@@ -111,11 +113,23 @@ export const UserProfilePopover: React.FC<UserProfilePopoverProps> = ({
         {
             icon: CreditCard,
             label: 'Pricing',
-            action: () => console.log('Pricing'),
+            action: () => {
+                window.location.hash = 'billing'
+                onSettings?.()
+            },
             external: true,
         },
         { icon: Icons.DocsBook, label: 'Documentation', action: onDocs, external: true },
-        { icon: CircleDollarSign, label: 'Credits', action: () => console.log('Credit') },
+        {
+            icon: CircleDollarSign,
+            label: 'Credits',
+            action: () => {
+                window.location.hash = 'billing'
+                onSettings?.()
+            },
+            rightElement: <span className="text-[13px] text-[#CBCACA] font-medium">$5.00</span>,
+            external: true,
+        },
     ]
 
     return createPortal(
@@ -173,6 +187,7 @@ export const UserProfilePopover: React.FC<UserProfilePopoverProps> = ({
                         {item.external && (
                             <ExternalLink className="w-[14px] h-[14px] text-[#969593] group-hover:text-[#CBCACA] transition-colors" />
                         )}
+                        {item.rightElement && item.rightElement}
                     </button>
                 ))}
             </div>
@@ -182,7 +197,7 @@ export const UserProfilePopover: React.FC<UserProfilePopoverProps> = ({
             {/* Sign Out Section */}
             <button
                 onClick={() => {
-                    console.log('Sign Out')
+                    onSignOut?.()
                     onClose()
                 }}
                 className="flex items-center gap-3 w-full px-3 py-1.5 rounded-xl hover:bg-[#252422] transition-colors group text-left mb-0.5"

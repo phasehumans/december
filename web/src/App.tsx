@@ -64,6 +64,7 @@ const App: React.FC = () => {
                 onOpenAuth={() => setShowAuthModal(true)}
                 projects={projects}
                 isProjectsInitialLoading={isProjectsInitialLoading}
+                onSignOut={handleSignOut}
             />
 
             <AuthModal
@@ -114,6 +115,7 @@ const App: React.FC = () => {
                     onSelectVersion={handleSelectVersion}
                     onDownloadProject={handleDownloadProject}
                     onSignOut={handleSignOut}
+                    onDocs={() => handleNavigate('docs')}
                 />
             </div>
         </div>

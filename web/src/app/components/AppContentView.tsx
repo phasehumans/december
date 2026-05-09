@@ -62,6 +62,7 @@ interface AppContentViewProps {
     onSelectVersion: (versionId: string) => void
     onDownloadProject: () => void
     onSignOut: () => void
+    onDocs?: () => void
 }
 
 const pageTransition = {
@@ -130,6 +131,7 @@ export const AppContentView: React.FC<AppContentViewProps> = ({
     onSelectVersion,
     onDownloadProject,
     onSignOut,
+    onDocs,
 }) => {
     return (
         <AnimatePresence mode="wait" initial={false}>
@@ -148,7 +150,7 @@ export const AppContentView: React.FC<AppContentViewProps> = ({
 
             {view === 'profile' && (
                 <AnimatedPage pageKey="profile">
-                    <ProfileSettings onSignOut={onSignOut} onBack={onNewProject} />
+                    <ProfileSettings onSignOut={onSignOut} onBack={onNewProject} onDocs={onDocs} />
                 </AnimatedPage>
             )}
 

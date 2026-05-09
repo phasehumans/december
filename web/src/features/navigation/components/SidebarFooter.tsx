@@ -11,14 +11,9 @@ import { ProfileCardModal } from '@/features/profile/components/ProfileCardModal
 import { ProfileFeedbackModal } from '@/features/profile/components/ProfileFeedbackModal'
 import { Bell } from 'lucide-react'
 
-export const SidebarFooter: React.FC<SidebarFooterProps & { user?: { name?: string } }> = ({
-    isAuthenticated,
-    isCollapsed,
-    onProfile,
-    onDocs,
-    onOpenAuth,
-    user,
-}) => {
+export const SidebarFooter: React.FC<
+    SidebarFooterProps & { user?: { name?: string }; onSignOut?: () => void }
+> = ({ isAuthenticated, isCollapsed, onProfile, onDocs, onOpenAuth, user, onSignOut }) => {
     const [isPopoverOpen, setIsPopoverOpen] = useState(false)
     const [isNotifPopoverOpen, setIsNotifPopoverOpen] = useState(false)
     const [isProfileModalOpen, setIsProfileModalOpen] = useState(false)
@@ -81,6 +76,7 @@ export const SidebarFooter: React.FC<SidebarFooterProps & { user?: { name?: stri
                             onProfileModal={() => setIsProfileModalOpen(true)}
                             onFeedbackModal={() => setIsFeedbackModalOpen(true)}
                             onDocs={onDocs}
+                            onSignOut={onSignOut}
                         />
 
                         <NotificationsPopover

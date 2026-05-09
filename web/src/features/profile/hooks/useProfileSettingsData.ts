@@ -8,6 +8,7 @@ const profileQueryKey = ['profile'] as const
 type UseProfileSettingsDataOptions = {
     setProfileActionError: (message: string | null) => void
     onNameMutate: () => void
+    onUsernameMutate: () => void
     onPasswordSuccess: () => void
 }
 
@@ -22,6 +23,7 @@ const getErrorMessage = (error: unknown, fallback: string) => {
 export const useProfileSettingsData = ({
     setProfileActionError,
     onNameMutate,
+    onUsernameMutate,
     onPasswordSuccess,
 }: UseProfileSettingsDataOptions) => {
     const queryClient = useQueryClient()
@@ -56,6 +58,37 @@ export const useProfileSettingsData = ({
             }
 
             setProfileActionError(getErrorMessage(error, 'Failed to update name'))
+        },
+        onSuccess: () => {
+            setProfileActionError(null)
+        },
+        onSettled: () => {
+            queryClient.invalidateQueries({ queryKey: profileQueryKey })
+        },
+    })
+
+    const updateUsernameMutation = useMutation({
+        mutationFn: profileAPI.updateUsername,
+        onMutate: async ({ username }) => {
+            setProfileActionError(null)
+            await queryClient.cancelQueries({ queryKey: profileQueryKey })
+
+            const previousProfile = queryClient.getQueryData<Profile>(profileQueryKey)
+
+            queryClient.setQueryData<Profile>(profileQueryKey, (currentProfile) =>
+                currentProfile ? { ...currentProfile, githubUsername: username } : currentProfile
+            )
+
+            onUsernameMutate()
+
+            return { previousProfile }
+        },
+        onError: (error, _variables, context) => {
+            if (context?.previousProfile) {
+                queryClient.setQueryData(profileQueryKey, context.previousProfile)
+            }
+
+            setProfileActionError(getErrorMessage(error, 'Failed to update username'))
         },
         onSuccess: () => {
             setProfileActionError(null)
@@ -107,6 +140,7 @@ export const useProfileSettingsData = ({
         profile,
         profileQuery,
         updateNameMutation,
+        updateUsernameMutation,
         updatePasswordMutation,
         updateNotificationMutation,
     }

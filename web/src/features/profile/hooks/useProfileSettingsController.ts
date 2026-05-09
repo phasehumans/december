@@ -21,6 +21,7 @@ export const useProfileSettingsController = () => {
             error: profileError,
         },
         updateNameMutation,
+        updateUsernameMutation,
         updatePasswordMutation,
         updateNotificationMutation,
     } = useProfileSettingsData({
@@ -28,6 +29,7 @@ export const useProfileSettingsController = () => {
         onNameMutate: () => {
             setNameModalOpen(false)
         },
+        onUsernameMutate: () => {},
         onPasswordSuccess: () => {
             setPasswordModalOpen(false)
             setCurrentPassword('')
@@ -113,6 +115,7 @@ export const useProfileSettingsController = () => {
         setNewPassword,
         setConfirmPassword,
         updateNameMutation,
+        updateUsernameMutation,
         updatePasswordMutation,
         updateNotificationMutation,
         isGithubConnected,

@@ -8,7 +8,7 @@ import { Icons } from '@/shared/components/ui/Icons'
 import { cn } from '@/shared/lib/utils'
 import type { SidebarProps } from '@/features/navigation/types'
 
-const Sidebar: React.FC<SidebarProps & { user?: any }> = ({
+const Sidebar: React.FC<SidebarProps & { user?: any; onSignOut?: () => void }> = ({
     onNewThread,
     onAllProjects,
     onTemplates,
@@ -21,6 +21,7 @@ const Sidebar: React.FC<SidebarProps & { user?: any }> = ({
     projects,
     isProjectsLoading,
     user,
+    onSignOut,
 }) => {
     // Keep exact same size (was 200px when open)
     // No collapse option
@@ -82,7 +83,7 @@ const Sidebar: React.FC<SidebarProps & { user?: any }> = ({
                                                 onClick={() => onOpenProject?.(project.id)}
                                                 className="flex items-center px-3 py-0.5 w-full text-left rounded-lg hover:bg-[#252422] transition-colors group"
                                             >
-                                                <span className="font-medium text-[13px] transition-colors tracking-tight text-[#8F8E8D] group-hover:text-[#CBCACA] truncate">
+                                                <span className="font-medium text-[11px] lowercase transition-colors tracking-tight text-[#8F8E8D] group-hover:text-[#CBCACA] truncate">
                                                     {/* @ts-ignore */}
                                                     {project.name || project.title}
                                                 </span>
@@ -102,6 +103,7 @@ const Sidebar: React.FC<SidebarProps & { user?: any }> = ({
                 onDocs={onDocs}
                 onOpenAuth={onOpenAuth}
                 user={user}
+                onSignOut={onSignOut}
             />
         </div>
     )
