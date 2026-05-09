@@ -17,6 +17,7 @@ interface AppSideNavigationProps {
     onOpenAuth: () => void
     projects: Project[]
     isProjectsInitialLoading: boolean
+    onSignOut?: () => void
 }
 
 export const AppSideNavigation: React.FC<AppSideNavigationProps> = ({
@@ -30,6 +31,7 @@ export const AppSideNavigation: React.FC<AppSideNavigationProps> = ({
     onOpenAuth,
     projects,
     isProjectsInitialLoading,
+    onSignOut,
 }) => {
     if (!showSidebar) {
         return null
@@ -49,6 +51,7 @@ export const AppSideNavigation: React.FC<AppSideNavigationProps> = ({
                 onOpenAuth={onOpenAuth}
                 projects={projects}
                 isProjectsLoading={isProjectsInitialLoading}
+                onSignOut={onSignOut}
             />
 
             <div className="md:hidden fixed top-4 left-4 z-50">
@@ -74,6 +77,7 @@ export const AppSideNavigation: React.FC<AppSideNavigationProps> = ({
                 onOpenAuth={onOpenAuth}
                 projects={projects}
                 isProjectsLoading={isProjectsInitialLoading}
+                onSignOut={onSignOut}
             />
         </>
     )

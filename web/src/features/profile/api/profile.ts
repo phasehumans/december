@@ -33,6 +33,10 @@ type UpdateNameInput = {
     name: string
 }
 
+type UpdateUsernameInput = {
+    username: string
+}
+
 type ChangePasswordInput = {
     password: string
 }
@@ -50,6 +54,16 @@ const getProfile = () => {
 
 const updateName = (data: UpdateNameInput) => {
     return apiRequest<BackendProfile>('/profile/name', {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+    }).then((profile) => ({
+        ...profile,
+        receiveNotification: profile.notifySecurityAlerts ?? true,
+    }))
+}
+
+const updateUsername = (data: UpdateUsernameInput) => {
+    return apiRequest<BackendProfile>('/profile/username', {
         method: 'PATCH',
         body: JSON.stringify(data),
     }).then((profile) => ({
@@ -95,11 +109,26 @@ const signout = () => {
     })
 }
 
+const signoutAll = () => {
+    return apiRequest<void>('/profile/signout/all', {
+        method: 'POST',
+    })
+}
+
+const deleteAccount = () => {
+    return apiRequest<void>('/profile', {
+        method: 'DELETE',
+    })
+}
+
 export const profileAPI = {
     getProfile,
     updateName,
+    updateUsername,
     changePassword,
     updateNotification,
     getQuickInfo,
     signout,
+    signoutAll,
+    deleteAccount,
 }

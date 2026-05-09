@@ -30,8 +30,14 @@ import { ProfileSignOutAllSessionsModal } from './ProfileSignOutAllSessionsModal
 
 import type { ProfileSettingsProps } from '@/features/profile/types'
 
-export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onBack }) => {
-    const [activeTab, setActiveTab] = React.useState('Account')
+export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onBack, onDocs }) => {
+    const [activeTab, setActiveTab] = React.useState(() => {
+        if (typeof window !== 'undefined' && window.location.hash === '#billing') {
+            window.history.replaceState(null, '', window.location.pathname)
+            return 'Billing'
+        }
+        return 'Account'
+    })
     const [usernameModalOpen, setUsernameModalOpen] = React.useState(false)
     const [tempUsername, setTempUsername] = React.useState('')
     const [deleteAccountModalOpen, setDeleteAccountModalOpen] = React.useState(false)
@@ -60,6 +66,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
         setNewPassword,
         setConfirmPassword,
         updateNameMutation,
+        updateUsernameMutation,
         updatePasswordMutation,
         updateNotificationMutation,
         isGithubConnected,
@@ -171,7 +178,10 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                         <div className="px-3 py-2 text-[12px] font-medium text-[#7B7A79] mt-4 mb-1">
                             Resources
                         </div>
-                        <button className="flex items-center justify-between px-3 py-1.5 rounded-xl text-[#D6D5C9] hover:bg-[#1E1D1B] text-[13px] font-medium transition-colors group">
+                        <button
+                            onClick={onDocs}
+                            className="flex items-center justify-between px-3 py-1.5 rounded-xl text-[#D6D5C9] hover:bg-[#1E1D1B] text-[13px] font-medium transition-colors group"
+                        >
                             <div className="flex items-center gap-3">
                                 <Icons.DocsBook className="w-[18px] h-[18px]" strokeWidth={1.5} />
                                 Documentation
@@ -181,7 +191,10 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                                 strokeWidth={1.5}
                             />
                         </button>
-                        <button className="flex items-center justify-between px-3 py-1.5 rounded-xl text-[#D6D5C9] hover:bg-[#1E1D1B] text-[13px] font-medium transition-colors group">
+                        <button
+                            onClick={onDocs}
+                            className="flex items-center justify-between px-3 py-1.5 rounded-xl text-[#D6D5C9] hover:bg-[#1E1D1B] text-[13px] font-medium transition-colors group"
+                        >
                             <div className="flex items-center gap-3">
                                 <FileClock className="w-[18px] h-[18px]" strokeWidth={1.5} />
                                 Changelog
@@ -268,14 +281,22 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
             <ProfileNameModal
                 isOpen={usernameModalOpen}
                 value={tempUsername}
-                isPending={false} // Currently no backend logic for this
+                isPending={updateUsernameMutation.isPending}
                 title="Change Username"
                 label="Username"
                 onClose={() => setUsernameModalOpen(false)}
                 onChange={setTempUsername}
                 onSave={() => {
-                    // MOCK SAVE for now
-                    setUsernameModalOpen(false)
+                    if (tempUsername.trim()) {
+                        updateUsernameMutation.mutate(
+                            { username: tempUsername.trim() },
+                            {
+                                onSuccess: () => {
+                                    setUsernameModalOpen(false)
+                                },
+                            }
+                        )
+                    }
                 }}
             />
 
@@ -299,18 +320,30 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
             <ProfileDeleteAccountModal
                 isOpen={deleteAccountModalOpen}
                 onClose={() => setDeleteAccountModalOpen(false)}
-                onConfirm={() => {
-                    // MOCK DELETION
-                    setDeleteAccountModalOpen(false)
+                onConfirm={async () => {
+                    try {
+                        const { profileAPI } = await import('@/features/profile/api/profile')
+                        await profileAPI.deleteAccount()
+                        setDeleteAccountModalOpen(false)
+                        onSignOut()
+                    } catch (error) {
+                        console.error('Failed to delete account', error)
+                    }
                 }}
             />
 
             <ProfileSignOutAllSessionsModal
                 isOpen={signOutAllSessionsModalOpen}
                 onClose={() => setSignOutAllSessionsModalOpen(false)}
-                onConfirm={() => {
-                    // MOCK SIGN OUT ALL SESSIONS
-                    setSignOutAllSessionsModalOpen(false)
+                onConfirm={async () => {
+                    try {
+                        const { profileAPI } = await import('@/features/profile/api/profile')
+                        await profileAPI.signoutAll()
+                        setSignOutAllSessionsModalOpen(false)
+                        onSignOut()
+                    } catch (error) {
+                        console.error('Failed to sign out of all sessions', error)
+                    }
                 }}
             />
         </div>

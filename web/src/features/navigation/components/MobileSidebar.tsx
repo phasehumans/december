@@ -9,7 +9,7 @@ import { Icons } from '@/shared/components/ui/Icons'
 import { cn } from '@/shared/lib/utils'
 import type { MobileSidebarProps } from '@/features/navigation/types'
 
-export const MobileSidebar: React.FC<MobileSidebarProps> = ({
+export const MobileSidebar: React.FC<MobileSidebarProps & { onSignOut?: () => void }> = ({
     isOpen,
     onClose,
     onNewThread,
@@ -23,6 +23,7 @@ export const MobileSidebar: React.FC<MobileSidebarProps> = ({
     onOpenAuth,
     projects,
     isProjectsLoading,
+    onSignOut,
 }) => {
     const [recentOpen, setRecentOpen] = React.useState(true)
     const [starredOpen, setStarredOpen] = React.useState(true)
@@ -106,6 +107,10 @@ export const MobileSidebar: React.FC<MobileSidebarProps> = ({
                     }}
                     onOpenAuth={() => {
                         onOpenAuth()
+                        onClose()
+                    }}
+                    onSignOut={() => {
+                        onSignOut?.()
                         onClose()
                     }}
                 />
