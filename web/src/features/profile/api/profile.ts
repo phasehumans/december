@@ -11,13 +11,14 @@ export type Profile = {
     googleId: string | null
     githubConnected: boolean
     githubUsername?: string
-}
-
-type BackendProfile = Omit<Profile, 'receiveNotification'> & {
     notifyProjectActivity?: boolean
     notifyProductUpdates?: boolean
     notifySecurityAlerts?: boolean
+    chatSuggestions?: boolean
+    generationSound?: 'FIRST_GENERATION' | 'ALWAYS' | 'NEVER'
 }
+
+type BackendProfile = Profile
 
 export type QuickInfo = {
     firstName: string
@@ -41,59 +42,64 @@ type ChangePasswordInput = {
     password: string
 }
 
-type updateNotificationInput = {
-    receiveNotification: boolean
+type UpdateNotificationInput = {
+    notifyProjectActivity?: boolean
+    notifyProductUpdates?: boolean
+    notifySecurityAlerts?: boolean
+}
+
+type UpdateChatSuggestionsInput = {
+    chatSuggestions: boolean
+}
+
+type UpdateGenerationSoundInput = {
+    generationSound: 'FIRST_GENERATION' | 'ALWAYS' | 'NEVER'
 }
 
 const getProfile = () => {
-    return apiRequest<BackendProfile>('/profile').then((profile) => ({
-        ...profile,
-        receiveNotification: profile.notifySecurityAlerts ?? true,
-    }))
+    return apiRequest<BackendProfile>('/profile')
 }
 
 const updateName = (data: UpdateNameInput) => {
     return apiRequest<BackendProfile>('/profile/name', {
         method: 'PATCH',
         body: JSON.stringify(data),
-    }).then((profile) => ({
-        ...profile,
-        receiveNotification: profile.notifySecurityAlerts ?? true,
-    }))
+    })
 }
 
 const updateUsername = (data: UpdateUsernameInput) => {
     return apiRequest<BackendProfile>('/profile/username', {
         method: 'PATCH',
         body: JSON.stringify(data),
-    }).then((profile) => ({
-        ...profile,
-        receiveNotification: profile.notifySecurityAlerts ?? true,
-    }))
+    })
 }
 
 const changePassword = (data: ChangePasswordInput) => {
     return apiRequest<BackendProfile>('/profile/password', {
         method: 'PATCH',
         body: JSON.stringify(data),
-    }).then((profile) => ({
-        ...profile,
-        receiveNotification: profile.notifySecurityAlerts ?? true,
-    }))
+    })
 }
 
-const updateNotification = (data: updateNotificationInput) => {
+const updateNotifications = (data: UpdateNotificationInput) => {
     return apiRequest<BackendProfile>('/profile/notifications', {
         method: 'PATCH',
-        body: JSON.stringify({
-            notifyProjectActivity: data.receiveNotification,
-            notifyProductUpdates: data.receiveNotification,
-            notifySecurityAlerts: data.receiveNotification,
-        }),
-    }).then((profile) => ({
-        ...profile,
-        receiveNotification: profile.notifySecurityAlerts ?? true,
-    }))
+        body: JSON.stringify(data),
+    })
+}
+
+const updateChatSuggestions = (data: UpdateChatSuggestionsInput) => {
+    return apiRequest<BackendProfile>('/profile/suggestions', {
+        method: 'POST',
+        body: JSON.stringify(data),
+    })
+}
+
+const updateGenerationSound = (data: UpdateGenerationSoundInput) => {
+    return apiRequest<BackendProfile>('/profile/sound', {
+        method: 'POST',
+        body: JSON.stringify(data),
+    })
 }
 
 const getQuickInfo = () => {
@@ -126,7 +132,9 @@ export const profileAPI = {
     updateName,
     updateUsername,
     changePassword,
-    updateNotification,
+    updateNotifications,
+    updateChatSuggestions,
+    updateGenerationSound,
     getQuickInfo,
     signout,
     signoutAll,

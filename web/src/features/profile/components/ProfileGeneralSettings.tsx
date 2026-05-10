@@ -1,11 +1,19 @@
 import React, { useState } from 'react'
 import { ChevronDown, Volume1, Volume2, VolumeX, FilePlus, Trash2 } from 'lucide-react'
 
-export const ProfileGeneralSettings: React.FC = () => {
-    const [chatSuggestions, setChatSuggestions] = useState(true)
-    const [generationSound, setGenerationSound] = useState<'FIRST_GENERATION' | 'ALWAYS' | 'NEVER'>(
-        'FIRST_GENERATION'
-    )
+interface ProfileGeneralSettingsProps {
+    chatSuggestions: boolean
+    generationSound: 'FIRST_GENERATION' | 'ALWAYS' | 'NEVER'
+    onChatSuggestionsToggle: (value: boolean) => void
+    onGenerationSoundChange: (value: 'FIRST_GENERATION' | 'ALWAYS' | 'NEVER') => void
+}
+
+export const ProfileGeneralSettings: React.FC<ProfileGeneralSettingsProps> = ({
+    chatSuggestions,
+    generationSound,
+    onChatSuggestionsToggle,
+    onGenerationSoundChange,
+}) => {
     const [activeMemory, setActiveMemory] = useState(false)
     const [activeSkill, setActiveSkill] = useState(false)
 
@@ -26,7 +34,7 @@ export const ProfileGeneralSettings: React.FC = () => {
                         </div>
                         <button
                             role="switch"
-                            onClick={() => setChatSuggestions(!chatSuggestions)}
+                            onClick={() => onChatSuggestionsToggle(!chatSuggestions)}
                             className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
                                 chatSuggestions ? 'bg-[#242323]' : 'bg-[#100E12] border-[#383736]'
                             }`}
@@ -53,7 +61,7 @@ export const ProfileGeneralSettings: React.FC = () => {
                         </div>
                         <div className="flex flex-col gap-3">
                             <button
-                                onClick={() => setGenerationSound('FIRST_GENERATION')}
+                                onClick={() => onGenerationSoundChange('FIRST_GENERATION')}
                                 className="flex items-center gap-3 text-[13px] font-medium transition-colors hover:text-[#D6D5C9] group"
                             >
                                 <div
@@ -75,7 +83,7 @@ export const ProfileGeneralSettings: React.FC = () => {
                                 </span>
                             </button>
                             <button
-                                onClick={() => setGenerationSound('ALWAYS')}
+                                onClick={() => onGenerationSoundChange('ALWAYS')}
                                 className="flex items-center gap-3 text-[13px] font-medium transition-colors hover:text-[#D6D5C9] group"
                             >
                                 <div
@@ -97,7 +105,7 @@ export const ProfileGeneralSettings: React.FC = () => {
                                 </span>
                             </button>
                             <button
-                                onClick={() => setGenerationSound('NEVER')}
+                                onClick={() => onGenerationSoundChange('NEVER')}
                                 className="flex items-center gap-3 text-[13px] font-medium transition-colors hover:text-[#D6D5C9] group"
                             >
                                 <div
