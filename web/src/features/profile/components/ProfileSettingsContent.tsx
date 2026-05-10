@@ -8,15 +8,21 @@ interface ProfileSettingsContentProps {
     hasProfile: boolean
     isGithubConnected: boolean
     emailNotifications: boolean
+    productUpdates: boolean
+    securityAlerts: boolean
     isNotificationPending: boolean
     onOpenNameModal: () => void
     onOpenUsernameModal: () => void
     onOpenPasswordModal: () => void
-    onNotificationToggle: (value: boolean) => void
+    onNotificationToggle: (
+        field: 'notifyProjectActivity' | 'notifyProductUpdates' | 'notifySecurityAlerts',
+        value: boolean
+    ) => void
     onConnectGithub: () => void
     onSignOut: () => void
     onOpenSignOutAllSessionsModal: () => void
     onOpenDeleteAccountModal: () => void
+    onUpgradePlan: () => void
 }
 
 export const ProfileSettingsContent: React.FC<ProfileSettingsContentProps> = ({
@@ -25,6 +31,8 @@ export const ProfileSettingsContent: React.FC<ProfileSettingsContentProps> = ({
     hasProfile,
     isGithubConnected,
     emailNotifications,
+    productUpdates,
+    securityAlerts,
     isNotificationPending,
     onOpenNameModal,
     onOpenUsernameModal,
@@ -34,11 +42,8 @@ export const ProfileSettingsContent: React.FC<ProfileSettingsContentProps> = ({
     onSignOut,
     onOpenSignOutAllSessionsModal,
     onOpenDeleteAccountModal,
+    onUpgradePlan,
 }) => {
-    // Dummy states for the UI-only toggles
-    const [productUpdates, setProductUpdates] = useState(true)
-    const [securityAlerts, setSecurityAlerts] = useState(true)
-
     return (
         <div className="flex flex-col w-full max-w-[680px] text-[#D6D5C9]">
             {/* Account */}
@@ -66,7 +71,7 @@ export const ProfileSettingsContent: React.FC<ProfileSettingsContentProps> = ({
                         <div className="flex flex-col gap-0.5">
                             <span className="text-[14px] text-[#D6D5C9]">Username</span>
                             <span className="text-[13px] text-[#7B7A79]">
-                                {profile?.githubUsername || 'phasehuman'}
+                                {profile?.username || 'username'}
                             </span>
                         </div>
                         <button
@@ -110,7 +115,10 @@ export const ProfileSettingsContent: React.FC<ProfileSettingsContentProps> = ({
                             </a>
                         </span>
                     </div>
-                    <button className="px-4 py-1.5 rounded-lg bg-[#E8E7E4] text-[#171615] font-medium text-[13px] hover:bg-white transition-colors">
+                    <button
+                        onClick={onUpgradePlan}
+                        className="px-4 py-1.5 rounded-lg bg-[#E8E7E4] text-[#171615] font-medium text-[13px] hover:bg-white transition-colors"
+                    >
                         Upgrade plan
                     </button>
                 </div>
@@ -129,7 +137,9 @@ export const ProfileSettingsContent: React.FC<ProfileSettingsContentProps> = ({
                         </div>
                         <button
                             role="switch"
-                            onClick={() => onNotificationToggle(!emailNotifications)}
+                            onClick={() =>
+                                onNotificationToggle('notifyProjectActivity', !emailNotifications)
+                            }
                             className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
                                 emailNotifications
                                     ? 'bg-[#242323]'
@@ -155,7 +165,9 @@ export const ProfileSettingsContent: React.FC<ProfileSettingsContentProps> = ({
                         </div>
                         <button
                             role="switch"
-                            onClick={() => setProductUpdates(!productUpdates)}
+                            onClick={() =>
+                                onNotificationToggle('notifyProductUpdates', !productUpdates)
+                            }
                             className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
                                 productUpdates ? 'bg-[#242323]' : 'bg-[#100E12] border-[#383736]'
                             }`}
@@ -179,7 +191,9 @@ export const ProfileSettingsContent: React.FC<ProfileSettingsContentProps> = ({
                         </div>
                         <button
                             role="switch"
-                            onClick={() => setSecurityAlerts(!securityAlerts)}
+                            onClick={() =>
+                                onNotificationToggle('notifySecurityAlerts', !securityAlerts)
+                            }
                             className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
                                 securityAlerts ? 'bg-[#242323]' : 'bg-[#100E12] border-[#383736]'
                             }`}
@@ -202,7 +216,8 @@ export const ProfileSettingsContent: React.FC<ProfileSettingsContentProps> = ({
                 <div className="flex flex-col gap-2 border-t border-[#242323] pt-4">
                     <div className="flex items-center justify-between">
                         <span className="text-[14px] text-[#D6D5C9]">
-                            You are signed in as {profile?.githubUsername || 'phasehuman'}
+                            You are signed in as{' '}
+                            {profile?.githubUsername || profile?.email || 'User'}
                         </span>
                         <button
                             onClick={onSignOut}

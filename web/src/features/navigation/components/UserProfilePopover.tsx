@@ -128,7 +128,6 @@ export const UserProfilePopover: React.FC<UserProfilePopoverProps> = ({
                 onSettings?.()
             },
             rightElement: <span className="text-[13px] text-[#CBCACA] font-medium">$5.00</span>,
-            external: true,
         },
     ]
 

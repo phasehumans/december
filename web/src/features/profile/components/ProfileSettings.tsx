@@ -71,12 +71,18 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
         updateNotificationMutation,
         isGithubConnected,
         emailNotifications,
+        productUpdates,
+        securityAlerts,
+        chatSuggestions,
+        generationSound,
         resolvedName,
         openNameModal,
         openPasswordModal,
         handleSaveName,
         handleUpdatePassword,
         handleNotificationToggle,
+        handleChatSuggestionsToggle,
+        handleGenerationSoundChange,
         connectGithub,
     } = useProfileSettingsController()
 
@@ -230,10 +236,12 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                                 hasProfile={Boolean(profile)}
                                 isGithubConnected={isGithubConnected}
                                 emailNotifications={emailNotifications}
+                                productUpdates={productUpdates}
+                                securityAlerts={securityAlerts}
                                 isNotificationPending={updateNotificationMutation.isPending}
                                 onOpenNameModal={openNameModal}
                                 onOpenUsernameModal={() => {
-                                    setTempUsername(profile?.githubUsername || 'phasehuman')
+                                    setTempUsername(profile?.githubUsername || profile?.name || '')
                                     setUsernameModalOpen(true)
                                 }}
                                 onOpenPasswordModal={openPasswordModal}
@@ -244,9 +252,18 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                                 onOpenSignOutAllSessionsModal={() =>
                                     setSignOutAllSessionsModalOpen(true)
                                 }
+                                onUpgradePlan={() => {
+                                    window.location.hash = 'billing'
+                                    setActiveTab('Billing')
+                                }}
                             />
                         ) : activeTab === 'Preferences' ? (
-                            <ProfileGeneralSettings />
+                            <ProfileGeneralSettings
+                                chatSuggestions={chatSuggestions}
+                                generationSound={generationSound}
+                                onChatSuggestionsToggle={handleChatSuggestionsToggle}
+                                onGenerationSoundChange={handleGenerationSoundChange}
+                            />
                         ) : activeTab === 'Billing' ? (
                             <ProfileBillingSettings />
                         ) : activeTab === 'Usage' ? (

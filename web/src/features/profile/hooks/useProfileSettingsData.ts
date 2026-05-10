@@ -110,8 +110,8 @@ export const useProfileSettingsData = ({
     })
 
     const updateNotificationMutation = useMutation({
-        mutationFn: profileAPI.updateNotification,
-        onMutate: async ({ receiveNotification }) => {
+        mutationFn: profileAPI.updateNotifications,
+        onMutate: async (variables) => {
             setProfileActionError(null)
 
             await queryClient.cancelQueries({ queryKey: profileQueryKey })
@@ -119,7 +119,7 @@ export const useProfileSettingsData = ({
             const previousProfile = queryClient.getQueryData<Profile>(profileQueryKey)
 
             queryClient.setQueryData<Profile>(profileQueryKey, (currentProfile) =>
-                currentProfile ? { ...currentProfile, receiveNotification } : currentProfile
+                currentProfile ? { ...currentProfile, ...variables } : currentProfile
             )
 
             return { previousProfile }
@@ -136,6 +136,60 @@ export const useProfileSettingsData = ({
         },
     })
 
+    const updateChatSuggestionsMutation = useMutation({
+        mutationFn: profileAPI.updateChatSuggestions,
+        onMutate: async (variables) => {
+            setProfileActionError(null)
+
+            await queryClient.cancelQueries({ queryKey: profileQueryKey })
+
+            const previousProfile = queryClient.getQueryData<Profile>(profileQueryKey)
+
+            queryClient.setQueryData<Profile>(profileQueryKey, (currentProfile) =>
+                currentProfile ? { ...currentProfile, ...variables } : currentProfile
+            )
+
+            return { previousProfile }
+        },
+        onError: (error, _variables, context) => {
+            if (context?.previousProfile) {
+                queryClient.setQueryData(profileQueryKey, context.previousProfile)
+            }
+
+            setProfileActionError(getErrorMessage(error, 'Failed to update chat suggestions'))
+        },
+        onSettled: () => {
+            queryClient.invalidateQueries({ queryKey: profileQueryKey })
+        },
+    })
+
+    const updateGenerationSoundMutation = useMutation({
+        mutationFn: profileAPI.updateGenerationSound,
+        onMutate: async (variables) => {
+            setProfileActionError(null)
+
+            await queryClient.cancelQueries({ queryKey: profileQueryKey })
+
+            const previousProfile = queryClient.getQueryData<Profile>(profileQueryKey)
+
+            queryClient.setQueryData<Profile>(profileQueryKey, (currentProfile) =>
+                currentProfile ? { ...currentProfile, ...variables } : currentProfile
+            )
+
+            return { previousProfile }
+        },
+        onError: (error, _variables, context) => {
+            if (context?.previousProfile) {
+                queryClient.setQueryData(profileQueryKey, context.previousProfile)
+            }
+
+            setProfileActionError(getErrorMessage(error, 'Failed to update generation sound'))
+        },
+        onSettled: () => {
+            queryClient.invalidateQueries({ queryKey: profileQueryKey })
+        },
+    })
+
     return {
         profile,
         profileQuery,
@@ -143,5 +197,7 @@ export const useProfileSettingsData = ({
         updateUsernameMutation,
         updatePasswordMutation,
         updateNotificationMutation,
+        updateChatSuggestionsMutation,
+        updateGenerationSoundMutation,
     }
 }

@@ -24,6 +24,8 @@ export const useProfileSettingsController = () => {
         updateUsernameMutation,
         updatePasswordMutation,
         updateNotificationMutation,
+        updateChatSuggestionsMutation,
+        updateGenerationSoundMutation,
     } = useProfileSettingsData({
         setProfileActionError,
         onNameMutate: () => {
@@ -39,7 +41,11 @@ export const useProfileSettingsController = () => {
     })
 
     const isGithubConnected = profile?.githubConnected ?? false
-    const emailNotifications = profile?.receiveNotification ?? true
+    const emailNotifications = profile?.notifyProjectActivity ?? true
+    const productUpdates = profile?.notifyProductUpdates ?? true
+    const securityAlerts = profile?.notifySecurityAlerts ?? true
+    const chatSuggestions = profile?.chatSuggestions ?? true
+    const generationSound = profile?.generationSound ?? 'FIRST_GENERATION'
     const resolvedName = profile?.name ?? 'User'
 
     const openNameModal = () => {
@@ -76,9 +82,24 @@ export const useProfileSettingsController = () => {
         updatePasswordMutation.mutate({ password: newPassword })
     }
 
-    const handleNotificationToggle = (value: boolean) => {
+    const handleNotificationToggle = (
+        field: 'notifyProjectActivity' | 'notifyProductUpdates' | 'notifySecurityAlerts',
+        value: boolean
+    ) => {
         updateNotificationMutation.mutate({
-            receiveNotification: value,
+            [field]: value,
+        })
+    }
+
+    const handleChatSuggestionsToggle = (value: boolean) => {
+        updateChatSuggestionsMutation.mutate({
+            chatSuggestions: value,
+        })
+    }
+
+    const handleGenerationSoundChange = (value: 'FIRST_GENERATION' | 'ALWAYS' | 'NEVER') => {
+        updateGenerationSoundMutation.mutate({
+            generationSound: value,
         })
     }
 
@@ -118,14 +139,22 @@ export const useProfileSettingsController = () => {
         updateUsernameMutation,
         updatePasswordMutation,
         updateNotificationMutation,
+        updateChatSuggestionsMutation,
+        updateGenerationSoundMutation,
         isGithubConnected,
         emailNotifications,
+        productUpdates,
+        securityAlerts,
+        chatSuggestions,
+        generationSound,
         resolvedName,
         openNameModal,
         openPasswordModal,
         handleSaveName,
         handleUpdatePassword,
         handleNotificationToggle,
+        handleChatSuggestionsToggle,
+        handleGenerationSoundChange,
         connectGithub,
     }
 }
