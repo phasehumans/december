@@ -1,63 +1,13 @@
 import React, { useState } from 'react'
-import { Github, ExternalLink, GitBranch, Clock, Plus, ArrowRight } from 'lucide-react'
+import { Github, GitBranch, Clock, ArrowRight, Loader2, Lock, Globe } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+
+import { profileAPI, type GithubRepo } from '@/features/profile/api/profile'
 
 interface ProfileIntegrationsSettingsProps {
     isGithubConnected: boolean
     onConnectGithub: () => void
 }
-
-const mockRepos = [
-    {
-        name: 'web-app',
-        fullName: 'december/web-app',
-        description: 'Main web application frontend built with React and TypeScript.',
-        language: 'TypeScript',
-        languageColor: '#3178c6',
-        branch: 'main',
-        updatedAt: '2 hours ago',
-        stars: 12,
-    },
-    {
-        name: 'core-api',
-        fullName: 'december/core-api',
-        description: 'Backend API service powering the december platform.',
-        language: 'TypeScript',
-        languageColor: '#3178c6',
-        branch: 'main',
-        updatedAt: '5 hours ago',
-        stars: 7,
-    },
-    {
-        name: 'documentation',
-        fullName: 'december/documentation',
-        description: 'Official docs and guides for december developers.',
-        language: 'MDX',
-        languageColor: '#fcb32c',
-        branch: 'main',
-        updatedAt: '1 day ago',
-        stars: 3,
-    },
-    {
-        name: 'design-system',
-        fullName: 'december/design-system',
-        description: 'Shared component library and design tokens.',
-        language: 'TypeScript',
-        languageColor: '#3178c6',
-        branch: 'develop',
-        updatedAt: '2 days ago',
-        stars: 5,
-    },
-    {
-        name: 'cli-tools',
-        fullName: 'december/cli-tools',
-        description: 'Command-line utilities for the december workflow.',
-        language: 'Go',
-        languageColor: '#00ADD8',
-        branch: 'main',
-        updatedAt: '3 days ago',
-        stars: 9,
-    },
-]
 
 // Simple SVG icons for services not in lucide-react
 const VercelIcon = () => (
@@ -82,6 +32,30 @@ const StripeIcon = () => (
     </svg>
 )
 
+const languageColors: Record<string, string> = {
+    TypeScript: '#3178c6',
+    JavaScript: '#f1e05a',
+    Python: '#3572A5',
+    Rust: '#dea584',
+    Go: '#00ADD8',
+    Java: '#b07219',
+    Ruby: '#701516',
+    PHP: '#4F5D95',
+    'C#': '#178600',
+    'C++': '#f34b7d',
+    C: '#555555',
+    Swift: '#F05138',
+    Kotlin: '#A97BFF',
+    Dart: '#00B4AB',
+    HTML: '#e34c26',
+    CSS: '#563d7c',
+    Shell: '#89e051',
+    Lua: '#000080',
+    Vue: '#41b883',
+    Svelte: '#ff3e00',
+    MDX: '#fcb32c',
+}
+
 const integrations = [
     {
         id: 'github',
@@ -89,8 +63,6 @@ const integrations = [
         description: 'Connect your GitHub account to import repositories and track code changes.',
         Icon: Github,
         iconColor: '#D6D5C9',
-        connectLabel: 'Connect',
-        connectedLabel: 'Connected',
     },
     {
         id: 'vercel',
@@ -98,8 +70,6 @@ const integrations = [
         description: 'Deploy and manage your projects directly from december.',
         Icon: VercelIcon,
         iconColor: '#D6D5C9',
-        connectLabel: 'Connect',
-        connectedLabel: 'Connected',
     },
     {
         id: 'notion',
@@ -107,8 +77,6 @@ const integrations = [
         description: 'Pull in pages and databases from Notion as project context.',
         Icon: NotionIcon,
         iconColor: '#D6D5C9',
-        connectLabel: 'Connect',
-        connectedLabel: 'Connected',
     },
     {
         id: 'stripe',
@@ -116,10 +84,25 @@ const integrations = [
         description: 'Monitor billing events and subscription data right in your workspace.',
         Icon: StripeIcon,
         iconColor: '#D6D5C9',
-        connectLabel: 'Connect',
-        connectedLabel: 'Connected',
     },
 ]
+
+const formatTimeAgo = (dateString: string): string => {
+    const now = new Date()
+    const date = new Date(dateString)
+    const diffMs = now.getTime() - date.getTime()
+    const diffMins = Math.floor(diffMs / 60000)
+    const diffHours = Math.floor(diffMs / 3600000)
+    const diffDays = Math.floor(diffMs / 86400000)
+
+    if (diffMins < 1) return 'just now'
+    if (diffMins < 60) return `${diffMins}m ago`
+    if (diffHours < 24) return `${diffHours}h ago`
+    if (diffDays < 30) return `${diffDays}d ago`
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
+
+const INITIAL_REPOS_COUNT = 5
 
 export const ProfileIntegrationsSettings: React.FC<ProfileIntegrationsSettingsProps> = ({
     isGithubConnected,
@@ -127,6 +110,14 @@ export const ProfileIntegrationsSettings: React.FC<ProfileIntegrationsSettingsPr
 }) => {
     const [connected, setConnected] = useState<Record<string, boolean>>({
         github: isGithubConnected,
+    })
+    const [showAllRepos, setShowAllRepos] = useState(false)
+
+    const reposQuery = useQuery({
+        queryKey: ['integrations', 'github', 'repos'],
+        queryFn: profileAPI.getGithubRepos,
+        enabled: isGithubConnected,
+        staleTime: 5 * 60 * 1000,
     })
 
     const toggle = (id: string) => {
@@ -137,6 +128,9 @@ export const ProfileIntegrationsSettings: React.FC<ProfileIntegrationsSettingsPr
     }
 
     const githubConnected = connected['github']
+    const allRepos = reposQuery.data ?? []
+    const displayedRepos = showAllRepos ? allRepos : allRepos.slice(0, INITIAL_REPOS_COUNT)
+    const hasMoreRepos = allRepos.length > INITIAL_REPOS_COUNT
 
     return (
         <div className="flex flex-col w-full max-w-[720px] text-[#D6D5C9]">
@@ -182,18 +176,7 @@ export const ProfileIntegrationsSettings: React.FC<ProfileIntegrationsSettingsPr
 
             {/* GitHub Repositories */}
             <div className="flex flex-col mb-10">
-                <div className="flex items-center justify-between mb-4">
-                    <h1 className="text-[16px] font-medium">GitHub Repositories</h1>
-                    {githubConnected && (
-                        <a
-                            href="#"
-                            className="flex items-center gap-1.5 text-[13px] text-[#7B7A79] hover:text-[#D6D5C9] transition-colors"
-                        >
-                            View all on GitHub
-                            <ExternalLink className="w-3.5 h-3.5" />
-                        </a>
-                    )}
-                </div>
+                <h1 className="text-[16px] font-medium mb-4">GitHub Repositories</h1>
 
                 {!githubConnected ? (
                     <div className="border border-dashed border-[#383736] rounded-xl py-16 flex flex-col items-center justify-center gap-4 bg-[#100E12]/30 hover:border-[#4A4948] transition-colors">
@@ -216,72 +199,127 @@ export const ProfileIntegrationsSettings: React.FC<ProfileIntegrationsSettingsPr
                             Connect GitHub
                         </button>
                     </div>
+                ) : reposQuery.isLoading ? (
+                    <div className="border border-[#242323] rounded-xl py-16 flex flex-col items-center justify-center gap-3 bg-[#131211]">
+                        <Loader2 className="w-5 h-5 text-[#7B7A79] animate-spin" />
+                        <span className="text-[13px] text-[#7B7A79]">
+                            Fetching your repositories...
+                        </span>
+                    </div>
+                ) : reposQuery.isError ? (
+                    <div className="border border-[#242323] rounded-xl py-16 flex flex-col items-center justify-center gap-3 bg-[#131211]">
+                        <span className="text-[13px] text-red-400">
+                            Failed to load repositories.
+                        </span>
+                        <button
+                            onClick={() => reposQuery.refetch()}
+                            className="px-4 py-1.5 rounded-lg border border-[#383736] text-[13px] text-[#D6D5C9] hover:bg-[#242323] transition-colors"
+                        >
+                            Retry
+                        </button>
+                    </div>
+                ) : allRepos.length === 0 ? (
+                    <div className="border border-[#242323] rounded-xl py-16 flex flex-col items-center justify-center gap-3 bg-[#131211]">
+                        <Github className="w-6 h-6 text-[#4A4948]" />
+                        <span className="text-[13px] text-[#7B7A79]">
+                            No repositories found on this account.
+                        </span>
+                    </div>
                 ) : (
-                    <div className="flex flex-col border border-[#242323] rounded-xl overflow-hidden bg-[#100E12]">
+                    <div className="flex flex-col border border-[#2B2A29] rounded-xl overflow-hidden bg-[#131211]">
                         {/* Header */}
-                        <div className="flex items-center justify-between px-4 py-3 bg-[#171615] border-b border-[#242323]">
+                        <div className="flex items-center px-5 py-3 bg-[#171615] border-b border-[#2B2A29]">
                             <span className="text-[12px] text-[#7B7A79] font-medium">
-                                5 most recent repositories
+                                {showAllRepos
+                                    ? `All repositories · ${allRepos.length}`
+                                    : `Recent · ${Math.min(INITIAL_REPOS_COUNT, allRepos.length)} of ${allRepos.length}`}
                             </span>
-                            <button className="flex items-center gap-1.5 px-3 py-1 rounded-lg border border-[#383736] text-[12px] text-[#D6D5C9] hover:bg-[#242323] transition-colors">
-                                <Plus className="w-3 h-3" />
-                                Import another
-                            </button>
                         </div>
 
                         {/* Repo list */}
-                        {mockRepos.map((repo, i) => (
+                        {displayedRepos.map((repo: GithubRepo) => (
                             <div
-                                key={i}
-                                className="flex items-center justify-between px-4 py-4 border-b border-[#242323] last:border-b-0 hover:bg-[#171615] transition-colors group"
+                                key={repo.id}
+                                className="flex items-center justify-between px-5 py-3.5 border-b border-[#1E1D1B] last:border-b-0 hover:bg-[#1A1918] transition-colors group"
                             >
-                                <div className="flex flex-col gap-1.5 min-w-0">
+                                <div className="flex flex-col gap-1 min-w-0 flex-1">
                                     <div className="flex items-center gap-2">
-                                        <span className="text-[14px] font-medium text-[#D6D5C9] truncate">
-                                            {repo.fullName}
+                                        <span className="text-[13.5px] font-medium truncate">
+                                            <span className="text-[#7B7A79]">
+                                                {repo.fullName.split('/')[0]}/
+                                            </span>
+                                            <span className="text-[#D6D5C9]">
+                                                {repo.fullName.split('/')[1]}
+                                            </span>
                                         </span>
+                                        {repo.private ? (
+                                            <span className="flex items-center gap-1 px-1.5 py-0.5 rounded border border-[#2B2A29] text-[10px] text-[#4A4948]">
+                                                <Lock className="w-2.5 h-2.5" />
+                                                Private
+                                            </span>
+                                        ) : (
+                                            <span className="flex items-center gap-1 px-1.5 py-0.5 rounded border border-[#2B2A29] text-[10px] text-[#4A4948]">
+                                                <Globe className="w-2.5 h-2.5" />
+                                                Public
+                                            </span>
+                                        )}
                                     </div>
                                     {repo.description && (
-                                        <span className="text-[12px] text-[#7B7A79] truncate max-w-[400px]">
+                                        <span className="text-[12px] text-[#5A5958] truncate max-w-[420px]">
                                             {repo.description}
                                         </span>
                                     )}
-                                    <div className="flex items-center gap-4 mt-0.5">
-                                        <span className="flex items-center gap-1.5 text-[12px] text-[#4A4948]">
-                                            <span
-                                                className="w-2 h-2 rounded-full inline-block"
-                                                style={{ backgroundColor: repo.languageColor }}
-                                            />
-                                            {repo.language}
-                                        </span>
-                                        <span className="flex items-center gap-1 text-[12px] text-[#4A4948]">
+                                    <div className="flex items-center gap-3.5 mt-0.5">
+                                        {repo.language && (
+                                            <span className="flex items-center gap-1.5 text-[11px] text-[#5A5958]">
+                                                <span
+                                                    className="w-[7px] h-[7px] rounded-full inline-block"
+                                                    style={{
+                                                        backgroundColor:
+                                                            languageColors[repo.language] ??
+                                                            '#7B7A79',
+                                                    }}
+                                                />
+                                                {repo.language}
+                                            </span>
+                                        )}
+                                        <span className="flex items-center gap-1 text-[11px] text-[#5A5958]">
                                             <GitBranch className="w-3 h-3" />
-                                            {repo.branch}
+                                            {repo.defaultBranch}
                                         </span>
-                                        <span className="flex items-center gap-1 text-[12px] text-[#4A4948]">
+                                        <span className="flex items-center gap-1 text-[11px] text-[#5A5958]">
                                             <Clock className="w-3 h-3" />
-                                            {repo.updatedAt}
+                                            {formatTimeAgo(repo.updatedAt)}
                                         </span>
                                     </div>
                                 </div>
 
-                                <button className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg border border-[#383736] text-[13px] font-medium text-[#D6D5C9] hover:bg-[#242323] hover:border-[#4A4948] transition-all opacity-0 group-hover:opacity-100 shrink-0 ml-4">
+                                <button className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border border-[#383736] text-[12px] font-medium text-[#D6D5C9] hover:bg-[#242323] hover:border-[#4A4948] transition-all opacity-0 group-hover:opacity-100 shrink-0 ml-4">
                                     Import
-                                    <ArrowRight className="w-3.5 h-3.5" />
+                                    <ArrowRight className="w-3 h-3" />
                                 </button>
                             </div>
                         ))}
 
-                        {/* Footer CTA */}
-                        <div className="px-4 py-4 bg-[#171615] border-t border-[#242323] flex items-center justify-between">
-                            <span className="text-[13px] text-[#7B7A79]">
-                                Import a repo to start collaborating with december on any codebase.
-                            </span>
-                            <button className="flex items-center gap-2 px-4 py-1.5 rounded-lg bg-[#242323] hover:bg-[#383736] border border-[#383736] text-[13px] font-medium text-[#D6D5C9] transition-colors shrink-0 ml-4">
-                                Browse all repos
-                                <ArrowRight className="w-3.5 h-3.5" />
-                            </button>
-                        </div>
+                        {/* Footer - Browse all repos */}
+                        {hasMoreRepos && (
+                            <div className="px-5 py-3.5 bg-[#171615] border-t border-[#2B2A29] flex items-center justify-between">
+                                <span className="text-[12px] text-[#5A5958]">
+                                    {showAllRepos
+                                        ? `Showing all ${allRepos.length} repositories`
+                                        : `${allRepos.length - INITIAL_REPOS_COUNT} more available`}
+                                </span>
+                                <button
+                                    onClick={() => setShowAllRepos(!showAllRepos)}
+                                    className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border border-[#383736] text-[12px] font-medium text-[#D6D5C9] hover:bg-[#242323] transition-colors shrink-0"
+                                >
+                                    {showAllRepos ? 'Show less' : 'Browse all repos'}
+                                    <ArrowRight
+                                        className={`w-3 h-3 transition-transform ${showAllRepos ? '-rotate-90' : ''}`}
+                                    />
+                                </button>
+                            </div>
+                        )}
                     </div>
                 )}
             </div>

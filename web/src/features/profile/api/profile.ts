@@ -176,6 +176,29 @@ const deleteSkills = () => {
     })
 }
 
+// --- Integrations ---
+
+export type GithubRepo = {
+    id: number
+    name: string
+    fullName: string
+    private: boolean
+    defaultBranch: string
+    updatedAt: string
+    htmlUrl: string
+    cloneUrl: string
+    language: string | null
+    description: string | null
+    owner: {
+        login: string
+        avatarUrl: string
+    }
+}
+
+const getGithubRepos = () => {
+    return apiRequest<GithubRepo[]>('/integrations/github/repos')
+}
+
 export const profileAPI = {
     getProfile,
     updateName,
@@ -194,4 +217,5 @@ export const profileAPI = {
     getSkills,
     updateSkills,
     deleteSkills,
+    getGithubRepos,
 }
