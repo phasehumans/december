@@ -34,6 +34,9 @@ model User {
   chatSuggestions Boolean         @default(false)
   generationSound GenerationSound @default(FIRST_GENERATION)
 
+  memories String?
+  skills   String?
+
   sessions      Session[]
   projects      Project[]
   imports       ProjectImport[]

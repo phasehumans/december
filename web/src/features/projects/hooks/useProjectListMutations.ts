@@ -115,7 +115,13 @@ export const useProjectListMutations = ({
     })
 
     const shareMutation = useMutation({
-        mutationFn: (projectId: string) => projectAPI.shareProjectAsTemplate(projectId),
+        mutationFn: ({
+            projectId,
+            isSharedAsTemplate,
+        }: {
+            projectId: string
+            isSharedAsTemplate: boolean
+        }) => projectAPI.shareProjectAsTemplate(projectId, isSharedAsTemplate),
         onMutate: async () => {
             setActionError(null)
             onShareMutate()

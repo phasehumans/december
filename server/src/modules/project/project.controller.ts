@@ -5,6 +5,7 @@ import {
     downloadProjectVersionSchema,
     getProjectByIdSchema,
     renameProjectSchema,
+    shareProjectAsTemplateSchema,
     toogleStarProjectSchema,
 } from './project.schema'
 import { AppError } from '../../utils/appError'
@@ -336,6 +337,7 @@ const downloadProjectVersion = async (req: Request, res: Response) => {
 const shareProjectAsTemplate = async (req: Request, res: Response) => {
     const userId = req.user?.userId as string | undefined
     const projectId = req.params.projectId as string | undefined
+    const parseData = shareProjectAsTemplateSchema.safeParse(req.body)
 
     if (!userId) {
         return res.status(400).json({
@@ -351,11 +353,27 @@ const shareProjectAsTemplate = async (req: Request, res: Response) => {
         })
     }
 
+    if (!parseData.success) {
+        return res.status(400).json({
+            success: false,
+            message: 'validation failed',
+            errors: parseData.error.flatten().fieldErrors,
+        })
+    }
+
+    const { isSharedAsTemplate } = parseData.data
+
     try {
-        const result = await projectService.shareProjectAsTemplate({ userId, projectId })
+        const result = await projectService.shareProjectAsTemplate({
+            userId,
+            projectId,
+            isSharedAsTemplate,
+        })
         return res.status(200).json({
             success: true,
-            message: 'project shared as template',
+            message: isSharedAsTemplate
+                ? 'project shared as template'
+                : 'project unshared as template',
             data: result,
         })
     } catch (error: any) {

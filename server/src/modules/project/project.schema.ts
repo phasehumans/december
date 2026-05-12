@@ -21,3 +21,7 @@ export const downloadProjectVersionSchema = z.object({
 export const toogleStarProjectSchema = z.object({
     isStarred: z.boolean(),
 })
+
+export const shareProjectAsTemplateSchema = z.object({
+    isSharedAsTemplate: z.boolean(),
+})

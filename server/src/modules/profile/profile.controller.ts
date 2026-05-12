@@ -4,6 +4,8 @@ import {
     changePasswordSchema,
     chatSuggestionsSchema,
     generationSoundSchema,
+    memoriesSchema,
+    skillsSchema,
     updateNameSchema,
     updateNotificationSchema,
     updateUsernameSchema,
@@ -560,6 +562,216 @@ const generationSound = async (req: Request, res: Response) => {
     }
 }
 
+// --- Memories ---
+
+const getMemories = async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
+
+    if (!userId) {
+        return res.status(400).json({ success: false, message: 'unauthorized' })
+    }
+
+    try {
+        const result = await profileService.getMemories(userId)
+        return res.status(200).json({
+            success: true,
+            message: 'memories fetched successfully',
+            data: result,
+        })
+    } catch (error) {
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({
+                success: false,
+                message: 'failed to fetch memories',
+                errors: error.message,
+            })
+        }
+
+        return res.status(500).json({
+            success: false,
+            message: 'failed to fetch memories',
+            errors: error instanceof Error ? error.message : 'unknown error',
+        })
+    }
+}
+
+const updateMemories = async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
+    const parseData = memoriesSchema.safeParse(req.body)
+
+    if (!userId) {
+        return res.status(400).json({ success: false, message: 'unauthorized' })
+    }
+
+    if (!parseData.success) {
+        return res.status(400).json({
+            success: false,
+            message: 'validation failed',
+            errors: parseData.error.flatten().fieldErrors,
+        })
+    }
+
+    const { memories } = parseData.data
+
+    try {
+        const result = await profileService.updateMemories({ userId, memories })
+        return res.status(200).json({
+            success: true,
+            message: 'memories updated successfully',
+            data: result,
+        })
+    } catch (error) {
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({
+                success: false,
+                message: 'failed to update memories',
+                errors: error.message,
+            })
+        }
+
+        return res.status(500).json({
+            success: false,
+            message: 'failed to update memories',
+            errors: error instanceof Error ? error.message : 'unknown error',
+        })
+    }
+}
+
+const deleteMemories = async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
+
+    if (!userId) {
+        return res.status(400).json({ success: false, message: 'unauthorized' })
+    }
+
+    try {
+        await profileService.deleteMemories(userId)
+        return res.status(200).json({
+            success: true,
+            message: 'memories deleted successfully',
+        })
+    } catch (error) {
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({
+                success: false,
+                message: 'failed to delete memories',
+                errors: error.message,
+            })
+        }
+
+        return res.status(500).json({
+            success: false,
+            message: 'failed to delete memories',
+            errors: error instanceof Error ? error.message : 'unknown error',
+        })
+    }
+}
+
+// --- Skills ---
+
+const getSkills = async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
+
+    if (!userId) {
+        return res.status(400).json({ success: false, message: 'unauthorized' })
+    }
+
+    try {
+        const result = await profileService.getSkills(userId)
+        return res.status(200).json({
+            success: true,
+            message: 'skills fetched successfully',
+            data: result,
+        })
+    } catch (error) {
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({
+                success: false,
+                message: 'failed to fetch skills',
+                errors: error.message,
+            })
+        }
+
+        return res.status(500).json({
+            success: false,
+            message: 'failed to fetch skills',
+            errors: error instanceof Error ? error.message : 'unknown error',
+        })
+    }
+}
+
+const updateSkills = async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
+    const parseData = skillsSchema.safeParse(req.body)
+
+    if (!userId) {
+        return res.status(400).json({ success: false, message: 'unauthorized' })
+    }
+
+    if (!parseData.success) {
+        return res.status(400).json({
+            success: false,
+            message: 'validation failed',
+            errors: parseData.error.flatten().fieldErrors,
+        })
+    }
+
+    const { skills } = parseData.data
+
+    try {
+        const result = await profileService.updateSkills({ userId, skills })
+        return res.status(200).json({
+            success: true,
+            message: 'skills updated successfully',
+            data: result,
+        })
+    } catch (error) {
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({
+                success: false,
+                message: 'failed to update skills',
+                errors: error.message,
+            })
+        }
+
+        return res.status(500).json({
+            success: false,
+            message: 'failed to update skills',
+            errors: error instanceof Error ? error.message : 'unknown error',
+        })
+    }
+}
+
+const deleteSkills = async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
+
+    if (!userId) {
+        return res.status(400).json({ success: false, message: 'unauthorized' })
+    }
+
+    try {
+        await profileService.deleteSkills(userId)
+        return res.status(200).json({
+            success: true,
+            message: 'skills deleted successfully',
+        })
+    } catch (error) {
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({
+                success: false,
+                message: 'failed to delete skills',
+                errors: error.message,
+            })
+        }
+
+        return res.status(500).json({
+            success: false,
+            message: 'failed to delete skills',
+            errors: error instanceof Error ? error.message : 'unknown error',
+        })
+    }
+}
+
 export const profileController = {
     getInfo,
     getProfileCard,
@@ -574,4 +786,10 @@ export const profileController = {
     deleteAccount,
     chatSuggestions,
     generationSound,
+    getMemories,
+    updateMemories,
+    deleteMemories,
+    getSkills,
+    updateSkills,
+    deleteSkills,
 }

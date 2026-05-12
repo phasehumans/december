@@ -45,11 +45,11 @@ export const ProjectListRow: React.FC<ProjectListRowProps> = ({
             </div>
 
             <div className="truncate pr-2 text-[13px] text-[#7B7A79] transition-colors group-hover:text-[#A3A2A0]">
-                {project.updatedAt}
+                {project.createdAt}
             </div>
 
             <div className="flex items-center gap-2 text-[13px] text-[#7B7A79]">
-                <span className="truncate">@chetan_sonawane</span>
+                <span className="truncate">@{project.createdByUsername}</span>
             </div>
 
             <div className="flex justify-center">
@@ -105,14 +105,15 @@ export const ProjectListRow: React.FC<ProjectListRowProps> = ({
                             <Icons.Star className="h-4 w-4 text-[#7B7A79]" />{' '}
                             {project.isStarred ? 'Remove from favourites' : 'Add to favourites'}
                         </button>
-                        <button className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-[14px] text-[#D6D5C9] transition-colors hover:bg-[#252422]">
+                        {/* <button className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-[14px] text-[#D6D5C9] transition-colors hover:bg-[#252422]">
                             <Icons.Settings className="h-4 w-4 text-[#7B7A79]" /> Settings
-                        </button>
+                        </button> */}
                         <button
                             onClick={(e) => onOpenShare(project, e)}
                             className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-[14px] text-[#D6D5C9] transition-colors hover:bg-[#252422]"
                         >
-                            <Icons.Globe className="h-4 w-4 text-[#7B7A79]" /> Share
+                            <Icons.Globe className="h-4 w-4 text-[#7B7A79]" />{' '}
+                            {project.isSharedAsTemplate ? 'Unshare' : 'Share'}
                         </button>
                         <div className="mx-2 my-1.5 h-px bg-[#383736]" />
                         <button

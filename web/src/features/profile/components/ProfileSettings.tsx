@@ -241,7 +241,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                                 isNotificationPending={updateNotificationMutation.isPending}
                                 onOpenNameModal={openNameModal}
                                 onOpenUsernameModal={() => {
-                                    setTempUsername(profile?.githubUsername || profile?.name || '')
+                                    setTempUsername(profile?.username || '')
                                     setUsernameModalOpen(true)
                                 }}
                                 onOpenPasswordModal={openPasswordModal}

@@ -73,6 +73,7 @@ export const ProjectListModals: React.FC<ProjectListModalsProps> = ({
             <ProjectShareModal
                 isOpen={shareModal.isOpen}
                 projectTitle={shareModal.project?.title}
+                isSharedAsTemplate={shareModal.project?.isSharedAsTemplate ?? false}
                 isPending={isSharePending}
                 onClose={onCloseShare}
                 onConfirm={onShareConfirm}

@@ -64,8 +64,8 @@ echo "[december] Starting server..."
 tmux new-window -t "$SESSION_NAME" -n server
 tmux send-keys -t "$SESSION_NAME:server" "cd \"$SERVER_DIR\" && echo '[server] starting...' && bun run dev" C-m
 
-echo "[december] Waiting 10 seconds before starting web..."
-sleep 10
+echo "[december] Waiting 3 seconds before starting web..."
+sleep 3
 
 echo "[december] Starting web..."
 tmux new-window -t "$SESSION_NAME" -n web

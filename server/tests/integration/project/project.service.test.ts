@@ -447,7 +447,11 @@ describe('project.service.integration', () => {
 
     describe('shareProjectAsTemplate', () => {
         it('should share project as template successfully', async () => {
-            const result = await projectService.shareProjectAsTemplate({ userId, projectId })
+            const result = await projectService.shareProjectAsTemplate({
+                userId,
+                projectId,
+                isSharedAsTemplate: true,
+            })
 
             expect(result.message).toBe('project shared as template')
 
@@ -455,9 +459,32 @@ describe('project.service.integration', () => {
             expect(db!.isSharedAsTemplate).toBe(true)
         })
 
+        it('should unshare project as template successfully', async () => {
+            await projectService.shareProjectAsTemplate({
+                userId,
+                projectId,
+                isSharedAsTemplate: true,
+            })
+
+            const result = await projectService.shareProjectAsTemplate({
+                userId,
+                projectId,
+                isSharedAsTemplate: false,
+            })
+
+            expect(result.message).toBe('project unshared as template')
+
+            const db = await prisma.project.findUnique({ where: { id: projectId } })
+            expect(db!.isSharedAsTemplate).toBe(false)
+        })
+
         it('should throw "project not found" for non-existent project', async () => {
             await expect(
-                projectService.shareProjectAsTemplate({ userId, projectId: 'non-existent' })
+                projectService.shareProjectAsTemplate({
+                    userId,
+                    projectId: 'non-existent',
+                    isSharedAsTemplate: true,
+                })
             ).rejects.toThrow('project not found')
         })
 
@@ -466,7 +493,11 @@ describe('project.service.integration', () => {
             const otherProject = await createProject(otherUser.id)
 
             await expect(
-                projectService.shareProjectAsTemplate({ userId, projectId: otherProject.id })
+                projectService.shareProjectAsTemplate({
+                    userId,
+                    projectId: otherProject.id,
+                    isSharedAsTemplate: true,
+                })
             ).rejects.toThrow('project not found')
         })
 
@@ -478,12 +509,17 @@ describe('project.service.integration', () => {
                 projectService.shareProjectAsTemplate({
                     userId: deletedUser.id,
                     projectId: deletedUserProject.id,
+                    isSharedAsTemplate: true,
                 })
             ).rejects.toThrow('project not found')
         })
 
         it('should persist isSharedAsTemplate flag in database', async () => {
-            await projectService.shareProjectAsTemplate({ userId, projectId })
+            await projectService.shareProjectAsTemplate({
+                userId,
+                projectId,
+                isSharedAsTemplate: true,
+            })
 
             const db = await prisma.project.findUnique({ where: { id: projectId } })
             expect(db!.isSharedAsTemplate).toBe(true)

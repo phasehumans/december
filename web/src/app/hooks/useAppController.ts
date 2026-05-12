@@ -173,11 +173,11 @@ export const useAppController = () => {
         select: (backendProjects) =>
             [...backendProjects]
                 .sort((a, b) => {
-                    const updatedAtDiff =
-                        new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+                    const createdAtDiff =
+                        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
 
-                    if (updatedAtDiff !== 0) {
-                        return updatedAtDiff
+                    if (createdAtDiff !== 0) {
+                        return createdAtDiff
                     }
 
                     return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })

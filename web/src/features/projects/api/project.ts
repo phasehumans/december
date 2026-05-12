@@ -7,12 +7,16 @@ export type BackendProject = {
     description: string | null
     prompt: string
     isStarred: boolean
+    isSharedAsTemplate: boolean
     projectStatus: 'DRAFT' | 'GENERATING' | 'READY' | 'DEPLOYED' | 'FAILED'
     versionCount?: number
     currentVersionId?: string | null
     createdAt: string
     updatedAt: string
     userId: string
+    user?: {
+        username: string
+    }
 }
 
 export type BackendProjectVersionSummary = {
@@ -107,9 +111,10 @@ const duplicateProject = (projectId: string) => {
     })
 }
 
-const shareProjectAsTemplate = (projectId: string) => {
+const shareProjectAsTemplate = (projectId: string, isSharedAsTemplate: boolean) => {
     return apiRequest<{ message: string }>(`/project/${projectId}/share`, {
         method: 'POST',
+        body: JSON.stringify({ isSharedAsTemplate }),
     })
 }
 

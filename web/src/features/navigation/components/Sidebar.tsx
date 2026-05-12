@@ -27,7 +27,13 @@ const Sidebar: React.FC<SidebarProps & { user?: any; onSignOut?: () => void }> =
     // No collapse option
     const [recentOpen, setRecentOpen] = useState(true)
 
-    const recentProjects = isAuthenticated ? projects.slice(0, 5) : []
+    const recentProjects = isAuthenticated
+        ? [...projects]
+              .sort(
+                  (a, b) => new Date(b.rawUpdatedAt).getTime() - new Date(a.rawUpdatedAt).getTime()
+              )
+              .slice(0, 10)
+        : []
 
     return (
         <div className="hidden md:flex flex-col h-screen bg-sidebar border-r border-white/5 pt-2 pb-0 z-20 w-[200px] font-sans">

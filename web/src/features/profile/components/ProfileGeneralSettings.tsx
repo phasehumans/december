@@ -1,5 +1,8 @@
-import React, { useState } from 'react'
-import { ChevronDown, Volume1, Volume2, VolumeX, FilePlus, Trash2 } from 'lucide-react'
+import React, { useState, useEffect } from 'react'
+import { ChevronDown, Volume1, Volume2, VolumeX, FilePlus, Trash2, Loader2 } from 'lucide-react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+
+import { profileAPI } from '@/features/profile/api/profile'
 
 interface ProfileGeneralSettingsProps {
     chatSuggestions: boolean
@@ -14,8 +17,93 @@ export const ProfileGeneralSettings: React.FC<ProfileGeneralSettingsProps> = ({
     onChatSuggestionsToggle,
     onGenerationSoundChange,
 }) => {
-    const [activeMemory, setActiveMemory] = useState(false)
-    const [activeSkill, setActiveSkill] = useState(false)
+    const queryClient = useQueryClient()
+
+    // --- Memories ---
+    const memoriesQuery = useQuery({
+        queryKey: ['profile', 'memories'],
+        queryFn: profileAPI.getMemories,
+    })
+
+    const [memoriesText, setMemoriesText] = useState('')
+    const [memoriesActive, setMemoriesActive] = useState(false)
+    const [memoriesDirty, setMemoriesDirty] = useState(false)
+
+    useEffect(() => {
+        if (memoriesQuery.data?.memories) {
+            setMemoriesText(memoriesQuery.data.memories)
+            setMemoriesActive(true)
+        }
+    }, [memoriesQuery.data])
+
+    const updateMemoriesMutation = useMutation({
+        mutationFn: profileAPI.updateMemories,
+        onSuccess: () => {
+            setMemoriesDirty(false)
+            queryClient.invalidateQueries({ queryKey: ['profile', 'memories'] })
+            queryClient.invalidateQueries({ queryKey: ['profile'] })
+        },
+    })
+
+    const deleteMemoriesMutation = useMutation({
+        mutationFn: profileAPI.deleteMemories,
+        onSuccess: () => {
+            setMemoriesText('')
+            setMemoriesActive(false)
+            setMemoriesDirty(false)
+            queryClient.invalidateQueries({ queryKey: ['profile', 'memories'] })
+            queryClient.invalidateQueries({ queryKey: ['profile'] })
+        },
+    })
+
+    // --- Skills ---
+    const skillsQuery = useQuery({
+        queryKey: ['profile', 'skills'],
+        queryFn: profileAPI.getSkills,
+    })
+
+    const [skillsText, setSkillsText] = useState('')
+    const [skillsActive, setSkillsActive] = useState(false)
+    const [skillsDirty, setSkillsDirty] = useState(false)
+
+    useEffect(() => {
+        if (skillsQuery.data?.skills) {
+            setSkillsText(skillsQuery.data.skills)
+            setSkillsActive(true)
+        }
+    }, [skillsQuery.data])
+
+    const updateSkillsMutation = useMutation({
+        mutationFn: profileAPI.updateSkills,
+        onSuccess: () => {
+            setSkillsDirty(false)
+            queryClient.invalidateQueries({ queryKey: ['profile', 'skills'] })
+            queryClient.invalidateQueries({ queryKey: ['profile'] })
+        },
+    })
+
+    const deleteSkillsMutation = useMutation({
+        mutationFn: profileAPI.deleteSkills,
+        onSuccess: () => {
+            setSkillsText('')
+            setSkillsActive(false)
+            setSkillsDirty(false)
+            queryClient.invalidateQueries({ queryKey: ['profile', 'skills'] })
+            queryClient.invalidateQueries({ queryKey: ['profile'] })
+        },
+    })
+
+    const defaultSkillContent = `---
+name: skill
+description: Describe what this skill does and when december should use it. Be specific - this is how december decides to trigger the skill.
+---
+
+# skill
+
+## Instructions
+
+Write the steps december should follow when this skill is triggered.
+Focus on what december wouldn't already know - domain-specific details, preferred patterns, or exact sequences.`
 
     return (
         <div className="flex flex-col w-full max-w-[800px] text-[#D6D5C9]">
@@ -140,10 +228,10 @@ export const ProfileGeneralSettings: React.FC<ProfileGeneralSettingsProps> = ({
                         the start of every chat; other files are loaded on demand.
                     </p>
 
-                    {!activeMemory ? (
+                    {!memoriesActive ? (
                         <div>
                             <button
-                                onClick={() => setActiveMemory(true)}
+                                onClick={() => setMemoriesActive(true)}
                                 className="flex items-center gap-2 px-4 py-2 border border-[#383736] rounded-lg text-[14px] font-medium text-[#D6D5C9] hover:bg-[#242323] transition-colors w-fit shadow-sm"
                             >
                                 <FilePlus className="w-4 h-4" />
@@ -151,29 +239,55 @@ export const ProfileGeneralSettings: React.FC<ProfileGeneralSettingsProps> = ({
                             </button>
                         </div>
                     ) : (
-                        <div className="flex flex-col border border-[#242323] rounded-xl overflow-hidden bg-[#100E12]">
-                            <div className="flex items-center justify-between px-4 py-3 bg-[#100E12]">
+                        <div className="flex flex-col border border-[#2B2A29] rounded-xl overflow-hidden bg-[#131211]">
+                            <div className="flex items-center justify-between px-4 py-3 bg-[#131211] border-b border-[#2B2A29]">
                                 <span className="text-[13px] font-medium text-[#D6D5C9]">
                                     MEMORY.md
                                 </span>
-                                <span className="text-[12px] text-[#4A4948]">0 chars</span>
+                                <span className="text-[12px] text-[#4A4948]">
+                                    {memoriesText.length} chars
+                                </span>
                             </div>
-                            <div className="w-full h-[1px] bg-[#242323]" />
-                            <div className="p-4 bg-[#100E12]">
+                            <div className="p-4 bg-[#131211]">
                                 <textarea
-                                    className="w-full h-[200px] bg-[#100E12] border border-[#242323] rounded-xl p-4 text-[13.5px] text-[#808080] font-mono leading-[1.6] resize-none focus:outline-none focus:border-[#4A4948] transition-colors caret-[#D6D5C9]"
+                                    className="w-full h-[200px] bg-[#0E0D0C] border border-[#2B2A29] rounded-lg p-4 text-[13.5px] text-[#D6D5C9] placeholder:text-[#4A4948] font-mono leading-[1.6] resize-none focus:outline-none focus:border-[#383736] transition-colors caret-[#D6D5C9]"
                                     placeholder='Keep this short — summarize key preferences and link to reference files for details (e.g. "See patterns.md for React conventions").'
                                     spellCheck={false}
+                                    value={memoriesText}
+                                    onChange={(e) => {
+                                        setMemoriesText(e.target.value)
+                                        setMemoriesDirty(true)
+                                    }}
                                 ></textarea>
-                                <div className="flex items-center gap-4 mt-4">
-                                    <button className="px-5 py-1.5 border border-[#D6D5C9] text-[#D6D5C9] rounded-lg text-[14px] font-medium hover:bg-[#D6D5C9] hover:text-[#100E12] transition-colors">
+                                <div className="flex items-center gap-3 mt-4">
+                                    <button
+                                        onClick={() => {
+                                            if (memoriesText.trim()) {
+                                                updateMemoriesMutation.mutate({
+                                                    memories: memoriesText,
+                                                })
+                                            }
+                                        }}
+                                        disabled={
+                                            !memoriesDirty || updateMemoriesMutation.isPending
+                                        }
+                                        className="px-4 py-1.5 rounded-lg border border-[#383736] text-[13px] font-medium text-[#D6D5C9] hover:bg-[#242323] transition-colors disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-2"
+                                    >
+                                        {updateMemoriesMutation.isPending && (
+                                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                        )}
                                         Save
                                     </button>
                                     <button
-                                        onClick={() => setActiveMemory(false)}
-                                        className="flex items-center gap-2 px-3 py-1.5 text-[#7B7A79] hover:text-[#D6D5C9] transition-colors text-[14px] font-medium rounded-lg"
+                                        onClick={() => deleteMemoriesMutation.mutate()}
+                                        disabled={deleteMemoriesMutation.isPending}
+                                        className="flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-medium text-[#7B7A79] hover:text-red-400 transition-colors rounded-lg disabled:opacity-30"
                                     >
-                                        <Trash2 className="w-[18px] h-[18px]" />
+                                        {deleteMemoriesMutation.isPending ? (
+                                            <Loader2 className="w-[15px] h-[15px] animate-spin" />
+                                        ) : (
+                                            <Trash2 className="w-[15px] h-[15px]" />
+                                        )}
                                         Delete
                                     </button>
                                 </div>
@@ -193,10 +307,16 @@ export const ProfileGeneralSettings: React.FC<ProfileGeneralSettingsProps> = ({
                         follow.
                     </p>
 
-                    {!activeSkill ? (
+                    {!skillsActive ? (
                         <div>
                             <button
-                                onClick={() => setActiveSkill(true)}
+                                onClick={() => {
+                                    setSkillsActive(true)
+                                    if (!skillsText) {
+                                        setSkillsText(defaultSkillContent)
+                                        setSkillsDirty(true)
+                                    }
+                                }}
                                 className="flex items-center gap-2 px-4 py-2 border border-[#383736] rounded-lg text-[14px] font-medium text-[#D6D5C9] hover:bg-[#242323] transition-colors w-fit shadow-sm"
                             >
                                 <FilePlus className="w-4 h-4" />
@@ -204,39 +324,52 @@ export const ProfileGeneralSettings: React.FC<ProfileGeneralSettingsProps> = ({
                             </button>
                         </div>
                     ) : (
-                        <div className="flex flex-col border border-[#242323] rounded-xl overflow-hidden bg-[#100E12]">
-                            <div className="flex items-center justify-between px-4 py-3 bg-[#100E12]">
+                        <div className="flex flex-col border border-[#2B2A29] rounded-xl overflow-hidden bg-[#131211]">
+                            <div className="flex items-center justify-between px-4 py-3 bg-[#131211] border-b border-[#2B2A29]">
                                 <span className="text-[13px] font-medium text-[#D6D5C9]">
                                     skill / <span className="text-white">SKILL.md</span>
                                 </span>
-                                <span className="text-[12px] text-[#4A4948]">345 chars</span>
+                                <span className="text-[12px] text-[#4A4948]">
+                                    {skillsText.length} chars
+                                </span>
                             </div>
-                            <div className="w-full h-[1px] bg-[#242323]" />
-                            <div className="p-4 bg-[#100E12]">
+                            <div className="p-4 bg-[#131211]">
                                 <textarea
-                                    className="w-full h-[320px] bg-[#100E12] border border-[#242323] rounded-xl p-4 text-[13.5px] text-[#D6D5C9] font-mono leading-[1.6] resize-none focus:outline-none focus:border-[#4A4948] transition-colors caret-[#D6D5C9]"
-                                    defaultValue={`---
-name: skill
-description: Describe what this skill does and when december should use it. Be specific - this is how december decides to trigger the skill.
----
-
-# skill
-
-## Instructions
-
-Write the steps december should follow when this skill is triggered.
-Focus on what december wouldn't already know - domain-specific details, preferred patterns, or exact sequences.`}
+                                    className="w-full h-[320px] bg-[#0E0D0C] border border-[#2B2A29] rounded-lg p-4 text-[13.5px] text-[#D6D5C9] placeholder:text-[#4A4948] font-mono leading-[1.6] resize-none focus:outline-none focus:border-[#383736] transition-colors caret-[#D6D5C9]"
                                     spellCheck={false}
+                                    value={skillsText}
+                                    onChange={(e) => {
+                                        setSkillsText(e.target.value)
+                                        setSkillsDirty(true)
+                                    }}
                                 ></textarea>
-                                <div className="flex items-center gap-4 mt-4">
-                                    <button className="px-5 py-1.5 border border-[#D6D5C9] text-[#D6D5C9] rounded-lg text-[14px] font-medium hover:bg-[#D6D5C9] hover:text-[#100E12] transition-colors">
+                                <div className="flex items-center gap-3 mt-4">
+                                    <button
+                                        onClick={() => {
+                                            if (skillsText.trim()) {
+                                                updateSkillsMutation.mutate({
+                                                    skills: skillsText,
+                                                })
+                                            }
+                                        }}
+                                        disabled={!skillsDirty || updateSkillsMutation.isPending}
+                                        className="px-4 py-1.5 rounded-lg border border-[#383736] text-[13px] font-medium text-[#D6D5C9] hover:bg-[#242323] transition-colors disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-2"
+                                    >
+                                        {updateSkillsMutation.isPending && (
+                                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                        )}
                                         Save
                                     </button>
                                     <button
-                                        onClick={() => setActiveSkill(false)}
-                                        className="flex items-center gap-2 px-3 py-1.5 text-[#7B7A79] hover:text-[#D6D5C9] transition-colors text-[14px] font-medium rounded-lg"
+                                        onClick={() => deleteSkillsMutation.mutate()}
+                                        disabled={deleteSkillsMutation.isPending}
+                                        className="flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-medium text-[#7B7A79] hover:text-red-400 transition-colors rounded-lg disabled:opacity-30"
                                     >
-                                        <Trash2 className="w-[18px] h-[18px]" />
+                                        {deleteSkillsMutation.isPending ? (
+                                            <Loader2 className="w-[15px] h-[15px] animate-spin" />
+                                        ) : (
+                                            <Trash2 className="w-[15px] h-[15px]" />
+                                        )}
                                         Delete
                                     </button>
                                 </div>

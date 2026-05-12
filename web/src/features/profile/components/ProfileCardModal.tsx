@@ -1,18 +1,30 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Folder, Settings, X, Bookmark } from 'lucide-react'
+import { Folder, Settings, X, Globe } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+
+import { projectAPI } from '@/features/projects/api/project'
 
 interface ProfileCardModalProps {
     isOpen: boolean
     onClose: () => void
     userName: string
+    userUsername: string
     onSettings?: () => void
+}
+
+type SharedProject = {
+    id: string
+    name: string
+    description: string | null
+    createdAt: string
 }
 
 export const ProfileCardModal: React.FC<ProfileCardModalProps> = ({
     isOpen,
     onClose,
     userName,
+    userUsername,
     onSettings,
 }) => {
     const modalRef = useRef<HTMLDivElement>(null)
@@ -25,6 +37,16 @@ export const ProfileCardModal: React.FC<ProfileCardModalProps> = ({
         }
         return userName
     })
+
+    const { data: allProjects = [] } = useQuery({
+        queryKey: ['projects'],
+        queryFn: projectAPI.getProjects,
+        enabled: isOpen,
+    })
+
+    const publishedProjects = allProjects.filter((p) => p.projectStatus === 'DEPLOYED')
+
+    const sharedTemplates = allProjects.filter((p) => p.isSharedAsTemplate)
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -73,7 +95,7 @@ export const ProfileCardModal: React.FC<ProfileCardModalProps> = ({
         }
     }
 
-    const displayUsername = userName.toLowerCase().replace(/\s+/g, '_')
+    const displayUsername = userUsername || userName.toLowerCase().replace(/\s+/g, '_')
 
     return createPortal(
         <div
@@ -133,9 +155,6 @@ export const ProfileCardModal: React.FC<ProfileCardModalProps> = ({
 
                     {/* Actions */}
                     <div className="flex justify-end pt-4 gap-3">
-                        <button className="px-4 py-1.5 rounded-full border border-[#383736] text-[13px] font-medium text-[#D6D5C9] hover:bg-[#1E1D1B] transition-colors">
-                            Edit profile
-                        </button>
                         <button
                             onClick={handleSettingsClick}
                             className="flex items-center gap-1.5 px-4 py-1.5 rounded-full border border-[#383736] text-[13px] font-medium text-[#D6D5C9] hover:bg-[#1E1D1B] transition-colors"
@@ -145,19 +164,10 @@ export const ProfileCardModal: React.FC<ProfileCardModalProps> = ({
                         </button>
                     </div>
 
-                    {/* User Details */}
+                    {/* User Details — Name + Username */}
                     <div className="flex flex-col mt-2">
-                        <h2 className="text-[22px] font-bold text-[#D6D5C9] mb-1">
-                            @{displayUsername}
-                        </h2>
-                        <div className="flex gap-4 text-[13px] text-[#7B7A79]">
-                            <span className="flex gap-1.5">
-                                <strong className="text-[#D6D5C9]">0</strong> followers
-                            </span>
-                            <span className="flex gap-1.5">
-                                <strong className="text-[#D6D5C9]">0</strong> following
-                            </span>
-                        </div>
+                        <h2 className="text-[22px] font-bold text-[#D6D5C9] mb-0.5">{userName}</h2>
+                        <span className="text-[14px] text-[#7B7A79]">@{displayUsername}</span>
                     </div>
 
                     {/* Content Tabs */}
@@ -172,30 +182,90 @@ export const ProfileCardModal: React.FC<ProfileCardModalProps> = ({
                             onClick={() => setActiveTab('templates')}
                             className={`pb-2.5 text-[14px] font-medium transition-colors border-b-2 ${activeTab === 'templates' ? 'text-[#D6D5C9] border-[#D6D5C9]' : 'text-[#7B7A79] border-transparent hover:text-[#D6D5C9]'}`}
                         >
-                            Saved Templates
+                            Shared Templates
                         </button>
                     </div>
 
-                    {/* Empty State Area */}
-                    <div className="w-full rounded-2xl bg-[#100E12]/50 border border-[#242323] py-12 flex flex-col items-center justify-center gap-3">
-                        <div className="w-12 h-12 rounded-2xl bg-[#1E1D1B] border border-[#2B2A29] flex items-center justify-center shadow-sm">
-                            {activeTab === 'projects' ? (
-                                <Folder className="w-6 h-6 text-[#7B7A79]" strokeWidth={1.5} />
-                            ) : (
-                                <Bookmark className="w-6 h-6 text-[#7B7A79]" strokeWidth={1.5} />
-                            )}
+                    {/* Content Area */}
+                    {activeTab === 'projects' ? (
+                        publishedProjects.length > 0 ? (
+                            <div className="flex flex-col gap-2 max-h-[240px] overflow-y-auto no-scrollbar">
+                                {publishedProjects.map((project) => (
+                                    <div
+                                        key={project.id}
+                                        className="flex items-center gap-3 px-4 py-3 rounded-xl bg-[#100E12]/50 border border-[#242323] hover:bg-[#1E1D1B] transition-colors"
+                                    >
+                                        <div className="w-9 h-9 rounded-lg bg-[#1E1D1B] border border-[#2B2A29] flex items-center justify-center shrink-0">
+                                            <Folder
+                                                className="w-4 h-4 text-[#7B7A79]"
+                                                strokeWidth={1.5}
+                                            />
+                                        </div>
+                                        <div className="flex flex-col min-w-0">
+                                            <span className="text-[14px] font-medium text-[#D6D5C9] truncate">
+                                                {project.name}
+                                            </span>
+                                            {project.description && (
+                                                <span className="text-[12px] text-[#7B7A79] truncate">
+                                                    {project.description}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="w-full rounded-2xl bg-[#100E12]/50 border border-[#242323] py-12 flex flex-col items-center justify-center gap-3">
+                                <div className="w-12 h-12 rounded-2xl bg-[#1E1D1B] border border-[#2B2A29] flex items-center justify-center shadow-sm">
+                                    <Folder className="w-6 h-6 text-[#7B7A79]" strokeWidth={1.5} />
+                                </div>
+                                <h3 className="text-[15px] font-medium text-[#D6D5C9]">
+                                    No published projects yet
+                                </h3>
+                                <p className="text-[13px] text-[#7B7A79]">
+                                    Projects created and published to this profile will appear here
+                                </p>
+                            </div>
+                        )
+                    ) : sharedTemplates.length > 0 ? (
+                        <div className="flex flex-col gap-2 max-h-[240px] overflow-y-auto no-scrollbar">
+                            {sharedTemplates.map((project) => (
+                                <div
+                                    key={project.id}
+                                    className="flex items-center gap-3 px-4 py-3 rounded-xl bg-[#100E12]/50 border border-[#242323] hover:bg-[#1E1D1B] transition-colors"
+                                >
+                                    <div className="w-9 h-9 rounded-lg bg-[#1E1D1B] border border-[#2B2A29] flex items-center justify-center shrink-0">
+                                        <Globe
+                                            className="w-4 h-4 text-[#7B7A79]"
+                                            strokeWidth={1.5}
+                                        />
+                                    </div>
+                                    <div className="flex flex-col min-w-0">
+                                        <span className="text-[14px] font-medium text-[#D6D5C9] truncate">
+                                            {project.name}
+                                        </span>
+                                        {project.description && (
+                                            <span className="text-[12px] text-[#7B7A79] truncate">
+                                                {project.description}
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
                         </div>
-                        <h3 className="text-[15px] font-medium text-[#D6D5C9]">
-                            {activeTab === 'projects'
-                                ? 'No published projects yet'
-                                : 'No saved templates yet'}
-                        </h3>
-                        <p className="text-[13px] text-[#7B7A79]">
-                            {activeTab === 'projects'
-                                ? 'Projects created and published to this profile will appear here'
-                                : 'Templates you save for later will appear here'}
-                        </p>
-                    </div>
+                    ) : (
+                        <div className="w-full rounded-2xl bg-[#100E12]/50 border border-[#242323] py-12 flex flex-col items-center justify-center gap-3">
+                            <div className="w-12 h-12 rounded-2xl bg-[#1E1D1B] border border-[#2B2A29] flex items-center justify-center shadow-sm">
+                                <Globe className="w-6 h-6 text-[#7B7A79]" strokeWidth={1.5} />
+                            </div>
+                            <h3 className="text-[15px] font-medium text-[#D6D5C9]">
+                                No shared templates yet
+                            </h3>
+                            <p className="text-[13px] text-[#7B7A79]">
+                                Projects you share as templates will appear here
+                            </p>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>,
