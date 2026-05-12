@@ -194,7 +194,6 @@ const retryImport = async (req: Request, res: Response) => {
 }
 
 export const uploadController = {
-    getUserGithubRepos,
     importFromGithub,
     importFromZip,
     getImportStatus,

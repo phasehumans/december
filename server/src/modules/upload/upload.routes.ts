@@ -14,7 +14,6 @@ const upload = multer({
 })
 
 uploadRouter.use(authMiddleware)
-uploadRouter.get('/github/repos', uploadController.getUserGithubRepos) //use in profile page
 uploadRouter.post('/imports/github', uploadController.importFromGithub)
 uploadRouter.post('/imports/zip', upload.single('file'), uploadController.importFromZip)
 uploadRouter.get('/imports/:id', uploadController.getImportStatus)

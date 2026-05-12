@@ -11,6 +11,7 @@ import runtimeRouter from './modules/runtime/runtime.routes'
 import uploadRouter, { importRouter } from './modules/upload/upload.routes'
 import usageRouter from './modules/usage/usage.routes'
 import templateRouter from './modules/template/template.routes'
+import integrationsRouter from './modules/integrations/integrations.routes'
 // import notificationRouter from './modules/notification/notification.route'
 
 const app = express()
@@ -35,6 +36,7 @@ app.use('/api/v1/upload', uploadRouter)
 app.use('/api/v1/import', importRouter)
 app.use('/api/v1/usage', usageRouter)
 app.use('/api/v1/template', templateRouter)
+app.use('/api/v1/integrations', integrationsRouter)
 // app.use('/api/v1/notfication', notificationRouter)dd
 
 export default app
