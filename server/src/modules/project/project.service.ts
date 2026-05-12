@@ -44,6 +44,7 @@ type DuplicateProject = {
 type ShareProject = {
     userId: string
     projectId: string
+    isSharedAsTemplate: boolean
 }
 
 type ToogleStarProject = {
@@ -83,6 +84,13 @@ const getAllProjects = async (userId: string) => {
         const projects = await prisma.project.findMany({
             where: {
                 userId: userId,
+            },
+            include: {
+                user: {
+                    select: {
+                        username: true,
+                    },
+                },
             },
         })
 
@@ -488,7 +496,7 @@ const downloadProjectVersion = async (data: GetProject) => {
 }
 
 const shareProjectAsTemplate = async (data: ShareProject) => {
-    const { userId, projectId } = data
+    const { userId, projectId, isSharedAsTemplate } = data
 
     // updateMany w/ single query >> atomic | check user and then project and then update project >> not atomic
     const project = await prisma.project.updateMany({
@@ -500,7 +508,7 @@ const shareProjectAsTemplate = async (data: ShareProject) => {
             },
         },
         data: {
-            isSharedAsTemplate: true,
+            isSharedAsTemplate,
         },
     })
 
@@ -508,7 +516,9 @@ const shareProjectAsTemplate = async (data: ShareProject) => {
         throw new AppError('project not found', 404)
     }
 
-    return { message: 'project shared as template' }
+    return {
+        message: isSharedAsTemplate ? 'project shared as template' : 'project unshared as template',
+    }
 }
 
 const toggleStarProject = async (data: ToogleStarProject) => {

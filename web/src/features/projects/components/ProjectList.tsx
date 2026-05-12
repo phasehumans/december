@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useMemo } from 'react'
 
 import { useProjectListMutations } from '../hooks/useProjectListMutations'
 
@@ -14,6 +14,9 @@ import type {
     ShareModalState,
 } from '@/features/projects/types'
 
+export type SortOption = 'newest' | 'oldest'
+export type StatusFilter = 'any' | 'Draft' | 'Generated' | 'Published'
+
 export const ProjectList: React.FC<ProjectListProps> = ({
     onNewProject,
     onOpenProject,
@@ -23,6 +26,9 @@ export const ProjectList: React.FC<ProjectListProps> = ({
     errorMessage,
 }) => {
     const [menuOpenId, setMenuOpenId] = useState<string | null>(null)
+    const [searchQuery, setSearchQuery] = useState('')
+    const [sortOption, setSortOption] = useState<SortOption>('newest')
+    const [statusFilter, setStatusFilter] = useState<StatusFilter>('any')
     const [renameModal, setRenameModal] = useState<RenameModalState>({
         isOpen: false,
         project: null,
@@ -57,6 +63,35 @@ export const ProjectList: React.FC<ProjectListProps> = ({
             onShareMutate: () => setShareModal({ isOpen: false, project: null }),
             onDeleteMutate: () => setDeleteModal({ isOpen: false, project: null }),
         })
+
+    const filteredAndSortedProjects = useMemo(() => {
+        let result = [...projects]
+
+        // Search filter
+        if (searchQuery.trim()) {
+            const query = searchQuery.toLowerCase().trim()
+            result = result.filter(
+                (project) =>
+                    project.title.toLowerCase().includes(query) ||
+                    project.description.toLowerCase().includes(query)
+            )
+        }
+
+        // Status filter
+        if (statusFilter !== 'any') {
+            result = result.filter((project) => {
+                const projectStatus = project.status || 'Draft'
+                return projectStatus === statusFilter
+            })
+        }
+
+        // Sort
+        if (sortOption === 'oldest') {
+            result.reverse()
+        }
+
+        return result
+    }, [projects, searchQuery, statusFilter, sortOption])
 
     const toggleStar = (id: string, event: React.MouseEvent) => {
         event.stopPropagation()
@@ -116,7 +151,10 @@ export const ProjectList: React.FC<ProjectListProps> = ({
 
     const handleShare = () => {
         if (!shareModal.project) return
-        shareMutation.mutate(shareModal.project.id)
+        shareMutation.mutate({
+            projectId: shareModal.project.id,
+            isSharedAsTemplate: !shareModal.project.isSharedAsTemplate,
+        })
     }
 
     const handleDelete = () => {
@@ -128,7 +166,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({
         <div className="relative h-full w-full flex-1 overflow-y-auto bg-background px-8 pb-8 pt-20 font-sans no-scrollbar md:p-16">
             <div className="relative z-10 mx-auto min-h-[520px] max-w-6xl">
                 <ProjectListView
-                    projects={projects}
+                    projects={filteredAndSortedProjects}
                     onNewProject={onNewProject}
                     onOpenProject={onOpenProject}
                     isInitialLoading={isInitialLoading}
@@ -145,6 +183,13 @@ export const ProjectList: React.FC<ProjectListProps> = ({
                     onOpenDuplicate={openDuplicateModal}
                     onOpenShare={openShareModal}
                     onOpenDelete={openDeleteModal}
+                    searchQuery={searchQuery}
+                    onSearchChange={setSearchQuery}
+                    sortOption={sortOption}
+                    onSortChange={setSortOption}
+                    statusFilter={statusFilter}
+                    onStatusFilterChange={setStatusFilter}
+                    hasUnfilteredProjects={projects.length > 0}
                 />
             </div>
 

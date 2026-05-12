@@ -433,6 +433,114 @@ const generationSound = async (data: GenerationSoundType) => {
     return updatedUser
 }
 
+// --- Memories ---
+
+type UpdateMemories = {
+    userId: string
+    memories: string
+}
+
+const getMemories = async (userId: string) => {
+    const user = await prisma.user.findUnique({
+        where: { id: userId, isDeleted: false },
+        select: { memories: true },
+    })
+
+    if (!user) {
+        throw new AppError('user not found', 404)
+    }
+
+    return { memories: user.memories }
+}
+
+const updateMemories = async (data: UpdateMemories) => {
+    const { userId, memories } = data
+
+    const existingUser = await prisma.user.findUnique({
+        where: { id: userId, isDeleted: false },
+    })
+
+    if (!existingUser) {
+        throw new AppError('user not found', 404)
+    }
+
+    const updatedUser = await prisma.user.update({
+        where: { id: userId },
+        data: { memories },
+    })
+
+    return { memories: updatedUser.memories }
+}
+
+const deleteMemories = async (userId: string) => {
+    const existingUser = await prisma.user.findUnique({
+        where: { id: userId, isDeleted: false },
+    })
+
+    if (!existingUser) {
+        throw new AppError('user not found', 404)
+    }
+
+    await prisma.user.update({
+        where: { id: userId },
+        data: { memories: null },
+    })
+}
+
+// --- Skills ---
+
+type UpdateSkills = {
+    userId: string
+    skills: string
+}
+
+const getSkills = async (userId: string) => {
+    const user = await prisma.user.findUnique({
+        where: { id: userId, isDeleted: false },
+        select: { skills: true },
+    })
+
+    if (!user) {
+        throw new AppError('user not found', 404)
+    }
+
+    return { skills: user.skills }
+}
+
+const updateSkills = async (data: UpdateSkills) => {
+    const { userId, skills } = data
+
+    const existingUser = await prisma.user.findUnique({
+        where: { id: userId, isDeleted: false },
+    })
+
+    if (!existingUser) {
+        throw new AppError('user not found', 404)
+    }
+
+    const updatedUser = await prisma.user.update({
+        where: { id: userId },
+        data: { skills },
+    })
+
+    return { skills: updatedUser.skills }
+}
+
+const deleteSkills = async (userId: string) => {
+    const existingUser = await prisma.user.findUnique({
+        where: { id: userId, isDeleted: false },
+    })
+
+    if (!existingUser) {
+        throw new AppError('user not found', 404)
+    }
+
+    await prisma.user.update({
+        where: { id: userId },
+        data: { skills: null },
+    })
+}
+
 export const profileService = {
     getInfo,
     getProfileCard,
@@ -447,4 +555,10 @@ export const profileService = {
     deleteAccount,
     chatSuggestions,
     generationSound,
+    getMemories,
+    updateMemories,
+    deleteMemories,
+    getSkills,
+    updateSkills,
+    deleteSkills,
 }

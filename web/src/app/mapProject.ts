@@ -49,15 +49,19 @@ const formatRelativeUpdatedAt = (updatedAt: Date, now: Date = new Date()) => {
 }
 
 export const mapBackendProjectToUIProject = (project: BackendProject): Project => {
-    const updatedAt = new Date(project.updatedAt)
+    const createdAt = new Date(project.createdAt)
 
     return {
         id: project.id,
         title: project.name,
         description: project.description ?? '',
         isStarred: project.isStarred,
-        updatedAt: formatRelativeUpdatedAt(updatedAt),
+        isSharedAsTemplate: project.isSharedAsTemplate ?? false,
+        createdAt: formatRelativeUpdatedAt(createdAt),
+        updatedAt: formatRelativeUpdatedAt(new Date(project.updatedAt)),
+        rawUpdatedAt: project.updatedAt,
         versionCount: project.versionCount ?? 0,
         currentVersionId: project.currentVersionId ?? null,
+        createdByUsername: project.user?.username ?? 'unknown',
     }
 }

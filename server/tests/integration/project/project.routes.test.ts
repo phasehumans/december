@@ -544,24 +544,51 @@ describe('project.routes.integration', () => {
         it('should return 200 and share project as template', async () => {
             const project = await createTestProject()
 
-            const res = await request(app).post(`/api/v1/projects/${project.id}/share`)
+            const res = await request(app)
+                .post(`/api/v1/projects/${project.id}/share`)
+                .send({ isSharedAsTemplate: true })
 
             expect(res.status).toBe(200)
             expect(res.body.success).toBe(true)
             expect(res.body.data.message).toBe('project shared as template')
         })
 
+        it('should return 200 and unshare project as template', async () => {
+            const project = await createTestProject(TEST_USER_ID, { isSharedAsTemplate: true })
+
+            const res = await request(app)
+                .post(`/api/v1/projects/${project.id}/share`)
+                .send({ isSharedAsTemplate: false })
+
+            expect(res.status).toBe(200)
+            expect(res.body.success).toBe(true)
+            expect(res.body.data.message).toBe('project unshared as template')
+        })
+
         it('should update isSharedAsTemplate in database', async () => {
             const project = await createTestProject()
 
-            await request(app).post(`/api/v1/projects/${project.id}/share`)
+            await request(app)
+                .post(`/api/v1/projects/${project.id}/share`)
+                .send({ isSharedAsTemplate: true })
 
             const db = await prisma.project.findUnique({ where: { id: project.id } })
             expect(db!.isSharedAsTemplate).toBe(true)
         })
 
+        it('should return 400 when isSharedAsTemplate is missing', async () => {
+            const project = await createTestProject()
+
+            const res = await request(app).post(`/api/v1/projects/${project.id}/share`).send({})
+
+            expect(res.status).toBe(400)
+            expect(res.body.success).toBe(false)
+        })
+
         it('should return 404 for non-existent project', async () => {
-            const res = await request(app).post('/api/v1/projects/non-existent-project/share')
+            const res = await request(app)
+                .post('/api/v1/projects/non-existent-project/share')
+                .send({ isSharedAsTemplate: true })
 
             expect(res.status).toBe(404)
             expect(res.body.success).toBe(false)
@@ -578,7 +605,9 @@ describe('project.routes.integration', () => {
             })
             const otherProject = await createTestProject(otherUser.id)
 
-            const res = await request(app).post(`/api/v1/projects/${otherProject.id}/share`)
+            const res = await request(app)
+                .post(`/api/v1/projects/${otherProject.id}/share`)
+                .send({ isSharedAsTemplate: true })
 
             expect(res.status).toBe(404)
         })

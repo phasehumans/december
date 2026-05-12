@@ -35,3 +35,11 @@ export enum GenerationSound {
 export const generationSoundSchema = z.object({
     generationSound: z.nativeEnum(GenerationSound),
 })
+
+export const memoriesSchema = z.object({
+    memories: z.string().max(10000),
+})
+
+export const skillsSchema = z.object({
+    skills: z.string().max(10000),
+})

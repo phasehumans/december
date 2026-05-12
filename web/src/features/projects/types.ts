@@ -4,10 +4,14 @@ export interface Project {
     id: string
     title: string
     description: string
+    createdAt: string
     updatedAt: string
+    rawUpdatedAt: string
     isStarred: boolean
+    isSharedAsTemplate: boolean
     versionCount: number
     currentVersionId: string | null
+    createdByUsername: string
     status?: 'Draft' | 'Generated' | 'Published' | 'Template'
 }
 
@@ -84,6 +88,7 @@ export interface ProjectDuplicateModalProps {
 export interface ProjectShareModalProps {
     isOpen: boolean
     projectTitle?: string
+    isSharedAsTemplate: boolean
     isPending: boolean
     onClose: () => void
     onConfirm: () => void

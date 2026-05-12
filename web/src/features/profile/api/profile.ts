@@ -3,6 +3,7 @@ import { apiRequest } from '@/shared/api/client'
 export type Profile = {
     id: string
     name: string
+    username: string
     email: string
     createdAt: string
     updatedAt: string
@@ -16,6 +17,8 @@ export type Profile = {
     notifySecurityAlerts?: boolean
     chatSuggestions?: boolean
     generationSound?: 'FIRST_GENERATION' | 'ALWAYS' | 'NEVER'
+    memories?: string | null
+    skills?: string | null
 }
 
 type BackendProfile = Profile
@@ -127,6 +130,52 @@ const deleteAccount = () => {
     })
 }
 
+// --- Memories ---
+
+type UpdateMemoriesInput = {
+    memories: string
+}
+
+const getMemories = () => {
+    return apiRequest<{ memories: string | null }>('/profile/memories')
+}
+
+const updateMemories = (data: UpdateMemoriesInput) => {
+    return apiRequest<{ memories: string | null }>('/profile/memories', {
+        method: 'POST',
+        body: JSON.stringify(data),
+    })
+}
+
+const deleteMemories = () => {
+    return apiRequest<void>('/profile/memories', {
+        method: 'DELETE',
+    })
+}
+
+// --- Skills ---
+
+type UpdateSkillsInput = {
+    skills: string
+}
+
+const getSkills = () => {
+    return apiRequest<{ skills: string | null }>('/profile/skills')
+}
+
+const updateSkills = (data: UpdateSkillsInput) => {
+    return apiRequest<{ skills: string | null }>('/profile/skills', {
+        method: 'POST',
+        body: JSON.stringify(data),
+    })
+}
+
+const deleteSkills = () => {
+    return apiRequest<void>('/profile/skills', {
+        method: 'DELETE',
+    })
+}
+
 export const profileAPI = {
     getProfile,
     updateName,
@@ -139,4 +188,10 @@ export const profileAPI = {
     signout,
     signoutAll,
     deleteAccount,
+    getMemories,
+    updateMemories,
+    deleteMemories,
+    getSkills,
+    updateSkills,
+    deleteSkills,
 }

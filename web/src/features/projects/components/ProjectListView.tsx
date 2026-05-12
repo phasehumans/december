@@ -5,6 +5,7 @@ import { ProjectListRow } from './ProjectListRow'
 import { Skeleton } from '@/shared/components/ui/Skeleton'
 import { Icons } from '@/shared/components/ui/Icons'
 import type { Project } from '@/features/projects/types'
+import type { SortOption, StatusFilter } from './ProjectList'
 
 interface ProjectListViewProps {
     projects: Project[]
@@ -24,6 +25,13 @@ interface ProjectListViewProps {
     onOpenDuplicate: (project: Project, event: React.MouseEvent) => void
     onOpenShare: (project: Project, event: React.MouseEvent) => void
     onOpenDelete: (project: Project, event: React.MouseEvent) => void
+    searchQuery: string
+    onSearchChange: (query: string) => void
+    sortOption: SortOption
+    onSortChange: (option: SortOption) => void
+    statusFilter: StatusFilter
+    onStatusFilterChange: (filter: StatusFilter) => void
+    hasUnfilteredProjects: boolean
 }
 
 const ProjectListAreaSkeleton: React.FC = () => {
@@ -97,6 +105,29 @@ const EmptyProjectsState: React.FC<{ onNewProject: () => void }> = ({ onNewProje
     )
 }
 
+const NoResultsState: React.FC = () => {
+    return (
+        <div className="flex min-h-[420px] flex-col items-center justify-center px-6 py-16 text-center">
+            <h2 className="text-[17px] font-medium text-[#D6D5C9]">No matching projects</h2>
+            <p className="mt-2 max-w-sm text-[13px] leading-6 text-[#7B7A79]">
+                Try adjusting your search or filters.
+            </p>
+        </div>
+    )
+}
+
+const SORT_LABELS: Record<SortOption, string> = {
+    newest: 'Newest',
+    oldest: 'Oldest',
+}
+
+const STATUS_LABELS: Record<StatusFilter, string> = {
+    any: 'Any',
+    Draft: 'Draft',
+    Generated: 'Generated',
+    Published: 'Published',
+}
+
 export const ProjectListView: React.FC<ProjectListViewProps> = ({
     projects,
     onNewProject,
@@ -115,6 +146,13 @@ export const ProjectListView: React.FC<ProjectListViewProps> = ({
     onOpenDuplicate,
     onOpenShare,
     onOpenDelete,
+    searchQuery,
+    onSearchChange,
+    sortOption,
+    onSortChange,
+    statusFilter,
+    onStatusFilterChange,
+    hasUnfilteredProjects,
 }) => {
     const [activeDropdown, setActiveDropdown] = React.useState<string | null>(null)
     const [visibleCount, setVisibleCount] = React.useState(10)
@@ -158,7 +196,7 @@ export const ProjectListView: React.FC<ProjectListViewProps> = ({
                 </div>
             </div>
 
-            {hasProjects && (
+            {hasUnfilteredProjects && (
                 <>
                     <div className="relative z-10 mb-4 flex w-full items-center">
                         <div className="relative w-full max-w-[480px]">
@@ -166,6 +204,8 @@ export const ProjectListView: React.FC<ProjectListViewProps> = ({
                             <input
                                 type="text"
                                 placeholder="Search projects..."
+                                value={searchQuery}
+                                onChange={(e) => onSearchChange(e.target.value)}
                                 className="w-full rounded-lg border border-[#383736] bg-[#171615] py-1.5 pl-9 pr-4 text-[13px] text-[#D6D5C9] transition-colors placeholder:text-[#7B7A79] hover:bg-[#1E1D1B] focus:border-[#7B7A79] focus:bg-[#1E1D1B] focus:outline-none"
                             />
                         </div>
@@ -180,7 +220,7 @@ export const ProjectListView: React.FC<ProjectListViewProps> = ({
                                     }
                                     className="flex items-center gap-2 rounded-full border border-[#383736] bg-[#171615] px-4 py-1.5 text-[13px] text-[#D6D5C9] transition-colors hover:bg-[#1E1D1B]"
                                 >
-                                    Sort: Newest{' '}
+                                    Sort: {SORT_LABELS[sortOption]}{' '}
                                     <Icons.ChevronDown className="h-3.5 w-3.5 text-[#7B7A79]" />
                                 </button>
                                 {activeDropdown === 'sort' && (
@@ -188,11 +228,29 @@ export const ProjectListView: React.FC<ProjectListViewProps> = ({
                                         <div className="mb-1 border-b border-[#383736] px-3 pb-2 text-[12px] font-medium text-[#7B7A79]">
                                             Sort by
                                         </div>
-                                        <button className="flex w-full items-center justify-between px-3 py-1.5 text-[13px] text-[#D6D5C9] hover:bg-[#242323]">
-                                            Newest first <Icons.Check className="h-4 w-4" />
+                                        <button
+                                            onClick={() => {
+                                                onSortChange('newest')
+                                                setActiveDropdown(null)
+                                            }}
+                                            className="flex w-full items-center justify-between px-3 py-1.5 text-[13px] text-[#D6D5C9] hover:bg-[#242323]"
+                                        >
+                                            Newest first{' '}
+                                            {sortOption === 'newest' && (
+                                                <Icons.Check className="h-4 w-4" />
+                                            )}
                                         </button>
-                                        <button className="flex w-full items-center justify-between px-3 py-1.5 text-[13px] text-[#D6D5C9] hover:bg-[#242323]">
-                                            Oldest first
+                                        <button
+                                            onClick={() => {
+                                                onSortChange('oldest')
+                                                setActiveDropdown(null)
+                                            }}
+                                            className="flex w-full items-center justify-between px-3 py-1.5 text-[13px] text-[#D6D5C9] hover:bg-[#242323]"
+                                        >
+                                            Oldest first{' '}
+                                            {sortOption === 'oldest' && (
+                                                <Icons.Check className="h-4 w-4" />
+                                            )}
                                         </button>
                                     </div>
                                 )}
@@ -207,7 +265,7 @@ export const ProjectListView: React.FC<ProjectListViewProps> = ({
                                     }
                                     className="flex items-center gap-2 rounded-full border border-[#383736] bg-[#171615] px-4 py-1.5 text-[13px] text-[#D6D5C9] transition-colors hover:bg-[#1E1D1B]"
                                 >
-                                    Status: Any{' '}
+                                    Status: {STATUS_LABELS[statusFilter]}{' '}
                                     <Icons.ChevronDown className="h-3.5 w-3.5 text-[#7B7A79]" />
                                 </button>
                                 {activeDropdown === 'status' && (
@@ -215,15 +273,23 @@ export const ProjectListView: React.FC<ProjectListViewProps> = ({
                                         <div className="mb-1 border-b border-[#383736] px-3 pb-2 text-[12px] font-medium text-[#7B7A79]">
                                             Publish status
                                         </div>
-                                        <button className="flex w-full items-center justify-between px-3 py-1.5 text-[13px] text-[#D6D5C9] hover:bg-[#242323]">
-                                            Draft
-                                        </button>
-                                        <button className="flex w-full items-center justify-between px-3 py-1.5 text-[13px] text-[#D6D5C9] hover:bg-[#242323]">
-                                            Generated <Icons.Check className="h-4 w-4" />
-                                        </button>
-                                        <button className="flex w-full items-center justify-between px-3 py-1.5 text-[13px] text-[#D6D5C9] hover:bg-[#242323]">
-                                            Published
-                                        </button>
+                                        {(['any', 'Draft', 'Generated', 'Published'] as const).map(
+                                            (option) => (
+                                                <button
+                                                    key={option}
+                                                    onClick={() => {
+                                                        onStatusFilterChange(option)
+                                                        setActiveDropdown(null)
+                                                    }}
+                                                    className="flex w-full items-center justify-between px-3 py-1.5 text-[13px] text-[#D6D5C9] hover:bg-[#242323]"
+                                                >
+                                                    {STATUS_LABELS[option]}{' '}
+                                                    {statusFilter === option && (
+                                                        <Icons.Check className="h-4 w-4" />
+                                                    )}
+                                                </button>
+                                            )
+                                        )}
                                     </div>
                                 )}
                             </div>
@@ -243,8 +309,10 @@ export const ProjectListView: React.FC<ProjectListViewProps> = ({
 
             {isInitialLoading ? (
                 <ProjectListAreaSkeleton />
-            ) : !hasProjects ? (
+            ) : !hasUnfilteredProjects ? (
                 <EmptyProjectsState onNewProject={onNewProject} />
+            ) : !hasProjects ? (
+                <NoResultsState />
             ) : (
                 <div className="flex flex-col">
                     <div className="min-h-[420px] flex flex-col gap-1 pb-4">

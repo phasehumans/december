@@ -87,7 +87,7 @@ export const ProfileSettingsContent: React.FC<ProfileSettingsContentProps> = ({
                         <div className="flex flex-col gap-0.5">
                             <span className="text-[14px] text-[#D6D5C9]">Email</span>
                             <span className="text-[13px] text-[#7B7A79]">
-                                {profile?.email || 'dev.chaitanyasonawane@gmail.com'}
+                                {profile?.email || 'No email set'}
                             </span>
                         </div>
                     </div>

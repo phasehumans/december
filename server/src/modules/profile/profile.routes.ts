@@ -21,4 +21,12 @@ profileRouter.delete('/', profileController.deleteAccount)
 profileRouter.post('/suggestions', profileController.chatSuggestions)
 profileRouter.post('/sound', profileController.generationSound)
 
+profileRouter.get('/memories', profileController.getMemories)
+profileRouter.post('/memories', profileController.updateMemories)
+profileRouter.delete('/memories', profileController.deleteMemories)
+
+profileRouter.get('/skills', profileController.getSkills)
+profileRouter.post('/skills', profileController.updateSkills)
+profileRouter.delete('/skills', profileController.deleteSkills)
+
 export default profileRouter
