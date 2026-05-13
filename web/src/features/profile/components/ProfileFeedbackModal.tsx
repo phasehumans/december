@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Frown, Meh, Smile } from 'lucide-react'
+import { Frown, Meh, Smile, Loader2 } from 'lucide-react'
 
 interface ProfileFeedbackModalProps {
     isOpen: boolean
@@ -11,10 +11,11 @@ export const ProfileFeedbackModal: React.FC<ProfileFeedbackModalProps> = ({ isOp
     const modalRef = useRef<HTMLDivElement>(null)
     const [rating, setRating] = useState<'sad' | 'neutral' | 'happy' | null>(null)
     const [feedback, setFeedback] = useState('')
+    const [isSubmitting, setIsSubmitting] = useState(false)
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') onClose()
+            if (e.key === 'Escape' && !isSubmitting) onClose()
         }
         if (isOpen) {
             window.addEventListener('keydown', handleKeyDown)
@@ -30,19 +31,30 @@ export const ProfileFeedbackModal: React.FC<ProfileFeedbackModalProps> = ({ isOp
             const mainScroll = document.getElementById('main-scroll-container')
             if (mainScroll) mainScroll.style.overflow = 'auto'
         }
-    }, [isOpen, onClose])
+    }, [isOpen, onClose, isSubmitting])
 
     if (!isOpen || typeof document === 'undefined') return null
 
     const handleBackdropClick = (e: React.MouseEvent) => {
-        if (e.target === e.currentTarget) {
+        if (e.target === e.currentTarget && !isSubmitting) {
             onClose()
         }
     }
 
-    const handleSubmit = () => {
-        // Handle submission logic here
+    const handleSubmit = async () => {
+        if (!feedback.trim() && !rating) return
+
+        setIsSubmitting(true)
+        // Simulate API call
+        await new Promise((resolve) => setTimeout(resolve, 1000))
+        setIsSubmitting(false)
         onClose()
+
+        // Reset state after closing
+        setTimeout(() => {
+            setFeedback('')
+            setRating(null)
+        }, 200)
     }
 
     return createPortal(
@@ -62,28 +74,35 @@ export const ProfileFeedbackModal: React.FC<ProfileFeedbackModalProps> = ({ isOp
                 <textarea
                     value={feedback}
                     onChange={(e) => setFeedback(e.target.value)}
-                    className="w-full bg-[#100E12] border border-[#242323] rounded-xl p-4 text-[14px] text-[#D6D5C9] outline-none resize-none h-[130px] mb-6 focus:border-[#4A4948] transition-colors placeholder:text-[#4A4948]"
+                    className="w-full bg-black/20 border border-[#242323] rounded-xl p-4 text-[14px] text-[#D6D5C9] outline-none resize-none h-[130px] mb-6 focus:border-[#4A4948] transition-colors placeholder:text-[#4A4948]"
                     placeholder="Your feedback"
+                    disabled={isSubmitting}
                 />
 
                 <div className="flex items-center justify-between mt-1">
                     {/* Ratings */}
                     <div className="flex gap-2.5">
                         <button
+                            type="button"
                             onClick={() => setRating('sad')}
-                            className={`p-2.5 rounded-xl border transition-colors ${rating === 'sad' ? 'bg-[#242323] border-[#4A4948] text-[#D6D5C9]' : 'border-[#242323] bg-[#100E12] text-[#7B7A79] hover:bg-[#1E1D1B] hover:text-[#D6D5C9]'}`}
+                            disabled={isSubmitting}
+                            className={`p-2.5 rounded-xl border transition-colors ${rating === 'sad' ? 'bg-[#242323] border-[#4A4948] text-[#D6D5C9]' : 'border-[#242323] bg-black/20 text-[#7B7A79] hover:bg-[#1E1D1B] hover:text-[#D6D5C9]'} disabled:opacity-50 disabled:cursor-not-allowed`}
                         >
                             <Frown className="w-[18px] h-[18px]" strokeWidth={2} />
                         </button>
                         <button
+                            type="button"
                             onClick={() => setRating('neutral')}
-                            className={`p-2.5 rounded-xl border transition-colors ${rating === 'neutral' ? 'bg-[#242323] border-[#4A4948] text-[#D6D5C9]' : 'border-[#242323] bg-[#100E12] text-[#7B7A79] hover:bg-[#1E1D1B] hover:text-[#D6D5C9]'}`}
+                            disabled={isSubmitting}
+                            className={`p-2.5 rounded-xl border transition-colors ${rating === 'neutral' ? 'bg-[#242323] border-[#4A4948] text-[#D6D5C9]' : 'border-[#242323] bg-black/20 text-[#7B7A79] hover:bg-[#1E1D1B] hover:text-[#D6D5C9]'} disabled:opacity-50 disabled:cursor-not-allowed`}
                         >
                             <Meh className="w-[18px] h-[18px]" strokeWidth={2} />
                         </button>
                         <button
+                            type="button"
                             onClick={() => setRating('happy')}
-                            className={`p-2.5 rounded-xl border transition-colors ${rating === 'happy' ? 'bg-[#242323] border-[#4A4948] text-[#D6D5C9]' : 'border-[#242323] bg-[#100E12] text-[#7B7A79] hover:bg-[#1E1D1B] hover:text-[#D6D5C9]'}`}
+                            disabled={isSubmitting}
+                            className={`p-2.5 rounded-xl border transition-colors ${rating === 'happy' ? 'bg-[#242323] border-[#4A4948] text-[#D6D5C9]' : 'border-[#242323] bg-black/20 text-[#7B7A79] hover:bg-[#1E1D1B] hover:text-[#D6D5C9]'} disabled:opacity-50 disabled:cursor-not-allowed`}
                         >
                             <Smile className="w-[18px] h-[18px]" strokeWidth={2} />
                         </button>
@@ -92,16 +111,24 @@ export const ProfileFeedbackModal: React.FC<ProfileFeedbackModalProps> = ({ isOp
                     {/* Actions */}
                     <div className="flex items-center gap-3">
                         <button
+                            type="button"
                             onClick={onClose}
-                            className="px-5 py-2 rounded-xl border border-[#383736] text-[13.5px] font-medium text-[#D6D5C9] hover:bg-[#1E1D1B] transition-colors"
+                            disabled={isSubmitting}
+                            className="px-5 py-2 rounded-xl border border-[#383736] text-[13.5px] font-medium text-[#D6D5C9] hover:bg-[#1E1D1B] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             Cancel
                         </button>
                         <button
+                            type="button"
                             onClick={handleSubmit}
-                            className="px-5 py-2 rounded-xl bg-[#D6D5C9] text-[#171615] text-[13.5px] font-medium hover:bg-white transition-colors"
+                            disabled={isSubmitting || (!feedback.trim() && !rating)}
+                            className="px-5 py-2 rounded-xl bg-[#D6D5C9] text-[#171615] text-[13.5px] font-medium hover:bg-white transition-colors flex items-center justify-center min-w-[80px] disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            Submit
+                            {isSubmitting ? (
+                                <Loader2 className="w-4 h-4 animate-spin text-[#171615]" />
+                            ) : (
+                                'Submit'
+                            )}
                         </button>
                     </div>
                 </div>
