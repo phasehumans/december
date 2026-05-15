@@ -7,6 +7,7 @@ import { refreshAuthSession } from '@/shared/api/client'
 import {
     generationAPI,
     type AppliedProjectChangeResult,
+    type GenerationStreamEvent,
 } from '@/features/generation/api/generation'
 import {
     projectAPI,
@@ -961,6 +962,90 @@ export const useAppController = () => {
 
             void (async () => {
                 try {
+                    let didHydrateStreamResult = false
+                    const handleStreamEvent = (event: GenerationStreamEvent) => {
+                        const activeMessageId = activeAssistantMessageIdRef.current
+
+                        if (!activeMessageId) {
+                            return
+                        }
+
+                        switch (event.type) {
+                            case 'connected':
+                                return
+                            case 'phase':
+                                if (event.data.phase === 'planning') {
+                                    setGenerationPhase('planning')
+                                    setAssistantStatus(activeMessageId, 'planning')
+                                    ensureAssistantSpacing(activeMessageId)
+                                }
+
+                                if (event.data.phase === 'building') {
+                                    setGenerationPhase('building')
+                                    setAssistantStatus(activeMessageId, 'building')
+                                }
+
+                                if (event.data.phase === 'done') {
+                                    setGenerationPhase('done')
+                                    setAssistantStatus(activeMessageId, 'done')
+                                }
+
+                                return
+                            case 'message-start':
+                                if (event.data.status === 'planning') {
+                                    setGenerationPhase('planning')
+                                    setAssistantStatus(activeMessageId, 'planning')
+                                    ensureAssistantSpacing(activeMessageId)
+                                }
+
+                                return
+                            case 'message-chunk':
+                                appendAssistantChunk(activeMessageId, event.data.chunk)
+                                return
+                            case 'message-complete':
+                            case 'patch-plan':
+                            case 'build-plan':
+                                return
+                            case 'file-start':
+                                startGeneratedFile(event.data)
+                                return
+                            case 'file-chunk':
+                                appendGeneratedFileChunk(event.data.path, event.data.chunk)
+                                return
+                            case 'file-complete':
+                                completeGeneratedFile(event.data.path)
+                                return
+                            case 'file-error':
+                                markGeneratedFileError(event.data.path)
+                                return
+                            case 'result':
+                                if (
+                                    event.data.versions &&
+                                    event.data.chatMessages &&
+                                    event.data.appliedFiles &&
+                                    event.data.deletedFiles &&
+                                    event.data.assistantMessage
+                                ) {
+                                    didHydrateStreamResult = true
+                                    hydrateAppliedProjectChange({
+                                        project: event.data.project,
+                                        version: event.data.version,
+                                        versions: event.data.versions,
+                                        chatMessages: event.data.chatMessages,
+                                        generatedFiles: event.data.generatedFiles,
+                                        appliedFiles: event.data.appliedFiles,
+                                        deletedFiles: event.data.deletedFiles,
+                                        assistantMessage: event.data.assistantMessage,
+                                    })
+                                    void queryClient.invalidateQueries({ queryKey: ['projects'] })
+                                }
+                                return
+                            case 'project-created':
+                            case 'error':
+                                return
+                        }
+                    }
+
                     const result =
                         kind === 'edit'
                             ? await generationAPI.applyProjectEdit({
@@ -970,6 +1055,7 @@ export const useAppController = () => {
                                   ...(selectedElement ? { selectedElement } : {}),
                                   ...(canvasState ? { canvasState } : {}),
                                   signal: abortController.signal,
+                                  onEvent: handleStreamEvent,
                               })
                             : await generationAPI.applyProjectFix({
                                   projectId: activeProjectId,
@@ -977,14 +1063,17 @@ export const useAppController = () => {
                                   errorMessage: errorMessage ?? '',
                                   ...(stack ? { stack } : {}),
                                   signal: abortController.signal,
+                                  onEvent: handleStreamEvent,
                               })
 
                     if (abortController.signal.aborted) {
                         return
                     }
 
-                    hydrateAppliedProjectChange(result)
-                    void queryClient.invalidateQueries({ queryKey: ['projects'] })
+                    if (result && !didHydrateStreamResult) {
+                        hydrateAppliedProjectChange(result)
+                        void queryClient.invalidateQueries({ queryKey: ['projects'] })
+                    }
                 } catch (error) {
                     if (abortController.signal.aborted) {
                         return
@@ -1012,10 +1101,17 @@ export const useAppController = () => {
             activeProjectId,
             activeProjectVersionId,
             abortGenerationRequest,
+            appendAssistantChunk,
+            appendGeneratedFileChunk,
+            completeGeneratedFile,
+            ensureAssistantSpacing,
             hydrateAppliedProjectChange,
+            markGeneratedFileError,
             queryClient,
             resetGenerationRefs,
             setAssistantError,
+            setAssistantStatus,
+            startGeneratedFile,
         ]
     )
 
