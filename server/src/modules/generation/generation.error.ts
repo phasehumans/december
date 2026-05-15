@@ -25,7 +25,7 @@ export const normalizeGenerationError = (error: unknown, options?: { path?: stri
         }
     }
 
-    if (normalizedMessage.includes('context agent')) {
+    if (normalizedMessage.includes('plan agent intent')) {
         return {
             internalMessage,
             publicMessage:
