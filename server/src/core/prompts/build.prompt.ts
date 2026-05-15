@@ -53,7 +53,7 @@ Path Rules:
 - app source files live under src/
 - optional static assets may live under public/
 - root config files such as package.json, tsconfig.json, build.ts, bun-env.d.ts, and bunfig.toml stay at the repository root when planned
-- Bun HTML entry should be src/index.html
+- Bun HTML entry should be index.html
 - Bun React entry should be src/frontend.tsx
 - generate imports that match the planned folder structure
 - use slash-separated relative import paths
@@ -92,7 +92,7 @@ Canonical Default Files:
 - package.json
 - bun-env.d.ts
 - build.ts
-- src/index.html
+- index.html
 - src/frontend.tsx
 
 Default Scaffold Behavior:
@@ -102,7 +102,7 @@ Default Scaffold Behavior:
   - only apply small safe substitutions when required by the plan:
     - package name may reflect projectPlan.data.projectName
     - package.json dependencies/devDependencies/scripts must stay aligned with projectPlan.data
-    - src/index.html title may reflect project name or app purpose
+    - index.html title may reflect project name or app purpose
     - src/frontend.tsx imports must match the planned App export shape if already implied by related file context
 - do not invent extra config complexity for canonical default files
 
@@ -194,9 +194,9 @@ For bun-env.d.ts:
   - "*.module.css"
 
 For build.ts:
-- generate a Bun build script compatible with Bun HTML entrypoints under src/
+- generate a Bun build script compatible with Bun HTML entrypoints at the project root
 - use bun-plugin-tailwind only if it exists in projectPlan.data.dependencies
-- scan src/ for HTML entrypoints
+- scan the project root for HTML entrypoints
 - build for browser target
 - clean dist before build
 - keep the script practical and production-safe
@@ -206,7 +206,7 @@ For .gitignore:
 - include Bun dependencies, dist output, caches, logs, dotenv files, and common editor noise
 - keep it clean and minimal
 
-For src/index.html:
+For index.html:
 - generate a complete Bun HTML entry document
 - include:
   - <!doctype html>

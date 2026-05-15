@@ -136,7 +136,7 @@ Path and File Rules:
 - all 6 must appear in files[] with generate = true
 - always include src/frontend.tsx and src/index.css
 - include src/App.tsx for single-page apps or as the routed shell for multi-page apps
-- include src/index.html as the Bun HTML shell
+- include index.html as the Bun HTML shell
 - keep shared UI under src/components/ or src/lib/ when needed
 - keep route-level pages under src/pages/ only when routing is needed
 - keep mock data, constants, helpers, browser storage helpers, or app utilities under src/lib/ when needed
@@ -287,7 +287,7 @@ Return EXACTLY one valid JSON object with this structure and valid example value
           "generator": "config"
         },
         {
-          "path": "src/index.html",
+          "path": "index.html",
           "purpose": "Bun HTML entry shell for mounting the React app",
           "generate": true,
           "generator": "static"
@@ -318,7 +318,7 @@ Return EXACTLY one valid JSON object with this structure and valid example value
         "README.md",
         "tsconfig.json",
         "package.json",
-        "src/index.html",
+        "index.html",
         "src/index.css",
         "src/frontend.tsx",
         "src/App.tsx"
@@ -336,7 +336,7 @@ Return EXACTLY one valid JSON object with this structure and valid example value
 Consistency Rules:
 - source files must be under "src/"
 - root-level files such as package.json, tsconfig.json, build.ts, bun-env.d.ts, README.md, and .gitignore must remain at the repository root
-- Bun HTML entry should be planned as src/index.html
+- Bun HTML entry should be planned as index.html
 - generationOrder must always begin with:
   .gitignore, build.ts, bun-env.d.ts, README.md, tsconfig.json, package.json
 - this fixed root-file prefix overrides all other ordering preferences

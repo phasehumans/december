@@ -35,6 +35,21 @@ export const previewSelectedElementSchema = z
     })
     .strict()
 
+export const applyProjectEditSchema = z.object({
+    projectId: z.string().uuid(),
+    versionId: z.string().uuid().optional(),
+    prompt: z.string().min(1),
+    selectedElement: previewSelectedElementSchema.optional(),
+    canvasState: canvasDocumentSchema.optional(),
+})
+
+export const applyProjectFixSchema = z.object({
+    projectId: z.string().uuid(),
+    versionId: z.string().uuid().optional(),
+    errorMessage: z.string().min(1),
+    stack: z.string().optional(),
+})
+
 export const projectIntentSchema = z.object({
     prompt: z.string(),
     summary: z.string(),
@@ -234,3 +249,65 @@ const projectChangeAgentResponseSchema = z
 
 export const editAgentResponseSchema = projectChangeAgentResponseSchema
 export const fixAgentResponseSchema = projectChangeAgentResponseSchema
+
+export const projectPatchOperationSchema = z
+    .object({
+        path: z.string().min(1),
+        action: z.enum(['create', 'update', 'delete']),
+        purpose: z.string().min(1),
+        instructions: z.string().min(1),
+    })
+    .strict()
+
+export const projectChangePlanDataSchema = z
+    .object({
+        summary: z.string().min(1),
+        operations: z.array(projectPatchOperationSchema).min(1),
+    })
+    .strict()
+    .superRefine((data, ctx) => {
+        const paths = data.operations.map((operation) => operation.path)
+        const duplicatePath = paths.find((path, index) => paths.indexOf(path) !== index)
+
+        if (duplicatePath) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                path: ['operations'],
+                message: `duplicate patch operation path: ${duplicatePath}`,
+            })
+        }
+    })
+
+export const projectChangePlanSchema = z
+    .object({
+        success: z.boolean(),
+        message: z.string(),
+        data: projectChangePlanDataSchema.nullable(),
+        errors: z.array(z.string()),
+    })
+    .strict()
+    .superRefine((plan, ctx) => {
+        if (plan.success && !plan.data) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                path: ['data'],
+                message: 'change plan data is required when success is true',
+            })
+        }
+
+        if (!plan.success && plan.data !== null) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                path: ['data'],
+                message: 'change plan data must be null when success is false',
+            })
+        }
+    })
+
+export const projectChangePlanResponseSchema = z
+    .object({
+        message: z.string().min(1),
+        summary: z.string().min(1),
+        plan: projectChangePlanSchema,
+    })
+    .strict()

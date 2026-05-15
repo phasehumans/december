@@ -5,6 +5,8 @@ import type { CanvasDocument } from '../canvas/canvas.persistence'
 
 import {
     plannedProjectFileSchema,
+    projectChangePlanSchema,
+    projectPatchOperationSchema,
     projectIntentSchema,
     projectPlanSchema,
 } from './generation.schema'
@@ -20,6 +22,8 @@ export type GenerateWebsiteInput = {
 export type ProjectIntent = z.infer<typeof projectIntentSchema>
 export type ProjectPlan = z.infer<typeof projectPlanSchema>
 export type PlannedProjectFile = z.infer<typeof plannedProjectFileSchema>
+export type ProjectChangePlan = z.infer<typeof projectChangePlanSchema>
+export type ProjectPatchOperation = z.infer<typeof projectPatchOperationSchema>
 export type ProjectRecord = Awaited<ReturnType<typeof prisma.project.create>>
 
 export type StoredProjectFile = {
@@ -96,6 +100,13 @@ export type GenerationStreamEvent =
           }
       }
     | {
+          type: 'patch-plan'
+          data: {
+              files: ProjectPatchOperation[]
+              totalFiles: number
+          }
+      }
+    | {
           type: 'file-start'
           data: {
               path: string
@@ -138,8 +149,13 @@ export type GenerationStreamEvent =
                   status: 'READY'
               }
               intent: ProjectIntent
-              plan: ProjectPlan
+              plan: ProjectPlan | ProjectChangePlan
               generatedFiles: Record<string, string>
+              versions?: VersionSummary[]
+              chatMessages?: any[]
+              appliedFiles?: string[]
+              deletedFiles?: string[]
+              assistantMessage?: string
           }
       }
 

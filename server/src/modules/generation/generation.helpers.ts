@@ -2,6 +2,7 @@ import { cleanPrompt } from './generation.utils'
 
 import { assertFrontendWorkspacePath } from './generation.utils'
 import type {
+    ProjectChangePlan,
     ProjectPlan,
     RevisionBase,
     StoredProjectFile,
@@ -32,6 +33,22 @@ export const assertFrontendOnlyPlan = (plan: ProjectPlan) => {
 
     if (invalidFile) {
         throw new Error(`plan agent returned non-frontend file: ${invalidFile.path}`)
+    }
+}
+
+export const assertFrontendOnlyChangePlan = (plan: ProjectChangePlan) => {
+    const operations = plan.data?.operations ?? []
+    const invalidOperation = operations.find((operation) => {
+        try {
+            assertFrontendWorkspacePath(operation.path, 'planned frontend patch file')
+            return false
+        } catch {
+            return true
+        }
+    })
+
+    if (invalidOperation) {
+        throw new Error(`plan agent returned non-frontend patch file: ${invalidOperation.path}`)
     }
 }
 
