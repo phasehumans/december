@@ -1,4 +1,4 @@
-export const CONTEXT_AGENT_PROMPT = `You are the senior frontend developer agent for December.
+export const PLAN_INTENT_PROMPT = `You are the senior frontend developer agent for December.
 
 Your job is to convert a user's website or app request into exactly 2 outputs:
 1. summary -> a user-visible thinking stream that shows how the request is being understood and narrowed in real time

@@ -1,4 +1,4 @@
-import { ApiError, apiFetch, apiRequest } from '@/shared/api/client'
+import { ApiError, apiFetch } from '@/shared/api/client'
 import type { CanvasDocument, CanvasItem } from '@/features/canvas/types'
 import type {
     BackendProject,
@@ -80,6 +80,18 @@ export type GenerationStreamEvent =
           }
       }
     | {
+          type: 'patch-plan'
+          data: {
+              files: Array<{
+                  path: string
+                  action: 'create' | 'update' | 'delete'
+                  purpose: string
+                  instructions: string
+              }>
+              totalFiles: number
+          }
+      }
+    | {
           type: 'file-start'
           data: {
               path: string
@@ -122,6 +134,11 @@ export type GenerationStreamEvent =
               intent: unknown
               plan: unknown
               generatedFiles: Record<string, string>
+              versions?: BackendProjectVersionSummary[]
+              chatMessages?: BackendProjectMessage[]
+              appliedFiles?: string[]
+              deletedFiles?: string[]
+              assistantMessage?: string
           }
       }
     | {
@@ -145,6 +162,7 @@ type ApplyProjectEditInput = {
     selectedElement?: PreviewSelectedElementPayload | null
     canvasState?: CanvasDocument
     signal?: AbortSignal
+    onEvent: (event: GenerationStreamEvent) => void
 }
 type ApplyProjectFixInput = {
     projectId: string
@@ -152,6 +170,7 @@ type ApplyProjectFixInput = {
     errorMessage: string
     stack?: string
     signal?: AbortSignal
+    onEvent: (event: GenerationStreamEvent) => void
 }
 
 const stripSerializableCanvasItemContent = (item: CanvasItem): CanvasItem => {
@@ -296,11 +315,69 @@ const generateProjectStream = async ({
     return resultEvent?.data ?? null
 }
 
-const applyProjectEdit = (data: ApplyProjectEditInput) => {
+const readGenerationStream = async (
+    res: Response,
+    onEvent: (event: GenerationStreamEvent) => void
+) => {
+    if (!res.ok) {
+        throw await toApiError(res)
+    }
+
+    if (!res.body) {
+        throw new Error('generation stream body is missing')
+    }
+
+    const reader = res.body.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ''
+    let resultEvent: Extract<GenerationStreamEvent, { type: 'result' }> | null = null
+
+    while (true) {
+        const { done, value } = await reader.read()
+        buffer += decoder.decode(value, { stream: !done })
+        buffer = buffer.replace(/\r/g, '')
+
+        let boundaryIndex = buffer.indexOf('\n\n')
+
+        while (boundaryIndex !== -1) {
+            const block = buffer.slice(0, boundaryIndex).trim()
+            buffer = buffer.slice(boundaryIndex + 2)
+
+            if (block) {
+                const parsedEvent = parseEventBlock(block)
+
+                if (parsedEvent) {
+                    onEvent(parsedEvent)
+
+                    if (parsedEvent.type === 'error') {
+                        throw new ApiError(parsedEvent.data.message, 500, parsedEvent.data)
+                    }
+
+                    if (parsedEvent.type === 'result') {
+                        resultEvent = parsedEvent
+                    }
+                }
+            }
+
+            boundaryIndex = buffer.indexOf('\n\n')
+        }
+
+        if (done) {
+            break
+        }
+    }
+
+    return resultEvent?.data ?? null
+}
+
+const applyProjectEdit = async (data: ApplyProjectEditInput) => {
     const sanitizedCanvasState = sanitizeCanvasStateForRequest(data.canvasState)
 
-    return apiRequest<AppliedProjectChangeResult>('/generate/edit', {
+    const res = await apiFetch('/generate/edit', {
         method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
         body: JSON.stringify({
             projectId: data.projectId,
             ...(data.versionId ? { versionId: data.versionId } : {}),
@@ -310,11 +387,16 @@ const applyProjectEdit = (data: ApplyProjectEditInput) => {
         }),
         signal: data.signal,
     })
+
+    return (await readGenerationStream(res, data.onEvent)) as AppliedProjectChangeResult | null
 }
 
-const applyProjectFix = (data: ApplyProjectFixInput) => {
-    return apiRequest<AppliedProjectChangeResult>('/generate/fix', {
+const applyProjectFix = async (data: ApplyProjectFixInput) => {
+    const res = await apiFetch('/generate/fix', {
         method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
         body: JSON.stringify({
             projectId: data.projectId,
             ...(data.versionId ? { versionId: data.versionId } : {}),
@@ -323,6 +405,8 @@ const applyProjectFix = (data: ApplyProjectFixInput) => {
         }),
         signal: data.signal,
     })
+
+    return (await readGenerationStream(res, data.onEvent)) as AppliedProjectChangeResult | null
 }
 
 export const generationAPI = {

@@ -12,6 +12,7 @@ const ROOT_FRONTEND_FILE_PATTERNS = [
     /^README\.md$/,
     /^tsconfig\.json$/,
     /^package\.json$/,
+    /^index\.html$/,
 ]
 
 const FRONTEND_DIRECTORY_PREFIXES = ['src/', 'public/']

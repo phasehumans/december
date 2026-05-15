@@ -1,2 +1,2 @@
-﻿export { generateProjectFile } from './build'
-export { extractProjectIntent, extractProjectPlan } from './intake'
+﻿export { generateProjectFile, generateProjectPatchFile } from './build'
+export { extractProjectChangePlan, extractProjectIntent, extractProjectPlan } from './intake'

@@ -8,5 +8,7 @@ const generateRouter = Router()
 
 generateRouter.use(authMiddleware)
 generateRouter.post('/', generateContoller.generateWebsite)
+generateRouter.post('/edit', generateContoller.applyProjectEdit)
+generateRouter.post('/fix', generateContoller.applyProjectFix)
 
 export default generateRouter

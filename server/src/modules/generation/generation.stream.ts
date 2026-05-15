@@ -1,4 +1,8 @@
-﻿import type { GenerateWebsiteInput, PlannedProjectFile } from './generation.types'
+﻿import type {
+    GenerateWebsiteInput,
+    PlannedProjectFile,
+    ProjectPatchOperation,
+} from './generation.types'
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
@@ -141,6 +145,56 @@ export const emitFileStream = async (
             path: data.file.path,
             purpose: data.file.purpose,
             generator: data.file.generator,
+            index: data.index,
+            total: data.total,
+        },
+    })
+
+    await sleep(32)
+
+    for (const chunk of splitFileContentIntoChunks(data.content)) {
+        await onEvent({
+            type: 'file-chunk',
+            data: {
+                path: data.file.path,
+                chunk,
+            },
+        })
+
+        await sleep(10)
+    }
+
+    await sleep(20)
+
+    await onEvent({
+        type: 'file-complete',
+        data: {
+            path: data.file.path,
+            index: data.index,
+            total: data.total,
+        },
+    })
+}
+
+export const emitPatchFileStream = async (
+    onEvent: GenerateWebsiteInput['onEvent'],
+    data: {
+        file: ProjectPatchOperation
+        content: string
+        index: number
+        total: number
+    }
+) => {
+    if (!onEvent) {
+        return
+    }
+
+    await onEvent({
+        type: 'file-start',
+        data: {
+            path: data.file.path,
+            purpose: data.file.purpose,
+            generator: 'component',
             index: data.index,
             total: data.total,
         },
