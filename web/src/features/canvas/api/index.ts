@@ -1,5 +1,6 @@
-import { apiRequest } from '@/shared/api/client'
 import type { CanvasAssetKind, CanvasAssetSource } from '@/features/canvas/types'
+
+import { apiRequest } from '@/shared/api/client'
 
 export interface WebClipResult {
     id: string

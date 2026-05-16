@@ -1,17 +1,17 @@
-import express from 'express'
-import cors from 'cors'
 import cookieParser from 'cookie-parser'
+import cors from 'cors'
+import express from 'express'
 
 import authRouter from './modules/auth/auth.routes'
-import profileRouter from './modules/profile/profile.routes'
-import projectRouter from './modules/project/project.routes'
 import canvasRouter from './modules/canvas/canvas.routes'
 import generateRouter from './modules/generation/generation.routes'
+import integrationsRouter from './modules/integrations/integrations.routes'
+import profileRouter from './modules/profile/profile.routes'
+import projectRouter from './modules/project/project.routes'
 import runtimeRouter from './modules/runtime/runtime.routes'
+import templateRouter from './modules/template/template.routes'
 import uploadRouter, { importRouter } from './modules/upload/upload.routes'
 import usageRouter from './modules/usage/usage.routes'
-import templateRouter from './modules/template/template.routes'
-import integrationsRouter from './modules/integrations/integrations.routes'
 // import notificationRouter from './modules/notification/notification.route'
 
 const app = express()

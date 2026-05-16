@@ -2,8 +2,9 @@ import React from 'react'
 
 import { OutputHeaderDevicePicker } from './OutputHeaderDevicePicker'
 
-import { cn } from '@/shared/lib/utils'
 import type { PreviewDevice } from '@/features/preview/types'
+
+import { cn } from '@/shared/lib/utils'
 
 interface OutputHeaderCenterControlsProps {
     device: PreviewDevice

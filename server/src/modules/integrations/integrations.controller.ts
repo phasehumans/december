@@ -1,5 +1,6 @@
-import type { Request, Response } from 'express'
 import { integrationsService } from './integrations.service'
+
+import type { Request, Response } from 'express'
 
 const getUserGithubRepos = async (req: Request, res: Response) => {
     const userId = req.user?.userId as string | undefined

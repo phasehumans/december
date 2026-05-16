@@ -1,5 +1,6 @@
-import { ApiError, apiFetch, apiRequest } from '@/shared/api/client'
 import type { CanvasDocument } from '@/features/canvas/types'
+
+import { ApiError, apiFetch, apiRequest } from '@/shared/api/client'
 
 export type BackendProject = {
     id: string

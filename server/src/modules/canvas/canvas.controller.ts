@@ -1,7 +1,7 @@
-import type { Request, Response } from 'express'
-
 import { webClipRequestSchema } from './canvas.schema'
 import { canvasService } from './canvas.service'
+
+import type { Request, Response } from 'express'
 
 const createWebClips = async (req: Request, res: Response) => {
     const userId = req.user?.userId as string | undefined

@@ -1,4 +1,3 @@
-import React, { useState } from 'react'
 import {
     Calendar,
     ChevronDown,
@@ -9,6 +8,7 @@ import {
     ChevronRight,
     UserCircle,
 } from 'lucide-react'
+import React, { useState } from 'react'
 
 const usageData = [
     {

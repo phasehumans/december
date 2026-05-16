@@ -1,12 +1,14 @@
-﻿import type { Request, Response, NextFunction } from 'express'
-import axios from 'axios'
+﻿import axios from 'axios'
 import { OAuth2Client } from 'google-auth-library'
 
-import { authService } from './auth.service'
-import { loginSchema, signupSchema } from './auth.schema'
 import { AppError } from '../../utils/appError'
+
 import { authCookie } from './auth.cookie'
+import { loginSchema, signupSchema } from './auth.schema'
+import { authService } from './auth.service'
 import { authToken } from './auth.token'
+
+import type { Request, Response, NextFunction } from 'express'
 
 const signup = async (req: Request, res: Response) => {
     const parseData = signupSchema.safeParse(req.body)

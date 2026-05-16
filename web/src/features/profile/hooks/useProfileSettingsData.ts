@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { profileAPI } from '@/features/profile/api/profile'
 import type { Profile } from '@/features/profile/types'
+
+import { profileAPI } from '@/features/profile/api/profile'
 
 const profileQueryKey = ['profile'] as const
 

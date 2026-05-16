@@ -1,5 +1,3 @@
-import React from 'react'
-import { createPortal } from 'react-dom'
 import {
     User,
     LogOut,
@@ -10,8 +8,10 @@ import {
     CreditCard,
     CircleDollarSign,
 } from 'lucide-react'
+import React from 'react'
+import { createPortal } from 'react-dom'
+
 import { Icons } from '@/shared/components/ui/Icons'
-import { cn } from '@/shared/lib/utils'
 
 interface UserProfilePopoverProps {
     isOpen: boolean

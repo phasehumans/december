@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react'
 
 import { Icons } from './Icons'
+
 import { cn } from '@/shared/lib/utils'
 
 interface PromptFooterProps {

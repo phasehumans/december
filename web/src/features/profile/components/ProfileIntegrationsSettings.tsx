@@ -1,6 +1,6 @@
-import React, { useState } from 'react'
-import { Github, GitBranch, Clock, ArrowRight, Loader2, Lock, Globe } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
+import { Github, GitBranch, Clock, ArrowRight, Loader2, Lock, Globe } from 'lucide-react'
+import React, { useState } from 'react'
 
 import { profileAPI, type GithubRepo } from '@/features/profile/api/profile'
 

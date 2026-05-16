@@ -1,10 +1,11 @@
 import React from 'react'
 
-import { SidebarSectionHeader } from './SidebarSectionHeader'
 import { SidebarProjectItem } from './SidebarProjectItem'
+import { SidebarSectionHeader } from './SidebarSectionHeader'
+
+import type { Project } from '@/features/projects/types'
 
 import { Skeleton } from '@/shared/components/ui/Skeleton'
-import type { Project } from '@/features/projects/types'
 
 interface SidebarProjectsSectionProps {
     label: string

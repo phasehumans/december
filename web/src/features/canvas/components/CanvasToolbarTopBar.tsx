@@ -1,4 +1,3 @@
-import React from 'react'
 import {
     Image as ImageIcon,
     Globe,
@@ -11,6 +10,7 @@ import {
     Hand,
     Frame,
 } from 'lucide-react'
+import React from 'react'
 
 import { ToolButton } from './ToolButton'
 

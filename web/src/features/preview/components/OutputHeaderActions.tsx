@@ -1,4 +1,3 @@
-import React, { useRef, useEffect, useState } from 'react'
 import {
     Download,
     Share2,
@@ -11,9 +10,11 @@ import {
     Users,
     Rocket,
 } from 'lucide-react'
+import React, { useRef, useEffect, useState } from 'react'
+
+import type { BackendProjectVersionSummary } from '@/features/projects/api/project'
 
 import { Button } from '@/shared/components/ui/Button'
-import type { BackendProjectVersionSummary } from '@/features/projects/api/project'
 
 interface OutputHeaderActionsProps {
     projectName?: string | null

@@ -5,8 +5,8 @@
  * It is included in `src/index.html`.
  */
 
-import { createRoot } from 'react-dom/client'
 import { GoogleOAuthProvider } from '@react-oauth/google'
+import { createRoot } from 'react-dom/client'
 
 import App from './App'
 import { QueryProvider } from './shared/providers/query-provider'

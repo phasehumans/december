@@ -1,8 +1,9 @@
 import React from 'react'
 
+import type { Template } from '@/features/templates/types'
+
 import { Icons } from '@/shared/components/ui/Icons'
 import { cn } from '@/shared/lib/utils'
-import type { Template } from '@/features/templates/types'
 
 interface TemplateCardProps {
     template: Template

@@ -1,9 +1,10 @@
 import React from 'react'
 
-import { Modal } from '@/shared/components/ui/Modal'
+import type { ProfileNameModalProps } from '@/features/profile/types'
+
 import { Button } from '@/shared/components/ui/Button'
 import { Input } from '@/shared/components/ui/Input'
-import type { ProfileNameModalProps } from '@/features/profile/types'
+import { Modal } from '@/shared/components/ui/Modal'
 
 export const ProfileNameModal: React.FC<ProfileNameModalProps> = ({
     isOpen,

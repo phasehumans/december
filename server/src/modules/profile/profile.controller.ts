@@ -1,5 +1,6 @@
-import type { Request, Response } from 'express'
-import { profileService } from './profile.service'
+import { AppError } from '../../utils/appError'
+import { authCookie } from '../auth/auth.cookie'
+
 import {
     changePasswordSchema,
     chatSuggestionsSchema,
@@ -10,8 +11,9 @@ import {
     updateNotificationSchema,
     updateUsernameSchema,
 } from './profile.schema'
-import { authCookie } from '../auth/auth.cookie'
-import { AppError } from '../../utils/appError'
+import { profileService } from './profile.service'
+
+import type { Request, Response } from 'express'
 
 const getInfo = async (req: Request, res: Response) => {
     const userId = req.user?.userId as string | undefined

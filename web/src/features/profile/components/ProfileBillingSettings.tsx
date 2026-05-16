@@ -1,5 +1,5 @@
-import React from 'react'
 import { CreditCard, ArrowUpRight } from 'lucide-react'
+import React from 'react'
 
 export const ProfileBillingSettings: React.FC = () => {
     return (

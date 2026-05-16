@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach, afterAll, mock } from 'bun:test'
 import bcrypt from 'bcrypt'
+import { describe, it, expect, beforeEach, afterAll, mock } from 'bun:test'
 
 import { prisma } from '../../../src/config/db'
 

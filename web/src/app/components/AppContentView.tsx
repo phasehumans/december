@@ -1,15 +1,9 @@
-import React from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
+import React from 'react'
 
-import { HomeHero } from '@/features/home/components/HomeHero'
-import { OutputScreen } from '@/features/preview/components/OutputScreen'
-import { ProjectList } from '@/features/projects/components/ProjectList'
-import { ProfileSettings } from '@/features/profile/components/ProfileSettings'
-import { DocsPage } from '@/features/docs/components/DocsPage'
-import { TemplatesView } from '@/features/templates/components/TemplatesView'
-import type { Message } from '@/features/chat/types'
-import type { Project } from '@/features/projects/types'
 import type { ViewState } from '@/app/types'
+import type { CanvasDocument } from '@/features/canvas/types'
+import type { Message } from '@/features/chat/types'
 import type {
     GeneratedProjectFile,
     OutputOperation,
@@ -18,7 +12,14 @@ import type {
     PreviewSessionStatus,
 } from '@/features/preview/types'
 import type { BackendProjectVersionSummary } from '@/features/projects/api/project'
-import type { CanvasDocument } from '@/features/canvas/types'
+import type { Project } from '@/features/projects/types'
+
+import { DocsPage } from '@/features/docs/components/DocsPage'
+import { HomeHero } from '@/features/home/components/HomeHero'
+import { OutputScreen } from '@/features/preview/components/OutputScreen'
+import { ProfileSettings } from '@/features/profile/components/ProfileSettings'
+import { ProjectList } from '@/features/projects/components/ProjectList'
+import { TemplatesView } from '@/features/templates/components/TemplatesView'
 
 interface AppContentViewProps {
     view: ViewState

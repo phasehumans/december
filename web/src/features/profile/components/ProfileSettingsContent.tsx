@@ -1,5 +1,5 @@
-import React, { useState } from 'react'
-import { UserCircle } from 'lucide-react'
+import React from 'react'
+
 import type { Profile } from '../types'
 
 interface ProfileSettingsContentProps {

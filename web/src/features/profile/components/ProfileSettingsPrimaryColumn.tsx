@@ -1,7 +1,7 @@
 import React from 'react'
 
-import { SettingsSection } from './SettingsSection'
 import { SettingsRow } from './SettingsRow'
+import { SettingsSection } from './SettingsSection'
 
 import { Button } from '@/shared/components/ui/Button'
 import { Switch } from '@/shared/components/ui/Switch'

@@ -2,8 +2,8 @@ import React, { useEffect, useState, useMemo } from 'react'
 
 import { useProjectListMutations } from '../hooks/useProjectListMutations'
 
-import { ProjectListView } from './ProjectListView'
 import { ProjectListModals } from './ProjectListModals'
+import { ProjectListView } from './ProjectListView'
 
 import type {
     DeleteModalState,

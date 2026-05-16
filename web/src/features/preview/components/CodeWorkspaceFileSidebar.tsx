@@ -1,9 +1,10 @@
-import React from 'react'
 import { ChevronDown, ChevronRight, FileText, Folder } from 'lucide-react'
+import React from 'react'
 // ChevronRight is still used for folder expansion in the tree, ChevronDown for open state
 
-import { cn } from '@/shared/lib/utils'
 import type { CodeFilePath, CodeFileTreeNode } from '@/features/preview/types'
+
+import { cn } from '@/shared/lib/utils'
 
 interface CodeWorkspaceFileSidebarProps {
     tree: CodeFileTreeNode[]

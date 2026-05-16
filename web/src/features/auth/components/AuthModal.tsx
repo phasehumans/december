@@ -1,6 +1,6 @@
-import React from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X } from 'lucide-react'
+import React from 'react'
 
 import { useAuthModalController } from '../hooks/useAuthModalController'
 

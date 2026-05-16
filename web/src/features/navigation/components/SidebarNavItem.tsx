@@ -1,7 +1,8 @@
 import React from 'react'
 
-import { cn } from '@/shared/lib/utils'
 import type { SidebarNavItemProps } from '@/features/navigation/types'
+
+import { cn } from '@/shared/lib/utils'
 
 export const SidebarNavItem: React.FC<
     Omit<SidebarNavItemProps, 'collapsed'> & { collapsed?: boolean }

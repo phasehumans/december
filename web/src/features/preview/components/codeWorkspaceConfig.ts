@@ -1,7 +1,7 @@
+import { indentWithTab } from '@codemirror/commands'
 import { css as cssLanguage } from '@codemirror/lang-css'
 import { html as htmlLanguage } from '@codemirror/lang-html'
 import { javascript } from '@codemirror/lang-javascript'
-import { indentWithTab } from '@codemirror/commands'
 import { indentUnit, HighlightStyle, syntaxHighlighting } from '@codemirror/language'
 import { EditorState, type Extension } from '@codemirror/state'
 import { EditorView, keymap } from '@codemirror/view'

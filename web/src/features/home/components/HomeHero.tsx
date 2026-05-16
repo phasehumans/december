@@ -1,14 +1,15 @@
-import React, { useRef, useEffect, useState } from 'react'
 import { AnimatePresence } from 'framer-motion'
+import React, { useRef, useEffect, useState } from 'react'
 
-import PromptInput from './PromptInput'
-import { HomeHeader } from './HomeHeader'
 import { GitHubRepoForm } from './GitHubRepoForm'
+import { HomeHeader } from './HomeHeader'
+import PromptInput from './PromptInput'
 import { UploadProjectForm } from './UploadProjectForm'
+
+import type { HomeHeroProps } from '@/features/home/types'
 
 import Canvas, { type CanvasRef } from '@/features/canvas/components/Canvas'
 import { Icons } from '@/shared/components/ui/Icons'
-import type { HomeHeroProps } from '@/features/home/types'
 
 export const HomeHero: React.FC<HomeHeroProps> = ({
     onPromptSubmit,

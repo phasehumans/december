@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react'
-import { ChevronDown, Volume1, Volume2, VolumeX, FilePlus, Trash2, Loader2 } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Volume1, Volume2, VolumeX, FilePlus, Trash2, Loader2 } from 'lucide-react'
+import React, { useState, useEffect } from 'react'
 
 import { profileAPI } from '@/features/profile/api/profile'
 

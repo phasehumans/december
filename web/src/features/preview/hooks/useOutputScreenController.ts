@@ -1,6 +1,5 @@
 import React from 'react'
 
-import { PREVIEW_HTML } from '@/features/preview/constants/preview'
 import type {
     GeneratedProjectFile,
     OutputOperation,
@@ -10,6 +9,8 @@ import type {
     PreviewSessionStatus,
     PreviewTab,
 } from '@/features/preview/types'
+
+import { PREVIEW_HTML } from '@/features/preview/constants/preview'
 
 interface UseOutputScreenControllerArgs {
     isGenerating: boolean

@@ -1,25 +1,8 @@
-import React from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import React from 'react'
 
-import type { Message } from '@/features/chat/types'
 import type { ViewState } from '@/app/types'
-import { refreshAuthSession } from '@/shared/api/client'
-import {
-    generationAPI,
-    type AppliedProjectChangeResult,
-    type GenerationStreamEvent,
-} from '@/features/generation/api/generation'
-import {
-    projectAPI,
-    type BackendProjectDetail,
-    type BackendProjectMessage,
-    type BackendProjectVersionSummary,
-} from '@/features/projects/api/project'
-import { mapBackendProjectToUIProject } from '@/app/mapProject'
-import { createEmptyCanvasDocument, type CanvasDocument } from '@/features/canvas/types'
-import { previewAPI } from '@/features/preview/api'
-import { importsAPI, type ProjectImportStatus } from '@/features/home/api'
-import { profileAPI } from '@/features/profile/api/profile'
+import type { Message } from '@/features/chat/types'
 import type {
     GeneratedProjectFile,
     OutputOperation,
@@ -27,6 +10,24 @@ import type {
     PreviewSelectedElement,
     PreviewSessionStatus,
 } from '@/features/preview/types'
+
+import { mapBackendProjectToUIProject } from '@/app/mapProject'
+import { createEmptyCanvasDocument, type CanvasDocument } from '@/features/canvas/types'
+import {
+    generationAPI,
+    type AppliedProjectChangeResult,
+    type GenerationStreamEvent,
+} from '@/features/generation/api/generation'
+import { importsAPI, type ProjectImportStatus } from '@/features/home/api'
+import { previewAPI } from '@/features/preview/api'
+import { profileAPI } from '@/features/profile/api/profile'
+import {
+    projectAPI,
+    type BackendProjectDetail,
+    type BackendProjectMessage,
+    type BackendProjectVersionSummary,
+} from '@/features/projects/api/project'
+import { refreshAuthSession } from '@/shared/api/client'
 
 const getUserFacingGenerationError = (message: string) => {
     const normalizedMessage = message.toLowerCase()

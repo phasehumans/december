@@ -1,15 +1,16 @@
-import React, { useRef, useState } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { AnimatePresence, motion } from 'framer-motion'
+import React, { useRef, useState } from 'react'
 
 import { CATEGORIES, SORT_OPTIONS } from '../data'
+
 import { FeaturedTemplates } from './FeaturedTemplates'
 import { TemplateCard } from './TemplateCard'
 import { TemplateRemixModal } from './TemplateRemixModal'
 
-import { Icons } from '@/shared/components/ui/Icons'
 import { templateAPI } from '@/features/templates/api/template'
 import { mapBackendTemplateToTemplate, type Template } from '@/features/templates/types'
+import { Icons } from '@/shared/components/ui/Icons'
 
 interface TemplatesViewProps {
     onOpenProject: (projectId: string) => void

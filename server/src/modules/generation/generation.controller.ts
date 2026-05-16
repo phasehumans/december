@@ -1,12 +1,12 @@
-import type { Request, Response } from 'express'
-
+import { normalizeGenerationError } from './generation.error'
 import {
     applyProjectEditSchema,
     applyProjectFixSchema,
     generateWebsiteSchema,
 } from './generation.schema'
 import { generateService } from './generation.service'
-import { normalizeGenerationError } from './generation.error'
+
+import type { Request, Response } from 'express'
 
 const writeEvent = (res: Response, event: string, data: unknown) => {
     if (res.writableEnded) {

@@ -1,4 +1,3 @@
-import React, { useState, useEffect } from 'react'
 import {
     ChevronLeft,
     Book,
@@ -9,6 +8,8 @@ import {
     Terminal,
     Lightbulb,
 } from 'lucide-react'
+import React, { useState, useEffect } from 'react'
+
 import { Skeleton } from '@/shared/components/ui/Skeleton'
 
 interface DocsPageProps {

@@ -1,7 +1,6 @@
+import { MoreHorizontal, Inbox, Settings, Trash2 } from 'lucide-react'
 import React, { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { MoreHorizontal, Inbox, Settings, Trash2 } from 'lucide-react'
-import { cn } from '@/shared/lib/utils'
 
 interface NotificationsPopoverProps {
     isOpen: boolean

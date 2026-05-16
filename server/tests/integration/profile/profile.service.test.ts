@@ -1,9 +1,9 @@
-import { describe, it, expect, beforeEach, afterAll } from 'bun:test'
 import bcrypt from 'bcrypt'
+import { describe, it, expect, beforeEach, afterAll } from 'bun:test'
 
 import { prisma } from '../../../src/config/db'
-import { profileService } from '../../../src/modules/profile/profile.service'
 import { GenerationSound } from '../../../src/modules/profile/profile.schema'
+import { profileService } from '../../../src/modules/profile/profile.service'
 
 const createUser = async (overrides: Record<string, unknown> = {}) => {
     return prisma.user.create({

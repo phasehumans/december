@@ -1,6 +1,5 @@
-import type { ReactNode } from 'react'
-
 import type { Project } from '@/features/projects/types'
+import type { ReactNode } from 'react'
 
 export interface NavigationState {
     isCollapsed: boolean

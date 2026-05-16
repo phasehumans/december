@@ -1,13 +1,14 @@
 import React from 'react'
 
-import { SidebarFooter } from './SidebarFooter'
-import { SidebarProjectsSection } from './SidebarProjectsSection'
 import { MobileSidebarHeader } from './MobileSidebarHeader'
 import { MobileSidebarNav } from './MobileSidebarNav'
+import { SidebarFooter } from './SidebarFooter'
+import { SidebarProjectsSection } from './SidebarProjectsSection'
+
+import type { MobileSidebarProps } from '@/features/navigation/types'
 
 import { Icons } from '@/shared/components/ui/Icons'
 import { cn } from '@/shared/lib/utils'
-import type { MobileSidebarProps } from '@/features/navigation/types'
 
 export const MobileSidebar: React.FC<MobileSidebarProps & { onSignOut?: () => void }> = ({
     isOpen,

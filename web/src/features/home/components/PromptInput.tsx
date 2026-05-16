@@ -4,8 +4,9 @@ import { useTypewriter } from '../hooks/useTypewriter'
 
 import { PromptInputPlaceholder } from './PromptInputPlaceholder'
 
-import { PromptFooter } from '@/shared/components/ui/PromptFooter'
 import type { PromptInputProps } from '@/features/home/types'
+
+import { PromptFooter } from '@/shared/components/ui/PromptFooter'
 
 const PromptInput: React.FC<PromptInputProps> = ({
     onSubmit,

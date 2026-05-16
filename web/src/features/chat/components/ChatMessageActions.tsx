@@ -1,5 +1,5 @@
-import React from 'react'
 import { ThumbsUp, ThumbsDown, RotateCcw } from 'lucide-react'
+import React from 'react'
 
 import { Button } from '@/shared/components/ui/Button'
 import { cn } from '@/shared/lib/utils'

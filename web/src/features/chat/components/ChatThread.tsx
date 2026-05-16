@@ -1,11 +1,12 @@
-import React from 'react'
 import { ChevronLeft } from 'lucide-react'
+import React from 'react'
 
-import { ChatPromptInput } from './ChatPromptInput'
 import { ChatMessage } from './ChatMessage'
+import { ChatPromptInput } from './ChatPromptInput'
+
+import type { ChatSidebarProps } from '@/features/chat/types'
 
 import { cn } from '@/shared/lib/utils'
-import type { ChatSidebarProps } from '@/features/chat/types'
 
 export const ChatThread: React.FC<ChatSidebarProps> = ({
     messages,

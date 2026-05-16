@@ -1,6 +1,6 @@
+import { randomUUID } from 'node:crypto'
 import { mkdir, readdir } from 'node:fs/promises'
 import { join } from 'node:path'
-import { randomUUID } from 'node:crypto'
 
 import { extractZipSafely, importStagingRootDir } from './import-project.utils'
 

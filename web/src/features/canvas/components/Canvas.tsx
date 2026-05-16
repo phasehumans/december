@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect, useImperativeHandle, forwardRef } from 'react'
 
-import { CanvasToolbar } from './CanvasToolbar'
-import { CanvasItemComponent } from './CanvasItemComponent'
 import { CanvasConnectionsLayer } from './CanvasConnectionsLayer'
+import { CanvasItemComponent } from './CanvasItemComponent'
 import { CanvasTempItemPreview } from './CanvasTempItemPreview'
+import { CanvasToolbar } from './CanvasToolbar'
 
 import type {
     CanvasConnection,
@@ -13,6 +13,7 @@ import type {
     CanvasProps,
     CanvasUpdateOptions as UpdateOptions,
 } from '@/features/canvas/types'
+
 import { createEmptyCanvasDocument } from '@/features/canvas/types'
 
 export interface CanvasRef {

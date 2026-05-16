@@ -1,6 +1,8 @@
 import { Router } from 'express'
 import multer from 'multer'
+
 import { authMiddleware } from '../../middleware/auth.middleware'
+
 import { uploadController } from './upload.controller'
 
 const uploadRouter = Router()

@@ -1,5 +1,5 @@
-import React from 'react'
 import { Minus, Plus, Undo2, Redo2 } from 'lucide-react'
+import React from 'react'
 
 interface CanvasToolbarBottomControlsProps {
     scale: number

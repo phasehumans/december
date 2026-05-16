@@ -7,7 +7,6 @@ import {
     downloadProjectVersionSchema,
     toogleStarProjectSchema,
 } from '../../src/modules/project/project.schema'
-
 import {
     isVersionSchemaMissing,
     parseStoredProjectFiles,

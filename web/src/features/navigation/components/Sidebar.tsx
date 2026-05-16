@@ -1,12 +1,13 @@
 import React, { useState } from 'react'
 
-import { SidebarNavItem } from './SidebarNavItem'
-import { SidebarHeader } from './SidebarHeader'
 import { SidebarFooter } from './SidebarFooter'
+import { SidebarHeader } from './SidebarHeader'
+import { SidebarNavItem } from './SidebarNavItem'
+
+import type { SidebarProps } from '@/features/navigation/types'
 
 import { Icons } from '@/shared/components/ui/Icons'
 import { cn } from '@/shared/lib/utils'
-import type { SidebarProps } from '@/features/navigation/types'
 
 const Sidebar: React.FC<SidebarProps & { user?: any; onSignOut?: () => void }> = ({
     onNewThread,

@@ -1,9 +1,9 @@
 import '../../../tests/env'
 
 import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'bun:test'
-
-import request from 'supertest'
 import express, { Router } from 'express'
+import request from 'supertest'
+
 import { prisma } from '../../../src/config/db'
 import { projectController } from '../../../src/modules/project/project.controller'
 

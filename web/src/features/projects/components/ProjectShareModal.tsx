@@ -1,8 +1,9 @@
 import React from 'react'
 
-import { Modal } from '@/shared/components/ui/Modal'
-import { Button } from '@/shared/components/ui/Button'
 import type { ProjectShareModalProps } from '@/features/projects/types'
+
+import { Button } from '@/shared/components/ui/Button'
+import { Modal } from '@/shared/components/ui/Modal'
 
 export const ProjectShareModal: React.FC<ProjectShareModalProps> = ({
     isOpen,

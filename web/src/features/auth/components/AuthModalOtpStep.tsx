@@ -1,9 +1,8 @@
 import React from 'react'
 
-import { Icons } from '@/shared/components/ui/Icons'
-import { Logo } from '@/shared/components/Logo'
-import { Button } from '@/shared/components/ui/Button'
 import type { AuthModalOtpStepProps } from '@/features/auth/types'
+
+import { Icons } from '@/shared/components/ui/Icons'
 
 export const AuthModalOtpStep: React.FC<AuthModalOtpStepProps> = ({
     email,

@@ -1,7 +1,9 @@
-import type { Request, Response } from 'express'
-import { templateService } from './template.service'
 import { AppError } from '../../utils/appError'
+
 import { toggleLikeSchema } from './template.schema'
+import { templateService } from './template.service'
+
+import type { Request, Response } from 'express'
 
 const getAllTemplates = async (req: Request, res: Response) => {
     const userId = req.user?.userId as string | undefined

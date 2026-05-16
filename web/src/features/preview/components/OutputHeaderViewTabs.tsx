@@ -1,8 +1,9 @@
-import React from 'react'
 import { ChevronLeft } from 'lucide-react'
+import React from 'react'
+
+import type { PreviewTab } from '@/features/preview/types'
 
 import { cn } from '@/shared/lib/utils'
-import type { PreviewTab } from '@/features/preview/types'
 
 interface OutputHeaderViewTabsProps {
     activeTab: PreviewTab

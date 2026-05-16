@@ -1,7 +1,8 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 
-import { projectAPI } from '@/features/projects/api/project'
 import type { Project } from '@/features/projects/types'
+
+import { projectAPI } from '@/features/projects/api/project'
 
 const projectQueryKey = ['projects'] as const
 

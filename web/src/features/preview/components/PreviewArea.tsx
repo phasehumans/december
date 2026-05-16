@@ -1,9 +1,10 @@
-import React, { useEffect } from 'react'
 import { motion } from 'framer-motion'
+import React, { useEffect } from 'react'
 
-import { cn } from '@/shared/lib/utils'
-import { PREVIEW_HTML } from '@/features/preview/constants/preview'
 import type { PreviewAreaProps } from '@/features/preview/types'
+
+import { PREVIEW_HTML } from '@/features/preview/constants/preview'
+import { cn } from '@/shared/lib/utils'
 
 const loaderDotDelays = [0, 0.14, 0.28]
 

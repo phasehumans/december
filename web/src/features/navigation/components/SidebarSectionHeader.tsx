@@ -1,8 +1,9 @@
 import React from 'react'
 
+import type { SidebarSectionHeaderProps } from '@/features/navigation/types'
+
 import { Icons } from '@/shared/components/ui/Icons'
 import { cn } from '@/shared/lib/utils'
-import type { SidebarSectionHeaderProps } from '@/features/navigation/types'
 
 export const SidebarSectionHeader: React.FC<SidebarSectionHeaderProps> = ({
     label,

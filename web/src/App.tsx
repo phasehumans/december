@@ -1,9 +1,9 @@
 import React from 'react'
 
-import { AuthModal } from './features/auth/components/AuthModal'
-import { AppSideNavigation } from './app/components/AppSideNavigation'
 import { AppContentView } from './app/components/AppContentView'
+import { AppSideNavigation } from './app/components/AppSideNavigation'
 import { useAppController } from './app/hooks/useAppController'
+import { AuthModal } from './features/auth/components/AuthModal'
 
 const App: React.FC = () => {
     const {

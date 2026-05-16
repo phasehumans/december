@@ -1,5 +1,5 @@
-import type { Request, Response } from 'express'
-import { projectService } from './project.service'
+import { AppError } from '../../utils/appError'
+
 import {
     createProjectSchema,
     downloadProjectVersionSchema,
@@ -8,7 +8,9 @@ import {
     shareProjectAsTemplateSchema,
     toogleStarProjectSchema,
 } from './project.schema'
-import { AppError } from '../../utils/appError'
+import { projectService } from './project.service'
+
+import type { Request, Response } from 'express'
 
 const getAllProjects = async (req: Request, res: Response) => {
     const userId = req.user?.userId as string | undefined

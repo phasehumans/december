@@ -1,8 +1,8 @@
+import bcrypt from 'bcrypt'
 import { describe, it, expect, beforeEach, afterAll, mock } from 'bun:test'
+import cookieParser from 'cookie-parser'
 import express from 'express'
 import request from 'supertest'
-import cookieParser from 'cookie-parser'
-import bcrypt from 'bcrypt'
 
 import { prisma } from '../../../src/config/db'
 

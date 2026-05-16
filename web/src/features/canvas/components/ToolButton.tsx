@@ -1,7 +1,8 @@
 import React from 'react'
 
-import { cn } from '@/shared/lib/utils'
 import type { ToolButtonProps } from '@/features/canvas/types'
+
+import { cn } from '@/shared/lib/utils'
 
 export const ToolButton: React.FC<ToolButtonProps> = ({
     icon: Icon,

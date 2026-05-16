@@ -3,9 +3,10 @@ import React from 'react'
 import { OutputScreenMainContent } from './OutputScreenMainContent'
 import { PreviewArea } from './PreviewArea'
 
+import type { OutputScreenProps } from '@/features/preview/types'
+
 import { ChatThread as ChatSidebar } from '@/features/chat/components/ChatThread'
 import { useOutputScreenController } from '@/features/preview/hooks/useOutputScreenController'
-import type { OutputScreenProps } from '@/features/preview/types'
 
 type MobileOutputTab = 'chat' | 'preview'
 
