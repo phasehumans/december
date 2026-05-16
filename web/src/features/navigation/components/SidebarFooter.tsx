@@ -1,15 +1,16 @@
+import { useQuery } from '@tanstack/react-query'
+import { Bell } from 'lucide-react'
 import React, { useState, useRef } from 'react'
 
-import { useQuery } from '@tanstack/react-query'
-
-import { Icons } from '@/shared/components/ui/Icons'
-import { profileAPI } from '@/features/profile/api/profile'
-import type { SidebarFooterProps } from '@/features/navigation/types'
-import { UserProfilePopover } from './UserProfilePopover'
 import { NotificationsPopover } from './NotificationsPopover'
+import { UserProfilePopover } from './UserProfilePopover'
+
+import type { SidebarFooterProps } from '@/features/navigation/types'
+
+import { profileAPI } from '@/features/profile/api/profile'
 import { ProfileCardModal } from '@/features/profile/components/ProfileCardModal'
 import { ProfileFeedbackModal } from '@/features/profile/components/ProfileFeedbackModal'
-import { Bell } from 'lucide-react'
+import { Icons } from '@/shared/components/ui/Icons'
 
 export const SidebarFooter: React.FC<
     SidebarFooterProps & { user?: { name?: string }; onSignOut?: () => void }

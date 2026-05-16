@@ -1,34 +1,32 @@
-import React from 'react'
 import {
     ChevronLeft,
     UserCircle,
     SlidersHorizontal,
     CreditCard,
     Activity,
-    KeyRound,
-    BookText,
     FileClock,
     ArrowUpRight,
     Plug,
 } from 'lucide-react'
-
-import { Icons } from '@/shared/components/ui/Icons'
+import React from 'react'
 
 import { useProfileSettingsController } from '../hooks/useProfileSettingsController'
 
+import { ProfileApiKeysSettings } from './ProfileApiKeysSettings'
+import { ProfileBillingSettings } from './ProfileBillingSettings'
+import { ProfileDeleteAccountModal } from './ProfileDeleteAccountModal'
+import { ProfileGeneralSettings } from './ProfileGeneralSettings'
+import { ProfileIntegrationsSettings } from './ProfileIntegrationsSettings'
 import { ProfileNameModal } from './ProfileNameModal'
 import { ProfilePasswordModal } from './ProfilePasswordModal'
 import { ProfileSettingsContent } from './ProfileSettingsContent'
-import { ProfileGeneralSettings } from './ProfileGeneralSettings'
-import { ProfileBillingSettings } from './ProfileBillingSettings'
-import { ProfileUsageSettings } from './ProfileUsageSettings'
-import { ProfileApiKeysSettings } from './ProfileApiKeysSettings'
-import { ProfileIntegrationsSettings } from './ProfileIntegrationsSettings'
 import { ProfileSettingsSkeleton } from './ProfileSettingsSkeleton'
-import { ProfileDeleteAccountModal } from './ProfileDeleteAccountModal'
 import { ProfileSignOutAllSessionsModal } from './ProfileSignOutAllSessionsModal'
+import { ProfileUsageSettings } from './ProfileUsageSettings'
 
 import type { ProfileSettingsProps } from '@/features/profile/types'
+
+import { Icons } from '@/shared/components/ui/Icons'
 
 export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onBack, onDocs }) => {
     const [activeTab, setActiveTab] = React.useState(() => {

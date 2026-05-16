@@ -1,11 +1,11 @@
-import React from 'react'
 import CodeMirror from '@uiw/react-codemirror'
-import type { Extension } from '@codemirror/state'
+import React from 'react'
 
 import { codeMirrorBasicSetup } from './codeWorkspaceConfig'
 import { CodeWorkspaceEditorHeader } from './CodeWorkspaceEditorHeader'
 
 import type { CodeFile, CodeFilePath } from '@/features/preview/types'
+import type { Extension } from '@codemirror/state'
 
 interface CodeWorkspaceEditorPaneProps {
     activeFile: CodeFile | null

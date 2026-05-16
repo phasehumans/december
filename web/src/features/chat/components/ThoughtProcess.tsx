@@ -1,9 +1,10 @@
-import React from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Loader2, BrainCircuit, ChevronDown } from 'lucide-react'
+import React from 'react'
+
+import type { ThoughtProcessProps } from '@/features/chat/types'
 
 import { cn } from '@/shared/lib/utils'
-import type { ThoughtProcessProps } from '@/features/chat/types'
 
 export const ThoughtProcess: React.FC<ThoughtProcessProps> = ({
     isGenerating,

@@ -1,13 +1,14 @@
-import React from 'react'
 import { motion } from 'framer-motion'
 import { Type as TextIcon } from 'lucide-react'
+import React from 'react'
 
 import { CanvasDeleteButton } from './CanvasDeleteButton'
 import { CanvasFrameItem } from './CanvasFrameItem'
-import { CanvasVectorItem } from './CanvasVectorItem'
 import { CanvasResizeHandles } from './CanvasResizeHandles'
+import { CanvasVectorItem } from './CanvasVectorItem'
 
 import type { CanvasItem, CanvasItemComponentProps } from '@/features/canvas/types'
+
 import { cn } from '@/shared/lib/utils'
 
 const getDefaultSizeByType = (type: CanvasItem['type']) => {

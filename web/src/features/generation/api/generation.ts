@@ -1,10 +1,11 @@
-import { ApiError, apiFetch } from '@/shared/api/client'
 import type { CanvasDocument, CanvasItem } from '@/features/canvas/types'
 import type {
     BackendProject,
     BackendProjectMessage,
     BackendProjectVersionSummary,
 } from '@/features/projects/api/project'
+
+import { ApiError, apiFetch } from '@/shared/api/client'
 
 export type GenerationMessageStatus = 'thinking' | 'planning' | 'building' | 'done' | 'error'
 

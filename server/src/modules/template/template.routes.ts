@@ -1,5 +1,7 @@
 import { Router } from 'express'
+
 import { authMiddleware } from '../../middleware/auth.middleware'
+
 import { templateController } from './template.controller'
 const templateRouter = Router()
 

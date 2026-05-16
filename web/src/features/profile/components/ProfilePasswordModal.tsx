@@ -1,10 +1,11 @@
-import React from 'react'
 import { Eye, EyeOff } from 'lucide-react'
+import React from 'react'
 
-import { Modal } from '@/shared/components/ui/Modal'
+import type { ProfilePasswordModalProps } from '@/features/profile/types'
+
 import { Button } from '@/shared/components/ui/Button'
 import { Input } from '@/shared/components/ui/Input'
-import type { ProfilePasswordModalProps } from '@/features/profile/types'
+import { Modal } from '@/shared/components/ui/Modal'
 
 export const ProfilePasswordModal: React.FC<ProfilePasswordModalProps> = ({
     isOpen,

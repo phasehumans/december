@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react'
 
-import { CanvasToolbarTopBar } from './CanvasToolbarTopBar'
 import { CanvasToolbarBottomControls } from './CanvasToolbarBottomControls'
+import { CanvasToolbarTopBar } from './CanvasToolbarTopBar'
 import { CanvasWebClipPopover } from './CanvasWebClipPopover'
 
 import type { CanvasToolbarProps } from '@/features/canvas/types'

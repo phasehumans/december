@@ -1,7 +1,9 @@
-import type { Response } from 'express'
-import jwt, { type SignOptions } from 'jsonwebtoken'
-import bcrypt from 'bcrypt'
 import { randomUUID } from 'crypto'
+
+import bcrypt from 'bcrypt'
+import jwt, { type SignOptions } from 'jsonwebtoken'
+
+import type { Response } from 'express'
 
 export type TokenPayload = {
     userId: string

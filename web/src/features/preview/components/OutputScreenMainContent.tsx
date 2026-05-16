@@ -1,10 +1,10 @@
 import React from 'react'
 
+import { CodeWorkspace } from './CodeWorkspace'
 import { OutputHeader } from './OutputHeader'
 import { PreviewArea } from './PreviewArea'
-import { CodeWorkspace } from './CodeWorkspace'
 
-import Canvas from '@/features/canvas/components/Canvas'
+import type { CanvasDocument } from '@/features/canvas/types'
 import type {
     GeneratedProjectFile,
     PreviewDevice,
@@ -12,7 +12,8 @@ import type {
     PreviewTab,
 } from '@/features/preview/types'
 import type { BackendProjectVersionSummary } from '@/features/projects/api/project'
-import type { CanvasDocument } from '@/features/canvas/types'
+
+import Canvas from '@/features/canvas/components/Canvas'
 
 interface OutputScreenMainContentProps {
     activeTab: PreviewTab

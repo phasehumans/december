@@ -1,7 +1,6 @@
 import { z } from 'zod'
 
 import { prisma } from '../../config/db'
-import type { CanvasDocument } from '../canvas/canvas.persistence'
 
 import {
     plannedProjectFileSchema,
@@ -10,6 +9,8 @@ import {
     projectIntentSchema,
     projectPlanSchema,
 } from './generation.schema'
+
+import type { CanvasDocument } from '../canvas/canvas.persistence'
 
 export type GenerateWebsiteInput = {
     prompt: string

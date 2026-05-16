@@ -1,9 +1,9 @@
 import React from 'react'
 
-import { ProjectRenameModal } from './ProjectRenameModal'
-import { ProjectDuplicateModal } from './ProjectDuplicateModal'
-import { ProjectShareModal } from './ProjectShareModal'
 import { ProjectDeleteModal } from './ProjectDeleteModal'
+import { ProjectDuplicateModal } from './ProjectDuplicateModal'
+import { ProjectRenameModal } from './ProjectRenameModal'
+import { ProjectShareModal } from './ProjectShareModal'
 
 import type {
     DeleteModalState,

@@ -1,3 +1,4 @@
+import { prisma } from '../../config/db'
 import {
     extractProjectChangePlan,
     extractProjectIntent,
@@ -6,11 +7,9 @@ import {
     generateProjectPatchFile,
 } from '../../core/engine/generation'
 import { saveProjectFiles } from '../../lib/save-project-files'
-import { prisma } from '../../config/db'
-import { cleanPrompt } from '../generation/generation.utils'
 import { persistCanvasDocument } from '../canvas/canvas.persistence'
+import { cleanPrompt } from '../generation/generation.utils'
 
-import { planAgentResponseSchema, promptAgentResponseSchema } from './generation.schema'
 import {
     appendAssistantMessageContent,
     assertFrontendOnlyChangePlan,
@@ -25,11 +24,13 @@ import {
     markGenerationFailed,
     persistProjectRevision,
 } from './generation.repository'
-import { emitAssistantMessage, emitFileStream, emitPatchFileStream } from './generation.stream'
 import {
     publishFinalPreviewSnapshot,
     publishIncrementalPreviewSnapshot,
 } from './generation.runtime'
+import { planAgentResponseSchema, promptAgentResponseSchema } from './generation.schema'
+import { emitAssistantMessage, emitFileStream, emitPatchFileStream } from './generation.stream'
+
 import type { GenerateWebsiteInput, ProjectPlan, ProjectRecord } from './generation.types'
 
 type ApplyProjectEditInput = {
@@ -464,7 +465,7 @@ const applyProjectChange = async (
 
     const updatedFiles: Array<{ path: string; content: string }> = []
     const deletedFiles: string[] = []
-    let workingFiles = { ...base.baseFiles }
+    const workingFiles = { ...base.baseFiles }
 
     for (const [operationIndex, operation] of operations.entries()) {
         try {

@@ -1,8 +1,9 @@
-import React from 'react'
 import { ChevronDown } from 'lucide-react'
+import React from 'react'
+
+import type { CanvasFrameItemProps } from '@/features/canvas/types'
 
 import { cn } from '@/shared/lib/utils'
-import type { CanvasFrameItemProps } from '@/features/canvas/types'
 
 const FRAME_TYPES = [
     'LANDING',

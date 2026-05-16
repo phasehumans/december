@@ -1,5 +1,5 @@
-import React from 'react'
 import { Globe, Check, X } from 'lucide-react'
+import React from 'react'
 
 interface CanvasToolbarLinkPopoverProps {
     isOpen: boolean

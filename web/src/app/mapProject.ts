@@ -1,5 +1,5 @@
-import type { Project } from '@/features/projects/types'
 import type { BackendProject } from '@/features/projects/api/project'
+import type { Project } from '@/features/projects/types'
 
 const MINUTE_IN_MS = 60 * 1000
 const HOUR_IN_MS = 60 * MINUTE_IN_MS

@@ -1,6 +1,7 @@
 import { Router } from 'express'
 
 import { authMiddleware } from '../../middleware/auth.middleware'
+
 import { integrationsController } from './integrations.controller'
 
 const integrationsRouter = Router()

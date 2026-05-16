@@ -1,5 +1,6 @@
-﻿import { apiRequest } from '@/shared/api/client'
-import type { PreviewSessionStatus } from '@/features/preview/types'
+﻿import type { PreviewSessionStatus } from '@/features/preview/types'
+
+import { apiRequest } from '@/shared/api/client'
 
 const startPreview = (projectId: string, versionId?: string | null) => {
     return apiRequest<PreviewSessionStatus>('/runtime/previews/start', {

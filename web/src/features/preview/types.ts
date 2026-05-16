@@ -1,8 +1,7 @@
-import type { RefObject } from 'react'
-
+import type { CanvasDocument } from '@/features/canvas/types'
 import type { Message } from '@/features/chat/types'
 import type { BackendProjectVersionSummary } from '@/features/projects/api/project'
-import type { CanvasDocument } from '@/features/canvas/types'
+import type { RefObject } from 'react'
 
 export type PreviewDevice = 'desktop' | 'mobile' | 'tablet'
 export type PreviewTab = 'preview' | 'code' | 'canvas'

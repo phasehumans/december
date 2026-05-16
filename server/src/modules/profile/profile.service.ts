@@ -1,7 +1,8 @@
 import bcrypt from 'bcrypt'
+
 import { prisma } from '../../config/db'
-import { extractFirstName } from './profile.utils'
 import { AppError } from '../../utils/appError'
+
 import type { GenerationSound } from './profile.schema'
 
 type UpdateName = {

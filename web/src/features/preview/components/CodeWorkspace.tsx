@@ -1,7 +1,5 @@
 import React from 'react'
 
-import { CodeWorkspaceEditorPane } from './CodeWorkspaceEditorPane'
-import { CodeWorkspaceFileSidebar } from './CodeWorkspaceFileSidebar'
 import {
     createCodeWorkspaceTree,
     flattenFiles,
@@ -9,6 +7,8 @@ import {
     getLanguageExtension,
     getSharedEditorExtensions,
 } from './codeWorkspaceConfig'
+import { CodeWorkspaceEditorPane } from './CodeWorkspaceEditorPane'
+import { CodeWorkspaceFileSidebar } from './CodeWorkspaceFileSidebar'
 
 import type { CodeFile, CodeFilePath, CodeWorkspaceProps } from '@/features/preview/types'
 

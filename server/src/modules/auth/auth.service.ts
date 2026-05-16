@@ -1,11 +1,13 @@
 import crypto from 'crypto'
+
 import bcrypt from 'bcrypt'
 
 import { prisma } from '../../config/db'
-import { sendOTP, getNameFromEmail, getUsername } from './auth.utils'
 import { AppError } from '../../utils/appError'
-import { authToken } from './auth.token'
+
 import { authSession, deleteSessionById, isSessionExpired } from './auth.session'
+import { authToken } from './auth.token'
+import { sendOTP, getNameFromEmail, getUsername } from './auth.utils'
 
 type Signup = {
     email: string
@@ -52,7 +54,7 @@ const signup = async (data: Signup) => {
     }
 
     let name = getNameFromEmail(email)
-    let username = getUsername()
+    const username = getUsername()
 
     if (!name) {
         name = username
@@ -246,7 +248,7 @@ const google = async (data: Google) => {
         },
     })
 
-    let username = getUsername()
+    const username = getUsername()
 
     if (!user) {
         user = await prisma.user.create({

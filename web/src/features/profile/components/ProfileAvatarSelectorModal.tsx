@@ -1,6 +1,6 @@
+import { X, Check } from 'lucide-react'
 import React, { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { X, Check } from 'lucide-react'
 
 interface ProfileAvatarSelectorModalProps {
     isOpen: boolean

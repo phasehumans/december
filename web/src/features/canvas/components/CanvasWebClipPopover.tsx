@@ -1,10 +1,10 @@
+import { Globe } from 'lucide-react'
 import React from 'react'
 import { createPortal } from 'react-dom'
-import { Globe } from 'lucide-react'
+
+import type { CanvasItemDraft } from '@/features/canvas/types'
 
 import { canvasAPI } from '@/features/canvas/api'
-import type { CanvasItemDraft } from '@/features/canvas/types'
-import { Button } from '@/shared/components/ui/Button'
 
 interface CanvasWebClipPopoverProps {
     isOpen: boolean

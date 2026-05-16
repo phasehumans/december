@@ -1,6 +1,6 @@
-import React, { useState } from 'react'
-import { Monitor, Smartphone, Tablet, RefreshCw, ArrowUpRight } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { Monitor, Smartphone, Tablet, RefreshCw, ArrowUpRight } from 'lucide-react'
+import React, { useState } from 'react'
 
 import type { PreviewDevice } from '@/features/preview/types'
 

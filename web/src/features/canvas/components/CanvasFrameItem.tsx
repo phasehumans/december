@@ -1,8 +1,8 @@
 import React from 'react'
 
+import { CanvasConnectionHandle } from './CanvasConnectionHandle'
 import { CanvasDeleteButton } from './CanvasDeleteButton'
 import { CanvasFrameTypeSelector } from './CanvasFrameTypeSelector'
-import { CanvasConnectionHandle } from './CanvasConnectionHandle'
 
 import type { CanvasFrameItemProps } from '@/features/canvas/types'
 

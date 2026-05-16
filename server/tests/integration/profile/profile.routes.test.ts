@@ -1,10 +1,10 @@
 import '../../../tests/env'
 
 import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'bun:test'
-
-import request from 'supertest'
 import express from 'express'
 import { Router } from 'express'
+import request from 'supertest'
+
 import { prisma } from '../../../src/config/db'
 import { profileController } from '../../../src/modules/profile/profile.controller'
 import { GenerationSound } from '../../../src/modules/profile/profile.schema'

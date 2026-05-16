@@ -1,9 +1,10 @@
 import React from 'react'
 
-import { Modal } from '@/shared/components/ui/Modal'
+import type { ProjectRenameModalProps } from '@/features/projects/types'
+
 import { Button } from '@/shared/components/ui/Button'
 import { Input } from '@/shared/components/ui/Input'
-import type { ProjectRenameModalProps } from '@/features/projects/types'
+import { Modal } from '@/shared/components/ui/Modal'
 
 export const ProjectRenameModal: React.FC<ProjectRenameModalProps> = ({
     isOpen,

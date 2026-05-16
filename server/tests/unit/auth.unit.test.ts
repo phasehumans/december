@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test'
+
 import { signupSchema, loginSchema } from '../../src/modules/auth/auth.schema'
 import { getNameFromEmail, getUsername } from '../../src/modules/auth/auth.utils'
 

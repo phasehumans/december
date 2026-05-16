@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'bun:test'
+
 import { parseGitHubRepoUrl } from '../../src/modules/upload/upload.utils'
 
 describe('parseGitHubRepoUrl', () => {

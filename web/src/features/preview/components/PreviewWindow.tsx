@@ -1,11 +1,12 @@
 import React, { useState, useRef } from 'react'
 
+import { CodeWorkspace } from './CodeWorkspace'
 import { OutputHeader } from './OutputHeader'
 import { PreviewArea } from './PreviewArea'
-import { CodeWorkspace } from './CodeWorkspace'
+
+import type { PreviewWindowProps } from '@/features/preview/types'
 
 import Canvas from '@/features/canvas/components/Canvas'
-import type { PreviewWindowProps } from '@/features/preview/types'
 
 const PreviewWindow: React.FC<PreviewWindowProps> = ({
     code,

@@ -1,9 +1,9 @@
-import React, { useState } from 'react'
-import { motion } from 'framer-motion'
 import { useQuery } from '@tanstack/react-query'
+import { motion } from 'framer-motion'
+import React, { useState } from 'react'
 
-import { Icons } from '@/shared/components/ui/Icons'
 import { profileAPI } from '@/features/profile/api/profile'
+import { Icons } from '@/shared/components/ui/Icons'
 
 interface GitHubRepoFormProps {
     onClose: () => void

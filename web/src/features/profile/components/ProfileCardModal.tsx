@@ -1,7 +1,7 @@
+import { useQuery } from '@tanstack/react-query'
+import { Folder, Settings, X, Globe } from 'lucide-react'
 import React, { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Folder, Settings, X, Globe } from 'lucide-react'
-import { useQuery } from '@tanstack/react-query'
 
 import { projectAPI } from '@/features/projects/api/project'
 

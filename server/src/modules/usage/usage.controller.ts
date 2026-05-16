@@ -1,5 +1,6 @@
-import type { Request, Response } from 'express'
 import { usageService } from './usage.service'
+
+import type { Request, Response } from 'express'
 
 const getCurrentUsage = async (req: Request, res: Response) => {
     const userId = req.user?.userId as string | undefined

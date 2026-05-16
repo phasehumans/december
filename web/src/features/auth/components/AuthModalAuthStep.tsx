@@ -1,12 +1,10 @@
 import React from 'react'
 
 import { AuthModalGoogleIcon } from './AuthModalGoogleIcon'
-import { Icons } from '@/shared/components/ui/Icons'
 
-import { Logo } from '@/shared/components/Logo'
-import { Button } from '@/shared/components/ui/Button'
-import { Input } from '@/shared/components/ui/Input'
 import type { AuthModalAuthStepProps } from '@/features/auth/types'
+
+import { Icons } from '@/shared/components/ui/Icons'
 
 export const AuthModalAuthStep: React.FC<AuthModalAuthStepProps> = ({
     authMode,

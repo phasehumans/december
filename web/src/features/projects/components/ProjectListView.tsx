@@ -2,10 +2,11 @@ import React from 'react'
 
 import { ProjectListRow } from './ProjectListRow'
 
-import { Skeleton } from '@/shared/components/ui/Skeleton'
-import { Icons } from '@/shared/components/ui/Icons'
-import type { Project } from '@/features/projects/types'
 import type { SortOption, StatusFilter } from './ProjectList'
+import type { Project } from '@/features/projects/types'
+
+import { Icons } from '@/shared/components/ui/Icons'
+import { Skeleton } from '@/shared/components/ui/Skeleton'
 
 interface ProjectListViewProps {
     projects: Project[]

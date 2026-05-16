@@ -1,7 +1,9 @@
-import type { Request, Response, NextFunction } from 'express'
 import jwt from 'jsonwebtoken'
+
 import { prisma } from '../config/db'
+
 import type { TokenPayload } from '../modules/auth/auth.token'
+import type { Request, Response, NextFunction } from 'express'
 
 export const authMiddleware = async (req: Request, res: Response, next: NextFunction) => {
     try {

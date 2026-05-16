@@ -1,9 +1,11 @@
-import React, { useRef } from 'react'
 import { motion } from 'framer-motion'
+import React, { useRef } from 'react'
+
+import { TemplateCard } from './TemplateCard'
+
+import type { Template } from '@/features/templates/types'
 
 import { Icons } from '@/shared/components/ui/Icons'
-import { TemplateCard } from './TemplateCard'
-import type { Template } from '@/features/templates/types'
 
 interface FeaturedTemplatesProps {
     templates: Template[]
