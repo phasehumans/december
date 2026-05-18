@@ -2,7 +2,7 @@ import React from 'react'
 
 import { useAuthMutations } from './useAuthMutations'
 
-import type { AuthMode } from '@/features/auth/types'
+import type { AuthMode, AuthStep } from '@/features/auth/types'
 
 interface UseAuthModalControllerArgs {
     isOpen: boolean
@@ -16,10 +16,12 @@ export const useAuthModalController = ({
     onAuthSuccess,
 }: UseAuthModalControllerArgs) => {
     const [authMode, setAuthMode] = React.useState<AuthMode>(initialMode)
-    const [step, setStep] = React.useState<'auth' | 'otp'>('auth')
+    const [step, setStep] = React.useState<AuthStep>('auth')
     const [email, setEmail] = React.useState('')
     const [password, setPassword] = React.useState('')
     const [otp, setOtp] = React.useState(['', '', '', '', '', ''])
+    const [newPassword, setNewPassword] = React.useState('')
+    const [confirmPassword, setConfirmPassword] = React.useState('')
     const [errorMessage, setErrorMessage] = React.useState<string | null>(null)
     const inputRefs = React.useRef<(HTMLInputElement | null)[]>([])
 
@@ -29,6 +31,8 @@ export const useAuthModalController = ({
             setStep('auth')
             setEmail('')
             setPassword('')
+            setNewPassword('')
+            setConfirmPassword('')
             setErrorMessage(null)
             setOtp(['', '', '', '', '', ''])
         }
@@ -38,11 +42,24 @@ export const useAuthModalController = ({
         signupMutation,
         loginMutation,
         verifyOtpMutation,
+        requestPasswordResetMutation,
+        verifyPasswordResetOtpMutation,
+        resetPasswordMutation,
         googleMutation,
         googleLogin,
         isAuthPending,
     } = useAuthMutations({
         onRequireOtp: () => setStep('otp'),
+        onRequireForgotOtp: () => setStep('forgot-otp'),
+        onRequireForgotReset: () => setStep('forgot-reset'),
+        onPasswordResetSuccess: () => {
+            setPassword('')
+            setNewPassword('')
+            setConfirmPassword('')
+            setOtp(['', '', '', '', '', ''])
+            setStep('auth')
+            setAuthMode('login')
+        },
         onAuthSuccess,
         setErrorMessage,
     })
@@ -104,6 +121,49 @@ export const useAuthModalController = ({
         })
     }
 
+    const handleForgotPasswordStart = () => {
+        setErrorMessage(null)
+        setPassword('')
+        setOtp(['', '', '', '', '', ''])
+        setStep('forgot-email')
+    }
+
+    const handleForgotEmailSubmit = (event: React.FormEvent) => {
+        event.preventDefault()
+        setErrorMessage(null)
+        requestPasswordResetMutation.mutate({ email })
+    }
+
+    const handleForgotOtpSubmit = (event: React.FormEvent) => {
+        event.preventDefault()
+        setErrorMessage(null)
+        verifyPasswordResetOtpMutation.mutate({
+            email,
+            otp: otp.join(''),
+        })
+    }
+
+    const handleForgotResetSubmit = (event: React.FormEvent) => {
+        event.preventDefault()
+
+        if (!newPassword.trim()) {
+            setErrorMessage('Please enter a new password')
+            return
+        }
+
+        if (newPassword !== confirmPassword) {
+            setErrorMessage('New password and confirm password do not match')
+            return
+        }
+
+        setErrorMessage(null)
+        resetPasswordMutation.mutate({
+            email,
+            otp: otp.join(''),
+            newPassword,
+        })
+    }
+
     const handleToggleAuthMode = () => {
         setErrorMessage(null)
         setAuthMode((prevMode) => (prevMode === 'login' ? 'signup' : 'login'))
@@ -112,6 +172,17 @@ export const useAuthModalController = ({
     const handleBackToAuth = () => {
         setErrorMessage(null)
         setStep('auth')
+    }
+
+    const handleBackToForgotEmail = () => {
+        setErrorMessage(null)
+        setOtp(['', '', '', '', '', ''])
+        setStep('forgot-email')
+    }
+
+    const handleBackToForgotOtp = () => {
+        setErrorMessage(null)
+        setStep('forgot-otp')
     }
 
     const setOtpInputRef = (index: number, element: HTMLInputElement | null) => {
@@ -125,19 +196,32 @@ export const useAuthModalController = ({
         setEmail,
         password,
         setPassword,
+        newPassword,
+        setNewPassword,
+        confirmPassword,
+        setConfirmPassword,
         otp,
         errorMessage,
         googleLogin,
         isAuthPending,
         isGooglePending: googleMutation.isPending,
         isOtpPending: verifyOtpMutation.isPending,
+        isForgotEmailPending: requestPasswordResetMutation.isPending,
+        isForgotOtpPending: verifyPasswordResetOtpMutation.isPending,
+        isForgotResetPending: resetPasswordMutation.isPending,
         handleAuthSubmit,
         handleOtpChange,
         handleOtpKeyDown,
         handleOtpPaste,
         handleOtpSubmit,
+        handleForgotPasswordStart,
+        handleForgotEmailSubmit,
+        handleForgotOtpSubmit,
+        handleForgotResetSubmit,
         handleToggleAuthMode,
         handleBackToAuth,
+        handleBackToForgotEmail,
+        handleBackToForgotOtp,
         setOtpInputRef,
     }
 }

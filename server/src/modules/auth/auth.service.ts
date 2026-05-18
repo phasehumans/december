@@ -40,6 +40,19 @@ type RefreshSession = {
     refreshToken?: string
 }
 
+type RequestPasswordReset = {
+    email: string
+}
+
+type VerifyPasswordResetOtp = {
+    email: string
+    otp: string
+}
+
+type ResetPassword = VerifyPasswordResetOtp & {
+    newPassword: string
+}
+
 const signup = async (data: Signup) => {
     const { email, password } = data
 
@@ -239,6 +252,109 @@ const login = async (data: Login) => {
     }
 }
 
+const getResettableUser = async (email: string) => {
+    const user = await prisma.user.findUnique({
+        where: {
+            email,
+        },
+    })
+
+    if (!user || user.deletedAt || user.isDeleted || !user.emailVerified) {
+        throw new AppError('invalid or expired reset code', 401)
+    }
+
+    return user
+}
+
+const assertValidResetOtp = async (data: VerifyPasswordResetOtp) => {
+    const user = await getResettableUser(data.email)
+
+    if (!user.otpHash || !user.otpExpiresAt) {
+        throw new AppError('invalid or expired reset code', 401)
+    }
+
+    if (user.otpExpiresAt < new Date()) {
+        await prisma.user.update({
+            where: {
+                id: user.id,
+            },
+            data: {
+                otpHash: null,
+                otpExpiresAt: null,
+            },
+        })
+
+        throw new AppError('invalid or expired reset code', 401)
+    }
+
+    const isValid = await bcrypt.compare(data.otp, user.otpHash)
+
+    if (!isValid) {
+        throw new AppError('invalid or expired reset code', 401)
+    }
+
+    return user
+}
+
+const requestPasswordReset = async (data: RequestPasswordReset) => {
+    const user = await prisma.user.findUnique({
+        where: {
+            email: data.email,
+        },
+    })
+
+    if (!user || user.deletedAt || user.isDeleted || !user.emailVerified) {
+        return
+    }
+
+    const otp = crypto.randomInt(100000, 1000000).toString()
+    const otpHash = await bcrypt.hash(otp, 10)
+
+    await prisma.user.update({
+        where: {
+            id: user.id,
+        },
+        data: {
+            otpHash,
+            otpExpiresAt: new Date(Date.now() + 10 * 60 * 1000),
+        },
+    })
+
+    await sendOTP(user.email, otp)
+}
+
+const verifyPasswordResetOtp = async (data: VerifyPasswordResetOtp) => {
+    await assertValidResetOtp(data)
+}
+
+const resetPassword = async (data: ResetPassword) => {
+    const user = await assertValidResetOtp(data)
+    const password = await bcrypt.hash(data.newPassword, 10)
+
+    await prisma.$transaction([
+        prisma.user.update({
+            where: {
+                id: user.id,
+            },
+            data: {
+                password,
+                otpHash: null,
+                otpExpiresAt: null,
+            },
+        }),
+        prisma.session.updateMany({
+            where: {
+                userId: user.id,
+                isRevoked: false,
+            },
+            data: {
+                isRevoked: true,
+                revokedAt: new Date(),
+            },
+        }),
+    ])
+}
+
 const google = async (data: Google) => {
     const { name, email, sub, userAgent, ipAddress } = data
 
@@ -404,6 +520,9 @@ export const authService = {
     signup,
     verifyOtp,
     login,
+    requestPasswordReset,
+    verifyPasswordResetOtp,
+    resetPassword,
     google,
     refreshSession,
 }

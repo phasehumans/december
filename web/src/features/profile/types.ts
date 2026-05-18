@@ -19,7 +19,8 @@ export interface UpdateNameInput {
 }
 
 export interface ChangePasswordInput {
-    password: string
+    currentPassword: string
+    newPassword: string
 }
 
 export interface UpdateNotificationInput {

@@ -71,11 +71,11 @@ export const getFilesInGenerationOrder = (plan: ProjectPlan) => {
 
     const plannedFiles = new Map(plan.data.files.map((file) => [file.path, file]))
 
-    return plan.data.generationOrder.map((path) => {
+    return plan.data.buildOrder.map((path) => {
         const file = plannedFiles.get(path)
 
         if (!file || !file.generate) {
-            throw new Error(`generation order contains invalid file path: ${path}`)
+            throw new Error(`build order contains invalid file path: ${path}`)
         }
 
         return file

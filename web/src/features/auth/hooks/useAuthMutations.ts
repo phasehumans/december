@@ -5,6 +5,9 @@ import { authAPI } from '@/features/auth/api/auth'
 
 type UseAuthMutationsOptions = {
     onRequireOtp: () => void
+    onRequireForgotOtp: () => void
+    onRequireForgotReset: () => void
+    onPasswordResetSuccess: () => void
     onAuthSuccess: () => void
     setErrorMessage: (message: string | null) => void
 }
@@ -19,6 +22,9 @@ const getErrorMessage = (error: unknown) => {
 
 export const useAuthMutations = ({
     onRequireOtp,
+    onRequireForgotOtp,
+    onRequireForgotReset,
+    onPasswordResetSuccess,
     onAuthSuccess,
     setErrorMessage,
 }: UseAuthMutationsOptions) => {
@@ -66,6 +72,39 @@ export const useAuthMutations = ({
         },
     })
 
+    const requestPasswordResetMutation = useMutation({
+        mutationFn: authAPI.requestPasswordReset,
+        onSuccess: () => {
+            setErrorMessage(null)
+            onRequireForgotOtp()
+        },
+        onError: (error) => {
+            setErrorMessage(getErrorMessage(error))
+        },
+    })
+
+    const verifyPasswordResetOtpMutation = useMutation({
+        mutationFn: authAPI.verifyPasswordResetOtp,
+        onSuccess: () => {
+            setErrorMessage(null)
+            onRequireForgotReset()
+        },
+        onError: (error) => {
+            setErrorMessage(getErrorMessage(error))
+        },
+    })
+
+    const resetPasswordMutation = useMutation({
+        mutationFn: authAPI.resetPassword,
+        onSuccess: () => {
+            setErrorMessage(null)
+            onPasswordResetSuccess()
+        },
+        onError: (error) => {
+            setErrorMessage(getErrorMessage(error))
+        },
+    })
+
     const googleLogin = useGoogleLogin({
         flow: 'auth-code',
         onSuccess: (codeResponse) => {
@@ -83,6 +122,9 @@ export const useAuthMutations = ({
         signupMutation,
         loginMutation,
         verifyOtpMutation,
+        requestPasswordResetMutation,
+        verifyPasswordResetOtpMutation,
+        resetPasswordMutation,
         googleMutation,
         googleLogin,
         isAuthPending,

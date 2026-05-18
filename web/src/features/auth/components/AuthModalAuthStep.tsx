@@ -18,6 +18,7 @@ export const AuthModalAuthStep: React.FC<AuthModalAuthStepProps> = ({
     onGoogleLogin,
     onSubmit,
     onToggleAuthMode,
+    onForgotPassword,
 }) => {
     const isFormFilled = email.trim().length > 0 && password.length > 0
 
@@ -56,6 +57,17 @@ export const AuthModalAuthStep: React.FC<AuthModalAuthStepProps> = ({
                     disabled={isAuthPending}
                     className="w-full bg-[#1A1A1A] border border-[#333333] focus:border-[#555] rounded-[10px] h-[44px] px-3.5 text-[15px] text-white placeholder-[#737373] focus:outline-none transition-colors"
                 />
+
+                {authMode === 'login' && (
+                    <button
+                        type="button"
+                        onClick={onForgotPassword}
+                        disabled={isAuthPending}
+                        className="self-end text-[13px] text-[#A3A3A3] hover:text-white transition-colors underline decoration-transparent hover:decoration-white/50 underline-offset-2"
+                    >
+                        Forgot password?
+                    </button>
+                )}
 
                 <input
                     type="password"

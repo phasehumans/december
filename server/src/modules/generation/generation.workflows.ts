@@ -1,7 +1,6 @@
 import { prisma } from '../../config/db'
 import {
     extractProjectChangePlan,
-    extractProjectIntent,
     extractProjectPlan,
     generateProjectFile,
     generateProjectPatchFile,
@@ -28,7 +27,7 @@ import {
     publishFinalPreviewSnapshot,
     publishIncrementalPreviewSnapshot,
 } from './generation.runtime'
-import { planAgentResponseSchema, promptAgentResponseSchema } from './generation.schema'
+import { planAgentResponseSchema } from './generation.schema'
 import { emitAssistantMessage, emitFileStream, emitPatchFileStream } from './generation.stream'
 
 import type { GenerateWebsiteInput, ProjectPlan, ProjectRecord } from './generation.types'
@@ -62,6 +61,8 @@ const fileTreeForPlanning = (files: Record<string, string>) =>
             path,
             excerpt: content.slice(0, 1400),
         }))
+
+const toVisibleMessage = (lines: string[]) => lines.join('\n')
 
 export const generateWebsite = async (data: GenerateWebsiteInput) => {
     const { prompt, onEvent } = data
@@ -120,33 +121,10 @@ export const generateWebsite = async (data: GenerateWebsiteInput) => {
             },
         })
 
-        const rawIntentResponse = await extractProjectIntent({ userPrompt })
-        const parseIntent = promptAgentResponseSchema.safeParse(rawIntentResponse)
-
-        if (!parseIntent.success) {
-            throw new Error('invalid response | plan agent')
-        }
-
-        const intent = parseIntent.data.intent
-        assistantMessageContent = appendAssistantMessageContent(
-            assistantMessageContent,
-            parseIntent.data.summary
-        )
-
-        await emitAssistantMessage(onEvent, {
-            messageId: `${project.id}:prompt-agent`,
-            status: 'thinking',
-            content: parseIntent.data.summary,
+        const rawPlanResponse = await extractProjectPlan({
+            userPrompt,
+            canvasState: persistedCanvas.canvasStateJson as any,
         })
-
-        await onEvent?.({
-            type: 'phase',
-            data: {
-                phase: 'planning',
-            },
-        })
-
-        const rawPlanResponse = await extractProjectPlan(intent)
         const parsePlan = planAgentResponseSchema.safeParse(rawPlanResponse)
 
         if (!parsePlan.success) {
@@ -161,21 +139,35 @@ export const generateWebsite = async (data: GenerateWebsiteInput) => {
             throw new Error('plan agent returned empty plan data')
         }
 
+        const intent = parsePlan.data.intent
         const plan = parsePlan.data.plan
         const planData = plan.data as NonNullable<ProjectPlan['data']>
         assertFrontendOnlyPlan(plan)
         const orderedFiles = getFilesInGenerationOrder(plan)
         const generatedFiles: Record<string, string> = {}
         let previewManifestSequence = 0
+        const thinkingMessage = toVisibleMessage(parsePlan.data.thinking)
+        const summaryMessage = toVisibleMessage(parsePlan.data.summary)
         assistantMessageContent = appendAssistantMessageContent(
             assistantMessageContent,
-            parsePlan.data.message
+            thinkingMessage
         )
 
         await emitAssistantMessage(onEvent, {
-            messageId: `${project.id}:plan-agent`,
-            status: 'planning',
-            content: parsePlan.data.message,
+            messageId: `${project.id}:plan-agent:thinking`,
+            status: 'thinking',
+            content: thinkingMessage,
+        })
+
+        assistantMessageContent = appendAssistantMessageContent(
+            assistantMessageContent,
+            summaryMessage
+        )
+
+        await emitAssistantMessage(onEvent, {
+            messageId: `${project.id}:plan-agent:summary`,
+            status: 'thinking',
+            content: `\n\n${summaryMessage}`,
         })
 
         project = await prisma.project.update({
@@ -207,7 +199,7 @@ export const generateWebsite = async (data: GenerateWebsiteInput) => {
         for (const [fileIndex, file] of orderedFiles.entries()) {
             try {
                 const content = await generateProjectFile({
-                    intent,
+                    brief: intent,
                     plan,
                     targetFile: file,
                     generatedFiles,
@@ -328,13 +320,6 @@ export const generateWebsite = async (data: GenerateWebsiteInput) => {
         messagesPersisted = true
         project = persisted.project
 
-        await onEvent?.({
-            type: 'phase',
-            data: {
-                phase: 'done',
-            },
-        })
-
         const result = {
             project,
             version: {
@@ -389,7 +374,7 @@ const applyProjectChange = async (
     await data.onEvent?.({
         type: 'phase',
         data: {
-            phase: 'planning',
+            phase: 'thinking',
         },
     })
 
@@ -398,6 +383,12 @@ const applyProjectChange = async (
         ...(isEdit ? { prompt: editData.prompt } : {}),
         ...(isEdit && editData.selectedElement
             ? { selectedElement: editData.selectedElement }
+            : {}),
+        ...(isEdit && (editData.canvasState ?? base.baseVersion.canvasStateJson)
+            ? { canvasState: editData.canvasState ?? base.baseVersion.canvasStateJson }
+            : {}),
+        ...(!isEdit && base.baseVersion.canvasStateJson
+            ? { canvasState: base.baseVersion.canvasStateJson }
             : {}),
         ...(!isEdit
             ? {
@@ -436,15 +427,25 @@ const applyProjectChange = async (
     const plan = rawPlanResponse.plan
     const planData = plan.data as NonNullable<typeof plan.data>
     assertFrontendOnlyChangePlan(plan)
+    const thinkingMessage = toVisibleMessage(rawPlanResponse.thinking)
+    const summaryMessage = toVisibleMessage(rawPlanResponse.summary)
     assistantMessageContent = appendAssistantMessageContent(
         assistantMessageContent,
-        rawPlanResponse.message
+        thinkingMessage
     )
 
     await emitAssistantMessage(data.onEvent, {
-        messageId: `${base.project.id}:plan-agent:${mode}`,
-        status: 'planning',
-        content: rawPlanResponse.message,
+        messageId: `${base.project.id}:plan-agent:${mode}:thinking`,
+        status: 'thinking',
+        content: thinkingMessage,
+    })
+
+    assistantMessageContent = appendAssistantMessageContent(assistantMessageContent, summaryMessage)
+
+    await emitAssistantMessage(data.onEvent, {
+        messageId: `${base.project.id}:plan-agent:${mode}:summary`,
+        status: 'thinking',
+        content: `\n\n${summaryMessage}`,
     })
 
     const operations = planData.operations
@@ -549,16 +550,9 @@ const applyProjectChange = async (
         removedFiles,
         sourcePrompt,
         assistantMessage: assistantMessageContent,
-        summary: rawPlanResponse.summary || planData.summary,
+        summary: summaryMessage || planData.summary,
         ...(isEdit ? { nextProjectPrompt: editData.prompt } : {}),
         ...(isEdit && editData.canvasState ? { canvasState: editData.canvasState } : {}),
-    })
-
-    await data.onEvent?.({
-        type: 'phase',
-        data: {
-            phase: 'done',
-        },
     })
 
     const result = {

@@ -69,14 +69,14 @@ export type GenerationStreamEvent =
     | {
           type: 'phase'
           data: {
-              phase: 'thinking' | 'planning' | 'building' | 'done'
+              phase: 'thinking' | 'building'
           }
       }
     | {
           type: 'message-start'
           data: {
               messageId: string
-              status: 'thinking' | 'planning'
+              status: 'thinking'
           }
       }
     | {

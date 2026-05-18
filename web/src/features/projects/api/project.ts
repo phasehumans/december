@@ -37,7 +37,7 @@ export type BackendProjectMessage = {
     id: string
     role: 'USER' | 'ASSISTANT' | 'SYSTEM'
     content: string
-    status?: 'thinking' | 'planning' | 'building' | 'done' | 'error' | null
+    status?: 'thinking' | 'building' | 'done' | 'error' | null
     sequence: number
     createdAt: string
     updatedAt: string

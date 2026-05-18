@@ -1,14 +1,13 @@
 ﻿import {
     extractProjectChangePlan as extractProjectChangePlanAgent,
-    extractProjectIntent as extractProjectIntentAgent,
     extractProjectPlan as extractProjectPlanAgent,
 } from '../../agents/plan.agent'
 
-import type { ProjectIntent } from '../../../modules/generation/generation.types'
+import type { GenerateWebsiteInput } from '../../../modules/generation/generation.types'
 
-export const extractProjectIntent = (input: { userPrompt: string }) =>
-    extractProjectIntentAgent(input)
-
-export const extractProjectPlan = (intent: ProjectIntent) => extractProjectPlanAgent(intent)
+export const extractProjectPlan = (input: {
+    userPrompt: string
+    canvasState?: GenerateWebsiteInput['canvasState']
+}) => extractProjectPlanAgent(input)
 
 export const extractProjectChangePlan = extractProjectChangePlanAgent

@@ -77,7 +77,7 @@ export interface OutputScreenProps {
     messages: Message[]
     generatedFiles?: Record<string, GeneratedProjectFile>
     activeGeneratedFilePath?: string | null
-    generationPhase?: 'thinking' | 'planning' | 'building' | 'done' | null
+    generationPhase?: 'thinking' | 'building' | 'done' | null
     activeOperation?: OutputOperation | null
     isGenerating?: boolean
     showStructureOnly?: boolean

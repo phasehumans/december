@@ -16,7 +16,7 @@ interface UseOutputScreenControllerArgs {
     isGenerating: boolean
     generatedFiles?: Record<string, GeneratedProjectFile>
     activeGeneratedFilePath?: string | null
-    generationPhase?: 'thinking' | 'planning' | 'building' | 'done' | null
+    generationPhase?: 'thinking' | 'building' | 'done' | null
     activeOperation?: OutputOperation | null
     onPromptSubmit: (
         prompt: string,

@@ -1,5 +1,6 @@
 import '../../../tests/env'
 
+import bcrypt from 'bcrypt'
 import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'bun:test'
 import express from 'express'
 import { Router } from 'express'
@@ -19,7 +20,7 @@ const createTestUser = async (overrides: Record<string, unknown> = {}) => {
             email: `test-${crypto.randomUUID()}@example.com`,
             name: 'Chaitanya Dev',
             username: `user_${crypto.randomUUID().slice(0, 12)}`,
-            password: 'hashed-password',
+            password: await bcrypt.hash('Password123', 10),
             isDeleted: false,
             notifyProductUpdates: false,
             notifyProjectActivity: false,
@@ -238,7 +239,7 @@ describe('profile.routes.integration', () => {
         it('should return 200 on success', async () => {
             const res = await request(app)
                 .patch('/api/v1/profile/password')
-                .send({ password: 'newPass123' })
+                .send({ currentPassword: 'Password123', newPassword: 'newPass123' })
 
             expect(res.status).toBe(200)
         })
@@ -246,7 +247,7 @@ describe('profile.routes.integration', () => {
         it('should return 400 for short password', async () => {
             const res = await request(app)
                 .patch('/api/v1/profile/password')
-                .send({ password: '123' })
+                .send({ currentPassword: 'Password123', newPassword: '123' })
 
             expect(res.status).toBe(400)
         })
@@ -254,7 +255,7 @@ describe('profile.routes.integration', () => {
         it('should return 400 for long password', async () => {
             const res = await request(app)
                 .patch('/api/v1/profile/password')
-                .send({ password: 'a'.repeat(21) })
+                .send({ currentPassword: 'Password123', newPassword: 'a'.repeat(21) })
 
             expect(res.status).toBe(400)
         })
@@ -263,6 +264,14 @@ describe('profile.routes.integration', () => {
             const res = await request(app).patch('/api/v1/profile/password').send({})
 
             expect(res.status).toBe(400)
+        })
+
+        it('should return 401 when current password is incorrect', async () => {
+            const res = await request(app)
+                .patch('/api/v1/profile/password')
+                .send({ currentPassword: 'Wrong123', newPassword: 'newPass123' })
+
+            expect(res.status).toBe(401)
         })
     })
 

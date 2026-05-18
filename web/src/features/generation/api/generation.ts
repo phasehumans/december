@@ -7,7 +7,7 @@ import type {
 
 import { ApiError, apiFetch } from '@/shared/api/client'
 
-export type GenerationMessageStatus = 'thinking' | 'planning' | 'building' | 'done' | 'error'
+export type GenerationMessageStatus = 'thinking' | 'building' | 'done' | 'error'
 
 export interface PlannedBuildFile {
     path: string
@@ -49,14 +49,14 @@ export type GenerationStreamEvent =
     | {
           type: 'phase'
           data: {
-              phase: 'thinking' | 'planning' | 'building' | 'done'
+              phase: 'thinking' | 'building'
           }
       }
     | {
           type: 'message-start'
           data: {
               messageId: string
-              status: 'thinking' | 'planning'
+              status: 'thinking'
           }
       }
     | {

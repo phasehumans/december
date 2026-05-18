@@ -118,42 +118,65 @@ describe('profile.schema', () => {
 
     describe('changePasswordSchema', () => {
         test('should accept valid password', () => {
-            const result = changePasswordSchema.safeParse({ password: '123456' })
+            const result = changePasswordSchema.safeParse({
+                currentPassword: '123456',
+                newPassword: 'abcdef',
+            })
             expect(result.success).toBe(true)
         })
 
         test('should reject password shorter than 6 chars', () => {
-            const result = changePasswordSchema.safeParse({ password: '12345' })
+            const result = changePasswordSchema.safeParse({
+                currentPassword: '123456',
+                newPassword: '12345',
+            })
             expect(result.success).toBe(false)
         })
 
         test('should reject password longer than 20 chars', () => {
-            const result = changePasswordSchema.safeParse({ password: 'a'.repeat(21) })
+            const result = changePasswordSchema.safeParse({
+                currentPassword: '123456',
+                newPassword: 'a'.repeat(21),
+            })
             expect(result.success).toBe(false)
         })
 
         test('should accept password with exactly 6 chars', () => {
-            const result = changePasswordSchema.safeParse({ password: '123456' })
+            const result = changePasswordSchema.safeParse({
+                currentPassword: '123456',
+                newPassword: '123456',
+            })
             expect(result.success).toBe(true)
         })
 
         test('should accept password with exactly 20 chars', () => {
-            const result = changePasswordSchema.safeParse({ password: 'a'.repeat(20) })
+            const result = changePasswordSchema.safeParse({
+                currentPassword: '123456',
+                newPassword: 'a'.repeat(20),
+            })
             expect(result.success).toBe(true)
         })
 
         test('should reject when password is missing', () => {
-            const result = changePasswordSchema.safeParse({})
+            const result = changePasswordSchema.safeParse({
+                currentPassword: '123456',
+            })
             expect(result.success).toBe(false)
         })
 
         test('should reject password as number', () => {
-            const result = changePasswordSchema.safeParse({ password: 123456 })
+            const result = changePasswordSchema.safeParse({
+                currentPassword: '123456',
+                newPassword: 123456,
+            })
             expect(result.success).toBe(false)
         })
 
         test('should reject password as boolean', () => {
-            const result = changePasswordSchema.safeParse({ password: true })
+            const result = changePasswordSchema.safeParse({
+                currentPassword: '123456',
+                newPassword: true,
+            })
             expect(result.success).toBe(false)
         })
     })

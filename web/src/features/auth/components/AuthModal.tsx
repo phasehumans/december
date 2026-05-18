@@ -5,6 +5,9 @@ import React from 'react'
 import { useAuthModalController } from '../hooks/useAuthModalController'
 
 import { AuthModalAuthStep } from './AuthModalAuthStep'
+import { AuthModalForgotEmailStep } from './AuthModalForgotEmailStep'
+import { AuthModalForgotOtpStep } from './AuthModalForgotOtpStep'
+import { AuthModalForgotResetStep } from './AuthModalForgotResetStep'
 import { AuthModalOtpStep } from './AuthModalOtpStep'
 
 import type { AuthModalProps } from '@/features/auth/types'
@@ -22,19 +25,32 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         setEmail,
         password,
         setPassword,
+        newPassword,
+        setNewPassword,
+        confirmPassword,
+        setConfirmPassword,
         otp,
         errorMessage,
         googleLogin,
         isAuthPending,
         isGooglePending,
         isOtpPending,
+        isForgotEmailPending,
+        isForgotOtpPending,
+        isForgotResetPending,
         handleAuthSubmit,
         handleOtpChange,
         handleOtpKeyDown,
         handleOtpPaste,
         handleOtpSubmit,
+        handleForgotPasswordStart,
+        handleForgotEmailSubmit,
+        handleForgotOtpSubmit,
+        handleForgotResetSubmit,
         handleToggleAuthMode,
         handleBackToAuth,
+        handleBackToForgotEmail,
+        handleBackToForgotOtp,
         setOtpInputRef,
     } = useAuthModalController({
         isOpen,
@@ -73,8 +89,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                                 onGoogleLogin={googleLogin}
                                 onSubmit={handleAuthSubmit}
                                 onToggleAuthMode={handleToggleAuthMode}
+                                onForgotPassword={handleForgotPasswordStart}
                             />
-                        ) : (
+                        ) : step === 'otp' ? (
                             <AuthModalOtpStep
                                 email={email}
                                 otp={otp}
@@ -86,6 +103,39 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                                 onSubmit={handleOtpSubmit}
                                 onBack={handleBackToAuth}
                                 setOtpInputRef={setOtpInputRef}
+                            />
+                        ) : step === 'forgot-email' ? (
+                            <AuthModalForgotEmailStep
+                                email={email}
+                                errorMessage={errorMessage}
+                                isPending={isForgotEmailPending}
+                                onEmailChange={setEmail}
+                                onSubmit={handleForgotEmailSubmit}
+                                onBack={handleBackToAuth}
+                            />
+                        ) : step === 'forgot-otp' ? (
+                            <AuthModalForgotOtpStep
+                                email={email}
+                                otp={otp}
+                                errorMessage={errorMessage}
+                                isPending={isForgotOtpPending}
+                                onChangeOtp={handleOtpChange}
+                                onKeyDown={handleOtpKeyDown}
+                                onPaste={handleOtpPaste}
+                                onSubmit={handleForgotOtpSubmit}
+                                onBack={handleBackToForgotEmail}
+                                setOtpInputRef={setOtpInputRef}
+                            />
+                        ) : (
+                            <AuthModalForgotResetStep
+                                newPassword={newPassword}
+                                confirmPassword={confirmPassword}
+                                errorMessage={errorMessage}
+                                isPending={isForgotResetPending}
+                                onNewPasswordChange={setNewPassword}
+                                onConfirmPasswordChange={setConfirmPassword}
+                                onSubmit={handleForgotResetSubmit}
+                                onBack={handleBackToForgotOtp}
                             />
                         )}
 

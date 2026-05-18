@@ -76,7 +76,7 @@ export const emitAssistantMessage = async (
     onEvent: GenerateWebsiteInput['onEvent'],
     data: {
         messageId: string
-        status: 'thinking' | 'planning'
+        status: 'thinking'
         content: string
     }
 ) => {
@@ -84,10 +84,7 @@ export const emitAssistantMessage = async (
         return
     }
 
-    const chunkRange =
-        data.status === 'planning'
-            ? { minLength: 6, maxLength: 12, minDelay: 22, maxDelay: 40 }
-            : { minLength: 8, maxLength: 16, minDelay: 20, maxDelay: 36 }
+    const chunkRange = { minLength: 8, maxLength: 16, minDelay: 20, maxDelay: 36 }
 
     await onEvent({
         type: 'message-start',

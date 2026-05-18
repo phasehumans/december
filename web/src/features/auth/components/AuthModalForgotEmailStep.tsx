@@ -1,0 +1,59 @@
+import React from 'react'
+
+import type { AuthModalForgotEmailStepProps } from '@/features/auth/types'
+
+import { Icons } from '@/shared/components/ui/Icons'
+
+export const AuthModalForgotEmailStep: React.FC<AuthModalForgotEmailStepProps> = ({
+    email,
+    errorMessage,
+    isPending,
+    onEmailChange,
+    onSubmit,
+    onBack,
+}) => (
+    <div className="flex flex-col">
+        <div className="flex flex-col items-center mb-[22px]">
+            <div className="mb-[18px] text-[#D6D5D4]">
+                <Icons.DecemberLogo className="w-[32px] h-[32px]" />
+            </div>
+            <h2 className="text-[20px] font-medium text-[#f5f5f5] text-center tracking-tight mb-1.5">
+                Forgot password
+            </h2>
+            <p className="text-[14px] text-[#A3A3A3] text-center">
+                Enter your email and we&apos;ll send a reset code.
+            </p>
+        </div>
+
+        <form onSubmit={onSubmit} className="flex flex-col gap-2.5">
+            <input
+                type="email"
+                required
+                placeholder="Enter your email"
+                value={email}
+                onChange={(event) => onEmailChange(event.target.value)}
+                disabled={isPending}
+                className="w-full bg-[#1A1A1A] border border-[#333333] focus:border-[#555] rounded-[10px] h-[44px] px-3.5 text-[15px] text-white placeholder-[#737373] focus:outline-none transition-colors"
+            />
+
+            {errorMessage && <p className="text-[13px] text-red-500 px-1">{errorMessage}</p>}
+
+            <button
+                type="submit"
+                disabled={!email.trim() || isPending}
+                className="w-full bg-[#E5E5E5] hover:bg-white text-[#111111] font-medium h-[44px] rounded-[10px] flex items-center justify-center transition-colors disabled:opacity-50 mt-1.5"
+            >
+                {isPending ? 'Please wait...' : 'Get OTP'}
+            </button>
+
+            <button
+                type="button"
+                onClick={onBack}
+                disabled={isPending}
+                className="mt-[8px] text-[13px] text-[#A3A3A3] hover:text-white transition-colors"
+            >
+                Back to login
+            </button>
+        </form>
+    </div>
+)
