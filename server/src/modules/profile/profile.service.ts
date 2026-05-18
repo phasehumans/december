@@ -17,7 +17,8 @@ type UpdateUsername = {
 
 type ChangePassword = {
     userId: string
-    password: string
+    currentPassword: string
+    newPassword: string
 }
 
 type UpdateNotification = {
@@ -182,7 +183,7 @@ const updateUsername = async (data: UpdateUsername) => {
 }
 
 const changePassword = async (data: ChangePassword) => {
-    const { password, userId } = data
+    const { currentPassword, newPassword, userId } = data
 
     const existingUser = await prisma.user.findUnique({
         where: {
@@ -195,7 +196,23 @@ const changePassword = async (data: ChangePassword) => {
         throw new AppError('user not found', 404)
     }
 
-    const hashPassword = await bcrypt.hash(password, 10)
+    if (!existingUser.password) {
+        throw new AppError('password is not set for this account', 400)
+    }
+
+    const isCurrentPasswordValid = await bcrypt.compare(currentPassword, existingUser.password)
+
+    if (!isCurrentPasswordValid) {
+        throw new AppError('current password is incorrect', 401)
+    }
+
+    const isSamePassword = await bcrypt.compare(newPassword, existingUser.password)
+
+    if (isSamePassword) {
+        throw new AppError('new password must be different from current password', 400)
+    }
+
+    const hashPassword = await bcrypt.hash(newPassword, 10)
 
     const updatedUser = await prisma.user.update({
         where: {

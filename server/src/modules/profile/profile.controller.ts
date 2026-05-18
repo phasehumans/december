@@ -225,12 +225,13 @@ const changePassword = async (req: Request, res: Response) => {
         })
     }
 
-    const { password } = parseData.data
+    const { currentPassword, newPassword } = parseData.data
 
     try {
         const result = await profileService.changePassword({
             userId,
-            password,
+            currentPassword,
+            newPassword,
         })
         return res.status(200).json({
             success: true,

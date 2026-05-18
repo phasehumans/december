@@ -258,6 +258,84 @@ describe('auth.service.integration', () => {
         })
     })
 
+    describe('forgot password', () => {
+        it('should create and send a reset otp for verified users', async () => {
+            const user = await createUser({
+                email: 'forgot@example.com',
+                username: 'forgot',
+            })
+
+            await authService.requestPasswordReset({ email: user.email })
+
+            const updatedUser = await prisma.user.findUnique({ where: { id: user.id } })
+            expect(updatedUser!.otpHash).toBeTruthy()
+            expect(updatedUser!.otpExpiresAt).toBeTruthy()
+            expect(sendOTPMock).toHaveBeenCalledTimes(1)
+        })
+
+        it('should verify a valid reset otp', async () => {
+            const otp = '123456'
+            const user = await createUser({
+                email: 'verifyreset@example.com',
+                username: 'verifyreset',
+                otpHash: await bcrypt.hash(otp, 10),
+                otpExpiresAt: new Date(Date.now() + 10000),
+            })
+
+            await expect(
+                authService.verifyPasswordResetOtp({ email: user.email, otp })
+            ).resolves.toBeUndefined()
+        })
+
+        it('should reset password, clear otp, and revoke active sessions', async () => {
+            const otp = '123456'
+            const user = await createUser({
+                email: 'reset@example.com',
+                username: 'resetuser',
+                otpHash: await bcrypt.hash(otp, 10),
+                otpExpiresAt: new Date(Date.now() + 10000),
+            })
+
+            await prisma.session.create({
+                data: {
+                    userId: user.id,
+                    refreshTokenHash: `hash-${crypto.randomUUID()}`,
+                    expiresAt: new Date(Date.now() + 1000 * 60 * 60),
+                },
+            })
+
+            await authService.resetPassword({
+                email: user.email,
+                otp,
+                newPassword: 'NewPass123',
+            })
+
+            const updatedUser = await prisma.user.findUnique({ where: { id: user.id } })
+            const sessions = await prisma.session.findMany({ where: { userId: user.id } })
+
+            expect(await bcrypt.compare('NewPass123', updatedUser!.password!)).toBe(true)
+            expect(updatedUser!.otpHash).toBeNull()
+            expect(updatedUser!.otpExpiresAt).toBeNull()
+            expect(sessions.every((session) => session.isRevoked)).toBe(true)
+        })
+
+        it('should reject an invalid reset otp', async () => {
+            const user = await createUser({
+                email: 'badreset@example.com',
+                username: 'badreset',
+                otpHash: await bcrypt.hash('123456', 10),
+                otpExpiresAt: new Date(Date.now() + 10000),
+            })
+
+            await expect(
+                authService.verifyPasswordResetOtp({
+                    email: user.email,
+                    otp: '000000',
+                })
+            ).rejects.toThrow('invalid or expired reset code')
+        })
+    })
+
     describe('google', () => {
         it('should create new user and session', async () => {
             const result = await authService.google({

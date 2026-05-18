@@ -42,7 +42,8 @@ type UpdateUsernameInput = {
 }
 
 type ChangePasswordInput = {
-    password: string
+    currentPassword: string
+    newPassword: string
 }
 
 type UpdateNotificationInput = {

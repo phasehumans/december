@@ -1,9 +1,52 @@
 import { describe, expect, test } from 'bun:test'
 
-import { signupSchema, loginSchema } from '../../src/modules/auth/auth.schema'
+import {
+    forgotPasswordRequestSchema,
+    forgotPasswordResetSchema,
+    forgotPasswordVerifySchema,
+    signupSchema,
+    loginSchema,
+} from '../../src/modules/auth/auth.schema'
 import { getNameFromEmail, getUsername } from '../../src/modules/auth/auth.utils'
 
 describe('auth.schema', () => {
+    describe('forgot password schemas', () => {
+        test('should accept valid forgot-password inputs', () => {
+            expect(
+                forgotPasswordRequestSchema.safeParse({ email: 'user@example.com' }).success
+            ).toBe(true)
+            expect(
+                forgotPasswordVerifySchema.safeParse({
+                    email: 'user@example.com',
+                    otp: '123456',
+                }).success
+            ).toBe(true)
+            expect(
+                forgotPasswordResetSchema.safeParse({
+                    email: 'user@example.com',
+                    otp: '123456',
+                    newPassword: 'Password123',
+                }).success
+            ).toBe(true)
+        })
+
+        test('should reject malformed reset otp and short passwords', () => {
+            expect(
+                forgotPasswordVerifySchema.safeParse({
+                    email: 'user@example.com',
+                    otp: '123',
+                }).success
+            ).toBe(false)
+            expect(
+                forgotPasswordResetSchema.safeParse({
+                    email: 'user@example.com',
+                    otp: '123456',
+                    newPassword: '123',
+                }).success
+            ).toBe(false)
+        })
+    })
+
     describe('signupSchema', () => {
         test('should accept valid email and password', () => {
             const result = signupSchema.safeParse({

@@ -73,13 +73,21 @@ export const useProfileSettingsController = () => {
             return
         }
 
+        if (!currentPassword.trim()) {
+            setProfileActionError('Please enter your current password')
+            return
+        }
+
         if (newPassword !== confirmPassword) {
             setProfileActionError('New password and confirm password do not match')
             return
         }
 
         setProfileActionError(null)
-        updatePasswordMutation.mutate({ password: newPassword })
+        updatePasswordMutation.mutate({
+            currentPassword,
+            newPassword,
+        })
     }
 
     const handleNotificationToggle = (

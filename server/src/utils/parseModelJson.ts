@@ -74,11 +74,70 @@ const normalizeJsonLikeContent = (content: string) => {
         .trim()
 }
 
+const escapeControlCharactersInsideStrings = (content: string) => {
+    let escaped = ''
+    let inString = false
+    let isEscaped = false
+
+    for (const char of content) {
+        if (!inString) {
+            escaped += char
+
+            if (char === '"') {
+                inString = true
+            }
+
+            continue
+        }
+
+        if (isEscaped) {
+            escaped += char
+            isEscaped = false
+            continue
+        }
+
+        if (char === '\\') {
+            escaped += char
+            isEscaped = true
+            continue
+        }
+
+        if (char === '"') {
+            escaped += char
+            inString = false
+            continue
+        }
+
+        if (char === '\n') {
+            escaped += '\\n'
+            continue
+        }
+
+        if (char === '\r') {
+            escaped += '\\r'
+            continue
+        }
+
+        if (char === '\t') {
+            escaped += '\\t'
+            continue
+        }
+
+        escaped += char
+    }
+
+    return escaped
+}
+
 export const parseModelJson = <T>(content: string, agentName: string): T => {
     const normalizedContent = normalizeJsonLikeContent(content)
-    const parseAttempts = [normalizedContent, extractBalancedJson(normalizedContent)].filter(
-        (value): value is string => Boolean(value)
-    )
+    const balancedJson = extractBalancedJson(normalizedContent)
+    const parseAttempts = [
+        normalizedContent,
+        balancedJson,
+        escapeControlCharactersInsideStrings(normalizedContent),
+        balancedJson ? escapeControlCharactersInsideStrings(balancedJson) : null,
+    ].filter((value): value is string => Boolean(value))
 
     for (const candidate of parseAttempts) {
         try {

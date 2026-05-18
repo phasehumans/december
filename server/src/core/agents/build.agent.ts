@@ -21,7 +21,7 @@ type PlannedProjectFile = z.infer<typeof plannedProjectFileSchema>
 type ProjectPatchOperation = z.infer<typeof projectPatchOperationSchema>
 
 type GenerateProjectFileInput = {
-    intent: ProjectIntent
+    brief: ProjectIntent
     plan: ProjectPlan
     targetFile: PlannedProjectFile
     generatedFiles: Record<string, string>
@@ -146,10 +146,12 @@ export const generateProjectFile = async (data: GenerateProjectFileInput) => {
                     {
                         role: 'user',
                         content: JSON.stringify({
-                            intent: data.intent,
-                            projectPlan: data.plan,
+                            projectBrief: data.brief,
+                            buildPlan: data.plan,
                             targetFile: data.targetFile,
                             plannedFiles: data.plan.data?.files ?? [],
+                            buildOrder: data.plan.data?.buildOrder ?? [],
+                            builderNotes: data.plan.data?.builderNotes ?? [],
                             relatedFiles: selectRelatedFiles(
                                 data.targetFile.path,
                                 data.generatedFiles

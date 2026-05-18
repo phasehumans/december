@@ -1,12 +1,11 @@
 import React from 'react'
 
 interface ChatMessageAssistantMetaProps {
-    status?: 'thinking' | 'planning' | 'building' | 'done' | 'error'
+    status?: 'thinking' | 'building' | 'done' | 'error'
 }
 
 const STATUS_LABELS = {
     thinking: 'Thinking...',
-    planning: 'Planning...',
     building: 'Building...',
     done: 'Done',
     error: 'Error',
@@ -15,8 +14,7 @@ const STATUS_LABELS = {
 export const ChatMessageAssistantMeta: React.FC<ChatMessageAssistantMetaProps> = ({
     status = 'done',
 }) => {
-    const isStreamingStatus =
-        status === 'thinking' || status === 'planning' || status === 'building'
+    const isStreamingStatus = status === 'thinking' || status === 'building'
 
     return (
         <div className="flex items-center gap-2 text-[11px] font-medium tracking-wide">

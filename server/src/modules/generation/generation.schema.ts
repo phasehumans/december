@@ -13,6 +13,16 @@ const fileGeneratorSchema = z.enum([
     'lib',
 ])
 
+const REQUIRED_GENERATED_PROJECT_PATHS = [
+    'package.json',
+    'index.html',
+    'src/frontend.tsx',
+    'src/index.css',
+    'src/App.tsx',
+] as const
+const REQUIRED_RUNTIME_DEPENDENCIES = ['react', 'react-dom', 'bun-plugin-tailwind', 'tailwindcss']
+const REQUIRED_RUNTIME_DEV_DEPENDENCIES = ['@types/react', '@types/react-dom', '@types/bun']
+
 export const plannedProjectFileSchema = z
     .object({
         path: z.string().min(1),
@@ -54,61 +64,50 @@ export const projectIntentSchema = z.object({
     prompt: z.string(),
     summary: z.string(),
     projectName: z.string(),
-
     appType: z.enum(['landing-page', 'dashboard', 'portfolio & blog', 'saas-app', 'ecommerce']),
-
-    frontendFramework: z.literal('bun-react'),
-    language: z.literal('typescript'),
-    styling: z.literal('tailwindcss'),
-    visualStyle: z.string(),
-
-    pages: z.array(z.string()),
-    sections: z.array(z.string()),
-    coreEntities: z.array(z.string()),
-    coreFeatures: z.array(z.string()),
+    audience: z.string(),
+    primaryGoal: z.string(),
+    visualDirection: z.string(),
+    keyScreens: z.array(z.string()),
+    keyCapabilities: z.array(z.string()),
+    canvasSignals: z.array(z.string()),
 })
 
-export const extractProjectPlanSchema = projectIntentSchema
+export const extractProjectPlanSchema = z
+    .object({
+        userPrompt: z.string().min(1),
+        canvasState: canvasDocumentSchema.optional(),
+    })
+    .strict()
 
-const plannedFrontendPageSchema = z
+const plannedRouteSchema = z
     .object({
         name: z.string(),
-        route: z.string(),
+        path: z.string(),
         purpose: z.string(),
     })
     .strict()
 
-const plannedFrontendComponentSchema = z
+const plannedArchitectureSchema = z
     .object({
-        name: z.string(),
-        type: z.enum(['layout', 'section', 'shared', 'feature']),
-        purpose: z.string(),
-    })
-    .strict()
-
-const plannedFrontendSchema = z
-    .object({
-        pages: z.array(plannedFrontendPageSchema),
-        components: z.array(plannedFrontendComponentSchema),
+        appShape: z.string(),
+        routing: z.string(),
+        state: z.string(),
+        styling: z.string(),
     })
     .strict()
 
 export const projectPlanDataSchema = z
     .object({
         projectName: z.string(),
-
-        layoutType: z.enum(['single-page', 'multi-page']),
-        needsRouting: z.boolean(),
-
-        installCommand: z.string(),
+        goal: z.string(),
+        routes: z.array(plannedRouteSchema),
+        architecture: plannedArchitectureSchema,
         dependencies: z.array(z.string()),
         devDependencies: z.array(z.string()),
-
-        frontend: plannedFrontendSchema,
-
         files: z.array(plannedProjectFileSchema),
-        generationOrder: z.array(z.string()),
-        constraints: z.array(z.string()),
+        buildOrder: z.array(z.string()),
+        builderNotes: z.array(z.string()),
     })
     .strict()
     .superRefine((data, ctx) => {
@@ -125,32 +124,62 @@ export const projectPlanDataSchema = z
 
         const generatedPaths = data.files.filter((file) => file.generate).map((file) => file.path)
         const generatedPathSet = new Set(generatedPaths)
-        const generationOrderSet = new Set(data.generationOrder)
+        const buildOrderSet = new Set(data.buildOrder)
 
-        if (generationOrderSet.size !== data.generationOrder.length) {
+        if (buildOrderSet.size !== data.buildOrder.length) {
             ctx.addIssue({
                 code: z.ZodIssueCode.custom,
-                path: ['generationOrder'],
-                message: 'generation order must not contain duplicate file paths',
+                path: ['buildOrder'],
+                message: 'build order must not contain duplicate file paths',
             })
         }
 
-        for (const path of data.generationOrder) {
+        for (const path of data.buildOrder) {
             if (!generatedPathSet.has(path)) {
                 ctx.addIssue({
                     code: z.ZodIssueCode.custom,
-                    path: ['generationOrder'],
-                    message: `generation order contains unknown or non-generated path: ${path}`,
+                    path: ['buildOrder'],
+                    message: `build order contains unknown or non-generated path: ${path}`,
                 })
             }
         }
 
         for (const path of generatedPathSet) {
-            if (!generationOrderSet.has(path)) {
+            if (!buildOrderSet.has(path)) {
                 ctx.addIssue({
                     code: z.ZodIssueCode.custom,
-                    path: ['generationOrder'],
-                    message: `generation order is missing generated path: ${path}`,
+                    path: ['buildOrder'],
+                    message: `build order is missing generated path: ${path}`,
+                })
+            }
+        }
+
+        for (const path of REQUIRED_GENERATED_PROJECT_PATHS) {
+            if (!generatedPathSet.has(path)) {
+                ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    path: ['files'],
+                    message: `required generated path is missing: ${path}`,
+                })
+            }
+        }
+
+        for (const dependency of REQUIRED_RUNTIME_DEPENDENCIES) {
+            if (!data.dependencies.includes(dependency)) {
+                ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    path: ['dependencies'],
+                    message: `required dependency is missing: ${dependency}`,
+                })
+            }
+        }
+
+        for (const dependency of REQUIRED_RUNTIME_DEV_DEPENDENCIES) {
+            if (!data.devDependencies.includes(dependency)) {
+                ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    path: ['devDependencies'],
+                    message: `required dev dependency is missing: ${dependency}`,
                 })
             }
         }
@@ -184,16 +213,11 @@ export const projectPlanSchema = z
 
 export const generateProjectFileSchema = projectPlanSchema
 
-export const promptAgentResponseSchema = z
-    .object({
-        summary: z.string().min(1),
-        intent: projectIntentSchema,
-    })
-    .strict()
-
 export const planAgentResponseSchema = z
     .object({
-        message: z.string().min(1),
+        thinking: z.array(z.string().min(1)).min(1),
+        summary: z.array(z.string().min(1)).min(1),
+        intent: projectIntentSchema,
         plan: projectPlanSchema,
     })
     .strict()
@@ -306,8 +330,8 @@ export const projectChangePlanSchema = z
 
 export const projectChangePlanResponseSchema = z
     .object({
-        message: z.string().min(1),
-        summary: z.string().min(1),
+        thinking: z.array(z.string().min(1)).min(1),
+        summary: z.array(z.string().min(1)).min(1),
         plan: projectChangePlanSchema,
     })
     .strict()

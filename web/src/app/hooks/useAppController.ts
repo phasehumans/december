@@ -112,7 +112,7 @@ export const useAppController = () => {
         string | null
     >(null)
     const [generationPhase, setGenerationPhase] = React.useState<
-        'thinking' | 'planning' | 'building' | 'done' | null
+        'thinking' | 'building' | 'done' | null
     >(null)
     const [activeOperation, setActiveOperation] = React.useState<OutputOperation | null>(null)
     const [isGenerating, setIsGenerating] = React.useState(false)
@@ -202,7 +202,7 @@ export const useAppController = () => {
     )
 
     const setAssistantStatus = React.useCallback(
-        (messageId: string, status: 'thinking' | 'planning' | 'building' | 'done' | 'error') => {
+        (messageId: string, status: 'thinking' | 'building' | 'done' | 'error') => {
             updateAssistantMessage(messageId, (message) => ({
                 ...message,
                 status,
@@ -217,28 +217,6 @@ export const useAppController = () => {
                 ...message,
                 content: `${message.content}${chunk}`,
             }))
-        },
-        [updateAssistantMessage]
-    )
-
-    const ensureAssistantSpacing = React.useCallback(
-        (messageId: string) => {
-            updateAssistantMessage(messageId, (message) => {
-                if (!message.content.trim()) {
-                    return message
-                }
-
-                if (message.content.endsWith('\n\n')) {
-                    return message
-                }
-
-                const spacer = message.content.endsWith('\n') ? '\n' : '\n\n'
-
-                return {
-                    ...message,
-                    content: `${message.content}${spacer}`,
-                }
-            })
         },
         [updateAssistantMessage]
     )
@@ -764,20 +742,9 @@ export const useAppController = () => {
                                     void queryClient.invalidateQueries({ queryKey: ['projects'] })
                                     return
                                 case 'phase':
-                                    if (event.data.phase === 'planning') {
-                                        setGenerationPhase('planning')
-                                        setAssistantStatus(activeMessageId, 'planning')
-                                        ensureAssistantSpacing(activeMessageId)
-                                    }
-
                                     if (event.data.phase === 'building') {
                                         setGenerationPhase('building')
                                         setAssistantStatus(activeMessageId, 'building')
-                                    }
-
-                                    if (event.data.phase === 'done') {
-                                        setGenerationPhase('done')
-                                        setAssistantStatus(activeMessageId, 'done')
                                     }
 
                                     return
@@ -785,12 +752,6 @@ export const useAppController = () => {
                                     if (event.data.status === 'thinking') {
                                         setGenerationPhase('thinking')
                                         setAssistantStatus(activeMessageId, 'thinking')
-                                    }
-
-                                    if (event.data.status === 'planning') {
-                                        setGenerationPhase('planning')
-                                        setAssistantStatus(activeMessageId, 'planning')
-                                        ensureAssistantSpacing(activeMessageId)
                                     }
 
                                     return
@@ -866,7 +827,6 @@ export const useAppController = () => {
             appendAssistantChunk,
             appendGeneratedFileChunk,
             completeGeneratedFile,
-            ensureAssistantSpacing,
             markGeneratedFileError,
             openProject,
             queryClient,
@@ -975,10 +935,9 @@ export const useAppController = () => {
                             case 'connected':
                                 return
                             case 'phase':
-                                if (event.data.phase === 'planning') {
-                                    setGenerationPhase('planning')
-                                    setAssistantStatus(activeMessageId, 'planning')
-                                    ensureAssistantSpacing(activeMessageId)
+                                if (event.data.phase === 'thinking') {
+                                    setGenerationPhase('thinking')
+                                    setAssistantStatus(activeMessageId, 'thinking')
                                 }
 
                                 if (event.data.phase === 'building') {
@@ -986,17 +945,11 @@ export const useAppController = () => {
                                     setAssistantStatus(activeMessageId, 'building')
                                 }
 
-                                if (event.data.phase === 'done') {
-                                    setGenerationPhase('done')
-                                    setAssistantStatus(activeMessageId, 'done')
-                                }
-
                                 return
                             case 'message-start':
-                                if (event.data.status === 'planning') {
-                                    setGenerationPhase('planning')
-                                    setAssistantStatus(activeMessageId, 'planning')
-                                    ensureAssistantSpacing(activeMessageId)
+                                if (event.data.status === 'thinking') {
+                                    setGenerationPhase('thinking')
+                                    setAssistantStatus(activeMessageId, 'thinking')
                                 }
 
                                 return
@@ -1105,7 +1058,6 @@ export const useAppController = () => {
             appendAssistantChunk,
             appendGeneratedFileChunk,
             completeGeneratedFile,
-            ensureAssistantSpacing,
             hydrateAppliedProjectChange,
             markGeneratedFileError,
             queryClient,

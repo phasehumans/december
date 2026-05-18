@@ -331,6 +331,70 @@ describe('auth.routes.integration', () => {
         })
     })
 
+    describe('forgot password routes', () => {
+        it('should request a reset otp', async () => {
+            await createUser({
+                email: 'forgot@example.com',
+                username: 'forgot_user',
+            })
+
+            const res = await request(app).post('/auth/forgot-password/request').send({
+                email: 'forgot@example.com',
+            })
+
+            expect(res.status).toBe(200)
+            expect(sendOTPMock).toHaveBeenCalledTimes(1)
+        })
+
+        it('should verify reset otp', async () => {
+            const otp = '123456'
+            await createUser({
+                email: 'verifyforgot@example.com',
+                username: 'verifyforgot',
+                otpHash: await bcrypt.hash(otp, 10),
+                otpExpiresAt: new Date(Date.now() + 10000),
+            })
+
+            const res = await request(app).post('/auth/forgot-password/verify').send({
+                email: 'verifyforgot@example.com',
+                otp,
+            })
+
+            expect(res.status).toBe(200)
+        })
+
+        it('should reset password with valid otp', async () => {
+            const otp = '123456'
+            const user = await createUser({
+                email: 'resetforgot@example.com',
+                username: 'resetforgot',
+                otpHash: await bcrypt.hash(otp, 10),
+                otpExpiresAt: new Date(Date.now() + 10000),
+            })
+
+            const res = await request(app).post('/auth/forgot-password/reset').send({
+                email: user.email,
+                otp,
+                newPassword: 'NewPass123',
+            })
+
+            const updatedUser = await prisma.user.findUnique({ where: { id: user.id } })
+
+            expect(res.status).toBe(200)
+            expect(await bcrypt.compare('NewPass123', updatedUser!.password!)).toBe(true)
+        })
+
+        it('should reject invalid reset payloads', async () => {
+            const res = await request(app).post('/auth/forgot-password/reset').send({
+                email: 'bad@example.com',
+                otp: '123',
+                newPassword: '123',
+            })
+
+            expect(res.status).toBe(400)
+        })
+    })
+
     describe('POST /auth/google', () => {
         it('should login via google and set cookies', async () => {
             axiosPostMock.mockResolvedValue({

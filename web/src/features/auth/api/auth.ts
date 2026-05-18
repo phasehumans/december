@@ -19,6 +19,19 @@ type GoogleInput = {
     code: string
 }
 
+type ForgotPasswordRequestInput = {
+    email: string
+}
+
+type ForgotPasswordVerifyInput = {
+    email: string
+    otp: string
+}
+
+type ForgotPasswordResetInput = ForgotPasswordVerifyInput & {
+    newPassword: string
+}
+
 const signup = (data: SignupInput) => {
     return apiRequest<{ message: string }>('/auth/signup', {
         method: 'POST',
@@ -51,9 +64,36 @@ const google = (data: GoogleInput) => {
     })
 }
 
+const requestPasswordReset = (data: ForgotPasswordRequestInput) => {
+    return apiRequest<void>('/auth/forgot-password/request', {
+        method: 'POST',
+        includeAuth: false,
+        body: JSON.stringify(data),
+    })
+}
+
+const verifyPasswordResetOtp = (data: ForgotPasswordVerifyInput) => {
+    return apiRequest<void>('/auth/forgot-password/verify', {
+        method: 'POST',
+        includeAuth: false,
+        body: JSON.stringify(data),
+    })
+}
+
+const resetPassword = (data: ForgotPasswordResetInput) => {
+    return apiRequest<void>('/auth/forgot-password/reset', {
+        method: 'POST',
+        includeAuth: false,
+        body: JSON.stringify(data),
+    })
+}
+
 export const authAPI = {
     signup,
     verifyOtp,
     login,
+    requestPasswordReset,
+    verifyPasswordResetOtp,
+    resetPassword,
     google,
 }

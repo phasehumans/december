@@ -208,7 +208,11 @@ describe('profile.service.integration', () => {
 
     describe('changePassword', () => {
         it('should hash and update password', async () => {
-            const result = await profileService.changePassword({ userId, password: 'NewPass123' })
+            const result = await profileService.changePassword({
+                userId,
+                currentPassword: 'Password123',
+                newPassword: 'NewPass123',
+            })
 
             const isValid = await bcrypt.compare('NewPass123', result.password!)
             expect(isValid).toBe(true)
@@ -216,7 +220,11 @@ describe('profile.service.integration', () => {
 
         it('should fail if user not found', async () => {
             await expect(
-                profileService.changePassword({ userId: 'invalid', password: 'test123' })
+                profileService.changePassword({
+                    userId: 'invalid',
+                    currentPassword: 'Password123',
+                    newPassword: 'test123',
+                })
             ).rejects.toThrow('user not found')
         })
 
@@ -224,16 +232,34 @@ describe('profile.service.integration', () => {
             const deleted = await createSoftDeletedUser()
 
             await expect(
-                profileService.changePassword({ userId: deleted.id, password: 'NewPass1' })
+                profileService.changePassword({
+                    userId: deleted.id,
+                    currentPassword: 'Password123',
+                    newPassword: 'NewPass1',
+                })
             ).rejects.toThrow('user not found')
         })
 
         it('should store a bcrypt hash, not plaintext', async () => {
-            await profileService.changePassword({ userId, password: 'Secret99' })
+            await profileService.changePassword({
+                userId,
+                currentPassword: 'Password123',
+                newPassword: 'Secret99',
+            })
 
             const db = await prisma.user.findUnique({ where: { id: userId } })
             expect(db!.password).not.toBe('Secret99')
             expect(db!.password!.startsWith('$2')).toBe(true)
+        })
+
+        it('should fail when current password is wrong', async () => {
+            await expect(
+                profileService.changePassword({
+                    userId,
+                    currentPassword: 'Wrong123',
+                    newPassword: 'NewPass123',
+                })
+            ).rejects.toThrow('current password is incorrect')
         })
     })
 

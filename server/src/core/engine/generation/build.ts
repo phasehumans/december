@@ -11,7 +11,7 @@ import type {
 } from '../../../modules/generation/generation.types'
 
 export const generateProjectFile = (input: {
-    intent: ProjectIntent
+    brief: ProjectIntent
     plan: ProjectPlan
     targetFile: PlannedProjectFile
     generatedFiles: Record<string, string>
