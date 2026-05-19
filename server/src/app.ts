@@ -12,7 +12,7 @@ import runtimeRouter from './modules/runtime/runtime.routes'
 import templateRouter from './modules/template/template.routes'
 import uploadRouter, { importRouter } from './modules/upload/upload.routes'
 import usageRouter from './modules/usage/usage.routes'
-// import notificationRouter from './modules/notification/notification.route'
+import notificationRouter from './modules/notification/notification.routes'
 
 const app = express()
 
@@ -37,6 +37,6 @@ app.use('/api/v1/import', importRouter)
 app.use('/api/v1/usage', usageRouter)
 app.use('/api/v1/template', templateRouter)
 app.use('/api/v1/integrations', integrationsRouter)
-// app.use('/api/v1/notfication', notificationRouter)dd
+app.use('/api/v1/notification', notificationRouter)
 
 export default app

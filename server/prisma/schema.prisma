@@ -42,6 +42,24 @@ model User {
   projects      Project[]
   imports       ProjectImport[]
   likedProjects ProjectLike[]
+  notifications Notification[]
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  title     String
+  message   String
+  isRead    Boolean  @default(false)
+  type      NotificationType @default(INFO)
+  link      String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, isRead])
+  @@index([createdAt])
 }
 
 model Session {
@@ -167,6 +185,13 @@ model ProjectLike {
   @@unique([userId, projectId])
   @@index([userId])
   @@index([projectId])
+}
+
+enum NotificationType {
+  INFO
+  WARNING
+  SUCCESS
+  ERROR
 }
 
 enum GenerationSound {

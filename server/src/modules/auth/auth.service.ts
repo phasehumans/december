@@ -8,6 +8,7 @@ import { AppError } from '../../utils/appError'
 import { authSession, deleteSessionById, isSessionExpired } from './auth.session'
 import { authToken } from './auth.token'
 import { sendOTP, getNameFromEmail, getUsername } from './auth.utils'
+import { sendNotificationToUser } from '../notification/notification.service'
 
 type Signup = {
     email: string
@@ -178,6 +179,17 @@ const verifyOtp = async (data: VerifyOtp) => {
         },
     })
 
+    try {
+        await sendNotificationToUser({
+            userId: user.id,
+            title: 'New Sign-In',
+            message: `We noticed a new sign-in to your account${userAgent ? ` from ${userAgent}` : ''}.`,
+            type: 'INFO',
+        })
+    } catch (error) {
+        console.error('Failed to send sign-in notification:', error)
+    }
+
     // console.log(accessToken, refreshToken)
 
     return {
@@ -242,6 +254,17 @@ const login = async (data: Login) => {
             expiresAt: authSession.getRefreshTokenExpiryDate(),
         },
     })
+
+    try {
+        await sendNotificationToUser({
+            userId: existingUser.id,
+            title: 'New Sign-In',
+            message: `We noticed a new sign-in to your account${userAgent ? ` from ${userAgent}` : ''}.`,
+            type: 'INFO',
+        })
+    } catch (error) {
+        console.error('Failed to send sign-in notification:', error)
+    }
 
     // console.log('accessToken: ', accessToken)
     // console.log('refreshToken: ', refreshToken)
@@ -418,6 +441,17 @@ const google = async (data: Google) => {
             expiresAt: authSession.getRefreshTokenExpiryDate(),
         },
     })
+
+    try {
+        await sendNotificationToUser({
+            userId: user.id,
+            title: 'New Sign-In',
+            message: `We noticed a new sign-in to your account${userAgent ? ` from ${userAgent}` : ''}.`,
+            type: 'INFO',
+        })
+    } catch (error) {
+        console.error('Failed to send sign-in notification:', error)
+    }
 
     return {
         accessToken,
