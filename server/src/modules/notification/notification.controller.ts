@@ -1,0 +1,347 @@
+import { AppError } from '../../utils/appError'
+import {
+    NotificationParamsSchema,
+    SendNotificationSchema,
+    SendNotificationToAllSchema,
+} from './notification.schema'
+import { notificationService } from './notification.service'
+
+import type { Request, Response } from 'express'
+
+const getNotifications = async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
+
+    if (!userId) {
+        return res.status(400).json({
+            success: false,
+            message: 'unauthorized',
+        })
+    }
+
+    try {
+        const result = await notificationService.getNotifications(userId)
+        return res.status(200).json({
+            success: true,
+            message: 'notifications fetched successfully',
+            data: result,
+        })
+    } catch (error) {
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({
+                success: false,
+                message: 'failed to fetch notifications',
+                errors: error.message,
+            })
+        }
+
+        return res.status(500).json({
+            success: false,
+            message: 'failed to fetch notifications',
+            errors: error instanceof Error ? error.message : 'unknown error',
+        })
+    }
+}
+
+const getNotificationById = async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
+    const parseData = NotificationParamsSchema.safeParse(req.params)
+
+    if (!userId) {
+        return res.status(400).json({
+            success: false,
+            message: 'unauthorized',
+        })
+    }
+
+    if (!parseData.success) {
+        return res.status(400).json({
+            success: false,
+            message: 'validation failed',
+            errors: parseData.error.flatten().fieldErrors,
+        })
+    }
+
+    const { id } = parseData.data
+
+    try {
+        const notification = await notificationService.getNotificationById(userId, id)
+
+        if (!notification) {
+            return res.status(404).json({
+                success: false,
+                message: 'notification not found',
+            })
+        }
+
+        // Mark as read when fetched in detail
+        if (!notification.isRead) {
+            await notificationService.markAsRead(userId, id)
+            notification.isRead = true
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: 'notification fetched successfully',
+            data: notification,
+        })
+    } catch (error) {
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({
+                success: false,
+                message: 'failed to fetch notification',
+                errors: error.message,
+            })
+        }
+
+        return res.status(500).json({
+            success: false,
+            message: 'failed to fetch notification',
+            errors: error instanceof Error ? error.message : 'unknown error',
+        })
+    }
+}
+
+const markAsRead = async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
+    const parseData = NotificationParamsSchema.safeParse(req.params)
+
+    if (!userId) {
+        return res.status(400).json({
+            success: false,
+            message: 'unauthorized',
+        })
+    }
+
+    if (!parseData.success) {
+        return res.status(400).json({
+            success: false,
+            message: 'validation failed',
+            errors: parseData.error.flatten().fieldErrors,
+        })
+    }
+
+    const { id } = parseData.data
+
+    try {
+        const result = await notificationService.markAsRead(userId, id)
+        return res.status(200).json({
+            success: true,
+            message: 'notification marked as read',
+            data: result,
+        })
+    } catch (error) {
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({
+                success: false,
+                message: 'failed to mark notification as read',
+                errors: error.message,
+            })
+        }
+
+        return res.status(500).json({
+            success: false,
+            message: 'failed to mark notification as read',
+            errors: error instanceof Error ? error.message : 'unknown error',
+        })
+    }
+}
+
+const deleteNotification = async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
+    const parseData = NotificationParamsSchema.safeParse(req.params)
+
+    if (!userId) {
+        return res.status(400).json({
+            success: false,
+            message: 'unauthorized',
+        })
+    }
+
+    if (!parseData.success) {
+        return res.status(400).json({
+            success: false,
+            message: 'validation failed',
+            errors: parseData.error.flatten().fieldErrors,
+        })
+    }
+
+    const { id } = parseData.data
+
+    try {
+        await notificationService.deleteNotification(userId, id)
+        return res.status(200).json({
+            success: true,
+            message: 'notification deleted successfully',
+        })
+    } catch (error) {
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({
+                success: false,
+                message: 'failed to delete notification',
+                errors: error.message,
+            })
+        }
+
+        return res.status(500).json({
+            success: false,
+            message: 'failed to delete notification',
+            errors: error instanceof Error ? error.message : 'unknown error',
+        })
+    }
+}
+
+const deleteAllReadNotifications = async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
+
+    if (!userId) {
+        return res.status(400).json({
+            success: false,
+            message: 'unauthorized',
+        })
+    }
+
+    try {
+        await notificationService.deleteAllReadNotifications(userId)
+        return res.status(200).json({
+            success: true,
+            message: 'read notifications deleted successfully',
+        })
+    } catch (error) {
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({
+                success: false,
+                message: 'failed to delete read notifications',
+                errors: error.message,
+            })
+        }
+
+        return res.status(500).json({
+            success: false,
+            message: 'failed to delete read notifications',
+            errors: error instanceof Error ? error.message : 'unknown error',
+        })
+    }
+}
+
+const deleteAllNotifications = async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
+
+    if (!userId) {
+        return res.status(400).json({
+            success: false,
+            message: 'unauthorized',
+        })
+    }
+
+    try {
+        await notificationService.deleteAllNotifications(userId)
+        return res.status(200).json({
+            success: true,
+            message: 'all notifications deleted successfully',
+        })
+    } catch (error) {
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({
+                success: false,
+                message: 'failed to delete all notifications',
+                errors: error.message,
+            })
+        }
+
+        return res.status(500).json({
+            success: false,
+            message: 'failed to delete all notifications',
+            errors: error instanceof Error ? error.message : 'unknown error',
+        })
+    }
+}
+
+const sendNotificationToUser = async (req: Request, res: Response) => {
+    const parseData = SendNotificationSchema.safeParse(req.body)
+
+    if (!parseData.success) {
+        return res.status(400).json({
+            success: false,
+            message: 'validation failed',
+            errors: parseData.error.flatten().fieldErrors,
+        })
+    }
+
+    const { userId, title, message, type, link } = parseData.data
+
+    try {
+        const result = await notificationService.sendNotificationToUser({
+            userId,
+            title,
+            message,
+            type,
+            link,
+        })
+        return res.status(201).json({
+            success: true,
+            message: 'notification sent successfully',
+            data: result,
+        })
+    } catch (error) {
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({
+                success: false,
+                message: 'failed to send notification',
+                errors: error.message,
+            })
+        }
+
+        return res.status(500).json({
+            success: false,
+            message: 'failed to send notification',
+            errors: error instanceof Error ? error.message : 'unknown error',
+        })
+    }
+}
+
+const sendNotificationToAll = async (req: Request, res: Response) => {
+    const parseData = SendNotificationToAllSchema.safeParse(req.body)
+
+    if (!parseData.success) {
+        return res.status(400).json({
+            success: false,
+            message: 'validation failed',
+            errors: parseData.error.flatten().fieldErrors,
+        })
+    }
+
+    const { title, message, type, link } = parseData.data
+
+    try {
+        await notificationService.sendNotificationToAll({ title, message, type, link })
+        return res.status(201).json({
+            success: true,
+            message: 'notifications sent to all users',
+        })
+    } catch (error) {
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({
+                success: false,
+                message: 'failed to send notifications',
+                errors: error.message,
+            })
+        }
+
+        return res.status(500).json({
+            success: false,
+            message: 'failed to send notifications',
+            errors: error instanceof Error ? error.message : 'unknown error',
+        })
+    }
+}
+
+export const notificationController = {
+    getNotifications,
+    getNotificationById,
+    markAsRead,
+    deleteNotification,
+    deleteAllReadNotifications,
+    deleteAllNotifications,
+    sendNotificationToUser,
+    sendNotificationToAll,
+}

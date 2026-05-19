@@ -5,6 +5,7 @@ import { saveProjectFiles } from '../../lib/save-project-files'
 import { AppError } from '../../utils/appError'
 import { loadGeneratedFilesFromManifest } from '../project/project.service'
 import { parseStoredProjectFiles } from '../project/project.utils'
+import { sendNotificationToUser } from '../notification/notification.service'
 
 type ToggleLike = {
     userId: string
@@ -325,6 +326,19 @@ const toggleLike = async (data: ToggleLike) => {
             },
         })
 
+        if (isLiked && template.userId !== userId) {
+            try {
+                await sendNotificationToUser({
+                    userId: template.userId,
+                    title: 'New Like',
+                    message: `${user.name} liked your template "${template.name}".`,
+                    type: 'SUCCESS',
+                })
+            } catch (err) {
+                console.error('Failed to send like notification:', err)
+            }
+        }
+
         return updated
     }
 
@@ -335,6 +349,19 @@ const toggleLike = async (data: ToggleLike) => {
             isLiked: isLiked,
         },
     })
+
+    if (isLiked && template.userId !== userId) {
+        try {
+            await sendNotificationToUser({
+                userId: template.userId,
+                title: 'New Like',
+                message: `${user.name} liked your template "${template.name}".`,
+                type: 'SUCCESS',
+            })
+        } catch (err) {
+            console.error('Failed to send like notification:', err)
+        }
+    }
 
     return created
 }
