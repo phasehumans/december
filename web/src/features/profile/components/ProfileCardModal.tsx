@@ -1,9 +1,12 @@
-import { useQuery } from '@tanstack/react-query'
-import { Folder, Settings, X, Globe } from 'lucide-react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { Folder, Settings, X, Globe, Calendar, Heart } from 'lucide-react'
 import React, { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 
+import bannerImg from '../../../../public/banner.png'
+import { profileAPI } from '@/features/profile/api/profile'
 import { projectAPI } from '@/features/projects/api/project'
+import { templateAPI } from '@/features/templates/api/template'
 
 interface ProfileCardModalProps {
     isOpen: boolean
@@ -27,15 +30,14 @@ export const ProfileCardModal: React.FC<ProfileCardModalProps> = ({
     userUsername,
     onSettings,
 }) => {
+    const queryClient = useQueryClient()
     const modalRef = useRef<HTMLDivElement>(null)
-    const [activeTab, setActiveTab] = useState<'projects' | 'templates'>('projects')
+    const [activeTab, setActiveTab] = useState<'templates' | 'liked'>('templates')
 
-    const [currentAvatarSeed, setCurrentAvatarSeed] = useState(() => {
-        if (typeof window !== 'undefined') {
-            const saved = localStorage.getItem('december_avatar_seed')
-            if (saved) return saved
-        }
-        return userName
+    const { data: profile } = useQuery({
+        queryKey: ['profile'],
+        queryFn: profileAPI.getProfile,
+        enabled: isOpen,
     })
 
     const { data: allProjects = [] } = useQuery({
@@ -44,9 +46,21 @@ export const ProfileCardModal: React.FC<ProfileCardModalProps> = ({
         enabled: isOpen,
     })
 
-    const publishedProjects = allProjects.filter((p) => p.projectStatus === 'DEPLOYED')
+    const { data: allTemplates = [] } = useQuery({
+        queryKey: ['templates'],
+        queryFn: templateAPI.getTemplates,
+        enabled: isOpen,
+    })
 
     const sharedTemplates = allProjects.filter((p) => p.isSharedAsTemplate)
+    const likedTemplates = allTemplates.filter((t) => t.isLiked)
+
+    const updateAvatarMutation = useMutation({
+        mutationFn: profileAPI.updateAvatarUrl,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['profile'] })
+        },
+    })
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -87,15 +101,22 @@ export const ProfileCardModal: React.FC<ProfileCardModalProps> = ({
     }
 
     const handleChangeAvatar = () => {
-        // Generate a random 6-character string as the seed
         const randomSeed = Math.random().toString(36).substring(2, 8)
-        setCurrentAvatarSeed(randomSeed)
-        if (typeof window !== 'undefined') {
-            localStorage.setItem('december_avatar_seed', randomSeed)
-        }
+        const newUrl = `https://api.dicebear.com/7.x/notionists/svg?seed=${randomSeed}&backgroundColor=2B2A29`
+        updateAvatarMutation.mutate({ avatarUrl: newUrl })
     }
 
+    const currentAvatarUrl =
+        profile?.avatarUrl ||
+        `https://api.dicebear.com/7.x/notionists/svg?seed=${userName}&backgroundColor=2B2A29`
+
     const displayUsername = userUsername || userName.toLowerCase().replace(/\s+/g, '_')
+
+    const joinDateStr = profile?.createdAt
+        ? new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' }).format(
+              new Date(profile.createdAt)
+          )
+        : ''
 
     return createPortal(
         <div
@@ -106,28 +127,22 @@ export const ProfileCardModal: React.FC<ProfileCardModalProps> = ({
                 ref={modalRef}
                 className="w-full max-w-[760px] bg-[#171615] rounded-2xl shadow-2xl relative overflow-hidden flex flex-col animate-in zoom-in-95 duration-200 border border-[#2B2A29]"
             >
-                {/* Banner with CSS Halftone Effect */}
+                {/* Banner with Image */}
                 <div className="relative h-[160px] w-full bg-[#100E12] flex items-center justify-center overflow-hidden">
-                    {/* Halftone Pattern Background */}
-                    <div
-                        className="absolute inset-0 opacity-60"
-                        style={{
-                            backgroundImage:
-                                'radial-gradient(#4A4948 25%, transparent 25%), radial-gradient(#4A4948 25%, transparent 25%)',
-                            backgroundPosition: '0 0, 4px 4px',
-                            backgroundSize: '8px 8px',
-                        }}
+                    <img
+                        src={bannerImg}
+                        alt="Profile Banner"
+                        className="absolute inset-0 w-full h-full object-cover scale-[1.35] object-center"
                     />
                     {/* Subtle Gradient Overlays */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#171615] via-transparent to-transparent opacity-90" />
-                    <div className="absolute inset-0 bg-gradient-to-r from-black/50 via-transparent to-black/50 opacity-40" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#171615] via-[#171615]/40 to-transparent opacity-90" />
 
                     {/* Banner Text */}
                     <h1
                         className="relative z-10 text-[#D6D5C9] font-mono text-[24px] md:text-[28px] tracking-tight opacity-90"
                         style={{ textShadow: '0 4px 12px rgba(0,0,0,0.8)' }}
                     >
-                        december.dev/@{displayUsername}
+                        december.com/@{displayUsername}
                     </h1>
 
                     <button
@@ -147,7 +162,7 @@ export const ProfileCardModal: React.FC<ProfileCardModalProps> = ({
                         title="Change Avatar"
                     >
                         <img
-                            src={`https://api.dicebear.com/7.x/notionists/svg?seed=${currentAvatarSeed}&backgroundColor=2B2A29`}
+                            src={currentAvatarUrl}
                             alt={userName}
                             className="w-full h-full object-cover group-hover:opacity-80 transition-opacity"
                         />
@@ -167,36 +182,44 @@ export const ProfileCardModal: React.FC<ProfileCardModalProps> = ({
                     {/* User Details — Name + Username */}
                     <div className="flex flex-col mt-2">
                         <h2 className="text-[22px] font-bold text-[#D6D5C9] mb-0.5">{userName}</h2>
-                        <span className="text-[14px] text-[#7B7A79]">@{displayUsername}</span>
+                        <div className="flex items-center gap-3">
+                            <span className="text-[14px] text-[#7B7A79]">@{displayUsername}</span>
+                            {joinDateStr && (
+                                <span className="text-[13px] text-[#7B7A79] flex items-center gap-1.5">
+                                    <Calendar className="w-3.5 h-3.5" />
+                                    Joined {joinDateStr}
+                                </span>
+                            )}
+                        </div>
                     </div>
 
                     {/* Content Tabs */}
                     <div className="flex gap-6 border-b border-[#242323] mt-6 mb-5">
-                        <button
-                            onClick={() => setActiveTab('projects')}
-                            className={`pb-2.5 text-[14px] font-medium transition-colors border-b-2 ${activeTab === 'projects' ? 'text-[#D6D5C9] border-[#D6D5C9]' : 'text-[#7B7A79] border-transparent hover:text-[#D6D5C9]'}`}
-                        >
-                            Published Projects
-                        </button>
                         <button
                             onClick={() => setActiveTab('templates')}
                             className={`pb-2.5 text-[14px] font-medium transition-colors border-b-2 ${activeTab === 'templates' ? 'text-[#D6D5C9] border-[#D6D5C9]' : 'text-[#7B7A79] border-transparent hover:text-[#D6D5C9]'}`}
                         >
                             Shared Templates
                         </button>
+                        <button
+                            onClick={() => setActiveTab('liked')}
+                            className={`pb-2.5 text-[14px] font-medium transition-colors border-b-2 ${activeTab === 'liked' ? 'text-[#D6D5C9] border-[#D6D5C9]' : 'text-[#7B7A79] border-transparent hover:text-[#D6D5C9]'}`}
+                        >
+                            Liked Templates
+                        </button>
                     </div>
 
                     {/* Content Area */}
-                    {activeTab === 'projects' ? (
-                        publishedProjects.length > 0 ? (
+                    {activeTab === 'templates' ? (
+                        sharedTemplates.length > 0 ? (
                             <div className="flex flex-col gap-2 max-h-[240px] overflow-y-auto no-scrollbar">
-                                {publishedProjects.map((project) => (
+                                {sharedTemplates.map((project) => (
                                     <div
                                         key={project.id}
                                         className="flex items-center gap-3 px-4 py-3 rounded-xl bg-[#100E12]/50 border border-[#242323] hover:bg-[#1E1D1B] transition-colors"
                                     >
                                         <div className="w-9 h-9 rounded-lg bg-[#1E1D1B] border border-[#2B2A29] flex items-center justify-center shrink-0">
-                                            <Folder
+                                            <Globe
                                                 className="w-4 h-4 text-[#7B7A79]"
                                                 strokeWidth={1.5}
                                             />
@@ -217,36 +240,36 @@ export const ProfileCardModal: React.FC<ProfileCardModalProps> = ({
                         ) : (
                             <div className="w-full rounded-2xl bg-[#100E12]/50 border border-[#242323] py-12 flex flex-col items-center justify-center gap-3">
                                 <div className="w-12 h-12 rounded-2xl bg-[#1E1D1B] border border-[#2B2A29] flex items-center justify-center shadow-sm">
-                                    <Folder className="w-6 h-6 text-[#7B7A79]" strokeWidth={1.5} />
+                                    <Globe className="w-6 h-6 text-[#7B7A79]" strokeWidth={1.5} />
                                 </div>
                                 <h3 className="text-[15px] font-medium text-[#D6D5C9]">
-                                    No published projects yet
+                                    No shared templates yet
                                 </h3>
                                 <p className="text-[13px] text-[#7B7A79]">
-                                    Projects created and published to this profile will appear here
+                                    Projects you share as templates will appear here
                                 </p>
                             </div>
                         )
-                    ) : sharedTemplates.length > 0 ? (
+                    ) : likedTemplates.length > 0 ? (
                         <div className="flex flex-col gap-2 max-h-[240px] overflow-y-auto no-scrollbar">
-                            {sharedTemplates.map((project) => (
+                            {likedTemplates.map((template) => (
                                 <div
-                                    key={project.id}
+                                    key={template.id}
                                     className="flex items-center gap-3 px-4 py-3 rounded-xl bg-[#100E12]/50 border border-[#242323] hover:bg-[#1E1D1B] transition-colors"
                                 >
                                     <div className="w-9 h-9 rounded-lg bg-[#1E1D1B] border border-[#2B2A29] flex items-center justify-center shrink-0">
-                                        <Globe
+                                        <Heart
                                             className="w-4 h-4 text-[#7B7A79]"
                                             strokeWidth={1.5}
                                         />
                                     </div>
                                     <div className="flex flex-col min-w-0">
                                         <span className="text-[14px] font-medium text-[#D6D5C9] truncate">
-                                            {project.name}
+                                            {template.name}
                                         </span>
-                                        {project.description && (
+                                        {template.description && (
                                             <span className="text-[12px] text-[#7B7A79] truncate">
-                                                {project.description}
+                                                {template.description}
                                             </span>
                                         )}
                                     </div>
@@ -256,13 +279,13 @@ export const ProfileCardModal: React.FC<ProfileCardModalProps> = ({
                     ) : (
                         <div className="w-full rounded-2xl bg-[#100E12]/50 border border-[#242323] py-12 flex flex-col items-center justify-center gap-3">
                             <div className="w-12 h-12 rounded-2xl bg-[#1E1D1B] border border-[#2B2A29] flex items-center justify-center shadow-sm">
-                                <Globe className="w-6 h-6 text-[#7B7A79]" strokeWidth={1.5} />
+                                <Heart className="w-6 h-6 text-[#7B7A79]" strokeWidth={1.5} />
                             </div>
                             <h3 className="text-[15px] font-medium text-[#D6D5C9]">
-                                No shared templates yet
+                                No liked templates yet
                             </h3>
                             <p className="text-[13px] text-[#7B7A79]">
-                                Projects you share as templates will appear here
+                                Templates you like will appear here
                             </p>
                         </div>
                     )}

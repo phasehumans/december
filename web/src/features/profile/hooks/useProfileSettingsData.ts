@@ -9,12 +9,38 @@ const profileQueryKey = ['profile'] as const
 type UseProfileSettingsDataOptions = {
     setProfileActionError: (message: string | null) => void
     onNameMutate: () => void
+    onNameSuccess: () => void
     onUsernameMutate: () => void
     onPasswordSuccess: () => void
 }
 
 const getErrorMessage = (error: unknown, fallback: string) => {
+    // Check for ApiError with Zod validation details (fieldErrors object)
+    if (
+        error &&
+        typeof error === 'object' &&
+        'details' in error &&
+        error.details &&
+        typeof error.details === 'object'
+    ) {
+        const details = error.details as Record<string, string[]>
+        const messages: string[] = []
+        for (const field of Object.keys(details)) {
+            const fieldErrors = details[field]
+            if (Array.isArray(fieldErrors)) {
+                messages.push(...fieldErrors)
+            }
+        }
+        if (messages.length > 0) {
+            return messages.join('. ')
+        }
+    }
+
     if (error instanceof Error) {
+        // Don't show generic "validation failed" — we already tried details above
+        if (error.message.toLowerCase() === 'validation failed') {
+            return fallback
+        }
         return error.message
     }
 
@@ -24,6 +50,7 @@ const getErrorMessage = (error: unknown, fallback: string) => {
 export const useProfileSettingsData = ({
     setProfileActionError,
     onNameMutate,
+    onNameSuccess,
     onUsernameMutate,
     onPasswordSuccess,
 }: UseProfileSettingsDataOptions) => {
@@ -62,6 +89,7 @@ export const useProfileSettingsData = ({
         },
         onSuccess: () => {
             setProfileActionError(null)
+            onNameSuccess()
         },
         onSettled: () => {
             queryClient.invalidateQueries({ queryKey: profileQueryKey })

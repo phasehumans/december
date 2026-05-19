@@ -13,7 +13,31 @@ type UseAuthMutationsOptions = {
 }
 
 const getErrorMessage = (error: unknown) => {
+    // Check for ApiError with Zod validation details (fieldErrors object)
+    if (
+        error &&
+        typeof error === 'object' &&
+        'details' in error &&
+        error.details &&
+        typeof error.details === 'object'
+    ) {
+        const details = error.details as Record<string, string[]>
+        const messages: string[] = []
+        for (const field of Object.keys(details)) {
+            const fieldErrors = details[field]
+            if (Array.isArray(fieldErrors)) {
+                messages.push(...fieldErrors)
+            }
+        }
+        if (messages.length > 0) {
+            return messages.join('. ')
+        }
+    }
+
     if (error instanceof Error) {
+        if (error.message.toLowerCase() === 'validation failed') {
+            return 'Something went wrong. Please try again.'
+        }
         return error.message
     }
 

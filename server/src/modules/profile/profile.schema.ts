@@ -12,6 +12,10 @@ export const updateUsernameSchema = z.object({
         .regex(/^[a-z_]+$/, 'username can only contain lowercase letters and underscores'),
 })
 
+export const updateAvatarUrlSchema = z.object({
+    avatarUrl: z.string().url().max(500),
+})
+
 export const changePasswordSchema = z.object({
     currentPassword: z.string().min(6).max(20),
     newPassword: z.string().min(6).max(20),

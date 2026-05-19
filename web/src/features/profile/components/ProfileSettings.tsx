@@ -10,6 +10,9 @@ import {
 } from 'lucide-react'
 import React from 'react'
 
+import { useLocation, useNavigate } from 'react-router-dom'
+
+import { getProfileTabFromSlug, getSlugForProfileTab, type ProfileTab } from '@/app/types'
 import { useProfileSettingsController } from '../hooks/useProfileSettingsController'
 
 import { ProfileApiKeysSettings } from './ProfileApiKeysSettings'
@@ -29,13 +32,20 @@ import type { ProfileSettingsProps } from '@/features/profile/types'
 import { Icons } from '@/shared/components/ui/Icons'
 
 export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onBack, onDocs }) => {
-    const [activeTab, setActiveTab] = React.useState(() => {
+    const location = useLocation()
+    const navigate = useNavigate()
+
+    const activeTabMatch = location.pathname.match(/^\/profile\/([^/]+)/)
+    const activeTabSlug = activeTabMatch ? activeTabMatch[1] : undefined
+    const activeTab = getProfileTabFromSlug(activeTabSlug)
+
+    // Fallback for hash backward compatibility
+    React.useEffect(() => {
         if (typeof window !== 'undefined' && window.location.hash === '#billing') {
             window.history.replaceState(null, '', window.location.pathname)
-            return 'Billing'
+            navigate(`/profile/${getSlugForProfileTab('Billing')}`, { replace: true })
         }
-        return 'Account'
-    })
+    }, [navigate])
     const [usernameModalOpen, setUsernameModalOpen] = React.useState(false)
     const [tempUsername, setTempUsername] = React.useState('')
     const [deleteAccountModalOpen, setDeleteAccountModalOpen] = React.useState(false)
@@ -47,6 +57,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
         isProfileFetching,
         profileError,
         profileActionError,
+        setProfileActionError,
         nameModalOpen,
         tempName,
         passwordModalOpen,
@@ -113,7 +124,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                         </div>
 
                         <button
-                            onClick={() => setActiveTab('Account')}
+                            onClick={() => navigate(`/profile/${getSlugForProfileTab('Account')}`)}
                             className={`flex items-center gap-3 px-3 py-1.5 rounded-xl text-[13px] font-medium transition-colors ${
                                 activeTab === 'Account'
                                     ? 'bg-[#242323] text-[#D6D5C9]'
@@ -124,7 +135,9 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                             Account
                         </button>
                         <button
-                            onClick={() => setActiveTab('Preferences')}
+                            onClick={() =>
+                                navigate(`/profile/${getSlugForProfileTab('Preferences')}`)
+                            }
                             className={`flex items-center gap-3 px-3 py-1.5 rounded-xl text-[13px] font-medium transition-colors ${
                                 activeTab === 'Preferences'
                                     ? 'bg-[#242323] text-[#D6D5C9]'
@@ -135,7 +148,9 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                             Preferences
                         </button>
                         <button
-                            onClick={() => setActiveTab('Integrations')}
+                            onClick={() =>
+                                navigate(`/profile/${getSlugForProfileTab('Integrations')}`)
+                            }
                             className={`flex items-center gap-3 px-3 py-1.5 rounded-xl text-[13px] font-medium transition-colors ${
                                 activeTab === 'Integrations'
                                     ? 'bg-[#242323] text-[#D6D5C9]'
@@ -146,7 +161,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                             Integrations
                         </button>
                         <button
-                            onClick={() => setActiveTab('Billing')}
+                            onClick={() => navigate(`/profile/${getSlugForProfileTab('Billing')}`)}
                             className={`flex items-center gap-3 px-3 py-1.5 rounded-xl text-[13px] font-medium transition-colors ${
                                 activeTab === 'Billing'
                                     ? 'bg-[#242323] text-[#D6D5C9]'
@@ -157,7 +172,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                             Billing
                         </button>
                         <button
-                            onClick={() => setActiveTab('Usage')}
+                            onClick={() => navigate(`/profile/${getSlugForProfileTab('Usage')}`)}
                             className={`flex items-center gap-3 px-3 py-1.5 rounded-xl text-[13px] font-medium transition-colors ${
                                 activeTab === 'Usage'
                                     ? 'bg-[#242323] text-[#D6D5C9]'
@@ -168,7 +183,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                             Usage
                         </button>
                         {/* <button
-                            onClick={() => setActiveTab('API Keys')}
+                            onClick={() => navigate(`/profile/${getSlugForProfileTab('API Keys')}`)}
                             className={`flex items-center gap-3 px-3 py-1.5 rounded-xl text-[13px] font-medium transition-colors ${
                                 activeTab === 'API Keys'
                                     ? 'bg-[#242323] text-[#D6D5C9]'
@@ -288,7 +303,11 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                 isOpen={nameModalOpen}
                 value={tempName}
                 isPending={updateNameMutation.isPending}
-                onClose={() => setNameModalOpen(false)}
+                errorMessage={nameModalOpen ? profileActionError : null}
+                onClose={() => {
+                    setNameModalOpen(false)
+                    setProfileActionError(null)
+                }}
                 onChange={setTempName}
                 onSave={handleSaveName}
             />
@@ -299,7 +318,11 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                 isPending={updateUsernameMutation.isPending}
                 title="Change Username"
                 label="Username"
-                onClose={() => setUsernameModalOpen(false)}
+                errorMessage={usernameModalOpen ? profileActionError : null}
+                onClose={() => {
+                    setUsernameModalOpen(false)
+                    setProfileActionError(null)
+                }}
                 onChange={setTempUsername}
                 onSave={() => {
                     if (tempUsername.trim()) {
@@ -323,7 +346,11 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                 confirmPassword={confirmPassword}
                 showCurrentPass={showCurrentPass}
                 showNewPass={showNewPass}
-                onClose={() => setPasswordModalOpen(false)}
+                errorMessage={passwordModalOpen ? profileActionError : null}
+                onClose={() => {
+                    setPasswordModalOpen(false)
+                    setProfileActionError(null)
+                }}
                 onUpdatePassword={handleUpdatePassword}
                 onCurrentPasswordChange={setCurrentPassword}
                 onNewPasswordChange={setNewPassword}

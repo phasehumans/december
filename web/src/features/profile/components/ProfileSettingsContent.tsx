@@ -91,6 +91,20 @@ export const ProfileSettingsContent: React.FC<ProfileSettingsContentProps> = ({
                             </span>
                         </div>
                     </div>
+
+                    {/* Change Password Row */}
+                    <div className="flex items-center justify-between">
+                        <div className="flex flex-col gap-0.5">
+                            <span className="text-[14px] text-[#D6D5C9]">Password</span>
+                            <span className="text-[13px] text-[#7B7A79]">••••••••</span>
+                        </div>
+                        <button
+                            onClick={onOpenPasswordModal}
+                            className="px-4 py-1.5 rounded-lg border border-[#383736] text-[13px] text-[#D6D5C9] hover:bg-[#242323] transition-colors"
+                        >
+                            Change password
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -241,21 +255,6 @@ export const ProfileSettingsContent: React.FC<ProfileSettingsContentProps> = ({
                             className="px-4 py-1.5 rounded-lg border border-[#383736] text-[13px] text-[#D6D5C9] hover:bg-[#242323] transition-colors"
                         >
                             Sign out of all sessions
-                        </button>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                        <div className="flex flex-col gap-0.5">
-                            <span className="text-[14px] text-[#D6D5C9]">Change password</span>
-                            <span className="text-[13px] text-[#7B7A79]">
-                                Update your password with your current password
-                            </span>
-                        </div>
-                        <button
-                            onClick={onOpenPasswordModal}
-                            className="px-4 py-1.5 rounded-lg border border-[#383736] text-[13px] text-[#D6D5C9] hover:bg-[#242323] transition-colors"
-                        >
-                            Change password
                         </button>
                     </div>
 

@@ -28,7 +28,8 @@ export const useProfileSettingsController = () => {
         updateGenerationSoundMutation,
     } = useProfileSettingsData({
         setProfileActionError,
-        onNameMutate: () => {
+        onNameMutate: () => {},
+        onNameSuccess: () => {
             setNameModalOpen(false)
         },
         onUsernameMutate: () => {},
@@ -127,6 +128,7 @@ export const useProfileSettingsController = () => {
         isProfileFetching,
         profileError,
         profileActionError,
+        setProfileActionError,
         nameModalOpen,
         tempName,
         passwordModalOpen,

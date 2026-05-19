@@ -10,6 +10,7 @@ import {
     updateNameSchema,
     updateNotificationSchema,
     updateUsernameSchema,
+    updateAvatarUrlSchema,
 } from './profile.schema'
 import { profileService } from './profile.service'
 
@@ -201,6 +202,51 @@ const updateUsername = async (req: Request, res: Response) => {
         return res.status(500).json({
             success: false,
             message: 'failed to update username',
+            errors: error instanceof Error ? error.message : 'unknown error',
+        })
+    }
+}
+
+const updateAvatarUrl = async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
+    const parseData = updateAvatarUrlSchema.safeParse(req.body)
+
+    if (!userId) {
+        return res.status(400).json({
+            success: false,
+            message: 'unauthorized',
+        })
+    }
+
+    if (!parseData.success) {
+        return res.status(400).json({
+            success: false,
+            message: 'validation failed',
+            errors: parseData.error.flatten().fieldErrors,
+        })
+    }
+
+    const { avatarUrl } = parseData.data
+
+    try {
+        const result = await profileService.updateAvatarUrl({ userId, avatarUrl })
+        return res.status(200).json({
+            success: true,
+            message: 'avatar updated successfully',
+            data: result,
+        })
+    } catch (error) {
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({
+                success: false,
+                message: 'failed to update avatar',
+                errors: error.message,
+            })
+        }
+
+        return res.status(500).json({
+            success: false,
+            message: 'failed to update avatar',
             errors: error instanceof Error ? error.message : 'unknown error',
         })
     }
@@ -781,6 +827,7 @@ export const profileController = {
     getProfile,
     updateName,
     updateUsername,
+    updateAvatarUrl,
     changePassword,
     updateNotifications,
     connectGithub,

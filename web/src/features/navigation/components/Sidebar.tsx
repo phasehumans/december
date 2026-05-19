@@ -13,7 +13,6 @@ const Sidebar: React.FC<SidebarProps & { user?: any; onSignOut?: () => void }> =
     onNewThread,
     onAllProjects,
     onTemplates,
-    onDesignSystems,
     onDocs,
     onProfile,
     onOpenProject,
@@ -47,11 +46,7 @@ const Sidebar: React.FC<SidebarProps & { user?: any; onSignOut?: () => void }> =
                     active={false} // Would be set by router
                     onClick={onNewThread}
                 />
-                <SidebarNavItem
-                    icon={<Icons.Plus />}
-                    label="New Project"
-                    onClick={onNewThread} // Replace with proper action if needed
-                />
+                <SidebarNavItem icon={<Icons.Plus />} label="New Project" onClick={onNewThread} />
                 <SidebarNavItem icon={<Icons.Folder />} label="Projects" onClick={onAllProjects} />
                 <SidebarNavItem icon={<Icons.Bookmark />} label="Templates" onClick={onTemplates} />
                 <SidebarNavItem icon={<Icons.DocsBook />} label="Documentation" onClick={onDocs} />

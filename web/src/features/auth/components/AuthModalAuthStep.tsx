@@ -58,6 +58,16 @@ export const AuthModalAuthStep: React.FC<AuthModalAuthStepProps> = ({
                     className="w-full bg-[#1A1A1A] border border-[#333333] focus:border-[#555] rounded-[10px] h-[44px] px-3.5 text-[15px] text-white placeholder-[#737373] focus:outline-none transition-colors"
                 />
 
+                <input
+                    type="password"
+                    required
+                    placeholder="Password"
+                    value={password}
+                    onChange={(event) => onPasswordChange(event.target.value)}
+                    disabled={isAuthPending}
+                    className="w-full bg-[#1A1A1A] border border-[#333333] focus:border-[#555] rounded-[10px] h-[44px] px-3.5 text-[15px] text-white placeholder-[#737373] focus:outline-none transition-colors"
+                />
+
                 {authMode === 'login' && (
                     <button
                         type="button"
@@ -68,16 +78,6 @@ export const AuthModalAuthStep: React.FC<AuthModalAuthStepProps> = ({
                         Forgot password?
                     </button>
                 )}
-
-                <input
-                    type="password"
-                    required
-                    placeholder="Password"
-                    value={password}
-                    onChange={(event) => onPasswordChange(event.target.value)}
-                    disabled={isAuthPending}
-                    className="w-full bg-[#1A1A1A] border border-[#333333] focus:border-[#555] rounded-[10px] h-[44px] px-3.5 text-[15px] text-white placeholder-[#737373] focus:outline-none transition-colors"
-                />
 
                 {errorMessage && <p className="text-[13px] text-red-500 px-1">{errorMessage}</p>}
 

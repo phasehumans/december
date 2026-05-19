@@ -19,43 +19,6 @@ export const ProfileGeneralSettings: React.FC<ProfileGeneralSettingsProps> = ({
 }) => {
     const queryClient = useQueryClient()
 
-    // --- Memories ---
-    const memoriesQuery = useQuery({
-        queryKey: ['profile', 'memories'],
-        queryFn: profileAPI.getMemories,
-    })
-
-    const [memoriesText, setMemoriesText] = useState('')
-    const [memoriesActive, setMemoriesActive] = useState(false)
-    const [memoriesDirty, setMemoriesDirty] = useState(false)
-
-    useEffect(() => {
-        if (memoriesQuery.data?.memories) {
-            setMemoriesText(memoriesQuery.data.memories)
-            setMemoriesActive(true)
-        }
-    }, [memoriesQuery.data])
-
-    const updateMemoriesMutation = useMutation({
-        mutationFn: profileAPI.updateMemories,
-        onSuccess: () => {
-            setMemoriesDirty(false)
-            queryClient.invalidateQueries({ queryKey: ['profile', 'memories'] })
-            queryClient.invalidateQueries({ queryKey: ['profile'] })
-        },
-    })
-
-    const deleteMemoriesMutation = useMutation({
-        mutationFn: profileAPI.deleteMemories,
-        onSuccess: () => {
-            setMemoriesText('')
-            setMemoriesActive(false)
-            setMemoriesDirty(false)
-            queryClient.invalidateQueries({ queryKey: ['profile', 'memories'] })
-            queryClient.invalidateQueries({ queryKey: ['profile'] })
-        },
-    })
-
     // --- Skills ---
     const skillsQuery = useQuery({
         queryKey: ['profile', 'skills'],
@@ -219,84 +182,6 @@ Focus on what december wouldn't already know - domain-specific details, preferre
                 </div>
             </div>
 
-            {/* Memories */}
-            <div className="flex flex-col mb-10">
-                <h1 className="text-[16px] font-medium mb-4">Memories</h1>
-                <div className="flex flex-col gap-4 border border-[#242323] rounded-xl p-5 bg-[#171615]">
-                    <p className="text-[13px] text-[#7B7A79] mb-4 leading-relaxed">
-                        Teach december your preferences and conventions. MEMORY.md is always read at
-                        the start of every chat; other files are loaded on demand.
-                    </p>
-
-                    {!memoriesActive ? (
-                        <div>
-                            <button
-                                onClick={() => setMemoriesActive(true)}
-                                className="flex items-center gap-2 px-4 py-2 border border-[#383736] rounded-lg text-[14px] font-medium text-[#D6D5C9] hover:bg-[#242323] transition-colors w-fit shadow-sm"
-                            >
-                                <FilePlus className="w-4 h-4" />
-                                Create MEMORY.md
-                            </button>
-                        </div>
-                    ) : (
-                        <div className="flex flex-col border border-[#2B2A29] rounded-xl overflow-hidden bg-[#131211]">
-                            <div className="flex items-center justify-between px-4 py-3 bg-[#131211] border-b border-[#2B2A29]">
-                                <span className="text-[13px] font-medium text-[#D6D5C9]">
-                                    MEMORY.md
-                                </span>
-                                <span className="text-[12px] text-[#4A4948]">
-                                    {memoriesText.length} chars
-                                </span>
-                            </div>
-                            <div className="p-4 bg-[#131211]">
-                                <textarea
-                                    className="w-full h-[200px] bg-[#0E0D0C] border border-[#2B2A29] rounded-lg p-4 text-[13.5px] text-[#D6D5C9] placeholder:text-[#4A4948] font-mono leading-[1.6] resize-none focus:outline-none focus:border-[#383736] transition-colors caret-[#D6D5C9]"
-                                    placeholder='Keep this short — summarize key preferences and link to reference files for details (e.g. "See patterns.md for React conventions").'
-                                    spellCheck={false}
-                                    value={memoriesText}
-                                    onChange={(e) => {
-                                        setMemoriesText(e.target.value)
-                                        setMemoriesDirty(true)
-                                    }}
-                                ></textarea>
-                                <div className="flex items-center gap-3 mt-4">
-                                    <button
-                                        onClick={() => {
-                                            if (memoriesText.trim()) {
-                                                updateMemoriesMutation.mutate({
-                                                    memories: memoriesText,
-                                                })
-                                            }
-                                        }}
-                                        disabled={
-                                            !memoriesDirty || updateMemoriesMutation.isPending
-                                        }
-                                        className="px-4 py-1.5 rounded-lg border border-[#383736] text-[13px] font-medium text-[#D6D5C9] hover:bg-[#242323] transition-colors disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-2"
-                                    >
-                                        {updateMemoriesMutation.isPending && (
-                                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                        )}
-                                        Save
-                                    </button>
-                                    <button
-                                        onClick={() => deleteMemoriesMutation.mutate()}
-                                        disabled={deleteMemoriesMutation.isPending}
-                                        className="flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-medium text-[#7B7A79] hover:text-red-400 transition-colors rounded-lg disabled:opacity-30"
-                                    >
-                                        {deleteMemoriesMutation.isPending ? (
-                                            <Loader2 className="w-[15px] h-[15px] animate-spin" />
-                                        ) : (
-                                            <Trash2 className="w-[15px] h-[15px]" />
-                                        )}
-                                        Delete
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            </div>
-
             {/* Custom Skills */}
             <div className="flex flex-col mb-10">
                 <h1 className="text-[16px] font-medium mb-4">Custom Skills</h1>
@@ -327,7 +212,7 @@ Focus on what december wouldn't already know - domain-specific details, preferre
                         <div className="flex flex-col border border-[#2B2A29] rounded-xl overflow-hidden bg-[#131211]">
                             <div className="flex items-center justify-between px-4 py-3 bg-[#131211] border-b border-[#2B2A29]">
                                 <span className="text-[13px] font-medium text-[#D6D5C9]">
-                                    skill / <span className="text-white">SKILL.md</span>
+                                    SKILL.md
                                 </span>
                                 <span className="text-[12px] text-[#4A4948]">
                                     {skillsText.length} chars
@@ -335,7 +220,7 @@ Focus on what december wouldn't already know - domain-specific details, preferre
                             </div>
                             <div className="p-4 bg-[#131211]">
                                 <textarea
-                                    className="w-full h-[320px] bg-[#0E0D0C] border border-[#2B2A29] rounded-lg p-4 text-[13.5px] text-[#D6D5C9] placeholder:text-[#4A4948] font-mono leading-[1.6] resize-none focus:outline-none focus:border-[#383736] transition-colors caret-[#D6D5C9]"
+                                    className="w-full h-[500px] bg-[#0E0D0C] border border-[#2B2A29] rounded-lg p-4 text-[13.5px] text-[#D6D5C9] placeholder:text-[#4A4948] font-mono leading-[1.6] resize-none focus:outline-none focus:border-[#383736] transition-colors caret-[#D6D5C9] no-scrollbar"
                                     spellCheck={false}
                                     value={skillsText}
                                     onChange={(e) => {
