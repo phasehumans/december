@@ -19,6 +19,7 @@ export type Profile = {
     generationSound?: 'FIRST_GENERATION' | 'ALWAYS' | 'NEVER'
     memories?: string | null
     skills?: string | null
+    avatarUrl?: string | null
 }
 
 type BackendProfile = Profile
@@ -39,6 +40,10 @@ type UpdateNameInput = {
 
 type UpdateUsernameInput = {
     username: string
+}
+
+type UpdateAvatarUrlInput = {
+    avatarUrl: string
 }
 
 type ChangePasswordInput = {
@@ -73,6 +78,13 @@ const updateName = (data: UpdateNameInput) => {
 
 const updateUsername = (data: UpdateUsernameInput) => {
     return apiRequest<BackendProfile>('/profile/username', {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+    })
+}
+
+const updateAvatarUrl = (data: UpdateAvatarUrlInput) => {
+    return apiRequest<BackendProfile>('/profile/avatar', {
         method: 'PATCH',
         body: JSON.stringify(data),
     })
@@ -204,6 +216,7 @@ export const profileAPI = {
     getProfile,
     updateName,
     updateUsername,
+    updateAvatarUrl,
     changePassword,
     updateNotifications,
     updateChatSuggestions,

@@ -161,14 +161,6 @@ export const AppContentView: React.FC<AppContentViewProps> = ({
                 </AnimatedPage>
             )}
 
-            {view === 'design-systems' && (
-                <AnimatedPage pageKey="design-systems">
-                    <div className="h-full flex items-center justify-center">
-                        <span className="text-xl font-medium text-[#D6D5D4]">Design Systems</span>
-                    </div>
-                </AnimatedPage>
-            )}
-
             {view === 'docs' && (
                 <AnimatedPage pageKey="docs">
                     <DocsPage onBack={onNewProject} />
@@ -219,6 +211,35 @@ export const AppContentView: React.FC<AppContentViewProps> = ({
                         />
                     </AnimatedPage>
                 ))}
+
+            {view === 'project' && (
+                <AnimatedPage pageKey="project-output">
+                    <OutputScreen
+                        onBack={onBackFromOutput}
+                        onPromptSubmit={(prompt, options) =>
+                            onOutputPromptSubmit(prompt, options?.selectedElement)
+                        }
+                        onRuntimeError={onPreviewRuntimeError}
+                        messages={messages}
+                        generatedFiles={generatedFiles}
+                        activeGeneratedFilePath={activeGeneratedFilePath}
+                        generationPhase={generationPhase}
+                        activeOperation={activeOperation}
+                        isGenerating={isGenerating}
+                        projectName={projectName}
+                        projectId={activeProjectId}
+                        canvasState={canvasState}
+                        onCanvasStateChange={onCanvasStateChange}
+                        versions={projectVersions}
+                        activeVersionId={activeProjectVersionId}
+                        isVersionLoading={isProjectOpening}
+                        onSelectVersion={onSelectVersion}
+                        onDownload={onDownloadProject}
+                        previewSession={previewSession}
+                        previewSessionError={previewSessionError}
+                    />
+                </AnimatedPage>
+            )}
         </AnimatePresence>
     )
 }

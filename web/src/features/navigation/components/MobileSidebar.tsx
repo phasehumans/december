@@ -16,7 +16,6 @@ export const MobileSidebar: React.FC<MobileSidebarProps & { onSignOut?: () => vo
     onNewThread,
     onAllProjects,
     onTemplates,
-    onDesignSystems,
     onDocs,
     onProfile,
     onOpenProject,
@@ -57,7 +56,6 @@ export const MobileSidebar: React.FC<MobileSidebarProps & { onSignOut?: () => vo
                     onNewThread={onNewThread}
                     onAllProjects={onAllProjects}
                     onTemplates={onTemplates}
-                    onDesignSystems={onDesignSystems}
                     onDocs={onDocs}
                 />
 

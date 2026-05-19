@@ -41,16 +41,17 @@ export const SidebarFooter: React.FC<
             <div className="pl-[6px] pr-[6px] pt-1 pb-1.5">
                 {isAuthenticated && (
                     <>
-                        <div className="flex items-center gap-0 w-full">
+                        <div className="flex items-center gap-0 w-full justify-between">
                             <button
                                 ref={anchorRef}
                                 onClick={() => setIsPopoverOpen(!isPopoverOpen)}
-                                className="flex-1 flex items-center gap-1.5 px-1.5 py-[7px] rounded-lg hover:bg-[#252422] transition-colors group outline-none min-w-0"
+                                className="flex items-center gap-2 px-1.5 py-[7px] rounded-lg hover:bg-[#252422] transition-colors group outline-none min-w-0"
+                                style={{ maxWidth: 'calc(100% - 28px)' }}
                             >
-                                <div className="flex items-center justify-center w-[20px] h-[20px] rounded-full bg-white/[0.04] text-[#8F8E8D] shrink-0">
-                                    <Icons.UserCircle className="w-[10px] h-[10px]" />
+                                <div className="flex items-center justify-center w-[24px] h-[24px] rounded-full bg-white/[0.04] text-[#8F8E8D] shrink-0">
+                                    <Icons.UserCircle className="w-[14px] h-[14px]" />
                                 </div>
-                                <span className="font-medium text-[13px] text-[#CAC9C9] truncate tracking-tight text-left w-full">
+                                <span className="font-medium text-[13px] text-[#CAC9C9] truncate tracking-tight text-left">
                                     {user?.name ||
                                         profile?.name ||
                                         quickInfo?.name ||
@@ -61,7 +62,7 @@ export const SidebarFooter: React.FC<
                             <button
                                 ref={notifAnchorRef}
                                 onClick={() => setIsNotifPopoverOpen(!isNotifPopoverOpen)}
-                                className="flex items-center justify-center w-7 h-7 rounded-lg hover:bg-[#252422] text-[#8F8E8D] hover:text-[#CBCACA] transition-colors shrink-0 outline-none"
+                                className="flex items-center justify-center w-7 h-7 rounded-lg hover:bg-[#252422] text-[#8F8E8D] hover:text-[#CBCACA] transition-colors shrink-0 outline-none -ml-1"
                             >
                                 <Bell className="w-[13px] h-[13px]" strokeWidth={2} />
                             </button>

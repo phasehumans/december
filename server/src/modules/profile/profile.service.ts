@@ -15,6 +15,11 @@ type UpdateUsername = {
     username: string
 }
 
+type UpdateAvatarUrl = {
+    userId: string
+    avatarUrl: string
+}
+
 type ChangePassword = {
     userId: string
     currentPassword: string
@@ -180,6 +185,30 @@ const updateUsername = async (data: UpdateUsername) => {
 
         throw error
     }
+}
+
+const updateAvatarUrl = async (data: UpdateAvatarUrl) => {
+    const { userId, avatarUrl } = data
+
+    const existingUser = await prisma.user.findUnique({
+        where: {
+            id: userId,
+            isDeleted: false,
+        },
+    })
+
+    if (!existingUser) {
+        throw new AppError('user not found', 404)
+    }
+
+    const updatedUser = await prisma.user.update({
+        where: { id: userId },
+        data: {
+            avatarUrl: avatarUrl,
+        },
+    })
+
+    return updatedUser
 }
 
 const changePassword = async (data: ChangePassword) => {
@@ -565,6 +594,7 @@ export const profileService = {
     getProfile,
     updateName,
     updateUsername,
+    updateAvatarUrl,
     changePassword,
     updateNotifications,
     connectGithub,

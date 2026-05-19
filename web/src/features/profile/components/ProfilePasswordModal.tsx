@@ -15,6 +15,7 @@ export const ProfilePasswordModal: React.FC<ProfilePasswordModalProps> = ({
     confirmPassword,
     showCurrentPass,
     showNewPass,
+    errorMessage,
     onClose,
     onUpdatePassword,
     onCurrentPasswordChange,
@@ -65,6 +66,8 @@ export const ProfilePasswordModal: React.FC<ProfilePasswordModalProps> = ({
                     value={confirmPassword}
                     onChange={(e) => onConfirmPasswordChange(e.target.value)}
                 />
+
+                {errorMessage && <p className="text-[13px] text-red-400 px-1">{errorMessage}</p>}
 
                 <div className="mt-8 flex items-center justify-end gap-3">
                     <Button variant="ghost" onClick={onClose} disabled={isPending}>

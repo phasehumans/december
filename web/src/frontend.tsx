@@ -7,17 +7,20 @@
 
 import { GoogleOAuthProvider } from '@react-oauth/google'
 import { createRoot } from 'react-dom/client'
+import { BrowserRouter } from 'react-router-dom'
 
 import App from './App'
 import { QueryProvider } from './shared/providers/query-provider'
 
 const elem = document.getElementById('root')!
 const app = (
-    <QueryProvider>
-        <GoogleOAuthProvider clientId="762203307362-qg77ln4ci9eldv3i0q1smv804epsbhk0.apps.googleusercontent.com">
-            <App />
-        </GoogleOAuthProvider>
-    </QueryProvider>
+    <BrowserRouter>
+        <QueryProvider>
+            <GoogleOAuthProvider clientId="762203307362-qg77ln4ci9eldv3i0q1smv804epsbhk0.apps.googleusercontent.com">
+                <App />
+            </GoogleOAuthProvider>
+        </QueryProvider>
+    </BrowserRouter>
 )
 
 if (import.meta.hot) {

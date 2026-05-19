@@ -9,7 +9,6 @@ export interface SidebarProps {
     onNewThread: () => void
     onAllProjects: () => void
     onTemplates: () => void
-    onDesignSystems: () => void
     onDocs: () => void
     onProfile: () => void
     onOpenProject: (projectId: string) => void
@@ -25,7 +24,6 @@ export interface MobileSidebarProps {
     onNewThread: () => void
     onAllProjects: () => void
     onTemplates: () => void
-    onDesignSystems: () => void
     onDocs: () => void
     onProfile: () => void
     onOpenProject: (projectId: string) => void

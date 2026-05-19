@@ -12,6 +12,7 @@ export const ProfileNameModal: React.FC<ProfileNameModalProps> = ({
     isPending,
     title,
     label,
+    errorMessage,
     onClose,
     onChange,
     onSave,
@@ -30,6 +31,7 @@ export const ProfileNameModal: React.FC<ProfileNameModalProps> = ({
                     onChange={(e) => onChange(e.target.value)}
                     autoFocus
                 />
+                {errorMessage && <p className="text-[13px] text-red-400 px-1">{errorMessage}</p>}
                 <div className="mt-8 flex items-center justify-end gap-3">
                     <Button variant="ghost" onClick={onClose} disabled={isPending}>
                         Cancel

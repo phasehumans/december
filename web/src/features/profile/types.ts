@@ -39,6 +39,7 @@ export interface ProfileNameModalProps {
     isPending: boolean
     title?: string
     label?: string
+    errorMessage?: string | null
     onClose: () => void
     onChange: (value: string) => void
     onSave: () => void
@@ -52,6 +53,7 @@ export interface ProfilePasswordModalProps {
     confirmPassword: string
     showCurrentPass: boolean
     showNewPass: boolean
+    errorMessage?: string | null
     onClose: () => void
     onUpdatePassword: () => void
     onCurrentPasswordChange: (value: string) => void

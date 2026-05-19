@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import React from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 
 import type { ViewState } from '@/app/types'
 import type { Message } from '@/features/chat/types'
@@ -12,6 +13,7 @@ import type {
 } from '@/features/preview/types'
 
 import { mapBackendProjectToUIProject } from '@/app/mapProject'
+import { getPathForView, getViewForPath, toProjectSlug } from '@/app/types'
 import { createEmptyCanvasDocument, type CanvasDocument } from '@/features/canvas/types'
 import {
     generationAPI,
@@ -102,8 +104,10 @@ const getImportStatusMessage = (status: ProjectImportStatus) => {
 
 export const useAppController = () => {
     const queryClient = useQueryClient()
+    const navigate = useNavigate()
+    const location = useLocation()
 
-    const [view, setView] = React.useState<ViewState>('chat')
+    const view = getViewForPath(location.pathname)
     const [messages, setMessages] = React.useState<Message[]>([])
     const [generatedFiles, setGeneratedFiles] = React.useState<
         Record<string, GeneratedProjectFile>
@@ -374,8 +378,9 @@ export const useAppController = () => {
             setGenerationPhase(null)
             setActiveOperation(null)
             lastAutoFixSignatureRef.current = null
+            navigate(`/project/${toProjectSlug(detail.project.name)}`, { replace: true })
         },
-        [replaceGeneratedOutput]
+        [navigate, replaceGeneratedOutput]
     )
 
     const hydrateAppliedProjectChange = React.useCallback(
@@ -421,7 +426,6 @@ export const useAppController = () => {
             setIsMobileSidebarOpen(false)
             setIsProjectOpening(true)
             setProjectLoadError(null)
-            setView('chat')
 
             try {
                 const detail = await projectAPI.getProject(projectId, versionId)
@@ -442,7 +446,6 @@ export const useAppController = () => {
             const assistantMessageId = `${Date.now()}-import-assistant`
 
             outputOriginViewRef.current = view
-            setView('chat')
             setMessages([
                 {
                     id: assistantMessageId,
@@ -739,6 +742,9 @@ export const useAppController = () => {
                                     setActiveProjectId(event.data.project.id)
                                     setActiveProjectName(event.data.project.name)
                                     setActiveProjectVersionId(event.data.version.id)
+                                    navigate(`/project/${toProjectSlug(event.data.project.name)}`, {
+                                        replace: true,
+                                    })
                                     void queryClient.invalidateQueries({ queryKey: ['projects'] })
                                     return
                                 case 'phase':
@@ -848,7 +854,6 @@ export const useAppController = () => {
                 }
 
                 outputOriginViewRef.current = view
-                setView('chat')
                 setProjectLoadError(null)
 
                 const baseId = Date.now().toString()
@@ -1083,7 +1088,6 @@ export const useAppController = () => {
                 }
 
                 outputOriginViewRef.current = view
-                setView('chat')
                 applyProjectChange({
                     kind: 'edit',
                     prompt: normalizedPrompt,
@@ -1124,7 +1128,6 @@ export const useAppController = () => {
 
                 lastAutoFixSignatureRef.current = signature
                 outputOriginViewRef.current = view
-                setView('chat')
                 applyProjectChange({
                     kind: 'fix',
                     errorMessage: message,
@@ -1201,7 +1204,7 @@ export const useAppController = () => {
     const handleNewThread = () => {
         requireAuthOr(() => {
             outputOriginViewRef.current = 'chat'
-            setView('chat')
+            navigate('/')
             setMessages([])
             clearOpenedProject()
             resetGenerationFlow()
@@ -1210,7 +1213,7 @@ export const useAppController = () => {
 
     const handleNavigate = (target: ViewState) => {
         requireAuthOr(() => {
-            setView(target)
+            navigate(getPathForView(target))
         })
     }
 
@@ -1223,14 +1226,17 @@ export const useAppController = () => {
         queryClient.removeQueries({ queryKey: ['projects'] })
         queryClient.removeQueries({ queryKey: ['profile'] })
         outputOriginViewRef.current = 'chat'
-        setView('chat')
+        navigate('/')
         setMessages([])
         clearOpenedProject()
         resetGenerationFlow()
     }
 
     const isHome = view === 'chat' && messages.length === 0 && !isProjectOpening
-    const showSidebar = !(!isHome && view === 'chat') && view !== 'profile' && view !== 'docs'
+    const showSidebar =
+        !(!isHome && (view === 'chat' || view === 'project')) &&
+        view !== 'profile' &&
+        view !== 'docs'
     const isProjectsInitialLoading = isProjectsLoading && projects.length === 0
     const projectsErrorMessage = projectsError instanceof Error ? projectsError.message : null
 
@@ -1239,13 +1245,12 @@ export const useAppController = () => {
         clearOpenedProject()
         setMessages([])
         resetGenerationFlow()
-        setView(nextView)
+        navigate(getPathForView(nextView))
     }
 
     return {
         queryClient,
         view,
-        setView,
         messages,
         generatedFiles,
         activeGeneratedFilePath,

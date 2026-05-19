@@ -478,7 +478,29 @@ export const TemplatesView: React.FC<TemplatesViewProps> = ({ onOpenProject }) =
                                         animate={{ opacity: 1 }}
                                         className="flex flex-col items-center justify-center py-20 text-center"
                                     >
-                                        <h3 className="text-sm font-medium text-[#D6D5C9] mb-1.5">
+                                        <div className="relative mb-6 h-28 w-32">
+                                            <svg
+                                                viewBox="0 0 128 112"
+                                                fill="none"
+                                                className="h-full w-full text-[#8A8987]"
+                                                aria-hidden="true"
+                                            >
+                                                <path
+                                                    d="M28 42.5 64 22l36 20.5v43L64 106 28 85.5v-43Z"
+                                                    stroke="currentColor"
+                                                    strokeWidth="2.4"
+                                                    strokeLinejoin="round"
+                                                />
+                                                <path
+                                                    d="M28 42.5 64 63l36-20.5M64 63v43"
+                                                    stroke="currentColor"
+                                                    strokeWidth="2.4"
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                />
+                                            </svg>
+                                        </div>
+                                        <h3 className="text-[17px] font-medium text-[#D6D5C9] mb-2">
                                             No templates found
                                         </h3>
                                         <p className="text-[#7B7A79] text-[13px] max-w-sm">
