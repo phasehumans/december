@@ -1,10 +1,12 @@
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowUp, X, Mic, Plus } from 'lucide-react'
-import React, { useRef, useEffect, useState } from 'react'
+import { ArrowUp, X, Plus } from 'lucide-react'
+import React, { useRef, useEffect, useCallback } from 'react'
 
 import type { ChatPromptInputProps } from '@/features/chat/types'
 
+import { Icons } from '@/shared/components/ui/Icons'
 import { cn } from '@/shared/lib/utils'
+import { useVoiceToText } from '@/shared/lib/useVoiceToText'
 
 export const ChatPromptInput: React.FC<ChatPromptInputProps> = ({
     value,
@@ -17,7 +19,32 @@ export const ChatPromptInput: React.FC<ChatPromptInputProps> = ({
     isApplyingEdit,
 }) => {
     const textareaRef = useRef<HTMLTextAreaElement>(null)
-    const [isMicActive, setIsMicActive] = useState(false)
+    const voiceBaseRef = useRef('')
+    const isVoiceActiveRef = useRef(false)
+
+    const handleVoiceTranscript = useCallback(
+        (text: string) => {
+            if (!isVoiceActiveRef.current) {
+                voiceBaseRef.current = value || ''
+                isVoiceActiveRef.current = true
+            }
+            const base = voiceBaseRef.current
+            const separator = base && !base.endsWith(' ') ? ' ' : ''
+            onChange(base + separator + text)
+        },
+        [value, onChange]
+    )
+
+    const { isListening, isSupported, volume, toggleListening } = useVoiceToText({
+        onTranscript: handleVoiceTranscript,
+    })
+
+    // Reset voice base when listening stops
+    useEffect(() => {
+        if (!isListening) {
+            isVoiceActiveRef.current = false
+        }
+    }, [isListening])
 
     // Auto-resize textarea
     useEffect(() => {
@@ -100,17 +127,21 @@ export const ChatPromptInput: React.FC<ChatPromptInputProps> = ({
                     </div>
 
                     <div className="flex items-center gap-2">
-                        <button
-                            type="button"
-                            onClick={() => setIsMicActive(!isMicActive)}
-                            className={cn(
-                                'p-2 rounded-full hover:bg-white/5 transition-all',
-                                isMicActive ? 'text-[#FFFFFF]' : 'text-[#727272] hover:text-white'
-                            )}
-                            title="Voice input"
-                        >
-                            <Mic size={18} strokeWidth={2.5} />
-                        </button>
+                        {isSupported && (
+                            <button
+                                type="button"
+                                onClick={toggleListening}
+                                className={cn(
+                                    'flex items-center justify-center w-8 h-8 rounded-full transition-all',
+                                    isListening
+                                        ? 'bg-white/10 text-white'
+                                        : 'text-[#727272] hover:bg-white/5 hover:text-white'
+                                )}
+                                title={isListening ? 'Stop listening' : 'Voice input'}
+                            >
+                                <Icons.Microphone className="w-[14px] h-[14px] stroke-[2.5px] relative z-10" />
+                            </button>
+                        )}
                         <button
                             onClick={onSubmit}
                             className={`
