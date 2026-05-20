@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef, useEffect, useCallback } from 'react'
 
 import { useTypewriter } from '../hooks/useTypewriter'
 
@@ -21,6 +21,8 @@ const PromptInput: React.FC<PromptInputProps> = ({
 }) => {
     const [internalInput, setInternalInput] = useState('')
     const textareaRef = useRef<HTMLTextAreaElement>(null)
+    const voiceBaseRef = useRef('')
+    const isVoiceActiveRef = useRef(false)
 
     const isControlled = value !== undefined
     const input = isControlled ? value : internalInput
@@ -67,6 +69,27 @@ const PromptInput: React.FC<PromptInputProps> = ({
         }
     }
 
+    const handleVoiceTranscript = useCallback(
+        (text: string) => {
+            if (!isVoiceActiveRef.current) {
+                // First transcript — capture what's currently in the input as the base
+                voiceBaseRef.current = isControlled ? value || '' : internalInput
+                isVoiceActiveRef.current = true
+            }
+            const base = voiceBaseRef.current
+            const separator = base && !base.endsWith(' ') ? ' ' : ''
+            const newValue = base + separator + text
+            handleInputChange(newValue)
+        },
+        [isControlled, value, internalInput]
+    )
+
+    const handleVoiceStateChange = useCallback((isListening: boolean) => {
+        if (!isListening) {
+            isVoiceActiveRef.current = false
+        }
+    }, [])
+
     return (
         <div
             className={`relative w-full transition-all duration-300 ${minimized ? 'max-w-full' : 'max-w-3xl'}`}
@@ -106,6 +129,8 @@ const PromptInput: React.FC<PromptInputProps> = ({
                     onSubmit={() => handleSubmit()}
                     hasInput={!!input?.trim()}
                     isLoading={isLoading}
+                    onVoiceTranscript={handleVoiceTranscript}
+                    onVoiceStateChange={handleVoiceStateChange}
                 />
             </div>
         </div>
