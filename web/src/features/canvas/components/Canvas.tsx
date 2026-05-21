@@ -65,6 +65,14 @@ export const Canvas = forwardRef<CanvasRef, CanvasProps>((props, ref) => {
     const [isErasing, setIsErasing] = useState(false)
     const erasedItemIdsRef = useRef<Set<string>>(new Set())
     const didEraseRef = useRef(false)
+    const lastEraserPointRef = useRef<{ x: number; y: number } | null>(null)
+    const lastPanPointRef = useRef<{ x: number; y: number } | null>(null)
+    const previousToolRef = useRef<string | null>(null)
+    const activeToolRef = useRef(activeTool)
+
+    useEffect(() => {
+        activeToolRef.current = activeTool
+    }, [activeTool])
     const [connectionDraft, setConnectionDraft] = useState<{
         fromId: string
         fromSide: 'left' | 'right'
@@ -102,15 +110,22 @@ export const Canvas = forwardRef<CanvasRef, CanvasProps>((props, ref) => {
         setIsErasing(false)
     }, [canvasDocument])
 
+    const onDocumentChangeRef = useRef(onDocumentChange)
     useEffect(() => {
-        onDocumentChange?.({
+        onDocumentChangeRef.current = onDocumentChange
+    }, [onDocumentChange])
+
+    useEffect(() => {
+        const doc = {
             items,
             connections,
             pan,
             scale,
             hasInteracted,
-        })
-    }, [connections, hasInteracted, items, onDocumentChange, pan, scale])
+        }
+        lastExternalDocumentRef.current = JSON.stringify(doc)
+        onDocumentChangeRef.current?.(doc)
+    }, [connections, hasInteracted, items, pan, scale])
 
     const markInteraction = () => {
         if (!hasInteracted) setHasInteracted(true)
@@ -175,11 +190,10 @@ export const Canvas = forwardRef<CanvasRef, CanvasProps>((props, ref) => {
             p: 'pen',
             t: 'text',
             e: 'eraser',
+            h: 'hand',
         }
 
         const onKeyDown = (e: KeyboardEvent) => {
-            if (e.metaKey || e.ctrlKey || e.altKey) return
-
             const target = e.target as HTMLElement | null
             if (target) {
                 const tag = target.tagName
@@ -193,6 +207,21 @@ export const Canvas = forwardRef<CanvasRef, CanvasProps>((props, ref) => {
                 }
             }
 
+            // Spacebar or Shift key down: temporarily shift to 'hand' tool
+            if (e.key === ' ' || e.key === 'Shift') {
+                const currentTool = activeToolRef.current
+                if (currentTool !== 'hand' && !previousToolRef.current) {
+                    previousToolRef.current = currentTool
+                    setActiveTool('hand')
+                }
+                if (e.key === ' ') {
+                    e.preventDefault() // prevent page scrolling
+                }
+                return
+            }
+
+            if (e.metaKey || e.ctrlKey || e.altKey) return
+
             const nextTool = shortcuts[e.key.toLowerCase()]
             if (!nextTool) return
 
@@ -200,8 +229,30 @@ export const Canvas = forwardRef<CanvasRef, CanvasProps>((props, ref) => {
             setActiveTool(nextTool)
         }
 
+        const onKeyUp = (e: KeyboardEvent) => {
+            if (e.key === ' ' || e.key === 'Shift') {
+                if (previousToolRef.current) {
+                    setActiveTool(previousToolRef.current)
+                    previousToolRef.current = null
+                }
+            }
+        }
+
+        const onWindowBlur = () => {
+            if (previousToolRef.current) {
+                setActiveTool(previousToolRef.current)
+                previousToolRef.current = null
+            }
+        }
+
         window.addEventListener('keydown', onKeyDown)
-        return () => window.removeEventListener('keydown', onKeyDown)
+        window.addEventListener('keyup', onKeyUp)
+        window.addEventListener('blur', onWindowBlur)
+        return () => {
+            window.removeEventListener('keydown', onKeyDown)
+            window.removeEventListener('keyup', onKeyUp)
+            window.removeEventListener('blur', onWindowBlur)
+        }
     }, [])
 
     const getDefaultItemSize = (item: CanvasItem) => {
@@ -209,7 +260,7 @@ export const Canvas = forwardRef<CanvasRef, CanvasProps>((props, ref) => {
             case 'note':
                 return { width: 256, height: 180 }
             case 'text':
-                return { width: 224, height: 48 }
+                return { width: 10, height: 30 }
             case 'image':
                 return { width: 320, height: 288 }
             case 'link':
@@ -396,25 +447,24 @@ export const Canvas = forwardRef<CanvasRef, CanvasProps>((props, ref) => {
         height: Math.max(Math.abs(end.y - start.y), 2),
     })
 
+    const ERASABLE_TYPES = new Set(['pen', 'square', 'circle', 'line', 'arrow', 'text'])
+
     const eraseAtPoint = (point: { x: number; y: number }) => {
         const currentItems = stateRef.current.items
         const currentConnections = stateRef.current.connections
         const target = [...currentItems]
             .reverse()
             .find(
-                (item) => !erasedItemIdsRef.current.has(item.id) && isPointInsideItem(point, item)
+                (item) =>
+                    ERASABLE_TYPES.has(item.type) &&
+                    !erasedItemIdsRef.current.has(item.id) &&
+                    isPointInsideItem(point, item)
             )
 
         if (!target) return
 
         const idsToRemove = new Set<string>()
-        if (target.type === 'frame') {
-            currentItems.forEach((item) => {
-                if (item.id === target.id || item.parentId === target.id) idsToRemove.add(item.id)
-            })
-        } else {
-            idsToRemove.add(target.id)
-        }
+        idsToRemove.add(target.id)
 
         idsToRemove.forEach((id) => erasedItemIdsRef.current.add(id))
 
@@ -428,6 +478,19 @@ export const Canvas = forwardRef<CanvasRef, CanvasProps>((props, ref) => {
         setConnections(newConnections)
         setSelectedId((prev) => (prev && idsToRemove.has(prev) ? null : prev))
         stateRef.current = { ...stateRef.current, items: newItems, connections: newConnections }
+    }
+
+    const eraseAlongLine = (from: { x: number; y: number }, to: { x: number; y: number }) => {
+        const dx = to.x - from.x
+        const dy = to.y - from.y
+        const dist = Math.hypot(dx, dy)
+        const step = 4
+        const steps = Math.max(Math.ceil(dist / step), 1)
+
+        for (let i = 0; i <= steps; i++) {
+            const t = i / steps
+            eraseAtPoint({ x: from.x + dx * t, y: from.y + dy * t })
+        }
     }
 
     const getInsertionOrigin = (type: CanvasItem['type']) => {
@@ -617,6 +680,10 @@ export const Canvas = forwardRef<CanvasRef, CanvasProps>((props, ref) => {
 
         if (activeTool === 'hand' || e.button === 1) {
             setIsPanning(true)
+            const pt = { x: e.clientX, y: e.clientY }
+            setDragStart(pt)
+            lastPanPointRef.current = pt
+            e.currentTarget.setPointerCapture(e.pointerId)
             e.preventDefault()
             return
         }
@@ -631,6 +698,7 @@ export const Canvas = forwardRef<CanvasRef, CanvasProps>((props, ref) => {
             setIsErasing(true)
             didEraseRef.current = false
             erasedItemIdsRef.current = new Set()
+            lastEraserPointRef.current = coords
             eraseAtPoint(coords)
             return
         }
@@ -644,8 +712,8 @@ export const Canvas = forwardRef<CanvasRef, CanvasProps>((props, ref) => {
                 type: 'text',
                 x: coords.x,
                 y: coords.y,
-                width: 220,
-                height: 48,
+                width: 10,
+                height: 30,
                 content: '',
             }
             const newItems = [...stateRef.current.items, textItem]
@@ -712,13 +780,23 @@ export const Canvas = forwardRef<CanvasRef, CanvasProps>((props, ref) => {
             return
         }
 
-        if (isPanning) {
-            setPan((prev) => ({ x: prev.x + e.movementX, y: prev.y + e.movementY }))
+        if (isPanning && lastPanPointRef.current) {
+            const dx = e.clientX - lastPanPointRef.current.x
+            const dy = e.clientY - lastPanPointRef.current.y
+            if (dx !== 0 || dy !== 0) {
+                setPan((prev) => ({ x: prev.x + dx, y: prev.y + dy }))
+                lastPanPointRef.current = { x: e.clientX, y: e.clientY }
+            }
             return
         }
 
         if (activeTool === 'eraser' && isErasing) {
-            eraseAtPoint(coords)
+            if (lastEraserPointRef.current) {
+                eraseAlongLine(lastEraserPointRef.current, coords)
+            } else {
+                eraseAtPoint(coords)
+            }
+            lastEraserPointRef.current = coords
             return
         }
 
@@ -805,7 +883,11 @@ export const Canvas = forwardRef<CanvasRef, CanvasProps>((props, ref) => {
 
     const handlePointerUp = () => {
         if (connectionDraft) setConnectionDraft(null)
-        if (isPanning) setIsPanning(false)
+        if (isPanning) {
+            setIsPanning(false)
+            setDragStart(null)
+            lastPanPointRef.current = null
+        }
 
         if (isErasing) {
             setIsErasing(false)
@@ -813,6 +895,7 @@ export const Canvas = forwardRef<CanvasRef, CanvasProps>((props, ref) => {
                 addToHistory(stateRef.current.items, stateRef.current.connections)
             didEraseRef.current = false
             erasedItemIdsRef.current = new Set()
+            lastEraserPointRef.current = null
         }
 
         if (isDrawing && tempItem) {
@@ -914,50 +997,54 @@ export const Canvas = forwardRef<CanvasRef, CanvasProps>((props, ref) => {
         addToHistory(stateRef.current.items, stateRef.current.connections)
     }
 
-    const isDrawCursorTool = [
-        'frame',
-        'square',
-        'circle',
-        'line',
-        'arrow',
-        'pen',
-        'eraser',
-    ].includes(activeTool)
+    const isDrawCursorTool = ['frame', 'square', 'circle', 'line', 'arrow', 'pen', 'text'].includes(
+        activeTool
+    )
 
     return (
         <div
             ref={containerRef}
-            className={`relative w-full h-full bg-[#1e1e1e] overflow-hidden ${activeTool === 'hand' ? 'cursor-grab active:cursor-grabbing' : isDrawCursorTool ? 'cursor-crosshair' : activeTool === 'text' ? 'cursor-text' : ''}`}
+            className={`relative w-full h-full bg-[#1e1e1e] overflow-hidden ${activeTool === 'hand' ? 'cursor-grab active:cursor-grabbing' : isDrawCursorTool ? 'cursor-crosshair' : ''}`}
             style={{
                 backgroundImage: `radial-gradient(#3a3a3a ${currentDotSize}px, transparent ${currentDotSize}px)`,
                 backgroundSize: `${currentGridSize}px ${currentGridSize}px`,
                 backgroundPosition: `${pan.x}px ${pan.y}px`,
+                ...(activeTool === 'eraser'
+                    ? {
+                          cursor: `url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" fill="rgba(255,255,255,0.3)" stroke="%23ffffff" stroke-width="1.5"/><circle cx="8" cy="8" r="7.5" fill="none" stroke="%23000000" stroke-width="0.75"/></svg>') 8 8, auto`,
+                      }
+                    : {}),
             }}
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
             onPointerLeave={handlePointerUp}
         >
-            <CanvasToolbar
-                activeTool={activeTool}
-                setActiveTool={setActiveTool}
-                onAddItem={handleAddItem}
-                onAddItems={handleAddItems}
-                scale={scale}
-                setScale={setScale}
-                onUndo={undo}
-                onRedo={redo}
-                canUndo={historyStep > 0}
-                canRedo={historyStep < history.length - 1}
-                hasInteracted={hasInteracted}
-                onInteract={markInteraction}
-                isAuthenticated={isAuthenticated}
-                onOpenAuth={onOpenAuth}
-                projectId={projectId}
-            />
+            <div
+                onPointerDown={(e) => e.stopPropagation()}
+                onPointerUp={(e) => e.stopPropagation()}
+            >
+                <CanvasToolbar
+                    activeTool={activeTool}
+                    setActiveTool={setActiveTool}
+                    onAddItem={handleAddItem}
+                    onAddItems={handleAddItems}
+                    scale={scale}
+                    setScale={setScale}
+                    onUndo={undo}
+                    onRedo={redo}
+                    canUndo={historyStep > 0}
+                    canRedo={historyStep < history.length - 1}
+                    hasInteracted={hasInteracted}
+                    onInteract={markInteraction}
+                    isAuthenticated={isAuthenticated}
+                    onOpenAuth={onOpenAuth}
+                    projectId={projectId}
+                />
+            </div>
 
             <div
-                className="absolute top-0 left-0 w-full h-full origin-top-left will-change-transform"
+                className={`absolute top-0 left-0 w-full h-full origin-top-left will-change-transform ${activeTool === 'hand' || isPanning ? 'pointer-events-none' : ''}`}
                 style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${scale / 100})` }}
                 onClick={() => {
                     if (
@@ -1004,10 +1091,6 @@ export const Canvas = forwardRef<CanvasRef, CanvasProps>((props, ref) => {
                         getDraftLinePoints={getDraftLinePoints}
                         getTempFramePath={getTempFramePath}
                     />
-                )}
-
-                {activeTool === 'hand' && (
-                    <div className="absolute -inset-[5000px] z-50 bg-transparent" />
                 )}
             </div>
         </div>

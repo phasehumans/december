@@ -11,11 +11,36 @@ import type { CanvasItem, CanvasItemComponentProps } from '@/features/canvas/typ
 
 import { cn } from '@/shared/lib/utils'
 
+const TEXT_FONT_SIZE = 20
+const TEXT_FONT = 'Inter, system-ui, sans-serif'
+
+const measureTextDimensions = (text: string) => {
+    const div = document.createElement('div')
+    div.style.position = 'absolute'
+    div.style.visibility = 'hidden'
+    div.style.whiteSpace = 'pre'
+    div.style.fontSize = `${TEXT_FONT_SIZE}px`
+    div.style.lineHeight = '1.5'
+    div.style.fontFamily = TEXT_FONT
+    div.style.fontWeight = '500'
+    div.style.padding = '4px'
+    // In CSS white-space: pre, a trailing newline does not take up height unless it has a trailing space/character.
+    div.textContent = text.endsWith('\n') ? text + ' ' : text || ' '
+    document.body.appendChild(div)
+    const width = div.offsetWidth
+    const height = div.offsetHeight
+    document.body.removeChild(div)
+    return {
+        width: Math.max(width, 10),
+        height: Math.max(height, Math.ceil(TEXT_FONT_SIZE * 1.5)),
+    }
+}
+
 const getDefaultSizeByType = (type: CanvasItem['type']) => {
     if (type === 'square' || type === 'circle') return { width: 128, height: 128 }
     if (type === 'line' || type === 'arrow') return { width: 192, height: 48 }
     if (type === 'pen') return { width: 192, height: 96 }
-    if (type === 'text') return { width: 224, height: 48 }
+    if (type === 'text') return { width: 10, height: 30 }
     if (type === 'frame') return { width: 384, height: 384 }
     if (type === 'image') return { width: 320, height: 288 }
     return { width: 120, height: 80 }
@@ -38,6 +63,7 @@ export const CanvasItemComponent: React.FC<CanvasItemComponentProps> = ({
 }) => {
     const isChild = !!item.parentId
     const [isDropdownOpen, setIsDropdownOpen] = React.useState(false)
+    const [isEditing, setIsEditing] = React.useState(item.content === '')
     const isSelectMode = !activeTool || activeTool === 'select'
     const canTransform = isSelectMode && isSelected && !isChild
 
@@ -293,7 +319,8 @@ export const CanvasItemComponent: React.FC<CanvasItemComponentProps> = ({
         item.type !== 'circle' &&
         item.type !== 'line' &&
         item.type !== 'arrow' &&
-        item.type !== 'pen'
+        item.type !== 'pen' &&
+        item.type !== 'text'
 
     return (
         <motion.div
@@ -301,6 +328,7 @@ export const CanvasItemComponent: React.FC<CanvasItemComponentProps> = ({
             animate={{ x: item.x, y: item.y }}
             transition={{ type: 'tween', duration: 0 }}
             onPointerDown={handlePointerDown}
+            onClick={(e) => e.stopPropagation()}
             style={{
                 width: item.width,
                 height: item.height,
@@ -313,7 +341,7 @@ export const CanvasItemComponent: React.FC<CanvasItemComponentProps> = ({
                 'group outline-none select-none',
                 !isChild && isSelectMode ? 'cursor-grab active:cursor-grabbing' : 'cursor-default',
                 item.type === 'note' && !item.width && 'w-64',
-                item.type === 'text' && !item.width && 'w-56 h-12',
+
                 item.type === 'link' && !item.width && 'w-[480px]',
                 item.type === 'image' && !item.width && 'w-80 h-72',
                 item.type === 'frame' && !item.width && 'w-96 h-96',
@@ -354,25 +382,71 @@ export const CanvasItemComponent: React.FC<CanvasItemComponentProps> = ({
                     </div>
                 )}
 
-                {item.type === 'text' && (
-                    <div className="relative h-full w-full">
-                        <CanvasDeleteButton onRemove={onRemove} />
+                {item.type === 'text' &&
+                    (isEditing ? (
                         <textarea
-                            defaultValue={item.content || ''}
-                            placeholder="Text"
+                            value={item.content || ''}
+                            autoFocus
                             onPointerDown={(e) => e.stopPropagation()}
+                            onClick={(e) => e.stopPropagation()}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Escape') {
+                                    e.preventDefault()
+                                    e.currentTarget.blur()
+                                }
+                                e.stopPropagation()
+                            }}
+                            onChange={(e) => {
+                                const value = e.target.value
+                                const dims = measureTextDimensions(value)
+                                onUpdate &&
+                                    onUpdate(
+                                        { content: value, width: dims.width, height: dims.height },
+                                        { commitHistory: false }
+                                    )
+                            }}
                             onBlur={(e) => {
-                                const nextText = e.target.value.trim()
-                                if (!nextText) {
+                                const value = e.target.value
+                                if (!value.trim()) {
                                     onRemove()
                                     return
                                 }
-                                onUpdate && onUpdate({ content: e.target.value })
+                                const dims = measureTextDimensions(value)
+                                onUpdate &&
+                                    onUpdate({
+                                        content: value,
+                                        width: dims.width,
+                                        height: dims.height,
+                                    })
+                                setIsEditing(false)
                             }}
-                            className="h-full w-full resize-none border-none bg-transparent text-[22px] font-medium leading-tight text-[#E8E8E6] outline-none placeholder-neutral-500/70"
+                            style={{
+                                fontSize: `${TEXT_FONT_SIZE}px`,
+                                lineHeight: 1.5,
+                                fontFamily: TEXT_FONT,
+                                fontWeight: 500,
+                                padding: '4px',
+                            }}
+                            className="h-full w-full resize-none border-none bg-transparent text-[#E8E8E6] outline-none caret-white whitespace-pre overflow-hidden"
                         />
-                    </div>
-                )}
+                    ) : (
+                        <div
+                            onDoubleClick={(e) => {
+                                e.stopPropagation()
+                                setIsEditing(true)
+                            }}
+                            style={{
+                                fontSize: `${TEXT_FONT_SIZE}px`,
+                                lineHeight: 1.5,
+                                fontFamily: TEXT_FONT,
+                                fontWeight: 500,
+                                padding: '4px',
+                            }}
+                            className="h-full w-full select-none text-[#E8E8E6] whitespace-pre overflow-hidden cursor-default"
+                        >
+                            {item.content}
+                        </div>
+                    ))}
 
                 {item.type === 'image' && (
                     <div className="flex h-full flex-col overflow-hidden rounded-[14px] border border-[#2E2D2C] bg-[#171615] transition-colors group-hover:border-[#454443]">
