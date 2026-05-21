@@ -30,7 +30,7 @@ type ClipperWorkerResult = {
 
 const IMAGE_CONTENT_TYPE = 'image/png'
 const CLIPPER_WORKER_TIMEOUT_MS = 120000
-const CLIPPER_WORKER_PATH = fileURLToPath(new URL('../../utils/clipper.js', import.meta.url))
+const CLIPPER_WORKER_PATH = fileURLToPath(new URL('./clipper.js', import.meta.url))
 const CLIPPER_TEMP_ROOT = path.resolve(os.tmpdir(), 'december-web-clips')
 
 const toDataUrl = (buffer: Buffer) =>

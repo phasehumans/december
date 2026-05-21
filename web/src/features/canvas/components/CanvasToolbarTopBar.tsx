@@ -108,12 +108,6 @@ export const CanvasToolbarTopBar = React.forwardRef<HTMLDivElement, CanvasToolba
                 isActive: activeTool === 'square',
             },
             {
-                icon: MoveUpRight,
-                label: 'Arrow',
-                onClick: () => onSelectTool('arrow'),
-                isActive: activeTool === 'arrow',
-            },
-            {
                 icon: TextIcon,
                 label: 'Text',
                 onClick: () => onSelectTool('text'),
@@ -140,7 +134,6 @@ export const CanvasToolbarTopBar = React.forwardRef<HTMLDivElement, CanvasToolba
                 </div>
                 <div className="w-px h-5 bg-white/10 mx-1" />
                 {renderGroup(drawingActions)}
-                <div className="w-px h-5 bg-white/10 mx-1" />
                 {renderGroup(shapeActions, 'flex items-center gap-0.5 pr-0.5')}
             </div>
         )
