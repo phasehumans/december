@@ -20,7 +20,7 @@ export const HomeHeader: React.FC = () => {
                     }}
                     className="flex items-center gap-2.5 bg-[#201F1E] border border-white/5 rounded-full pl-1.5 pr-3 py-1 text-[13px] text-[#E8E8E6] shadow-sm transition-colors cursor-pointer hover:bg-[#2A2928] group"
                 >
-                    <span className="bg-[#2F2E2D] text-[#D6D5D4] rounded-full px-2 py-0.5 text-[11px] font-semibold tracking-wide">
+                    <span className="bg-[#2F2E2D] text-[#D6D5D4] rounded-full px-2 py-0.5 text-[11px] font-medium">
                         New
                     </span>
                     <span className="font-medium text-[#A09F9D] group-hover:text-white transition-colors">

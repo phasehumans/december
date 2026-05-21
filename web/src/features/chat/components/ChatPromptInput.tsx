@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowUp, X, Plus } from 'lucide-react'
+import { ArrowRight, X, Plus } from 'lucide-react'
 import React, { useRef, useEffect, useCallback } from 'react'
 
 import type { ChatPromptInputProps } from '@/features/chat/types'
@@ -153,7 +153,7 @@ export const ChatPromptInput: React.FC<ChatPromptInputProps> = ({
                                 }
                             `}
                         >
-                            <ArrowUp size={18} strokeWidth={2.5} />
+                            <ArrowRight size={18} strokeWidth={1.8} />
                         </button>
                     </div>
                 </div>
