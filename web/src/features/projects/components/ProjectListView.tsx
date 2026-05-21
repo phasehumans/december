@@ -131,7 +131,7 @@ const NoResultsState: React.FC = () => {
                     />
                 </svg>
             </div>
-            <h2 className="text-[17px] font-medium text-[#D6D5C9]">No matching projects</h2>
+            <h2 className="text-[17px] font-medium text-[#D6D5C9]">No Projects Found</h2>
             <p className="mt-2 max-w-sm text-[13px] leading-6 text-[#7B7A79]">
                 Try adjusting your search or filters.
             </p>

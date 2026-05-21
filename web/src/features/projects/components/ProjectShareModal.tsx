@@ -24,7 +24,7 @@ export const ProjectShareModal: React.FC<ProjectShareModalProps> = ({
         <Modal
             isOpen={isOpen}
             onClose={onClose}
-            title={isSharedAsTemplate ? 'Unshare project' : 'Share project'}
+            title={isSharedAsTemplate ? 'Unshare template' : 'Share as template'}
             description={
                 isSharedAsTemplate
                     ? 'Remove this project from the Community Templates page.'
@@ -53,7 +53,7 @@ export const ProjectShareModal: React.FC<ProjectShareModalProps> = ({
                         Cancel
                     </Button>
                     <Button type="submit" isLoading={isPending}>
-                        {isSharedAsTemplate ? 'Unshare' : 'Share'}
+                        {isSharedAsTemplate ? 'Unshare template' : 'Share as template'}
                     </Button>
                 </div>
             </form>

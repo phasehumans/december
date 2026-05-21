@@ -175,7 +175,7 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
                     {isLoading ? (
                         <div className="w-4 h-4 border-2 border-neutral-500 border-t-neutral-800 rounded-full animate-spin" />
                     ) : (
-                        <Icons.ArrowUp className="w-4 h-4 stroke-[3px]" />
+                        <Icons.ArrowRight className="w-4 h-4 stroke-[2px]" />
                     )}
                 </button>
             </div>
