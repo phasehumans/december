@@ -1,4 +1,5 @@
 import { prisma } from '../../config/db'
+import { AppError } from '../../utils/appError'
 
 type GithubRepo = {
     id: number
@@ -14,6 +15,25 @@ type GithubRepo = {
     owner: {
         login: string
         avatarUrl: string
+    }
+}
+
+type ConnectVercel = {
+    code: string
+    userId: string
+}
+
+type VercelTokenResponse = {
+    access_token: string
+    user_id: string
+    team_id: string | null
+}
+
+type VercelUserResponse = {
+    user: {
+        id: string
+        username: string
+        email: string
     }
 }
 
@@ -75,6 +95,85 @@ const listGithubRepos = async (userId: string): Promise<GithubRepo[]> => {
     }))
 }
 
+const connectVercel = async (data: ConnectVercel) => {
+    const { code, userId } = data
+
+    const existingUser = await prisma.user.findFirst({
+        where: {
+            id: userId,
+            isDeleted: false,
+        },
+    })
+
+    if (!existingUser) {
+        throw new AppError('user not found', 404)
+    }
+
+    const tokenResponse = await fetch('https://api.vercel.com/v2/oauth/access_token', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            client_id: process.env.VERCEL_CLIENT_ID,
+            client_secret: process.env.VERCEL_CLIENT_SECRET,
+            code,
+            redirect_uri: process.env.VERCEL_REDIRECT_URI,
+        }),
+    })
+
+    if (!tokenResponse.ok) {
+        throw new AppError('failed to get vercel access token', 400)
+    }
+
+    const tokenData = (await tokenResponse.json()) as VercelTokenResponse
+
+    const accessToken = tokenData.access_token
+
+    if (!accessToken) {
+        throw new AppError('vercel access token missing', 400)
+    }
+
+    const userResponse = await fetch('https://api.vercel.com/v2/user', {
+        headers: {
+            Authorization: `Bearer ${accessToken}`,
+        },
+    })
+
+    if (!userResponse.ok) {
+        throw new AppError('failed to fetch vercel user', 400)
+    }
+
+    const vercelUserData = (await userResponse.json()) as VercelUserResponse
+
+    const vercelUser = vercelUserData.user
+
+    const updatedUser = await prisma.user.update({
+        where: {
+            id: userId,
+        },
+        data: {
+            vercelConnected: true,
+            vercelAccessToken: accessToken,
+            vercelUserId: vercelUser.id,
+            vercelUsername: vercelUser.username,
+            vercelEmail: vercelUser.email,
+        },
+    })
+
+    return updatedUser
+}
+
+const connectSupabase = async () => {}
+
+const connectNotion = async () => {}
+
+const connectStripe = async () => {}
+
 export const integrationsService = {
     listGithubRepos,
+    connectVercel,
+    connectSupabase,
+    connectNotion,
+    connectStripe,
 }

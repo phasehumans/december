@@ -87,5 +87,4 @@ export const notificationService = {
     sendNotificationToAll,
 }
 
-// Named export for direct import by other modules (e.g. template.service.ts)
 export { sendNotificationToUser }
