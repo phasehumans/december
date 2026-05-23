@@ -1,3 +1,4 @@
+import { AppError } from '../../utils/appError'
 import { integrationsService } from './integrations.service'
 
 import type { Request, Response } from 'express'
@@ -28,6 +29,243 @@ const getUserGithubRepos = async (req: Request, res: Response) => {
     }
 }
 
+const connectVercel = async (req: Request, res: Response) => {
+    const code = req.query.code as string
+    const userId = (req.query.state || req.query.userId) as string
+
+    console.log(process.env.VERCEL_CLIENT_ID)
+
+    try {
+        if (!code) {
+            const redirectUrl =
+                `https://vercel.com/oauth/authorize` +
+                `?client_id=${process.env.VERCEL_CLIENT_ID}` +
+                `&redirect_uri=${process.env.VERCEL_REDIRECT_URI}` +
+                `&scope=user` +
+                `&state=${userId}`
+
+            console.log(redirectUrl)
+            return res.redirect(redirectUrl)
+        }
+
+        await integrationsService.connectVercel({
+            code,
+            userId,
+        })
+
+        return res.redirect('http://localhost:3000')
+    } catch (error) {
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({
+                success: false,
+                message: 'failed to connect vercel',
+                errors: error.message,
+            })
+        }
+
+        return res.status(500).json({
+            success: false,
+            message: 'failed to connect vercel',
+            errors: error instanceof Error ? error.message : 'unknown error',
+        })
+    }
+}
+const connectSupabase = async (req: Request, res: Response) => {
+    const code = req.query.code as string
+    const userId = req.query.state as string
+
+    if (!code) {
+        return res.status(400).json({
+            success: false,
+            message: 'no code provided',
+        })
+    }
+
+    type GithubTokenResponse = {
+        access_token: string
+        token_type: string
+        scope: string
+    }
+
+    try {
+        const tokenResponse = await fetch('https://github.com/login/oauth/access_token', {
+            method: 'POST',
+            headers: {
+                Accept: 'application/json',
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                client_id: process.env.GITHUB_CLIENT_ID,
+                client_secret: process.env.GITHUB_CLIENT_SECRET,
+                code,
+            }),
+        })
+
+        const tokenData = (await tokenResponse.json()) as GithubTokenResponse
+        const accessToken = tokenData.access_token
+
+        const userRes = await fetch('https://api.github.com/user', {
+            headers: {
+                Authorization: `Bearer ${accessToken}`,
+            },
+        })
+
+        const githubUser: any = await userRes.json()
+        const username = githubUser.login
+
+        // console.log(accessToken, username)
+
+        // await integrationsService.connectSupabase({ userId, accessToken, username })
+        return res.redirect('http://localhost:3000')
+    } catch (error) {
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({
+                success: false,
+                message: 'failed to connect with github',
+                errors: error.message,
+            })
+        }
+
+        return res.status(500).json({
+            success: false,
+            message: 'failed to connect with github',
+            errors: error instanceof Error ? error.message : 'unknown error',
+        })
+    }
+}
+
+const connectNotion = async (req: Request, res: Response) => {
+    const code = req.query.code as string
+    const userId = req.query.state as string
+
+    if (!code) {
+        return res.status(400).json({
+            success: false,
+            message: 'no code provided',
+        })
+    }
+
+    type GithubTokenResponse = {
+        access_token: string
+        token_type: string
+        scope: string
+    }
+
+    try {
+        const tokenResponse = await fetch('https://github.com/login/oauth/access_token', {
+            method: 'POST',
+            headers: {
+                Accept: 'application/json',
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                client_id: process.env.GITHUB_CLIENT_ID,
+                client_secret: process.env.GITHUB_CLIENT_SECRET,
+                code,
+            }),
+        })
+
+        const tokenData = (await tokenResponse.json()) as GithubTokenResponse
+        const accessToken = tokenData.access_token
+
+        const userRes = await fetch('https://api.github.com/user', {
+            headers: {
+                Authorization: `Bearer ${accessToken}`,
+            },
+        })
+
+        const githubUser: any = await userRes.json()
+        const username = githubUser.login
+
+        // console.log(accessToken, username)
+
+        // await integrationsService.connectNotion({ userId, accessToken, username })
+        return res.redirect('http://localhost:3000')
+    } catch (error) {
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({
+                success: false,
+                message: 'failed to connect with github',
+                errors: error.message,
+            })
+        }
+
+        return res.status(500).json({
+            success: false,
+            message: 'failed to connect with github',
+            errors: error instanceof Error ? error.message : 'unknown error',
+        })
+    }
+}
+
+const connectStripe = async (req: Request, res: Response) => {
+    const code = req.query.code as string
+    const userId = req.query.state as string
+
+    if (!code) {
+        return res.status(400).json({
+            success: false,
+            message: 'no code provided',
+        })
+    }
+
+    type GithubTokenResponse = {
+        access_token: string
+        token_type: string
+        scope: string
+    }
+
+    try {
+        const tokenResponse = await fetch('https://github.com/login/oauth/access_token', {
+            method: 'POST',
+            headers: {
+                Accept: 'application/json',
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                client_id: process.env.GITHUB_CLIENT_ID,
+                client_secret: process.env.GITHUB_CLIENT_SECRET,
+                code,
+            }),
+        })
+
+        const tokenData = (await tokenResponse.json()) as GithubTokenResponse
+        const accessToken = tokenData.access_token
+
+        const userRes = await fetch('https://api.github.com/user', {
+            headers: {
+                Authorization: `Bearer ${accessToken}`,
+            },
+        })
+
+        const githubUser: any = await userRes.json()
+        const username = githubUser.login
+
+        // console.log(accessToken, username)
+
+        // await integrationsService.connectStripe({ userId, accessToken, username })
+        return res.redirect('http://localhost:3000')
+    } catch (error) {
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({
+                success: false,
+                message: 'failed to connect with github',
+                errors: error.message,
+            })
+        }
+
+        return res.status(500).json({
+            success: false,
+            message: 'failed to connect with github',
+            errors: error instanceof Error ? error.message : 'unknown error',
+        })
+    }
+}
+
 export const integrationsController = {
     getUserGithubRepos,
+    connectVercel,
+    connectSupabase,
+    connectNotion,
+    connectStripe,
 }
