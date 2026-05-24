@@ -1,5 +1,6 @@
 import { prisma } from '../../config/db'
 import { AppError } from '../../utils/appError'
+import axios from 'axios'
 
 type GithubRepo = {
     id: number
@@ -30,6 +31,35 @@ type VercelTokenResponse = {
     user_id: string
     team_id: string | null
 }
+
+interface ConnectSupaBase {
+    userId: string
+    code?: string
+}
+
+type SupabaseConnectedResponse =
+    | {
+          type: 'redirect'
+          url: string
+      }
+    | {
+          type: 'connected'
+      }
+
+interface ConnectNotionParams {
+    userId: string
+    code?: string
+}
+
+type NotionConnectedResponse =
+    | {
+          type: 'redirect'
+          url: string
+      }
+    | {
+          type: 'success'
+          workspaceName: string
+      }
 
 const listGithubRepos = async (userId: string): Promise<GithubRepo[]> => {
     const user = await prisma.user.findUnique({
@@ -146,9 +176,120 @@ const connectVercel = async (data: ConnectVercel) => {
     return updatedUser
 }
 
-const connectSupabase = async () => {}
+const connectSupabase = async ({
+    userId,
+    code,
+}: ConnectSupaBase): Promise<SupabaseConnectedResponse> => {
+    if (!code) {
+        const params = new URLSearchParams({
+            client_id: process.env.SUPABASE_CLIENT_ID!,
+            redirect_uri: process.env.SUPABASE_REDIRECT_URI!,
+            response_type: 'code',
+        })
 
-const connectNotion = async () => {}
+        return {
+            type: 'redirect',
+
+            url: `https://api.supabase.com/v1/oauth/authorize?${params.toString()}`,
+        }
+    }
+
+    const params = new URLSearchParams({
+        grant_type: 'authorization_code',
+        code,
+        redirect_uri: process.env.SUPABASE_REDIRECT_URI!,
+        client_id: process.env.SUPABASE_CLIENT_ID!,
+        client_secret: process.env.SUPABASE_CLIENT_SECRET!,
+    })
+
+    const response = await axios.post('https://api.supabase.com/v1/oauth/token', params, {
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+    })
+
+    const tokenData = response.data
+
+    console.log('TOKEN DATA:', tokenData)
+
+    const expiresAt = new Date(Date.now() + tokenData.expires_in * 1000)
+
+    await prisma.user.update({
+        where: {
+            id: userId,
+        },
+
+        data: {
+            supabaseConnected: true,
+            supabaseAccessToken: tokenData.access_token,
+            supabaseRefreshToken: tokenData.refresh_token,
+            supabaseTokenExpiresAt: expiresAt,
+            supabaseTokenScope: tokenData.scope ?? null,
+            supabaseConnectedAt: new Date(),
+        },
+    })
+
+    return {
+        type: 'connected',
+    }
+}
+
+const connectNotion = async ({
+    userId,
+    code,
+}: ConnectNotionParams): Promise<NotionConnectedResponse> => {
+    if (!code) {
+        const params = new URLSearchParams({
+            client_id: process.env.NOTION_CLIENT_ID!,
+            response_type: 'code',
+            owner: 'user',
+            redirect_uri: process.env.NOTION_REDIRECT_URI!,
+        })
+
+        return {
+            type: 'redirect',
+            url: `https://api.notion.com/v1/oauth/authorize?${params.toString()}`,
+        }
+    }
+
+    const response = await axios.post(
+        'https://api.notion.com/v1/oauth/token',
+        {
+            grant_type: 'authorization_code',
+            code,
+            redirect_uri: process.env.NOTION_REDIRECT_URI!,
+        },
+        {
+            headers: {
+                'Content-Type': 'application/json',
+            },
+
+            auth: {
+                username: process.env.NOTION_CLIENT_ID!,
+                password: process.env.NOTION_CLIENT_SECRET!,
+            },
+        }
+    )
+
+    const data = response.data
+
+    await prisma.user.update({
+        where: {
+            id: userId,
+        },
+
+        data: {
+            notionAccessToken: data.access_token,
+            notionWorkspaceId: data.workspace_id,
+            notionWorkspaceName: data.workspace_name,
+        },
+    })
+
+    return {
+        type: 'success',
+        workspaceName: data.workspace_name,
+    }
+}
 
 const connectStripe = async () => {}
 
