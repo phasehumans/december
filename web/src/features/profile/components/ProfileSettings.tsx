@@ -283,7 +283,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                                 onGenerationSoundChange={handleGenerationSoundChange}
                             />
                         ) : activeTab === 'Billing' ? (
-                            <ProfileBillingSettings />
+                            <ProfileBillingSettings profile={profile} />
                         ) : activeTab === 'Usage' ? (
                             <ProfileUsageSettings />
                         ) : activeTab === 'API Keys' ? (
