@@ -3,6 +3,7 @@ import { Github, GitBranch, Clock, ArrowRight, Loader2, Lock, Globe } from 'luci
 import React, { useState } from 'react'
 
 import { profileAPI, type GithubRepo } from '@/features/profile/api/profile'
+import { Skeleton } from '@/shared/components/ui/Skeleton'
 
 type IntegrationId = 'github' | 'vercel' | 'supabase' | 'notion'
 
@@ -224,11 +225,31 @@ export const ProfileIntegrationsSettings: React.FC<ProfileIntegrationsSettingsPr
                         </button>
                     </div>
                 ) : reposQuery.isLoading ? (
-                    <div className="border border-[#242323] rounded-xl py-16 flex flex-col items-center justify-center gap-3 bg-[#131211]">
-                        <Loader2 className="w-5 h-5 text-[#7B7A79] animate-spin" />
-                        <span className="text-[13px] text-[#7B7A79]">
-                            Fetching your repositories...
-                        </span>
+                    <div className="flex flex-col border border-[#2B2A29] rounded-xl overflow-hidden bg-[#131211]">
+                        {/* Header skeleton */}
+                        <div className="flex items-center px-5 py-3 bg-[#171615] border-b border-[#2B2A29]">
+                            <Skeleton className="h-4.5 w-40 bg-white/[0.06] rounded" />
+                        </div>
+                        {/* Repo list skeleton */}
+                        {Array.from({ length: INITIAL_REPOS_COUNT }).map((_, i) => (
+                            <div
+                                key={i}
+                                className="flex items-center justify-between px-5 py-4 border-b border-[#1E1D1B] last:border-b-0"
+                            >
+                                <div className="flex flex-col gap-2 min-w-0 flex-1">
+                                    <div className="flex items-center gap-2">
+                                        <Skeleton className="h-4.5 w-44 bg-white/[0.06] rounded" />
+                                        <Skeleton className="h-4.5 w-16 bg-white/[0.04] rounded" />
+                                    </div>
+                                    <Skeleton className="h-3.5 w-[75%] bg-white/[0.04] mt-0.5 rounded" />
+                                    <div className="flex items-center gap-3.5 mt-1.5">
+                                        <Skeleton className="h-3 w-16 bg-white/[0.04] rounded" />
+                                        <Skeleton className="h-3 w-14 bg-white/[0.04] rounded" />
+                                        <Skeleton className="h-3 w-20 bg-white/[0.04] rounded" />
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
                     </div>
                 ) : reposQuery.isError ? (
                     <div className="border border-[#242323] rounded-xl py-16 flex flex-col items-center justify-center gap-3 bg-[#131211]">

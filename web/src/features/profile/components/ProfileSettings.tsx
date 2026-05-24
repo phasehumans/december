@@ -30,6 +30,7 @@ import { ProfileUsageSettings } from './ProfileUsageSettings'
 import type { ProfileSettingsProps } from '@/features/profile/types'
 
 import { Icons } from '@/shared/components/ui/Icons'
+import { ErrorAlert } from '@/shared/components/ui/ErrorAlert'
 
 export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onBack, onDocs }) => {
     const location = useLocation()
@@ -240,9 +241,10 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                                 <div className="text-xs text-neutral-500">Syncing profile...</div>
                             )}
                             {profileErrorMessage && (
-                                <div className="max-w-[26rem] truncate rounded-full border border-red-500/35 bg-red-500/15 px-4 py-1 text-xs font-medium text-red-200">
-                                    {profileErrorMessage}
-                                </div>
+                                <ErrorAlert
+                                    message={profileErrorMessage}
+                                    onClear={() => setProfileActionError(null)}
+                                />
                             )}
                         </div>
 
@@ -283,7 +285,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                                 onGenerationSoundChange={handleGenerationSoundChange}
                             />
                         ) : activeTab === 'Billing' ? (
-                            <ProfileBillingSettings />
+                            <ProfileBillingSettings profile={profile} />
                         ) : activeTab === 'Usage' ? (
                             <ProfileUsageSettings />
                         ) : activeTab === 'API Keys' ? (

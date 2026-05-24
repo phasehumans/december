@@ -7,6 +7,7 @@ import bannerImg from '../../../../public/banner.png'
 import { profileAPI } from '@/features/profile/api/profile'
 import { projectAPI } from '@/features/projects/api/project'
 import { templateAPI } from '@/features/templates/api/template'
+import { Skeleton } from '@/shared/components/ui/Skeleton'
 
 interface ProfileCardModalProps {
     isOpen: boolean
@@ -34,23 +35,25 @@ export const ProfileCardModal: React.FC<ProfileCardModalProps> = ({
     const modalRef = useRef<HTMLDivElement>(null)
     const [activeTab, setActiveTab] = useState<'templates' | 'liked'>('templates')
 
-    const { data: profile } = useQuery({
+    const { data: profile, isLoading: isProfileLoading } = useQuery({
         queryKey: ['profile'],
         queryFn: profileAPI.getProfile,
         enabled: isOpen,
     })
 
-    const { data: allProjects = [] } = useQuery({
+    const { data: allProjects = [], isLoading: isProjectsLoading } = useQuery({
         queryKey: ['projects'],
         queryFn: projectAPI.getProjects,
         enabled: isOpen,
     })
 
-    const { data: allTemplates = [] } = useQuery({
+    const { data: allTemplates = [], isLoading: isTemplatesLoading } = useQuery({
         queryKey: ['templates'],
         queryFn: templateAPI.getTemplates,
         enabled: isOpen,
     })
+
+    const isLoading = isProfileLoading || isProjectsLoading || isTemplatesLoading
 
     const sharedTemplates = allProjects.filter((p) => p.isSharedAsTemplate)
     const likedTemplates = allTemplates.filter((t) => t.isLiked)
@@ -158,51 +161,78 @@ export const ProfileCardModal: React.FC<ProfileCardModalProps> = ({
                     {/* Avatar */}
                     <button
                         onClick={handleChangeAvatar}
+                        disabled={isLoading}
                         className="absolute -top-[48px] left-8 w-[96px] h-[96px] rounded-full border-[5px] border-[#171615] bg-[#2B2A29] overflow-hidden flex items-center justify-center shadow-xl hover:scale-105 hover:border-[#242323] transition-all cursor-pointer group"
                         title="Change Avatar"
                     >
-                        <img
-                            src={currentAvatarUrl}
-                            alt={userName}
-                            className="w-full h-full object-cover group-hover:opacity-80 transition-opacity"
-                        />
+                        {isLoading ? (
+                            <Skeleton className="w-full h-full rounded-full bg-white/[0.06]" />
+                        ) : (
+                            <img
+                                src={currentAvatarUrl}
+                                alt={userName}
+                                className="w-full h-full object-cover group-hover:opacity-80 transition-opacity"
+                            />
+                        )}
                     </button>
 
                     {/* Actions */}
                     <div className="flex justify-end pt-4 gap-3">
-                        <button
-                            onClick={handleSettingsClick}
-                            className="flex items-center gap-1.5 px-4 py-1.5 rounded-full border border-[#383736] text-[13px] font-medium text-[#D6D5C9] hover:bg-[#1E1D1B] transition-colors"
-                        >
-                            Account settings
-                            <Settings className="w-3.5 h-3.5 text-[#7B7A79]" />
-                        </button>
+                        {isLoading ? (
+                            <Skeleton className="h-8 w-36 rounded-full bg-white/[0.04]" />
+                        ) : (
+                            <button
+                                onClick={handleSettingsClick}
+                                className="flex items-center gap-1.5 px-4 py-1.5 rounded-full border border-[#383736] text-[13px] font-medium text-[#D6D5C9] hover:bg-[#1E1D1B] transition-colors"
+                            >
+                                Account settings
+                                <Settings className="w-3.5 h-3.5 text-[#7B7A79]" />
+                            </button>
+                        )}
                     </div>
 
                     {/* User Details — Name + Username */}
                     <div className="flex flex-col mt-2">
-                        <h2 className="text-[22px] font-bold text-[#D6D5C9] mb-0.5">{userName}</h2>
-                        <div className="flex items-center gap-3">
-                            <span className="text-[14px] text-[#7B7A79]">@{displayUsername}</span>
-                            {joinDateStr && (
-                                <span className="text-[13px] text-[#7B7A79] flex items-center gap-1.5">
-                                    <Calendar className="w-3.5 h-3.5" />
-                                    Joined {joinDateStr}
-                                </span>
-                            )}
-                        </div>
+                        {isLoading ? (
+                            <div className="flex flex-col gap-2">
+                                <Skeleton className="h-7 w-48 bg-white/[0.06] rounded-md" />
+                                <div className="flex items-center gap-3">
+                                    <Skeleton className="h-4 w-20 bg-white/[0.04] rounded-md" />
+                                    <Skeleton className="h-4 w-32 bg-white/[0.04] rounded-md" />
+                                </div>
+                            </div>
+                        ) : (
+                            <>
+                                <h2 className="text-[22px] font-bold text-[#D6D5C9] mb-0.5">
+                                    {userName}
+                                </h2>
+                                <div className="flex items-center gap-3">
+                                    <span className="text-[14px] text-[#7B7A79]">
+                                        @{displayUsername}
+                                    </span>
+                                    {joinDateStr && (
+                                        <span className="text-[13px] text-[#7B7A79] flex items-center gap-1.5">
+                                            <Calendar className="w-3.5 h-3.5" />
+                                            Joined {joinDateStr}
+                                        </span>
+                                    )}
+                                </div>
+                            </>
+                        )}
                     </div>
 
                     {/* Content Tabs */}
                     <div className="flex gap-6 border-b border-[#242323] mt-6 mb-5">
                         <button
                             onClick={() => setActiveTab('templates')}
+                            disabled={isLoading}
                             className={`pb-2.5 text-[14px] font-medium transition-colors border-b-2 ${activeTab === 'templates' ? 'text-[#D6D5C9] border-[#D6D5C9]' : 'text-[#7B7A79] border-transparent hover:text-[#D6D5C9]'}`}
                         >
                             Shared Templates
                         </button>
                         <button
                             onClick={() => setActiveTab('liked')}
+                            disabled={isLoading}
                             className={`pb-2.5 text-[14px] font-medium transition-colors border-b-2 ${activeTab === 'liked' ? 'text-[#D6D5C9] border-[#D6D5C9]' : 'text-[#7B7A79] border-transparent hover:text-[#D6D5C9]'}`}
                         >
                             Liked Templates
@@ -210,7 +240,22 @@ export const ProfileCardModal: React.FC<ProfileCardModalProps> = ({
                     </div>
 
                     {/* Content Area */}
-                    {activeTab === 'templates' ? (
+                    {isLoading ? (
+                        <div className="flex flex-col gap-2 max-h-[240px] overflow-y-auto no-scrollbar">
+                            {[1, 2, 3].map((i) => (
+                                <div
+                                    key={i}
+                                    className="flex items-center gap-3 px-4 py-3 rounded-xl bg-[#100E12]/30 border border-[#242323]/50"
+                                >
+                                    <Skeleton className="w-9 h-9 rounded-lg bg-white/[0.06] shrink-0" />
+                                    <div className="flex flex-col gap-2 flex-1">
+                                        <Skeleton className="h-4 w-1/3 bg-white/[0.06] rounded-md" />
+                                        <Skeleton className="h-3 w-1/2 bg-white/[0.04] rounded-md" />
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : activeTab === 'templates' ? (
                         sharedTemplates.length > 0 ? (
                             <div className="flex flex-col gap-2 max-h-[240px] overflow-y-auto no-scrollbar">
                                 {sharedTemplates.map((project) => (
