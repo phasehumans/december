@@ -3,16 +3,19 @@ import {
     ChevronDown,
     Download,
     ArrowUpRight,
+    ExternalLink,
     Info,
     ChevronLeft,
     ChevronRight,
     UserCircle,
     Loader2,
+    Image,
 } from 'lucide-react'
 import React, { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { profileAPI } from '@/features/profile/api/profile'
 import { useCreditsHistory, useBillingOverview } from '@/features/billing/hooks/useBillingData'
+import { ErrorAlert } from '@/shared/components/ui/ErrorAlert'
 
 export const ProfileUsageSettings: React.FC = () => {
     const { data: profile } = useQuery({
@@ -22,7 +25,7 @@ export const ProfileUsageSettings: React.FC = () => {
 
     const { data: overview } = useBillingOverview()
 
-    const [limit, setLimit] = useState(25)
+    const [limit, setLimit] = useState(10) // Set default to 10 matching screenshot
     const [offset, setOffset] = useState(0)
 
     const { data: history, isLoading, error } = useCreditsHistory({ limit, offset })
@@ -121,22 +124,22 @@ export const ProfileUsageSettings: React.FC = () => {
                     {/* Controls Row */}
                     <div className="flex items-center justify-between mb-6">
                         <div className="flex items-center gap-4">
-                            <button className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-[#383736] hover:bg-[#1E1D1B] transition-colors text-[13px]">
+                            <button className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-[#383736] hover:bg-[#1E1D1B] transition-colors text-[13px] font-medium bg-[#171615]">
                                 <Calendar className="w-4 h-4 text-[#7B7A79]" />
                                 <span>
                                     {formatPeriodRange(overview?.periodStart, overview?.periodEnd)}
                                 </span>
                                 <ChevronDown className="w-4 h-4 text-[#7B7A79]" />
                             </button>
-                            <div className="flex items-center gap-1">
+                            <div className="flex items-center gap-1 bg-[#100E12] p-0.5 rounded-lg border border-[#242323]">
                                 {['1d', '7d', '30d', '90d'].map((range) => (
                                     <button
                                         key={range}
                                         onClick={() => setTimeRange(range)}
-                                        className={`px-2 py-1 rounded-md text-[13px] font-medium transition-colors ${
+                                        className={`px-2.5 py-1 rounded-md text-[11.5px] font-medium transition-all ${
                                             range === timeRange
-                                                ? 'bg-[#2B2A29] text-[#D6D5C9]'
-                                                : 'text-[#7B7A79] hover:text-[#D6D5C9] hover:bg-[#1E1D1B]'
+                                                ? 'bg-[#2B2A29] text-[#D6D5C9] shadow-sm'
+                                                : 'text-[#7B7A79] hover:text-[#D6D5C9]'
                                         }`}
                                     >
                                         {range}
@@ -147,7 +150,7 @@ export const ProfileUsageSettings: React.FC = () => {
                         <button
                             onClick={handleDownloadCSV}
                             disabled={!history || history.events.length === 0}
-                            className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-[#383736] hover:bg-[#1E1D1B] transition-colors text-[13px] disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-[#383736] hover:bg-[#1E1D1B] bg-[#171615] transition-colors text-[13px] disabled:opacity-50 disabled:cursor-not-allowed font-medium"
                         >
                             <Download className="w-4 h-4 text-[#7B7A79]" />
                             <span>Download</span>
@@ -163,13 +166,14 @@ export const ProfileUsageSettings: React.FC = () => {
                             </span>
                         </div>
                     ) : error ? (
-                        <div className="flex flex-col items-center justify-center py-20 border border-[#242323] rounded-xl bg-[#100E12] text-red-400">
-                            <span className="text-[14px] font-medium mb-1">
-                                Failed to load usage events
-                            </span>
-                            <span className="text-[13px] text-[#7B7A79]">
-                                {(error as any)?.message}
-                            </span>
+                        <div className="w-full flex justify-center">
+                            <ErrorAlert
+                                message={
+                                    error instanceof Error
+                                        ? error.message
+                                        : 'Failed to load usage events'
+                                }
+                            />
                         </div>
                     ) : !history || history.events.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-20 border border-[#242323] rounded-xl bg-[#100E12] text-[#7B7A79]">
@@ -183,52 +187,63 @@ export const ProfileUsageSettings: React.FC = () => {
                     ) : (
                         <div className="flex flex-col border border-[#242323] rounded-xl overflow-hidden bg-[#100E12] shadow-sm">
                             {/* Header */}
-                            <div className="flex items-center py-3 px-5 border-b border-[#242323] bg-[#171615] text-[12px] text-[#7B7A79] font-medium">
-                                <div className="w-[130px]">Date</div>
-                                <div className="w-[140px]">User</div>
-                                <div className="w-[120px]">Event</div>
-                                <div className="w-[120px]">Kind</div>
-                                <div className="flex-1">Model</div>
-                                <div className="w-[60px] text-right">Cost</div>
+                            <div className="grid grid-cols-[140px_140px_130px_120px_1fr_75px] items-center py-3.5 px-5 border-b border-[#242323] bg-[#171615] text-[12px] text-[#7B7A79] font-medium">
+                                <div>Date</div>
+                                <div>User</div>
+                                <div>Event</div>
+                                <div>Kind</div>
+                                <div>Model</div>
+                                <div className="text-right">Cost</div>
                             </div>
 
                             {/* Rows */}
-                            <div className="flex flex-col">
+                            <div className="flex flex-col divide-y divide-[#242323]/50">
                                 {history.events.map((row) => (
                                     <div
                                         key={row.id}
-                                        className="flex items-center py-3 px-5 text-[13px] border-b border-[#242323] last:border-b-0 hover:bg-[#171615] transition-colors"
+                                        className="grid grid-cols-[140px_140px_130px_120px_1fr_75px] items-center py-4 px-5 text-[13px] hover:bg-[#1A1918] transition-colors"
                                     >
-                                        <div className="w-[130px] text-[#D6D5C9]">
+                                        {/* Date */}
+                                        <div className="text-[#D6D5C9]">
                                             {formatRowDate(row.createdAt)}
                                         </div>
-                                        <div className="w-[140px] flex items-center gap-2 text-[#D6D5C9]">
+
+                                        {/* User */}
+                                        <div className="flex items-center gap-2 text-[#D6D5C9] pr-2">
                                             <UserCircle
                                                 className="w-4 h-4 text-[#7B7A79]"
-                                                strokeWidth={1.5}
+                                                strokeWidth={1.8}
                                             />
-                                            <span className="truncate w-[90px]">
-                                                {profile?.name || 'december User'}
+                                            <span className="truncate max-w-[100px] font-medium">
+                                                {profile?.username || 'user'}
                                             </span>
                                         </div>
-                                        <div className="w-[120px] flex items-center gap-1.5 text-[#D6D5C9]">
+
+                                        {/* Event */}
+                                        <div className="flex items-center gap-1.5 text-[#D6D5C9] font-medium">
                                             <span>{getEventLabel(row.model)}</span>
-                                            {getEventLabel(row.model) === 'Message' && (
-                                                <ArrowUpRight className="w-3.5 h-3.5 text-[#7B7A79]" />
+                                            {getEventLabel(row.model) === 'Message' ? (
+                                                <ExternalLink className="w-3 h-3 text-[#7B7A79]" />
+                                            ) : (
+                                                <Image className="w-3 h-3 text-[#7B7A79]" />
                                             )}
                                         </div>
-                                        <div className="w-[120px] text-[#7B7A79]">
-                                            Monthly Credits
-                                        </div>
-                                        <div className="flex-1 text-[#7B7A79] truncate">
+
+                                        {/* Kind */}
+                                        <div className="text-[#7B7A79]">Monthly Credits</div>
+
+                                        {/* Model */}
+                                        <div className="text-[#7B7A79] truncate pr-2">
                                             {row.model}
                                         </div>
-                                        <div className="w-[60px] text-right flex items-center justify-end gap-1.5">
+
+                                        {/* Cost */}
+                                        <div className="text-right flex items-center justify-end gap-1.5">
                                             <span className="text-[#D6D5C9]">
                                                 ${(row.costInCents / 100).toFixed(2)}
                                             </span>
                                             <Info
-                                                className="w-3.5 h-3.5 text-[#7B7A79]"
+                                                className="w-3.5 h-3.5 text-[#7B7A79] cursor-help"
                                                 title={`Tokens: ${row.totalTokens} (In: ${row.inputTokens}, Out: ${row.outputTokens})`}
                                             />
                                         </div>
@@ -241,10 +256,30 @@ export const ProfileUsageSettings: React.FC = () => {
                     {/* Footer Controls */}
                     {history && history.total > 0 && (
                         <div className="flex items-center justify-between mt-5">
-                            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-[#383736] text-[13px] text-[#7B7A79]">
-                                <span>Show {limit}</span>
+                            {/* Left limit selector */}
+                            <div className="flex items-center gap-2">
+                                <span className="text-[12.5px] text-[#7B7A79]">Show</span>
+                                <div className="relative">
+                                    <select
+                                        value={limit}
+                                        onChange={(e) => {
+                                            setLimit(Number(e.target.value))
+                                            setOffset(0)
+                                        }}
+                                        className="bg-[#100E12] border border-[#383736] rounded-lg pl-2.5 pr-7 py-1 text-[12.5px] text-[#D6D5C9] hover:bg-[#1E1D1B] transition-colors focus:outline-none focus:border-[#7B7A79] cursor-pointer appearance-none font-medium"
+                                    >
+                                        {[10, 25, 50, 100].map((num) => (
+                                            <option key={num} value={num}>
+                                                {num}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <ChevronDown className="w-3.5 h-3.5 text-[#7B7A79] absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
+                                </div>
                             </div>
-                            <div className="flex items-center gap-4 text-[13px] text-[#7B7A79]">
+
+                            {/* Right page selectors */}
+                            <div className="flex items-center gap-4 text-[12.5px] text-[#7B7A79] font-medium">
                                 <span>
                                     {currentPage} of {totalPages}
                                 </span>
@@ -252,16 +287,16 @@ export const ProfileUsageSettings: React.FC = () => {
                                     <button
                                         onClick={handlePreviousPage}
                                         disabled={offset === 0}
-                                        className="p-1 rounded-md border border-[#383736] disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#1E1D1B] transition-colors"
+                                        className="p-1.5 rounded-lg border border-[#383736] disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[#1E1D1B] transition-colors bg-[#171615] text-[#D6D5C9]"
                                     >
-                                        <ChevronLeft className="w-4 h-4 text-[#D6D5C9]" />
+                                        <ChevronLeft className="w-4 h-4" />
                                     </button>
                                     <button
                                         onClick={handleNextPage}
                                         disabled={offset + limit >= history.total}
-                                        className="p-1 rounded-md border border-[#383736] disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#1E1D1B] transition-colors"
+                                        className="p-1.5 rounded-lg border border-[#383736] disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[#1E1D1B] transition-colors bg-[#171615] text-[#D6D5C9]"
                                     >
-                                        <ChevronRight className="w-4 h-4 text-[#D6D5C9]" />
+                                        <ChevronRight className="w-4 h-4" />
                                     </button>
                                 </div>
                             </div>

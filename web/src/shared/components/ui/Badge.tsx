@@ -4,7 +4,7 @@ import { cn } from '@/shared/lib/utils'
 
 interface BadgeProps {
     children: React.ReactNode
-    variant?: 'default' | 'outline' | 'success' | 'warning' | 'neutral'
+    variant?: 'default' | 'outline' | 'success' | 'warning' | 'neutral' | 'error' | 'danger'
     className?: string
     onClick?: () => void
 }
@@ -21,6 +21,8 @@ export const Badge: React.FC<BadgeProps> = ({
         success: 'bg-green-500/10 text-green-400 border border-green-500/20',
         warning: 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20',
         neutral: 'bg-surface text-neutral-400 border border-white/5',
+        error: 'bg-red-500/10 text-red-400 border border-red-500/20',
+        danger: 'bg-red-500/10 text-red-400 border border-red-500/20',
     }
 
     return (
