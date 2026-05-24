@@ -31,29 +31,27 @@ const getUserGithubRepos = async (req: Request, res: Response) => {
 
 const connectVercel = async (req: Request, res: Response) => {
     const code = req.query.code as string
-    const userId = (req.query.state || req.query.userId) as string
-
-    console.log(process.env.VERCEL_CLIENT_ID)
+    const teamId = req.query.teamId as string
+    const configurationId = req.query.configurationId as string
+    const userId = req.query.state as string
 
     try {
         if (!code) {
-            const redirectUrl =
-                `https://vercel.com/oauth/authorize` +
-                `?client_id=${process.env.VERCEL_CLIENT_ID}` +
-                `&redirect_uri=${process.env.VERCEL_REDIRECT_URI}` +
-                `&scope=user` +
-                `&state=${userId}`
+            throw new AppError('no code provided', 400)
+        }
 
-            console.log(redirectUrl)
-            return res.redirect(redirectUrl)
+        if (!userId) {
+            throw new AppError('no user id provided', 400)
         }
 
         await integrationsService.connectVercel({
             code,
             userId,
+            teamId,
+            configurationId,
         })
 
-        return res.redirect('http://localhost:3000')
+        return res.redirect('http://localhost:3000/profile/integrations')
     } catch (error) {
         if (error instanceof AppError) {
             return res.status(error.statusCode).json({
@@ -70,6 +68,7 @@ const connectVercel = async (req: Request, res: Response) => {
         })
     }
 }
+
 const connectSupabase = async (req: Request, res: Response) => {
     const code = req.query.code as string
     const userId = req.query.state as string
