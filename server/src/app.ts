@@ -17,7 +17,16 @@ import billingRouter from './modules/billing/billing.routes'
 
 const app = express()
 
-app.use(express.json({ limit: '25mb' }))
+app.use(
+    express.json({
+        limit: '25mb',
+        verify: (req: any, _res, buf) => {
+            if (req.originalUrl === '/api/v1/billing/webhooks/razorpay') {
+                req.rawBody = Buffer.from(buf)
+            }
+        },
+    })
+)
 app.use(cookieParser())
 app.use(express.urlencoded({ extended: true, limit: '25mb' }))
 app.use(

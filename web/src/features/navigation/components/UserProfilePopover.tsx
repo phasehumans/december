@@ -7,10 +7,12 @@ import {
     MessageSquare,
     CreditCard,
     CircleDollarSign,
+    Loader2,
 } from 'lucide-react'
 import React from 'react'
 import { createPortal } from 'react-dom'
-
+import { useNavigate } from 'react-router-dom'
+import { useBillingOverview } from '@/features/billing/hooks/useBillingData'
 import { Icons } from '@/shared/components/ui/Icons'
 
 interface UserProfilePopoverProps {
@@ -39,6 +41,9 @@ export const UserProfilePopover: React.FC<UserProfilePopoverProps> = ({
     onSignOut,
 }) => {
     const popoverRef = React.useRef<HTMLDivElement | null>(null)
+    const navigate = useNavigate()
+    const { data: overview, isLoading: isOverviewLoading } = useBillingOverview()
+
     const [position, setPosition] = React.useState<{
         bottom: number
         left: number
@@ -106,6 +111,24 @@ export const UserProfilePopover: React.FC<UserProfilePopoverProps> = ({
         return null
     }
 
+    const renderCreditsValue = () => {
+        if (isOverviewLoading) {
+            return <Loader2 className="w-3.5 h-3.5 animate-spin text-[#969593]" />
+        }
+        if (!overview) {
+            return <span className="text-[13px] text-[#CBCACA] font-medium">$5.00</span>
+        }
+        if (overview.credits.unlimited) {
+            return <span className="text-[13px] text-[#CBCACA] font-medium">Unlimited</span>
+        }
+        const remaining = overview.credits.remainingInCents ?? 0
+        return (
+            <span className="text-[13px] text-[#CBCACA] font-medium">
+                ${(remaining / 100).toFixed(2)}
+            </span>
+        )
+    }
+
     const menuItems = [
         { icon: User, label: 'Profile', action: onProfileModal },
         { icon: SettingsIcon, label: 'Settings', action: onSettings },
@@ -114,8 +137,7 @@ export const UserProfilePopover: React.FC<UserProfilePopoverProps> = ({
             icon: CreditCard,
             label: 'Pricing',
             action: () => {
-                window.location.hash = 'billing'
-                onSettings?.()
+                navigate('/profile/billing')
             },
             external: true,
         },
@@ -124,10 +146,9 @@ export const UserProfilePopover: React.FC<UserProfilePopoverProps> = ({
             icon: CircleDollarSign,
             label: 'Credits',
             action: () => {
-                window.location.hash = 'billing'
-                onSettings?.()
+                navigate('/profile/billing')
             },
-            rightElement: <span className="text-[13px] text-[#CBCACA] font-medium">$5.00</span>,
+            rightElement: renderCreditsValue(),
         },
     ]
 

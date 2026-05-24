@@ -52,14 +52,20 @@ model User {
   chatSuggestions Boolean         @default(false)
   generationSound GenerationSound @default(FIRST_GENERATION)
 
-  memories String?
-  skills   String?
+  skills String?
+
+  stripeCustomerId   String?            @unique
+  subscriptionStatus SubscriptionStatus @default(FREE)
+  subscriptionPlan   SubscriptionPlan   @default(FREE)
+  currentPeriodEnd   DateTime?
 
   sessions      Session[]
   projects      Project[]
   imports       ProjectImport[]
   likedProjects ProjectLike[]
   notifications Notification[]
+  subscription  Subscription?
+  usageEvents   UsageEvent[]
 }
 
 model Notification {
@@ -119,6 +125,12 @@ model Project {
   messages       ProjectMessage[]
   versions       ProjectVersion[] @relation("ProjectVersions")
   likes          ProjectLike[]
+  imports        ProjectImport[]
+  usageEvents    UsageEvent[]
+
+  @@index([userId, updatedAt])
+  @@index([isSharedAsTemplate, updatedAt])
+  @@index([isSharedAsTemplate, isFeatured, updatedAt])
 }
 
 model ProjectVersion {
@@ -141,10 +153,12 @@ model ProjectVersion {
   projectId               String
 
   currentForProjects Project[]        @relation("ProjectCurrentVersion")
+  imports            ProjectImport[]
   messages           ProjectMessage[]
   project            Project          @relation("ProjectVersions", fields: [projectId], references: [id], onDelete: Cascade)
 
   @@unique([projectId, versionNumber])
+  @@index([projectId, createdAt])
 }
 
 model ProjectMessage {
@@ -183,10 +197,14 @@ model ProjectImport {
   createdAt        DateTime            @default(now())
   updatedAt        DateTime            @updatedAt
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project        Project?        @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  projectVersion ProjectVersion? @relation(fields: [projectVersionId], references: [id], onDelete: SetNull)
 
   @@index([userId, createdAt])
   @@index([userId, status])
+  @@index([projectId])
+  @@index([projectVersionId])
 }
 
 model ProjectLike {
@@ -195,6 +213,7 @@ model ProjectLike {
   projectId String
   isLiked   Boolean
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
@@ -202,6 +221,59 @@ model ProjectLike {
   @@unique([userId, projectId])
   @@index([userId])
   @@index([projectId])
+  @@index([projectId, isLiked])
+}
+
+model Subscription {
+  id     String @id @default(uuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id])
+
+  provider               String
+  providerSubscriptionId String  @unique
+  providerCustomerId     String?
+  providerPlanId         String
+
+  status ProviderSubscriptionStatus
+  plan   SubscriptionPlan
+
+  cancelAtPeriodEnd Boolean @default(false)
+
+  currentPeriodStart DateTime
+  currentPeriodEnd   DateTime
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model UsageEvent {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  model String
+
+  inputTokens  Int @default(0)
+  outputTokens Int @default(0)
+  totalTokens  Int @default(0)
+
+  costInCents Int @default(0)
+
+  projectId String?
+  chatId    String?
+
+  externalRequestId String?  @unique
+  periodStart       DateTime
+  periodEnd         DateTime
+  metadata          Json?
+  createdAt         DateTime @default(now())
+
+  project Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  @@index([userId, periodStart])
+  @@index([userId, periodStart, createdAt])
+  @@index([projectId, createdAt])
+  @@index([createdAt])
 }
 
 enum NotificationType {
@@ -258,4 +330,26 @@ enum ProjectCategory {
   SAAS_APP
   ECOMMERCE
   NONE
+}
+
+enum SubscriptionPlan {
+  FREE
+  PRO
+}
+
+enum SubscriptionStatus {
+  FREE
+  ACTIVE
+  PAST_DUE
+  CANCELED
+}
+
+enum ProviderSubscriptionStatus {
+  ACTIVE
+  CANCELED
+  INCOMPLETE
+  INCOMPLETE_EXPIRED
+  PAST_DUE
+  TRIALING
+  UNPAID
 }

@@ -7,6 +7,7 @@ import type { Project } from '@/features/projects/types'
 
 import { Icons } from '@/shared/components/ui/Icons'
 import { Skeleton } from '@/shared/components/ui/Skeleton'
+import { ErrorAlert } from '@/shared/components/ui/ErrorAlert'
 
 interface ProjectListViewProps {
     projects: Project[]
@@ -37,27 +38,27 @@ interface ProjectListViewProps {
 
 const ProjectListAreaSkeleton: React.FC = () => {
     return (
-        <div className="min-h-[420px] flex flex-col gap-1">
+        <div className="min-h-[420px] flex flex-col gap-1 pb-4">
             {Array.from({ length: 6 }).map((_, index) => (
                 <div
                     key={`project-list-skeleton-${index}`}
-                    className="grid grid-cols-[minmax(0,2fr)_minmax(100px,1fr)_minmax(150px,1fr)_minmax(150px,1fr)_8rem_2.5rem] items-center gap-3 rounded-xl px-5 py-4 md:gap-4"
+                    className="grid grid-cols-[minmax(0,2fr)_minmax(100px,1fr)_minmax(150px,1fr)_minmax(150px,1fr)_8rem_2.5rem] items-center gap-3 rounded-xl border border-[#242323]/10 bg-[#1E1D1B]/5 px-5 py-3 md:gap-4"
                 >
-                    <div className="flex flex-col gap-1 w-full max-w-xs">
-                        <Skeleton className="h-4 w-3/4" />
-                        <Skeleton className="h-3 w-1/2" />
+                    <div className="flex flex-col gap-1.5 w-full max-w-xs pr-4">
+                        <Skeleton className="h-4 w-[85%] bg-white/[0.06]" />
+                        <Skeleton className="h-3 w-[60%] bg-white/[0.04]" />
                     </div>
                     <div>
-                        <Skeleton className="h-3.5 w-20" />
+                        <Skeleton className="h-3.5 w-20 bg-white/[0.04]" />
                     </div>
                     <div>
-                        <Skeleton className="h-3.5 w-24" />
+                        <Skeleton className="h-3.5 w-24 bg-white/[0.04]" />
                     </div>
                     <div>
-                        <Skeleton className="h-3.5 w-32" />
+                        <Skeleton className="h-3.5 w-20 bg-white/[0.04]" />
                     </div>
                     <div className="flex justify-center">
-                        <Skeleton className="h-8 w-8 rounded-lg" />
+                        <Skeleton className="h-7 w-7 rounded-lg bg-white/[0.04]" />
                     </div>
                     <div></div>
                 </div>
@@ -212,8 +213,8 @@ export const ProjectListView: React.FC<ProjectListViewProps> = ({
                         <div className="text-[12px] text-neutral-500 mt-1">Syncing projects...</div>
                     )}
                     {displayedError && (
-                        <div className="max-w-[26rem] truncate rounded-full border border-red-500/35 bg-red-500/15 px-4 py-1 text-xs font-medium text-red-200 mt-1">
-                            {displayedError}
+                        <div className="mt-1 w-full flex justify-end">
+                            <ErrorAlert message={displayedError} />
                         </div>
                     )}
                 </div>
