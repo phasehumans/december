@@ -34,7 +34,6 @@ export const SidebarHeader: React.FC<{ onNewThread?: () => void }> = ({ onNewThr
                         if (onNewThread) onNewThread()
                     }}
                     className="relative flex items-center gap-2.5 w-full px-2.5 h-[32px] rounded-[10px] transition-colors group outline-none hover:bg-white/[0.02]"
-                    title="Home"
                 >
                     <div
                         className={cn(
@@ -66,7 +65,6 @@ export const SidebarHeader: React.FC<{ onNewThread?: () => void }> = ({ onNewThr
                         el?.scrollIntoView({ behavior: 'smooth' })
                     }}
                     className="relative flex items-center gap-2.5 w-full px-2.5 h-[32px] rounded-[10px] transition-colors group outline-none hover:bg-white/[0.02]"
-                    title="Canvas"
                 >
                     <div
                         className={cn(

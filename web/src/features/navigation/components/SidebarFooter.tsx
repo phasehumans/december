@@ -11,6 +11,7 @@ import { profileAPI } from '@/features/profile/api/profile'
 import { ProfileCardModal } from '@/features/profile/components/ProfileCardModal'
 import { ProfileFeedbackModal } from '@/features/profile/components/ProfileFeedbackModal'
 import { Icons } from '@/shared/components/ui/Icons'
+import { notificationAPI } from '@/features/notification/api/notification'
 
 export const SidebarFooter: React.FC<
     SidebarFooterProps & { user?: { name?: string }; onSignOut?: () => void }
@@ -33,6 +34,15 @@ export const SidebarFooter: React.FC<
         queryFn: profileAPI.getProfile,
         enabled: isAuthenticated && isPopoverOpen,
     })
+
+    const { data: notifications = [] } = useQuery({
+        queryKey: ['notifications'],
+        queryFn: notificationAPI.getNotifications,
+        enabled: isAuthenticated,
+        refetchInterval: 30 * 1000,
+    })
+
+    const hasUnread = notifications.some((n: any) => !n.isRead)
 
     return (
         <div className="mt-auto flex flex-col w-full">
@@ -62,9 +72,12 @@ export const SidebarFooter: React.FC<
                             <button
                                 ref={notifAnchorRef}
                                 onClick={() => setIsNotifPopoverOpen(!isNotifPopoverOpen)}
-                                className="flex items-center justify-center w-7 h-7 rounded-lg hover:bg-[#252422] text-[#8F8E8D] hover:text-[#CBCACA] transition-colors shrink-0 outline-none -ml-1"
+                                className="flex items-center justify-center w-7 h-7 rounded-lg hover:bg-[#252422] text-[#8F8E8D] hover:text-[#CBCACA] transition-colors shrink-0 outline-none -ml-1 relative"
                             >
                                 <Bell className="w-[13px] h-[13px]" strokeWidth={2} />
+                                {hasUnread && (
+                                    <span className="absolute top-[6px] right-[6px] w-[5px] h-[5px] bg-[#D6D5C9] rounded-full" />
+                                )}
                             </button>
                         </div>
 
