@@ -29,11 +29,12 @@ model User {
   githubConnected Boolean @default(false)
 
   vercelConnected Boolean @default(false)
+
   vercelAccessToken String?
-  vercelUserId      String?
-  vercelUsername    String?
-  vercelEmail       String?
+
   vercelTeamId String?
+
+  vercelConfigurationId String?
 
   notifyProjectActivity Boolean @default(true)
   notifyProductUpdates  Boolean @default(false)
