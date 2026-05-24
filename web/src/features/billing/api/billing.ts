@@ -158,10 +158,14 @@ const cancelSubscription = (data: CancelSubscriptionInput = {}) => {
     })
 }
 
-const getCreditsHistory = (params: { limit?: number; offset?: number } = {}) => {
+const getCreditsHistory = (
+    params: { limit?: number; offset?: number; periodStart?: string; periodEnd?: string } = {}
+) => {
     const query = new URLSearchParams()
     if (params.limit !== undefined) query.set('limit', params.limit.toString())
     if (params.offset !== undefined) query.set('offset', params.offset.toString())
+    if (params.periodStart !== undefined) query.set('periodStart', params.periodStart)
+    if (params.periodEnd !== undefined) query.set('periodEnd', params.periodEnd)
 
     const queryString = query.toString()
     const path = `/billing/credits/history${queryString ? `?${queryString}` : ''}`

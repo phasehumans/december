@@ -10,12 +10,21 @@ import {
     UserCircle,
     Loader2,
     Image,
+    Check,
 } from 'lucide-react'
-import React, { useState } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { profileAPI } from '@/features/profile/api/profile'
 import { useCreditsHistory, useBillingOverview } from '@/features/billing/hooks/useBillingData'
+import { billingAPI } from '@/features/billing/api/billing'
 import { ErrorAlert } from '@/shared/components/ui/ErrorAlert'
+import { Skeleton } from '@/shared/components/ui/Skeleton'
+
+interface BillingPeriod {
+    start: string
+    end: string
+    label: string
+}
 
 export const ProfileUsageSettings: React.FC = () => {
     const { data: profile } = useQuery({
@@ -23,14 +32,28 @@ export const ProfileUsageSettings: React.FC = () => {
         queryFn: profileAPI.getProfile,
     })
 
-    const { data: overview } = useBillingOverview()
+    const { data: overview, isLoading: isOverviewLoading } = useBillingOverview()
 
-    const [limit, setLimit] = useState(10) // Set default to 10 matching screenshot
+    const [limit, setLimit] = useState(10)
     const [offset, setOffset] = useState(0)
 
-    const { data: history, isLoading, error } = useCreditsHistory({ limit, offset })
+    const [filterType, setFilterType] = useState<'cycle' | 'quick'>('cycle')
+    const [selectedPeriod, setSelectedPeriod] = useState<BillingPeriod | null>(null)
+    const [timeRange, setTimeRange] = useState<string>('30d')
+    const [isDropdownOpen, setIsDropdownOpen] = useState(false)
+    const [isDownloading, setIsDownloading] = useState(false)
+    const dropdownRef = useRef<HTMLDivElement>(null)
 
-    const [timeRange, setTimeRange] = useState('90d')
+    // Close dropdown on click outside
+    useEffect(() => {
+        const handleClickOutside = (e: MouseEvent) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+                setIsDropdownOpen(false)
+            }
+        }
+        document.addEventListener('mousedown', handleClickOutside)
+        return () => document.removeEventListener('mousedown', handleClickOutside)
+    }, [])
 
     const getEventLabel = (model: string) => {
         if (/image|img|gen/i.test(model)) return 'Image Generation'
@@ -39,14 +62,14 @@ export const ProfileUsageSettings: React.FC = () => {
 
     const formatPeriodRange = (start?: string, end?: string) => {
         if (!start || !end) return 'Current Period'
-        const s = new Date(start).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
-        const e = new Date(end).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+        const s = new Date(start).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+        const e = new Date(end).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
         return `${s} - ${e}`
     }
 
     const formatRowDate = (dateStr: string) => {
         const date = new Date(dateStr)
-        return date.toLocaleDateString(undefined, {
+        return date.toLocaleDateString('en-US', {
             month: 'short',
             day: 'numeric',
             hour: '2-digit',
@@ -66,55 +89,163 @@ export const ProfileUsageSettings: React.FC = () => {
         }
     }
 
-    const handleDownloadCSV = () => {
-        if (!history || !history.events || history.events.length === 0) return
-
-        const headers = [
-            'Date',
-            'User',
-            'Event',
-            'Kind',
-            'Model',
-            'Cost ($)',
-            'Input Tokens',
-            'Output Tokens',
-            'Total Tokens',
-        ]
-        const csvRows = [headers.join(',')]
-
-        for (const event of history.events) {
-            const date = new Date(event.createdAt).toISOString()
-            const user = profile?.username || 'user'
-            const eventType = getEventLabel(event.model)
-            const kind = 'Monthly Credits'
-            const cost = (event.costInCents / 100).toFixed(4)
-
-            const values = [
-                date,
-                user,
-                eventType,
-                kind,
-                event.model,
-                cost,
-                event.inputTokens,
-                event.outputTokens,
-                event.totalTokens,
-            ]
-            csvRows.push(values.map((val) => `"${val}"`).join(','))
+    // Dynamic Period List Generator starting from database active billing period
+    const currentPeriod = React.useMemo<BillingPeriod | null>(() => {
+        if (!overview?.periodStart || !overview?.periodEnd) return null
+        return {
+            start: overview.periodStart,
+            end: overview.periodEnd,
+            label: formatPeriodRange(overview.periodStart, overview.periodEnd),
         }
+    }, [overview])
 
-        const csvContent = 'data:text/csv;charset=utf-8,' + csvRows.join('\n')
-        const encodedUri = encodeURI(csvContent)
-        const link = document.createElement('a')
-        link.setAttribute('href', encodedUri)
-        link.setAttribute('download', `december_usage_${new Date().toISOString().slice(0, 10)}.csv`)
-        document.body.appendChild(link)
-        link.click()
-        document.body.removeChild(link)
+    const periodsList = React.useMemo<BillingPeriod[]>(() => {
+        if (!currentPeriod) return []
+        const list = [currentPeriod]
+
+        const curStart = new Date(currentPeriod.start)
+        const curEnd = new Date(currentPeriod.end)
+
+        // Generate 3 past monthly cycles
+        for (let i = 1; i <= 3; i++) {
+            const start = new Date(curStart)
+            start.setMonth(start.getMonth() - i)
+            const end = new Date(curEnd)
+            end.setMonth(end.getMonth() - i)
+
+            list.push({
+                start: start.toISOString(),
+                end: end.toISOString(),
+                label: formatPeriodRange(start.toISOString(), end.toISOString()),
+            })
+        }
+        return list
+    }, [currentPeriod])
+
+    // Compute active date range dynamically
+    const activeDateRange = React.useMemo(() => {
+        if (filterType === 'cycle') {
+            const period = selectedPeriod || currentPeriod
+            if (!period) return null
+            return {
+                start: period.start,
+                end: period.end,
+                label: period.label,
+            }
+        } else {
+            const end = new Date()
+            const start = new Date()
+            let days = 30
+            if (timeRange === '1d') days = 1
+            else if (timeRange === '7d') days = 7
+            else if (timeRange === '30d') days = 30
+            else if (timeRange === '90d') days = 90
+
+            start.setDate(end.getDate() - days)
+
+            const startStr = start.toISOString()
+            const endStr = end.toISOString()
+
+            return {
+                start: startStr,
+                end: endStr,
+                label: formatPeriodRange(startStr, endStr),
+            }
+        }
+    }, [filterType, selectedPeriod, currentPeriod, timeRange])
+
+    // Fetch credits history passing active period filter
+    const {
+        data: history,
+        isLoading: isHistoryLoading,
+        error,
+    } = useCreditsHistory({
+        limit,
+        offset,
+        periodStart: activeDateRange?.start,
+        periodEnd: activeDateRange?.end,
+    })
+
+    // Reset offset to 0 when date filters or limits change
+    useEffect(() => {
+        setOffset(0)
+    }, [activeDateRange?.start, activeDateRange?.end, limit])
+
+    // Robust Blob-based CSV Downloader for full periods
+    const handleDownloadCSV = async () => {
+        if (!activeDateRange) return
+        setIsDownloading(true)
+        try {
+            const response = await billingAPI.getCreditsHistory({
+                limit: 1000, // Fetch up to 1000 items for period download
+                offset: 0,
+                periodStart: activeDateRange.start,
+                periodEnd: activeDateRange.end,
+            })
+
+            const eventsToExport = response.events || []
+            if (eventsToExport.length === 0) return
+
+            const headers = [
+                'Date',
+                'User',
+                'Event',
+                'Kind',
+                'Model',
+                'Cost ($)',
+                'Input Tokens',
+                'Output Tokens',
+                'Total Tokens',
+            ]
+            const csvRows = [headers.join(',')]
+
+            for (const event of eventsToExport) {
+                const date = new Date(event.createdAt).toISOString()
+                const user = profile?.username || 'user'
+                const eventType = getEventLabel(event.model)
+                const kind = 'Monthly Credits'
+                const cost = (event.costInCents / 100).toFixed(4)
+
+                const values = [
+                    date,
+                    user,
+                    eventType,
+                    kind,
+                    event.model,
+                    cost,
+                    event.inputTokens,
+                    event.outputTokens,
+                    event.totalTokens,
+                ]
+                csvRows.push(
+                    values.map((val) => `"${val?.toString().replace(/"/g, '""')}"`).join(',')
+                )
+            }
+
+            const csvString = csvRows.join('\n')
+            const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' })
+            const url = URL.createObjectURL(blob)
+            const link = document.createElement('a')
+            link.setAttribute('href', url)
+            link.setAttribute(
+                'download',
+                `december_usage_${new Date().toISOString().slice(0, 10)}.csv`
+            )
+            document.body.appendChild(link)
+            link.click()
+            document.body.removeChild(link)
+            URL.revokeObjectURL(url)
+        } catch (err) {
+            console.error('Failed to download CSV:', err)
+        } finally {
+            setIsDownloading(false)
+        }
     }
 
     const currentPage = Math.floor(offset / limit) + 1
     const totalPages = history ? Math.max(Math.ceil(history.total / limit), 1) : 1
+
+    const isLoading = isOverviewLoading || isHistoryLoading
 
     return (
         <div className="flex flex-col w-full max-w-[680px] text-[#D6D5C9]">
@@ -124,46 +255,126 @@ export const ProfileUsageSettings: React.FC = () => {
                     {/* Controls Row */}
                     <div className="flex items-center justify-between mb-6">
                         <div className="flex items-center gap-4">
-                            <button className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-[#383736] hover:bg-[#1E1D1B] transition-colors text-[13px] font-medium bg-[#171615]">
-                                <Calendar className="w-4 h-4 text-[#7B7A79]" />
-                                <span>
-                                    {formatPeriodRange(overview?.periodStart, overview?.periodEnd)}
-                                </span>
-                                <ChevronDown className="w-4 h-4 text-[#7B7A79]" />
-                            </button>
+                            {/* Date Dropdown Trigger */}
+                            <div className="relative" ref={dropdownRef}>
+                                <button
+                                    onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-[#383736] hover:bg-[#1E1D1B] transition-colors text-[13px] font-medium bg-[#171615] outline-none"
+                                >
+                                    <Calendar className="w-4 h-4 text-[#7B7A79]" />
+                                    <span>
+                                        {activeDateRange ? activeDateRange.label : 'Current Period'}
+                                    </span>
+                                    <ChevronDown className="w-4 h-4 text-[#7B7A79]" />
+                                </button>
+
+                                {isDropdownOpen && periodsList.length > 0 && (
+                                    <div className="absolute left-0 top-full mt-1.5 w-52 rounded-xl border border-[#383736] bg-[#1E1D1C] py-2 shadow-2xl z-50 flex flex-col gap-[2px] animate-in fade-in slide-in-from-top-1 duration-150">
+                                        <div className="px-3 pb-1.5 pt-0.5 text-[10px] font-bold text-[#7B7A79] border-b border-[#242323] mb-1 uppercase tracking-wider">
+                                            Billing Cycles
+                                        </div>
+                                        {periodsList.map((period, i) => {
+                                            const isSelected =
+                                                filterType === 'cycle' &&
+                                                activeDateRange?.start === period.start
+                                            return (
+                                                <button
+                                                    key={i}
+                                                    onClick={() => {
+                                                        setSelectedPeriod(period)
+                                                        setFilterType('cycle')
+                                                        setIsDropdownOpen(false)
+                                                    }}
+                                                    className="w-full flex items-center justify-between px-3.5 py-2 text-[13px] text-[#D6D5C9] hover:bg-[#242323] transition-colors text-left"
+                                                >
+                                                    <span>{period.label}</span>
+                                                    {isSelected && (
+                                                        <Check className="w-3.5 h-3.5 text-[#D6D5C9]" />
+                                                    )}
+                                                </button>
+                                            )
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* 1d 7d 30d 90d Quick Filters */}
                             <div className="flex items-center gap-1 bg-[#100E12] p-0.5 rounded-lg border border-[#242323]">
-                                {['1d', '7d', '30d', '90d'].map((range) => (
-                                    <button
-                                        key={range}
-                                        onClick={() => setTimeRange(range)}
-                                        className={`px-2.5 py-1 rounded-md text-[11.5px] font-medium transition-all ${
-                                            range === timeRange
-                                                ? 'bg-[#2B2A29] text-[#D6D5C9] shadow-sm'
-                                                : 'text-[#7B7A79] hover:text-[#D6D5C9]'
-                                        }`}
-                                    >
-                                        {range}
-                                    </button>
-                                ))}
+                                {['1d', '7d', '30d', '90d'].map((range) => {
+                                    const isHighlighted =
+                                        filterType === 'quick' && range === timeRange
+                                    return (
+                                        <button
+                                            key={range}
+                                            onClick={() => {
+                                                setTimeRange(range)
+                                                setFilterType('quick')
+                                            }}
+                                            className={`px-2.5 py-1 rounded-md text-[11.5px] font-medium transition-all ${
+                                                isHighlighted
+                                                    ? 'bg-[#2B2A29] text-[#D6D5C9] shadow-sm'
+                                                    : 'text-[#7B7A79] hover:text-[#D6D5C9]'
+                                            }`}
+                                        >
+                                            {range}
+                                        </button>
+                                    )
+                                })}
                             </div>
                         </div>
                         <button
                             onClick={handleDownloadCSV}
-                            disabled={!history || history.events.length === 0}
-                            className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-[#383736] hover:bg-[#1E1D1B] bg-[#171615] transition-colors text-[13px] disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                            disabled={!history || history.total === 0 || isLoading || isDownloading}
+                            className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-[#383736] hover:bg-[#1E1D1B] bg-[#171615] transition-colors text-[13px] disabled:opacity-50 disabled:cursor-not-allowed font-medium active:scale-[0.98]"
                         >
-                            <Download className="w-4 h-4 text-[#7B7A79]" />
-                            <span>Download</span>
+                            {isDownloading ? (
+                                <Loader2 className="w-4 h-4 animate-spin text-[#7B7A79]" />
+                            ) : (
+                                <Download className="w-4 h-4 text-[#7B7A79]" />
+                            )}
+                            <span>{isDownloading ? 'Downloading...' : 'Download'}</span>
                         </button>
                     </div>
 
                     {/* Table / Loader / Error */}
                     {isLoading ? (
-                        <div className="flex flex-col items-center justify-center py-20 border border-[#242323] rounded-xl bg-[#100E12]">
-                            <Loader2 className="w-8 h-8 animate-spin text-[#D6D5C9] mb-4" />
-                            <span className="text-[13px] text-[#7B7A79]">
-                                Loading usage history...
-                            </span>
+                        <div className="flex flex-col border border-[#242323] rounded-xl overflow-hidden bg-[#100E12] shadow-sm">
+                            {/* Table Header skeleton */}
+                            <div className="grid grid-cols-[140px_140px_130px_120px_1fr_75px] items-center py-3.5 px-5 border-b border-[#242323] bg-[#171615] text-[12px] text-[#7B7A79] font-medium">
+                                <div>Date</div>
+                                <div>User</div>
+                                <div>Event</div>
+                                <div>Kind</div>
+                                <div>Model</div>
+                                <div className="text-right">Cost</div>
+                            </div>
+                            {/* Table rows skeleton */}
+                            {Array.from({ length: 5 }).map((_, i) => (
+                                <div
+                                    key={i}
+                                    className="grid grid-cols-[140px_140px_130px_120px_1fr_75px] items-center py-4 px-5 border-b border-[#242323]/50 last:border-b-0"
+                                >
+                                    <div className="pr-4">
+                                        <Skeleton className="h-4 w-24 bg-white/[0.06] rounded" />
+                                    </div>
+                                    <div className="flex items-center gap-2 pr-4">
+                                        <Skeleton className="h-4 w-4 rounded-full bg-white/[0.06] shrink-0" />
+                                        <Skeleton className="h-4 w-20 bg-white/[0.04] rounded" />
+                                    </div>
+                                    <div className="pr-4">
+                                        <Skeleton className="h-4 w-20 bg-white/[0.06] rounded" />
+                                    </div>
+                                    <div className="pr-4">
+                                        <Skeleton className="h-4 w-20 bg-white/[0.04] rounded" />
+                                    </div>
+                                    <div className="pr-4">
+                                        <Skeleton className="h-4 w-24 bg-white/[0.04] rounded" />
+                                    </div>
+                                    <div className="flex justify-end pr-1">
+                                        <Skeleton className="h-4 w-10 bg-white/[0.06] rounded" />
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     ) : error ? (
                         <div className="w-full flex justify-center">
@@ -181,7 +392,7 @@ export const ProfileUsageSettings: React.FC = () => {
                                 No usage data found
                             </span>
                             <span className="text-[13px]">
-                                Any API calls or messages will appear here.
+                                Any API calls or messages in this period will appear here.
                             </span>
                         </div>
                     ) : (
