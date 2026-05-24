@@ -5,7 +5,8 @@ import { billingAPI } from '../api/billing'
 export const billingQueryKeys = {
     overview: ['billing-overview'] as const,
     plans: ['billing-plans'] as const,
-    history: (limit?: number, offset?: number) => ['credits-history', { limit, offset }] as const,
+    history: (limit?: number, offset?: number, periodStart?: string, periodEnd?: string) =>
+        ['credits-history', { limit, offset, periodStart, periodEnd }] as const,
 }
 
 export const useBillingOverview = () => {
@@ -24,9 +25,16 @@ export const useBillingPlans = () => {
     })
 }
 
-export const useCreditsHistory = (params: { limit?: number; offset?: number } = {}) => {
+export const useCreditsHistory = (
+    params: { limit?: number; offset?: number; periodStart?: string; periodEnd?: string } = {}
+) => {
     return useQuery({
-        queryKey: billingQueryKeys.history(params.limit, params.offset),
+        queryKey: billingQueryKeys.history(
+            params.limit,
+            params.offset,
+            params.periodStart,
+            params.periodEnd
+        ),
         queryFn: () => billingAPI.getCreditsHistory(params),
         staleTime: 30 * 1000, // 30 seconds stale time
     })

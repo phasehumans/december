@@ -36,6 +36,8 @@ type CreditsHistoryInput = {
     userId: string
     limit: number
     offset: number
+    periodStart?: string
+    periodEnd?: string
 }
 
 type RazorpayWebhookInput = {
@@ -377,11 +379,28 @@ const cancelSubscription = async (data: CancelSubscriptionInput) => {
 const getCreditsHistory = async (data: CreditsHistoryInput) => {
     await getUserForBilling(data.userId)
 
+    const where: any = {
+        userId: data.userId,
+    }
+
+    if (data.periodStart && data.periodEnd) {
+        where.createdAt = {
+            gte: new Date(data.periodStart),
+            lte: new Date(data.periodEnd),
+        }
+    } else if (data.periodStart) {
+        where.createdAt = {
+            gte: new Date(data.periodStart),
+        }
+    } else if (data.periodEnd) {
+        where.createdAt = {
+            lte: new Date(data.periodEnd),
+        }
+    }
+
     const [events, total] = await Promise.all([
         prisma.usageEvent.findMany({
-            where: {
-                userId: data.userId,
-            },
+            where,
             orderBy: {
                 createdAt: 'desc',
             },
@@ -389,9 +408,7 @@ const getCreditsHistory = async (data: CreditsHistoryInput) => {
             take: data.limit,
         }),
         prisma.usageEvent.count({
-            where: {
-                userId: data.userId,
-            },
+            where,
         }),
     ])
 
