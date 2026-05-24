@@ -28,13 +28,22 @@ model User {
   githubUsername  String?
   githubConnected Boolean @default(false)
 
-  vercelConnected Boolean @default(false)
-
-  vercelAccessToken String?
-
-  vercelTeamId String?
-
+  vercelConnected       Boolean @default(false)
+  vercelAccessToken     String?
+  vercelTeamId          String?
   vercelConfigurationId String?
+
+  supabaseConnected      Boolean   @default(false)
+  supabaseAccessToken    String?   @db.Text
+  supabaseRefreshToken   String?   @db.Text
+  supabaseTokenExpiresAt DateTime?
+  supabaseTokenScope     String?
+  supabaseUserId         String?
+  supabaseConnectedAt    DateTime?
+
+  notionAccessToken   String?
+  notionWorkspaceId   String?
+  notionWorkspaceName String?
 
   notifyProjectActivity Boolean @default(true)
   notifyProductUpdates  Boolean @default(false)
