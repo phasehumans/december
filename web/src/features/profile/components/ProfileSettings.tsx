@@ -79,6 +79,9 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
         updatePasswordMutation,
         updateNotificationMutation,
         isGithubConnected,
+        isVercelConnected,
+        isSupabaseConnected,
+        isNotionConnected,
         emailNotifications,
         productUpdates,
         securityAlerts,
@@ -93,6 +96,9 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
         handleChatSuggestionsToggle,
         handleGenerationSoundChange,
         connectGithub,
+        connectVercel,
+        connectSupabase,
+        connectNotion,
     } = useProfileSettingsController()
 
     const profileErrorMessage =
@@ -266,8 +272,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                                     setSignOutAllSessionsModalOpen(true)
                                 }
                                 onUpgradePlan={() => {
-                                    window.location.hash = 'billing'
-                                    setActiveTab('Billing')
+                                    navigate(`/profile/${getSlugForProfileTab('Billing')}`)
                                 }}
                             />
                         ) : activeTab === 'Preferences' ? (
@@ -286,7 +291,13 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                         ) : activeTab === 'Integrations' ? (
                             <ProfileIntegrationsSettings
                                 isGithubConnected={isGithubConnected}
+                                isVercelConnected={isVercelConnected}
+                                isSupabaseConnected={isSupabaseConnected}
+                                isNotionConnected={isNotionConnected}
                                 onConnectGithub={connectGithub}
+                                onConnectVercel={connectVercel}
+                                onConnectSupabase={connectSupabase}
+                                onConnectNotion={connectNotion}
                             />
                         ) : (
                             <div className="flex flex-col gap-6">

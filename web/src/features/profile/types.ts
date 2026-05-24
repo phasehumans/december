@@ -12,6 +12,14 @@ export interface Profile {
     googleId: string | null
     githubConnected: boolean
     githubUsername?: string
+    vercelConnected?: boolean
+    vercelTeamId?: string | null
+    vercelConfigurationId?: string | null
+    supabaseConnected?: boolean
+    supabaseUserId?: string | null
+    supabaseConnectedAt?: string | null
+    notionWorkspaceId?: string | null
+    notionWorkspaceName?: string | null
 }
 
 export interface UpdateNameInput {

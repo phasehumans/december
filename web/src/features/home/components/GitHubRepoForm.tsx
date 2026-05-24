@@ -40,13 +40,13 @@ export const GitHubRepoForm: React.FC<GitHubRepoFormProps> = ({
     const handleConnectGithub = () => {
         try {
             setConnectError(null)
-            const url =
-                `https://github.com/login/oauth/authorize` +
-                `?client_id=Ov23liFGkTAwCW7E8gtk` +
-                `&scope=repo` +
-                `&state=${profile?.id}`
 
-            window.location.href = url
+            if (!profile?.id) {
+                setConnectError('Profile is still loading. Please try again.')
+                return
+            }
+
+            window.location.href = profileAPI.getGithubConnectUrl(profile.id)
         } catch {
             setConnectError('Failed to connect to GitHub. Please try again.')
         }
