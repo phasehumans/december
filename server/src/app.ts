@@ -13,6 +13,7 @@ import templateRouter from './modules/template/template.routes'
 import uploadRouter, { importRouter } from './modules/upload/upload.routes'
 import usageRouter from './modules/usage/usage.routes'
 import notificationRouter from './modules/notification/notification.routes'
+import billingRouter from './modules/billing/billing.routes'
 
 const app = express()
 
@@ -38,5 +39,6 @@ app.use('/api/v1/usage', usageRouter)
 app.use('/api/v1/template', templateRouter)
 app.use('/api/v1/integrations', integrationsRouter)
 app.use('/api/v1/notification', notificationRouter)
+app.use('/api/v1/billing', billingRouter)
 
 export default app

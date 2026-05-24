@@ -291,12 +291,9 @@ const connectNotion = async ({
     }
 }
 
-const connectStripe = async () => {}
-
 export const integrationsService = {
     listGithubRepos,
     connectVercel,
     connectSupabase,
     connectNotion,
-    connectStripe,
 }

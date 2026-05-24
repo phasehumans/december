@@ -4,9 +4,17 @@ import React, { useState } from 'react'
 
 import { profileAPI, type GithubRepo } from '@/features/profile/api/profile'
 
+type IntegrationId = 'github' | 'vercel' | 'supabase' | 'notion'
+
 interface ProfileIntegrationsSettingsProps {
     isGithubConnected: boolean
+    isVercelConnected: boolean
+    isSupabaseConnected: boolean
+    isNotionConnected: boolean
     onConnectGithub: () => void
+    onConnectVercel: () => void
+    onConnectSupabase: () => void
+    onConnectNotion: () => void
 }
 
 // Simple SVG icons for services not in lucide-react
@@ -19,12 +27,6 @@ const VercelIcon = () => (
 const NotionIcon = () => (
     <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
         <path d="M4.459 4.208c.746.606 1.026.56 2.428.466l13.215-.793c.28 0 .047-.28-.046-.326L17.86 1.968c-.42-.326-.981-.7-2.055-.607L3.01 2.295c-.466.046-.56.28-.374.466zm.793 3.08v13.904c0 .747.373 1.027 1.214.98l14.523-.84c.841-.046.935-.56.935-1.167V6.354c0-.606-.233-.933-.748-.887l-15.177.887c-.56.047-.747.327-.747.933zm14.337.745c.093.42 0 .84-.42.888l-.7.14v10.264c-.608.327-1.168.514-1.635.514-.748 0-.935-.234-1.495-.933l-4.577-7.186v6.952L12.21 19s0 .84-1.168.84l-3.222.186c-.093-.186 0-.653.327-.746l.84-.233V9.854L7.822 9.76c-.094-.42.14-1.026.793-1.073l3.456-.233 4.764 7.279v-6.44l-1.215-.139c-.093-.514.28-.887.747-.933zM1.936 1.035l13.31-.98c1.634-.14 2.055-.047 3.082.7l4.249 2.986c.7.513.934.653.934 1.213v16.378c0 1.026-.373 1.634-1.68 1.726l-15.458.934c-.98.047-1.448-.093-1.962-.747l-3.129-4.06c-.56-.747-.793-1.306-.793-1.96V2.667c0-.839.374-1.54 1.447-1.632z" />
-    </svg>
-)
-
-const StripeIcon = () => (
-    <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
-        <path d="M13.976 9.15c-2.172-.806-3.356-1.426-3.356-2.409 0-.831.683-1.305 1.901-1.305 2.227 0 4.515.858 6.09 1.631l.89-5.494C18.252.975 15.697 0 12.165 0 9.667 0 7.589.654 6.104 1.872 4.56 3.147 3.757 4.992 3.757 7.218c0 4.039 2.467 5.76 6.476 7.219 2.585.92 3.445 1.574 3.445 2.583 0 .98-.84 1.545-2.354 1.545-1.875 0-4.965-.921-6.99-2.109l-.9 5.555C5.175 22.99 8.385 24 11.714 24c2.641 0 4.843-.624 6.328-1.813 1.664-1.305 2.525-3.236 2.525-5.732 0-4.128-2.524-5.851-6.594-7.305h.003z" />
     </svg>
 )
 
@@ -60,38 +62,31 @@ const languageColors: Record<string, string> = {
 
 const integrations = [
     {
-        id: 'github',
+        id: 'github' as const,
         name: 'GitHub',
         description: 'Connect your GitHub account to import repositories and track code changes.',
         Icon: Github,
         iconColor: '#D6D5C9',
     },
     {
-        id: 'vercel',
+        id: 'vercel' as const,
         name: 'Vercel',
         description: 'Deploy and manage your projects directly from december.',
         Icon: VercelIcon,
         iconColor: '#D6D5C9',
     },
     {
-        id: 'supabase',
+        id: 'supabase' as const,
         name: 'Supabase',
         description: 'Connect your Supabase project to manage database schemas and tables.',
         Icon: SupabaseIcon,
         iconColor: '#D6D5C9',
     },
     {
-        id: 'notion',
+        id: 'notion' as const,
         name: 'Notion',
         description: 'Pull in pages and databases from Notion as project context.',
         Icon: NotionIcon,
-        iconColor: '#D6D5C9',
-    },
-    {
-        id: 'stripe',
-        name: 'Stripe',
-        description: 'Monitor billing events and subscription data right in your workspace.',
-        Icon: StripeIcon,
         iconColor: '#D6D5C9',
     },
 ]
@@ -116,10 +111,13 @@ const INITIAL_REPOS_COUNT = 5
 export const ProfileIntegrationsSettings: React.FC<ProfileIntegrationsSettingsProps> = ({
     isGithubConnected,
     onConnectGithub,
+    isVercelConnected,
+    isSupabaseConnected,
+    isNotionConnected,
+    onConnectVercel,
+    onConnectSupabase,
+    onConnectNotion,
 }) => {
-    const [connected, setConnected] = useState<Record<string, boolean>>({
-        github: isGithubConnected,
-    })
     const [showAllRepos, setShowAllRepos] = useState(false)
 
     const reposQuery = useQuery({
@@ -129,14 +127,27 @@ export const ProfileIntegrationsSettings: React.FC<ProfileIntegrationsSettingsPr
         staleTime: 5 * 60 * 1000,
     })
 
-    const toggle = (id: string) => {
+    const getIntegrationState = (id: IntegrationId) => {
         if (id === 'github') {
-            onConnectGithub()
+            return { isConnected: isGithubConnected, onConnect: onConnectGithub }
         }
-        setConnected((prev) => ({ ...prev, [id]: !prev[id] }))
+
+        if (id === 'vercel') {
+            return { isConnected: isVercelConnected, onConnect: onConnectVercel }
+        }
+
+        if (id === 'supabase') {
+            return { isConnected: isSupabaseConnected, onConnect: onConnectSupabase }
+        }
+
+        if (id === 'notion') {
+            return { isConnected: isNotionConnected, onConnect: onConnectNotion }
+        }
+
+        return { isConnected: false, onConnect: undefined }
     }
 
-    const githubConnected = connected['github']
+    const githubConnected = isGithubConnected
     const allRepos = reposQuery.data ?? []
     const displayedRepos = showAllRepos ? allRepos : allRepos.slice(0, INITIAL_REPOS_COUNT)
     const hasMoreRepos = allRepos.length > INITIAL_REPOS_COUNT
@@ -148,7 +159,8 @@ export const ProfileIntegrationsSettings: React.FC<ProfileIntegrationsSettingsPr
                 <h1 className="text-[16px] font-medium mb-4">Integrations</h1>
                 <div className="flex flex-col gap-5 border-t border-[#242323] pt-6">
                     {integrations.map(({ id, name, description, Icon, iconColor }) => {
-                        const isConnected = !!connected[id]
+                        const { isConnected, onConnect } = getIntegrationState(id)
+                        const isUnavailable = !onConnect
                         return (
                             <div key={id} className="flex items-center justify-between">
                                 <div className="flex items-center gap-4">
@@ -168,14 +180,17 @@ export const ProfileIntegrationsSettings: React.FC<ProfileIntegrationsSettingsPr
                                     </div>
                                 </div>
                                 <button
-                                    onClick={() => toggle(id)}
+                                    onClick={onConnect}
+                                    disabled={isConnected || isUnavailable}
                                     className={`px-4 py-1.5 rounded-lg border text-[13px] font-medium transition-all shrink-0 ${
                                         isConnected
-                                            ? 'border-[#383736] bg-[#1E1D1B] text-[#7B7A79] hover:text-[#D6D5C9]'
-                                            : 'border-[#383736] text-[#D6D5C9] hover:bg-[#1E1D1B]'
+                                            ? 'border-[#383736] bg-[#1E1D1B] text-[#6A6968] cursor-default'
+                                            : isUnavailable
+                                              ? 'border-[#2B2A29] text-[#4A4948] cursor-not-allowed'
+                                              : 'border-[#383736] text-[#D6D5C9] hover:bg-[#1E1D1B]'
                                     }`}
                                 >
-                                    {isConnected ? 'Disconnect' : 'Connect'}
+                                    {isConnected ? 'Connected' : isUnavailable ? 'Soon' : 'Connect'}
                                 </button>
                             </div>
                         )
@@ -201,7 +216,7 @@ export const ProfileIntegrationsSettings: React.FC<ProfileIntegrationsSettingsPr
                             </span>
                         </div>
                         <button
-                            onClick={() => toggle('github')}
+                            onClick={onConnectGithub}
                             className="flex items-center gap-2 px-5 py-2 rounded-lg border border-[#383736] text-[13px] font-medium text-[#D6D5C9] hover:bg-[#1E1D1B] transition-colors mt-1"
                         >
                             <Github className="w-4 h-4" />

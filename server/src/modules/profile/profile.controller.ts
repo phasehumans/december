@@ -397,7 +397,7 @@ const connectGithub = async (req: Request, res: Response) => {
         // console.log(accessToken, username)
 
         await profileService.connectGithub({ userId, accessToken, username })
-        return res.redirect('http://localhost:3000')
+        return res.redirect('http://localhost:3000/profile/integrations')
     } catch (error) {
         if (error instanceof AppError) {
             return res.status(error.statusCode).json({

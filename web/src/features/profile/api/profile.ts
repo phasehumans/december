@@ -1,4 +1,4 @@
-import { apiRequest } from '@/shared/api/client'
+import { API_BASE_URL, apiRequest } from '@/shared/api/client'
 
 export type Profile = {
     id: string
@@ -12,6 +12,14 @@ export type Profile = {
     googleId: string | null
     githubConnected: boolean
     githubUsername?: string
+    vercelConnected?: boolean
+    vercelTeamId?: string | null
+    vercelConfigurationId?: string | null
+    supabaseConnected?: boolean
+    supabaseUserId?: string | null
+    supabaseConnectedAt?: string | null
+    notionWorkspaceId?: string | null
+    notionWorkspaceName?: string | null
     notifyProjectActivity?: boolean
     notifyProductUpdates?: boolean
     notifySecurityAlerts?: boolean
@@ -63,6 +71,42 @@ type UpdateChatSuggestionsInput = {
 
 type UpdateGenerationSoundInput = {
     generationSound: 'FIRST_GENERATION' | 'ALWAYS' | 'NEVER'
+}
+
+type ClientRuntimeEnv = {
+    process?: {
+        env?: Record<string, string | undefined>
+    }
+    Bun?: {
+        env?: Record<string, string | undefined>
+    }
+    __ENV__?: Record<string, string | undefined>
+}
+
+const getClientEnv = (key: string) => {
+    const runtime = globalThis as typeof globalThis & ClientRuntimeEnv
+
+    return runtime.Bun?.env?.[key] ?? runtime.process?.env?.[key] ?? runtime.__ENV__?.[key]
+}
+
+const getGithubClientId = () =>
+    getClientEnv('GITHUB_CLIENT_ID') ??
+    getClientEnv('PUBLIC_GITHUB_CLIENT_ID') ??
+    'Ov23liFGkTAwCW7E8gtk'
+
+const getVercelIntegrationSlug = () =>
+    getClientEnv('VERCEL_INTEGRATION_SLUG') ??
+    getClientEnv('PUBLIC_VERCEL_INTEGRATION_SLUG') ??
+    'december'
+
+const buildUrl = (baseUrl: string, params: Record<string, string>) => {
+    const url = new URL(baseUrl)
+
+    for (const [key, value] of Object.entries(params)) {
+        url.searchParams.set(key, value)
+    }
+
+    return url.toString()
 }
 
 const getProfile = () => {
@@ -212,6 +256,28 @@ const getGithubRepos = () => {
     return apiRequest<GithubRepo[]>('/integrations/github/repos')
 }
 
+const getGithubConnectUrl = (userId: string) => {
+    return buildUrl('https://github.com/login/oauth/authorize', {
+        client_id: getGithubClientId(),
+        scope: 'repo',
+        state: userId,
+    })
+}
+
+const getVercelConnectUrl = (userId: string) => {
+    return buildUrl(`https://vercel.com/integrations/${getVercelIntegrationSlug()}/new`, {
+        state: userId,
+    })
+}
+
+const getSupabaseConnectUrl = () => {
+    return `${API_BASE_URL}/integrations/supabase/connect`
+}
+
+const getNotionConnectUrl = () => {
+    return `${API_BASE_URL}/integrations/notion/connect`
+}
+
 export const profileAPI = {
     getProfile,
     updateName,
@@ -232,4 +298,8 @@ export const profileAPI = {
     updateSkills,
     deleteSkills,
     getGithubRepos,
+    getGithubConnectUrl,
+    getVercelConnectUrl,
+    getSupabaseConnectUrl,
+    getNotionConnectUrl,
 }

@@ -1,5 +1,7 @@
 import React from 'react'
 
+import { profileAPI } from '@/features/profile/api/profile'
+
 import { useProfileSettingsData } from './useProfileSettingsData'
 
 export const useProfileSettingsController = () => {
@@ -42,6 +44,9 @@ export const useProfileSettingsController = () => {
     })
 
     const isGithubConnected = profile?.githubConnected ?? false
+    const isVercelConnected = profile?.vercelConnected ?? false
+    const isSupabaseConnected = profile?.supabaseConnected ?? false
+    const isNotionConnected = Boolean(profile?.notionWorkspaceId)
     const emailNotifications = profile?.notifyProjectActivity ?? true
     const productUpdates = profile?.notifyProductUpdates ?? true
     const securityAlerts = profile?.notifySecurityAlerts ?? true
@@ -112,14 +117,30 @@ export const useProfileSettingsController = () => {
         })
     }
 
-    const connectGithub = () => {
-        const url =
-            `https://github.com/login/oauth/authorize` +
-            `?client_id=Ov23liFGkTAwCW7E8gtk` +
-            `&scope=repo` +
-            `&state=${profile?.id}`
+    const redirectToIntegration = (getUrl: (userId: string) => string) => {
+        if (!profile?.id) {
+            setProfileActionError('Profile is still loading. Please try again.')
+            return
+        }
 
-        window.location.href = url
+        setProfileActionError(null)
+        window.location.href = getUrl(profile.id)
+    }
+
+    const connectGithub = () => {
+        redirectToIntegration(profileAPI.getGithubConnectUrl)
+    }
+
+    const connectVercel = () => {
+        redirectToIntegration(profileAPI.getVercelConnectUrl)
+    }
+
+    const connectSupabase = () => {
+        window.location.href = profileAPI.getSupabaseConnectUrl()
+    }
+
+    const connectNotion = () => {
+        window.location.href = profileAPI.getNotionConnectUrl()
     }
 
     return {
@@ -152,6 +173,9 @@ export const useProfileSettingsController = () => {
         updateChatSuggestionsMutation,
         updateGenerationSoundMutation,
         isGithubConnected,
+        isVercelConnected,
+        isSupabaseConnected,
+        isNotionConnected,
         emailNotifications,
         productUpdates,
         securityAlerts,
@@ -166,5 +190,8 @@ export const useProfileSettingsController = () => {
         handleChatSuggestionsToggle,
         handleGenerationSoundChange,
         connectGithub,
+        connectVercel,
+        connectSupabase,
+        connectNotion,
     }
 }
