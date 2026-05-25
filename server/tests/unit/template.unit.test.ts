@@ -17,31 +17,61 @@ describe('template.schema', () => {
         test('should reject isLiked as string "true"', () => {
             const result = toggleLikeSchema.safeParse({ isLiked: 'true' })
             expect(result.success).toBe(false)
+            if (!result.success) {
+                expect(result.error.flatten().fieldErrors.isLiked).toContain(
+                    'isLiked must be a boolean'
+                )
+            }
         })
 
         test('should reject isLiked as string "false"', () => {
             const result = toggleLikeSchema.safeParse({ isLiked: 'false' })
             expect(result.success).toBe(false)
+            if (!result.success) {
+                expect(result.error.flatten().fieldErrors.isLiked).toContain(
+                    'isLiked must be a boolean'
+                )
+            }
         })
 
         test('should reject isLiked as number 1', () => {
             const result = toggleLikeSchema.safeParse({ isLiked: 1 })
             expect(result.success).toBe(false)
+            if (!result.success) {
+                expect(result.error.flatten().fieldErrors.isLiked).toContain(
+                    'isLiked must be a boolean'
+                )
+            }
         })
 
         test('should reject isLiked as number 0', () => {
             const result = toggleLikeSchema.safeParse({ isLiked: 0 })
             expect(result.success).toBe(false)
+            if (!result.success) {
+                expect(result.error.flatten().fieldErrors.isLiked).toContain(
+                    'isLiked must be a boolean'
+                )
+            }
         })
 
         test('should reject isLiked as null', () => {
             const result = toggleLikeSchema.safeParse({ isLiked: null })
             expect(result.success).toBe(false)
+            if (!result.success) {
+                expect(result.error.flatten().fieldErrors.isLiked).toContain(
+                    'isLiked must be a boolean'
+                )
+            }
         })
 
         test('should reject isLiked as undefined', () => {
             const result = toggleLikeSchema.safeParse({ isLiked: undefined })
             expect(result.success).toBe(false)
+            if (!result.success) {
+                expect(result.error.flatten().fieldErrors.isLiked).toContain(
+                    'isLiked must be a boolean'
+                )
+            }
         })
 
         test('should reject missing isLiked field', () => {

@@ -84,7 +84,7 @@ describe('template.routes.integration', () => {
         await prisma.$disconnect()
     })
 
-    describe('GET /api/v1/templates', () => {
+    describe('GET /templates', () => {
         it('should return 200 with all shared templates', async () => {
             await createTemplate(TEST_USER_ID, { name: 'Second Template' })
 
@@ -133,7 +133,7 @@ describe('template.routes.integration', () => {
         })
     })
 
-    describe('GET /api/v1/templates/featured', () => {
+    describe('GET /templates/featured', () => {
         it('should return 200 with featured templates only', async () => {
             await createTemplate(TEST_USER_ID, { name: 'Featured', isFeatured: true })
 
@@ -162,7 +162,7 @@ describe('template.routes.integration', () => {
         })
     })
 
-    describe('GET /api/v1/templates/:templateId', () => {
+    describe('GET /templates/:templateId', () => {
         it('should return 200 with template data for valid id', async () => {
             const res = await request(app).get(`/api/v1/templates/${templateId}`)
 
@@ -197,7 +197,7 @@ describe('template.routes.integration', () => {
         })
     })
 
-    describe('POST /api/v1/templates/:templateId/remix', () => {
+    describe('POST /templates/:templateId/remix', () => {
         it('should return 200 and create remixed project', async () => {
             const res = await request(app).post(`/api/v1/templates/${templateId}/remix`)
 
@@ -248,7 +248,7 @@ describe('template.routes.integration', () => {
         })
     })
 
-    describe('POST /api/v1/templates/:templateId/like', () => {
+    describe('POST /templates/:templateId/like', () => {
         it('should return 200 when liking a template', async () => {
             const res = await request(app)
                 .post(`/api/v1/templates/${templateId}/like`)

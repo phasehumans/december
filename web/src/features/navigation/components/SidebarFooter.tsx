@@ -7,11 +7,11 @@ import { UserProfilePopover } from './UserProfilePopover'
 
 import type { SidebarFooterProps } from '@/features/navigation/types'
 
+import { notificationAPI } from '@/features/notification/api/notification'
 import { profileAPI } from '@/features/profile/api/profile'
 import { ProfileCardModal } from '@/features/profile/components/ProfileCardModal'
 import { ProfileFeedbackModal } from '@/features/profile/components/ProfileFeedbackModal'
 import { Icons } from '@/shared/components/ui/Icons'
-import { notificationAPI } from '@/features/notification/api/notification'
 
 export const SidebarFooter: React.FC<
     SidebarFooterProps & { user?: { name?: string }; onSignOut?: () => void }

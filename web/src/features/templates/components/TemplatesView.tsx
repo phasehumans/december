@@ -10,9 +10,9 @@ import { TemplateRemixModal } from './TemplateRemixModal'
 
 import { templateAPI } from '@/features/templates/api/template'
 import { mapBackendTemplateToTemplate, type Template } from '@/features/templates/types'
+import { ErrorAlert } from '@/shared/components/ui/ErrorAlert'
 import { Icons } from '@/shared/components/ui/Icons'
 import { Skeleton } from '@/shared/components/ui/Skeleton'
-import { ErrorAlert } from '@/shared/components/ui/ErrorAlert'
 
 interface TemplatesViewProps {
     onOpenProject: (projectId: string) => void

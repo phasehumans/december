@@ -1,6 +1,7 @@
+import axios from 'axios'
+
 import { prisma } from '../../config/db'
 import { AppError } from '../../utils/appError'
-import axios from 'axios'
 
 type GithubRepo = {
     id: number

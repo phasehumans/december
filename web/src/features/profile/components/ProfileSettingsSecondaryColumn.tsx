@@ -1,6 +1,8 @@
-import React from 'react'
 import { Loader2 } from 'lucide-react'
+import React from 'react'
+
 import { SettingsSection } from './SettingsSection'
+
 import { useBillingOverview } from '@/features/billing/hooks/useBillingData'
 import { Badge } from '@/shared/components/ui/Badge'
 import { Button } from '@/shared/components/ui/Button'

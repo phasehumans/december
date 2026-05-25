@@ -1,7 +1,10 @@
 import { Resend } from 'resend'
+
 const resend = new Resend(process.env.RESEND_API_KEY)
 import { randomUUID } from 'crypto'
+
 import jwt, { type SignOptions } from 'jsonwebtoken'
+
 import type { Response } from 'express'
 
 export type TokenPayload = {

@@ -6,7 +6,6 @@ import {
     Type as TextIcon,
     Pen,
     Eraser,
-    MoveUpRight,
     Hand,
     Frame,
 } from 'lucide-react'

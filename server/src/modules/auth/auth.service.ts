@@ -7,6 +7,8 @@ import { AppError } from '../../utils/appError'
 
 // import { authSession, deleteSessionById, isSessionExpired } from './auth.session'
 // import { authToken } from './auth.token'
+import { sendNotificationToUser } from '../notification/notification.service'
+
 import {
     sendOTP,
     getNameFromEmail,
@@ -17,7 +19,6 @@ import {
     verifyRefreshToken,
     isSessionExpired,
 } from './auth.utils'
-import { sendNotificationToUser } from '../notification/notification.service'
 
 type Signup = {
     email: string

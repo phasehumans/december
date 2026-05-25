@@ -1,7 +1,7 @@
-import { usageService } from './usage.service'
-import { recordUsageEventSchema, usageCheckQuerySchema } from './usage.schema'
-
 import { AppError } from '../../utils/appError'
+
+import { recordUsageEventSchema, usageCheckQuerySchema } from './usage.schema'
+import { usageService } from './usage.service'
 
 import type { Request, Response } from 'express'
 

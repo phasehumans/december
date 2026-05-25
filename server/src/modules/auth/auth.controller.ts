@@ -12,9 +12,9 @@ import {
     signupSchema,
 } from './auth.schema'
 import { authService } from './auth.service'
+import { clearAuthCookies, setAccessTokenCookie, setRefreshTokenCookie } from './auth.utils'
 
 import type { Request, Response, NextFunction } from 'express'
-import { clearAuthCookies, setAccessTokenCookie, setRefreshTokenCookie } from './auth.utils'
 
 const signup = async (req: Request, res: Response) => {
     const parseData = signupSchema.safeParse(req.body)

@@ -1,4 +1,5 @@
 import { AppError } from '../../utils/appError'
+
 import {
     NotificationParamsSchema,
     SendNotificationSchema,
@@ -190,72 +191,6 @@ const deleteNotification = async (req: Request, res: Response) => {
     }
 }
 
-const deleteAllReadNotifications = async (req: Request, res: Response) => {
-    const userId = req.user?.userId as string | undefined
-
-    if (!userId) {
-        return res.status(400).json({
-            success: false,
-            message: 'unauthorized',
-        })
-    }
-
-    try {
-        await notificationService.deleteAllReadNotifications(userId)
-        return res.status(200).json({
-            success: true,
-            message: 'read notifications deleted successfully',
-        })
-    } catch (error) {
-        if (error instanceof AppError) {
-            return res.status(error.statusCode).json({
-                success: false,
-                message: 'failed to delete read notifications',
-                errors: error.message,
-            })
-        }
-
-        return res.status(500).json({
-            success: false,
-            message: 'failed to delete read notifications',
-            errors: error instanceof Error ? error.message : 'unknown error',
-        })
-    }
-}
-
-const deleteAllNotifications = async (req: Request, res: Response) => {
-    const userId = req.user?.userId as string | undefined
-
-    if (!userId) {
-        return res.status(400).json({
-            success: false,
-            message: 'unauthorized',
-        })
-    }
-
-    try {
-        await notificationService.deleteAllNotifications(userId)
-        return res.status(200).json({
-            success: true,
-            message: 'all notifications deleted successfully',
-        })
-    } catch (error) {
-        if (error instanceof AppError) {
-            return res.status(error.statusCode).json({
-                success: false,
-                message: 'failed to delete all notifications',
-                errors: error.message,
-            })
-        }
-
-        return res.status(500).json({
-            success: false,
-            message: 'failed to delete all notifications',
-            errors: error instanceof Error ? error.message : 'unknown error',
-        })
-    }
-}
-
 const sendNotificationToUser = async (req: Request, res: Response) => {
     const parseData = SendNotificationSchema.safeParse(req.body)
 
@@ -340,8 +275,6 @@ export const notificationController = {
     getNotificationById,
     markAsRead,
     deleteNotification,
-    deleteAllReadNotifications,
-    deleteAllNotifications,
     sendNotificationToUser,
     sendNotificationToAll,
 }

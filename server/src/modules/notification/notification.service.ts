@@ -1,40 +1,135 @@
 import { prisma } from '../../config/db'
+import { AppError } from '../../utils/appError'
+
+export const notificationSelect = {
+    id: true,
+    title: true,
+    message: true,
+    isRead: true,
+    type: true,
+    link: true,
+    createdAt: true,
+}
 
 const getNotifications = async (userId: string) => {
+    const user = await prisma.user.findUnique({
+        where: {
+            id: userId,
+        },
+        select: {
+            id: true,
+            isDeleted: true,
+        },
+    })
+
+    if (!user || user.isDeleted === true) {
+        throw new AppError('user not found', 404)
+    }
+
     return prisma.notification.findMany({
         where: { userId },
+        select: notificationSelect,
         orderBy: { createdAt: 'desc' },
     })
 }
 
 const getNotificationById = async (userId: string, id: string) => {
+    const user = await prisma.user.findUnique({
+        where: {
+            id: userId,
+        },
+        select: {
+            id: true,
+            isDeleted: true,
+        },
+    })
+
+    if (!user || user.isDeleted === true) {
+        throw new AppError('user not found', 404)
+    }
+
     return prisma.notification.findUnique({
-        where: { id, userId },
+        where: {
+            id: id,
+            userId: userId,
+        },
+        select: notificationSelect,
     })
 }
 
 const markAsRead = async (userId: string, id: string) => {
+    const user = await prisma.user.findUnique({
+        where: {
+            id: userId,
+        },
+        select: {
+            id: true,
+            isDeleted: true,
+        },
+    })
+
+    if (!user || user.isDeleted === true) {
+        throw new AppError('user not found', 404)
+    }
+
+    const existing = await prisma.notification.findFirst({
+        where: {
+            id: id,
+            userId: userId,
+        },
+        select: {
+            id: true,
+        },
+    })
+
+    if (!existing) {
+        throw new AppError('notification not found', 404)
+    }
     return prisma.notification.update({
-        where: { id, userId },
-        data: { isRead: true },
+        where: {
+            id: id,
+            userId: userId,
+        },
+        data: {
+            isRead: true,
+        },
+        select: notificationSelect,
     })
 }
 
 const deleteNotification = async (userId: string, id: string) => {
+    const user = await prisma.user.findUnique({
+        where: {
+            id: userId,
+        },
+        select: {
+            id: true,
+            isDeleted: true,
+        },
+    })
+
+    if (!user || user.isDeleted === true) {
+        throw new AppError('user not found', 404)
+    }
+
+    const existing = await prisma.notification.findFirst({
+        where: {
+            id: id,
+            userId: userId,
+        },
+        select: {
+            id: true,
+        },
+    })
+    if (!existing) {
+        throw new AppError('notification not found', 404)
+    }
     return prisma.notification.delete({
-        where: { id, userId },
-    })
-}
-
-const deleteAllReadNotifications = async (userId: string) => {
-    return prisma.notification.deleteMany({
-        where: { userId, isRead: true },
-    })
-}
-
-const deleteAllNotifications = async (userId: string) => {
-    return prisma.notification.deleteMany({
-        where: { userId },
+        where: {
+            id: id,
+            userId: userId,
+        },
+        select: notificationSelect,
     })
 }
 
@@ -45,6 +140,20 @@ const sendNotificationToUser = async (data: {
     type?: 'INFO' | 'WARNING' | 'SUCCESS' | 'ERROR'
     link?: string
 }) => {
+    const user = await prisma.user.findUnique({
+        where: {
+            id: data.userId,
+        },
+        select: {
+            id: true,
+            isDeleted: true,
+        },
+    })
+
+    if (!user || user.isDeleted === true) {
+        throw new AppError('user not found', 404)
+    }
+
     return prisma.notification.create({
         data: {
             userId: data.userId,
@@ -53,6 +162,7 @@ const sendNotificationToUser = async (data: {
             type: data.type || 'INFO',
             link: data.link,
         },
+        select: notificationSelect,
     })
 }
 
@@ -62,7 +172,17 @@ const sendNotificationToAll = async (data: {
     type?: 'INFO' | 'WARNING' | 'SUCCESS' | 'ERROR'
     link?: string
 }) => {
-    const users = await prisma.user.findMany({ select: { id: true } })
+    const users = await prisma.user.findMany({
+        where: {
+            isDeleted: false,
+        },
+        select: {
+            id: true,
+        },
+    })
+    if (users.length === 0) {
+        return { count: 0 }
+    }
     const notifications = users.map((user) => ({
         userId: user.id,
         title: data.title,
@@ -81,8 +201,6 @@ export const notificationService = {
     getNotificationById,
     markAsRead,
     deleteNotification,
-    deleteAllReadNotifications,
-    deleteAllNotifications,
     sendNotificationToUser,
     sendNotificationToAll,
 }

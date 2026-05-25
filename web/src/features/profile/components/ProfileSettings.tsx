@@ -9,10 +9,8 @@ import {
     Plug,
 } from 'lucide-react'
 import React from 'react'
-
 import { useLocation, useNavigate } from 'react-router-dom'
 
-import { getProfileTabFromSlug, getSlugForProfileTab, type ProfileTab } from '@/app/types'
 import { useProfileSettingsController } from '../hooks/useProfileSettingsController'
 
 import { ProfileApiKeysSettings } from './ProfileApiKeysSettings'
@@ -29,8 +27,9 @@ import { ProfileUsageSettings } from './ProfileUsageSettings'
 
 import type { ProfileSettingsProps } from '@/features/profile/types'
 
-import { Icons } from '@/shared/components/ui/Icons'
+import { getProfileTabFromSlug, getSlugForProfileTab } from '@/app/types'
 import { ErrorAlert } from '@/shared/components/ui/ErrorAlert'
+import { Icons } from '@/shared/components/ui/Icons'
 
 export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onBack, onDocs }) => {
     const location = useLocation()

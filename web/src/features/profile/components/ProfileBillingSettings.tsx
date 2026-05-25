@@ -1,7 +1,7 @@
+import { useQuery } from '@tanstack/react-query'
 import { CreditCard, ArrowUpRight, Loader2 } from 'lucide-react'
 import React, { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { profileAPI } from '@/features/profile/api/profile'
+
 import {
     useBillingOverview,
     useCreateSubscription,
@@ -10,6 +10,7 @@ import {
     useCreatePortalSession,
     useCreditsHistory,
 } from '@/features/billing/hooks/useBillingData'
+import { profileAPI } from '@/features/profile/api/profile'
 
 interface ProfileBillingSettingsProps {
     profile?: {

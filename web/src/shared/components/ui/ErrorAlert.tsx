@@ -1,6 +1,7 @@
-import React, { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { AlertCircle, X } from 'lucide-react'
+import React, { useState } from 'react'
+
 import { cn } from '@/shared/lib/utils'
 
 interface ErrorAlertProps {

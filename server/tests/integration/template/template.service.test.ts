@@ -123,9 +123,14 @@ describe('template.service.integration', () => {
         })
 
         it('should throw "template not found" for non-existent id', async () => {
-            await expect(templateService.getTemplateById('non-existent-id')).rejects.toThrow(
-                'template not found'
-            )
+            let threw = false
+            try {
+                await templateService.getTemplateById('non-existent-id')
+            } catch (err: any) {
+                threw = true
+                expect(err.message).toBe('template not found')
+            }
+            expect(threw).toBe(true)
         })
 
         it('should throw "template not found" for project not shared as template', async () => {
@@ -138,9 +143,14 @@ describe('template.service.integration', () => {
                 },
             })
 
-            await expect(templateService.getTemplateById(privateProject.id)).rejects.toThrow(
-                'template not found'
-            )
+            let threw = false
+            try {
+                await templateService.getTemplateById(privateProject.id)
+            } catch (err: any) {
+                threw = true
+                expect(err.message).toBe('template not found')
+            }
+            expect(threw).toBe(true)
         })
 
         it('should return correct description and prompt', async () => {
@@ -229,23 +239,38 @@ describe('template.service.integration', () => {
         })
 
         it('should throw "user not found" for non-existent userId', async () => {
-            await expect(
-                templateService.remixTemplate({ userId: 'bad-user', templateId })
-            ).rejects.toThrow('user not found')
+            let threw = false
+            try {
+                await templateService.remixTemplate({ userId: 'bad-user', templateId })
+            } catch (err: any) {
+                threw = true
+                expect(err.message).toBe('user not found')
+            }
+            expect(threw).toBe(true)
         })
 
         it('should throw "user not found" for soft-deleted user', async () => {
             const deletedUser = await createSoftDeletedUser()
 
-            await expect(
-                templateService.remixTemplate({ userId: deletedUser.id, templateId })
-            ).rejects.toThrow('user not found')
+            let threw = false
+            try {
+                await templateService.remixTemplate({ userId: deletedUser.id, templateId })
+            } catch (err: any) {
+                threw = true
+                expect(err.message).toBe('user not found')
+            }
+            expect(threw).toBe(true)
         })
 
         it('should throw "template not found" for non-existent templateId', async () => {
-            await expect(
-                templateService.remixTemplate({ userId, templateId: 'bad-template' })
-            ).rejects.toThrow('template not found')
+            let threw = false
+            try {
+                await templateService.remixTemplate({ userId, templateId: 'bad-template' })
+            } catch (err: any) {
+                threw = true
+                expect(err.message).toBe('template not found')
+            }
+            expect(threw).toBe(true)
         })
 
         it('should throw "template not found" for non-shared project', async () => {
@@ -258,9 +283,14 @@ describe('template.service.integration', () => {
                 },
             })
 
-            await expect(
-                templateService.remixTemplate({ userId, templateId: privateProject.id })
-            ).rejects.toThrow('template not found')
+            let threw = false
+            try {
+                await templateService.remixTemplate({ userId, templateId: privateProject.id })
+            } catch (err: any) {
+                threw = true
+                expect(err.message).toBe('template not found')
+            }
+            expect(threw).toBe(true)
         })
 
         it('should preserve original template after remix', async () => {
@@ -368,23 +398,46 @@ describe('template.service.integration', () => {
         })
 
         it('should throw "user not found" for non-existent user', async () => {
-            await expect(
-                templateService.toggleLike({ userId: 'bad-user', templateId, isLiked: true })
-            ).rejects.toThrow('user not found')
+            let threw = false
+            try {
+                await templateService.toggleLike({ userId: 'bad-user', templateId, isLiked: true })
+            } catch (err: any) {
+                threw = true
+                expect(err.message).toBe('user not found')
+            }
+            expect(threw).toBe(true)
         })
 
         it('should throw "user not found" for soft-deleted user', async () => {
             const deletedUser = await createSoftDeletedUser()
 
-            await expect(
-                templateService.toggleLike({ userId: deletedUser.id, templateId, isLiked: true })
-            ).rejects.toThrow('user not found')
+            let threw = false
+            try {
+                await templateService.toggleLike({
+                    userId: deletedUser.id,
+                    templateId,
+                    isLiked: true,
+                })
+            } catch (err: any) {
+                threw = true
+                expect(err.message).toBe('user not found')
+            }
+            expect(threw).toBe(true)
         })
 
         it('should throw "template not found" for non-existent templateId', async () => {
-            await expect(
-                templateService.toggleLike({ userId, templateId: 'bad-template', isLiked: true })
-            ).rejects.toThrow('template not found')
+            let threw = false
+            try {
+                await templateService.toggleLike({
+                    userId,
+                    templateId: 'bad-template',
+                    isLiked: true,
+                })
+            } catch (err: any) {
+                threw = true
+                expect(err.message).toBe('template not found')
+            }
+            expect(threw).toBe(true)
         })
 
         it('should throw "template not found" for non-shared project', async () => {
@@ -397,9 +450,18 @@ describe('template.service.integration', () => {
                 },
             })
 
-            await expect(
-                templateService.toggleLike({ userId, templateId: privateProject.id, isLiked: true })
-            ).rejects.toThrow('template not found')
+            let threw = false
+            try {
+                await templateService.toggleLike({
+                    userId,
+                    templateId: privateProject.id,
+                    isLiked: true,
+                })
+            } catch (err: any) {
+                threw = true
+                expect(err.message).toBe('template not found')
+            }
+            expect(threw).toBe(true)
         })
 
         it('should persist like in database', async () => {

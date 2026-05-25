@@ -24,9 +24,9 @@ bun test tests/integration/auth/auth.service.test.ts
 # bun test tests/integration/integrations/integrations.integrations.test.ts
 # bun test tests/integration/integrations/integrations.service.test.ts
 
-# bun test tests/unit/notification.unit.test.ts
-# bun test tests/integration/notification/notification.routes.test.ts
-# bun test tests/integration/notification/notification.service.test.ts
+bun test tests/unit/notification.unit.test.ts
+bun test tests/integration/notification/notification.routes.test.ts
+bun test tests/integration/notification/notification.service.test.ts
 
 bun test tests/unit/profile.unit.test.ts
 bun test tests/integration/profile/profile.routes.test.ts

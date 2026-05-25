@@ -2,8 +2,8 @@ import React, { useRef, useEffect, useState } from 'react'
 
 import { Icons } from './Icons'
 
-import { cn } from '@/shared/lib/utils'
 import { useVoiceToText } from '@/shared/lib/useVoiceToText'
+import { cn } from '@/shared/lib/utils'
 
 interface PromptFooterProps {
     onUpload: () => void

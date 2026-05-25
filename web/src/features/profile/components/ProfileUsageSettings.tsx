@@ -1,8 +1,8 @@
+import { useQuery } from '@tanstack/react-query'
 import {
     Calendar,
     ChevronDown,
     Download,
-    ArrowUpRight,
     ExternalLink,
     Info,
     ChevronLeft,
@@ -13,10 +13,10 @@ import {
     Check,
 } from 'lucide-react'
 import React, { useState, useRef, useEffect } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { profileAPI } from '@/features/profile/api/profile'
-import { useCreditsHistory, useBillingOverview } from '@/features/billing/hooks/useBillingData'
+
 import { billingAPI } from '@/features/billing/api/billing'
+import { useCreditsHistory, useBillingOverview } from '@/features/billing/hooks/useBillingData'
+import { profileAPI } from '@/features/profile/api/profile'
 import { ErrorAlert } from '@/shared/components/ui/ErrorAlert'
 import { Skeleton } from '@/shared/components/ui/Skeleton'
 
