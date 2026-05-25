@@ -62,15 +62,19 @@ type GenerationSoundType = {
     generationSound: GenerationSound
 }
 
+type UpdateSkills = {
+    userId: string
+    skills: string
+}
+
 const getInfo = async (data: string) => {
     const profile = await prisma.user.findUnique({
         where: {
             id: data,
-            isDeleted: false,
         },
     })
 
-    if (!profile) {
+    if (!profile || profile.isDeleted == true) {
         throw new AppError('user not found', 404)
     }
 
@@ -84,13 +88,12 @@ const getProfileCard = async (data: string) => {
     const profile = await prisma.user.findUnique({
         where: {
             id: data,
-            isDeleted: false,
         },
     })
 
     // change object in service itself not in controller
 
-    if (!profile) {
+    if (!profile || profile.isDeleted == true) {
         throw new AppError('user not found', 404)
     }
 
@@ -101,13 +104,12 @@ const getProfile = async (data: string) => {
     const profile = await prisma.user.findUnique({
         where: {
             id: data,
-            isDeleted: false,
         },
     })
 
     // change object in service itself not in controller
 
-    if (!profile) {
+    if (!profile || profile.isDeleted == true) {
         throw new AppError('user not found', 404)
     }
 
@@ -120,11 +122,10 @@ const updateName = async (data: UpdateName) => {
     const existingUser = await prisma.user.findUnique({
         where: {
             id: userId,
-            isDeleted: false,
         },
     })
 
-    if (!existingUser) {
+    if (!existingUser || existingUser.isDeleted == true) {
         throw new AppError('user not found', 404)
     }
 
@@ -146,11 +147,10 @@ const updateUsername = async (data: UpdateUsername) => {
     const existingUser = await prisma.user.findUnique({
         where: {
             id: userId,
-            isDeleted: false,
         },
     })
 
-    if (!existingUser) {
+    if (!existingUser || existingUser.isDeleted == true) {
         throw new AppError('user not found', 404)
     }
 
@@ -170,7 +170,9 @@ const updateUsername = async (data: UpdateUsername) => {
 
     try {
         const updatedUser = await prisma.user.update({
-            where: { id: userId },
+            where: {
+                id: userId,
+            },
             data: {
                 username: username,
             },
@@ -178,7 +180,7 @@ const updateUsername = async (data: UpdateUsername) => {
 
         return updatedUser
     } catch (error: any) {
-        // Race condition safety
+        // race condition safety
         if (error.code === 'P2002') {
             throw new AppError(`${username} is already taken, try another one`, 409)
         }
@@ -193,16 +195,17 @@ const updateAvatarUrl = async (data: UpdateAvatarUrl) => {
     const existingUser = await prisma.user.findUnique({
         where: {
             id: userId,
-            isDeleted: false,
         },
     })
 
-    if (!existingUser) {
+    if (!existingUser || existingUser.isDeleted == true) {
         throw new AppError('user not found', 404)
     }
 
     const updatedUser = await prisma.user.update({
-        where: { id: userId },
+        where: {
+            id: userId,
+        },
         data: {
             avatarUrl: avatarUrl,
         },
@@ -217,11 +220,10 @@ const changePassword = async (data: ChangePassword) => {
     const existingUser = await prisma.user.findUnique({
         where: {
             id: userId,
-            isDeleted: false,
         },
     })
 
-    if (!existingUser) {
+    if (!existingUser || existingUser.isDeleted == true) {
         throw new AppError('user not found', 404)
     }
 
@@ -261,11 +263,10 @@ const updateNotifications = async (data: UpdateNotification) => {
     const existingUser = await prisma.user.findUnique({
         where: {
             id: userId,
-            isDeleted: false,
         },
     })
 
-    if (!existingUser) {
+    if (!existingUser || existingUser.isDeleted == true) {
         throw new AppError('user not found', 404)
     }
 
@@ -420,11 +421,10 @@ const chatSuggestions = async (data: ChatSuggestions) => {
     const existingUser = await prisma.user.findUnique({
         where: {
             id: userId,
-            isDeleted: false,
         },
     })
 
-    if (!existingUser) {
+    if (!existingUser || existingUser.isDeleted == true) {
         throw new AppError('user not found', 404)
     }
 
@@ -453,11 +453,10 @@ const generationSound = async (data: GenerationSoundType) => {
     const existingUser = await prisma.user.findUnique({
         where: {
             id: userId,
-            isDeleted: false,
         },
     })
 
-    if (!existingUser) {
+    if (!existingUser || existingUser.isDeleted == true) {
         throw new AppError('user not found', 404)
     }
 
@@ -480,74 +479,18 @@ const generationSound = async (data: GenerationSoundType) => {
     return updatedUser
 }
 
-// --- Memories ---
-
-type UpdateMemories = {
-    userId: string
-    memories: string
-}
-
-const getMemories = async (userId: string) => {
-    const user = await prisma.user.findUnique({
-        where: { id: userId, isDeleted: false },
-        select: { memories: true },
-    })
-
-    if (!user) {
-        throw new AppError('user not found', 404)
-    }
-
-    return { memories: user.memories }
-}
-
-const updateMemories = async (data: UpdateMemories) => {
-    const { userId, memories } = data
-
-    const existingUser = await prisma.user.findUnique({
-        where: { id: userId, isDeleted: false },
-    })
-
-    if (!existingUser) {
-        throw new AppError('user not found', 404)
-    }
-
-    const updatedUser = await prisma.user.update({
-        where: { id: userId },
-        data: { memories },
-    })
-
-    return { memories: updatedUser.memories }
-}
-
-const deleteMemories = async (userId: string) => {
-    const existingUser = await prisma.user.findUnique({
-        where: { id: userId, isDeleted: false },
-    })
-
-    if (!existingUser) {
-        throw new AppError('user not found', 404)
-    }
-
-    await prisma.user.update({
-        where: { id: userId },
-        data: { memories: null },
-    })
-}
-
-// --- Skills ---
-
-type UpdateSkills = {
-    userId: string
-    skills: string
-}
-
 const getSkills = async (userId: string) => {
     const user = await prisma.user.findUnique({
-        where: { id: userId, isDeleted: false },
-        select: { skills: true },
+        where: {
+            id: userId,
+        },
+        select: {
+            skills: true,
+            isDeleted: true,
+        },
     })
 
-    if (!user) {
+    if (!user || user.isDeleted == true) {
         throw new AppError('user not found', 404)
     }
 
@@ -558,16 +501,22 @@ const updateSkills = async (data: UpdateSkills) => {
     const { userId, skills } = data
 
     const existingUser = await prisma.user.findUnique({
-        where: { id: userId, isDeleted: false },
+        where: {
+            id: userId,
+        },
     })
 
-    if (!existingUser) {
+    if (!existingUser || existingUser.isDeleted == true) {
         throw new AppError('user not found', 404)
     }
 
     const updatedUser = await prisma.user.update({
-        where: { id: userId },
-        data: { skills },
+        where: {
+            id: userId,
+        },
+        data: {
+            skills,
+        },
     })
 
     return { skills: updatedUser.skills }
@@ -575,16 +524,22 @@ const updateSkills = async (data: UpdateSkills) => {
 
 const deleteSkills = async (userId: string) => {
     const existingUser = await prisma.user.findUnique({
-        where: { id: userId, isDeleted: false },
+        where: {
+            id: userId,
+        },
     })
 
-    if (!existingUser) {
+    if (!existingUser || existingUser.isDeleted == true) {
         throw new AppError('user not found', 404)
     }
 
     await prisma.user.update({
-        where: { id: userId },
-        data: { skills: null },
+        where: {
+            id: userId,
+        },
+        data: {
+            skills: null,
+        },
     })
 }
 
@@ -603,9 +558,6 @@ export const profileService = {
     deleteAccount,
     chatSuggestions,
     generationSound,
-    getMemories,
-    updateMemories,
-    deleteMemories,
     getSkills,
     updateSkills,
     deleteSkills,
