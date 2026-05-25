@@ -188,7 +188,7 @@ Focus on what december wouldn't already know - domain-specific details, preferre
                 <div className="flex flex-col gap-4 border border-[#242323] rounded-xl p-5 bg-[#171615]">
                     <p className="text-[13px] text-[#7B7A79] mb-4 leading-relaxed">
                         Create reusable skills that december can apply during conversations. Each
-                        skill has a SKILL.md that defines when it triggers and what instructions to
+                        skill has a SKILLS.md that defines when it triggers and what instructions to
                         follow.
                     </p>
 
@@ -212,7 +212,7 @@ Focus on what december wouldn't already know - domain-specific details, preferre
                         <div className="flex flex-col border border-[#2B2A29] rounded-xl overflow-hidden bg-[#131211]">
                             <div className="flex items-center justify-between px-4 py-3 bg-[#131211] border-b border-[#2B2A29]">
                                 <span className="text-[13px] font-medium text-[#D6D5C9]">
-                                    SKILL.md
+                                    SKILLS.md
                                 </span>
                                 <span className="text-[12px] text-[#4A4948]">
                                     {skillsText.length} chars

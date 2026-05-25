@@ -12,7 +12,7 @@ import {
 import React, { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 
-import { notificationAPI, Notification } from '@/features/notification/api/notification'
+import { notificationAPI, type Notification } from '@/features/notification/api/notification'
 import { Skeleton } from '@/shared/components/ui/Skeleton'
 
 interface NotificationsPopoverProps {

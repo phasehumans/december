@@ -32,7 +32,7 @@ export const ProfileSignOutAllSessionsModal: React.FC<ProfileSignOutAllSessionsM
                     <Button variant="ghost" onClick={onClose} disabled={isPending}>
                         Cancel
                     </Button>
-                    <Button variant="secondary" onClick={onConfirm} isLoading={isPending}>
+                    <Button variant="primary" onClick={onConfirm} isLoading={isPending}>
                         {isPending ? 'Signing out...' : 'Confirm'}
                     </Button>
                 </div>

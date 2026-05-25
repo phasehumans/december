@@ -453,10 +453,11 @@ export const ProfileUsageSettings: React.FC = () => {
                                             <span className="text-[#D6D5C9]">
                                                 ${(row.costInCents / 100).toFixed(2)}
                                             </span>
-                                            <Info
-                                                className="w-3.5 h-3.5 text-[#7B7A79] cursor-help"
+                                            <span
                                                 title={`Tokens: ${row.totalTokens} (In: ${row.inputTokens}, Out: ${row.outputTokens})`}
-                                            />
+                                            >
+                                                <Info className="w-3.5 h-3.5 text-[#7B7A79] cursor-help" />
+                                            </span>
                                         </div>
                                     </div>
                                 ))}
