@@ -1,9 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Folder, Settings, X, Globe, Calendar, Heart } from 'lucide-react'
+import { Settings, X, Globe, Calendar, Heart } from 'lucide-react'
 import React, { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 
 import bannerImg from '../../../../public/banner.png'
+
 import { profileAPI } from '@/features/profile/api/profile'
 import { projectAPI } from '@/features/projects/api/project'
 import { templateAPI } from '@/features/templates/api/template'

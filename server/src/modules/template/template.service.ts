@@ -3,9 +3,9 @@ import crypto from 'crypto'
 import { prisma } from '../../config/db'
 import { saveProjectFiles } from '../../lib/save-project-files'
 import { AppError } from '../../utils/appError'
+import { sendNotificationToUser } from '../notification/notification.service'
 import { loadGeneratedFilesFromManifest } from '../project/project.service'
 import { parseStoredProjectFiles } from '../project/project.utils'
-import { sendNotificationToUser } from '../notification/notification.service'
 
 type ToggleLike = {
     userId: string
@@ -24,6 +24,7 @@ type TemplateWithLikeMeta = {
     description: string | null
     prompt: string
     isFeatured: boolean
+    isSharedAsTemplate: boolean
     projectCategory: string
     createdAt: Date
     updatedAt: Date
@@ -41,6 +42,7 @@ const mapTemplateWithLikeMeta = (
         description: string | null
         prompt: string
         isFeatured: boolean
+        isSharedAsTemplate: boolean
         projectCategory: any
         createdAt: Date
         updatedAt: Date
@@ -65,6 +67,7 @@ const mapTemplateWithLikeMeta = (
         description: template.description,
         prompt: template.prompt,
         isFeatured: template.isFeatured,
+        isSharedAsTemplate: template.isSharedAsTemplate,
         projectCategory: template.projectCategory,
         createdAt: template.createdAt,
         updatedAt: template.updatedAt,
@@ -85,7 +88,17 @@ const getAllTemplates = async (userId?: string) => {
             orderBy: {
                 updatedAt: 'desc',
             },
-            include: {
+            select: {
+                id: true,
+                name: true,
+                description: true,
+                prompt: true,
+                isFeatured: true,
+                isSharedAsTemplate: true,
+                projectCategory: true,
+                createdAt: true,
+                updatedAt: true,
+                userId: true,
                 user: {
                     select: {
                         name: true,
@@ -119,7 +132,17 @@ const getTemplateById = async (data: string | { userId: string; templateId: stri
             id: templateId,
             isSharedAsTemplate: true,
         },
-        include: {
+        select: {
+            id: true,
+            name: true,
+            description: true,
+            prompt: true,
+            isFeatured: true,
+            isSharedAsTemplate: true,
+            projectCategory: true,
+            createdAt: true,
+            updatedAt: true,
+            userId: true,
             user: {
                 select: {
                     name: true,
@@ -156,7 +179,17 @@ const getFeaturedTemplates = async (userId?: string) => {
             orderBy: {
                 updatedAt: 'desc',
             },
-            include: {
+            select: {
+                id: true,
+                name: true,
+                description: true,
+                prompt: true,
+                isFeatured: true,
+                isSharedAsTemplate: true,
+                projectCategory: true,
+                createdAt: true,
+                updatedAt: true,
+                userId: true,
                 user: {
                     select: {
                         name: true,
@@ -202,6 +235,14 @@ const remixTemplate = async (data: RemixTemplate) => {
         where: {
             id: templateId,
         },
+        select: {
+            id: true,
+            name: true,
+            description: true,
+            prompt: true,
+            isSharedAsTemplate: true,
+            projectStatus: true,
+        },
     })
 
     if (!template || template.isSharedAsTemplate == false) {
@@ -224,6 +265,20 @@ const remixTemplate = async (data: RemixTemplate) => {
             prompt: currentVersion?.sourcePrompt ?? template.prompt,
             projectStatus: currentVersion ? 'READY' : template.projectStatus,
             userId: userId,
+        },
+        select: {
+            id: true,
+            name: true,
+            description: true,
+            prompt: true,
+            isStarred: true,
+            isSharedAsTemplate: true,
+            projectStatus: true,
+            versionCount: true,
+            currentVersionId: true,
+            createdAt: true,
+            updatedAt: true,
+            userId: true,
         },
     })
 

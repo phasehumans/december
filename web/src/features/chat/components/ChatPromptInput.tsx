@@ -5,8 +5,8 @@ import React, { useRef, useEffect, useCallback } from 'react'
 import type { ChatPromptInputProps } from '@/features/chat/types'
 
 import { Icons } from '@/shared/components/ui/Icons'
-import { cn } from '@/shared/lib/utils'
 import { useVoiceToText } from '@/shared/lib/useVoiceToText'
+import { cn } from '@/shared/lib/utils'
 
 export const ChatPromptInput: React.FC<ChatPromptInputProps> = ({
     value,

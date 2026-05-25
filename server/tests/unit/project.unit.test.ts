@@ -41,22 +41,42 @@ describe('project.schema', () => {
 
         test('should fail if name is too short (2 chars)', () => {
             const data = { name: 'Hi', prompt: 'Build app' }
-            expect(createProjectSchema.safeParse(data).success).toBe(false)
+            const result = createProjectSchema.safeParse(data)
+            expect(result.success).toBe(false)
+            if (!result.success) {
+                expect(result.error.flatten().fieldErrors.name).toContain(
+                    'name must be at least 3 characters'
+                )
+            }
         })
 
         test('should fail if name is too long (21 chars)', () => {
             const data = { name: 'A'.repeat(21), prompt: 'Build app' }
-            expect(createProjectSchema.safeParse(data).success).toBe(false)
+            const result = createProjectSchema.safeParse(data)
+            expect(result.success).toBe(false)
+            if (!result.success) {
+                expect(result.error.flatten().fieldErrors.name).toContain(
+                    'name must be at most 20 characters'
+                )
+            }
         })
 
         test('should fail if name is missing', () => {
             const data = { prompt: 'Build app' }
-            expect(createProjectSchema.safeParse(data).success).toBe(false)
+            const result = createProjectSchema.safeParse(data)
+            expect(result.success).toBe(false)
+            if (!result.success) {
+                expect(result.error.flatten().fieldErrors.name).toContain('name is required')
+            }
         })
 
         test('should fail if name is a number', () => {
             const data = { name: 42, prompt: 'Build app' }
-            expect(createProjectSchema.safeParse(data).success).toBe(false)
+            const result = createProjectSchema.safeParse(data)
+            expect(result.success).toBe(false)
+            if (!result.success) {
+                expect(result.error.flatten().fieldErrors.name).toContain('name is required')
+            }
         })
 
         test('should fail if prompt is missing', () => {

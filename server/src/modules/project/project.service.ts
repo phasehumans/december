@@ -85,7 +85,19 @@ const getAllProjects = async (userId: string) => {
             where: {
                 userId: userId,
             },
-            include: {
+            select: {
+                id: true,
+                name: true,
+                description: true,
+                prompt: true,
+                isStarred: true,
+                isSharedAsTemplate: true,
+                projectStatus: true,
+                versionCount: true,
+                currentVersionId: true,
+                createdAt: true,
+                updatedAt: true,
+                userId: true,
                 user: {
                     select: {
                         username: true,
@@ -117,6 +129,25 @@ const getProjectById = async (data: GetProject) => {
         where: {
             id: projectId,
             userId: userId,
+        },
+        select: {
+            id: true,
+            name: true,
+            description: true,
+            prompt: true,
+            isStarred: true,
+            isSharedAsTemplate: true,
+            projectStatus: true,
+            versionCount: true,
+            currentVersionId: true,
+            createdAt: true,
+            updatedAt: true,
+            userId: true,
+            user: {
+                select: {
+                    username: true,
+                },
+            },
         },
     })
 
@@ -231,6 +262,20 @@ const createProject = async (data: CreateProject) => {
                 isStarred: false,
                 userId,
             },
+            select: {
+                id: true,
+                name: true,
+                description: true,
+                prompt: true,
+                isStarred: true,
+                isSharedAsTemplate: true,
+                projectStatus: true,
+                versionCount: true,
+                currentVersionId: true,
+                createdAt: true,
+                updatedAt: true,
+                userId: true,
+            },
         })
 
         return project
@@ -343,6 +388,13 @@ const duplicateProject = async (data: DuplicateProject) => {
             id: projectId,
             userId: userId,
         },
+        select: {
+            id: true,
+            name: true,
+            description: true,
+            prompt: true,
+            projectStatus: true,
+        },
     })
 
     if (!sourceProject) {
@@ -380,6 +432,20 @@ const duplicateProject = async (data: DuplicateProject) => {
             prompt: currentVersion?.sourcePrompt ?? sourceProject.prompt,
             projectStatus: currentVersion ? 'READY' : sourceProject.projectStatus,
             userId: userId,
+        },
+        select: {
+            id: true,
+            name: true,
+            description: true,
+            prompt: true,
+            isStarred: true,
+            isSharedAsTemplate: true,
+            projectStatus: true,
+            versionCount: true,
+            currentVersionId: true,
+            createdAt: true,
+            updatedAt: true,
+            userId: true,
         },
     })
 

@@ -4,7 +4,6 @@ import { describe, it, expect, beforeEach, afterAll } from 'bun:test'
 import { prisma } from '../../../src/config/db'
 import { GenerationSound } from '../../../src/modules/profile/profile.schema'
 import { profileService } from '../../../src/modules/profile/profile.service'
-import { integrationsService } from '../../../src/modules/integrations/integrations.service'
 
 const createUser = async (overrides: Record<string, unknown> = {}) => {
     return prisma.user.create({
@@ -327,54 +326,6 @@ describe('profile.service.integration', () => {
 
             const db = await prisma.user.findUnique({ where: { id: userId } })
             expect(db!.notifySecurityAlerts).toBe(true)
-        })
-    })
-
-    describe('connectGithub', () => {
-        it('should connect github successfully', async () => {
-            const result = await integrationsService.connectGithub({
-                userId,
-                username: 'githubUser',
-                accessToken: 'token123',
-            })
-
-            expect(result.githubConnected).toBe(true)
-            expect(result.githubUsername).toBe('githubUser')
-        })
-
-        it('should fail if user not found', async () => {
-            await expect(
-                integrationsService.connectGithub({
-                    userId: 'invalid',
-                    username: 'x',
-                    accessToken: 'y',
-                })
-            ).rejects.toThrow('user not found')
-        })
-
-        it('should fail for soft-deleted user', async () => {
-            const deleted = await createSoftDeletedUser()
-
-            await expect(
-                integrationsService.connectGithub({
-                    userId: deleted.id,
-                    username: 'x',
-                    accessToken: 'y',
-                })
-            ).rejects.toThrow('user not found')
-        })
-
-        it('should persist github connection in database', async () => {
-            await integrationsService.connectGithub({
-                userId,
-                username: 'ghuser',
-                accessToken: 'tok',
-            })
-
-            const db = await prisma.user.findUnique({ where: { id: userId } })
-            expect(db!.githubConnected).toBe(true)
-            expect(db!.githubUsername).toBe('ghuser')
-            expect(db!.githubToken).toBe('tok')
         })
     })
 

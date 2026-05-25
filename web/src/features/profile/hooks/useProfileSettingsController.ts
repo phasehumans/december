@@ -1,8 +1,8 @@
 import React from 'react'
 
-import { profileAPI } from '@/features/profile/api/profile'
-
 import { useProfileSettingsData } from './useProfileSettingsData'
+
+import { profileAPI } from '@/features/profile/api/profile'
 
 export const useProfileSettingsController = () => {
     const [nameModalOpen, setNameModalOpen] = React.useState(false)

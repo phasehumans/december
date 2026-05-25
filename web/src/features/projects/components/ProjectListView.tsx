@@ -5,9 +5,9 @@ import { ProjectListRow } from './ProjectListRow'
 import type { SortOption, StatusFilter } from './ProjectList'
 import type { Project } from '@/features/projects/types'
 
+import { ErrorAlert } from '@/shared/components/ui/ErrorAlert'
 import { Icons } from '@/shared/components/ui/Icons'
 import { Skeleton } from '@/shared/components/ui/Skeleton'
-import { ErrorAlert } from '@/shared/components/ui/ErrorAlert'
 
 interface ProjectListViewProps {
     projects: Project[]
