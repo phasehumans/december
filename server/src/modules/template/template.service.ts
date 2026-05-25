@@ -281,11 +281,10 @@ const toggleLike = async (data: ToggleLike) => {
     const user = await prisma.user.findUnique({
         where: {
             id: userId,
-            isDeleted: false,
         },
     })
 
-    if (!user) {
+    if (!user || user.isDeleted == true) {
         throw new AppError('user not found', 404)
     }
 
@@ -330,7 +329,7 @@ const toggleLike = async (data: ToggleLike) => {
             try {
                 await sendNotificationToUser({
                     userId: template.userId,
-                    title: 'New Like',
+                    title: 'Someone liked your template',
                     message: `${user.name} liked your template "${template.name}".`,
                     type: 'SUCCESS',
                 })
@@ -354,7 +353,7 @@ const toggleLike = async (data: ToggleLike) => {
         try {
             await sendNotificationToUser({
                 userId: template.userId,
-                title: 'New Like',
+                title: 'Someone liked your template',
                 message: `${user.name} liked your template "${template.name}".`,
                 type: 'SUCCESS',
             })
