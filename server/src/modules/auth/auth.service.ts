@@ -5,9 +5,18 @@ import bcrypt from 'bcrypt'
 import { prisma } from '../../config/db'
 import { AppError } from '../../utils/appError'
 
-import { authSession, deleteSessionById, isSessionExpired } from './auth.session'
-import { authToken } from './auth.token'
-import { sendOTP, getNameFromEmail, getUsername } from './auth.utils'
+// import { authSession, deleteSessionById, isSessionExpired } from './auth.session'
+// import { authToken } from './auth.token'
+import {
+    sendOTP,
+    getNameFromEmail,
+    getUsername,
+    generateAccessToken,
+    generateRefreshToken,
+    getRefreshTokenExpiryDate,
+    verifyRefreshToken,
+    isSessionExpired,
+} from './auth.utils'
 import { sendNotificationToUser } from '../notification/notification.service'
 
 type Signup = {
@@ -90,8 +99,6 @@ const signup = async (data: Signup) => {
         },
     })
 
-    // console.log(otp)
-
     await sendOTP(newUser.email, otp)
 
     return { message: 'otp sent successfully' }
@@ -155,18 +162,18 @@ const verifyOtp = async (data: VerifyOtp) => {
 
     const sessionId = crypto.randomUUID()
 
-    const accessToken = authToken.generateAccessToken({
+    const accessToken = generateAccessToken({
         userId: user.id,
         sessionId,
     })
 
     // added jti; to grab specific token
-    const refreshToken = authToken.generateRefreshToken({
+    const refreshToken = generateRefreshToken({
         userId: user.id,
         sessionId,
     })
 
-    const refreshTokenHash = await authToken.hashToken(refreshToken)
+    const refreshTokenHash = await bcrypt.hash(refreshToken, 10)
 
     await prisma.session.create({
         data: {
@@ -175,22 +182,21 @@ const verifyOtp = async (data: VerifyOtp) => {
             refreshTokenHash: refreshTokenHash,
             userAgent: userAgent,
             ipAddress: ipAddress,
-            expiresAt: authSession.getRefreshTokenExpiryDate(),
+            expiresAt: getRefreshTokenExpiryDate(),
         },
     })
 
     try {
         await sendNotificationToUser({
             userId: user.id,
-            title: 'New Sign-In',
-            message: `We noticed a new sign-in to your account${userAgent ? ` from ${userAgent}` : ''}.`,
-            type: 'INFO',
+            title: 'Welcome to December',
+            message:
+                'Your account has been created successfully. You can now start building apps, generating code, and turning your ideas into production-ready projects with AI.',
+            type: 'SUCCESS',
         })
     } catch (error) {
-        console.error('Failed to send sign-in notification:', error)
+        console.error('failed to send welcome notification:', error)
     }
-
-    // console.log(accessToken, refreshToken)
 
     return {
         accessToken,
@@ -232,17 +238,17 @@ const login = async (data: Login) => {
 
     const sessionId = crypto.randomUUID()
 
-    const accessToken = authToken.generateAccessToken({
+    const accessToken = generateAccessToken({
         userId: existingUser.id,
         sessionId,
     })
 
-    const refreshToken = authToken.generateRefreshToken({
+    const refreshToken = generateRefreshToken({
         userId: existingUser.id,
         sessionId,
     })
 
-    const refreshTokenHash = await authToken.hashToken(refreshToken)
+    const refreshTokenHash = await bcrypt.hash(refreshToken, 10)
 
     await prisma.session.create({
         data: {
@@ -251,72 +257,14 @@ const login = async (data: Login) => {
             refreshTokenHash: refreshTokenHash,
             userAgent: userAgent,
             ipAddress: ipAddress,
-            expiresAt: authSession.getRefreshTokenExpiryDate(),
+            expiresAt: getRefreshTokenExpiryDate(),
         },
     })
-
-    try {
-        await sendNotificationToUser({
-            userId: existingUser.id,
-            title: 'New Sign-In',
-            message: `We noticed a new sign-in to your account${userAgent ? ` from ${userAgent}` : ''}.`,
-            type: 'INFO',
-        })
-    } catch (error) {
-        console.error('Failed to send sign-in notification:', error)
-    }
-
-    // console.log('accessToken: ', accessToken)
-    // console.log('refreshToken: ', refreshToken)
 
     return {
         accessToken,
         refreshToken,
     }
-}
-
-const getResettableUser = async (email: string) => {
-    const user = await prisma.user.findUnique({
-        where: {
-            email,
-        },
-    })
-
-    if (!user || user.deletedAt || user.isDeleted || !user.emailVerified) {
-        throw new AppError('invalid or expired reset code', 401)
-    }
-
-    return user
-}
-
-const assertValidResetOtp = async (data: VerifyPasswordResetOtp) => {
-    const user = await getResettableUser(data.email)
-
-    if (!user.otpHash || !user.otpExpiresAt) {
-        throw new AppError('invalid or expired reset code', 401)
-    }
-
-    if (user.otpExpiresAt < new Date()) {
-        await prisma.user.update({
-            where: {
-                id: user.id,
-            },
-            data: {
-                otpHash: null,
-                otpExpiresAt: null,
-            },
-        })
-
-        throw new AppError('invalid or expired reset code', 401)
-    }
-
-    const isValid = await bcrypt.compare(data.otp, user.otpHash)
-
-    if (!isValid) {
-        throw new AppError('invalid or expired reset code', 401)
-    }
-
-    return user
 }
 
 const requestPasswordReset = async (data: RequestPasswordReset) => {
@@ -347,12 +295,82 @@ const requestPasswordReset = async (data: RequestPasswordReset) => {
 }
 
 const verifyPasswordResetOtp = async (data: VerifyPasswordResetOtp) => {
-    await assertValidResetOtp(data)
+    const { email, otp } = data
+    const user = await prisma.user.findUnique({
+        where: {
+            email,
+        },
+    })
+
+    if (!user || user.deletedAt || user.isDeleted || !user.emailVerified) {
+        throw new AppError('invalid or expired reset code', 401)
+    }
+
+    if (!user.otpHash || !user.otpExpiresAt) {
+        throw new AppError('invalid or expired reset code', 401)
+    }
+
+    if (user.otpExpiresAt < new Date()) {
+        await prisma.user.update({
+            where: {
+                id: user.id,
+            },
+            data: {
+                otpHash: null,
+                otpExpiresAt: null,
+            },
+        })
+
+        throw new AppError('invalid or expired reset code', 401)
+    }
+
+    const isValid = await bcrypt.compare(otp, user.otpHash)
+
+    if (!isValid) {
+        throw new AppError('invalid or expired reset code', 401)
+    }
+
+    return user
 }
 
 const resetPassword = async (data: ResetPassword) => {
-    const user = await assertValidResetOtp(data)
-    const password = await bcrypt.hash(data.newPassword, 10)
+    const { email, otp, newPassword } = data
+
+    const user = await prisma.user.findUnique({
+        where: {
+            email,
+        },
+    })
+
+    if (!user || user.deletedAt || user.isDeleted || !user.emailVerified) {
+        throw new AppError('invalid or expired reset code', 401)
+    }
+
+    if (!user.otpHash || !user.otpExpiresAt) {
+        throw new AppError('invalid or expired reset code', 401)
+    }
+
+    if (user.otpExpiresAt < new Date()) {
+        await prisma.user.update({
+            where: {
+                id: user.id,
+            },
+            data: {
+                otpHash: null,
+                otpExpiresAt: null,
+            },
+        })
+
+        throw new AppError('invalid or expired reset code', 401)
+    }
+
+    const isValid = await bcrypt.compare(otp, user.otpHash)
+
+    if (!isValid) {
+        throw new AppError('invalid or expired reset code', 401)
+    }
+
+    const password = await bcrypt.hash(newPassword, 10)
 
     await prisma.$transaction([
         prisma.user.update({
@@ -419,17 +437,17 @@ const google = async (data: Google) => {
 
     const sessionId = crypto.randomUUID()
 
-    const accessToken = authToken.generateAccessToken({
+    const accessToken = generateAccessToken({
         userId: user.id,
         sessionId,
     })
 
-    const refreshToken = authToken.generateRefreshToken({
+    const refreshToken = generateRefreshToken({
         userId: user.id,
         sessionId,
     })
 
-    const refreshTokenHash = await authToken.hashToken(refreshToken)
+    const refreshTokenHash = await bcrypt.hash(refreshToken, 10)
 
     await prisma.session.create({
         data: {
@@ -438,20 +456,9 @@ const google = async (data: Google) => {
             refreshTokenHash,
             userAgent: userAgent,
             ipAddress: ipAddress,
-            expiresAt: authSession.getRefreshTokenExpiryDate(),
+            expiresAt: getRefreshTokenExpiryDate(),
         },
     })
-
-    try {
-        await sendNotificationToUser({
-            userId: user.id,
-            title: 'New Sign-In',
-            message: `We noticed a new sign-in to your account${userAgent ? ` from ${userAgent}` : ''}.`,
-            type: 'INFO',
-        })
-    } catch (error) {
-        console.error('Failed to send sign-in notification:', error)
-    }
 
     return {
         accessToken,
@@ -469,7 +476,7 @@ const refreshSession = async (data: RefreshSession) => {
     let payload: { userId: string; sessionId: string }
 
     try {
-        payload = authToken.verifyRefreshToken(refreshToken)
+        payload = verifyRefreshToken(refreshToken)
     } catch {
         throw new AppError('invalid or expired refresh token', 401)
     }
@@ -487,22 +494,31 @@ const refreshSession = async (data: RefreshSession) => {
     }
 
     if (session.userId !== userId) {
-        await deleteSessionById(session.id)
+        await prisma.session.deleteMany({
+            where: {
+                id: session.id,
+            },
+        })
         throw new AppError('invalid session', 401)
     }
 
     if (isSessionExpired(session.expiresAt)) {
-        await deleteSessionById(session.id)
+        await prisma.session.deleteMany({
+            where: {
+                id: session.id,
+            },
+        })
         throw new AppError('session expired', 401)
     }
 
-    const isRefreshTokenValid = await authToken.compareTokenHash(
-        refreshToken,
-        session.refreshTokenHash
-    )
+    const isRefreshTokenValid = await bcrypt.compare(refreshToken, session.refreshTokenHash)
 
     if (!isRefreshTokenValid) {
-        await deleteSessionById(session.id)
+        await prisma.session.deleteMany({
+            where: {
+                id: session.id,
+            },
+        })
         throw new AppError('invalid refresh token', 401)
     }
 
@@ -513,26 +529,34 @@ const refreshSession = async (data: RefreshSession) => {
     })
 
     if (!user) {
-        await deleteSessionById(session.id)
+        await prisma.session.deleteMany({
+            where: {
+                id: session.id,
+            },
+        })
         throw new AppError('user not found', 401)
     }
 
     if (user.deletedAt || user.isDeleted) {
-        await deleteSessionById(session.id)
+        await prisma.session.deleteMany({
+            where: {
+                id: session.id,
+            },
+        })
         throw new AppError('account no longer exists', 401)
     }
 
-    const accessToken = authToken.generateAccessToken({
+    const accessToken = generateAccessToken({
         userId: user.id,
         sessionId: session.id,
     })
 
-    const newRefreshToken = authToken.generateRefreshToken({
+    const newRefreshToken = generateRefreshToken({
         userId: user.id,
         sessionId: session.id,
     })
 
-    const newRefreshTokenHash = await authToken.hashToken(newRefreshToken)
+    const newRefreshTokenHash = await bcrypt.hash(newRefreshToken, 10)
 
     await prisma.session.update({
         where: {
@@ -540,7 +564,7 @@ const refreshSession = async (data: RefreshSession) => {
         },
         data: {
             refreshTokenHash: newRefreshTokenHash,
-            expiresAt: authSession.getRefreshTokenExpiryDate(),
+            expiresAt: getRefreshTokenExpiryDate(),
         },
     })
 

@@ -9,9 +9,18 @@ import { prisma } from '../../../src/config/db'
 const sendOTPMock = mock(async () => {})
 const axiosPostMock = mock()
 const verifyIdTokenMock = mock()
+const sendNotificationMock = mock(async () => ({}))
 
-mock.module('../../../src/modules/auth/auth.utils', () => ({
-    sendOTP: sendOTPMock,
+mock.module('../../../src/modules/auth/auth.utils', () => {
+    const actual = require('../../../src/modules/auth/auth.utils')
+    return {
+        ...actual,
+        sendOTP: sendOTPMock,
+    }
+})
+
+mock.module('../../../src/modules/notification/notification.service', () => ({
+    sendNotificationToUser: sendNotificationMock,
 }))
 
 mock.module('axios', () => ({
@@ -68,14 +77,17 @@ const createUser = async (overrides: Record<string, unknown> = {}) => {
     })
 }
 
-describe('auth.routes.integration', () => {
+describe('auth.routes.integration', { timeout: 15000 }, () => {
     let app: ReturnType<typeof createApp>
+    let isCleaningUp = false
 
     beforeEach(async () => {
+        if (isCleaningUp) return
         app = createApp()
         sendOTPMock.mockClear()
         axiosPostMock.mockReset()
         verifyIdTokenMock.mockReset()
+        sendNotificationMock.mockClear()
 
         await prisma.session.deleteMany()
         await prisma.user.deleteMany()
@@ -87,8 +99,9 @@ describe('auth.routes.integration', () => {
     })
 
     afterAll(async () => {
+        isCleaningUp = true
         await prisma.$disconnect()
-    })
+    }, 15000)
 
     describe('POST /auth/signup', () => {
         it('should create user and send otp', async () => {

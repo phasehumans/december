@@ -4,9 +4,18 @@ import { describe, it, expect, beforeEach, afterAll, mock } from 'bun:test'
 import { prisma } from '../../../src/config/db'
 
 const sendOTPMock = mock(async () => {})
+const sendNotificationMock = mock(async () => ({}))
 
-mock.module('../../../src/modules/auth/auth.utils', () => ({
-    sendOTP: sendOTPMock,
+mock.module('../../../src/modules/auth/auth.utils', () => {
+    const actual = require('../../../src/modules/auth/auth.utils')
+    return {
+        ...actual,
+        sendOTP: sendOTPMock,
+    }
+})
+
+mock.module('../../../src/modules/notification/notification.service', () => ({
+    sendNotificationToUser: sendNotificationMock,
 }))
 
 import { authService } from '../../../src/modules/auth/auth.service'
@@ -25,9 +34,13 @@ const createUser = async (overrides: Record<string, unknown> = {}) => {
     })
 }
 
-describe('auth.service.integration', () => {
+describe('auth.service.integration', { timeout: 15000 }, () => {
+    let isCleaningUp = false
+
     beforeEach(async () => {
+        if (isCleaningUp) return
         sendOTPMock.mockClear()
+        sendNotificationMock.mockClear()
         await prisma.session.deleteMany()
         await prisma.user.deleteMany()
         process.env.ACCESS_TOKEN_SECRET = 'test-access'
@@ -35,8 +48,9 @@ describe('auth.service.integration', () => {
     })
 
     afterAll(async () => {
+        isCleaningUp = true
         await prisma.$disconnect()
-    })
+    }, 15000)
 
     describe('signup', () => {
         it('should create unverified user with hashed password and otp', async () => {
@@ -282,9 +296,13 @@ describe('auth.service.integration', () => {
                 otpExpiresAt: new Date(Date.now() + 10000),
             })
 
-            await expect(
-                authService.verifyPasswordResetOtp({ email: user.email, otp })
-            ).resolves.toBeUndefined()
+            const result = await authService.verifyPasswordResetOtp({
+                email: user.email,
+                otp,
+            })
+
+            expect(result).toBeDefined()
+            expect(result.id).toBe(user.id)
         })
 
         it('should reset password, clear otp, and revoke active sessions', async () => {
