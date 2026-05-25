@@ -60,31 +60,38 @@ type RazorpaySubscriptionLike = {
     short_url?: string
 }
 
-const getUserForBilling = async (userId: string) => {
-    const user = await prisma.user.findUnique({
-        where: {
-            id: userId,
-            isDeleted: false,
-        },
-        select: {
-            id: true,
-            name: true,
-            email: true,
-            subscriptionPlan: true,
-            subscriptionStatus: true,
-            currentPeriodEnd: true,
-            subscription: true,
-        },
-    })
+// const getUserForBilling = async (userId: string) => {
+//     const user = await prisma.user.findUnique({
+//         where: {
+//             id: userId,
+//         },
+//         select: {
+//             id: true,
+//             name: true,
+//             email: true,
+//             subscriptionPlan: true,
+//             subscriptionStatus: true,
+//             currentPeriodEnd: true,
+//             subscription: true,
+//             isDeleted: true
+//         },
+//     })
 
-    if (!user) {
-        throw new AppError('user not found', 404)
-    }
+//     if (!user || user.isDeleted == true) {
+//         throw new AppError('user not found', 404)
+//     }
 
-    return user
+//     return user
+// }
+
+type BillingUser = {
+    subscriptionPlan: string | null
+    subscriptionStatus: string | null
+    currentPeriodEnd: Date | null
+    subscription: unknown
 }
 
-const buildSubscriptionSummary = (user: Awaited<ReturnType<typeof getUserForBilling>>) => {
+const buildSubscriptionSummary = (user: BillingUser) => {
     return {
         plan: user.subscriptionPlan,
         status: user.subscriptionStatus,
@@ -94,7 +101,25 @@ const buildSubscriptionSummary = (user: Awaited<ReturnType<typeof getUserForBill
 }
 
 const getOverview = async (userId: string) => {
-    const user = await getUserForBilling(userId)
+    const user = await prisma.user.findUnique({
+        where: {
+            id: userId,
+        },
+        select: {
+            id: true,
+            name: true,
+            email: true,
+            subscriptionPlan: true,
+            subscriptionStatus: true,
+            currentPeriodEnd: true,
+            subscription: true,
+            isDeleted: true,
+        },
+    })
+
+    if (!user || user.isDeleted == true) {
+        throw new AppError('user not found', 404)
+    }
 
     const now = new Date()
     const subscriptionPeriodStart = user.subscription?.currentPeriodStart
@@ -181,7 +206,25 @@ const getPlans = async () => {
 }
 
 const createSubscription = async (data: CreateSubscriptionInput) => {
-    const user = await getUserForBilling(data.userId)
+    const user = await prisma.user.findUnique({
+        where: {
+            id: data.userId,
+        },
+        select: {
+            id: true,
+            name: true,
+            email: true,
+            subscriptionPlan: true,
+            subscriptionStatus: true,
+            currentPeriodEnd: true,
+            subscription: true,
+            isDeleted: true,
+        },
+    })
+
+    if (!user || user.isDeleted == true) {
+        throw new AppError('user not found', 404)
+    }
 
     if (user.subscriptionStatus === 'ACTIVE' && user.subscriptionPlan === data.plan) {
         throw new AppError('subscription already active', 409)
@@ -294,7 +337,26 @@ const verifySubscription = async (data: VerifySubscriptionInput) => {
         throw new AppError('invalid razorpay signature', 400)
     }
 
-    await getUserForBilling(data.userId)
+    // await getUserForBilling(data.userId)
+    const user = await prisma.user.findUnique({
+        where: {
+            id: data.userId,
+        },
+        select: {
+            id: true,
+            name: true,
+            email: true,
+            subscriptionPlan: true,
+            subscriptionStatus: true,
+            currentPeriodEnd: true,
+            subscription: true,
+            isDeleted: true,
+        },
+    })
+
+    if (!user || user.isDeleted == true) {
+        throw new AppError('user not found', 404)
+    }
 
     const subscription = (await razorpay.subscriptions.fetch(
         data.razorpay_subscription_id
@@ -318,7 +380,25 @@ const verifySubscription = async (data: VerifySubscriptionInput) => {
 }
 
 const cancelSubscription = async (data: CancelSubscriptionInput) => {
-    const user = await getUserForBilling(data.userId)
+    const user = await prisma.user.findUnique({
+        where: {
+            id: data.userId,
+        },
+        select: {
+            id: true,
+            name: true,
+            email: true,
+            subscriptionPlan: true,
+            subscriptionStatus: true,
+            currentPeriodEnd: true,
+            subscription: true,
+            isDeleted: true,
+        },
+    })
+
+    if (!user || user.isDeleted == true) {
+        throw new AppError('user not found', 404)
+    }
 
     if (!user.subscription) {
         throw new AppError('subscription not found', 404)
@@ -377,7 +457,25 @@ const cancelSubscription = async (data: CancelSubscriptionInput) => {
 }
 
 const getCreditsHistory = async (data: CreditsHistoryInput) => {
-    await getUserForBilling(data.userId)
+    const user = await prisma.user.findUnique({
+        where: {
+            id: data.userId,
+        },
+        select: {
+            id: true,
+            name: true,
+            email: true,
+            subscriptionPlan: true,
+            subscriptionStatus: true,
+            currentPeriodEnd: true,
+            subscription: true,
+            isDeleted: true,
+        },
+    })
+
+    if (!user || user.isDeleted == true) {
+        throw new AppError('user not found', 404)
+    }
 
     const where: any = {
         userId: data.userId,
@@ -436,7 +534,25 @@ const getCreditsHistory = async (data: CreditsHistoryInput) => {
 }
 
 const createPortalSession = async (userId: string) => {
-    const user = await getUserForBilling(userId)
+    const user = await prisma.user.findUnique({
+        where: {
+            id: userId,
+        },
+        select: {
+            id: true,
+            name: true,
+            email: true,
+            subscriptionPlan: true,
+            subscriptionStatus: true,
+            currentPeriodEnd: true,
+            subscription: true,
+            isDeleted: true,
+        },
+    })
+
+    if (!user || user.isDeleted == true) {
+        throw new AppError('user not found', 404)
+    }
 
     return {
         provider: 'razorpay',
