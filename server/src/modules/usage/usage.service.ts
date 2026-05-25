@@ -1,7 +1,7 @@
 import { prisma } from '../../config/db'
 import { AppError } from '../../utils/appError'
 
-const FREE_MONTHLY_CREDIT_CENTS = 500
+const FREE_MONTHLY_CREDIT_CENTS = 100
 
 type UsageUser = {
     id: string
@@ -12,6 +12,7 @@ type UsageUser = {
         currentPeriodStart: Date
         currentPeriodEnd: Date
     } | null
+    createdAt: Date
 }
 
 type RecordUsageEventInput = {
@@ -41,6 +42,14 @@ const startOfNextUtcMonth = (date: Date) => {
 }
 
 const resolveCurrentPeriod = (user: UsageUser, now = new Date()) => {
+    const isPro = user.subscriptionPlan === 'PRO' && user.subscriptionStatus === 'ACTIVE'
+    if (!isPro) {
+        return {
+            periodStart: user.createdAt,
+            periodEnd: new Date('2099-12-31T23:59:59.000Z'),
+        }
+    }
+
     if (
         user.subscription &&
         user.subscription.currentPeriodStart <= now &&
@@ -77,6 +86,7 @@ const getUsageUser = async (userId: string): Promise<UsageUser> => {
             isDeleted: true,
             subscriptionPlan: true,
             subscriptionStatus: true,
+            createdAt: true,
             subscription: {
                 select: {
                     currentPeriodStart: true,
@@ -90,20 +100,29 @@ const getUsageUser = async (userId: string): Promise<UsageUser> => {
         throw new AppError('user not found', 404)
     }
 
-    return user
+    return user as UsageUser
 }
 
-const getPeriodAggregate = async (userId: string, periodStart: Date, periodEnd: Date) => {
+const getPeriodAggregate = async (
+    userId: string,
+    periodStart: Date,
+    periodEnd: Date,
+    isPro: boolean
+) => {
+    const where: any = {
+        userId,
+        createdAt: {
+            gte: periodStart,
+            lt: periodEnd,
+        },
+    }
+    if (isPro) {
+        where.periodStart = periodStart
+    }
+
     const [aggregate, eventCount] = await Promise.all([
         prisma.usageEvent.aggregate({
-            where: {
-                userId,
-                periodStart,
-                createdAt: {
-                    gte: periodStart,
-                    lt: periodEnd,
-                },
-            },
+            where,
             _sum: {
                 inputTokens: true,
                 outputTokens: true,
@@ -112,14 +131,7 @@ const getPeriodAggregate = async (userId: string, periodStart: Date, periodEnd: 
             },
         }),
         prisma.usageEvent.count({
-            where: {
-                userId,
-                periodStart,
-                createdAt: {
-                    gte: periodStart,
-                    lt: periodEnd,
-                },
-            },
+            where,
         }),
     ])
 
@@ -135,7 +147,8 @@ const getPeriodAggregate = async (userId: string, periodStart: Date, periodEnd: 
 const getCurrentUsage = async (userId: string) => {
     const user = await getUsageUser(userId)
     const { periodStart, periodEnd } = resolveCurrentPeriod(user)
-    const usage = await getPeriodAggregate(user.id, periodStart, periodEnd)
+    const isPro = user.subscriptionPlan === 'PRO' && user.subscriptionStatus === 'ACTIVE'
+    const usage = await getPeriodAggregate(user.id, periodStart, periodEnd, isPro)
     const creditLimitInCents = resolveCreditLimit(user)
     const remainingCreditsInCents =
         creditLimitInCents === null ? null : Math.max(creditLimitInCents - usage.costInCents, 0)

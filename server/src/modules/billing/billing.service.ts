@@ -114,6 +114,7 @@ const getOverview = async (userId: string) => {
             currentPeriodEnd: true,
             subscription: true,
             isDeleted: true,
+            createdAt: true,
         },
     })
 
@@ -122,23 +123,33 @@ const getOverview = async (userId: string) => {
     }
 
     const now = new Date()
-    const subscriptionPeriodStart = user.subscription?.currentPeriodStart
-    const subscriptionPeriodEnd = user.subscription?.currentPeriodEnd
-    const hasActiveSubscriptionPeriod =
-        subscriptionPeriodStart !== undefined &&
-        subscriptionPeriodEnd !== undefined &&
-        subscriptionPeriodEnd > now
-    const periodStart = hasActiveSubscriptionPeriod
-        ? subscriptionPeriodStart
-        : new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
-    const periodEnd = hasActiveSubscriptionPeriod
-        ? subscriptionPeriodEnd
-        : new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1))
+    const isPro = user.subscriptionPlan === 'PRO' && user.subscriptionStatus === 'ACTIVE'
+
+    let periodStart: Date
+    let periodEnd: Date
+
+    if (!isPro) {
+        periodStart = user.createdAt
+        periodEnd = new Date('2099-12-31T23:59:59.000Z')
+    } else {
+        const subscriptionPeriodStart = user.subscription?.currentPeriodStart
+        const subscriptionPeriodEnd = user.subscription?.currentPeriodEnd
+        const hasActiveSubscriptionPeriod =
+            subscriptionPeriodStart !== undefined &&
+            subscriptionPeriodEnd !== undefined &&
+            subscriptionPeriodEnd > now
+        periodStart = hasActiveSubscriptionPeriod
+            ? subscriptionPeriodStart
+            : new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
+        periodEnd = hasActiveSubscriptionPeriod
+            ? subscriptionPeriodEnd
+            : new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1))
+    }
 
     const aggregate = await prisma.usageEvent.aggregate({
         where: {
             userId,
-            periodStart,
+            ...(isPro ? { periodStart } : {}),
             createdAt: {
                 gte: periodStart,
                 lt: periodEnd,
@@ -153,8 +164,7 @@ const getOverview = async (userId: string) => {
     })
 
     const usedInCents = aggregate._sum.costInCents ?? 0
-    const creditLimitInCents =
-        user.subscriptionPlan === 'PRO' && user.subscriptionStatus === 'ACTIVE' ? null : 500
+    const creditLimitInCents = isPro ? 500 : 100
 
     return {
         ...buildSubscriptionSummary(user),
