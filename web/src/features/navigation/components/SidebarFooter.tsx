@@ -64,7 +64,6 @@ export const SidebarFooter: React.FC<
                                 <span className="font-medium text-[13px] text-[#CAC9C9] truncate tracking-tight text-left">
                                     {user?.name ||
                                         profile?.name ||
-                                        quickInfo?.name ||
                                         quickInfo?.firstName ||
                                         'Profile'}
                                 </span>

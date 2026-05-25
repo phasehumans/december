@@ -47,7 +47,7 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({ category, onClick })
             ],
         }
 
-        return fallbacks[catId] || fallbacks.apps
+        return (fallbacks[catId] || fallbacks.apps) as string[]
     }
 
     const images = getMockImages(category.id)

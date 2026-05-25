@@ -130,7 +130,14 @@ export const UserProfilePopover: React.FC<UserProfilePopoverProps> = ({
         )
     }
 
-    const menuItems = [
+    const menuItems: Array<{
+        icon: React.ComponentType<any>
+        label: string
+        action?: () => void
+        external?: boolean
+        rightElement?: React.ReactNode
+        shortcut?: string
+    }> = [
         { icon: User, label: 'Profile', action: onProfileModal },
         { icon: SettingsIcon, label: 'Settings', action: onSettings },
         { icon: MessageSquare, label: 'Feedback', action: onFeedbackModal },
