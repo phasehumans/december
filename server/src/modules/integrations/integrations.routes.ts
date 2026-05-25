@@ -7,6 +7,7 @@ import { integrationsController } from './integrations.controller'
 const integrationsRouter = Router()
 
 integrationsRouter.get('/vercel/connect', integrationsController.connectVercel)
+integrationsRouter.get('/github/connect', integrationsController.connectGithub)
 
 integrationsRouter.use(authMiddleware)
 integrationsRouter.get('/github/repos', integrationsController.getUserGithubRepos)

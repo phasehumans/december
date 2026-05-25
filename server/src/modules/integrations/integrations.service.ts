@@ -26,6 +26,12 @@ type ConnectVercel = {
     configurationId?: string
 }
 
+type ConnectGithub = {
+    userId: string
+    accessToken: string
+    username: string
+}
+
 type VercelTokenResponse = {
     access_token: string
     user_id: string
@@ -291,9 +297,46 @@ const connectNotion = async ({
     }
 }
 
+const connectGithub = async (data: ConnectGithub) => {
+    const { username, accessToken, userId } = data
+
+    const existingUser = await prisma.user.findUnique({
+        where: {
+            id: userId,
+        },
+        select: {
+            id: true,
+            isDeleted: true,
+        },
+    })
+
+    if (!existingUser || existingUser.isDeleted) {
+        throw new AppError('user not found', 404)
+    }
+
+    const updatedUser = await prisma.user.update({
+        where: {
+            id: userId,
+        },
+        data: {
+            githubUsername: username,
+            githubToken: accessToken,
+            githubConnected: true,
+        },
+        select: {
+            id: true,
+            githubConnected: true,
+            githubUsername: true,
+        },
+    })
+
+    return updatedUser
+}
+
 export const integrationsService = {
     listGithubRepos,
     connectVercel,
     connectSupabase,
     connectNotion,
+    connectGithub,
 }

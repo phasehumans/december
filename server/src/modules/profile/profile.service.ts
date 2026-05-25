@@ -5,6 +5,35 @@ import { AppError } from '../../utils/appError'
 
 import type { GenerationSound } from './profile.schema'
 
+export const profileSelect = {
+    id: true,
+    name: true,
+    username: true,
+    email: true,
+    createdAt: true,
+    updatedAt: true,
+    emailVerified: true,
+    googleId: true,
+    githubConnected: true,
+    githubUsername: true,
+    vercelConnected: true,
+    vercelTeamId: true,
+    vercelConfigurationId: true,
+    supabaseConnected: true,
+    supabaseUserId: true,
+    supabaseConnectedAt: true,
+    notionWorkspaceId: true,
+    notionWorkspaceName: true,
+    notifyProjectActivity: true,
+    notifyProductUpdates: true,
+    notifySecurityAlerts: true,
+    chatSuggestions: true,
+    generationSound: true,
+    skills: true,
+    avatarUrl: true,
+    isDeleted: true,
+}
+
 type UpdateName = {
     userId: string
     name: string
@@ -31,12 +60,6 @@ type UpdateNotification = {
     notifyProjectActivity?: boolean
     notifyProductUpdates?: boolean
     notifySecurityAlerts?: boolean
-}
-
-type ConnectGithub = {
-    userId: string
-    accessToken: string
-    username: string
 }
 
 type Signout = {
@@ -72,9 +95,14 @@ const getInfo = async (data: string) => {
         where: {
             id: data,
         },
+        select: {
+            name: true,
+            githubConnected: true,
+            isDeleted: true,
+        },
     })
 
-    if (!profile || profile.isDeleted == true) {
+    if (!profile || profile.isDeleted === true) {
         throw new AppError('user not found', 404)
     }
 
@@ -89,15 +117,23 @@ const getProfileCard = async (data: string) => {
         where: {
             id: data,
         },
+        select: {
+            id: true,
+            name: true,
+            username: true,
+            email: true,
+            avatarUrl: true,
+            createdAt: true,
+            isDeleted: true,
+        },
     })
 
-    // change object in service itself not in controller
-
-    if (!profile || profile.isDeleted == true) {
+    if (!profile || profile.isDeleted === true) {
         throw new AppError('user not found', 404)
     }
 
-    return profile
+    const { isDeleted, ...rest } = profile
+    return rest
 }
 
 const getProfile = async (data: string) => {
@@ -105,11 +141,10 @@ const getProfile = async (data: string) => {
         where: {
             id: data,
         },
+        select: profileSelect,
     })
 
-    // change object in service itself not in controller
-
-    if (!profile || profile.isDeleted == true) {
+    if (!profile || profile.isDeleted === true) {
         throw new AppError('user not found', 404)
     }
 
@@ -123,9 +158,13 @@ const updateName = async (data: UpdateName) => {
         where: {
             id: userId,
         },
+        select: {
+            id: true,
+            isDeleted: true,
+        },
     })
 
-    if (!existingUser || existingUser.isDeleted == true) {
+    if (!existingUser || existingUser.isDeleted === true) {
         throw new AppError('user not found', 404)
     }
 
@@ -135,6 +174,9 @@ const updateName = async (data: UpdateName) => {
         },
         data: {
             name: name,
+        },
+        select: {
+            name: true,
         },
     })
 
@@ -148,9 +190,14 @@ const updateUsername = async (data: UpdateUsername) => {
         where: {
             id: userId,
         },
+        select: {
+            id: true,
+            username: true,
+            isDeleted: true,
+        },
     })
 
-    if (!existingUser || existingUser.isDeleted == true) {
+    if (!existingUser || existingUser.isDeleted === true) {
         throw new AppError('user not found', 404)
     }
 
@@ -161,6 +208,9 @@ const updateUsername = async (data: UpdateUsername) => {
     const existingUsername = await prisma.user.findUnique({
         where: {
             username: username,
+        },
+        select: {
+            id: true,
         },
     })
 
@@ -175,6 +225,9 @@ const updateUsername = async (data: UpdateUsername) => {
             },
             data: {
                 username: username,
+            },
+            select: {
+                username: true,
             },
         })
 
@@ -196,9 +249,13 @@ const updateAvatarUrl = async (data: UpdateAvatarUrl) => {
         where: {
             id: userId,
         },
+        select: {
+            id: true,
+            isDeleted: true,
+        },
     })
 
-    if (!existingUser || existingUser.isDeleted == true) {
+    if (!existingUser || existingUser.isDeleted === true) {
         throw new AppError('user not found', 404)
     }
 
@@ -208,6 +265,9 @@ const updateAvatarUrl = async (data: UpdateAvatarUrl) => {
         },
         data: {
             avatarUrl: avatarUrl,
+        },
+        select: {
+            avatarUrl: true,
         },
     })
 
@@ -221,9 +281,14 @@ const changePassword = async (data: ChangePassword) => {
         where: {
             id: userId,
         },
+        select: {
+            id: true,
+            password: true,
+            isDeleted: true,
+        },
     })
 
-    if (!existingUser || existingUser.isDeleted == true) {
+    if (!existingUser || existingUser.isDeleted === true) {
         throw new AppError('user not found', 404)
     }
 
@@ -245,16 +310,19 @@ const changePassword = async (data: ChangePassword) => {
 
     const hashPassword = await bcrypt.hash(newPassword, 10)
 
-    const updatedUser = await prisma.user.update({
+    await prisma.user.update({
         where: {
             id: userId,
         },
         data: {
             password: hashPassword,
         },
+        select: {
+            id: true,
+        },
     })
 
-    return updatedUser
+    return { success: true }
 }
 
 const updateNotifications = async (data: UpdateNotification) => {
@@ -264,9 +332,13 @@ const updateNotifications = async (data: UpdateNotification) => {
         where: {
             id: userId,
         },
+        select: {
+            id: true,
+            isDeleted: true,
+        },
     })
 
-    if (!existingUser || existingUser.isDeleted == true) {
+    if (!existingUser || existingUser.isDeleted === true) {
         throw new AppError('user not found', 404)
     }
 
@@ -297,35 +369,10 @@ const updateNotifications = async (data: UpdateNotification) => {
             id: userId,
         },
         data: updateData,
-    })
-
-    return updatedUser
-}
-
-const connectGithub = async (data: ConnectGithub) => {
-    const { username, accessToken, userId } = data
-
-    // console.log("inside service: ", username, accessToken)
-
-    const existingUser = await prisma.user.findUnique({
-        where: {
-            id: userId,
-            isDeleted: false,
-        },
-    })
-
-    if (!existingUser) {
-        throw new AppError('user not found', 404)
-    }
-
-    const updatedUser = await prisma.user.update({
-        where: {
-            id: userId,
-        },
-        data: {
-            githubUsername: username,
-            githubToken: accessToken,
-            githubConnected: true,
+        select: {
+            notifyProjectActivity: true,
+            notifyProductUpdates: true,
+            notifySecurityAlerts: true,
         },
     })
 
@@ -381,6 +428,10 @@ const deleteAccount = async (data: DeleteAccount) => {
         where: {
             id: userId,
         },
+        select: {
+            id: true,
+            isDeleted: true,
+        },
     })
 
     if (!existingUser) {
@@ -411,6 +462,9 @@ const deleteAccount = async (data: DeleteAccount) => {
                 isDeleted: true,
                 deletedAt: new Date(),
             },
+            select: {
+                id: true,
+            },
         }),
     ])
 }
@@ -422,13 +476,18 @@ const chatSuggestions = async (data: ChatSuggestions) => {
         where: {
             id: userId,
         },
+        select: {
+            id: true,
+            chatSuggestions: true,
+            isDeleted: true,
+        },
     })
 
-    if (!existingUser || existingUser.isDeleted == true) {
+    if (!existingUser || existingUser.isDeleted === true) {
         throw new AppError('user not found', 404)
     }
 
-    if (existingUser.chatSuggestions == chatSuggestions) {
+    if (existingUser.chatSuggestions === chatSuggestions) {
         throw new AppError(
             'new input must be different from the current chat suggestion state',
             400
@@ -442,6 +501,9 @@ const chatSuggestions = async (data: ChatSuggestions) => {
         data: {
             chatSuggestions: chatSuggestions,
         },
+        select: {
+            chatSuggestions: true,
+        },
     })
 
     return updatedUser
@@ -454,13 +516,18 @@ const generationSound = async (data: GenerationSoundType) => {
         where: {
             id: userId,
         },
+        select: {
+            id: true,
+            generationSound: true,
+            isDeleted: true,
+        },
     })
 
-    if (!existingUser || existingUser.isDeleted == true) {
+    if (!existingUser || existingUser.isDeleted === true) {
         throw new AppError('user not found', 404)
     }
 
-    if (existingUser.generationSound == generationSound) {
+    if (existingUser.generationSound === generationSound) {
         throw new AppError(
             'new input must be different from the current generation sound state',
             400
@@ -473,6 +540,9 @@ const generationSound = async (data: GenerationSoundType) => {
         },
         data: {
             generationSound: generationSound,
+        },
+        select: {
+            generationSound: true,
         },
     })
 
@@ -490,7 +560,7 @@ const getSkills = async (userId: string) => {
         },
     })
 
-    if (!user || user.isDeleted == true) {
+    if (!user || user.isDeleted === true) {
         throw new AppError('user not found', 404)
     }
 
@@ -504,9 +574,13 @@ const updateSkills = async (data: UpdateSkills) => {
         where: {
             id: userId,
         },
+        select: {
+            id: true,
+            isDeleted: true,
+        },
     })
 
-    if (!existingUser || existingUser.isDeleted == true) {
+    if (!existingUser || existingUser.isDeleted === true) {
         throw new AppError('user not found', 404)
     }
 
@@ -516,6 +590,9 @@ const updateSkills = async (data: UpdateSkills) => {
         },
         data: {
             skills,
+        },
+        select: {
+            skills: true,
         },
     })
 
@@ -527,9 +604,13 @@ const deleteSkills = async (userId: string) => {
         where: {
             id: userId,
         },
+        select: {
+            id: true,
+            isDeleted: true,
+        },
     })
 
-    if (!existingUser || existingUser.isDeleted == true) {
+    if (!existingUser || existingUser.isDeleted === true) {
         throw new AppError('user not found', 404)
     }
 
@@ -539,6 +620,9 @@ const deleteSkills = async (userId: string) => {
         },
         data: {
             skills: null,
+        },
+        select: {
+            id: true,
         },
     })
 }
@@ -552,7 +636,6 @@ export const profileService = {
     updateAvatarUrl,
     changePassword,
     updateNotifications,
-    connectGithub,
     signout,
     signoutAll,
     deleteAccount,

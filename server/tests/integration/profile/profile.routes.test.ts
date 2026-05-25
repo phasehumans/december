@@ -18,7 +18,7 @@ const createTestUser = async (overrides: Record<string, unknown> = {}) => {
         data: {
             id: TEST_USER_ID,
             email: `test-${crypto.randomUUID()}@example.com`,
-            name: 'Chaitanya Dev',
+            name: 'Chaitanya Sonawane',
             username: `user_${crypto.randomUUID().slice(0, 12)}`,
             password: await bcrypt.hash('Password123', 10),
             isDeleted: false,
@@ -57,7 +57,6 @@ describe('profile.routes.integration', () => {
             next()
         })
         const testRouter = Router()
-        testRouter.get('/github/connect', profileController.connectGithub)
         testRouter.get('/info', profileController.getInfo)
         testRouter.get('/card', profileController.getProfileCard)
         testRouter.get('/', profileController.getProfile)
@@ -91,7 +90,7 @@ describe('profile.routes.integration', () => {
 
             expect(res.status).toBe(200)
             expect(res.body.success).toBe(true)
-            expect(res.body.data.firstName).toBe('Chaitanya')
+            expect(res.body.data.firstName).toBe('Chaitanya Sonawane')
         })
 
         it('should return 404 for soft-deleted user', async () => {

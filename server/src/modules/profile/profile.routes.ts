@@ -5,8 +5,6 @@ import { authMiddleware } from '../../middleware/auth.middleware'
 import { profileController } from './profile.controller'
 
 const profileRouter = Router()
-
-profileRouter.get('/github/connect', profileController.connectGithub)
 profileRouter.use(authMiddleware)
 profileRouter.get('/info', profileController.getInfo)
 profileRouter.get('/card', profileController.getProfileCard)

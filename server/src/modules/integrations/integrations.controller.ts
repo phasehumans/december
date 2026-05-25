@@ -161,9 +161,72 @@ const connectNotion = async (req: Request, res: Response) => {
     }
 }
 
+const connectGithub = async (req: Request, res: Response) => {
+    const code = req.query.code as string
+    const userId = req.query.state as string
+
+    if (!code) {
+        return res.status(400).json({
+            success: false,
+            message: 'no code provided',
+        })
+    }
+
+    type GithubTokenResponse = {
+        access_token: string
+        token_type: string
+        scope: string
+    }
+
+    try {
+        const tokenResponse = await fetch('https://github.com/login/oauth/access_token', {
+            method: 'POST',
+            headers: {
+                Accept: 'application/json',
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                client_id: process.env.GITHUB_CLIENT_ID,
+                client_secret: process.env.GITHUB_CLIENT_SECRET,
+                code,
+            }),
+        })
+
+        const tokenData = (await tokenResponse.json()) as GithubTokenResponse
+        const accessToken = tokenData.access_token
+
+        const userRes = await fetch('https://api.github.com/user', {
+            headers: {
+                Authorization: `Bearer ${accessToken}`,
+            },
+        })
+
+        const githubUser: any = await userRes.json()
+        const username = githubUser.login
+
+        await integrationsService.connectGithub({ userId, accessToken, username })
+        return res.redirect('http://localhost:3000/profile/integrations')
+    } catch (error) {
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({
+                success: false,
+                message: 'failed to connect with github',
+                errors: error.message,
+            })
+        }
+
+        return res.status(500).json({
+            success: false,
+            message: 'failed to connect with github',
+            errors: error instanceof Error ? error.message : 'unknown error',
+        })
+    }
+}
+
 export const integrationsController = {
     getUserGithubRepos,
     connectVercel,
     connectSupabase,
     connectNotion,
+    connectGithub,
 }
