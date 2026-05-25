@@ -4,6 +4,7 @@ import { describe, it, expect, beforeEach, afterAll } from 'bun:test'
 import { prisma } from '../../../src/config/db'
 import { GenerationSound } from '../../../src/modules/profile/profile.schema'
 import { profileService } from '../../../src/modules/profile/profile.service'
+import { integrationsService } from '../../../src/modules/integrations/integrations.service'
 
 const createUser = async (overrides: Record<string, unknown> = {}) => {
     return prisma.user.create({
@@ -58,7 +59,7 @@ describe('profile.service.integration', () => {
         it('should return firstName and github status', async () => {
             const result = await profileService.getInfo(userId)
 
-            expect(result.firstName).toBe('Chaitanya')
+            expect(result.firstName).toBe('Chaitanya Sonawane')
             expect(result.isGithubConnected).toBe(false)
         })
 
@@ -208,13 +209,14 @@ describe('profile.service.integration', () => {
 
     describe('changePassword', () => {
         it('should hash and update password', async () => {
-            const result = await profileService.changePassword({
+            await profileService.changePassword({
                 userId,
                 currentPassword: 'Password123',
                 newPassword: 'NewPass123',
             })
 
-            const isValid = await bcrypt.compare('NewPass123', result.password!)
+            const db = await prisma.user.findUnique({ where: { id: userId } })
+            const isValid = await bcrypt.compare('NewPass123', db!.password!)
             expect(isValid).toBe(true)
         })
 
@@ -330,7 +332,7 @@ describe('profile.service.integration', () => {
 
     describe('connectGithub', () => {
         it('should connect github successfully', async () => {
-            const result = await profileService.connectGithub({
+            const result = await integrationsService.connectGithub({
                 userId,
                 username: 'githubUser',
                 accessToken: 'token123',
@@ -342,7 +344,11 @@ describe('profile.service.integration', () => {
 
         it('should fail if user not found', async () => {
             await expect(
-                profileService.connectGithub({ userId: 'invalid', username: 'x', accessToken: 'y' })
+                integrationsService.connectGithub({
+                    userId: 'invalid',
+                    username: 'x',
+                    accessToken: 'y',
+                })
             ).rejects.toThrow('user not found')
         })
 
@@ -350,7 +356,7 @@ describe('profile.service.integration', () => {
             const deleted = await createSoftDeletedUser()
 
             await expect(
-                profileService.connectGithub({
+                integrationsService.connectGithub({
                     userId: deleted.id,
                     username: 'x',
                     accessToken: 'y',
@@ -359,7 +365,11 @@ describe('profile.service.integration', () => {
         })
 
         it('should persist github connection in database', async () => {
-            await profileService.connectGithub({ userId, username: 'ghuser', accessToken: 'tok' })
+            await integrationsService.connectGithub({
+                userId,
+                username: 'ghuser',
+                accessToken: 'tok',
+            })
 
             const db = await prisma.user.findUnique({ where: { id: userId } })
             expect(db!.githubConnected).toBe(true)

@@ -77,7 +77,7 @@ const createUser = async (overrides: Record<string, unknown> = {}) => {
     })
 }
 
-describe('auth.routes.integration', { timeout: 15000 }, () => {
+describe('auth.routes.integration', () => {
     let app: ReturnType<typeof createApp>
     let isCleaningUp = false
 
@@ -344,7 +344,7 @@ describe('auth.routes.integration', { timeout: 15000 }, () => {
         })
     })
 
-    describe('forgot password routes', () => {
+    describe('POST /auth/forgot-password', () => {
         it('should request a reset otp', async () => {
             await createUser({
                 email: 'forgot@example.com',

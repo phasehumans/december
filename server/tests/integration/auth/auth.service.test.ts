@@ -34,7 +34,7 @@ const createUser = async (overrides: Record<string, unknown> = {}) => {
     })
 }
 
-describe('auth.service.integration', { timeout: 15000 }, () => {
+describe('auth.service.integration', () => {
     let isCleaningUp = false
 
     beforeEach(async () => {

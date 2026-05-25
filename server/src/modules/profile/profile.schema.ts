@@ -1,34 +1,52 @@
 import { z } from 'zod'
 
 export const updateNameSchema = z.object({
-    name: z.string().min(3).max(20),
+    name: z
+        .string({ message: 'name is required' })
+        .min(3, 'name must be at least 3 characters')
+        .max(20, 'name must be at most 20 characters'),
 })
 
 export const updateUsernameSchema = z.object({
     username: z
-        .string()
-        .min(6)
-        .max(20)
+        .string({ message: 'username is required' })
+        .min(6, 'username must be at least 6 characters')
+        .max(20, 'username must be at most 20 characters')
         .regex(/^[a-z_]+$/, 'username can only contain lowercase letters and underscores'),
 })
 
 export const updateAvatarUrlSchema = z.object({
-    avatarUrl: z.string().url().max(500),
+    avatarUrl: z
+        .string({ message: 'avatar URL is required' })
+        .url('avatar must be a valid URL')
+        .max(500, 'avatar URL must be at most 500 characters'),
 })
 
 export const changePasswordSchema = z.object({
-    currentPassword: z.string().min(6).max(20),
-    newPassword: z.string().min(6).max(20),
+    currentPassword: z
+        .string({ message: 'current password is required' })
+        .min(6, 'current password must be at least 6 characters')
+        .max(20, 'current password must be at most 20 characters'),
+    newPassword: z
+        .string({ message: 'new password is required' })
+        .min(6, 'new password must be at least 6 characters')
+        .max(20, 'new password must be at most 20 characters'),
 })
 
 export const updateNotificationSchema = z.object({
-    notifyProjectActivity: z.boolean().optional(),
-    notifyProductUpdates: z.boolean().optional(),
-    notifySecurityAlerts: z.boolean().optional(),
+    notifyProjectActivity: z
+        .boolean({ message: 'notifyProjectActivity must be a boolean' })
+        .optional(),
+    notifyProductUpdates: z
+        .boolean({ message: 'notifyProductUpdates must be a boolean' })
+        .optional(),
+    notifySecurityAlerts: z
+        .boolean({ message: 'notifySecurityAlerts must be a boolean' })
+        .optional(),
 })
 
 export const chatSuggestionsSchema = z.object({
-    chatSuggestions: z.boolean(),
+    chatSuggestions: z.boolean({ message: 'chatSuggestions must be a boolean' }),
 })
 
 export enum GenerationSound {
@@ -38,13 +56,11 @@ export enum GenerationSound {
 }
 
 export const generationSoundSchema = z.object({
-    generationSound: z.nativeEnum(GenerationSound),
-})
-
-export const memoriesSchema = z.object({
-    memories: z.string().max(10000),
+    generationSound: z.nativeEnum(GenerationSound, { message: 'invalid generation sound option' }),
 })
 
 export const skillsSchema = z.object({
-    skills: z.string().max(10000),
+    skills: z
+        .string({ message: 'skills content is required' })
+        .max(10000, 'skills must be at most 10000 characters'),
 })
