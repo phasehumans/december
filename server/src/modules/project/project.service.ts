@@ -73,11 +73,10 @@ const getAllProjects = async (userId: string) => {
     const user = await prisma.user.findUnique({
         where: {
             id: userId,
-            isDeleted: false,
         },
     })
 
-    if (!user) {
+    if (!user || user.isDeleted == true) {
         throw new AppError('user not found', 404)
     }
 
@@ -97,7 +96,7 @@ const getAllProjects = async (userId: string) => {
 
         return projects
     } catch (error) {
-        throw new AppError('database error while fetching projects', 500)
+        throw new AppError('error while fetching projects', 500)
     }
 }
 
@@ -107,11 +106,10 @@ const getProjectById = async (data: GetProject) => {
     const user = await prisma.user.findUnique({
         where: {
             id: userId,
-            isDeleted: false,
         },
     })
 
-    if (!user) {
+    if (!user || user.isDeleted == true) {
         throw new AppError('user not found', 404)
     }
 
@@ -217,11 +215,10 @@ const createProject = async (data: CreateProject) => {
     const user = await prisma.user.findUnique({
         where: {
             id: userId,
-            isDeleted: false,
         },
     })
 
-    if (!user) {
+    if (!user || user.isDeleted == true) {
         throw new AppError('user not found', 404)
     }
 
@@ -248,11 +245,10 @@ const renameProject = async (data: RenameProject) => {
     const user = await prisma.user.findUnique({
         where: {
             id: userId,
-            isDeleted: false,
         },
     })
 
-    if (!user) {
+    if (!user || user.isDeleted == true) {
         throw new AppError('user not found', 404)
     }
 
@@ -288,11 +284,10 @@ const deleteProject = async (data: DeleteProject) => {
     const user = await prisma.user.findUnique({
         where: {
             id: userId,
-            isDeleted: false,
         },
     })
 
-    if (!user) {
+    if (!user || user.isDeleted == true) {
         throw new AppError('user not found', 404)
     }
 
