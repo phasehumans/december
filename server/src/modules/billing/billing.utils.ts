@@ -5,8 +5,8 @@ import {
     validateWebhookSignature,
 } from 'razorpay/dist/utils/razorpay-utils'
 
-const FREE_MONTHLY_CREDIT_CENTS = 500
-const PRO_MONTHLY_CREDIT_CENTS = null
+const FREE_MONTHLY_CREDIT_CENTS = 100
+const PRO_MONTHLY_CREDIT_CENTS = 500
 
 type RazorpaySubscriptionStatus =
     | 'created'
