@@ -1,6 +1,15 @@
 import { Resend } from 'resend'
-
 const resend = new Resend(process.env.RESEND_API_KEY)
+import { randomUUID } from 'crypto'
+import jwt, { type SignOptions } from 'jsonwebtoken'
+import type { Response } from 'express'
+
+export type TokenPayload = {
+    userId: string
+    sessionId: string
+    iat?: number
+    exp?: number
+}
 
 export const sendOTP = async (email: string, otp: string) => {
     await resend.emails.send({
@@ -394,4 +403,127 @@ export const getUsername = (): string => {
     }
 
     return `${first}_${second}_${suffix}`
+}
+
+const ACCESS_TOKEN_COOKIE_NAME = 'accessToken'
+const REFRESH_TOKEN_COOKIE_NAME = 'refreshToken'
+
+const isProduction = process.env.NODE_ENV === 'production'
+
+const getAccessTokenMaxAge = () => {
+    return 15 * 60 * 1000 // 15 minutes
+}
+
+const getRefreshTokenMaxAge = () => {
+    return 30 * 24 * 60 * 60 * 1000 // 30 days
+}
+
+export const generateAccessToken = (payload: TokenPayload) => {
+    const secret = process.env.ACCESS_TOKEN_SECRET
+
+    if (!secret) {
+        throw new Error('ACCESS_TOKEN_SECRET is not defined')
+    }
+
+    const expiresIn = (process.env.ACCESS_TOKEN_EXPIRES_IN || '15m') as SignOptions['expiresIn']
+
+    return jwt.sign(
+        {
+            userId: payload.userId,
+            sessionId: payload.sessionId,
+            jti: randomUUID(),
+        },
+        secret,
+        {
+            expiresIn,
+        }
+    )
+}
+
+export const generateRefreshToken = (payload: TokenPayload) => {
+    const secret = process.env.REFRESH_TOKEN_SECRET
+
+    if (!secret) {
+        throw new Error('REFRESH_TOKEN_SECRET is not defined')
+    }
+
+    const expiresIn = (process.env.REFRESH_TOKEN_EXPIRES_IN || '30d') as SignOptions['expiresIn']
+
+    return jwt.sign(
+        {
+            userId: payload.userId,
+            sessionId: payload.sessionId,
+            jti: randomUUID(),
+        },
+        secret,
+        {
+            expiresIn,
+        }
+    )
+}
+
+export const verifyAccessToken = (token: string) => {
+    const secret = process.env.ACCESS_TOKEN_SECRET
+
+    if (!secret) {
+        throw new Error('ACCESS_TOKEN_SECRET is not defined')
+    }
+
+    return jwt.verify(token, secret) as TokenPayload
+}
+
+export const verifyRefreshToken = (token: string) => {
+    const secret = process.env.REFRESH_TOKEN_SECRET
+
+    if (!secret) {
+        throw new Error('REFRESH_TOKEN_SECRET is not defined')
+    }
+
+    return jwt.verify(token, secret) as TokenPayload
+}
+
+export const setAccessTokenCookie = (res: Response, accessToken: string) => {
+    res.cookie(ACCESS_TOKEN_COOKIE_NAME, accessToken, {
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: 'lax',
+        maxAge: getAccessTokenMaxAge(),
+        path: '/',
+    })
+}
+
+export const setRefreshTokenCookie = (res: Response, refreshToken: string) => {
+    res.cookie(REFRESH_TOKEN_COOKIE_NAME, refreshToken, {
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: 'lax',
+        maxAge: getRefreshTokenMaxAge(),
+        path: '/',
+    })
+}
+
+export const clearAuthCookies = (res: Response) => {
+    res.clearCookie(ACCESS_TOKEN_COOKIE_NAME, {
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: 'lax',
+        path: '/',
+    })
+
+    res.clearCookie(REFRESH_TOKEN_COOKIE_NAME, {
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: 'lax',
+        path: '/',
+    })
+}
+
+export const getRefreshTokenExpiryDate = () => {
+    const expiresAt = new Date()
+    expiresAt.setDate(expiresAt.getDate() + 7) // matches 7d refresh token expiry
+    return expiresAt
+}
+
+export const isSessionExpired = (expiresAt: Date) => {
+    return expiresAt.getTime() <= Date.now()
 }

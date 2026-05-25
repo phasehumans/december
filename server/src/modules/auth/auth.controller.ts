@@ -12,9 +12,9 @@ import {
     signupSchema,
 } from './auth.schema'
 import { authService } from './auth.service'
-import { authToken } from './auth.token'
 
 import type { Request, Response, NextFunction } from 'express'
+import { clearAuthCookies, setAccessTokenCookie, setRefreshTokenCookie } from './auth.utils'
 
 const signup = async (req: Request, res: Response) => {
     const parseData = signupSchema.safeParse(req.body)
@@ -54,10 +54,17 @@ const signup = async (req: Request, res: Response) => {
 const verifyOtp = async (req: Request, res: Response) => {
     const { email, otp } = req.body
 
-    if (!email || !otp) {
+    if (!email) {
         return res.status(400).json({
             success: false,
-            message: 'email and otp is required',
+            message: 'email is required',
+        })
+    }
+
+    if (!otp) {
+        return res.status(400).json({
+            success: false,
+            message: 'otp is required',
         })
     }
 
@@ -338,15 +345,15 @@ const refreshSession = async (req: Request, res: Response, next: NextFunction) =
             refreshToken: req.cookies?.refreshToken,
         })
 
-        authToken.setAccessTokenCookie(res, result.accessToken)
-        authToken.setRefreshTokenCookie(res, result.refreshToken)
+        setAccessTokenCookie(res, result.accessToken)
+        setRefreshTokenCookie(res, result.refreshToken)
 
         return res.status(200).json({
             success: true,
             message: 'session refreshed successfully',
         })
     } catch (error) {
-        authToken.clearAuthCookies(res)
+        clearAuthCookies(res)
 
         if (error instanceof AppError) {
             return next(error)
