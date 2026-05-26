@@ -144,9 +144,9 @@ export const ProjectList: React.FC<ProjectListProps> = ({
         })
     }
 
-    const handleDuplicate = () => {
+    const handleDuplicate = (name: string) => {
         if (!duplicateModal.project) return
-        duplicateMutation.mutate(duplicateModal.project.id)
+        duplicateMutation.mutate({ projectId: duplicateModal.project.id, name })
     }
 
     const handleShare = () => {

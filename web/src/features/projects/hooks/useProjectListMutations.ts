@@ -98,7 +98,8 @@ export const useProjectListMutations = ({
     })
 
     const duplicateMutation = useMutation({
-        mutationFn: (projectId: string) => projectAPI.duplicateProject(projectId),
+        mutationFn: ({ projectId, name }: { projectId: string; name?: string }) =>
+            projectAPI.duplicateProject(projectId, name),
         onMutate: async () => {
             setActionError(null)
             await queryClient.cancelQueries({ queryKey: projectQueryKey })

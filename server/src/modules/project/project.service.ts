@@ -40,6 +40,7 @@ type DeleteProject = {
 type DuplicateProject = {
     userId: string
     projectId: string
+    name?: string
 }
 
 type ShareProject = {
@@ -371,7 +372,7 @@ const deleteProject = async (data: DeleteProject) => {
 }
 
 const duplicateProject = async (data: DuplicateProject) => {
-    const { projectId, userId } = data
+    const { projectId, userId, name } = data
 
     const user = await prisma.user.findUnique({
         where: {
@@ -427,7 +428,7 @@ const duplicateProject = async (data: DuplicateProject) => {
 
     const newProject = await prisma.project.create({
         data: {
-            name: `Copy of ${sourceProject.name}`,
+            name: name || `Copy of ${sourceProject.name}`,
             description: sourceProject.description,
             prompt: currentVersion?.sourcePrompt ?? sourceProject.prompt,
             projectStatus: currentVersion ? 'READY' : sourceProject.projectStatus,

@@ -1,6 +1,5 @@
 import React from 'react'
 
-import { Button } from '@/shared/components/ui/Button'
 import { Modal } from '@/shared/components/ui/Modal'
 
 interface ProfileSignOutAllSessionsModalProps {
@@ -20,21 +19,39 @@ export const ProfileSignOutAllSessionsModal: React.FC<ProfileSignOutAllSessionsM
         <Modal
             isOpen={isOpen}
             onClose={onClose}
-            title="Sign Out All Sessions"
-            maxWidth="max-w-[425px]"
+            title="Sign out all sessions"
+            description="This will immediately invalidate all active sessions."
+            variant="premium"
         >
-            <div className="space-y-4">
-                <p className="text-[14px] text-[#7B7A79]">
+            <div className="flex flex-col gap-4">
+                <p className="text-[13px] text-[#8F8E8D] leading-relaxed">
                     Are you sure you want to sign out of all sessions? You will be signed out from
                     all other devices and browsers immediately.
                 </p>
-                <div className="mt-8 flex items-center justify-end gap-3">
-                    <Button variant="ghost" onClick={onClose} disabled={isPending}>
+                <div className="flex items-center justify-end gap-2.5">
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        disabled={isPending}
+                        className="border border-[#2B2A27] bg-transparent text-white hover:bg-white/5 active:scale-95 transition-all text-[13px] font-medium px-4 py-2 rounded-lg focus:outline-none disabled:opacity-50"
+                    >
                         Cancel
-                    </Button>
-                    <Button variant="primary" onClick={onConfirm} isLoading={isPending}>
-                        {isPending ? 'Signing out...' : 'Confirm'}
-                    </Button>
+                    </button>
+                    <button
+                        type="button"
+                        onClick={onConfirm}
+                        disabled={isPending}
+                        className="bg-white text-black hover:bg-neutral-200 active:scale-95 transition-all text-[13px] font-medium px-4 py-2 rounded-lg focus:outline-none disabled:opacity-40 disabled:pointer-events-none flex items-center justify-center min-w-[100px]"
+                    >
+                        {isPending ? (
+                            <div className="flex items-center gap-1.5 justify-center">
+                                <span className="w-3.5 h-3.5 border-2 border-black border-t-transparent rounded-full animate-spin" />
+                                <span>Signing out...</span>
+                            </div>
+                        ) : (
+                            'Confirm'
+                        )}
+                    </button>
                 </div>
             </div>
         </Modal>
