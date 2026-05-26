@@ -114,13 +114,10 @@ export const ProfileSettingsContent: React.FC<ProfileSettingsContentProps> = ({
                 <div className="flex items-center justify-between border-t border-[#242323] pt-4">
                     <div className="flex flex-col gap-0.5">
                         <span className="text-[14px] text-[#D6D5C9] flex items-center gap-2">
-                            Unlock the most powerful search experience with December
-                            <span className="px-2 py-0.5 rounded-md text-[10px] bg-[#242323] text-[#D6D5C9] uppercase font-bold tracking-wider">
-                                Pro
-                            </span>
+                            Unlock the full power of December Pro
                         </span>
                         <span className="text-[13px] text-[#7B7A79]">
-                            Get the most out of December with Pro.{' '}
+                            Build faster with higher limits and advanced features.{' '}
                             <a
                                 href="#"
                                 className="text-[#7B7A79] hover:text-[#D6D5C9] hover:underline transition-colors"
@@ -146,7 +143,7 @@ export const ProfileSettingsContent: React.FC<ProfileSettingsContentProps> = ({
                         <div className="flex flex-col gap-0.5">
                             <span className="text-[14px] text-[#D6D5C9]">Project activity</span>
                             <span className="text-[13px] text-[#7B7A79]">
-                                Get email updates when someone interacts with your projects
+                                Get notification updates when someone interacts with your projects
                             </span>
                         </div>
                         <button
@@ -174,7 +171,7 @@ export const ProfileSettingsContent: React.FC<ProfileSettingsContentProps> = ({
                         <div className="flex flex-col gap-0.5">
                             <span className="text-[14px] text-[#D6D5C9]">Product updates</span>
                             <span className="text-[13px] text-[#7B7A79]">
-                                Get email updates about new features and improvements
+                                Get notification updates about new features and improvements
                             </span>
                         </div>
                         <button
@@ -200,7 +197,7 @@ export const ProfileSettingsContent: React.FC<ProfileSettingsContentProps> = ({
                         <div className="flex flex-col gap-0.5">
                             <span className="text-[14px] text-[#D6D5C9]">Security alerts</span>
                             <span className="text-[13px] text-[#7B7A79]">
-                                Get email updates for important security notices
+                                Get notification updates for important security notices
                             </span>
                         </div>
                         <button
@@ -230,8 +227,7 @@ export const ProfileSettingsContent: React.FC<ProfileSettingsContentProps> = ({
                 <div className="flex flex-col gap-2 border-t border-[#242323] pt-4">
                     <div className="flex items-center justify-between">
                         <span className="text-[14px] text-[#D6D5C9]">
-                            You are signed in as{' '}
-                            {profile?.githubUsername || profile?.email || 'User'}
+                            You are signed in as {profile?.username || profile?.name || 'User'}
                         </span>
                         <button
                             onClick={onSignOut}

@@ -78,7 +78,7 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
                     {/* Import Integration */}
                     <div className="flex items-center justify-center gap-3 mt-8 animate-in fade-in duration-300 whitespace-nowrap">
                         <span className="text-[#656565] text-[14px] font-medium tracking-wide">
-                            or start from
+                            or start with
                         </span>
                         <div className="flex items-center gap-2">
                             <button

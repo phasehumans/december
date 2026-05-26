@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Volume1, Volume2, VolumeX, FilePlus, Trash2, Loader2 } from 'lucide-react'
+import { Volume1, Volume2, VolumeX, FilePlus, Trash2, Loader2, ExternalLink } from 'lucide-react'
 import React, { useState, useEffect } from 'react'
 
 import { profileAPI } from '@/features/profile/api/profile'
@@ -186,11 +186,18 @@ Focus on what december wouldn't already know - domain-specific details, preferre
             <div className="flex flex-col mb-10">
                 <h1 className="text-[16px] font-medium mb-4">Custom Skills</h1>
                 <div className="flex flex-col gap-4 border border-[#242323] rounded-xl p-5 bg-[#171615]">
-                    <p className="text-[13px] text-[#7B7A79] mb-4 leading-relaxed">
+                    <p className="text-[13px] text-[#7B7A79] mb-2 leading-relaxed">
                         Create reusable skills that december can apply during conversations. Each
                         skill has a SKILLS.md that defines when it triggers and what instructions to
                         follow.
                     </p>
+                    <a
+                        href="/docs"
+                        className="flex items-center gap-1.5 text-[13px] text-[#7B7A79] hover:text-[#D6D5C9] transition-colors mb-4 w-fit"
+                    >
+                        View sample SKILLS.md in docs
+                        <ExternalLink className="w-3.5 h-3.5" />
+                    </a>
 
                     {!skillsActive ? (
                         <div>
