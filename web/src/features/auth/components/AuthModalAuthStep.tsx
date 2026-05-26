@@ -29,8 +29,11 @@ export const AuthModalAuthStep: React.FC<AuthModalAuthStepProps> = ({
                     <Icons.DecemberLogo className="w-[32px] h-[32px]" />
                 </div>
                 <h2 className="text-[20px] font-medium text-[#f5f5f5] text-center tracking-tight mb-1.5">
-                    Sign in or create an account
+                    {authMode === 'login' ? 'Sign in to continue building' : 'Create an account'}
                 </h2>
+                <p className="text-[14px] text-[#A3A3A3] text-center">
+                    Turn an idea into a working website
+                </p>
             </div>
 
             <div className="flex flex-col mb-[18px]">

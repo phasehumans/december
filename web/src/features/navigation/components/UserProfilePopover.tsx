@@ -1,7 +1,6 @@
 import {
     User,
     LogOut,
-    UserCircle,
     ExternalLink,
     Settings as SettingsIcon,
     MessageSquare,
@@ -172,8 +171,8 @@ export const UserProfilePopover: React.FC<UserProfilePopoverProps> = ({
         >
             {/* User Info Header */}
             <div className="flex items-center gap-3 px-3 py-1.5 mb-1">
-                <div className="flex items-center justify-center w-8 h-8 text-[#D6D5D4] shrink-0 overflow-hidden">
-                    <UserCircle className="w-6 h-6" />
+                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-white/[0.04] text-[#8F8E8D] shrink-0 overflow-hidden">
+                    <Icons.UserCircle className="w-4 h-4" />
                 </div>
                 <div className="flex flex-col min-w-0">
                     <span className="text-[14px] font-medium text-[#CBCACA] truncate leading-tight">

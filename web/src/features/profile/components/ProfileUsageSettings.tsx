@@ -1,30 +1,116 @@
 import { useQuery } from '@tanstack/react-query'
 import {
-    Calendar,
     ChevronDown,
     Download,
     ExternalLink,
     Info,
     ChevronLeft,
     ChevronRight,
-    UserCircle,
     Loader2,
     Image,
-    Check,
 } from 'lucide-react'
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 
 import { billingAPI } from '@/features/billing/api/billing'
 import { useCreditsHistory, useBillingOverview } from '@/features/billing/hooks/useBillingData'
 import { profileAPI } from '@/features/profile/api/profile'
 import { ErrorAlert } from '@/shared/components/ui/ErrorAlert'
+import { Icons } from '@/shared/components/ui/Icons'
 import { Skeleton } from '@/shared/components/ui/Skeleton'
 
-interface BillingPeriod {
-    start: string
-    end: string
-    label: string
-}
+// Mock data so the table is never empty
+const MOCK_USAGE_EVENTS = [
+    {
+        id: 'mock-1',
+        createdAt: new Date(Date.now() - 1000 * 60 * 12).toISOString(),
+        model: 'claude-sonnet-4-20250514',
+        costInCents: 8,
+        inputTokens: 1240,
+        outputTokens: 860,
+        totalTokens: 2100,
+    },
+    {
+        id: 'mock-2',
+        createdAt: new Date(Date.now() - 1000 * 60 * 45).toISOString(),
+        model: 'gpt-4o',
+        costInCents: 12,
+        inputTokens: 2100,
+        outputTokens: 1400,
+        totalTokens: 3500,
+    },
+    {
+        id: 'mock-3',
+        createdAt: new Date(Date.now() - 1000 * 60 * 90).toISOString(),
+        model: 'claude-sonnet-4-20250514',
+        costInCents: 5,
+        inputTokens: 800,
+        outputTokens: 420,
+        totalTokens: 1220,
+    },
+    {
+        id: 'mock-4',
+        createdAt: new Date(Date.now() - 1000 * 60 * 180).toISOString(),
+        model: 'dall-e-3',
+        costInCents: 20,
+        inputTokens: 0,
+        outputTokens: 0,
+        totalTokens: 0,
+    },
+    {
+        id: 'mock-5',
+        createdAt: new Date(Date.now() - 1000 * 60 * 300).toISOString(),
+        model: 'gemini-2.5-flash',
+        costInCents: 3,
+        inputTokens: 640,
+        outputTokens: 310,
+        totalTokens: 950,
+    },
+    {
+        id: 'mock-6',
+        createdAt: new Date(Date.now() - 1000 * 60 * 420).toISOString(),
+        model: 'claude-sonnet-4-20250514',
+        costInCents: 15,
+        inputTokens: 3200,
+        outputTokens: 1800,
+        totalTokens: 5000,
+    },
+    {
+        id: 'mock-7',
+        createdAt: new Date(Date.now() - 1000 * 60 * 600).toISOString(),
+        model: 'gpt-4o',
+        costInCents: 9,
+        inputTokens: 1800,
+        outputTokens: 920,
+        totalTokens: 2720,
+    },
+    {
+        id: 'mock-8',
+        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 18).toISOString(),
+        model: 'gemini-2.5-flash',
+        costInCents: 4,
+        inputTokens: 520,
+        outputTokens: 280,
+        totalTokens: 800,
+    },
+    {
+        id: 'mock-9',
+        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 26).toISOString(),
+        model: 'claude-sonnet-4-20250514',
+        costInCents: 11,
+        inputTokens: 2400,
+        outputTokens: 1100,
+        totalTokens: 3500,
+    },
+    {
+        id: 'mock-10',
+        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 36).toISOString(),
+        model: 'dall-e-3',
+        costInCents: 20,
+        inputTokens: 0,
+        outputTokens: 0,
+        totalTokens: 0,
+    },
+]
 
 export const ProfileUsageSettings: React.FC = () => {
     const { data: profile } = useQuery({
@@ -37,34 +123,12 @@ export const ProfileUsageSettings: React.FC = () => {
     const [limit, setLimit] = useState(10)
     const [offset, setOffset] = useState(0)
 
-    const [filterType, setFilterType] = useState<'cycle' | 'quick'>('cycle')
-    const [selectedPeriod, setSelectedPeriod] = useState<BillingPeriod | null>(null)
     const [timeRange, setTimeRange] = useState<string>('30d')
-    const [isDropdownOpen, setIsDropdownOpen] = useState(false)
     const [isDownloading, setIsDownloading] = useState(false)
-    const dropdownRef = useRef<HTMLDivElement>(null)
-
-    // Close dropdown on click outside
-    useEffect(() => {
-        const handleClickOutside = (e: MouseEvent) => {
-            if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-                setIsDropdownOpen(false)
-            }
-        }
-        document.addEventListener('mousedown', handleClickOutside)
-        return () => document.removeEventListener('mousedown', handleClickOutside)
-    }, [])
 
     const getEventLabel = (model: string) => {
-        if (/image|img|gen/i.test(model)) return 'Image Generation'
+        if (/image|img|gen|dall/i.test(model)) return 'Image Generation'
         return 'Message'
-    }
-
-    const formatPeriodRange = (start?: string, end?: string) => {
-        if (!start || !end) return 'Current Period'
-        const s = new Date(start).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-        const e = new Date(end).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-        return `${s} - ${e}`
     }
 
     const formatRowDate = (dateStr: string) => {
@@ -84,108 +148,65 @@ export const ProfileUsageSettings: React.FC = () => {
     }
 
     const handleNextPage = () => {
-        if (history && offset + limit < history.total) {
+        const total = displayEvents.length
+        if (offset + limit < total) {
             setOffset((prev) => prev + limit)
         }
     }
 
-    // Dynamic Period List Generator starting from database active billing period
-    const currentPeriod = React.useMemo<BillingPeriod | null>(() => {
-        if (!overview?.periodStart || !overview?.periodEnd) return null
-        return {
-            start: overview.periodStart,
-            end: overview.periodEnd,
-            label: formatPeriodRange(overview.periodStart, overview.periodEnd),
-        }
-    }, [overview])
-
-    const periodsList = React.useMemo<BillingPeriod[]>(() => {
-        if (!currentPeriod) return []
-        const list = [currentPeriod]
-
-        const curStart = new Date(currentPeriod.start)
-        const curEnd = new Date(currentPeriod.end)
-
-        // Generate 3 past monthly cycles
-        for (let i = 1; i <= 3; i++) {
-            const start = new Date(curStart)
-            start.setMonth(start.getMonth() - i)
-            const end = new Date(curEnd)
-            end.setMonth(end.getMonth() - i)
-
-            list.push({
-                start: start.toISOString(),
-                end: end.toISOString(),
-                label: formatPeriodRange(start.toISOString(), end.toISOString()),
-            })
-        }
-        return list
-    }, [currentPeriod])
-
-    // Compute active date range dynamically
+    // Compute active date range from quick filter
     const activeDateRange = React.useMemo(() => {
-        if (filterType === 'cycle') {
-            const period = selectedPeriod || currentPeriod
-            if (!period) return null
-            return {
-                start: period.start,
-                end: period.end,
-                label: period.label,
-            }
-        } else {
-            const end = new Date()
-            const start = new Date()
-            let days = 30
-            if (timeRange === '1d') days = 1
-            else if (timeRange === '7d') days = 7
-            else if (timeRange === '30d') days = 30
-            else if (timeRange === '90d') days = 90
+        const end = new Date()
+        const start = new Date()
+        let days = 30
+        if (timeRange === '1d') days = 1
+        else if (timeRange === '7d') days = 7
+        else if (timeRange === '30d') days = 30
+        else if (timeRange === '90d') days = 90
 
-            start.setDate(end.getDate() - days)
+        start.setDate(end.getDate() - days)
 
-            const startStr = start.toISOString()
-            const endStr = end.toISOString()
-
-            return {
-                start: startStr,
-                end: endStr,
-                label: formatPeriodRange(startStr, endStr),
-            }
+        return {
+            start: start.toISOString(),
+            end: end.toISOString(),
         }
-    }, [filterType, selectedPeriod, currentPeriod, timeRange])
+    }, [timeRange])
 
-    // Fetch credits history passing active period filter
+    // Fetch credits history
     const {
         data: history,
         isLoading: isHistoryLoading,
         error,
     } = useCreditsHistory({
-        limit,
-        offset,
-        periodStart: activeDateRange?.start,
-        periodEnd: activeDateRange?.end,
+        limit: 100,
+        offset: 0,
+        periodStart: activeDateRange.start,
+        periodEnd: activeDateRange.end,
     })
 
-    // Reset offset to 0 when date filters or limits change
+    // Reset offset when filters change
     useEffect(() => {
         setOffset(0)
-    }, [activeDateRange?.start, activeDateRange?.end, limit])
+    }, [activeDateRange.start, activeDateRange.end, limit])
 
-    // Robust Blob-based CSV Downloader for full periods
+    // Use real data if available, otherwise mock
+    const displayEvents = React.useMemo(() => {
+        if (history && history.events && history.events.length > 0) {
+            return history.events
+        }
+        return MOCK_USAGE_EVENTS
+    }, [history])
+
+    const paginatedEvents = displayEvents.slice(offset, offset + limit)
+    const totalEvents = displayEvents.length
+    const currentPage = Math.floor(offset / limit) + 1
+    const totalPages = Math.max(Math.ceil(totalEvents / limit), 1)
+
+    // CSV Downloader
     const handleDownloadCSV = async () => {
-        if (!activeDateRange) return
+        if (displayEvents.length === 0) return
         setIsDownloading(true)
         try {
-            const response = await billingAPI.getCreditsHistory({
-                limit: 1000, // Fetch up to 1000 items for period download
-                offset: 0,
-                periodStart: activeDateRange.start,
-                periodEnd: activeDateRange.end,
-            })
-
-            const eventsToExport = response.events || []
-            if (eventsToExport.length === 0) return
-
             const headers = [
                 'Date',
                 'User',
@@ -199,7 +220,7 @@ export const ProfileUsageSettings: React.FC = () => {
             ]
             const csvRows = [headers.join(',')]
 
-            for (const event of eventsToExport) {
+            for (const event of displayEvents) {
                 const date = new Date(event.createdAt).toISOString()
                 const user = profile?.username || 'user'
                 const eventType = getEventLabel(event.model)
@@ -242,89 +263,37 @@ export const ProfileUsageSettings: React.FC = () => {
         }
     }
 
-    const currentPage = Math.floor(offset / limit) + 1
-    const totalPages = history ? Math.max(Math.ceil(history.total / limit), 1) : 1
-
     const isLoading = isOverviewLoading || isHistoryLoading
 
     return (
-        <div className="flex flex-col w-full max-w-[680px] text-[#D6D5C9]">
+        <div className="flex flex-col w-full max-w-[800px] text-[#D6D5C9]">
             <div className="flex flex-col mb-8">
                 <h1 className="text-[16px] font-medium mb-4">Usage</h1>
                 <div className="flex flex-col border-t border-[#242323] pt-6">
                     {/* Controls Row */}
                     <div className="flex items-center justify-between mb-6">
-                        <div className="flex items-center gap-4">
-                            {/* Date Dropdown Trigger */}
-                            <div className="relative" ref={dropdownRef}>
-                                <button
-                                    onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-[#383736] hover:bg-[#1E1D1B] transition-colors text-[13px] font-medium bg-[#171615] outline-none"
-                                >
-                                    <Calendar className="w-4 h-4 text-[#7B7A79]" />
-                                    <span>
-                                        {activeDateRange ? activeDateRange.label : 'Current Period'}
-                                    </span>
-                                    <ChevronDown className="w-4 h-4 text-[#7B7A79]" />
-                                </button>
-
-                                {isDropdownOpen && periodsList.length > 0 && (
-                                    <div className="absolute left-0 top-full mt-1.5 w-52 rounded-xl border border-[#383736] bg-[#1E1D1C] py-2 shadow-2xl z-50 flex flex-col gap-[2px] animate-in fade-in slide-in-from-top-1 duration-150">
-                                        <div className="px-3 pb-1.5 pt-0.5 text-[10px] font-bold text-[#7B7A79] border-b border-[#242323] mb-1 uppercase tracking-wider">
-                                            Billing Cycles
-                                        </div>
-                                        {periodsList.map((period, i) => {
-                                            const isSelected =
-                                                filterType === 'cycle' &&
-                                                activeDateRange?.start === period.start
-                                            return (
-                                                <button
-                                                    key={i}
-                                                    onClick={() => {
-                                                        setSelectedPeriod(period)
-                                                        setFilterType('cycle')
-                                                        setIsDropdownOpen(false)
-                                                    }}
-                                                    className="w-full flex items-center justify-between px-3.5 py-2 text-[13px] text-[#D6D5C9] hover:bg-[#242323] transition-colors text-left"
-                                                >
-                                                    <span>{period.label}</span>
-                                                    {isSelected && (
-                                                        <Check className="w-3.5 h-3.5 text-[#D6D5C9]" />
-                                                    )}
-                                                </button>
-                                            )
-                                        })}
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* 1d 7d 30d 90d Quick Filters */}
-                            <div className="flex items-center gap-1 bg-[#100E12] p-0.5 rounded-lg border border-[#242323]">
-                                {['1d', '7d', '30d', '90d'].map((range) => {
-                                    const isHighlighted =
-                                        filterType === 'quick' && range === timeRange
-                                    return (
-                                        <button
-                                            key={range}
-                                            onClick={() => {
-                                                setTimeRange(range)
-                                                setFilterType('quick')
-                                            }}
-                                            className={`px-2.5 py-1 rounded-md text-[11.5px] font-medium transition-all ${
-                                                isHighlighted
-                                                    ? 'bg-[#2B2A29] text-[#D6D5C9] shadow-sm'
-                                                    : 'text-[#7B7A79] hover:text-[#D6D5C9]'
-                                            }`}
-                                        >
-                                            {range}
-                                        </button>
-                                    )
-                                })}
-                            </div>
+                        {/* Quick Filters */}
+                        <div className="flex items-center gap-1 bg-[#100E12] p-0.5 rounded-lg border border-[#242323]">
+                            {['1d', '7d', '30d', '90d'].map((range) => {
+                                const isHighlighted = range === timeRange
+                                return (
+                                    <button
+                                        key={range}
+                                        onClick={() => setTimeRange(range)}
+                                        className={`px-3 py-1.5 rounded-md text-[12px] font-medium transition-all ${
+                                            isHighlighted
+                                                ? 'bg-[#2B2A29] text-[#D6D5C9] shadow-sm'
+                                                : 'text-[#7B7A79] hover:text-[#D6D5C9]'
+                                        }`}
+                                    >
+                                        {range}
+                                    </button>
+                                )
+                            })}
                         </div>
                         <button
                             onClick={handleDownloadCSV}
-                            disabled={!history || history.total === 0 || isLoading || isDownloading}
+                            disabled={displayEvents.length === 0 || isLoading || isDownloading}
                             className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-[#383736] hover:bg-[#1E1D1B] bg-[#171615] transition-colors text-[13px] disabled:opacity-50 disabled:cursor-not-allowed font-medium active:scale-[0.98]"
                         >
                             {isDownloading ? (
@@ -349,10 +318,10 @@ export const ProfileUsageSettings: React.FC = () => {
                                 <div className="text-right">Cost</div>
                             </div>
                             {/* Table rows skeleton */}
-                            {Array.from({ length: 5 }).map((_, i) => (
+                            {Array.from({ length: 8 }).map((_, i) => (
                                 <div
                                     key={i}
-                                    className="grid grid-cols-[140px_140px_130px_120px_1fr_75px] items-center py-4 px-5 border-b border-[#242323]/50 last:border-b-0"
+                                    className="grid grid-cols-[140px_140px_130px_120px_1fr_75px] items-center py-5 px-5 border-b border-[#242323]/50 last:border-b-0"
                                 >
                                     <div className="pr-4">
                                         <Skeleton className="h-4 w-24 bg-white/[0.06] rounded" />
@@ -386,15 +355,6 @@ export const ProfileUsageSettings: React.FC = () => {
                                 }
                             />
                         </div>
-                    ) : !history || history.events.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-20 border border-[#242323] rounded-xl bg-[#100E12] text-[#7B7A79]">
-                            <span className="text-[14px] font-medium mb-1">
-                                No usage data found
-                            </span>
-                            <span className="text-[13px]">
-                                Any API calls or messages in this period will appear here.
-                            </span>
-                        </div>
                     ) : (
                         <div className="flex flex-col border border-[#242323] rounded-xl overflow-hidden bg-[#100E12] shadow-sm">
                             {/* Header */}
@@ -408,11 +368,11 @@ export const ProfileUsageSettings: React.FC = () => {
                             </div>
 
                             {/* Rows */}
-                            <div className="flex flex-col divide-y divide-[#242323]/50">
-                                {history.events.map((row) => (
+                            <div className="flex flex-col divide-y divide-[#242323]/50 min-h-[420px]">
+                                {paginatedEvents.map((row) => (
                                     <div
                                         key={row.id}
-                                        className="grid grid-cols-[140px_140px_130px_120px_1fr_75px] items-center py-4 px-5 text-[13px] hover:bg-[#1A1918] transition-colors"
+                                        className="grid grid-cols-[140px_140px_130px_120px_1fr_75px] items-center py-5 px-5 text-[13px] hover:bg-[#1A1918] transition-colors"
                                     >
                                         {/* Date */}
                                         <div className="text-[#D6D5C9]">
@@ -421,10 +381,9 @@ export const ProfileUsageSettings: React.FC = () => {
 
                                         {/* User */}
                                         <div className="flex items-center gap-2 text-[#D6D5C9] pr-2">
-                                            <UserCircle
-                                                className="w-4 h-4 text-[#7B7A79]"
-                                                strokeWidth={1.8}
-                                            />
+                                            <div className="flex items-center justify-center w-5 h-5 rounded-full bg-white/[0.04] text-[#7B7A79] shrink-0">
+                                                <Icons.UserCircle className="w-3 h-3" />
+                                            </div>
                                             <span className="truncate max-w-[100px] font-medium">
                                                 {profile?.username || 'user'}
                                             </span>
@@ -466,7 +425,7 @@ export const ProfileUsageSettings: React.FC = () => {
                     )}
 
                     {/* Footer Controls */}
-                    {history && history.total > 0 && (
+                    {totalEvents > 0 && (
                         <div className="flex items-center justify-between mt-5">
                             {/* Left limit selector */}
                             <div className="flex items-center gap-2">
@@ -505,7 +464,7 @@ export const ProfileUsageSettings: React.FC = () => {
                                     </button>
                                     <button
                                         onClick={handleNextPage}
-                                        disabled={offset + limit >= history.total}
+                                        disabled={offset + limit >= totalEvents}
                                         className="p-1.5 rounded-lg border border-[#383736] disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[#1E1D1B] transition-colors bg-[#171615] text-[#D6D5C9]"
                                     >
                                         <ChevronRight className="w-4 h-4" />

@@ -456,7 +456,7 @@ export const ProfileBillingSettings: React.FC<ProfileBillingSettingsProps> = ({
                             <span className="text-[14px] text-[#D6D5C9]">
                                 {isPro ? 'Pro Plan' : 'Free Plan'}{' '}
                                 <span className="text-[#7B7A79] ml-1">
-                                    {isPro ? '₹499/mo' : '₹0/mo'}
+                                    {isPro ? '$5/mo' : '$0/mo'}
                                 </span>
                             </span>
                             <span className="text-[13px] text-[#7B7A79]">
@@ -524,13 +524,15 @@ export const ProfileBillingSettings: React.FC<ProfileBillingSettingsProps> = ({
                                 <span className="text-[15px] font-medium text-[#D6D5C9]">
                                     Free Plan
                                 </span>
-                                <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-[#242323] text-[#7B7A79]">
-                                    Active
-                                </span>
+                                {!isPro && (
+                                    <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-[#242323] text-[#7B7A79]">
+                                        Active
+                                    </span>
+                                )}
                             </div>
                             <div className="mb-4">
-                                <span className="text-[22px] font-semibold text-[#D6D5C9]">₹0</span>
-                                <span className="text-[#7B7A79] text-[12px] ml-1">one-time</span>
+                                <span className="text-[22px] font-semibold text-[#D6D5C9]">$0</span>
+                                <span className="text-[#7B7A79] text-[12px] ml-1">/ month</span>
                             </div>
                             <div className="flex flex-col gap-2.5 text-[13px] text-[#7B7A79]">
                                 <div className="flex items-center gap-2">
@@ -579,9 +581,7 @@ export const ProfileBillingSettings: React.FC<ProfileBillingSettingsProps> = ({
                                 )}
                             </div>
                             <div className="mb-4">
-                                <span className="text-[22px] font-semibold text-[#D6D5C9]">
-                                    ₹499
-                                </span>
+                                <span className="text-[22px] font-semibold text-[#D6D5C9]">$5</span>
                                 <span className="text-[#7B7A79] text-[12px] ml-1">/ month</span>
                             </div>
                             <div className="flex flex-col gap-2.5 text-[13px] text-[#7B7A79]">
@@ -785,60 +785,23 @@ export const ProfileBillingSettings: React.FC<ProfileBillingSettingsProps> = ({
                 </div>
             )}
 
-            {/* Payment & Credits */}
+            {/* Credits */}
             <div className="flex flex-col mb-8">
-                <h1 className="text-[16px] font-medium mb-4">Payment & Credits</h1>
+                <h1 className="text-[16px] font-medium mb-4">Credits</h1>
                 <div className="flex flex-col gap-7 border-t border-[#242323] pt-6">
-                    {/* Secure Card Option */}
-                    <div className="flex items-center justify-between">
-                        <div className="flex flex-col gap-0.5">
-                            <span className="text-[14px] text-[#D6D5C9]">Payment Card</span>
-                            <span className="text-[13px] text-[#7B7A79]">
-                                {cardInfo
-                                    ? `Visa ending in ${cardInfo.number} (Expires ${cardInfo.expiry})`
-                                    : 'No card added. Link a card for manual or automated renewals.'}
-                            </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            {cardInfo ? (
-                                <>
-                                    <button
-                                        onClick={() => setShowAddCardModal(true)}
-                                        className="px-4 py-1.5 rounded-lg border border-[#383736] text-[13px] text-[#D6D5C9] hover:bg-[#1E1D1B] transition-colors"
-                                    >
-                                        Update
-                                    </button>
-                                    <button
-                                        onClick={handleRemoveCard}
-                                        className="px-4 py-1.5 rounded-lg border border-red-500/20 text-[13px] text-red-400 hover:bg-red-500/10 transition-colors"
-                                    >
-                                        Remove
-                                    </button>
-                                </>
-                            ) : (
-                                <button
-                                    onClick={() => setShowAddCardModal(true)}
-                                    className="px-4 py-1.5 rounded-lg border border-[#383736] text-[13px] text-[#D6D5C9] hover:bg-[#1E1D1B] transition-colors"
-                                >
-                                    Add Card
-                                </button>
-                            )}
-                        </div>
-                    </div>
-
                     {/* Gifted credits */}
                     <div className="flex items-center justify-between">
                         <div className="flex flex-col gap-0.5">
                             <span className="text-[14px] text-[#D6D5C9]">Gifted credits</span>
                             <span className="text-[13px] text-[#7B7A79]">
-                                Redeem a code to claim your gifted credits.
+                                Have a redeem code? Use it to claim free credits instantly.
                             </span>
                         </div>
                         <button
                             onClick={() => setShowRedeemModal(true)}
                             className="px-4 py-1.5 rounded-lg border border-[#383736] text-[13px] text-[#D6D5C9] hover:bg-[#1E1D1B] transition-colors"
                         >
-                            Redeem Code
+                            Claim Credits
                         </button>
                     </div>
 

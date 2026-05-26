@@ -57,7 +57,7 @@ export const AuthModalForgotOtpStep: React.FC<AuthModalForgotOtpStepProps> = ({
                 disabled={otp.some((digit) => !digit) || isPending}
                 className="w-full bg-[#2A2A2A] hover:bg-[#333333] text-[#E5E5E5] font-medium h-[44px] rounded-[10px] flex items-center justify-center transition-colors disabled:opacity-50 mt-1"
             >
-                {isPending ? 'Please wait...' : 'Verify OTP'}
+                {isPending ? 'Please wait...' : 'Verify & Continue'}
             </button>
 
             <button
