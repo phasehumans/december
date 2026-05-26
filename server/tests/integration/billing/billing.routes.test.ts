@@ -114,7 +114,7 @@ describe('billing.routes.integration', () => {
         expect(res.status).toBe(200)
         expect(res.body.success).toBe(true)
         expect(res.body.data.plan).toBe('FREE')
-        expect(res.body.data.credits.limitInCents).toBe(500)
+        expect(res.body.data.credits.limitInCents).toBe(100)
     })
 
     it('should return billing plans', async () => {

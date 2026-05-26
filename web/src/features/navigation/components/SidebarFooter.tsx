@@ -58,10 +58,10 @@ export const SidebarFooter: React.FC<
                                 className="flex items-center gap-2 px-1.5 py-[7px] rounded-lg hover:bg-[#252422] transition-colors group outline-none min-w-0"
                                 style={{ maxWidth: 'calc(100% - 28px)' }}
                             >
-                                <div className="flex items-center justify-center w-[24px] h-[24px] rounded-full bg-white/[0.04] text-[#8F8E8D] shrink-0">
-                                    <Icons.UserCircle className="w-[14px] h-[14px]" />
+                                <div className="flex items-center justify-center w-[24px] h-[24px] rounded-full bg-white/[0.04] text-[#8F8E8D] group-hover:text-[#CBCACA] transition-colors shrink-0">
+                                    <Icons.UserCircle className="w-[12px] h-[12px]" />
                                 </div>
-                                <span className="font-medium text-[13px] text-[#CAC9C9] truncate tracking-tight text-left">
+                                <span className="font-medium text-[13px] text-[#8F8E8D] group-hover:text-[#CBCACA] transition-colors truncate tracking-tight text-left">
                                     {user?.name ||
                                         profile?.name ||
                                         quickInfo?.firstName ||

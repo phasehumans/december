@@ -372,6 +372,15 @@ const verifySubscription = async (data: VerifySubscriptionInput) => {
         data.razorpay_subscription_id
     )) as RazorpaySubscriptionLike
 
+    // Force active status if payment signature is valid to ensure immediate upgrade
+    if (
+        !subscription.status ||
+        subscription.status === 'created' ||
+        subscription.status === 'pending'
+    ) {
+        subscription.status = 'active'
+    }
+
     const result = await persistProviderSubscription({
         userId: data.userId,
         subscription,
