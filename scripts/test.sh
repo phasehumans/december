@@ -8,9 +8,9 @@ bun test tests/unit/auth.unit.test.ts
 bun test tests/integration/auth/auth.routes.test.ts
 bun test tests/integration/auth/auth.service.test.ts
 
-# bun test tests/unit/billing.unit.test.ts
-# bun test tests/integration/billing/billing.routes.test.ts
-# bun test tests/integration/billing/billing.service.test.ts
+bun test tests/unit/billing.unit.test.ts
+bun test tests/integration/billing/billing.routes.test.ts
+bun test tests/integration/billing/billing.service.test.ts
 
 # bun test tests/unit/canvas.unit.test.ts
 # bun test tests/integration/canvas/canvas.routes.test.ts
