@@ -243,8 +243,9 @@ export const TemplatesView: React.FC<TemplatesViewProps> = ({ onOpenProject }) =
     })
 
     const remixMutation = useMutation({
-        mutationFn: (templateId: string) => templateAPI.remixTemplate(templateId),
-        onMutate: (templateId) => {
+        mutationFn: ({ templateId, name }: { templateId: string; name?: string }) =>
+            templateAPI.remixTemplate(templateId, name),
+        onMutate: ({ templateId }) => {
             setActionError(null)
             setRemixPendingTemplateId(templateId)
         },
@@ -300,9 +301,9 @@ export const TemplatesView: React.FC<TemplatesViewProps> = ({ onOpenProject }) =
         })
     }
 
-    const handleRemixTemplate = () => {
+    const handleRemixTemplate = (name: string) => {
         if (!remixModal.template) return
-        remixMutation.mutate(remixModal.template.id)
+        remixMutation.mutate({ templateId: remixModal.template.id, name })
     }
 
     const isInitialLoading = isTemplatesLoading || isFeaturedLoading

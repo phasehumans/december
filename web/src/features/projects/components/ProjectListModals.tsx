@@ -25,7 +25,7 @@ interface ProjectListModalsProps {
     onRenameChange: (nextValue: string) => void
     onRenameSubmit: (event: React.FormEvent) => void
     onCloseDuplicate: () => void
-    onDuplicateConfirm: () => void
+    onDuplicateConfirm: (name: string) => void
     onCloseShare: () => void
     onShareConfirm: () => void
     onCloseDelete: () => void

@@ -106,9 +106,10 @@ const deleteProject = (projectId: string) => {
     })
 }
 
-const duplicateProject = (projectId: string) => {
+const duplicateProject = (projectId: string, name?: string) => {
     return apiRequest<BackendProject>(`/project/${projectId}/duplicate`, {
         method: 'POST',
+        body: JSON.stringify({ name }),
     })
 }
 

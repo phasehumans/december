@@ -118,6 +118,7 @@ const getFeaturedTemplates = async (req: Request, res: Response) => {
 const remixTemplate = async (req: Request, res: Response) => {
     const userId = req.user?.userId as string | undefined
     const templateId = req.params.templateId as string | undefined
+    const { name } = req.body || {}
 
     if (!userId) {
         return res.status(400).json({
@@ -134,7 +135,7 @@ const remixTemplate = async (req: Request, res: Response) => {
     }
 
     try {
-        const result = await templateService.remixTemplate({ userId, templateId })
+        const result = await templateService.remixTemplate({ userId, templateId, name })
         return res.status(200).json({
             success: true,
             message: 'remix template successfully',

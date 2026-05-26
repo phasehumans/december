@@ -16,6 +16,7 @@ type ToggleLike = {
 type RemixTemplate = {
     userId: string
     templateId: string
+    name?: string
 }
 
 type TemplateWithLikeMeta = {
@@ -217,7 +218,7 @@ const getFeaturedTemplates = async (userId?: string) => {
 
 const remixTemplate = async (data: RemixTemplate) => {
     // add COW (copy on write) to copy the files ; TODO
-    const { userId, templateId } = data
+    const { userId, templateId, name } = data
 
     const user = await prisma.user.findUnique({
         where: {
@@ -260,7 +261,7 @@ const remixTemplate = async (data: RemixTemplate) => {
 
     const newProject = await prisma.project.create({
         data: {
-            name: `Remix of ${template.name}`,
+            name: name || `Remix of ${template.name}`,
             description: template.description,
             prompt: currentVersion?.sourcePrompt ?? template.prompt,
             projectStatus: currentVersion ? 'READY' : template.projectStatus,

@@ -113,7 +113,7 @@ export const ProjectListRow: React.FC<ProjectListRowProps> = ({
                             onClick={(e) => onOpenShare(project, e)}
                             className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-[14px] text-[#D6D5C9] transition-colors hover:bg-[#252422]"
                         >
-                            <Icons.Globe className="h-4 w-4 text-[#7B7A79]" />{' '}
+                            <Icons.Bookmark className="h-4 w-4 text-[#7B7A79]" />{' '}
                             {project.isSharedAsTemplate ? 'Unshare template' : 'Share as template'}
                         </button>
                         <div className="mx-2 my-1.5 h-px bg-[#383736]" />

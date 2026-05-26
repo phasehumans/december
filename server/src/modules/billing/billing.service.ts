@@ -521,6 +521,13 @@ const getCreditsHistory = async (data: CreditsHistoryInput) => {
             orderBy: {
                 createdAt: 'desc',
             },
+            include: {
+                project: {
+                    select: {
+                        name: true,
+                    },
+                },
+            },
             skip: data.offset,
             take: data.limit,
         }),

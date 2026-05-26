@@ -45,9 +45,10 @@ const toggleLike = (templateId: string, isLiked: boolean) => {
     })
 }
 
-const remixTemplate = (templateId: string) => {
+const remixTemplate = (templateId: string, name?: string) => {
     return apiRequest<BackendProject>(`/template/${templateId}/remix`, {
         method: 'POST',
+        body: JSON.stringify({ name }),
     })
 }
 

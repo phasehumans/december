@@ -246,6 +246,7 @@ const deleteProject = async (req: Request, res: Response) => {
 const duplicateProject = async (req: Request, res: Response) => {
     const userId = req.user?.userId as string | undefined
     const projectId = req.params.projectId as string | undefined
+    const { name } = req.body || {}
 
     if (!userId) {
         return res.status(400).json({
@@ -262,7 +263,7 @@ const duplicateProject = async (req: Request, res: Response) => {
     }
 
     try {
-        const result = await projectService.duplicateProject({ userId, projectId })
+        const result = await projectService.duplicateProject({ userId, projectId, name })
         return res.status(200).json({
             success: true,
             message: 'project duplicated',
