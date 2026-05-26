@@ -1,5 +1,4 @@
-import { motion, AnimatePresence } from 'framer-motion'
-import { AlertCircle, X } from 'lucide-react'
+import { X } from 'lucide-react'
 import React, { useState } from 'react'
 
 import { cn } from '@/shared/lib/utils'
@@ -23,31 +22,20 @@ export const ErrorAlert: React.FC<ErrorAlertProps> = ({ message, className, onCl
     }
 
     return (
-        <AnimatePresence>
-            <motion.div
-                initial={{ opacity: 0, y: -8, scale: 0.98 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -8, scale: 0.98 }}
-                transition={{ duration: 0.2, ease: 'easeOut' }}
-                className={cn(
-                    'flex items-start gap-3 rounded-xl border border-red-500/25 bg-red-500/[0.06] backdrop-blur-md px-4 py-3 text-red-200 shadow-lg shadow-red-950/20 max-w-xl w-full',
-                    className
-                )}
+        <div
+            className={cn(
+                'inline-flex items-center gap-2 rounded-full border border-red-500/20 bg-red-500/10 px-3 py-1.5 text-[12px] text-red-300 font-medium animate-in fade-in duration-200',
+                className
+            )}
+        >
+            <span className="truncate max-w-[280px]">{message}</span>
+            <button
+                onClick={handleDismiss}
+                className="shrink-0 p-0.5 rounded-full text-red-400/60 hover:text-red-200 hover:bg-red-500/10 transition-colors"
+                title="Dismiss"
             >
-                <div className="mt-0.5 shrink-0">
-                    <AlertCircle className="h-4.5 w-4.5 text-red-400" />
-                </div>
-                <div className="flex-1 text-[13px] leading-relaxed font-medium select-text break-words">
-                    {message}
-                </div>
-                <button
-                    onClick={handleDismiss}
-                    className="shrink-0 p-0.5 -mt-0.5 -mr-1 rounded-md text-red-400/70 hover:text-red-200 hover:bg-red-500/10 transition-all active:scale-95"
-                    title="Dismiss"
-                >
-                    <X className="h-3.5 w-3.5" />
-                </button>
-            </motion.div>
-        </AnimatePresence>
+                <X className="h-3 w-3" />
+            </button>
+        </div>
     )
 }

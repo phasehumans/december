@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 
 import { SidebarFooter } from './SidebarFooter'
 import { SidebarHeader } from './SidebarHeader'
@@ -6,6 +7,7 @@ import { SidebarNavItem } from './SidebarNavItem'
 
 import type { SidebarProps } from '@/features/navigation/types'
 
+import { useBillingOverview } from '@/features/billing/hooks/useBillingData'
 import { Icons } from '@/shared/components/ui/Icons'
 import { cn } from '@/shared/lib/utils'
 
@@ -23,9 +25,13 @@ const Sidebar: React.FC<SidebarProps & { user?: any; onSignOut?: () => void }> =
     user,
     onSignOut,
 }) => {
+    const navigate = useNavigate()
     // Keep exact same size (was 200px when open)
     // No collapse option
     const [recentOpen, setRecentOpen] = useState(true)
+
+    const { data: overview } = useBillingOverview()
+    const isPro = overview?.plan === 'PRO'
 
     const recentProjects = isAuthenticated
         ? [...projects]
@@ -97,6 +103,30 @@ const Sidebar: React.FC<SidebarProps & { user?: any; onSignOut?: () => void }> =
                     )}
                 </div>
             </div>
+
+            {isAuthenticated && !isPro && (
+                <div className="px-[10px] mb-2 flex justify-center">
+                    <button
+                        onClick={() => navigate('/profile/billing')}
+                        className="flex items-center justify-center gap-1 px-3 py-[3.5px] rounded-full border border-white/10 bg-transparent text-[#CAC9C9] text-[11px] font-medium hover:bg-white/[0.04] hover:border-white/20 hover:text-white transition-all duration-200"
+                    >
+                        <svg
+                            className="w-[12px] h-[12px] shrink-0"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                        >
+                            <circle cx="12" cy="12" r="10" />
+                            <polyline points="16 12 12 8 8 12" />
+                            <line x1="12" y1="16" x2="12" y2="8" />
+                        </svg>
+                        Upgrade plan
+                    </button>
+                </div>
+            )}
 
             <SidebarFooter
                 isAuthenticated={isAuthenticated}
