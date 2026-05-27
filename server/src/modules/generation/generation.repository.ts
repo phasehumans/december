@@ -16,7 +16,25 @@ import type {
 
 const loadGeneratedFilesFromManifest = async (manifest: StoredProjectFile[]) => {
     const files = await Promise.all(
-        manifest.map(async (file) => [file.path, (await getTextFile(file.key)) ?? ''] as const)
+        manifest.map(async (file) => {
+            const isBinary =
+                file.contentType &&
+                !file.contentType.startsWith('text/') &&
+                !file.contentType.includes('json') &&
+                !file.contentType.includes('javascript') &&
+                !file.contentType.includes('typescript') &&
+                !file.contentType.includes('xml')
+            if (isBinary) {
+                return [file.path, ''] as const
+            }
+            try {
+                const content = await getTextFile(file.key)
+                return [file.path, content ?? ''] as const
+            } catch (err) {
+                console.error(`Failed to load file content for ${file.path} (${file.key}):`, err)
+                return [file.path, ''] as const
+            }
+        })
     )
 
     return Object.fromEntries(files)

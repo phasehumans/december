@@ -1,6 +1,38 @@
-import { describe, expect, it } from 'bun:test'
+import { describe, expect, it, mock, beforeEach } from 'bun:test'
 
-import { parseGitHubRepoUrl } from '../../src/modules/upload/upload.utils'
+const mockExec = mock((cmd: string, options: any, cb: any) => {
+    const callback = typeof options === 'function' ? options : cb
+    if (callback) {
+        callback(null, 'stdout', 'stderr')
+    }
+})
+mock.module('node:child_process', () => ({
+    exec: mockExec,
+}))
+
+const mockMkdir = mock(async (path: string, options: any) => {})
+const mockRm = mock(async (path: string, options: any) => {})
+mock.module('node:fs/promises', () => ({
+    mkdir: mockMkdir,
+    rm: mockRm,
+    readdir: mock(async () => []),
+    stat: mock(async () => ({ isFile: () => true })),
+    readFile: mock(async () => ''),
+    writeFile: mock(async () => {}),
+    cp: mock(async () => {}),
+}))
+
+let parseGitHubRepoUrl: any
+let downloadGitHubRepoArchive: any
+
+import { beforeAll } from 'bun:test'
+
+beforeAll(async () => {
+    const utils = await import('../../src/modules/upload/upload.utils')
+    const downloadzip = await import('../../src/modules/upload/downloadzip')
+    parseGitHubRepoUrl = utils.parseGitHubRepoUrl
+    downloadGitHubRepoArchive = downloadzip.downloadGitHubRepoArchive
+})
 
 describe('parseGitHubRepoUrl', () => {
     describe('valid GitHub repo URLs', () => {
@@ -177,5 +209,57 @@ describe('parseGitHubRepoUrl', () => {
                 code: 'NOT_REPO_URL',
             })
         })
+    })
+})
+
+describe('downloadGitHubRepoArchive', () => {
+    beforeEach(() => {
+        mockExec.mockReset()
+        mockMkdir.mockReset()
+        mockRm.mockReset()
+    })
+
+    it('successfully clones the repository', async () => {
+        mockExec.mockImplementation((cmd: string, options: any, cb: any) => {
+            const callback = typeof options === 'function' ? options : cb
+            if (callback) {
+                callback(null, 'stdout', 'stderr')
+            }
+        })
+        mockMkdir.mockResolvedValue(undefined)
+        mockRm.mockResolvedValue(undefined)
+
+        const result = await downloadGitHubRepoArchive('owner', 'repo', 'token', 'main')
+
+        expect(result.ok).toBe(true)
+        if (result.ok) {
+            expect(result.owner).toBe('owner')
+            expect(result.repo).toBe('repo')
+            expect(result.ref).toBe('main')
+        }
+        expect(mockExec).toHaveBeenCalled()
+        const calls = mockExec.mock.calls
+        expect(calls.length).toBeGreaterThan(0)
+        expect(calls[0]?.[0]).toContain('git clone --depth 1 -b main')
+    })
+
+    it('sanitizes github token in errors', async () => {
+        mockExec.mockImplementation((cmd: string, options: any, cb: any) => {
+            const callback = typeof options === 'function' ? options : cb
+            if (callback) {
+                const err = new Error('Failed to clone repository with token my-secret-token')
+                callback(err, '', '')
+            }
+        })
+        mockMkdir.mockResolvedValue(undefined)
+        mockRm.mockResolvedValue(undefined)
+
+        const result = await downloadGitHubRepoArchive('owner', 'repo', 'my-secret-token', 'main')
+
+        expect(result.ok).toBe(false)
+        if (!result.ok) {
+            expect(result.error).not.toContain('my-secret-token')
+            expect(result.error).toContain('***')
+        }
     })
 })

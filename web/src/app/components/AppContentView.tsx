@@ -207,7 +207,13 @@ export const AppContentView: React.FC<AppContentViewProps> = ({
                             onSelectVersion={onSelectVersion}
                             onDownload={onDownloadProject}
                             previewSession={previewSession}
-                            previewSessionError={previewSessionError}
+                            previewSessionError={
+                                importState.status === 'loading'
+                                    ? importState.message || 'Importing project...'
+                                    : importState.status === 'failed'
+                                      ? importState.message || 'Import failed'
+                                      : previewSessionError
+                            }
                         />
                     </AnimatedPage>
                 ))}
@@ -236,7 +242,13 @@ export const AppContentView: React.FC<AppContentViewProps> = ({
                         onSelectVersion={onSelectVersion}
                         onDownload={onDownloadProject}
                         previewSession={previewSession}
-                        previewSessionError={previewSessionError}
+                        previewSessionError={
+                            importState.status === 'loading'
+                                ? importState.message || 'Importing project...'
+                                : importState.status === 'failed'
+                                  ? importState.message || 'Import failed'
+                                  : previewSessionError
+                        }
                     />
                 </AnimatedPage>
             )}

@@ -32,7 +32,7 @@ export interface ProjectImportStatus {
 }
 
 const importGithub = (repoURL: string) => {
-    return apiRequest<ProjectImportStatus>('/imports/github', {
+    return apiRequest<ProjectImportStatus>('/upload/github', {
         method: 'POST',
         body: JSON.stringify({ repoURL }),
     })
@@ -42,14 +42,14 @@ const importZip = (file: File) => {
     const formData = new FormData()
     formData.append('file', file)
 
-    return apiRequest<ProjectImportStatus>('/imports/zip', {
+    return apiRequest<ProjectImportStatus>('/upload/zip', {
         method: 'POST',
         body: formData,
     })
 }
 
 const getImportStatus = (importId: string) => {
-    return apiRequest<ProjectImportStatus>(`/imports/${importId}`)
+    return apiRequest<ProjectImportStatus>(`/upload/${importId}`)
 }
 
 export const importsAPI = {

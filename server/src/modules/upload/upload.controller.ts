@@ -1,50 +1,8 @@
+import { AppError } from '../../utils/appError'
 import { importIdParamSchema, uploadRepoSchema } from './upload.schema'
 import { uploadService } from './upload.service'
 
 import type { Request, Response } from 'express'
-
-const getErrorStatus = (message: string) => {
-    const normalized = message.toLowerCase()
-
-    if (normalized.includes('not found')) return 404
-    if (
-        normalized.includes('required') ||
-        normalized.includes('invalid') ||
-        normalized.includes('only zip') ||
-        normalized.includes('too large') ||
-        normalized.includes('access token') ||
-        normalized.includes('github')
-    ) {
-        return 400
-    }
-
-    return 500
-}
-
-const getUserGithubRepos = async (req: Request, res: Response) => {
-    const userId = req.user?.userId as string | undefined
-
-    if (!userId) {
-        return res.status(400).json({
-            success: false,
-            message: 'unauthorized',
-        })
-    }
-
-    try {
-        const result = await uploadService.listGithubRepos(userId)
-        return res.status(200).json({
-            success: true,
-            message: 'repos fetched successfully',
-            data: result,
-        })
-    } catch (error: any) {
-        return res.status(500).json({
-            success: false,
-            error: error.message,
-        })
-    }
-}
 
 const importFromGithub = async (req: Request, res: Response) => {
     const userId = req.user?.userId as string | undefined
@@ -74,10 +32,19 @@ const importFromGithub = async (req: Request, res: Response) => {
             message: 'import queued',
             data: result,
         })
-    } catch (error: any) {
-        return res.status(getErrorStatus(error.message)).json({
+    } catch (error) {
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({
+                success: false,
+                message: 'failed to import from github',
+                errors: error.message,
+            })
+        }
+
+        return res.status(500).json({
             success: false,
-            errors: error.message,
+            message: 'failed to import from github',
+            errors: error instanceof Error ? error.message : 'unknown error',
         })
     }
 }
@@ -110,10 +77,19 @@ const importFromZip = async (req: Request, res: Response) => {
             message: 'import queued',
             data: result,
         })
-    } catch (error: any) {
-        return res.status(getErrorStatus(error.message)).json({
+    } catch (error) {
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({
+                success: false,
+                message: 'failed to import from zip',
+                errors: error.message,
+            })
+        }
+
+        return res.status(500).json({
             success: false,
-            errors: error.message,
+            message: 'failed to import from zip',
+            errors: error instanceof Error ? error.message : 'unknown error',
         })
     }
 }
@@ -149,9 +125,18 @@ const getImportStatus = async (req: Request, res: Response) => {
             data: result,
         })
     } catch (error: any) {
-        return res.status(getErrorStatus(error.message)).json({
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({
+                success: false,
+                message: 'failed to fetched import status',
+                errors: error.message,
+            })
+        }
+
+        return res.status(500).json({
             success: false,
-            errors: error.message,
+            message: 'failed to fetched import status',
+            errors: error instanceof Error ? error.message : 'unknown error',
         })
     }
 }
@@ -187,9 +172,18 @@ const retryImport = async (req: Request, res: Response) => {
             data: result,
         })
     } catch (error: any) {
-        return res.status(getErrorStatus(error.message)).json({
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({
+                success: false,
+                message: 'failed to retry import',
+                errors: error.message,
+            })
+        }
+
+        return res.status(500).json({
             success: false,
-            errors: error.message,
+            message: 'failed to retry import',
+            errors: error instanceof Error ? error.message : 'unknown error',
         })
     }
 }

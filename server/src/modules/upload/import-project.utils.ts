@@ -22,6 +22,8 @@ export type ValidatedImportProject = {
     files: ImportValidationFile[]
     totalBytes: number
     detection: ProjectDetection
+    isValid: boolean
+    validationError?: string | null
 }
 
 const MAX_ZIP_BYTES = 50 * 1024 * 1024
@@ -29,7 +31,7 @@ const MAX_UNCOMPRESSED_BYTES = 150 * 1024 * 1024
 const MAX_FILES = 2500
 const MAX_FILE_BYTES = 20 * 1024 * 1024
 const MAX_COMPRESSION_RATIO = 25
-export const IMPORT_STAGING_DIR = '.december--imports'
+export const IMPORT_STAGING_DIR = '.december-imports'
 
 const IGNORED_DIRS = new Set([
     '.git',
@@ -47,9 +49,9 @@ const toWorkspacePath = (path: string) => path.split(sep).join('/')
 
 export const importStagingRootDir = () => {
     const cwd = process.cwd()
-    const repoRoot = basename(cwd) === 'server' ? dirname(cwd) : cwd
+    const serverRoot = basename(cwd) === 'server' ? cwd : join(cwd, 'server')
 
-    return join(repoRoot, IMPORT_STAGING_DIR)
+    return join(serverRoot, IMPORT_STAGING_DIR)
 }
 
 export const cleanupImportDir = async (path?: string | null) => {
@@ -296,37 +298,29 @@ export const validateImportProject = async (
 ): Promise<ValidatedImportProject> => {
     const rootDir = await findProjectRoot(candidateRootDir)
     const packageJsonPath = join(rootDir, 'package.json')
-    const indexHtmlPath = join(rootDir, 'index.html')
-    const srcDir = join(rootDir, 'src')
 
-    const [packageExists, indexExists, srcExists] = await Promise.all([
-        stat(packageJsonPath)
-            .then((value) => value.isFile())
-            .catch(() => false),
-        stat(indexHtmlPath)
-            .then((value) => value.isFile())
-            .catch(() => false),
-        stat(srcDir)
-            .then((value) => value.isDirectory())
-            .catch(() => false),
-    ])
+    const packageExists = await stat(packageJsonPath)
+        .then((value) => value.isFile())
+        .catch(() => false)
 
-    if (!packageExists || !indexExists || !srcExists) {
-        throw new Error(
-            'Unsupported project structure: expected package.json, index.html, and src/'
-        )
-    }
+    let packageJson: Record<string, any> = {}
 
-    const packageJson = JSON.parse(await readFile(packageJsonPath, 'utf8')) as Record<string, any>
-
-    if (!packageJson.scripts?.dev) {
-        throw new Error('Unsupported project structure: package.json must include a dev script')
+    if (packageExists) {
+        try {
+            packageJson = JSON.parse(await readFile(packageJsonPath, 'utf8')) as Record<string, any>
+        } catch (err: any) {
+            console.warn(`Failed to parse package.json: ${err.message}`)
+        }
     }
 
     const { files, totalBytes } = await collectFiles(rootDir)
 
+    let isValid = true
+    let validationError: string | null = null
+
     if (files.length === 0) {
-        throw new Error('Project does not contain any importable files')
+        isValid = false
+        validationError = 'Project does not contain any importable files'
     }
 
     return {
@@ -337,5 +331,7 @@ export const validateImportProject = async (
             framework: detectFramework(packageJson),
             packageJson,
         },
+        isValid,
+        validationError,
     }
 }

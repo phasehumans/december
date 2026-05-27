@@ -257,6 +257,7 @@ export const PreviewArea: React.FC<PreviewAreaProps> = ({
     const showFailedState = Boolean(
         previewSessionError || previewError || previewState === 'Failed'
     )
+    const showFullscreenFailed = showFailedState && !isLivePreview && !showFullscreenLoader
     const statusLabel =
         previewError?.message ||
         previewSessionError ||
@@ -321,6 +322,32 @@ export const PreviewArea: React.FC<PreviewAreaProps> = ({
                             </p>
                         </div>
                     </div>
+                ) : showFullscreenFailed ? (
+                    <div className="absolute inset-0 z-50 flex items-center justify-center bg-[#171615]">
+                        <div className="flex flex-col items-center gap-4 text-center px-8 max-w-md">
+                            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-[#3A1616] border border-[#FF8A8A]/20">
+                                <svg
+                                    className="w-6 h-6 text-[#FF8A8A]"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                >
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"
+                                    />
+                                </svg>
+                            </div>
+                            <div>
+                                <p className="text-sm font-medium text-[#FFD7D7]">Preview failed</p>
+                                <p className="mt-2 text-sm text-[#F2C7C7]/80 leading-relaxed">
+                                    {statusLabel}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
                 ) : showStructurePlaceholder ? (
                     <div className="absolute inset-0 z-40 bg-[#171716] p-5">
                         <div className="h-full w-full rounded-xl border border-white/10 bg-[#171615] p-4 md:p-5 flex flex-col gap-3">
@@ -352,12 +379,15 @@ export const PreviewArea: React.FC<PreviewAreaProps> = ({
                     </div>
                 )}
 
-                {showFailedState && statusLabel && !showFullscreenLoader && (
-                    <div className="absolute inset-x-4 bottom-4 z-40 rounded-2xl border border-[#FF8A8A]/30 bg-[#2A1212]/90 px-4 py-3 text-sm text-[#FFD7D7] shadow-xl backdrop-blur">
-                        <div className="font-medium">Preview issue</div>
-                        <div className="mt-1 text-[#F2C7C7]">{statusLabel}</div>
-                    </div>
-                )}
+                {showFailedState &&
+                    statusLabel &&
+                    !showFullscreenLoader &&
+                    !showFullscreenFailed && (
+                        <div className="absolute inset-x-4 bottom-4 z-40 rounded-2xl border border-[#FF8A8A]/30 bg-[#2A1212]/90 px-4 py-3 text-sm text-[#FFD7D7] shadow-xl backdrop-blur">
+                            <div className="font-medium">Preview issue</div>
+                            <div className="mt-1 text-[#F2C7C7]">{statusLabel}</div>
+                        </div>
+                    )}
             </div>
         </div>
     )

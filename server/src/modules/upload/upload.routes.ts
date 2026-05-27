@@ -6,7 +6,6 @@ import { authMiddleware } from '../../middleware/auth.middleware'
 import { uploadController } from './upload.controller'
 
 const uploadRouter = Router()
-export const importRouter = Router()
 const upload = multer({
     storage: multer.memoryStorage(),
     limits: {
@@ -16,15 +15,9 @@ const upload = multer({
 })
 
 uploadRouter.use(authMiddleware)
-uploadRouter.post('/imports/github', uploadController.importFromGithub)
-uploadRouter.post('/imports/zip', upload.single('file'), uploadController.importFromZip)
-uploadRouter.get('/imports/:id', uploadController.getImportStatus)
-uploadRouter.post('/imports/:id/retry', uploadController.retryImport)
-
-importRouter.use(authMiddleware)
-importRouter.post('/imports/github', uploadController.importFromGithub)
-importRouter.post('/imports/zip', upload.single('file'), uploadController.importFromZip)
-importRouter.get('/imports/:id', uploadController.getImportStatus)
-importRouter.post('/imports/:id/retry', uploadController.retryImport)
+uploadRouter.post('/github', uploadController.importFromGithub)
+uploadRouter.post('/zip', upload.single('file'), uploadController.importFromZip)
+uploadRouter.get('/:id', uploadController.getImportStatus)
+uploadRouter.post('/:id/retry', uploadController.retryImport)
 
 export default uploadRouter
