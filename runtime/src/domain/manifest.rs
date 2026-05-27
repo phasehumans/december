@@ -56,19 +56,7 @@ pub struct ManifestDiff {
 
 impl PreviewManifest {
     pub fn effective_runnable(&self) -> bool {
-        if !self.runnable {
-            return false;
-        }
-
-        let paths = self
-            .files
-            .iter()
-            .map(|file| file.path.as_str())
-            .collect::<BTreeSet<_>>();
-
-        paths.contains("package.json")
-            && paths.contains("index.html")
-            && paths.iter().any(|path| path.starts_with("src/"))
+        self.runnable && !self.files.is_empty()
     }
 
     pub fn file_map(&self) -> BTreeMap<&str, &PreviewManifestFile> {
