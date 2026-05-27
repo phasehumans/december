@@ -94,12 +94,13 @@ const mapStoredFilesToGeneratedFiles = (files: Record<string, string>) =>
     )
 
 const getImportStatusMessage = (status: ProjectImportStatus) => {
+    if (status.errorMessage) return status.errorMessage
     if (status.status === 'PENDING') return 'Queued for import'
     if (status.status === 'VALIDATING') return 'Extracting project archive'
     if (status.status === 'UPLOADING') return 'Uploading project files'
     if (status.status === 'STARTING_RUNTIME') return 'Starting preview runtime'
     if (status.status === 'READY') return 'Preview is ready'
-    return status.errorMessage || 'Import failed'
+    return 'Import failed'
 }
 
 export const useAppController = () => {
@@ -501,27 +502,48 @@ export const useAppController = () => {
     const handleImportGithub = React.useCallback(
         async (repoUrl: string) => {
             await requireAuthOr(async () => {
-                beginImportOutput('Importing GitHub repository')
+                setMessages([])
+                resetGeneratedOutput()
+                setGenerationPhase(null)
+                setActiveOperation('build')
+                setIsGenerating(true)
+                setProjectLoadError(null)
                 setImportState({ status: 'loading', message: 'Validating GitHub repository' })
-                let openedProjectId: string | null = null
+                let hasLoadedFinalFiles = false
 
                 try {
                     const queuedImport = await importsAPI.importGithub(repoUrl)
+
+                    if (queuedImport.projectId) {
+                        void queryClient.invalidateQueries({ queryKey: ['projects'] })
+                        await openProject({
+                            projectId: queuedImport.projectId,
+                            versionId: queuedImport.projectVersionId,
+                            originView: view,
+                            abortActiveGeneration: false,
+                        })
+                    }
+
                     const completedImport = await pollImportUntilComplete(
                         queuedImport.id,
                         async (status) => {
-                            if (!status.projectId || openedProjectId === status.projectId) {
+                            if (!status.projectId) {
                                 return
                             }
 
-                            openedProjectId = status.projectId
-                            void queryClient.invalidateQueries({ queryKey: ['projects'] })
-                            await openProject({
-                                projectId: status.projectId,
-                                versionId: status.projectVersionId,
-                                originView: view,
-                                abortActiveGeneration: false,
-                            })
+                            if (
+                                !hasLoadedFinalFiles &&
+                                (status.status === 'STARTING_RUNTIME' || status.status === 'READY')
+                            ) {
+                                hasLoadedFinalFiles = true
+                                void queryClient.invalidateQueries({ queryKey: ['projects'] })
+                                await openProject({
+                                    projectId: status.projectId,
+                                    versionId: status.projectVersionId,
+                                    originView: view,
+                                    abortActiveGeneration: false,
+                                })
+                            }
                         }
                     )
 
@@ -549,7 +571,6 @@ export const useAppController = () => {
             })
         },
         [
-            beginImportOutput,
             openProject,
             pollImportUntilComplete,
             queryClient,
@@ -562,27 +583,48 @@ export const useAppController = () => {
     const handleImportZip = React.useCallback(
         async (file: File) => {
             await requireAuthOr(async () => {
-                beginImportOutput('Importing zip project')
+                setMessages([])
+                resetGeneratedOutput()
+                setGenerationPhase(null)
+                setActiveOperation('build')
+                setIsGenerating(true)
+                setProjectLoadError(null)
                 setImportState({ status: 'loading', message: 'Uploading zip archive' })
-                let openedProjectId: string | null = null
+                let hasLoadedFinalFiles = false
 
                 try {
                     const queuedImport = await importsAPI.importZip(file)
+
+                    if (queuedImport.projectId) {
+                        void queryClient.invalidateQueries({ queryKey: ['projects'] })
+                        await openProject({
+                            projectId: queuedImport.projectId,
+                            versionId: queuedImport.projectVersionId,
+                            originView: view,
+                            abortActiveGeneration: false,
+                        })
+                    }
+
                     const completedImport = await pollImportUntilComplete(
                         queuedImport.id,
                         async (status) => {
-                            if (!status.projectId || openedProjectId === status.projectId) {
+                            if (!status.projectId) {
                                 return
                             }
 
-                            openedProjectId = status.projectId
-                            void queryClient.invalidateQueries({ queryKey: ['projects'] })
-                            await openProject({
-                                projectId: status.projectId,
-                                versionId: status.projectVersionId,
-                                originView: view,
-                                abortActiveGeneration: false,
-                            })
+                            if (
+                                !hasLoadedFinalFiles &&
+                                (status.status === 'STARTING_RUNTIME' || status.status === 'READY')
+                            ) {
+                                hasLoadedFinalFiles = true
+                                void queryClient.invalidateQueries({ queryKey: ['projects'] })
+                                await openProject({
+                                    projectId: status.projectId,
+                                    versionId: status.projectVersionId,
+                                    originView: view,
+                                    abortActiveGeneration: false,
+                                })
+                            }
                         }
                     )
 
@@ -610,7 +652,6 @@ export const useAppController = () => {
             })
         },
         [
-            beginImportOutput,
             openProject,
             pollImportUntilComplete,
             queryClient,
@@ -1208,6 +1249,7 @@ export const useAppController = () => {
             setMessages([])
             clearOpenedProject()
             resetGenerationFlow()
+            setImportState({ status: 'idle', message: null })
         })
     }
 
@@ -1230,6 +1272,7 @@ export const useAppController = () => {
         setMessages([])
         clearOpenedProject()
         resetGenerationFlow()
+        setImportState({ status: 'idle', message: null })
     }
 
     const isHome = view === 'chat' && messages.length === 0 && !isProjectOpening
@@ -1245,6 +1288,7 @@ export const useAppController = () => {
         clearOpenedProject()
         setMessages([])
         resetGenerationFlow()
+        setImportState({ status: 'idle', message: null })
         navigate(getPathForView(nextView))
     }
 

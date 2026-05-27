@@ -50,12 +50,7 @@ const guessContentType = (path: string) => {
 }
 
 const isRunnableSnapshot = (paths: string[]) => {
-    const fileSet = new Set(paths)
-    return (
-        fileSet.has('package.json') &&
-        fileSet.has('index.html') &&
-        paths.some((path) => path.startsWith('src/'))
-    )
+    return paths.length > 0
 }
 
 export const previewManifestObjectKey = (

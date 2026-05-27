@@ -1,9 +1,10 @@
-﻿import { prisma } from '../../config/db'
+import { prisma } from '../../config/db'
 import {
     getLatestPreviewManifestRef,
     publishStoredPreviewManifest,
     type PreviewManifestRef,
 } from '../../lib/preview-manifest'
+import { getBinaryFile } from '../../lib/project-storage'
 
 export type RuntimePreviewError = {
     class:
@@ -190,6 +191,27 @@ const ensureManifestRef = async ({
     })
 }
 
+const getInvalidStructureStatus = (projectId: string, message: string): RuntimePreviewStatus => ({
+    previewId: projectId,
+    projectId: projectId,
+    state: 'Failed',
+    backendStatus: 'failed',
+    lastError: {
+        class: 'stable_compile_runtime',
+        code: 'UNSUPPORTED_STRUCTURE',
+        message: message,
+        retryable: false,
+    },
+    updatedAt: new Date().toISOString(),
+})
+
+const validateProjectStructure = async (
+    projectId: string,
+    version: ProjectVersionRecord
+): Promise<{ isValid: boolean; error?: string }> => {
+    return { isValid: true }
+}
+
 const recordRuntimeStatus = (previewId: string, status: RuntimeStatusCallbackInput) => {
     previewStatusStore.set(previewId, status)
     return status
@@ -197,6 +219,23 @@ const recordRuntimeStatus = (previewId: string, status: RuntimeStatusCallbackInp
 
 const startPreview = async ({ userId, projectId, versionId }: StartPreviewInput) => {
     const { project, version } = await loadProjectVersion({ userId, projectId, versionId })
+
+    if (version.status !== 'READY') {
+        return {
+            previewId: project.id,
+            projectId: project.id,
+            state: 'Bootstrapping',
+            backendStatus: 'loading',
+            updatedAt: new Date().toISOString(),
+        } as RuntimePreviewStatus
+    }
+
+    // Validate project structure
+    const validation = await validateProjectStructure(project.id, version)
+    if (!validation.isValid) {
+        return getInvalidStructureStatus(project.id, validation.error!)
+    }
+
     const initialManifest = await ensureManifestRef({
         projectId: project.id,
         version,
@@ -239,11 +278,40 @@ const getPreviewStatus = async ({ userId, previewId }: PreviewIdentifierInput) =
         },
         select: {
             id: true,
+            currentVersionId: true,
         },
     })
 
     if (!project) {
         throw new Error('project not found')
+    }
+
+    // Check project version structure before getting status
+    const version = await prisma.projectVersion.findFirst({
+        where: {
+            projectId: project.id,
+            id: project.currentVersionId ?? undefined,
+        },
+        orderBy: {
+            versionNumber: 'desc',
+        },
+    })
+
+    if (version && version.status !== 'READY') {
+        return {
+            previewId: project.id,
+            projectId: project.id,
+            state: 'Bootstrapping',
+            backendStatus: 'loading',
+            updatedAt: new Date().toISOString(),
+        } as RuntimePreviewStatus
+    }
+
+    if (version) {
+        const validation = await validateProjectStructure(project.id, version)
+        if (!validation.isValid) {
+            return getInvalidStructureStatus(project.id, validation.error!)
+        }
     }
 
     try {

@@ -114,7 +114,10 @@ export const ProfileSettingsContent: React.FC<ProfileSettingsContentProps> = ({
                 <div className="flex items-center justify-between border-t border-[#242323] pt-4">
                     <div className="flex flex-col gap-0.5">
                         <span className="text-[14px] text-[#D6D5C9] flex items-center gap-2">
-                            Unlock the full power of December Pro
+                            Unlock the full power of December
+                            <span className="bg-[#2F2E2D] text-[#D6D5D4] rounded-full px-1.5 py-[1px] text-[10px] font-medium">
+                                Pro
+                            </span>
                         </span>
                         <span className="text-[13px] text-[#7B7A79]">
                             Build faster with higher limits and advanced features.{' '}

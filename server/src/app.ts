@@ -12,7 +12,7 @@ import profileRouter from './modules/profile/profile.routes'
 import projectRouter from './modules/project/project.routes'
 import runtimeRouter from './modules/runtime/runtime.routes'
 import templateRouter from './modules/template/template.routes'
-import uploadRouter, { importRouter } from './modules/upload/upload.routes'
+import uploadRouter from './modules/upload/upload.routes'
 import usageRouter from './modules/usage/usage.routes'
 
 const app = express()
@@ -43,7 +43,6 @@ app.use('/api/v1/canvas', canvasRouter)
 app.use('/api/v1/generate', generateRouter)
 app.use('/api/v1/runtime', runtimeRouter)
 app.use('/api/v1/upload', uploadRouter)
-app.use('/api/v1/import', importRouter)
 app.use('/api/v1/usage', usageRouter)
 app.use('/api/v1/template', templateRouter)
 app.use('/api/v1/integrations', integrationsRouter)

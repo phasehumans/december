@@ -108,10 +108,10 @@ const Sidebar: React.FC<SidebarProps & { user?: any; onSignOut?: () => void }> =
                 <div className="px-[10px] mb-2 flex justify-center">
                     <button
                         onClick={() => navigate('/profile/billing')}
-                        className="flex items-center justify-center gap-1 px-3 py-[3.5px] rounded-full border border-white/10 bg-transparent text-[#CAC9C9] text-[11px] font-medium hover:bg-white/[0.04] hover:border-white/20 hover:text-white transition-all duration-200"
+                        className="flex items-center justify-center gap-1.5 px-3.5 py-[4.5px] rounded-full border border-white/10 bg-transparent text-[#CAC9C9] text-[12px] font-medium hover:bg-white/[0.04] hover:border-white/20 hover:text-white transition-all duration-200"
                     >
                         <svg
-                            className="w-[12px] h-[12px] shrink-0"
+                            className="w-[13px] h-[13px] shrink-0"
                             viewBox="0 0 24 24"
                             fill="none"
                             stroke="currentColor"
