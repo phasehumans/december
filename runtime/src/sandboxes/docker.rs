@@ -6,6 +6,7 @@ use std::{
 };
 
 use async_trait::async_trait;
+use tracing::{info, warn, error};
 use bollard::{
     Docker,
     container::{
@@ -117,13 +118,24 @@ impl DockerSandbox {
             })? {
             StartExecResults::Attached { output: logs, .. } => {
                 futures_util::pin_mut!(logs);
-                while let Some(message) = logs.try_next().await.map_err(|error| {
+                while let Some(log_output) = logs.try_next().await.map_err(|error| {
                     RuntimeServiceError::infra_runtime(
                         "failed to stream Docker exec output",
                         Some(error.to_string()),
                     )
                 })? {
-                    output.push_str(&message.to_string());
+                    let text = log_output.to_string();
+                    output.push_str(&text);
+                    for line in text.lines() {
+                        let trimmed = line.trim();
+                        if !trimmed.is_empty() {
+                            info!(
+                                container_name = %container_name,
+                                "[exec] {}",
+                                trimmed
+                            );
+                        }
+                    }
                 }
             }
             StartExecResults::Detached => {}
@@ -153,30 +165,41 @@ impl DockerSandbox {
     }
 
     async fn ensure_image_available(&self) -> Result<(), RuntimeServiceError> {
+        info!(preview_id = %self.preview_id, image = %self.config.image, "checking if container image is available locally");
         match self.docker.inspect_image(&self.config.image).await {
-            Ok(_) => Ok(()),
+            Ok(_) => {
+                info!(preview_id = %self.preview_id, image = %self.config.image, "container image is available locally");
+                Ok(())
+            }
             Err(BollardError::DockerResponseServerError {
                 status_code: 404, ..
-            }) => self
-                .docker
-                .create_image(
-                    Some(
-                        bollard::query_parameters::CreateImageOptionsBuilder::default()
-                            .from_image(&self.config.image)
-                            .build(),
-                    ),
-                    None,
-                    None,
-                )
-                .try_collect::<Vec<_>>()
-                .await
-                .map(|_| ())
-                .map_err(|error| {
-                    RuntimeServiceError::infra_runtime(
-                        "failed to pull preview image",
-                        Some(error.to_string()),
+            }) => {
+                info!(preview_id = %self.preview_id, image = %self.config.image, "image not found locally, pulling from docker registry...");
+                let result = self
+                    .docker
+                    .create_image(
+                        Some(
+                            bollard::query_parameters::CreateImageOptionsBuilder::default()
+                                .from_image(&self.config.image)
+                                .build(),
+                        ),
+                        None,
+                        None,
                     )
-                }),
+                    .try_collect::<Vec<_>>()
+                    .await
+                    .map(|_| ())
+                    .map_err(|error| {
+                        RuntimeServiceError::infra_runtime(
+                            "failed to pull preview image",
+                            Some(error.to_string()),
+                        )
+                    });
+                if result.is_ok() {
+                    info!(preview_id = %self.preview_id, image = %self.config.image, "image successfully pulled");
+                }
+                result
+            }
             Err(error) => Err(RuntimeServiceError::infra_runtime(
                 "failed to inspect preview image",
                 Some(error.to_string()),
@@ -194,6 +217,7 @@ impl Sandbox for DockerSandbox {
 
         let host_port = reserve_local_port()?;
         let container_name = self.container_name();
+        info!(preview_id = %self.preview_id, name = %container_name, port = host_port, "ensuring preview sandbox is started");
         self.ensure_image_available().await?;
         let workspace = workspace_host_path.canonicalize().map_err(|error| {
             RuntimeServiceError::infra_runtime(
@@ -201,6 +225,7 @@ impl Sandbox for DockerSandbox {
                 Some(error.to_string()),
             )
         })?;
+        info!(preview_id = %self.preview_id, workspace = %workspace.display(), "using canonicalized workspace path");
 
         let mut port_bindings = HashMap::new();
         port_bindings.insert(
@@ -226,6 +251,7 @@ impl Sandbox for DockerSandbox {
             .await
             .is_ok()
         {
+            info!(preview_id = %self.preview_id, name = %container_name, "removing existing preview container with same name");
             let _ = self
                 .docker
                 .remove_container(
@@ -238,6 +264,7 @@ impl Sandbox for DockerSandbox {
                 .await;
         }
 
+        info!(preview_id = %self.preview_id, name = %container_name, "creating new preview container");
         self.docker
             .create_container(
                 Some(CreateContainerOptions {
@@ -276,6 +303,7 @@ impl Sandbox for DockerSandbox {
                 )
             })?;
 
+        info!(preview_id = %self.preview_id, name = %container_name, "starting preview container");
         self.docker
             .start_container(&container_name, None::<StartContainerOptions<String>>)
             .await
@@ -286,6 +314,7 @@ impl Sandbox for DockerSandbox {
                 )
             })?;
 
+        info!(preview_id = %self.preview_id, name = %container_name, "preview container started successfully");
         state.container_name = Some(container_name);
         state.host_port = Some(host_port);
         state.workspace_host_path = Some(workspace);
@@ -300,6 +329,7 @@ impl Sandbox for DockerSandbox {
             })?
         };
 
+        info!(preview_id = %self.preview_id, name = %container_name, "running bun install inside preview container...");
         let (exit_code, output) = self
             .run_shell(
                 &container_name,
@@ -308,12 +338,14 @@ impl Sandbox for DockerSandbox {
             .await?;
 
         if exit_code != 0 {
+            error!(preview_id = %self.preview_id, name = %container_name, exit_code, "bun install failed inside container");
             return Err(RuntimeServiceError::dependency_install(
                 "dependency installation failed",
                 Some(trim_output(&output)),
             ));
         }
 
+        info!(preview_id = %self.preview_id, name = %container_name, "bun install completed successfully inside container");
         Ok(())
     }
 
@@ -325,8 +357,10 @@ impl Sandbox for DockerSandbox {
             })?
         };
 
+        info!(preview_id = %self.preview_id, name = %container_name, "stopping existing dev server inside container...");
         self.stop_dev_server_process(&container_name).await?;
 
+        info!(preview_id = %self.preview_id, name = %container_name, "starting Vitest/Vite dev server on port 4173 inside container...");
         let (exit_code, output) = self
             .run_shell(
                 &container_name,
@@ -335,12 +369,14 @@ impl Sandbox for DockerSandbox {
             .await?;
 
         if exit_code != 0 {
+            error!(preview_id = %self.preview_id, name = %container_name, exit_code, "failed to start preview dev server inside container");
             return Err(RuntimeServiceError::stable_compile_runtime(
                 "failed to start preview dev server",
                 Some(trim_output(&output)),
             ));
         }
 
+        info!(preview_id = %self.preview_id, name = %container_name, "dev server start command run successfully");
         Ok(())
     }
 
@@ -370,6 +406,7 @@ impl Sandbox for DockerSandbox {
             RuntimeServiceError::infra_runtime("preview target URL is unavailable", None)
         })?;
 
+        info!(preview_id = %self.preview_id, url = %target_url, "running sandbox health check");
         let response = match self.http_client.get(format!("{target_url}/")).send().await {
             Ok(response) => response,
             Err(error) => {

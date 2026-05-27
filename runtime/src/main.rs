@@ -31,6 +31,12 @@ async fn main() -> Result<(), RuntimeServiceError> {
         .init();
 
     let config = Arc::new(AppConfig::from_env()?);
+    info!(
+        bucket = %config.s3.bucket,
+        endpoint = %config.s3.endpoint,
+        region = %config.s3.region,
+        "initialized object storage configuration"
+    );
     let storage = ObjectStorage::new(config.s3.clone()).await?;
     let backend = BackendCallbackClient::new(config.backend_callback.clone());
     let registry = ActorRegistry::new(config.clone(), storage, backend);
@@ -87,6 +93,7 @@ fn candidate_env_paths() -> Vec<PathBuf> {
 
         if let Some(parent) = current_dir.parent() {
             paths.push(parent.join(".env"));
+            paths.push(parent.join("server").join(".env"));
         }
     }
 

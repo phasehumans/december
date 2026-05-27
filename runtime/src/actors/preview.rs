@@ -181,36 +181,69 @@ impl PreviewActor {
                     .await;
                 self.ensure_sandbox_ready().await?;
                 self.sync_manifest(&manifest, &diff).await?;
-                self.transition(PreviewLifecycleState::Installing, None)
-                    .await;
-                self.sandbox.install_dependencies().await?;
-                self.transition(PreviewLifecycleState::Starting, None).await;
-                self.sandbox.restart_dev_server().await?;
-                self.current_manifest = Some(manifest.clone());
-                self.await_healthy(&manifest).await?;
+
+                let has_package_json = self.workspace_path.as_ref()
+                    .map(|p| p.join("package.json").exists())
+                    .unwrap_or(false);
+
+                if !has_package_json {
+                    self.current_manifest = Some(manifest.clone());
+                    self.healthy_version = Some(manifest.project_version_id.clone());
+                    self.transition(PreviewLifecycleState::Healthy, None).await;
+                } else {
+                    self.transition(PreviewLifecycleState::Installing, None)
+                        .await;
+                    self.sandbox.install_dependencies().await?;
+                    self.transition(PreviewLifecycleState::Starting, None).await;
+                    self.sandbox.restart_dev_server().await?;
+                    self.current_manifest = Some(manifest.clone());
+                    self.await_healthy(&manifest).await?;
+                }
             }
             ReconcileMode::Reinstall => {
                 self.transition(PreviewLifecycleState::Rebuilding, None)
                     .await;
                 self.ensure_sandbox_ready().await?;
                 self.sync_manifest(&manifest, &diff).await?;
-                self.transition(PreviewLifecycleState::Installing, None)
-                    .await;
-                self.sandbox.install_dependencies().await?;
-                self.transition(PreviewLifecycleState::Starting, None).await;
-                self.sandbox.restart_dev_server().await?;
-                self.current_manifest = Some(manifest.clone());
-                self.await_healthy(&manifest).await?;
+
+                let has_package_json = self.workspace_path.as_ref()
+                    .map(|p| p.join("package.json").exists())
+                    .unwrap_or(false);
+
+                if !has_package_json {
+                    self.current_manifest = Some(manifest.clone());
+                    self.healthy_version = Some(manifest.project_version_id.clone());
+                    self.transition(PreviewLifecycleState::Healthy, None).await;
+                } else {
+                    self.transition(PreviewLifecycleState::Installing, None)
+                        .await;
+                    self.sandbox.install_dependencies().await?;
+                    self.transition(PreviewLifecycleState::Starting, None).await;
+                    self.sandbox.restart_dev_server().await?;
+                    self.current_manifest = Some(manifest.clone());
+                    self.await_healthy(&manifest).await?;
+                }
             }
             ReconcileMode::Restart => {
                 self.transition(PreviewLifecycleState::Rebuilding, None)
                     .await;
                 self.ensure_sandbox_ready().await?;
                 self.sync_manifest(&manifest, &diff).await?;
-                self.transition(PreviewLifecycleState::Starting, None).await;
-                self.sandbox.restart_dev_server().await?;
-                self.current_manifest = Some(manifest.clone());
-                self.await_healthy(&manifest).await?;
+
+                let has_package_json = self.workspace_path.as_ref()
+                    .map(|p| p.join("package.json").exists())
+                    .unwrap_or(false);
+
+                if !has_package_json {
+                    self.current_manifest = Some(manifest.clone());
+                    self.healthy_version = Some(manifest.project_version_id.clone());
+                    self.transition(PreviewLifecycleState::Healthy, None).await;
+                } else {
+                    self.transition(PreviewLifecycleState::Starting, None).await;
+                    self.sandbox.restart_dev_server().await?;
+                    self.current_manifest = Some(manifest.clone());
+                    self.await_healthy(&manifest).await?;
+                }
             }
             ReconcileMode::SyncOnly => {
                 self.transition(PreviewLifecycleState::Rebuilding, None)
@@ -218,11 +251,27 @@ impl PreviewActor {
                 self.ensure_sandbox_ready().await?;
                 self.sync_manifest(&manifest, &diff).await?;
                 self.current_manifest = Some(manifest.clone());
-                self.await_healthy(&manifest).await?;
+
+                let has_package_json = self.workspace_path.as_ref()
+                    .map(|p| p.join("package.json").exists())
+                    .unwrap_or(false);
+
+                if !has_package_json {
+                    self.healthy_version = Some(manifest.project_version_id.clone());
+                    self.transition(PreviewLifecycleState::Healthy, None).await;
+                } else {
+                    self.await_healthy(&manifest).await?;
+                }
             }
             ReconcileMode::Noop => {
                 self.current_manifest = Some(manifest.clone());
-                if self.healthy_version.as_deref() == Some(manifest.project_version_id.as_str()) {
+
+                let has_package_json = self.workspace_path.as_ref()
+                    .map(|p| p.join("package.json").exists())
+                    .unwrap_or(false);
+
+                if !has_package_json || self.healthy_version.as_deref() == Some(manifest.project_version_id.as_str()) {
+                    self.healthy_version = Some(manifest.project_version_id.clone());
                     self.transition(PreviewLifecycleState::Healthy, None).await;
                 } else {
                     self.await_healthy(&manifest).await?;
@@ -290,6 +339,14 @@ impl PreviewActor {
             snapshot.state,
             PreviewLifecycleState::Healthy | PreviewLifecycleState::Rebuilding
         ) {
+            return Ok(());
+        }
+
+        let has_package_json = self.workspace_path.as_ref()
+            .map(|p| p.join("package.json").exists())
+            .unwrap_or(false);
+
+        if !has_package_json {
             return Ok(());
         }
 
