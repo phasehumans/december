@@ -186,7 +186,7 @@ export const AppContentView: React.FC<AppContentViewProps> = ({
                 ) : (
                     <AnimatedPage pageKey="chat-output">
                         <OutputScreen
-                            onBack={onBackFromOutput}
+                            onBack={onNewProject}
                             onPromptSubmit={(prompt, options) =>
                                 onOutputPromptSubmit(prompt, options?.selectedElement)
                             }
@@ -221,7 +221,7 @@ export const AppContentView: React.FC<AppContentViewProps> = ({
             {view === 'project' && (
                 <AnimatedPage pageKey="project-output">
                     <OutputScreen
-                        onBack={onBackFromOutput}
+                        onBack={onNewProject}
                         onPromptSubmit={(prompt, options) =>
                             onOutputPromptSubmit(prompt, options?.selectedElement)
                         }

@@ -12,7 +12,7 @@ export interface Project {
     versionCount: number
     currentVersionId: string | null
     createdByUsername: string
-    status?: 'Draft' | 'Generated' | 'Published' | 'Template'
+    status?: 'Draft' | 'Generating' | 'Generated' | 'Deployed' | 'Failed'
 }
 
 export interface ProjectListProps {
@@ -82,7 +82,7 @@ export interface ProjectDuplicateModalProps {
     projectTitle?: string
     isPending: boolean
     onClose: () => void
-    onConfirm: () => void
+    onConfirm: (name: string) => void
 }
 
 export interface ProjectShareModalProps {

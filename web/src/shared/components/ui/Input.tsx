@@ -30,7 +30,7 @@ export const Input: React.FC<InputProps> = ({
                 )}
                 <input
                     className={cn(
-                        'w-full bg-[#242323] border border-transparent focus:border-white/10 rounded-lg text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-white/10 transition-all font-medium',
+                        'w-full bg-[#242323] border border-transparent focus:border-white/10 rounded-lg text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-white/10 transition-[border-color,box-shadow] font-medium',
                         props.disabled && 'opacity-50 cursor-not-allowed',
                         leftIcon ? 'pl-9' : 'px-3',
                         rightIcon ? 'pr-9' : 'px-3',

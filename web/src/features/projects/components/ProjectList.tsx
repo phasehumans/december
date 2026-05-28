@@ -4,6 +4,7 @@ import { useProjectListMutations } from '../hooks/useProjectListMutations'
 
 import { ProjectListModals } from './ProjectListModals'
 import { ProjectListView } from './ProjectListView'
+import { toProjectSlug } from '@/app/types'
 
 import type {
     DeleteModalState,
@@ -15,7 +16,7 @@ import type {
 } from '@/features/projects/types'
 
 export type SortOption = 'newest' | 'oldest'
-export type StatusFilter = 'any' | 'Draft' | 'Generated' | 'Published'
+export type StatusFilter = 'any' | 'Draft' | 'Generating' | 'Generated' | 'Deployed' | 'Failed'
 
 export const ProjectList: React.FC<ProjectListProps> = ({
     onNewProject,
@@ -108,7 +109,13 @@ export const ProjectList: React.FC<ProjectListProps> = ({
     const openProjectFromMenu = (projectId: string, event: React.MouseEvent) => {
         event.stopPropagation()
         setMenuOpenId(null)
-        onOpenProject(projectId)
+        const proj = projects.find((p) => p.id === projectId)
+        if (proj) {
+            const slug = toProjectSlug(proj.title)
+            window.open(`/project/${slug}`, '_blank')
+        } else {
+            onOpenProject(projectId)
+        }
     }
 
     const toggleStarFromMenu = (project: Project, event: React.MouseEvent) => {

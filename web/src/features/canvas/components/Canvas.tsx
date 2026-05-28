@@ -191,6 +191,7 @@ export const Canvas = forwardRef<CanvasRef, CanvasProps>((props, ref) => {
             t: 'text',
             e: 'eraser',
             h: 'hand',
+            f: 'frame',
         }
 
         const onKeyDown = (e: KeyboardEvent) => {
@@ -220,7 +221,7 @@ export const Canvas = forwardRef<CanvasRef, CanvasProps>((props, ref) => {
                 return
             }
 
-            if (e.metaKey || e.ctrlKey || e.altKey) return
+            if (e.metaKey || e.ctrlKey || e.altKey || (e.shiftKey && e.key !== 'Shift')) return
 
             const nextTool = shortcuts[e.key.toLowerCase()]
             if (!nextTool) return
@@ -1023,6 +1024,7 @@ export const Canvas = forwardRef<CanvasRef, CanvasProps>((props, ref) => {
             <div
                 onPointerDown={(e) => e.stopPropagation()}
                 onPointerUp={(e) => e.stopPropagation()}
+                className="canvas-toolbar-container transition-all duration-200"
             >
                 <CanvasToolbar
                     activeTool={activeTool}

@@ -114,7 +114,15 @@ export const ChatThread: React.FC<ChatSidebarProps> = ({
             <div className="h-14 flex items-center justify-between shrink-0 px-4 min-w-[340px] w-full">
                 <div className="flex items-center gap-2">
                     <button
-                        onClick={onBack}
+                        type="button"
+                        onClick={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            if (onBack) {
+                                onBack()
+                            }
+                            window.location.href = '/'
+                        }}
                         className="flex items-center text-sm font-medium tracking-wide text-[#91908F] hover:text-white transition-colors"
                         title="Back to Home"
                     >

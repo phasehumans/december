@@ -442,6 +442,34 @@ export const useAppController = () => {
         [abortGenerationRequest, hydrateProjectDetail, resetGenerationRefs]
     )
 
+    // Deep-link resolution for /project/:slug on mount / project list load
+    React.useEffect(() => {
+        if (!isAuthenticated || projects.length === 0 || activeProjectId || isProjectOpening) {
+            return
+        }
+
+        if (location.pathname.startsWith('/project/')) {
+            const parts = location.pathname.split('/')
+            const slug = parts[parts.length - 1]
+            if (slug && slug !== 'untitled') {
+                const matchingProject = projects.find((p) => toProjectSlug(p.title) === slug)
+                if (matchingProject) {
+                    void openProject({
+                        projectId: matchingProject.id,
+                        originView: 'all-projects',
+                    })
+                }
+            }
+        }
+    }, [
+        isAuthenticated,
+        projects,
+        activeProjectId,
+        isProjectOpening,
+        location.pathname,
+        openProject,
+    ])
+
     const beginImportOutput = React.useCallback(
         (message: string) => {
             const assistantMessageId = `${Date.now()}-import-assistant`
@@ -1243,14 +1271,12 @@ export const useAppController = () => {
     }, [activeProjectId])
 
     const handleNewThread = () => {
-        requireAuthOr(() => {
-            outputOriginViewRef.current = 'chat'
-            navigate('/')
-            setMessages([])
-            clearOpenedProject()
-            resetGenerationFlow()
-            setImportState({ status: 'idle', message: null })
-        })
+        outputOriginViewRef.current = 'chat'
+        setMessages([])
+        clearOpenedProject()
+        resetGenerationFlow()
+        setImportState({ status: 'idle', message: null })
+        window.location.href = '/'
     }
 
     const handleNavigate = (target: ViewState) => {
@@ -1284,7 +1310,7 @@ export const useAppController = () => {
     const projectsErrorMessage = projectsError instanceof Error ? projectsError.message : null
 
     const handleBackFromOutput = () => {
-        const nextView = outputOriginViewRef.current
+        const nextView = 'chat'
         clearOpenedProject()
         setMessages([])
         resetGenerationFlow()
