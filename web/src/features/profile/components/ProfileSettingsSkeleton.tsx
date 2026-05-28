@@ -72,36 +72,106 @@ export const ProfileSettingsSkeleton: React.FC<ProfileSettingsSkeletonProps> = (
 
     if (activeTab === 'Billing') {
         return (
-            <div className="flex flex-col w-full max-w-[680px] text-[#D6D5C9]">
+            <div className="flex flex-col w-full max-w-[680px] text-[#D6D5C9] animate-in fade-in duration-200">
+                {/* Current Plan Skeleton */}
                 <div className="flex flex-col mb-8">
                     <Skeleton className="h-[18px] w-32 mb-4 bg-white/[0.06]" />
                     <div className="flex flex-col gap-7 border-t border-[#242323] pt-6">
                         <div className="flex items-center justify-between">
                             <div className="flex flex-col gap-2">
-                                <Skeleton className="h-4 w-32 bg-white/[0.06]" />
-                                <Skeleton className="h-3 w-48 bg-white/[0.04]" />
+                                <Skeleton className="h-4 w-40 bg-white/[0.06]" />
+                                <Skeleton className="h-3.5 w-64 bg-white/[0.04]" />
                             </div>
-                            <div className="flex gap-3">
-                                <Skeleton className="h-8 w-24 rounded-lg bg-white/[0.04]" />
-                                <Skeleton className="h-8 w-24 rounded-lg bg-white/[0.04]" />
-                            </div>
+                            <Skeleton className="h-8 w-28 rounded-lg bg-white/[0.04]" />
                         </div>
                     </div>
                 </div>
+
+                {/* Plans Comparison Skeleton */}
+                <div className="flex flex-col mb-8">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        {[1, 2].map((i) => (
+                            <div
+                                key={i}
+                                className="rounded-xl border border-[#242323] bg-[#1E1D1B]/5 p-5 flex flex-col justify-between h-[220px]"
+                            >
+                                <div className="space-y-4">
+                                    <div className="flex justify-between">
+                                        <Skeleton className="h-4 w-20 bg-white/[0.06]" />
+                                        <Skeleton className="h-3.5 w-12 bg-white/[0.04]" />
+                                    </div>
+                                    <Skeleton className="h-6 w-16 bg-white/[0.06]" />
+                                    <div className="space-y-2">
+                                        <Skeleton className="h-3 w-3/4 bg-white/[0.04]" />
+                                        <Skeleton className="h-3 w-2/3 bg-white/[0.04]" />
+                                        <Skeleton className="h-3 w-1/2 bg-white/[0.04]" />
+                                    </div>
+                                </div>
+                                <Skeleton className="h-9 w-full rounded-lg bg-white/[0.04]" />
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Credit Balance Skeleton */}
                 <div className="flex flex-col mb-8">
                     <Skeleton className="h-[18px] w-32 mb-4 bg-white/[0.06]" />
-                    <div className="flex flex-col border-t border-[#242323] pt-6">
-                        <div className="flex flex-col md:flex-row gap-8">
-                            <Skeleton className="w-[220px] h-[130px] rounded-xl bg-white/[0.04]" />
-                            <div className="flex-1 flex flex-col gap-4 py-2">
-                                {[1, 2, 3, 4].map((i) => (
+                    <div className="flex flex-col gap-6 border-t border-[#242323] pt-6">
+                        <Skeleton className="h-3.5 w-[90%] bg-white/[0.04]" />
+                        <div className="flex flex-col md:flex-row gap-8 items-center mt-2">
+                            <Skeleton className="w-[220px] h-[130px] rounded-2xl bg-white/[0.04]" />
+                            <div className="flex-1 w-full flex flex-col gap-4 py-2">
+                                {[1, 2].map((i) => (
                                     <div key={i} className="flex justify-between">
                                         <Skeleton className="h-4 w-32 bg-white/[0.04]" />
                                         <Skeleton className="h-4 w-16 bg-white/[0.04]" />
                                     </div>
                                 ))}
+                                <div className="border-t border-[#242323] pt-3 flex justify-between">
+                                    <Skeleton className="h-4 w-36 bg-white/[0.06]" />
+                                    <Skeleton className="h-4 w-12 bg-white/[0.06]" />
+                                </div>
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                {/* Credit Expiration Schedule Skeleton */}
+                <div className="flex flex-col mb-8">
+                    <Skeleton className="h-[18px] w-48 mb-4 bg-white/[0.06]" />
+                    <div className="flex flex-col border-t border-[#242323]">
+                        <div className="flex justify-between py-3 border-b border-[#242323]">
+                            <Skeleton className="h-3.5 w-16 bg-white/[0.04]" />
+                            <Skeleton className="h-3.5 w-24 bg-white/[0.04]" />
+                            <Skeleton className="h-3.5 w-20 bg-white/[0.04]" />
+                        </div>
+                        <div className="flex justify-between py-4">
+                            <Skeleton className="h-4 w-20 bg-white/[0.06]" />
+                            <Skeleton className="h-4 w-24 bg-white/[0.04]" />
+                            <Skeleton className="h-4 w-28 bg-white/[0.04]" />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Used and Expired Credits Skeleton */}
+                <div className="flex flex-col mb-8">
+                    <Skeleton className="h-[18px] w-56 mb-4 bg-white/[0.06]" />
+                    <div className="flex flex-col border-t border-[#242323]">
+                        <div className="flex justify-between py-3 border-b border-[#242323]">
+                            <Skeleton className="h-3.5 w-24 bg-white/[0.04]" />
+                            <Skeleton className="h-3.5 w-20 bg-white/[0.04]" />
+                            <Skeleton className="h-3.5 w-16 bg-white/[0.04]" />
+                        </div>
+                        {[1, 2, 3].map((i) => (
+                            <div
+                                key={i}
+                                className="flex justify-between py-4 border-b border-[#242323]/50 last:border-b-0"
+                            >
+                                <Skeleton className="h-4 w-28 bg-white/[0.06]" />
+                                <Skeleton className="h-4 w-16 bg-white/[0.04]" />
+                                <Skeleton className="h-4 w-20 bg-white/[0.04]" />
+                            </div>
+                        ))}
                     </div>
                 </div>
             </div>

@@ -113,10 +113,14 @@ const duplicateProject = (projectId: string, name?: string) => {
     })
 }
 
-const shareProjectAsTemplate = (projectId: string, isSharedAsTemplate: boolean) => {
+const shareProjectAsTemplate = (
+    projectId: string,
+    isSharedAsTemplate: boolean,
+    projectCategory?: string
+) => {
     return apiRequest<{ message: string }>(`/project/${projectId}/share`, {
         method: 'POST',
-        body: JSON.stringify({ isSharedAsTemplate }),
+        body: JSON.stringify({ isSharedAsTemplate, projectCategory }),
     })
 }
 

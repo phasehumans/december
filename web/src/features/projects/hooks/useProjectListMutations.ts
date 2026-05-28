@@ -120,10 +120,12 @@ export const useProjectListMutations = ({
         mutationFn: ({
             projectId,
             isSharedAsTemplate,
+            projectCategory,
         }: {
             projectId: string
             isSharedAsTemplate: boolean
-        }) => projectAPI.shareProjectAsTemplate(projectId, isSharedAsTemplate),
+            projectCategory?: string
+        }) => projectAPI.shareProjectAsTemplate(projectId, isSharedAsTemplate, projectCategory),
         onMutate: async () => {
             setActionError(null)
             onShareMutate()

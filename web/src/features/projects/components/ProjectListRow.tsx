@@ -35,22 +35,22 @@ export const ProjectListRow: React.FC<ProjectListRowProps> = ({
 
             <div className="flex items-center gap-2 text-[13px] text-[#7B7A79]">
                 {project.status === 'Deployed' && (
-                    <Rocket className="h-3.5 w-3.5 text-indigo-400" strokeWidth={1.8} />
+                    <Rocket className="h-3.5 w-3.5 text-[#D6D5C9]" strokeWidth={1.8} />
                 )}
                 {project.status === 'Generated' && (
-                    <Terminal className="h-3.5 w-3.5 text-emerald-400" strokeWidth={1.8} />
+                    <Terminal className="h-3.5 w-3.5 text-[#D6D5C9]" strokeWidth={1.8} />
                 )}
                 {project.status === 'Generating' && (
                     <Loader2
-                        className="h-3.5 w-3.5 text-yellow-500 animate-spin"
+                        className="h-3.5 w-3.5 text-[#D6D5C9] animate-spin"
                         strokeWidth={1.8}
                     />
                 )}
                 {project.status === 'Failed' && (
-                    <AlertCircle className="h-3.5 w-3.5 text-red-500" strokeWidth={1.8} />
+                    <AlertCircle className="h-3.5 w-3.5 text-[#D6D5C9]" strokeWidth={1.8} />
                 )}
                 {(project.status === 'Draft' || !project.status) && (
-                    <Folder className="h-3.5 w-3.5 text-neutral-400" strokeWidth={1.8} />
+                    <Folder className="h-3.5 w-3.5 text-[#D6D5C9]" strokeWidth={1.8} />
                 )}
                 <span className="capitalize">{project.status || 'Draft'}</span>
             </div>

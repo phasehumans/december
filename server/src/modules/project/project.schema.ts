@@ -39,4 +39,7 @@ export const toogleStarProjectSchema = z.object({
 
 export const shareProjectAsTemplateSchema = z.object({
     isSharedAsTemplate: z.boolean({ message: 'isSharedAsTemplate must be a boolean' }),
+    projectCategory: z
+        .enum(['LANDING_PAGE', 'DASHBOARD', 'PORTFOLIO_BLOG', 'SAAS_APP', 'ECOMMERCE', 'NONE'])
+        .optional(),
 })

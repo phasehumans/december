@@ -27,7 +27,7 @@ interface ProjectListModalsProps {
     onCloseDuplicate: () => void
     onDuplicateConfirm: (name: string) => void
     onCloseShare: () => void
-    onShareConfirm: () => void
+    onShareConfirm: (category?: string) => void
     onCloseDelete: () => void
     onDeleteConfirm: () => void
 }

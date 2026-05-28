@@ -1,8 +1,19 @@
-import React, { useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { ChevronDown, Check } from 'lucide-react'
+import React, { useState, useRef, useEffect } from 'react'
 
 import type { ProjectShareModalProps } from '@/features/projects/types'
 
 import { Modal } from '@/shared/components/ui/Modal'
+
+const CATEGORIES = [
+    { id: 'NONE', label: 'Select a category...' },
+    { id: 'SAAS_APP', label: 'Apps & Games' },
+    { id: 'LANDING_PAGE', label: 'Landing Pages' },
+    { id: 'DASHBOARD', label: 'Dashboards' },
+    { id: 'PORTFOLIO_BLOG', label: 'Components' },
+    { id: 'ECOMMERCE', label: 'E-commerce' },
+]
 
 export const ProjectShareModal: React.FC<ProjectShareModalProps> = ({
     isOpen,
@@ -14,7 +25,20 @@ export const ProjectShareModal: React.FC<ProjectShareModalProps> = ({
 }) => {
     const displayTitle = projectTitle?.trim() ? `"${projectTitle}"` : 'this project'
     const [isProcessing, setIsProcessing] = useState(false)
+    const [category, setCategory] = useState('NONE')
+    const [isDropdownOpen, setIsDropdownOpen] = useState(false)
     const isDisabled = isPending || isProcessing
+    const dropdownRef = useRef<HTMLDivElement>(null)
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+                setIsDropdownOpen(false)
+            }
+        }
+        document.addEventListener('mousedown', handleClickOutside)
+        return () => document.removeEventListener('mousedown', handleClickOutside)
+    }, [])
 
     const handleSubmit = (event: React.FormEvent) => {
         event.preventDefault()
@@ -22,9 +46,12 @@ export const ProjectShareModal: React.FC<ProjectShareModalProps> = ({
         setIsProcessing(true)
         setTimeout(() => {
             setIsProcessing(false)
-            onConfirm()
+            onConfirm(category !== 'NONE' ? category : undefined)
         }, 800)
     }
+
+    const selectedCategoryLabel =
+        CATEGORIES.find((cat) => cat.id === category)?.label ?? 'Select a category...'
 
     return (
         <Modal
@@ -55,6 +82,64 @@ export const ProjectShareModal: React.FC<ProjectShareModalProps> = ({
                         </>
                     )}
                 </p>
+
+                {!isSharedAsTemplate && (
+                    <div className="flex flex-col gap-1.5 mt-2 relative" ref={dropdownRef}>
+                        <label className="text-[11px] font-semibold text-[#8F8E8D] uppercase tracking-wider block">
+                            Template Category
+                        </label>
+                        <button
+                            type="button"
+                            onClick={() => !isDisabled && setIsDropdownOpen(!isDropdownOpen)}
+                            disabled={isDisabled}
+                            className="w-full flex items-center justify-between bg-[#181817] hover:bg-[#1E1D1B] border border-[#2B2A27] hover:border-[#383736] rounded-lg px-3.5 py-2.5 text-white text-[13px] transition-[border-color,background-color] duration-200 focus:outline-none disabled:opacity-50 text-left"
+                        >
+                            <span className={category === 'NONE' ? 'text-[#7B7A79]' : 'text-white'}>
+                                {selectedCategoryLabel}
+                            </span>
+                            <ChevronDown
+                                className={`w-4 h-4 text-[#7B7A79] transition-transform duration-200 ${
+                                    isDropdownOpen ? 'rotate-180' : ''
+                                }`}
+                            />
+                        </button>
+
+                        <AnimatePresence>
+                            {isDropdownOpen && (
+                                <motion.div
+                                    initial={{ opacity: 0, y: -6, scale: 0.98 }}
+                                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                                    exit={{ opacity: 0, y: -6, scale: 0.98 }}
+                                    transition={{ duration: 0.15 }}
+                                    className="absolute left-0 right-0 top-full mt-2 rounded-xl border border-[#383736] bg-[#1E1D1C] py-2 shadow-2xl z-50 max-h-[220px] overflow-y-auto no-scrollbar"
+                                >
+                                    {CATEGORIES.map((cat) => (
+                                        <button
+                                            key={cat.id}
+                                            type="button"
+                                            onClick={() => {
+                                                setCategory(cat.id)
+                                                setIsDropdownOpen(false)
+                                            }}
+                                            className="w-full flex items-center justify-between px-3.5 py-2 text-[13px] text-[#D6D5C9] hover:bg-[#242323] hover:text-white transition-colors text-left"
+                                        >
+                                            <span
+                                                className={
+                                                    cat.id === 'NONE' ? 'text-[#7B7A79]' : ''
+                                                }
+                                            >
+                                                {cat.label}
+                                            </span>
+                                            {category === cat.id && (
+                                                <Check className="h-3.5 w-3.5 text-[#D6D5C9]" />
+                                            )}
+                                        </button>
+                                    ))}
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </div>
+                )}
 
                 <div className="mt-1 flex items-center justify-end gap-2.5">
                     <button

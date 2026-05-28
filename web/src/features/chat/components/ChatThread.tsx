@@ -120,8 +120,9 @@ export const ChatThread: React.FC<ChatSidebarProps> = ({
                             e.stopPropagation()
                             if (onBack) {
                                 onBack()
+                            } else {
+                                window.location.href = '/'
                             }
-                            window.location.href = '/'
                         }}
                         className="flex items-center text-sm font-medium tracking-wide text-[#91908F] hover:text-white transition-colors"
                         title="Back to Home"

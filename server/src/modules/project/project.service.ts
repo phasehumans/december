@@ -47,6 +47,13 @@ type ShareProject = {
     userId: string
     projectId: string
     isSharedAsTemplate: boolean
+    projectCategory?:
+        | 'LANDING_PAGE'
+        | 'DASHBOARD'
+        | 'PORTFOLIO_BLOG'
+        | 'SAAS_APP'
+        | 'ECOMMERCE'
+        | 'NONE'
 }
 
 type ToogleStarProject = {
@@ -577,7 +584,7 @@ const downloadProjectVersion = async (data: GetProject) => {
 }
 
 const shareProjectAsTemplate = async (data: ShareProject) => {
-    const { userId, projectId, isSharedAsTemplate } = data
+    const { userId, projectId, isSharedAsTemplate, projectCategory } = data
 
     // updateMany w/ single query >> atomic | check user and then project and then update project >> not atomic
     const project = await prisma.project.updateMany({
@@ -590,6 +597,7 @@ const shareProjectAsTemplate = async (data: ShareProject) => {
         },
         data: {
             isSharedAsTemplate,
+            ...(projectCategory ? { projectCategory } : {}),
         },
     })
 

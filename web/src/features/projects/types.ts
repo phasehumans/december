@@ -91,5 +91,5 @@ export interface ProjectShareModalProps {
     isSharedAsTemplate: boolean
     isPending: boolean
     onClose: () => void
-    onConfirm: () => void
+    onConfirm: (category?: string) => void
 }

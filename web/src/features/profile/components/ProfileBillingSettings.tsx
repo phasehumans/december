@@ -15,6 +15,7 @@ import { profileAPI } from '@/features/profile/api/profile'
 import { Button } from '@/shared/components/ui/Button'
 import { Input } from '@/shared/components/ui/Input'
 import { Modal } from '@/shared/components/ui/Modal'
+import { ProfileSettingsSkeleton } from './ProfileSettingsSkeleton'
 
 interface ProfileBillingSettingsProps {
     profile?: {
@@ -448,12 +449,7 @@ export const ProfileBillingSettings: React.FC<ProfileBillingSettingsProps> = ({
     }
 
     if (isOverviewLoading) {
-        return (
-            <div className="flex flex-col items-center justify-center py-20 w-full text-[#D6D5C9]">
-                <Loader2 className="w-8 h-8 animate-spin text-[#D6D5C9] mb-4" />
-                <span className="text-[13px] text-[#7B7A79]">Loading billing overview...</span>
-            </div>
-        )
+        return <ProfileSettingsSkeleton activeTab="Billing" />
     }
 
     if (overviewError || !overview) {

@@ -1272,6 +1272,11 @@ export const useAppController = () => {
 
     const handleNewThread = () => {
         outputOriginViewRef.current = 'chat'
+        if (activeProjectId) {
+            void previewAPI.stopPreview(activeProjectId).catch((err) => {
+                console.error('Failed to stop preview:', err)
+            })
+        }
         setMessages([])
         clearOpenedProject()
         resetGenerationFlow()
@@ -1311,6 +1316,11 @@ export const useAppController = () => {
 
     const handleBackFromOutput = () => {
         const nextView = 'chat'
+        if (activeProjectId) {
+            void previewAPI.stopPreview(activeProjectId).catch((err) => {
+                console.error('Failed to stop preview:', err)
+            })
+        }
         clearOpenedProject()
         setMessages([])
         resetGenerationFlow()

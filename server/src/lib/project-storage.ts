@@ -75,6 +75,7 @@ export async function putTextFile({
             Bucket: BUCKET,
             Key: key,
             Body: content,
+            ContentLength: Buffer.byteLength(content, 'utf8'),
             ContentType: contentType,
         })
     )
@@ -105,6 +106,7 @@ export async function putBinaryFile({
             Bucket: BUCKET,
             Key: key,
             Body: content,
+            ContentLength: content.byteLength ?? content.length,
             ...(contentType ? { ContentType: contentType } : {}),
         })
     )
