@@ -109,6 +109,7 @@ export interface UsageEvent {
     periodEnd: string
     metadata: any
     createdAt: string
+    project?: { name: string } | null
 }
 
 export interface CreditsHistoryResponse {

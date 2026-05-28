@@ -48,6 +48,24 @@ const formatRelativeUpdatedAt = (updatedAt: Date, now: Date = new Date()) => {
     return formatUnit(Math.floor(diffInDays / 365), 'year')
 }
 
+const mapProjectStatus = (
+    status: BackendProject['projectStatus'],
+    isSharedAsTemplate: boolean
+): Project['status'] => {
+    if (isSharedAsTemplate) return 'Template'
+    switch (status) {
+        case 'READY':
+            return 'Generated'
+        case 'DEPLOYED':
+            return 'Published'
+        case 'GENERATING':
+        case 'DRAFT':
+        case 'FAILED':
+        default:
+            return 'Draft'
+    }
+}
+
 export const mapBackendProjectToUIProject = (project: BackendProject): Project => {
     const createdAt = new Date(project.createdAt)
 
@@ -57,6 +75,7 @@ export const mapBackendProjectToUIProject = (project: BackendProject): Project =
         description: project.description ?? '',
         isStarred: project.isStarred,
         isSharedAsTemplate: project.isSharedAsTemplate ?? false,
+        status: mapProjectStatus(project.projectStatus, project.isSharedAsTemplate ?? false),
         createdAt: formatRelativeUpdatedAt(createdAt),
         updatedAt: formatRelativeUpdatedAt(new Date(project.updatedAt)),
         rawUpdatedAt: project.updatedAt,

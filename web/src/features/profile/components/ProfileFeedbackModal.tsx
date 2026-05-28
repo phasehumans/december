@@ -1,7 +1,8 @@
 import { Frown, Meh, Smile } from 'lucide-react'
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 
 import { Modal } from '@/shared/components/ui/Modal'
+import { profileAPI } from '@/features/profile/api/profile'
 
 interface ProfileFeedbackModalProps {
     isOpen: boolean
@@ -14,13 +15,28 @@ export const ProfileFeedbackModal: React.FC<ProfileFeedbackModalProps> = ({ isOp
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [showThankYou, setShowThankYou] = useState(false)
 
+    useEffect(() => {
+        if (isOpen) {
+            document.body.classList.add('feedback-modal-open')
+        } else {
+            document.body.classList.remove('feedback-modal-open')
+        }
+        return () => {
+            document.body.classList.remove('feedback-modal-open')
+        }
+    }, [isOpen])
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         if (!feedback.trim() && !rating) return
 
         setIsSubmitting(true)
-        // Simulate API call
-        await new Promise((resolve) => setTimeout(resolve, 800))
+        try {
+            await profileAPI.submitFeedback({ rating, feedback: feedback.trim() })
+        } catch {
+            setIsSubmitting(false)
+            return
+        }
         setIsSubmitting(false)
         setShowThankYou(true)
 

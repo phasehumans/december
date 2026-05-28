@@ -72,7 +72,7 @@ const RedeemCodeModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                         onKeyDown={(e: React.KeyboardEvent) => {
                             if (e.key === 'Enter') handleRedeem()
                         }}
-                        className="w-full bg-[#181817] border border-[#2B2A27] rounded-lg px-3.5 py-2.5 text-white text-[13px] focus:outline-none focus:border-[#4E4D49] focus:ring-1 focus:ring-[#4E4D49] transition-all"
+                        className="w-full bg-[#181817] border border-[#2B2A27] rounded-lg px-3.5 py-2.5 text-white text-[13px] focus:outline-none focus:border-[#4E4D49] focus:ring-1 focus:ring-[#4E4D49] transition-[border-color,box-shadow]"
                         placeholder="K47B9X2P5M1Z"
                         disabled={isRedeeming}
                         autoComplete="off"
@@ -403,6 +403,11 @@ export const ProfileBillingSettings: React.FC<ProfileBillingSettingsProps> = ({
                 },
                 theme: {
                     color: '#D6D5C9',
+                },
+                modal: {
+                    ondismiss: () => {
+                        setIsUpgrading(false)
+                    },
                 },
             }
 

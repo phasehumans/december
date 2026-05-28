@@ -1,3 +1,6 @@
+import fs from 'fs'
+import path from 'path'
+
 import { AppError } from '../../utils/appError'
 import { authCookie } from '../auth/auth.cookie'
 
@@ -658,6 +661,48 @@ const deleteSkills = async (req: Request, res: Response) => {
     }
 }
 
+const submitFeedback = async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
+
+    if (!userId) {
+        return res.status(400).json({
+            success: false,
+            message: 'unauthorized',
+        })
+    }
+
+    const { rating, feedback } = req.body
+
+    try {
+        const profile = await profileService.getProfile(userId)
+        const username = profile.username || 'unknown_user'
+        const email = profile.email || 'no_email'
+        const name = profile.name || 'Anonymous'
+
+        const dateStr = new Date().toISOString()
+        const feedbackEntry = `\n## [${dateStr}] - @${username} (${name}, ${email})\n- **Rating**: ${rating || 'None'}\n- **Feedback**: ${feedback || 'None'}\n`
+
+        const feedbackFilePath = path.resolve(__dirname, '../../../../feedback.md')
+
+        // Append to feedback.md (create it if it doesn't exist)
+        if (!fs.existsSync(feedbackFilePath)) {
+            fs.writeFileSync(feedbackFilePath, '# Product Feedback\n', 'utf8')
+        }
+        fs.appendFileSync(feedbackFilePath, feedbackEntry, 'utf8')
+
+        return res.status(200).json({
+            success: true,
+            message: 'Feedback submitted successfully',
+        })
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to submit feedback',
+            errors: error instanceof Error ? error.message : 'unknown error',
+        })
+    }
+}
+
 export const profileController = {
     getInfo,
     getProfileCard,
@@ -675,4 +720,5 @@ export const profileController = {
     getSkills,
     updateSkills,
     deleteSkills,
+    submitFeedback,
 }

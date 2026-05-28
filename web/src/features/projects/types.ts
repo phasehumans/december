@@ -82,7 +82,7 @@ export interface ProjectDuplicateModalProps {
     projectTitle?: string
     isPending: boolean
     onClose: () => void
-    onConfirm: () => void
+    onConfirm: (name: string) => void
 }
 
 export interface ProjectShareModalProps {

@@ -288,56 +288,47 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
                             <div
                                 key={notification.id}
                                 onClick={() => handleNotificationClick(notification)}
-                                className={`relative flex items-start gap-2.5 px-3 py-2.5 rounded-xl cursor-pointer transition-colors ${
+                                className={`relative group/notif flex flex-col gap-0.5 px-3 py-2.5 rounded-xl cursor-pointer transition-colors ${
                                     notification.isRead
                                         ? 'text-[#8F8E8D] hover:bg-[#252422]/40'
                                         : 'bg-[#252422]/20 hover:bg-[#252422]/60 text-[#E8E8E8]'
                                 }`}
                             >
-                                <div className="mt-0.5 shrink-0">
-                                    {notification.type === 'SUCCESS' && (
-                                        <CheckCircle2 className="w-[14px] h-[14px] text-emerald-400/80" />
-                                    )}
-                                    {notification.type === 'WARNING' && (
-                                        <AlertTriangle className="w-[14px] h-[14px] text-amber-400/80" />
-                                    )}
-                                    {notification.type === 'ERROR' && (
-                                        <XCircle className="w-[14px] h-[14px] text-red-400/80" />
-                                    )}
-                                    {notification.type === 'INFO' && (
-                                        <Info className="w-[14px] h-[14px] text-neutral-400" />
-                                    )}
-                                </div>
-                                <div className="flex-1 min-w-0 flex flex-col gap-0.5">
-                                    <div className="flex items-center justify-between gap-2 w-full">
-                                        <span
-                                            className={`text-[13px] font-medium truncate ${
-                                                notification.isRead
-                                                    ? 'text-[#CAC9C9]'
-                                                    : 'text-white'
-                                            }`}
-                                        >
-                                            {notification.title}
-                                        </span>
-                                        {!notification.isRead && (
-                                            <span className="w-1.5 h-1.5 rounded-full bg-[#D6D5C9] shrink-0" />
-                                        )}
-                                    </div>
-                                    <p className="text-[12px] text-[#8F8E8D] line-clamp-2 mt-0.5 leading-relaxed">
-                                        {notification.message}
-                                    </p>
-                                    <span className="text-[10px] text-[#6F6E6D] mt-1">
-                                        {new Date(notification.createdAt).toLocaleString(
-                                            undefined,
-                                            {
-                                                month: 'short',
-                                                day: 'numeric',
-                                                hour: '2-digit',
-                                                minute: '2-digit',
-                                            }
-                                        )}
+                                <div className="flex items-center justify-between gap-2 pr-6">
+                                    <span
+                                        className={`text-[13px] font-medium truncate ${
+                                            notification.isRead ? 'text-[#CAC9C9]' : 'text-white'
+                                        }`}
+                                    >
+                                        {notification.title}
                                     </span>
+                                    {!notification.isRead && (
+                                        <span className="w-1.5 h-1.5 rounded-full bg-[#D6D5C9] shrink-0" />
+                                    )}
                                 </div>
+                                <p className="text-[12px] text-[#8F8E8D] line-clamp-2 mt-0.5 leading-relaxed pr-4">
+                                    {notification.message}
+                                </p>
+                                <span className="text-[10px] text-[#6F6E6D] mt-1">
+                                    {new Date(notification.createdAt).toLocaleString(undefined, {
+                                        month: 'short',
+                                        day: 'numeric',
+                                        hour: '2-digit',
+                                        minute: '2-digit',
+                                    })}
+                                </span>
+
+                                {/* Hover Delete Button */}
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation()
+                                        deleteMutation.mutate(notification.id)
+                                    }}
+                                    className="absolute top-2.5 right-2.5 p-1 rounded-md bg-[#1E1D1C] border border-[#2B2A29]/60 text-[#7B7A79] hover:text-red-400 opacity-0 group-hover/notif:opacity-100 transition-opacity hover:bg-[#252422] outline-none"
+                                    title="Delete notification"
+                                >
+                                    <Trash2 className="w-3.5 h-3.5" strokeWidth={1.5} />
+                                </button>
                             </div>
                         ))}
                     </div>

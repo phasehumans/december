@@ -21,6 +21,8 @@ profileRouter.delete('/', profileController.deleteAccount)
 profileRouter.post('/suggestions', profileController.chatSuggestions)
 profileRouter.post('/sound', profileController.generationSound)
 
+profileRouter.post('/feedback', profileController.submitFeedback)
+
 profileRouter.get('/skills', profileController.getSkills)
 profileRouter.post('/skills', profileController.updateSkills)
 profileRouter.delete('/skills', profileController.deleteSkills)
