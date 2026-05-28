@@ -425,6 +425,18 @@ const google = async (data: Google) => {
                 name: name,
             },
         })
+
+        try {
+            await sendNotificationToUser({
+                userId: user.id,
+                title: 'Welcome to December',
+                message:
+                    'Your account has been created successfully via Google. You can now start building apps, generating code, and turning your ideas into production-ready projects with AI.',
+                type: 'SUCCESS',
+            })
+        } catch (error) {
+            console.error('failed to send welcome notification:', error)
+        }
     } else if (user.deletedAt || user.isDeleted) {
         throw new AppError('account has been deleted', 403)
     } else if (!user.googleId) {

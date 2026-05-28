@@ -11,4 +11,5 @@ export const SORT_OPTIONS = [
     { id: 'popular', label: 'Most Popular' },
     { id: 'newest', label: 'Newest' },
     { id: 'oldest', label: 'Oldest' },
+    { id: 'category', label: 'Category' },
 ]

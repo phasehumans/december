@@ -3,6 +3,7 @@ import crypto from 'crypto'
 import { prisma } from '../../config/db'
 import { saveProjectFiles } from '../../lib/save-project-files'
 import { AppError } from '../../utils/appError'
+import { hydrateCanvasDocument, persistCanvasDocument } from '../canvas/canvas.persistence'
 import { sendNotificationToUser } from '../notification/notification.service'
 import { loadGeneratedFilesFromManifest } from '../project/project.service'
 import { parseStoredProjectFiles } from '../project/project.utils'
@@ -292,6 +293,17 @@ const remixTemplate = async (data: RemixTemplate) => {
 
     const versionRecordId = crypto.randomUUID()
 
+    const hydratedCanvasState = await hydrateCanvasDocument({
+        canvasState: currentVersion.canvasStateJson,
+        canvasAssetManifest: currentVersion.canvasAssetManifestJson,
+    })
+    const persistedCanvas = await persistCanvasDocument({
+        projectId: newProject.id,
+        userId,
+        versionId: versionRecordId,
+        canvasState: hydratedCanvasState,
+    })
+
     const savedFiles = await saveProjectFiles({
         projectId: newProject.id,
         versionId: versionRecordId,
@@ -309,7 +321,7 @@ const remixTemplate = async (data: RemixTemplate) => {
             label: 'v1',
             sourcePrompt: currentVersion.sourcePrompt,
             status: 'READY',
-            objectStoragePrefix: `projects/${newProject.id}/v1/${versionRecordId}`,
+            objectStoragePrefix: `projects/${newProject.id}/previous-version/${versionRecordId}`,
 
             manifestJson: savedFiles.map((file) => ({
                 path: file.path,
@@ -317,6 +329,14 @@ const remixTemplate = async (data: RemixTemplate) => {
                 size: file.size,
                 ...(file.contentType ? { contentType: file.contentType } : {}),
             })),
+            canvasStateJson: persistedCanvas.canvasStateJson as any,
+            canvasAssetManifestJson: persistedCanvas.canvasAssetManifestJson as any,
+            ...(currentVersion.intentJson !== null
+                ? { intentJson: currentVersion.intentJson as any }
+                : {}),
+            ...(currentVersion.planJson !== null
+                ? { planJson: currentVersion.planJson as any }
+                : {}),
         },
     })
 

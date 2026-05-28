@@ -1,6 +1,7 @@
 import { prisma } from '../../config/db'
 import { razorpay } from '../../config/razorpay'
 import { AppError } from '../../utils/appError'
+import { sendNotificationToUser } from '../notification/notification.service'
 
 import {
     getPlanCatalog,
@@ -289,6 +290,15 @@ const persistProviderSubscription = async (data: {
         throw new AppError('subscription belongs to another user', 409)
     }
 
+    const previousUser = await prisma.user.findUnique({
+        where: {
+            id: data.userId,
+        },
+        select: {
+            subscriptionPlan: true,
+        },
+    })
+
     const [subscription, user] = await prisma.$transaction([
         prisma.subscription.upsert({
             where: {
@@ -329,6 +339,20 @@ const persistProviderSubscription = async (data: {
             },
         }),
     ])
+
+    if (userPlan === 'PRO' && previousUser?.subscriptionPlan !== 'PRO') {
+        try {
+            await sendNotificationToUser({
+                userId: data.userId,
+                title: 'Upgraded to PRO Plan',
+                message:
+                    'Thank you for upgrading to Pro! You now have unlimited generation credits and access to premium features.',
+                type: 'SUCCESS',
+            })
+        } catch (error) {
+            console.error('Failed to send PRO upgrade notification:', error)
+        }
+    }
 
     return {
         subscription,

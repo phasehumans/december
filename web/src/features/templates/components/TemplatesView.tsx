@@ -137,6 +137,11 @@ const sortTemplates = (templates: Template[], sortId: string) => {
         return sorted
     }
 
+    if (sortId === 'category') {
+        sorted.sort((a, b) => (a.category || '').localeCompare(b.category || ''))
+        return sorted
+    }
+
     sorted.sort((a, b) => b.likeCount - a.likeCount)
     return sorted
 }
@@ -270,7 +275,11 @@ export const TemplatesView: React.FC<TemplatesViewProps> = ({ onOpenProject }) =
     }, [])
 
     const hasTemplates = templates.length > 0
-    const hasFeaturedTemplates = featuredTemplates.length > 0
+    const filteredFeaturedTemplates = featuredTemplates.filter((template) => {
+        const matchesCategory = selectedCategory ? template.category === selectedCategory.id : true
+        return matchesCategory
+    })
+    const hasFeaturedTemplates = filteredFeaturedTemplates.length > 0
 
     const filteredGridTemplates = sortTemplates(
         templates.filter((template) => {
@@ -365,7 +374,7 @@ export const TemplatesView: React.FC<TemplatesViewProps> = ({ onOpenProject }) =
                                     transition={{ delay: 0.1 }}
                                 >
                                     <FeaturedTemplates
-                                        templates={featuredTemplates}
+                                        templates={filteredFeaturedTemplates}
                                         likePendingTemplateId={likePendingTemplateId}
                                         remixPendingTemplateId={remixPendingTemplateId}
                                         onToggleLike={(template) =>

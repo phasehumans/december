@@ -156,11 +156,12 @@ export const ProjectList: React.FC<ProjectListProps> = ({
         duplicateMutation.mutate({ projectId: duplicateModal.project.id, name })
     }
 
-    const handleShare = () => {
+    const handleShare = (category?: string) => {
         if (!shareModal.project) return
         shareMutation.mutate({
             projectId: shareModal.project.id,
             isSharedAsTemplate: !shareModal.project.isSharedAsTemplate,
+            projectCategory: category,
         })
     }
 

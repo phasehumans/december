@@ -364,13 +364,14 @@ const shareProjectAsTemplate = async (req: Request, res: Response) => {
         })
     }
 
-    const { isSharedAsTemplate } = parseData.data
+    const { isSharedAsTemplate, projectCategory } = parseData.data
 
     try {
         const result = await projectService.shareProjectAsTemplate({
             userId,
             projectId,
             isSharedAsTemplate,
+            projectCategory,
         })
         return res.status(200).json({
             success: true,
