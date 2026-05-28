@@ -1,4 +1,5 @@
 import React from 'react'
+import { Folder, Loader2, Terminal, Rocket, AlertCircle } from 'lucide-react'
 
 import type { ProjectListRowProps } from '@/features/projects/types'
 
@@ -33,14 +34,23 @@ export const ProjectListRow: React.FC<ProjectListRowProps> = ({
             </div>
 
             <div className="flex items-center gap-2 text-[13px] text-[#7B7A79]">
-                {project.status === 'Published' && (
-                    <Icons.Globe className="h-3.5 w-3.5 text-[#7B7A79]" />
+                {project.status === 'Deployed' && (
+                    <Rocket className="h-3.5 w-3.5 text-indigo-400" strokeWidth={1.8} />
                 )}
                 {project.status === 'Generated' && (
-                    <Icons.Terminal className="h-3.5 w-3.5 text-[#7B7A79]" />
+                    <Terminal className="h-3.5 w-3.5 text-emerald-400" strokeWidth={1.8} />
                 )}
-                {(!project.status || project.status === 'Draft') && (
-                    <Icons.Folder className="h-3.5 w-3.5 text-[#7B7A79]" />
+                {project.status === 'Generating' && (
+                    <Loader2
+                        className="h-3.5 w-3.5 text-yellow-500 animate-spin"
+                        strokeWidth={1.8}
+                    />
+                )}
+                {project.status === 'Failed' && (
+                    <AlertCircle className="h-3.5 w-3.5 text-red-500" strokeWidth={1.8} />
+                )}
+                {(project.status === 'Draft' || !project.status) && (
+                    <Folder className="h-3.5 w-3.5 text-neutral-400" strokeWidth={1.8} />
                 )}
                 <span className="capitalize">{project.status || 'Draft'}</span>
             </div>

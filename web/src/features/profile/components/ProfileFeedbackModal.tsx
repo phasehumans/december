@@ -1,7 +1,8 @@
 import { Frown, Meh, Smile } from 'lucide-react'
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 
 import { Modal } from '@/shared/components/ui/Modal'
+import { profileAPI } from '@/features/profile/api/profile'
 
 interface ProfileFeedbackModalProps {
     isOpen: boolean
@@ -14,13 +15,28 @@ export const ProfileFeedbackModal: React.FC<ProfileFeedbackModalProps> = ({ isOp
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [showThankYou, setShowThankYou] = useState(false)
 
+    useEffect(() => {
+        if (isOpen) {
+            document.body.classList.add('feedback-modal-open')
+        } else {
+            document.body.classList.remove('feedback-modal-open')
+        }
+        return () => {
+            document.body.classList.remove('feedback-modal-open')
+        }
+    }, [isOpen])
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         if (!feedback.trim() && !rating) return
 
         setIsSubmitting(true)
-        // Simulate API call
-        await new Promise((resolve) => setTimeout(resolve, 800))
+        try {
+            await profileAPI.submitFeedback({ rating, feedback: feedback.trim() })
+        } catch {
+            setIsSubmitting(false)
+            return
+        }
         setIsSubmitting(false)
         setShowThankYou(true)
 
@@ -72,7 +88,7 @@ export const ProfileFeedbackModal: React.FC<ProfileFeedbackModalProps> = ({ isOp
                     <textarea
                         value={feedback}
                         onChange={(e) => setFeedback(e.target.value)}
-                        className="w-full bg-[#181817] border border-[#2B2A27] hover:border-[#383736] focus:border-[#4E4D49] focus:ring-1 focus:ring-[#4E4D49] rounded-lg p-3.5 text-[13px] text-white outline-none resize-none h-[110px] transition-all placeholder:text-[#4A4948]"
+                        className="w-full bg-[#181817] border border-[#2B2A27] hover:border-[#383736] focus:border-[#4E4D49] focus:ring-1 focus:ring-[#4E4D49] rounded-lg p-3.5 text-[13px] text-white outline-none resize-none h-[110px] transition-[border-color,box-shadow] duration-200 placeholder:text-[#4A4948]"
                         placeholder="Your feedback..."
                         disabled={isSubmitting}
                     />
@@ -84,7 +100,7 @@ export const ProfileFeedbackModal: React.FC<ProfileFeedbackModalProps> = ({ isOp
                                 type="button"
                                 onClick={() => setRating('sad')}
                                 disabled={isSubmitting}
-                                className={`p-2 rounded-lg border transition-all duration-200 ${
+                                className={`p-2 rounded-lg border transition-[transform,background-color,border-color,color,box-shadow] duration-200 ${
                                     rating === 'sad'
                                         ? 'bg-[#242323] border-[#7B7A79] text-white scale-105 shadow-sm'
                                         : 'border-[#2B2A27] bg-[#181817]/50 text-[#7B7A79] hover:bg-[#1E1D1B] hover:text-[#D6D5C9]'
@@ -96,7 +112,7 @@ export const ProfileFeedbackModal: React.FC<ProfileFeedbackModalProps> = ({ isOp
                                 type="button"
                                 onClick={() => setRating('neutral')}
                                 disabled={isSubmitting}
-                                className={`p-2 rounded-lg border transition-all duration-200 ${
+                                className={`p-2 rounded-lg border transition-[transform,background-color,border-color,color,box-shadow] duration-200 ${
                                     rating === 'neutral'
                                         ? 'bg-[#242323] border-[#7B7A79] text-white scale-105 shadow-sm'
                                         : 'border-[#2B2A27] bg-[#181817]/50 text-[#7B7A79] hover:bg-[#1E1D1B] hover:text-[#D6D5C9]'
@@ -108,7 +124,7 @@ export const ProfileFeedbackModal: React.FC<ProfileFeedbackModalProps> = ({ isOp
                                 type="button"
                                 onClick={() => setRating('happy')}
                                 disabled={isSubmitting}
-                                className={`p-2 rounded-lg border transition-all duration-200 ${
+                                className={`p-2 rounded-lg border transition-[transform,background-color,border-color,color,box-shadow] duration-200 ${
                                     rating === 'happy'
                                         ? 'bg-[#242323] border-[#7B7A79] text-white scale-105 shadow-sm'
                                         : 'border-[#2B2A27] bg-[#181817]/50 text-[#7B7A79] hover:bg-[#1E1D1B] hover:text-[#D6D5C9]'
@@ -124,14 +140,14 @@ export const ProfileFeedbackModal: React.FC<ProfileFeedbackModalProps> = ({ isOp
                                 type="button"
                                 onClick={handleClose}
                                 disabled={isSubmitting}
-                                className="border border-[#2B2A27] bg-transparent text-white hover:bg-white/5 active:scale-95 transition-all text-[13px] font-medium px-4 py-2 rounded-lg focus:outline-none disabled:opacity-50"
+                                className="border border-[#2B2A27] bg-transparent text-white hover:bg-white/5 active:scale-95 transition-[transform,background-color,border-color,color] duration-200 text-[13px] font-medium px-4 py-2 rounded-lg focus:outline-none disabled:opacity-50"
                             >
                                 Cancel
                             </button>
                             <button
                                 type="submit"
                                 disabled={isSubmitting || (!feedback.trim() && !rating)}
-                                className="bg-white text-black hover:bg-neutral-200 active:scale-95 transition-all text-[13px] font-medium px-4 py-2 rounded-lg focus:outline-none disabled:opacity-40 disabled:pointer-events-none flex items-center justify-center min-w-[90px]"
+                                className="bg-white text-black hover:bg-neutral-200 active:scale-95 transition-[transform,background-color,border-color,color] duration-200 text-[13px] font-medium px-4 py-2 rounded-lg focus:outline-none disabled:opacity-40 disabled:pointer-events-none flex items-center justify-center min-w-[90px]"
                             >
                                 {isSubmitting ? (
                                     <div className="flex items-center gap-1.5 justify-center">

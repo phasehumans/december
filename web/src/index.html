@@ -52,6 +52,24 @@
                 color: #e8e8e6;
                 font-family: 'Inter', sans-serif;
             }
+            button,
+            input,
+            textarea,
+            select {
+                -webkit-tap-highlight-color: transparent !important;
+            }
+            button:focus,
+            button:active,
+            button:focus-visible {
+                outline: none !important;
+                box-shadow: none !important;
+            }
+            input:focus,
+            input:active,
+            textarea:focus,
+            textarea:active {
+                outline: none !important;
+            }
             /* Custom scrollbar for webkit */
             ::-webkit-scrollbar {
                 width: 8px;
@@ -85,6 +103,12 @@
                 -webkit-box-shadow: 0 0 0 30px #181817 inset !important;
                 -webkit-text-fill-color: #ffffff !important;
                 transition: background-color 5000s ease-in-out 0s;
+            }
+            body.feedback-modal-open .home-header-badge,
+            body.feedback-modal-open .canvas-toolbar-container {
+                opacity: 0 !important;
+                pointer-events: none !important;
+                visibility: hidden !important;
             }
         </style>
         <link

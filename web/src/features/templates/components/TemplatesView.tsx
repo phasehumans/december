@@ -72,9 +72,9 @@ const TemplatesSkeleton: React.FC = () => {
                             key={`featured-skeleton-${i}`}
                             className="shrink-0 w-[280px] md:w-[calc(50%-10px)] lg:w-[calc(33.333%-16px)]"
                         >
-                            <div className="flex flex-col gap-3.5 w-full bg-[#1E1D1B]/5 rounded-xl p-1 border border-[#242323]/10">
-                                <Skeleton className="aspect-[16/10] w-full rounded-xl bg-white/[0.06]" />
-                                <div className="flex items-start justify-between w-full gap-4 px-1.5 pb-1">
+                            <div className="flex flex-col gap-3.5 w-full">
+                                <Skeleton className="aspect-[16/10] w-full rounded-xl bg-white/[0.06] border border-[#242323]" />
+                                <div className="flex items-start justify-between w-full gap-4 px-1 pb-1">
                                     <div className="flex flex-col gap-2 min-w-0 flex-1">
                                         <Skeleton className="h-4 w-3/4 bg-white/[0.06]" />
                                         <Skeleton className="h-3 w-[90%] bg-white/[0.04]" />
@@ -103,12 +103,9 @@ const TemplatesSkeleton: React.FC = () => {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-5 md:gap-x-6 gap-y-10">
                     {Array.from({ length: 6 }).map((_, i) => (
-                        <div
-                            key={`grid-skeleton-${i}`}
-                            className="flex flex-col gap-3.5 w-full bg-[#1E1D1B]/5 rounded-xl p-1 border border-[#242323]/10"
-                        >
-                            <Skeleton className="aspect-[16/10] w-full rounded-xl bg-white/[0.06]" />
-                            <div className="flex items-start justify-between w-full gap-4 px-1.5 pb-1">
+                        <div key={`grid-skeleton-${i}`} className="flex flex-col gap-3.5 w-full">
+                            <Skeleton className="aspect-[16/10] w-full rounded-xl bg-white/[0.06] border border-[#242323]" />
+                            <div className="flex items-start justify-between w-full gap-4 px-1 pb-1">
                                 <div className="flex flex-col gap-2 min-w-0 flex-1">
                                     <Skeleton className="h-4 w-3/4 bg-white/[0.06]" />
                                     <Skeleton className="h-3 w-[90%] bg-white/[0.04]" />

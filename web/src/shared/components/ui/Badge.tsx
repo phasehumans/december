@@ -18,7 +18,7 @@ export const Badge: React.FC<BadgeProps> = ({
     const variants = {
         default: 'bg-white/10 text-white',
         outline: 'border border-white/10 text-neutral-400',
-        success: 'bg-green-500/10 text-green-400 border border-green-500/20',
+        success: 'bg-white/[0.08] text-white border border-white/15',
         warning: 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20',
         neutral: 'bg-surface text-neutral-400 border border-white/5',
         error: 'bg-red-500/10 text-red-400 border border-red-500/20',

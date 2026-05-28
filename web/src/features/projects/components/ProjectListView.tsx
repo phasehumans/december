@@ -148,8 +148,10 @@ const SORT_LABELS: Record<SortOption, string> = {
 const STATUS_LABELS: Record<StatusFilter, string> = {
     any: 'Any',
     Draft: 'Draft',
+    Generating: 'Generating',
     Generated: 'Generated',
-    Published: 'Published',
+    Deployed: 'Deployed',
+    Failed: 'Failed',
 }
 
 export const ProjectListView: React.FC<ProjectListViewProps> = ({
@@ -297,23 +299,30 @@ export const ProjectListView: React.FC<ProjectListViewProps> = ({
                                         <div className="mb-1 border-b border-[#383736] px-3 pb-2 text-[12px] font-medium text-[#7B7A79]">
                                             Publish status
                                         </div>
-                                        {(['any', 'Draft', 'Generated', 'Published'] as const).map(
-                                            (option) => (
-                                                <button
-                                                    key={option}
-                                                    onClick={() => {
-                                                        onStatusFilterChange(option)
-                                                        setActiveDropdown(null)
-                                                    }}
-                                                    className="flex w-full items-center justify-between px-3 py-1.5 text-[13px] text-[#D6D5C9] hover:bg-[#242323]"
-                                                >
-                                                    {STATUS_LABELS[option]}{' '}
-                                                    {statusFilter === option && (
-                                                        <Icons.Check className="h-4 w-4" />
-                                                    )}
-                                                </button>
-                                            )
-                                        )}
+                                        {(
+                                            [
+                                                'any',
+                                                'Draft',
+                                                'Generating',
+                                                'Generated',
+                                                'Deployed',
+                                                'Failed',
+                                            ] as const
+                                        ).map((option) => (
+                                            <button
+                                                key={option}
+                                                onClick={() => {
+                                                    onStatusFilterChange(option)
+                                                    setActiveDropdown(null)
+                                                }}
+                                                className="flex w-full items-center justify-between px-3 py-1.5 text-[13px] text-[#D6D5C9] hover:bg-[#242323]"
+                                            >
+                                                {STATUS_LABELS[option]}{' '}
+                                                {statusFilter === option && (
+                                                    <Icons.Check className="h-4 w-4" />
+                                                )}
+                                            </button>
+                                        ))}
                                     </div>
                                 )}
                             </div>
