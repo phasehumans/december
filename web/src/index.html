@@ -52,6 +52,24 @@
                 color: #e8e8e6;
                 font-family: 'Inter', sans-serif;
             }
+            button,
+            input,
+            textarea,
+            select {
+                -webkit-tap-highlight-color: transparent !important;
+            }
+            button:focus,
+            button:active,
+            button:focus-visible {
+                outline: none !important;
+                box-shadow: none !important;
+            }
+            input:focus,
+            input:active,
+            textarea:focus,
+            textarea:active {
+                outline: none !important;
+            }
             /* Custom scrollbar for webkit */
             ::-webkit-scrollbar {
                 width: 8px;

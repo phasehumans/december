@@ -10,6 +10,7 @@ type UseAuthMutationsOptions = {
     onPasswordResetSuccess: () => void
     onAuthSuccess: () => void
     setErrorMessage: (message: string | null) => void
+    onRequireGoogleMerge: () => void
 }
 
 const getErrorMessage = (error: unknown) => {
@@ -51,6 +52,7 @@ export const useAuthMutations = ({
     onPasswordResetSuccess,
     onAuthSuccess,
     setErrorMessage,
+    onRequireGoogleMerge,
 }: UseAuthMutationsOptions) => {
     const signupMutation = useMutation({
         mutationFn: authAPI.signup,
@@ -58,8 +60,15 @@ export const useAuthMutations = ({
             setErrorMessage(null)
             onRequireOtp()
         },
-        onError: (error) => {
-            setErrorMessage(getErrorMessage(error))
+        onError: (error: any) => {
+            if (
+                error?.message === 'google_account_exists' ||
+                error?.details === 'google_account_exists'
+            ) {
+                onRequireGoogleMerge()
+            } else {
+                setErrorMessage(getErrorMessage(error))
+            }
         },
     })
 

@@ -1312,7 +1312,7 @@ export const useAppController = () => {
     const projectsErrorMessage = projectsError instanceof Error ? projectsError.message : null
 
     const handleBackFromOutput = () => {
-        const nextView = outputOriginViewRef.current
+        const nextView = 'chat'
         clearOpenedProject()
         setMessages([])
         resetGenerationFlow()

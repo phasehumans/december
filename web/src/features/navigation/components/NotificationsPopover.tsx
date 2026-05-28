@@ -143,7 +143,7 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
         const typeColors: Record<string, string> = {
             INFO: 'bg-white/[0.04] border-white/[0.08] text-[#D6D5C9]',
             WARNING: 'bg-amber-500/10 border-amber-500/20 text-amber-400',
-            SUCCESS: 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400',
+            SUCCESS: 'bg-[#252422]/70 border-[#383736] text-[#E8E8E6]',
             ERROR: 'bg-red-500/10 border-red-500/20 text-red-400',
         }
         const badgeColor = typeColors[selectedNotification.type] || typeColors.INFO
@@ -167,19 +167,6 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
                         <ArrowLeft className="w-[15px] h-[15px]" />
                     </button>
                     <span className="text-[13px] text-[#969593]">Back</span>
-                    <div className="flex-1" />
-                    <button
-                        onClick={() => deleteMutation.mutate(selectedNotification.id)}
-                        disabled={deleteMutation.isPending}
-                        className="text-[#969593] hover:text-red-400 transition-colors p-1 rounded hover:bg-[#252422] outline-none disabled:opacity-50"
-                        title="Delete notification"
-                    >
-                        {deleteMutation.isPending ? (
-                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        ) : (
-                            <Trash2 className="w-[14px] h-[14px]" />
-                        )}
-                    </button>
                 </div>
 
                 <div className="h-[1px] bg-[#2B2A29] mx-1 my-1 shrink-0" />
@@ -324,7 +311,7 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
                                         e.stopPropagation()
                                         deleteMutation.mutate(notification.id)
                                     }}
-                                    className="absolute top-2.5 right-2.5 p-1 rounded-md bg-[#1E1D1C] border border-[#2B2A29]/60 text-[#7B7A79] hover:text-red-400 opacity-0 group-hover/notif:opacity-100 transition-opacity hover:bg-[#252422] outline-none"
+                                    className="absolute top-2.5 right-2.5 p-1.5 rounded-lg bg-[#171615] border border-[#2B2A27] text-[#969593] hover:text-red-400 hover:border-red-500/30 opacity-0 group-hover/notif:opacity-100 transition-all duration-200 hover:bg-red-500/[0.06] outline-none shadow-sm"
                                     title="Delete notification"
                                 >
                                     <Trash2 className="w-3.5 h-3.5" strokeWidth={1.5} />

@@ -680,7 +680,7 @@ const submitFeedback = async (req: Request, res: Response) => {
         const name = profile.name || 'Anonymous'
 
         const dateStr = new Date().toISOString()
-        const feedbackEntry = `\n## [${dateStr}] - @${username} (${name}, ${email})\n- **Rating**: ${rating || 'None'}\n- **Feedback**: ${feedback || 'None'}\n`
+        const feedbackEntry = `\n### [${dateStr}] - @${username} (${name})\n- **Rating**: ${rating || 'None'}\n- **Feedback**: ${feedback || 'None'}\n`
 
         const feedbackFilePath = path.resolve(__dirname, '../../../../feedback.md')
 

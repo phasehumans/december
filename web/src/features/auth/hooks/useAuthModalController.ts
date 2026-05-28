@@ -52,6 +52,7 @@ export const useAuthModalController = ({
         onRequireOtp: () => setStep('otp'),
         onRequireForgotOtp: () => setStep('forgot-otp'),
         onRequireForgotReset: () => setStep('forgot-reset'),
+        onRequireGoogleMerge: () => setStep('google-merge'),
         onPasswordResetSuccess: () => {
             setPassword('')
             setNewPassword('')
@@ -189,6 +190,11 @@ export const useAuthModalController = ({
         inputRefs.current[index] = element
     }
 
+    const handleCreatePassword = () => {
+        setErrorMessage(null)
+        requestPasswordResetMutation.mutate({ email })
+    }
+
     return {
         authMode,
         step,
@@ -223,5 +229,6 @@ export const useAuthModalController = ({
         handleBackToForgotEmail,
         handleBackToForgotOtp,
         setOtpInputRef,
+        handleCreatePassword,
     }
 }
