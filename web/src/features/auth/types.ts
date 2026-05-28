@@ -1,7 +1,13 @@
 import type { ClipboardEvent, FormEvent, KeyboardEvent } from 'react'
 
 export type AuthMode = 'login' | 'signup'
-export type AuthStep = 'auth' | 'otp' | 'forgot-email' | 'forgot-otp' | 'forgot-reset'
+export type AuthStep =
+    | 'auth'
+    | 'otp'
+    | 'forgot-email'
+    | 'forgot-otp'
+    | 'forgot-reset'
+    | 'google-merge'
 
 export interface AuthModalProps {
     isOpen: boolean

@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Settings, X, Bookmark, Calendar, Heart } from 'lucide-react'
+import { Settings, X, Calendar, Heart } from 'lucide-react'
 import React, { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 
@@ -8,6 +8,7 @@ import bannerImg from '../../../../public/banner.png'
 import { profileAPI } from '@/features/profile/api/profile'
 import { projectAPI } from '@/features/projects/api/project'
 import { templateAPI } from '@/features/templates/api/template'
+import { Icons } from '@/shared/components/ui/Icons'
 import { Skeleton } from '@/shared/components/ui/Skeleton'
 
 interface ProfileCardModalProps {
@@ -265,7 +266,7 @@ export const ProfileCardModal: React.FC<ProfileCardModalProps> = ({
                                         className="flex items-center gap-3 px-4 py-3 rounded-xl bg-[#100E12]/50 border border-[#242323] hover:bg-[#1E1D1B] transition-colors"
                                     >
                                         <div className="w-9 h-9 rounded-lg bg-[#1E1D1B] border border-[#2B2A29] flex items-center justify-center shrink-0">
-                                            <Bookmark
+                                            <Icons.Bookmark
                                                 className="w-4 h-4 text-[#7B7A79]"
                                                 strokeWidth={1.5}
                                             />
@@ -286,7 +287,7 @@ export const ProfileCardModal: React.FC<ProfileCardModalProps> = ({
                         ) : (
                             <div className="w-full h-[240px] rounded-2xl bg-[#100E12]/50 border border-[#242323] flex flex-col items-center justify-center gap-3">
                                 <div className="w-12 h-12 rounded-2xl bg-[#1E1D1B] border border-[#2B2A29] flex items-center justify-center shadow-sm">
-                                    <Bookmark
+                                    <Icons.Bookmark
                                         className="w-6 h-6 text-[#7B7A79]"
                                         strokeWidth={1.5}
                                     />

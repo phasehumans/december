@@ -44,7 +44,7 @@ export const ProfileNameModal: React.FC<ProfileNameModalProps> = ({
                         autoFocus
                         value={value}
                         onChange={(e) => onChange(e.target.value)}
-                        className="w-full bg-[#181817] border border-[#2B2A27] rounded-lg px-3.5 py-2.5 text-white text-[13px] focus:outline-none focus:border-[#4E4D49] focus:ring-1 focus:ring-[#4E4D49] transition-all"
+                        className="w-full bg-[#181817] border border-[#2B2A27] rounded-lg px-3.5 py-2.5 text-white text-[13px] focus:outline-none focus:border-[#4E4D49] focus:ring-1 focus:ring-[#4E4D49] transition-[border-color,box-shadow] duration-200"
                         placeholder={`Enter new ${label?.toLowerCase() || 'name'}...`}
                         disabled={isPending}
                     />
@@ -59,14 +59,14 @@ export const ProfileNameModal: React.FC<ProfileNameModalProps> = ({
                         type="button"
                         onClick={onClose}
                         disabled={isPending}
-                        className="border border-[#2B2A27] bg-transparent text-white hover:bg-white/5 active:scale-95 transition-all text-[13px] font-medium px-4 py-2 rounded-lg focus:outline-none disabled:opacity-50"
+                        className="border border-[#2B2A27] bg-transparent text-white hover:bg-white/5 active:scale-95 transition-[transform,background-color,border-color,color] duration-200 text-[13px] font-medium px-4 py-2 rounded-lg focus:outline-none disabled:opacity-50"
                     >
                         Cancel
                     </button>
                     <button
                         type="submit"
                         disabled={!value.trim() || isPending}
-                        className="bg-white text-black hover:bg-neutral-200 active:scale-95 transition-all text-[13px] font-medium px-4 py-2 rounded-lg focus:outline-none disabled:opacity-40 disabled:pointer-events-none flex items-center justify-center min-w-[110px]"
+                        className="bg-white text-black hover:bg-neutral-200 active:scale-95 transition-[transform,background-color,border-color,color] duration-200 text-[13px] font-medium px-4 py-2 rounded-lg focus:outline-none disabled:opacity-40 disabled:pointer-events-none flex items-center justify-center min-w-[110px]"
                     >
                         {isPending ? (
                             <div className="flex items-center gap-1.5 justify-center">

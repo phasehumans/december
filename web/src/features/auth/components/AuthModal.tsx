@@ -8,6 +8,7 @@ import { AuthModalAuthStep } from './AuthModalAuthStep'
 import { AuthModalForgotEmailStep } from './AuthModalForgotEmailStep'
 import { AuthModalForgotOtpStep } from './AuthModalForgotOtpStep'
 import { AuthModalForgotResetStep } from './AuthModalForgotResetStep'
+import { AuthModalGoogleMergeStep } from './AuthModalGoogleMergeStep'
 import { AuthModalOtpStep } from './AuthModalOtpStep'
 
 import type { AuthModalProps } from '@/features/auth/types'
@@ -52,6 +53,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         handleBackToForgotEmail,
         handleBackToForgotOtp,
         setOtpInputRef,
+        handleCreatePassword,
     } = useAuthModalController({
         isOpen,
         initialMode,
@@ -90,6 +92,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                                 onSubmit={handleAuthSubmit}
                                 onToggleAuthMode={handleToggleAuthMode}
                                 onForgotPassword={handleForgotPasswordStart}
+                            />
+                        ) : step === 'google-merge' ? (
+                            <AuthModalGoogleMergeStep
+                                email={email}
+                                isPending={isForgotEmailPending}
+                                onGoogleLogin={googleLogin}
+                                onCreatePassword={handleCreatePassword}
+                                onBack={handleBackToAuth}
                             />
                         ) : step === 'otp' ? (
                             <AuthModalOtpStep

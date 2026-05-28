@@ -16,7 +16,7 @@ import type {
 } from '@/features/projects/types'
 
 export type SortOption = 'newest' | 'oldest'
-export type StatusFilter = 'any' | 'Draft' | 'Generated' | 'Published'
+export type StatusFilter = 'any' | 'Draft' | 'Generating' | 'Generated' | 'Deployed' | 'Failed'
 
 export const ProjectList: React.FC<ProjectListProps> = ({
     onNewProject,

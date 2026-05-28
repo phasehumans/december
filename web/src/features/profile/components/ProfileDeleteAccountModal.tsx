@@ -63,7 +63,7 @@ export const ProfileDeleteAccountModal: React.FC<ProfileDeleteAccountModalProps>
                         autoFocus
                         value={confirmText}
                         onChange={(e) => setConfirmText(e.target.value)}
-                        className="w-full bg-[#181817] border border-[#2B2A27] rounded-lg px-3.5 py-2.5 text-white text-[13px] focus:outline-none focus:border-[#4E4D49] focus:ring-1 focus:ring-[#4E4D49] transition-all placeholder:text-[#4A4948]"
+                        className="w-full bg-[#181817] border border-[#2B2A27] rounded-lg px-3.5 py-2.5 text-white text-[13px] focus:outline-none focus:border-[#4E4D49] focus:ring-1 focus:ring-[#4E4D49] transition-[border-color,box-shadow] duration-200 placeholder:text-[#4A4948]"
                         placeholder="delete"
                         disabled={isPending}
                         autoComplete="off"
@@ -76,14 +76,14 @@ export const ProfileDeleteAccountModal: React.FC<ProfileDeleteAccountModalProps>
                         type="button"
                         onClick={onClose}
                         disabled={isPending}
-                        className="border border-[#2B2A27] bg-transparent text-white hover:bg-white/5 active:scale-95 transition-all text-[13px] font-medium px-4 py-2 rounded-lg focus:outline-none disabled:opacity-50"
+                        className="border border-[#2B2A27] bg-transparent text-white hover:bg-white/5 active:scale-95 transition-[transform,background-color,border-color,color] duration-200 text-[13px] font-medium px-4 py-2 rounded-lg focus:outline-none disabled:opacity-50"
                     >
                         Cancel
                     </button>
                     <button
                         type="submit"
                         disabled={!isConfirmEnabled || isPending}
-                        className="bg-[#EF4444] text-white hover:bg-red-600 active:scale-[0.97] transition-all text-[13px] font-medium px-4 py-2 rounded-lg focus:outline-none disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center min-w-[140px]"
+                        className="bg-[#EF4444] text-white hover:bg-red-600 active:scale-[0.97] transition-[transform,background-color,border-color,color] duration-200 text-[13px] font-medium px-4 py-2 rounded-lg focus:outline-none disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center min-w-[140px]"
                     >
                         {isPending ? (
                             <div className="flex items-center gap-1.5 justify-center">

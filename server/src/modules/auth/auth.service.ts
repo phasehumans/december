@@ -74,6 +74,9 @@ const signup = async (data: Signup) => {
     })
 
     if (existingUser) {
+        if (!existingUser.password) {
+            throw new AppError('google_account_exists', 400)
+        }
         throw new AppError('email already exists', 409)
     }
 
@@ -99,6 +102,8 @@ const signup = async (data: Signup) => {
             otpExpiresAt: new Date(Date.now() + 10 * 60 * 1000),
         },
     })
+
+    console.log(otp)
 
     await sendOTP(newUser.email, otp)
 
@@ -291,6 +296,8 @@ const requestPasswordReset = async (data: RequestPasswordReset) => {
             otpExpiresAt: new Date(Date.now() + 10 * 60 * 1000),
         },
     })
+
+    console.log(otp)
 
     await sendOTP(user.email, otp)
 }
