@@ -18,7 +18,7 @@ export const HomeHeader: React.FC = () => {
                         const el = document.getElementById('hero-canvas-container')
                         el?.scrollIntoView({ behavior: 'smooth' })
                     }}
-                    className="flex items-center gap-2.5 bg-[#201F1E] border border-white/5 rounded-full pl-1.5 pr-3 py-1 text-[13px] text-[#E8E8E6] shadow-sm transition-colors cursor-pointer hover:bg-[#2A2928] group"
+                    className="home-header-badge flex items-center gap-2.5 bg-[#201F1E] border border-white/5 rounded-full pl-1.5 pr-3 py-1 text-[13px] text-[#E8E8E6] shadow-sm transition-all duration-200 cursor-pointer hover:bg-[#2A2928] group"
                 >
                     <span className="bg-[#2F2E2D] text-[#D6D5D4] rounded-full px-2 py-0.5 text-[11px] font-medium">
                         New

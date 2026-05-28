@@ -221,6 +221,17 @@ export const DocsPage: React.FC<DocsPageProps> = ({ onBack }) => {
                                     <ShieldCheck className="w-[16px] h-[16px]" strokeWidth={1.5} />
                                     Security & privacy
                                 </button>
+                                <button
+                                    onClick={() => setActiveTab('Keyboard shortcuts')}
+                                    className={`flex items-center gap-3 px-3 py-1.5 rounded-xl text-[13px] font-medium transition-colors ${
+                                        activeTab === 'Keyboard shortcuts'
+                                            ? 'bg-[#242323] text-[#D6D5C9]'
+                                            : 'text-[#7B7A79] hover:text-[#D6D5C9] hover:bg-[#1E1D1B]'
+                                    }`}
+                                >
+                                    <Terminal className="w-[16px] h-[16px]" strokeWidth={1.5} />
+                                    Keyboard shortcuts
+                                </button>
                             </>
                         )}
                     </div>
@@ -628,6 +639,145 @@ phase workspace invite --email user@example.com --role editor`}
                                     Enterprise models are never trained on your private workspace
                                     data.
                                 </Callout>
+                            </div>
+                        ) : activeTab === 'Keyboard shortcuts' ? (
+                            <div className="flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                                <div className="flex flex-col gap-3">
+                                    <h1 className="text-[32px] font-semibold text-white tracking-tight">
+                                        Canvas Keyboard Shortcuts
+                                    </h1>
+                                    <p className="text-[16px] text-[#A3A299] leading-relaxed">
+                                        Use these single-key keyboard shortcuts to rapidly switch
+                                        between tools on the Canvas workspace. Focus and speed up
+                                        your design-to-code creation workflow.
+                                    </p>
+                                </div>
+
+                                <div className="flex flex-col gap-4 mt-2">
+                                    <h2 className="text-[20px] font-medium text-white border-b border-[#242323] pb-2">
+                                        Tool Selection Keys
+                                    </h2>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                                        <div className="bg-[#1E1D1B] border border-[#383736] rounded-xl p-4 flex items-center justify-between gap-4">
+                                            <div className="flex flex-col gap-1">
+                                                <strong className="text-[#D6D5C9] text-[14px]">
+                                                    Select / Move
+                                                </strong>
+                                                <p className="text-[12px] text-[#7B7A79]">
+                                                    Select, drag, resize, and connect elements.
+                                                </p>
+                                            </div>
+                                            <kbd className="bg-[#242323] border border-[#383736] rounded px-2.5 py-1 text-[13px] font-mono font-bold text-white shrink-0 shadow-sm">
+                                                V
+                                            </kbd>
+                                        </div>
+
+                                        <div className="bg-[#1E1D1B] border border-[#383736] rounded-xl p-4 flex items-center justify-between gap-4">
+                                            <div className="flex flex-col gap-1">
+                                                <strong className="text-[#D6D5C9] text-[14px]">
+                                                    Hand Tool (Pan)
+                                                </strong>
+                                                <p className="text-[12px] text-[#7B7A79]">
+                                                    Pan and scroll around the Canvas surface.
+                                                </p>
+                                            </div>
+                                            <kbd className="bg-[#242323] border border-[#383736] rounded px-2.5 py-1 text-[13px] font-mono font-bold text-white shrink-0 shadow-sm">
+                                                H
+                                            </kbd>
+                                        </div>
+
+                                        <div className="bg-[#1E1D1B] border border-[#383736] rounded-xl p-4 flex items-center justify-between gap-4">
+                                            <div className="flex flex-col gap-1">
+                                                <strong className="text-[#D6D5C9] text-[14px]">
+                                                    Frame Tool
+                                                </strong>
+                                                <p className="text-[12px] text-[#7B7A79]">
+                                                    Create structural frame containers for layout.
+                                                </p>
+                                            </div>
+                                            <kbd className="bg-[#242323] border border-[#383736] rounded px-2.5 py-1 text-[13px] font-mono font-bold text-white shrink-0 shadow-sm">
+                                                F
+                                            </kbd>
+                                        </div>
+
+                                        <div className="bg-[#1E1D1B] border border-[#383736] rounded-xl p-4 flex items-center justify-between gap-4">
+                                            <div className="flex flex-col gap-1">
+                                                <strong className="text-[#D6D5C9] text-[14px]">
+                                                    Pen Tool
+                                                </strong>
+                                                <p className="text-[12px] text-[#7B7A79]">
+                                                    Draw custom freehand lines and sketches.
+                                                </p>
+                                            </div>
+                                            <kbd className="bg-[#242323] border border-[#383736] rounded px-2.5 py-1 text-[13px] font-mono font-bold text-white shrink-0 shadow-sm">
+                                                P
+                                            </kbd>
+                                        </div>
+
+                                        <div className="bg-[#1E1D1B] border border-[#383736] rounded-xl p-4 flex items-center justify-between gap-4">
+                                            <div className="flex flex-col gap-1">
+                                                <strong className="text-[#D6D5C9] text-[14px]">
+                                                    Eraser Tool
+                                                </strong>
+                                                <p className="text-[12px] text-[#7B7A79]">
+                                                    Erase drawings and structural items.
+                                                </p>
+                                            </div>
+                                            <kbd className="bg-[#242323] border border-[#383736] rounded px-2.5 py-1 text-[13px] font-mono font-bold text-white shrink-0 shadow-sm">
+                                                E
+                                            </kbd>
+                                        </div>
+
+                                        <div className="bg-[#1E1D1B] border border-[#383736] rounded-xl p-4 flex items-center justify-between gap-4">
+                                            <div className="flex flex-col gap-1">
+                                                <strong className="text-[#D6D5C9] text-[14px]">
+                                                    Rectangle / Square
+                                                </strong>
+                                                <p className="text-[12px] text-[#7B7A79]">
+                                                    Draw standard geometric square shapes.
+                                                </p>
+                                            </div>
+                                            <kbd className="bg-[#242323] border border-[#383736] rounded px-2.5 py-1 text-[13px] font-mono font-bold text-white shrink-0 shadow-sm">
+                                                R
+                                            </kbd>
+                                        </div>
+
+                                        <div className="bg-[#1E1D1B] border border-[#383736] rounded-xl p-4 flex items-center justify-between gap-4">
+                                            <div className="flex flex-col gap-1">
+                                                <strong className="text-[#D6D5C9] text-[14px]">
+                                                    Text Tool
+                                                </strong>
+                                                <p className="text-[12px] text-[#7B7A79]">
+                                                    Add editable typography and notes on screen.
+                                                </p>
+                                            </div>
+                                            <kbd className="bg-[#242323] border border-[#383736] rounded px-2.5 py-1 text-[13px] font-mono font-bold text-white shrink-0 shadow-sm">
+                                                T
+                                            </kbd>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="flex flex-col gap-4 mt-2">
+                                    <h2 className="text-[20px] font-medium text-white border-b border-[#242323] pb-2">
+                                        Temporary Modifier Shortcuts
+                                    </h2>
+                                    <div className="flex flex-col gap-3 text-[14px] text-[#A3A299]">
+                                        <div className="bg-[#1E1D1C]/50 border border-[#242323] rounded-xl p-4 flex items-start gap-4">
+                                            <div className="flex flex-col gap-1 flex-1">
+                                                <strong className="text-white">
+                                                    Hold Spacebar or Shift
+                                                </strong>
+                                                <p className="text-[13px] text-[#A3A299] leading-relaxed">
+                                                    Holding down either key temporarily switches the
+                                                    active tool to the **Hand** (Pan) tool.
+                                                    Releasing the key instantly reverts back to your
+                                                    previously selected tool.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         ) : null}
                     </div>

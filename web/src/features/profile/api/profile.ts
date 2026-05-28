@@ -278,6 +278,13 @@ const getNotionConnectUrl = () => {
     return `${API_BASE_URL}/integrations/notion/connect`
 }
 
+const submitFeedback = (data: { rating: 'sad' | 'neutral' | 'happy' | null; feedback: string }) => {
+    return apiRequest<{ message: string }>('/profile/feedback', {
+        method: 'POST',
+        body: JSON.stringify(data),
+    })
+}
+
 export const profileAPI = {
     getProfile,
     updateName,
@@ -302,4 +309,5 @@ export const profileAPI = {
     getVercelConnectUrl,
     getSupabaseConnectUrl,
     getNotionConnectUrl,
+    submitFeedback,
 }
