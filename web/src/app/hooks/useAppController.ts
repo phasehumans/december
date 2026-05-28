@@ -1271,14 +1271,12 @@ export const useAppController = () => {
     }, [activeProjectId])
 
     const handleNewThread = () => {
-        requireAuthOr(() => {
-            outputOriginViewRef.current = 'chat'
-            navigate('/')
-            setMessages([])
-            clearOpenedProject()
-            resetGenerationFlow()
-            setImportState({ status: 'idle', message: null })
-        })
+        outputOriginViewRef.current = 'chat'
+        setMessages([])
+        clearOpenedProject()
+        resetGenerationFlow()
+        setImportState({ status: 'idle', message: null })
+        window.location.href = '/'
     }
 
     const handleNavigate = (target: ViewState) => {

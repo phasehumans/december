@@ -587,10 +587,10 @@ export const ProfileUsageSettings: React.FC = () => {
                                         <Skeleton className="h-4 w-24 bg-white/[0.06] rounded" />
                                     </div>
                                     <div className="pr-4">
-                                        <Skeleton className="h-4. w-20 bg-white/[0.04] rounded" />
+                                        <Skeleton className="h-4 w-20 bg-white/[0.04] rounded" />
                                     </div>
                                     <div className="pr-4">
-                                        <Skeleton className="h-4. w-24 bg-white/[0.04] rounded" />
+                                        <Skeleton className="h-4 w-24 bg-white/[0.04] rounded" />
                                     </div>
                                     <div className="pr-4">
                                         <Skeleton className="h-4 w-14 bg-white/[0.04] rounded" />
