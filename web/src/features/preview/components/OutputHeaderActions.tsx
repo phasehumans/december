@@ -62,7 +62,7 @@ const BigModalOverlay: React.FC<BigModalProps> = ({ title, icon, onClose, childr
     return createPortal(
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-8 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
             <div className="absolute inset-0" onClick={onClose} />
-            <div className="relative w-full max-w-[1000px] h-[85vh] md:h-[80vh] bg-[#171615] rounded-2xl border border-[#242323] flex overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200 text-left">
+            <div className="relative w-full max-w-[1000px] h-[85vh] md:h-[80vh] bg-[#171615] rounded-2xl border border-[#242323] flex overflow-hidden shadow-2xl text-left">
                 {children}
             </div>
         </div>,
@@ -324,7 +324,7 @@ const SettingsBigModal: React.FC<SettingsModalProps> = ({
                         className="flex items-center text-[#7B7A79] hover:text-[#D6D5D4] hover:bg-[#1E1D1B] px-2 py-1 -ml-2 rounded-lg text-[13px] font-medium transition-colors"
                     >
                         <ChevronLeft className="w-4 h-4 mr-2" />
-                        Project
+                        Back
                     </button>
                 </div>
 
@@ -357,7 +357,7 @@ const SettingsBigModal: React.FC<SettingsModalProps> = ({
             {/* Right Pane */}
             <div className="flex-1 flex flex-col min-w-0 h-full bg-[#171615]">
                 {/* Header Actions - Divider Line Removed */}
-                <div className="h-14 flex items-center justify-end px-5 shrink-0">
+                <div className="h-10 flex items-center justify-end px-5 shrink-0">
                     <button
                         onClick={onClose}
                         className="p-1.5 rounded-lg text-[#7B7A79] hover:text-[#D6D5D4] hover:bg-white/5 transition-colors outline-none"
@@ -367,14 +367,14 @@ const SettingsBigModal: React.FC<SettingsModalProps> = ({
                 </div>
                 {/* Content Area */}
                 <div className="flex-1 overflow-y-auto [&::-webkit-scrollbar]:w-[12px] [&::-webkit-scrollbar-track]:bg-[#171615] [&::-webkit-scrollbar-thumb]:bg-[#383736] [&::-webkit-scrollbar-thumb]:bg-clip-padding [&::-webkit-scrollbar-thumb]:border-[4px] [&::-webkit-scrollbar-thumb]:border-solid [&::-webkit-scrollbar-thumb]:border-transparent [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-[#4A4948]">
-                    <div className="w-full flex justify-center px-8 md:px-16 py-8 md:py-12 relative z-10">
+                    <div className="w-full flex justify-center px-8 md:px-16 py-4 md:py-6 relative z-10">
                         {isLoading ? (
                             <div className="text-center py-20 text-[#7B7A79] text-sm animate-pulse">
                                 Loading project details...
                             </div>
                         ) : (
                             activeTab === 'general' && (
-                                <div className="flex flex-col w-full max-w-[680px] text-[#D6D5C9] animate-in fade-in slide-in-from-bottom-1 duration-150">
+                                <div className="flex flex-col w-full max-w-[680px] text-[#D6D5C9]">
                                     <h1 className="text-[16px] font-medium mb-3">
                                         General Settings
                                     </h1>
@@ -533,30 +533,10 @@ const SettingsBigModal: React.FC<SettingsModalProps> = ({
                                             </button>
                                         </div>
 
-                                        {/* Duplicate Project Row */}
-                                        <div className="flex items-center justify-between border-t border-[#242323] pt-6">
-                                            <div className="flex flex-col gap-0.5 text-left">
-                                                <span className="text-[14px] text-[#D6D5C9]">
-                                                    Duplicate Project
-                                                </span>
-                                                <span className="text-[13px] text-[#7B7A79]">
-                                                    Create a cloned copy of this visual project
-                                                    workspace.
-                                                </span>
-                                            </div>
-                                            <button
-                                                type="button"
-                                                onClick={() => setIsDuplicateModalOpen(true)}
-                                                className="px-4 py-1.5 rounded-lg border border-[#383736] text-[13px] text-[#D6D5C9] hover:bg-[#242323] transition-colors font-medium"
-                                            >
-                                                Duplicate
-                                            </button>
-                                        </div>
-
                                         {/* Delete Project Row */}
                                         <div className="flex items-center justify-between border-t border-[#242323] pt-6">
                                             <div className="flex flex-col gap-0.5 text-left">
-                                                <span className="text-[14px] text-[#EF4444]">
+                                                <span className="text-[14px] text-[#D6D5C9]">
                                                     Delete Project
                                                 </span>
                                                 <span className="text-[13px] text-[#7B7A79]">
@@ -567,7 +547,7 @@ const SettingsBigModal: React.FC<SettingsModalProps> = ({
                                             <button
                                                 type="button"
                                                 onClick={() => setIsDeleteModalOpen(true)}
-                                                className="px-4 py-1.5 rounded-lg border border-red-900/30 bg-red-950/20 text-[#FF8A8A] hover:bg-red-900/30 transition-colors font-medium"
+                                                className="px-4 py-1.5 rounded-lg border border-[#383736] text-[13px] text-[#D6D5C9] hover:bg-[#242323] transition-colors font-medium"
                                             >
                                                 Delete
                                             </button>
@@ -588,7 +568,7 @@ const SettingsBigModal: React.FC<SettingsModalProps> = ({
                         )}
 
                         {activeTab === 'publish' && (
-                            <div className="flex flex-col w-full max-w-[680px] text-[#D6D5C9] animate-in fade-in slide-in-from-bottom-1 duration-150">
+                            <div className="flex flex-col w-full max-w-[680px] text-[#D6D5C9]">
                                 <h1 className="text-[16px] font-medium mb-3">
                                     Publish Application
                                 </h1>
@@ -805,7 +785,7 @@ const SettingsBigModal: React.FC<SettingsModalProps> = ({
                         )}
 
                         {activeTab === 'share' && (
-                            <div className="flex flex-col w-full max-w-[680px] text-[#D6D5C9] animate-in fade-in slide-in-from-bottom-1 duration-150">
+                            <div className="flex flex-col w-full max-w-[680px] text-[#D6D5C9]">
                                 <h1 className="text-[16px] font-medium mb-3">Share</h1>
                                 <div className="flex flex-col gap-6 border-t border-[#242323] pt-6">
                                     {/* Visibility Cards */}
@@ -894,7 +874,7 @@ const SettingsBigModal: React.FC<SettingsModalProps> = ({
                         )}
 
                         {activeTab === 'integrations' && (
-                            <div className="flex flex-col w-full max-w-[680px] text-[#D6D5C9] animate-in fade-in slide-in-from-bottom-1 duration-150">
+                            <div className="flex flex-col w-full max-w-[680px] text-[#D6D5C9]">
                                 <h1 className="text-[16px] font-medium mb-3">Integrations</h1>
                                 <div className="flex flex-col gap-6 border-t border-[#242323] pt-6">
                                     <div className="text-center py-12 text-[#7B7A79] text-[13px]">
@@ -906,7 +886,7 @@ const SettingsBigModal: React.FC<SettingsModalProps> = ({
                         )}
 
                         {activeTab === 'variables' && (
-                            <div className="flex flex-col w-full max-w-[680px] text-[#D6D5C9] animate-in fade-in slide-in-from-bottom-1 duration-150">
+                            <div className="flex flex-col w-full max-w-[680px] text-[#D6D5C9]">
                                 <h1 className="text-[16px] font-medium mb-3">
                                     Environment Variables
                                 </h1>
@@ -920,7 +900,7 @@ const SettingsBigModal: React.FC<SettingsModalProps> = ({
                         )}
 
                         {activeTab === 'domains' && (
-                            <div className="flex flex-col w-full max-w-[680px] text-[#D6D5C9] animate-in fade-in slide-in-from-bottom-1 duration-150">
+                            <div className="flex flex-col w-full max-w-[680px] text-[#D6D5C9]">
                                 <h1 className="text-[16px] font-medium mb-3">Domains</h1>
                                 <div className="flex flex-col gap-6 border-t border-[#242323] pt-6">
                                     <div className="text-center py-12 text-[#7B7A79] text-[13px]">
@@ -932,7 +912,7 @@ const SettingsBigModal: React.FC<SettingsModalProps> = ({
                         )}
 
                         {activeTab === 'analytics' && (
-                            <div className="flex flex-col w-full max-w-[680px] text-[#D6D5C9] animate-in fade-in slide-in-from-bottom-1 duration-150">
+                            <div className="flex flex-col w-full max-w-[680px] text-[#D6D5C9]">
                                 <h1 className="text-[16px] font-medium mb-3">Analytics Settings</h1>
                                 <div className="flex flex-col gap-6 border-t border-[#242323] pt-6">
                                     <div className="flex items-center justify-between">

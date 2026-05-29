@@ -227,9 +227,6 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
             <div className="flex items-center justify-between px-3 py-1.5 shrink-0">
                 <div className="flex items-center gap-1.5">
                     <span className="text-[14px] font-medium text-[#CBCACA]">Notifications</span>
-                    {notifications.some((n: any) => !n.isRead) && (
-                        <span className="w-1.5 h-1.5 bg-[#D6D5C9] rounded-full animate-pulse" />
-                    )}
                 </div>
             </div>
 
@@ -289,9 +286,6 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
                                     >
                                         {notification.title}
                                     </span>
-                                    {!notification.isRead && (
-                                        <span className="w-1.5 h-1.5 rounded-full bg-[#D6D5C9] shrink-0" />
-                                    )}
                                 </div>
                                 <p className="text-[12px] text-[#8F8E8D] line-clamp-2 mt-0.5 leading-relaxed pr-4">
                                     {notification.message}
