@@ -255,7 +255,7 @@ export const vscodeDarkPlusTheme = EditorView.theme(
         },
 
         '.cm-selectionBackground, .cm-content ::selection': {
-            backgroundColor: 'rgba(38, 79, 120, 0.4) !important',
+            backgroundColor: 'rgba(38, 79, 120, 0.65) !important',
             color: 'inherit !important',
         },
 

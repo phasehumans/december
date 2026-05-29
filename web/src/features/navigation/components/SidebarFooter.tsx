@@ -42,8 +42,6 @@ export const SidebarFooter: React.FC<
         refetchInterval: 30 * 1000,
     })
 
-    const hasUnread = notifications.some((n: any) => !n.isRead)
-
     return (
         <div className="mt-auto flex flex-col w-full">
             <div className="w-full border-t border-white/[0.04]"></div>
@@ -74,9 +72,6 @@ export const SidebarFooter: React.FC<
                                 className="flex items-center justify-center w-7 h-7 rounded-lg hover:bg-[#252422] text-[#8F8E8D] hover:text-[#CBCACA] transition-colors shrink-0 outline-none -ml-1 relative"
                             >
                                 <Bell className="w-[13px] h-[13px]" strokeWidth={2} />
-                                {hasUnread && (
-                                    <span className="absolute top-[6px] right-[6px] w-[5px] h-[5px] bg-[#D6D5C9] rounded-full" />
-                                )}
                             </button>
                         </div>
 
