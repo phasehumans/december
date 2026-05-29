@@ -275,10 +275,7 @@ export const TemplatesView: React.FC<TemplatesViewProps> = ({ onOpenProject }) =
     }, [])
 
     const hasTemplates = templates.length > 0
-    const filteredFeaturedTemplates = featuredTemplates.filter((template) => {
-        const matchesCategory = selectedCategory ? template.category === selectedCategory.id : true
-        return matchesCategory
-    })
+    const filteredFeaturedTemplates = featuredTemplates
     const hasFeaturedTemplates = filteredFeaturedTemplates.length > 0
 
     const filteredGridTemplates = sortTemplates(

@@ -112,27 +112,31 @@ export const ChatThread: React.FC<ChatSidebarProps> = ({
             )}
         >
             <div className="h-14 flex items-center justify-between shrink-0 px-4 min-w-[340px] w-full">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 min-w-0">
                     <button
                         type="button"
                         onClick={(e) => {
                             e.preventDefault()
                             e.stopPropagation()
-                            if (onBack) {
-                                onBack()
-                            } else {
-                                window.location.href = '/'
-                            }
+                            window.location.href = '/'
                         }}
-                        className="flex items-center text-sm font-medium tracking-wide text-[#91908F] hover:text-white transition-colors"
+                        className="text-sm font-medium tracking-wide text-[#91908F] hover:text-white transition-colors"
                         title="Back to Home"
                     >
-                        <span>december</span>
-                        <span className="mx-1 opacity-40">/</span>
-                        <span className="text-[#D6D5D4]">{projectName ?? 'projectname'}</span>
+                        december
                     </button>
+                    <span className="text-sm opacity-40 text-[#91908F] select-none">/</span>
+                    <span
+                        className="text-sm font-medium text-[#D6D5D4] truncate max-w-[150px]"
+                        title={projectName ?? 'projectname'}
+                    >
+                        {projectName ?? 'projectname'}
+                    </span>
                 </div>
-                <button onClick={onClose} className="md:hidden p-2 text-[#91908F] hover:text-white">
+                <button
+                    onClick={onClose}
+                    className="md:hidden p-2 text-[#91908F] hover:text-white shrink-0"
+                >
                     <ChevronLeft className="rotate-180" size={20} />
                 </button>
             </div>
