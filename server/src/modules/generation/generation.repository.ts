@@ -70,7 +70,10 @@ export const initializeGenerationTarget = async (data: GenerateWebsiteInput) => 
             : await tx.project.create({
                   data: {
                       name: createProjectName(data.prompt),
-                      description: 'Generation in progress',
+                      description:
+                          data.prompt.trim().length > 150
+                              ? data.prompt.trim().slice(0, 147) + '...'
+                              : data.prompt.trim(),
                       prompt: data.prompt,
                       projectStatus: 'GENERATING',
                       userId: data.userId,

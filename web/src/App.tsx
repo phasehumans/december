@@ -52,7 +52,7 @@ const App: React.FC = () => {
     } = useAppController()
 
     return (
-        <div className="flex w-full h-screen bg-background text-textMain overflow-hidden font-sans selection:bg-accent selection:text-black">
+        <div className="flex w-full h-screen bg-background text-textMain overflow-hidden font-sans">
             <AppSideNavigation
                 showSidebar={showSidebar}
                 isMobileSidebarOpen={isMobileSidebarOpen}
