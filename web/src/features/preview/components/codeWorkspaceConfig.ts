@@ -172,7 +172,6 @@ export const getSharedEditorExtensions = (): Extension[] => [
     EditorState.tabSize.of(2),
     EditorState.allowMultipleSelections.of(true),
     indentUnit.of('  '),
-    EditorView.lineWrapping,
     EditorView.contentAttributes.of({
         spellcheck: 'false',
         'data-gramm': 'false',
@@ -205,6 +204,20 @@ export const vscodeDarkPlusTheme = EditorView.theme(
             fontFamily: '"JetBrains Mono", "Fira Code", Consolas, monospace',
             lineHeight: '1.5',
             overflow: 'auto',
+            '&::-webkit-scrollbar': {
+                width: '4px',
+                height: '4px',
+            },
+            '&::-webkit-scrollbar-thumb': {
+                backgroundColor: '#38373680',
+                borderRadius: '9999px',
+            },
+            '&::-webkit-scrollbar-thumb:hover': {
+                backgroundColor: '#4A4948cc',
+            },
+            '&::-webkit-scrollbar-track': {
+                backgroundColor: 'transparent',
+            },
         },
 
         '.cm-content': {
@@ -242,7 +255,23 @@ export const vscodeDarkPlusTheme = EditorView.theme(
         },
 
         '.cm-selectionBackground, .cm-content ::selection': {
-            backgroundColor: `${VSCODE_DARK_PLUS_SELECTION} !important`,
+            backgroundColor: 'rgba(38, 79, 120, 0.4) !important',
+            color: 'inherit !important',
+        },
+
+        '.cm-selectionMatch': {
+            backgroundColor: 'rgba(255, 255, 255, 0.08) !important',
+            outline: '1px solid rgba(255, 255, 255, 0.15) !important',
+            borderRadius: '2px',
+        },
+
+        '.cm-searchMatch': {
+            backgroundColor: 'rgba(234, 184, 57, 0.3) !important',
+            outline: '1px solid rgba(234, 184, 57, 0.5) !important',
+        },
+
+        '.cm-searchMatch.cm-searchMatch-selected': {
+            backgroundColor: 'rgba(234, 184, 57, 0.6) !important',
         },
 
         '.cm-cursor, .cm-dropCursor': {

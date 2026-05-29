@@ -1,0 +1,57 @@
+/* Custom resets to override Tailwind defaults and prevent focus/border flickers */
+button:focus,
+button:active,
+button:focus-visible,
+.focus-visible\:ring-2,
+.focus-visible\:ring-white\/20 {
+    outline: none !important;
+    box-shadow: none !important;
+    --tw-ring-offset-shadow: 0 0 #0000 !important;
+    --tw-ring-shadow: 0 0 #0000 !important;
+    --tw-shadow: 0 0 #0000 !important;
+}
+
+/* Remove all outline, ring, box-shadow, and borders on focus/active/focus-visible for bg-sidebar children to prevent Chromium click flickers */
+.bg-sidebar button,
+.bg-sidebar a,
+.bg-sidebar button:focus,
+.bg-sidebar button:active,
+.bg-sidebar button:focus-visible,
+.bg-sidebar a:focus,
+.bg-sidebar a:active,
+.bg-sidebar a:focus-visible {
+    outline: none !important;
+    outline-width: 0px !important;
+    box-shadow: none !important;
+    border-color: transparent !important;
+    --tw-ring-offset-shadow: 0 0 #0000 !important;
+    --tw-ring-shadow: 0 0 #0000 !important;
+    --tw-shadow: 0 0 #0000 !important;
+    --tw-ring-color: transparent !important;
+    --tw-ring-width: 0px !important;
+}
+
+/* Code Mirror selection override to prevent text-black from Tailwind selection class and preserve syntax colors with VS Code steel-blue selection highlight */
+.cm-editor *::selection {
+    background-color: rgba(38, 79, 120, 0.4) !important;
+    color: inherit !important;
+}
+.cm-editor ::selection {
+    background-color: rgba(38, 79, 120, 0.4) !important;
+    color: inherit !important;
+}
+.cm-editor .cm-selectionBackground {
+    background-color: rgba(38, 79, 120, 0.4) !important;
+}
+.cm-editor .cm-selectionMatch {
+    background-color: rgba(255, 255, 255, 0.08) !important;
+    outline: 1px solid rgba(255, 255, 255, 0.15) !important;
+    border-radius: 2px;
+}
+.cm-editor .cm-searchMatch {
+    background-color: rgba(234, 184, 57, 0.3) !important;
+    outline: 1px solid rgba(234, 184, 57, 0.5) !important;
+}
+.cm-editor .cm-searchMatch.cm-searchMatch-selected {
+    background-color: rgba(234, 184, 57, 0.6) !important;
+}

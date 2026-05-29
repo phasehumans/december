@@ -16,7 +16,20 @@ export const createProjectSchema = z.object({
 })
 
 export const renameProjectSchema = z.object({
-    rename: z.string({ message: 'rename is required' }),
+    rename: z
+        .string({ message: 'rename is required' })
+        .min(3, 'rename must be at least 3 characters')
+        .max(20, 'rename must be at most 20 characters'),
+})
+
+export const updateGeneralSettingsSchema = z.object({
+    name: z.string().optional(),
+    description: z.string().nullable().optional(),
+    isStarred: z.boolean().optional(),
+    isSharedAsTemplate: z.boolean().optional(),
+    projectCategory: z
+        .enum(['LANDING_PAGE', 'DASHBOARD', 'PORTFOLIO_BLOG', 'SAAS_APP', 'ECOMMERCE', 'NONE'])
+        .optional(),
 })
 
 export const getProjectByIdSchema = z.object({

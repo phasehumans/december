@@ -13,5 +13,6 @@ integrationsRouter.use(authMiddleware)
 integrationsRouter.get('/github/repos', integrationsController.getUserGithubRepos)
 integrationsRouter.get('/supabase/connect', integrationsController.connectSupabase)
 integrationsRouter.get('/notion/connect', integrationsController.connectNotion)
+integrationsRouter.get('/figma/connect', integrationsController.connectFigma)
 
 export default integrationsRouter

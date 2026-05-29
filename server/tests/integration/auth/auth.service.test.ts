@@ -78,9 +78,15 @@ describe('auth.service.integration', () => {
 
             await createUser({ email, username: 'dup' })
 
-            await expect(authService.signup({ email, password: 'Password123' })).rejects.toThrow(
-                'email already exists'
-            )
+            let error: any = null
+            try {
+                await authService.signup({ email, password: 'Password123' })
+            } catch (e) {
+                error = e
+            }
+
+            expect(error).not.toBeNull()
+            expect(error.message).toBe('email already exists')
         })
 
         it('should set isDeleted to false on new user', async () => {
@@ -150,9 +156,15 @@ describe('auth.service.integration', () => {
                 otpExpiresAt: new Date(Date.now() + 10000),
             })
 
-            await expect(
-                authService.verifyOtp({ email: 'invalid@example.com', otp: '000000' })
-            ).rejects.toThrow('invalid otp')
+            let error: any = null
+            try {
+                await authService.verifyOtp({ email: 'invalid@example.com', otp: '000000' })
+            } catch (e) {
+                error = e
+            }
+
+            expect(error).not.toBeNull()
+            expect(error.message).toBe('invalid otp')
         })
 
         it('should fail if otp expired and clear otp fields', async () => {
@@ -166,9 +178,15 @@ describe('auth.service.integration', () => {
                 otpExpiresAt: new Date(Date.now() - 1000),
             })
 
-            await expect(authService.verifyOtp({ email: user.email, otp })).rejects.toThrow(
-                'otp expired'
-            )
+            let error: any = null
+            try {
+                await authService.verifyOtp({ email: user.email, otp })
+            } catch (e) {
+                error = e
+            }
+
+            expect(error).not.toBeNull()
+            expect(error.message).toBe('otp expired')
 
             const updated = await prisma.user.findUnique({ where: { id: user.id } })
             expect(updated!.otpHash).toBeNull()
@@ -222,15 +240,27 @@ describe('auth.service.integration', () => {
                 username: 'wrong',
             })
 
-            await expect(
-                authService.login({ email: 'wrong@example.com', password: 'Wrong123' })
-            ).rejects.toThrow('invalid email or password')
+            let error: any = null
+            try {
+                await authService.login({ email: 'wrong@example.com', password: 'Wrong123' })
+            } catch (e) {
+                error = e
+            }
+
+            expect(error).not.toBeNull()
+            expect(error.message).toBe('invalid email or password')
         })
 
         it('should fail if user does not exist', async () => {
-            await expect(
-                authService.login({ email: 'ghost@example.com', password: 'Pass1234' })
-            ).rejects.toThrow('invalid email or password')
+            let error: any = null
+            try {
+                await authService.login({ email: 'ghost@example.com', password: 'Pass1234' })
+            } catch (e) {
+                error = e
+            }
+
+            expect(error).not.toBeNull()
+            expect(error.message).toBe('invalid email or password')
         })
 
         it('should fail if user is soft-deleted', async () => {
@@ -240,9 +270,15 @@ describe('auth.service.integration', () => {
                 isDeleted: true,
             })
 
-            await expect(
-                authService.login({ email: 'deleted@example.com', password: 'Password123' })
-            ).rejects.toThrow('account has been deleted')
+            let error: any = null
+            try {
+                await authService.login({ email: 'deleted@example.com', password: 'Password123' })
+            } catch (e) {
+                error = e
+            }
+
+            expect(error).not.toBeNull()
+            expect(error.message).toBe('account has been deleted')
         })
 
         it('should fail if user is not email-verified', async () => {
@@ -252,9 +288,17 @@ describe('auth.service.integration', () => {
                 emailVerified: false,
             })
 
-            await expect(
-                authService.login({ email: 'notverfied@example.com', password: 'Password123' })
-            ).rejects.toThrow()
+            let error: any = null
+            try {
+                await authService.login({
+                    email: 'notverfied@example.com',
+                    password: 'Password123',
+                })
+            } catch (e) {
+                error = e
+            }
+
+            expect(error).not.toBeNull()
         })
 
         it('should create a non-revoked session on login', async () => {
@@ -345,12 +389,18 @@ describe('auth.service.integration', () => {
                 otpExpiresAt: new Date(Date.now() + 10000),
             })
 
-            await expect(
-                authService.verifyPasswordResetOtp({
+            let error: any = null
+            try {
+                await authService.verifyPasswordResetOtp({
                     email: user.email,
                     otp: '000000',
                 })
-            ).rejects.toThrow('invalid or expired reset code')
+            } catch (e) {
+                error = e
+            }
+
+            expect(error).not.toBeNull()
+            expect(error.message).toBe('invalid or expired reset code')
         })
     })
 
@@ -377,13 +427,19 @@ describe('auth.service.integration', () => {
                 googleId: 'old-sub',
             })
 
-            await expect(
-                authService.google({
+            let error: any = null
+            try {
+                await authService.google({
                     email: 'google@example.com',
                     name: 'Mismatch',
                     sub: 'new-sub',
                 })
-            ).rejects.toThrow('google id mismatch')
+            } catch (e) {
+                error = e
+            }
+
+            expect(error).not.toBeNull()
+            expect(error.message).toBe('google id mismatch')
         })
 
         it('should login existing google user with matching sub', async () => {
@@ -440,19 +496,38 @@ describe('auth.service.integration', () => {
         })
 
         it('should fail if refresh token missing', async () => {
-            await expect(authService.refreshSession({})).rejects.toThrow(
-                'refresh token is required'
-            )
+            let error: any = null
+            try {
+                await authService.refreshSession({})
+            } catch (e) {
+                error = e
+            }
+
+            expect(error).not.toBeNull()
+            expect(error.message).toBe('refresh token is required')
         })
 
         it('should fail if refresh token invalid', async () => {
-            await expect(
-                authService.refreshSession({ refreshToken: 'invalid-token' })
-            ).rejects.toThrow('invalid or expired refresh token')
+            let error: any = null
+            try {
+                await authService.refreshSession({ refreshToken: 'invalid-token' })
+            } catch (e) {
+                error = e
+            }
+
+            expect(error).not.toBeNull()
+            expect(error.message).toBe('invalid or expired refresh token')
         })
 
         it('should fail if refresh token is empty string', async () => {
-            await expect(authService.refreshSession({ refreshToken: '' })).rejects.toThrow()
+            let error: any = null
+            try {
+                await authService.refreshSession({ refreshToken: '' })
+            } catch (e) {
+                error = e
+            }
+
+            expect(error).not.toBeNull()
         })
 
         it('should return new access and refresh tokens', async () => {
