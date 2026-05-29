@@ -24,6 +24,7 @@ export const profileSelect = {
     supabaseConnectedAt: true,
     notionWorkspaceId: true,
     notionWorkspaceName: true,
+    figmaConnected: true,
     notifyProjectActivity: true,
     notifyProductUpdates: true,
     notifySecurityAlerts: true,

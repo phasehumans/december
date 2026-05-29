@@ -45,6 +45,8 @@ model User {
   notionWorkspaceId   String?
   notionWorkspaceName String?
 
+  figmaConnected Boolean @default(false)
+
   notifyProjectActivity Boolean @default(true)
   notifyProductUpdates  Boolean @default(false)
   notifySecurityAlerts  Boolean @default(true)

@@ -20,6 +20,7 @@ export type Profile = {
     supabaseConnectedAt?: string | null
     notionWorkspaceId?: string | null
     notionWorkspaceName?: string | null
+    figmaConnected?: boolean
     notifyProjectActivity?: boolean
     notifyProductUpdates?: boolean
     notifySecurityAlerts?: boolean
@@ -278,6 +279,10 @@ const getNotionConnectUrl = () => {
     return `${API_BASE_URL}/integrations/notion/connect`
 }
 
+const getFigmaConnectUrl = () => {
+    return `${API_BASE_URL}/integrations/figma/connect`
+}
+
 const submitFeedback = (data: { rating: 'sad' | 'neutral' | 'happy' | null; feedback: string }) => {
     return apiRequest<{ message: string }>('/profile/feedback', {
         method: 'POST',
@@ -309,5 +314,6 @@ export const profileAPI = {
     getVercelConnectUrl,
     getSupabaseConnectUrl,
     getNotionConnectUrl,
+    getFigmaConnectUrl,
     submitFeedback,
 }

@@ -5,23 +5,50 @@ import React, { useState } from 'react'
 import { profileAPI, type GithubRepo } from '@/features/profile/api/profile'
 import { Skeleton } from '@/shared/components/ui/Skeleton'
 
-type IntegrationId = 'github' | 'vercel' | 'supabase' | 'notion'
+type IntegrationId = 'github' | 'vercel' | 'supabase' | 'figma' | 'notion'
 
 interface ProfileIntegrationsSettingsProps {
     isGithubConnected: boolean
     isVercelConnected: boolean
     isSupabaseConnected: boolean
     isNotionConnected: boolean
+    isFigmaConnected: boolean
     onConnectGithub: () => void
     onConnectVercel: () => void
     onConnectSupabase: () => void
     onConnectNotion: () => void
+    onConnectFigma: () => void
 }
 
 // Simple SVG icons for services not in lucide-react
 const VercelIcon = () => (
     <svg viewBox="0 0 76 65" fill="currentColor" className="w-5 h-5">
         <path d="M37.5274 0L75.0548 65H0L37.5274 0Z" />
+    </svg>
+)
+
+const FigmaIcon = () => (
+    <svg viewBox="0 0 38 57" className="w-[14px] h-[21px] shrink-0">
+        <path
+            d="M19 28.5C19 23.2533 14.7467 19 9.5 19C4.2533 19 0 23.2533 0 28.5C0 33.7467 4.2533 38 9.5 38C14.7467 38 19 33.7467 19 28.5Z"
+            fill="#19BCFE"
+        />
+        <path
+            d="M0 9.5C0 4.2533 4.2533 0 9.5 0C14.7467 0 19 4.2533 19 9.5V19H9.5C4.2533 19 0 14.7467 0 9.5Z"
+            fill="#F24E1E"
+        />
+        <path
+            d="M19 9.5C19 4.2533 23.2533 0 28.5 0C33.7467 0 38 4.2533 38 9.5C38 14.7467 33.7467 19 28.5 19H19V9.5Z"
+            fill="#FF7262"
+        />
+        <path
+            d="M19 19H28.5C33.7467 19 38 23.2533 38 28.5C38 33.7467 33.7467 38 28.5 38C23.2533 38 19 33.7467 19 28.5V19Z"
+            fill="#A259FF"
+        />
+        <path
+            d="M0 47.5C0 42.2533 4.2533 38 9.5 38H19V47.5C19 52.7467 14.7467 57 9.5 57C4.2533 57 0 52.7467 0 47.5Z"
+            fill="#0ACF83"
+        />
     </svg>
 )
 
@@ -84,6 +111,13 @@ const integrations = [
         iconColor: '#D6D5C9',
     },
     {
+        id: 'figma' as const,
+        name: 'Figma',
+        description: 'Import figma designs and automatically generate components.',
+        Icon: FigmaIcon,
+        iconColor: '#D6D5C9',
+    },
+    {
         id: 'notion' as const,
         name: 'Notion',
         description: 'Pull in pages and databases from Notion as project context.',
@@ -115,9 +149,11 @@ export const ProfileIntegrationsSettings: React.FC<ProfileIntegrationsSettingsPr
     isVercelConnected,
     isSupabaseConnected,
     isNotionConnected,
+    isFigmaConnected,
     onConnectVercel,
     onConnectSupabase,
     onConnectNotion,
+    onConnectFigma,
 }) => {
     const [showAllRepos, setShowAllRepos] = useState(false)
 
@@ -139,6 +175,10 @@ export const ProfileIntegrationsSettings: React.FC<ProfileIntegrationsSettingsPr
 
         if (id === 'supabase') {
             return { isConnected: isSupabaseConnected, onConnect: onConnectSupabase }
+        }
+
+        if (id === 'figma') {
+            return { isConnected: isFigmaConnected, onConnect: onConnectFigma }
         }
 
         if (id === 'notion') {

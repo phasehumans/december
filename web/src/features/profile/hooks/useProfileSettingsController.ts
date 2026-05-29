@@ -47,6 +47,7 @@ export const useProfileSettingsController = () => {
     const isVercelConnected = profile?.vercelConnected ?? false
     const isSupabaseConnected = profile?.supabaseConnected ?? false
     const isNotionConnected = Boolean(profile?.notionWorkspaceId)
+    const isFigmaConnected = profile?.figmaConnected ?? false
     const emailNotifications = profile?.notifyProjectActivity ?? true
     const productUpdates = profile?.notifyProductUpdates ?? true
     const securityAlerts = profile?.notifySecurityAlerts ?? true
@@ -143,6 +144,10 @@ export const useProfileSettingsController = () => {
         window.location.href = profileAPI.getNotionConnectUrl()
     }
 
+    const connectFigma = () => {
+        window.location.href = profileAPI.getFigmaConnectUrl()
+    }
+
     return {
         profile,
         isProfileLoading,
@@ -176,6 +181,7 @@ export const useProfileSettingsController = () => {
         isVercelConnected,
         isSupabaseConnected,
         isNotionConnected,
+        isFigmaConnected,
         emailNotifications,
         productUpdates,
         securityAlerts,
@@ -193,5 +199,6 @@ export const useProfileSettingsController = () => {
         connectVercel,
         connectSupabase,
         connectNotion,
+        connectFigma,
     }
 }

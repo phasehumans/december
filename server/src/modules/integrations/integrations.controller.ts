@@ -224,10 +224,41 @@ const connectGithub = async (req: Request, res: Response) => {
     }
 }
 
+const connectFigma = async (req: Request, res: Response) => {
+    try {
+        const userId = req.user?.userId as string | undefined
+
+        if (!userId) {
+            return res.status(401).json({
+                success: false,
+                message: 'unauthorized',
+            })
+        }
+
+        await integrationsService.connectFigma(userId)
+        return res.redirect('http://localhost:3000/profile/integrations')
+    } catch (error) {
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({
+                success: false,
+                message: 'failed to connect figma',
+                errors: error.message,
+            })
+        }
+
+        return res.status(500).json({
+            success: false,
+            message: 'failed to connect figma',
+            errors: error instanceof Error ? error.message : 'unknown error',
+        })
+    }
+}
+
 export const integrationsController = {
     getUserGithubRepos,
     connectVercel,
     connectSupabase,
     connectNotion,
     connectGithub,
+    connectFigma,
 }

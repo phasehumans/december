@@ -25,9 +25,17 @@ import {
     ChevronLeft,
     ChevronDown,
     Plug,
+    Share,
+    Cloud,
+    Activity,
 } from 'lucide-react'
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
+import { motion, AnimatePresence } from 'framer-motion'
+
+import { ProjectShareModal } from '@/features/projects/components/ProjectShareModal'
+import { ProjectDuplicateModal } from '@/features/projects/components/ProjectDuplicateModal'
+import { ProjectDeleteModal } from '@/features/projects/components/ProjectDeleteModal'
 
 import { projectAPI, type BackendProjectVersionSummary } from '@/features/projects/api/project'
 
@@ -54,10 +62,8 @@ const BigModalOverlay: React.FC<BigModalProps> = ({ title, icon, onClose, childr
     return createPortal(
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-8 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
             <div className="absolute inset-0" onClick={onClose} />
-            <div className="relative w-full max-w-[1000px] h-[85vh] md:h-[80vh] bg-[#100E12] p-1.5 md:p-[8px] rounded-2xl flex overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200 text-left">
-                <div className="flex w-full h-full bg-[#171615] rounded-xl border border-[#242323] overflow-hidden animate-in duration-250 fade-in zoom-in-98">
-                    {children}
-                </div>
+            <div className="relative w-full max-w-[1000px] h-[85vh] md:h-[80vh] bg-[#171615] rounded-2xl border border-[#242323] flex overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200 text-left">
+                {children}
             </div>
         </div>,
         document.body
@@ -127,6 +133,15 @@ interface SettingsModalProps {
     projectId?: string | null
 }
 
+const CATEGORIES = [
+    { id: 'NONE', label: 'Select Category...' },
+    { id: 'LANDING_PAGE', label: 'Landing Page' },
+    { id: 'DASHBOARD', label: 'Dashboard' },
+    { id: 'PORTFOLIO_BLOG', label: 'Portfolio / Blog' },
+    { id: 'SAAS_APP', label: 'SaaS Application' },
+    { id: 'ECOMMERCE', label: 'E-Commerce' },
+]
+
 const SettingsBigModal: React.FC<SettingsModalProps> = ({
     onClose,
     initialTab,
@@ -158,6 +173,28 @@ const SettingsBigModal: React.FC<SettingsModalProps> = ({
     const [noIndex, setNoIndex] = useState(false)
     const [deploying, setDeploying] = useState(false)
     const [deployed, setDeployed] = useState(false)
+
+    // Modals state
+    const [isShareModalOpen, setIsShareModalOpen] = useState(false)
+    const [isDuplicateModalOpen, setIsDuplicateModalOpen] = useState(false)
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+
+    // Category dropdown state
+    const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false)
+    const categoryDropdownRef = useRef<HTMLDivElement>(null)
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (
+                categoryDropdownRef.current &&
+                !categoryDropdownRef.current.contains(event.target as Node)
+            ) {
+                setIsCategoryDropdownOpen(false)
+            }
+        }
+        document.addEventListener('mousedown', handleClickOutside)
+        return () => document.removeEventListener('mousedown', handleClickOutside)
+    }, [])
 
     const handleDeploy = () => {
         setDeploying(true)
@@ -214,11 +251,9 @@ const SettingsBigModal: React.FC<SettingsModalProps> = ({
         }
     }
 
-    // Duplicate project logic
-    const handleDuplicate = async () => {
+    // Duplicate project logic from modal confirm
+    const handleDuplicateConfirm = async (newName: string) => {
         if (!projectId) return
-        const newName = prompt('Enter a name for the duplicated project:', `Copy of ${projName}`)
-        if (newName === null) return
         setIsDuplicating(true)
         try {
             const res = await projectAPI.duplicateProject(projectId, newName.trim() || undefined)
@@ -229,17 +264,54 @@ const SettingsBigModal: React.FC<SettingsModalProps> = ({
             console.error('Failed to duplicate project:', err)
         } finally {
             setIsDuplicating(false)
+            setIsDuplicateModalOpen(false)
+        }
+    }
+
+    // Share/Unshare project logic from modal confirm
+    const handleShareConfirm = async (selectedCategory?: string) => {
+        if (!projectId) return
+        try {
+            await projectAPI.updateGeneralSettings(projectId, {
+                isSharedAsTemplate: !isTemplate,
+                projectCategory: (selectedCategory as any) ?? 'NONE',
+            })
+            setIsTemplate(!isTemplate)
+            if (selectedCategory) {
+                setCategory((selectedCategory as any) ?? 'NONE')
+            }
+        } catch (err) {
+            console.error('Failed to share project:', err)
+        } finally {
+            setIsShareModalOpen(false)
+        }
+    }
+
+    // Delete project logic from modal confirm
+    const handleDeleteConfirm = async () => {
+        if (!projectId) return
+        try {
+            await projectAPI.deleteProject(projectId)
+            window.location.href = '/'
+        } catch (err) {
+            console.error('Failed to delete project:', err)
+        } finally {
+            setIsDeleteModalOpen(false)
         }
     }
 
     const tabs = [
         { id: 'general', label: 'General', icon: <Sliders size={15} /> },
-        { id: 'publish', label: 'Publish', icon: <Rocket size={15} /> },
-        { id: 'share', label: 'Access & Share', icon: <Users size={15} /> },
-        { id: 'integrations', label: 'Integrations', icon: <Plug size={15} /> },
-        { id: 'variables', label: 'Env Variables', icon: <Shield size={15} /> },
+        { id: 'share', label: 'Share', icon: <Share size={15} /> },
+        {
+            id: 'integrations',
+            label: 'Integrations',
+            icon: <Plug size={15} className="rotate-45" />,
+        },
+        { id: 'publish', label: 'Publish', icon: <Cloud size={15} /> },
+        { id: 'variables', label: 'Env Variables', icon: <Terminal size={15} /> },
         { id: 'domains', label: 'Domains', icon: <Globe size={15} /> },
-        { id: 'analytics', label: 'Analytics', icon: <BarChart3 size={15} /> },
+        { id: 'analytics', label: 'Analytics', icon: <Activity size={15} /> },
     ]
 
     return (
@@ -270,10 +342,10 @@ const SettingsBigModal: React.FC<SettingsModalProps> = ({
                                     : 'text-[#D6D5C9] hover:bg-[#1E1D1B]'
                             }`}
                         >
-                            <span className="text-[#7B7A79]">
+                            <span className="text-[#7B7A79] flex items-center justify-center">
                                 {React.cloneElement(t.icon, {
                                     strokeWidth: 1.5,
-                                    className: 'w-[18px] h-[18px]',
+                                    className: `w-[18px] h-[18px] ${t.icon.props.className || ''}`,
                                 })}
                             </span>
                             <span>{t.label}</span>
@@ -333,7 +405,10 @@ const SettingsBigModal: React.FC<SettingsModalProps> = ({
                                                 placeholder="Write a brief overview of your application..."
                                             />
                                         </div>
-                                        <div className="flex flex-col gap-1.5 text-left">
+                                        <div
+                                            className="flex flex-col gap-1.5 text-left"
+                                            ref={categoryDropdownRef}
+                                        >
                                             <span className="text-[14px] text-[#D6D5C9]">
                                                 Project Category
                                             </span>
@@ -341,27 +416,81 @@ const SettingsBigModal: React.FC<SettingsModalProps> = ({
                                                 Select project layout classification category.
                                             </span>
                                             <div className="relative w-full">
-                                                <select
-                                                    value={category}
-                                                    onChange={(e) =>
-                                                        setCategory(e.target.value as any)
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        setIsCategoryDropdownOpen(
+                                                            !isCategoryDropdownOpen
+                                                        )
                                                     }
-                                                    className="w-full bg-[#1A1918] border border-[#2B2A29] rounded-xl pl-3.5 pr-10 py-2.5 text-[13px] text-[#D6D5C9] outline-none focus:border-[#4A4948] transition-colors appearance-none cursor-pointer"
+                                                    className="w-full flex items-center justify-between bg-[#1A1918] border border-[#2B2A29] hover:border-[#383736] rounded-xl px-3.5 py-2.5 text-white text-[13px] transition-[border-color,background-color] duration-200 focus:outline-none text-left"
                                                 >
-                                                    <option value="NONE">Select Category...</option>
-                                                    <option value="LANDING_PAGE">
-                                                        Landing Page
-                                                    </option>
-                                                    <option value="DASHBOARD">Dashboard</option>
-                                                    <option value="PORTFOLIO_BLOG">
-                                                        Portfolio / Blog
-                                                    </option>
-                                                    <option value="SAAS_APP">
-                                                        SaaS Application
-                                                    </option>
-                                                    <option value="ECOMMERCE">E-Commerce</option>
-                                                </select>
-                                                <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#7B7A79] pointer-events-none" />
+                                                    <span
+                                                        className={
+                                                            category === 'NONE'
+                                                                ? 'text-[#7B7A79]'
+                                                                : 'text-[#D6D5C9]'
+                                                        }
+                                                    >
+                                                        {CATEGORIES.find(
+                                                            (cat) => cat.id === category
+                                                        )?.label ?? 'Select Category...'}
+                                                    </span>
+                                                    <ChevronDown
+                                                        className={`w-4 h-4 text-[#7B7A79] transition-transform duration-200 ${
+                                                            isCategoryDropdownOpen
+                                                                ? 'rotate-180'
+                                                                : ''
+                                                        }`}
+                                                    />
+                                                </button>
+
+                                                <AnimatePresence>
+                                                    {isCategoryDropdownOpen && (
+                                                        <motion.div
+                                                            initial={{
+                                                                opacity: 0,
+                                                                y: -6,
+                                                                scale: 0.98,
+                                                            }}
+                                                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                                                            exit={{
+                                                                opacity: 0,
+                                                                y: -6,
+                                                                scale: 0.98,
+                                                            }}
+                                                            transition={{ duration: 0.15 }}
+                                                            className="absolute left-0 right-0 top-full mt-2 rounded-xl border border-[#383736] bg-[#1E1D1C] py-2 shadow-2xl z-50 max-h-[220px] overflow-y-auto [&::-webkit-scrollbar]:w-[4px] [&::-webkit-scrollbar-thumb]:bg-[#383736]/60 [&::-webkit-scrollbar-thumb]:rounded-full text-left"
+                                                        >
+                                                            {CATEGORIES.map((cat) => (
+                                                                <button
+                                                                    key={cat.id}
+                                                                    type="button"
+                                                                    onClick={() => {
+                                                                        setCategory(cat.id as any)
+                                                                        setIsCategoryDropdownOpen(
+                                                                            false
+                                                                        )
+                                                                    }}
+                                                                    className="w-full flex items-center justify-between px-3.5 py-2 text-[13px] text-[#D6D5C9] hover:bg-[#242323] hover:text-white transition-colors text-left"
+                                                                >
+                                                                    <span
+                                                                        className={
+                                                                            cat.id === 'NONE'
+                                                                                ? 'text-[#7B7A79]'
+                                                                                : ''
+                                                                        }
+                                                                    >
+                                                                        {cat.label}
+                                                                    </span>
+                                                                    {category === cat.id && (
+                                                                        <Check className="h-3.5 w-3.5 text-[#D6D5C9]" />
+                                                                    )}
+                                                                </button>
+                                                            ))}
+                                                        </motion.div>
+                                                    )}
+                                                </AnimatePresence>
                                             </div>
                                         </div>
 
@@ -383,20 +512,25 @@ const SettingsBigModal: React.FC<SettingsModalProps> = ({
                                         </div>
 
                                         {/* Share as Template Row */}
-                                        <div className="flex items-center justify-between">
+                                        <div className="flex items-center justify-between border-t border-[#242323] pt-6">
                                             <div className="flex flex-col gap-0.5 text-left">
                                                 <span className="text-[14px] text-[#D6D5C9]">
-                                                    Share as Template
+                                                    {isTemplate
+                                                        ? 'Unshare as Template'
+                                                        : 'Share as Template'}
                                                 </span>
                                                 <span className="text-[13px] text-[#7B7A79]">
                                                     Allow others to duplicate this project as a
                                                     community layout.
                                                 </span>
                                             </div>
-                                            <PremiumToggle
-                                                active={isTemplate}
-                                                onChange={() => setIsTemplate(!isTemplate)}
-                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => setIsShareModalOpen(true)}
+                                                className="px-4 py-1.5 rounded-lg border border-[#383736] text-[13px] text-[#D6D5C9] hover:bg-[#242323] transition-colors font-medium"
+                                            >
+                                                {isTemplate ? 'Unshare' : 'Share'}
+                                            </button>
                                         </div>
 
                                         {/* Duplicate Project Row */}
@@ -411,11 +545,31 @@ const SettingsBigModal: React.FC<SettingsModalProps> = ({
                                                 </span>
                                             </div>
                                             <button
-                                                onClick={handleDuplicate}
-                                                disabled={isDuplicating}
-                                                className="px-4 py-1.5 rounded-lg border border-[#383736] text-[13px] text-[#D6D5C9] hover:bg-[#242323] transition-colors disabled:opacity-50"
+                                                type="button"
+                                                onClick={() => setIsDuplicateModalOpen(true)}
+                                                className="px-4 py-1.5 rounded-lg border border-[#383736] text-[13px] text-[#D6D5C9] hover:bg-[#242323] transition-colors font-medium"
                                             >
-                                                {isDuplicating ? 'Duplicating...' : 'Duplicate'}
+                                                Duplicate
+                                            </button>
+                                        </div>
+
+                                        {/* Delete Project Row */}
+                                        <div className="flex items-center justify-between border-t border-[#242323] pt-6">
+                                            <div className="flex flex-col gap-0.5 text-left">
+                                                <span className="text-[14px] text-[#EF4444]">
+                                                    Delete Project
+                                                </span>
+                                                <span className="text-[13px] text-[#7B7A79]">
+                                                    Permanently delete this project from your
+                                                    workspace.
+                                                </span>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => setIsDeleteModalOpen(true)}
+                                                className="px-4 py-1.5 rounded-lg border border-red-900/30 bg-red-950/20 text-[#FF8A8A] hover:bg-red-900/30 transition-colors font-medium"
+                                            >
+                                                Delete
                                             </button>
                                         </div>
 
@@ -652,7 +806,7 @@ const SettingsBigModal: React.FC<SettingsModalProps> = ({
 
                         {activeTab === 'share' && (
                             <div className="flex flex-col w-full max-w-[680px] text-[#D6D5C9] animate-in fade-in slide-in-from-bottom-1 duration-150">
-                                <h1 className="text-[16px] font-medium mb-3">Access & Share</h1>
+                                <h1 className="text-[16px] font-medium mb-3">Share</h1>
                                 <div className="flex flex-col gap-6 border-t border-[#242323] pt-6">
                                     {/* Visibility Cards */}
                                     <div className="flex flex-col gap-3 text-left">
@@ -729,7 +883,7 @@ const SettingsBigModal: React.FC<SettingsModalProps> = ({
                                                 <option value="edit">Edit</option>
                                                 <option value="admin">Admin</option>
                                             </select>
-                                            <button className="px-4 py-2 border border-[#383736] rounded-lg text-[13px] font-medium text-[#D6D5C9] hover:bg-[#242323] transition-colors shadow-sm flex items-center gap-1.5 outline-none">
+                                            <button className="px-4 py-2 border border-[#383736] rounded-lg text-[13px] font-medium text-[#D6D5C9] hover:bg-[#242323] transition-colors shadow-sm flex items-center gap-1.5 outline-none font-sans">
                                                 <UserPlus size={14} />
                                                 <span>Invite</span>
                                             </button>
@@ -802,6 +956,31 @@ const SettingsBigModal: React.FC<SettingsModalProps> = ({
                     </div>
                 </div>
             </div>
+
+            <ProjectShareModal
+                isOpen={isShareModalOpen}
+                projectTitle={projName}
+                isSharedAsTemplate={isTemplate}
+                isPending={false}
+                onClose={() => setIsShareModalOpen(false)}
+                onConfirm={handleShareConfirm}
+            />
+
+            <ProjectDuplicateModal
+                isOpen={isDuplicateModalOpen}
+                projectTitle={projName}
+                isPending={isDuplicating}
+                onClose={() => setIsDuplicateModalOpen(false)}
+                onConfirm={handleDuplicateConfirm}
+            />
+
+            <ProjectDeleteModal
+                isOpen={isDeleteModalOpen}
+                projectTitle={projName}
+                isPending={false}
+                onClose={() => setIsDeleteModalOpen(false)}
+                onConfirm={handleDeleteConfirm}
+            />
         </BigModalOverlay>
     )
 }

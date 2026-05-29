@@ -43,3 +43,15 @@ button:focus-visible,
 .cm-editor .cm-selectionBackground {
     background-color: rgba(38, 79, 120, 0.4) !important;
 }
+.cm-editor .cm-selectionMatch {
+    background-color: rgba(255, 255, 255, 0.08) !important;
+    outline: 1px solid rgba(255, 255, 255, 0.15) !important;
+    border-radius: 2px;
+}
+.cm-editor .cm-searchMatch {
+    background-color: rgba(234, 184, 57, 0.3) !important;
+    outline: 1px solid rgba(234, 184, 57, 0.5) !important;
+}
+.cm-editor .cm-searchMatch.cm-searchMatch-selected {
+    background-color: rgba(234, 184, 57, 0.6) !important;
+}
