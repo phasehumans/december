@@ -23,7 +23,7 @@ export const OutputHeader: React.FC<OutputHeaderProps> = ({
     onDownload,
 }) => {
     return (
-        <header className="h-12 flex items-center justify-between px-3 bg-[#171615] backdrop-blur-sm shrink-0 z-10 gap-3">
+        <header className="h-12 flex items-center justify-between px-3 bg-[#171615] backdrop-blur-sm shrink-0 z-[45] gap-3">
             <OutputHeaderViewTabs
                 activeTab={activeTab}
                 setActiveTab={setActiveTab}

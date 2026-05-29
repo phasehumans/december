@@ -1,0 +1,12 @@
+/* Custom resets to override Tailwind defaults and prevent focus/border flickers */
+button:focus,
+button:active,
+button:focus-visible,
+.focus-visible\:ring-2,
+.focus-visible\:ring-white\/20 {
+    outline: none !important;
+    box-shadow: none !important;
+    --tw-ring-offset-shadow: 0 0 #0000 !important;
+    --tw-ring-shadow: 0 0 #0000 !important;
+    --tw-shadow: 0 0 #0000 !important;
+}
