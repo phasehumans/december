@@ -1,3 +1,4 @@
+import { EditorView } from '@codemirror/view'
 import React from 'react'
 
 import {
@@ -51,6 +52,12 @@ export const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({
     const [selectedFile, setSelectedFile] = React.useState<CodeFilePath | null>(null)
     const [openFilePaths, setOpenFilePaths] = React.useState<CodeFilePath[]>([])
     const [files, setFiles] = React.useState<Record<CodeFilePath, string>>({})
+    const [wordWrap, setWordWrap] = React.useState(true)
+    const [cursorPos, setCursorPos] = React.useState({ line: 1, col: 1 })
+
+    React.useEffect(() => {
+        setCursorPos({ line: 1, col: 1 })
+    }, [selectedFile])
 
     React.useEffect(() => {
         setFiles(generatedFileContents)
@@ -111,13 +118,16 @@ export const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({
     )
 
     const sharedExtensions = React.useMemo(() => getSharedEditorExtensions(), [])
-    const editorExtensions = React.useMemo(
-        () =>
-            activeFile
-                ? [...sharedExtensions, getLanguageExtension(activeFile.language)]
-                : sharedExtensions,
-        [activeFile, sharedExtensions]
-    )
+    const editorExtensions = React.useMemo(() => {
+        if (!activeFile) {
+            return sharedExtensions
+        }
+        const extensions = [...sharedExtensions, getLanguageExtension(activeFile.language)]
+        if (wordWrap) {
+            extensions.push(EditorView.lineWrapping)
+        }
+        return extensions
+    }, [activeFile, sharedExtensions, wordWrap])
 
     const handleChange = (value: string) => {
         if (!activeFile) {
@@ -182,6 +192,11 @@ export const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({
                     value={activeFile ? (files[activeFile.path] ?? '') : ''}
                     extensions={editorExtensions}
                     onChange={handleChange}
+                    wordWrap={wordWrap}
+                    toggleWordWrap={() => setWordWrap(!wordWrap)}
+                    cursorPos={cursorPos}
+                    onCursorPosChange={setCursorPos}
+                    onFormatCode={(val) => handleChange(val)}
                 />
             </div>
         </div>

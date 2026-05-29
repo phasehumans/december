@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { Monitor, Smartphone, Tablet, RefreshCw, ArrowUpRight } from 'lucide-react'
-import React, { useState } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 
 import type { PreviewDevice } from '@/features/preview/types'
 
@@ -16,10 +16,21 @@ export const OutputHeaderDevicePicker: React.FC<OutputHeaderDevicePickerProps> =
     onOpenNewTab,
 }) => {
     const [isDeviceMenuOpen, setIsDeviceMenuOpen] = useState(false)
+    const dropdownRef = useRef<HTMLDivElement>(null)
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+                setIsDeviceMenuOpen(false)
+            }
+        }
+        document.addEventListener('mousedown', handleClickOutside)
+        return () => document.removeEventListener('mousedown', handleClickOutside)
+    }, [])
 
     return (
         <div className="hidden md:flex items-center bg-[#1A1A1A] rounded-xl border border-[#363534] h-9 px-1.5 relative group focus-within:border-[#525150] transition-colors min-w-[320px]">
-            <div className="relative">
+            <div className="relative" ref={dropdownRef}>
                 <button
                     onClick={() => setIsDeviceMenuOpen(!isDeviceMenuOpen)}
                     className="flex items-center gap-2 px-1.5 h-7 rounded hover:bg-white/5 text-[#91908F] hover:text-white transition-colors"

@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 
 import { SidebarFooter } from './SidebarFooter'
 import { SidebarHeader } from './SidebarHeader'
@@ -26,6 +26,14 @@ const Sidebar: React.FC<SidebarProps & { user?: any; onSignOut?: () => void }> =
     onSignOut,
 }) => {
     const navigate = useNavigate()
+    const location = useLocation()
+    const path = location.pathname
+
+    const isHomeActive = path === '/'
+    const isProjectsActive = path.startsWith('/projects')
+    const isTemplatesActive = path.startsWith('/templates')
+    const isDocsActive = path.startsWith('/docs')
+
     // Keep exact same size (was 200px when open)
     // No collapse option
     const [recentOpen, setRecentOpen] = useState(true)
@@ -49,13 +57,28 @@ const Sidebar: React.FC<SidebarProps & { user?: any; onSignOut?: () => void }> =
                 <SidebarNavItem
                     icon={<Icons.Home />}
                     label="Home"
-                    active={false} // Would be set by router
+                    active={isHomeActive}
                     onClick={onNewThread}
                 />
                 <SidebarNavItem icon={<Icons.Plus />} label="New Project" onClick={onNewThread} />
-                <SidebarNavItem icon={<Icons.Folder />} label="Projects" onClick={onAllProjects} />
-                <SidebarNavItem icon={<Icons.Bookmark />} label="Templates" onClick={onTemplates} />
-                <SidebarNavItem icon={<Icons.DocsBook />} label="Documentation" onClick={onDocs} />
+                <SidebarNavItem
+                    icon={<Icons.Folder />}
+                    label="Projects"
+                    active={isProjectsActive}
+                    onClick={onAllProjects}
+                />
+                <SidebarNavItem
+                    icon={<Icons.Bookmark />}
+                    label="Templates"
+                    active={isTemplatesActive}
+                    onClick={onTemplates}
+                />
+                <SidebarNavItem
+                    icon={<Icons.DocsBook />}
+                    label="Documentation"
+                    active={isDocsActive}
+                    onClick={onDocs}
+                />
             </div>
 
             <div className="flex-1 flex flex-col pl-[10px] pr-3 mt-4 mb-2 overflow-y-auto no-scrollbar font-sans">
