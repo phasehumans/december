@@ -2,6 +2,7 @@ import axios from 'axios'
 
 import { prisma } from '../../config/db'
 import { AppError } from '../../utils/appError'
+import { sendNotificationToUser } from '../notification/notification.service'
 
 type GithubRepo = {
     id: number
@@ -180,6 +181,17 @@ const connectVercel = async (data: ConnectVercel) => {
         },
     })
 
+    try {
+        await sendNotificationToUser({
+            userId,
+            title: 'Vercel Connected',
+            message: 'Successfully connected with Vercel integration!',
+            type: 'SUCCESS',
+        })
+    } catch (error) {
+        console.error('Failed to send vercel connection notification:', error)
+    }
+
     return updatedUser
 }
 
@@ -235,6 +247,17 @@ const connectSupabase = async ({
             supabaseConnectedAt: new Date(),
         },
     })
+
+    try {
+        await sendNotificationToUser({
+            userId,
+            title: 'Supabase Connected',
+            message: 'Successfully connected with Supabase integration!',
+            type: 'SUCCESS',
+        })
+    } catch (error) {
+        console.error('Failed to send supabase connection notification:', error)
+    }
 
     return {
         type: 'connected',
@@ -292,6 +315,17 @@ const connectNotion = async ({
         },
     })
 
+    try {
+        await sendNotificationToUser({
+            userId,
+            title: 'Notion Connected',
+            message: `Successfully connected with Notion integration (${data.workspace_name})!`,
+            type: 'SUCCESS',
+        })
+    } catch (error) {
+        console.error('Failed to send notion connection notification:', error)
+    }
+
     return {
         type: 'success',
         workspaceName: data.workspace_name,
@@ -331,6 +365,55 @@ const connectGithub = async (data: ConnectGithub) => {
         },
     })
 
+    try {
+        await sendNotificationToUser({
+            userId,
+            title: 'GitHub Connected',
+            message: `Successfully connected with GitHub integration as @${username}!`,
+            type: 'SUCCESS',
+        })
+    } catch (error) {
+        console.error('Failed to send github connection notification:', error)
+    }
+
+    return updatedUser
+}
+
+const connectFigma = async (userId: string) => {
+    const existingUser = await prisma.user.findUnique({
+        where: {
+            id: userId,
+        },
+        select: {
+            id: true,
+            isDeleted: true,
+        },
+    })
+
+    if (!existingUser || existingUser.isDeleted) {
+        throw new AppError('user not found', 404)
+    }
+
+    const updatedUser = await prisma.user.update({
+        where: {
+            id: userId,
+        },
+        data: {
+            figmaConnected: true,
+        },
+    })
+
+    try {
+        await sendNotificationToUser({
+            userId,
+            title: 'Figma Connected',
+            message: 'Successfully connected with Figma integration!',
+            type: 'SUCCESS',
+        })
+    } catch (error) {
+        console.error('Failed to send figma connection notification:', error)
+    }
+
     return updatedUser
 }
 
@@ -340,4 +423,5 @@ export const integrationsService = {
     connectSupabase,
     connectNotion,
     connectGithub,
+    connectFigma,
 }

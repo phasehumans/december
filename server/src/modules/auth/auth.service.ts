@@ -267,6 +267,17 @@ const login = async (data: Login) => {
         },
     })
 
+    try {
+        await sendNotificationToUser({
+            userId: existingUser.id,
+            title: 'Successful Sign-in',
+            message: 'You have successfully signed in to your account.',
+            type: 'SUCCESS',
+        })
+    } catch (error) {
+        console.error('failed to send sign-in notification:', error)
+    }
+
     return {
         accessToken,
         refreshToken,
@@ -414,8 +425,10 @@ const google = async (data: Google) => {
     })
 
     const username = getUsername()
+    let isNewUser = false
 
     if (!user) {
+        isNewUser = true
         user = await prisma.user.create({
             data: {
                 email: email,
@@ -453,6 +466,19 @@ const google = async (data: Google) => {
         })
     } else if (user.googleId !== sub) {
         throw new AppError('google id mismatch', 400)
+    }
+
+    if (!isNewUser) {
+        try {
+            await sendNotificationToUser({
+                userId: user.id,
+                title: 'Successful Sign-in',
+                message: 'You have successfully signed in to your account via Google.',
+                type: 'SUCCESS',
+            })
+        } catch (error) {
+            console.error('failed to send Google sign-in notification:', error)
+        }
     }
 
     const sessionId = crypto.randomUUID()

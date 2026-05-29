@@ -259,6 +259,21 @@ export const vscodeDarkPlusTheme = EditorView.theme(
             color: 'inherit !important',
         },
 
+        '.cm-selectionMatch': {
+            backgroundColor: 'rgba(255, 255, 255, 0.08) !important',
+            outline: '1px solid rgba(255, 255, 255, 0.15) !important',
+            borderRadius: '2px',
+        },
+
+        '.cm-searchMatch': {
+            backgroundColor: 'rgba(234, 184, 57, 0.3) !important',
+            outline: '1px solid rgba(234, 184, 57, 0.5) !important',
+        },
+
+        '.cm-searchMatch.cm-searchMatch-selected': {
+            backgroundColor: 'rgba(234, 184, 57, 0.6) !important',
+        },
+
         '.cm-cursor, .cm-dropCursor': {
             borderLeftColor: '#ffffff',
         },
