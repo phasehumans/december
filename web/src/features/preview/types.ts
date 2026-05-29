@@ -104,6 +104,7 @@ export interface OutputHeaderProps {
     onOpenNewTab: () => void
     onBack?: () => void
     projectName?: string | null
+    projectId?: string | null
     versions?: BackendProjectVersionSummary[]
     activeVersionId?: string | null
     isVersionLoading?: boolean

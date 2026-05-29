@@ -5,6 +5,7 @@ import {
     downloadProjectVersionSchema,
     getProjectByIdSchema,
     renameProjectSchema,
+    updateGeneralSettingsSchema,
     shareProjectAsTemplateSchema,
     toogleStarProjectSchema,
 } from './project.schema'
@@ -178,10 +179,14 @@ const renameProject = async (req: Request, res: Response) => {
 
     try {
         const { rename } = parseData.data
-        const result = await projectService.renameProject({ projectId, userId, rename })
+        const result = await projectService.renameProject({
+            projectId,
+            userId,
+            rename,
+        })
         return res.status(200).json({
             success: true,
-            message: 'project renamed successfully',
+            message: 'project updated successfully',
             data: result,
         })
     } catch (error: any) {
@@ -196,6 +201,67 @@ const renameProject = async (req: Request, res: Response) => {
         return res.status(500).json({
             success: false,
             message: 'failed to rename project',
+            errors: error instanceof Error ? error.message : 'unknown error',
+        })
+    }
+}
+
+const updateGeneralSettings = async (req: Request, res: Response) => {
+    const parseData = updateGeneralSettingsSchema.safeParse(req.body)
+
+    if (!parseData.success) {
+        return res.status(400).json({
+            success: false,
+            message: 'validation failed',
+            errors: parseData.error.flatten().fieldErrors,
+        })
+    }
+
+    const userId = req.user?.userId as string | undefined
+    const projectId = req.params.projectId as string | undefined
+
+    if (!projectId) {
+        return res.status(400).json({
+            success: false,
+            message: 'project id is required',
+        })
+    }
+
+    if (!userId) {
+        return res.status(400).json({
+            success: false,
+            message: 'unauthorized',
+        })
+    }
+
+    try {
+        const { name, description, isStarred, isSharedAsTemplate, projectCategory } = parseData.data
+        const result = await projectService.updateGeneralSettings({
+            projectId,
+            userId,
+            name,
+            description,
+            isStarred,
+            isSharedAsTemplate,
+            projectCategory,
+        })
+        return res.status(200).json({
+            success: true,
+            message: 'project general settings updated successfully',
+            data: result,
+        })
+    } catch (error: any) {
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({
+                success: false,
+                message: 'failed to update general settings',
+                errors: error.message,
+            })
+        }
+
+        return res.status(500).json({
+            success: false,
+            message: 'failed to update general settings',
             errors: error instanceof Error ? error.message : 'unknown error',
         })
     }
@@ -455,6 +521,7 @@ export const projectController = {
     getProjectById,
     createProject,
     renameProject,
+    updateGeneralSettings,
     deleteProject,
     duplicateProject,
     downloadProjectVersion,

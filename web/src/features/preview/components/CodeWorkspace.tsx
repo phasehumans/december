@@ -196,7 +196,6 @@ export const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({
                     toggleWordWrap={() => setWordWrap(!wordWrap)}
                     cursorPos={cursorPos}
                     onCursorPosChange={setCursorPos}
-                    onFormatCode={(val) => handleChange(val)}
                 />
             </div>
         </div>

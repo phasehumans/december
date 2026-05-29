@@ -258,14 +258,14 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
                         ))}
                     </div>
                 ) : notifications.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center p-6 text-center mt-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                        <div className="relative mb-3.5 flex h-10 w-10 items-center justify-center rounded-full border border-[#2E2D2C] bg-gradient-to-b from-[#2E2D2C]/60 to-transparent text-[#969593] shadow-inner">
+                    <div className="flex flex-col items-center justify-center h-[240px] px-6 text-center animate-in fade-in slide-in-from-bottom-2 duration-300">
+                        <div className="relative mb-4 flex h-12 w-12 items-center justify-center rounded-full border border-[#2E2D2C] bg-[#222120]/40 text-[#969593] shadow-lg">
                             <Inbox className="w-5 h-5" />
                         </div>
-                        <p className="text-[13px] font-medium text-[#E8E8E8] leading-none">
+                        <p className="text-[13px] font-semibold text-[#D6D5C9]">
                             No notifications yet
                         </p>
-                        <p className="mt-2 text-[11px] text-[#6F6E6D] max-w-[200px] leading-relaxed">
+                        <p className="mt-2 text-[11px] text-[#7B7A79] max-w-[200px] leading-relaxed">
                             We'll let you know when something needs your attention.
                         </p>
                     </div>

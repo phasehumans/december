@@ -19,20 +19,6 @@ interface CodeWorkspaceEditorPaneProps {
     toggleWordWrap: () => void
     cursorPos: { line: number; col: number }
     onCursorPosChange: (pos: { line: number; col: number }) => void
-    onFormatCode: (value: string) => void
-}
-
-const getLanguageLabel = (language: string | undefined): string => {
-    if (!language) return 'Plain Text'
-    const maps: Record<string, string> = {
-        html: 'HTML',
-        css: 'CSS',
-        typescript: 'TypeScript',
-        tsx: 'TypeScript JSX',
-        javascript: 'JavaScript',
-        jsx: 'JavaScript JSX',
-    }
-    return maps[language.toLowerCase()] ?? language
 }
 
 export const CodeWorkspaceEditorPane: React.FC<CodeWorkspaceEditorPaneProps> = ({
@@ -47,20 +33,7 @@ export const CodeWorkspaceEditorPane: React.FC<CodeWorkspaceEditorPaneProps> = (
     toggleWordWrap,
     cursorPos,
     onCursorPosChange,
-    onFormatCode,
 }) => {
-    const activeLanguageLabel = React.useMemo(
-        () => getLanguageLabel(activeFile?.language),
-        [activeFile]
-    )
-
-    const activeFileLines = React.useMemo(() => value.split('\n').length, [value])
-    const activeFileSize = React.useMemo(() => {
-        const bytes = new Blob([value]).size
-        if (bytes < 1024) return `${bytes} B`
-        return `${(bytes / 1024).toFixed(1)} KB`
-    }, [value])
-
     return (
         <div className="flex-1 min-w-0 min-h-0 bg-[#171615] flex flex-col justify-between">
             <div className="flex-1 min-w-0 min-h-0 flex flex-col">
@@ -72,7 +45,6 @@ export const CodeWorkspaceEditorPane: React.FC<CodeWorkspaceEditorPaneProps> = (
                     wordWrap={wordWrap}
                     toggleWordWrap={toggleWordWrap}
                     fileContent={value}
-                    onFormatCode={onFormatCode}
                 />
 
                 <div className="flex-1 min-h-0">
@@ -110,17 +82,7 @@ export const CodeWorkspaceEditorPane: React.FC<CodeWorkspaceEditorPaneProps> = (
                             Ln {cursorPos.line}, Col {cursorPos.col}
                         </span>
                         <span className="w-[1px] h-3 bg-[#2d2d2d]" />
-                        <span>
-                            {activeFileLines} lines ({activeFileSize})
-                        </span>
-                        <span className="w-[1px] h-3 bg-[#2d2d2d]" />
-                        <span>Spaces: 2</span>
-                        <span className="w-[1px] h-3 bg-[#2d2d2d]" />
                         <span>UTF-8</span>
-                        <span className="w-[1px] h-3 bg-[#2d2d2d]" />
-                        <span className="uppercase text-[#a3a3a3] font-semibold tracking-wide">
-                            {activeLanguageLabel}
-                        </span>
                     </div>
                 </div>
             )}

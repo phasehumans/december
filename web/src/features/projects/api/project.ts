@@ -68,6 +68,20 @@ type UpdateProjectInput = {
     rename: string
 }
 
+type UpdateGeneralSettingsInput = {
+    name?: string
+    description?: string | null
+    isStarred?: boolean
+    isSharedAsTemplate?: boolean
+    projectCategory?:
+        | 'LANDING_PAGE'
+        | 'DASHBOARD'
+        | 'PORTFOLIO_BLOG'
+        | 'SAAS_APP'
+        | 'ECOMMERCE'
+        | 'NONE'
+}
+
 const buildVersionQuery = (versionId?: string | null) =>
     versionId ? `?versionId=${encodeURIComponent(versionId)}` : ''
 
@@ -88,6 +102,13 @@ const createProject = (data: CreateProjectInput) => {
 
 const updateProject = (projectId: string, data: UpdateProjectInput) => {
     return apiRequest<{ message: string }>(`/project/${projectId}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+    })
+}
+
+const updateGeneralSettings = (projectId: string, data: UpdateGeneralSettingsInput) => {
+    return apiRequest<{ message: string }>(`/project/${projectId}/general-settings`, {
         method: 'PATCH',
         body: JSON.stringify(data),
     })
@@ -157,6 +178,7 @@ export const projectAPI = {
     getProject,
     createProject,
     updateProject,
+    updateGeneralSettings,
     deleteProject,
     duplicateProject,
     shareProjectAsTemplate,

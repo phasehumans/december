@@ -32,6 +32,22 @@ type RenameProject = {
     rename: string
 }
 
+type UpdateGeneralSettings = {
+    projectId: string
+    userId: string
+    name?: string
+    description?: string | null
+    isStarred?: boolean
+    isSharedAsTemplate?: boolean
+    projectCategory?:
+        | 'LANDING_PAGE'
+        | 'DASHBOARD'
+        | 'PORTFOLIO_BLOG'
+        | 'SAAS_APP'
+        | 'ECOMMERCE'
+        | 'NONE'
+}
+
 type DeleteProject = {
     userId: string
     projectId: string
@@ -349,6 +365,51 @@ const renameProject = async (data: RenameProject) => {
     }
 }
 
+const updateGeneralSettings = async (data: UpdateGeneralSettings) => {
+    const { projectId, userId, name, description, isStarred, isSharedAsTemplate, projectCategory } =
+        data
+
+    const user = await prisma.user.findUnique({
+        where: {
+            id: userId,
+        },
+    })
+
+    if (!user || user.isDeleted == true) {
+        throw new AppError('user not found', 404)
+    }
+
+    try {
+        const updateData: any = {}
+        if (name !== undefined) updateData.name = name
+        if (description !== undefined) updateData.description = description
+        if (isStarred !== undefined) updateData.isStarred = isStarred
+        if (isSharedAsTemplate !== undefined) updateData.isSharedAsTemplate = isSharedAsTemplate
+        if (projectCategory !== undefined) updateData.projectCategory = projectCategory
+
+        await prisma.project.update({
+            where: {
+                id: projectId,
+                userId,
+            },
+            data: updateData,
+        })
+
+        return { message: 'project general settings updated' }
+    } catch (error) {
+        if (error instanceof Prisma.PrismaClientKnownRequestError) {
+            if (error.code === 'P2025') {
+                throw new AppError('project not found', 404)
+            }
+
+            if (error.code === 'P2002') {
+                throw new AppError('duplicate field value', 400)
+            }
+        }
+        throw new AppError('failed to update general settings', 500)
+    }
+}
+
 const deleteProject = async (data: DeleteProject) => {
     const { userId, projectId } = data
 
@@ -638,6 +699,7 @@ export const projectService = {
     getProjectById,
     createProject,
     renameProject,
+    updateGeneralSettings,
     deleteProject,
     duplicateProject,
     downloadProjectVersion,

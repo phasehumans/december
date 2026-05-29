@@ -88,6 +88,7 @@ export const OutputScreenMainContent: React.FC<OutputScreenMainContentProps> = (
                 onOpenNewTab={onOpenInNewTab}
                 onBack={onBack}
                 projectName={projectName}
+                projectId={projectId}
                 versions={versions}
                 activeVersionId={activeVersionId}
                 isVersionLoading={isVersionLoading}

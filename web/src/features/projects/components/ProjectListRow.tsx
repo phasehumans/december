@@ -1,5 +1,5 @@
 import React from 'react'
-import { Folder, Loader2, Terminal, Rocket, AlertCircle } from 'lucide-react'
+import { Folder, Loader2, Terminal, Cloud, AlertCircle } from 'lucide-react'
 
 import type { ProjectListRowProps } from '@/features/projects/types'
 
@@ -35,7 +35,7 @@ export const ProjectListRow: React.FC<ProjectListRowProps> = ({
 
             <div className="flex items-center gap-2 text-[13px] text-[#7B7A79]">
                 {project.status === 'Deployed' && (
-                    <Rocket className="h-3.5 w-3.5 text-[#D6D5C9]" strokeWidth={1.8} />
+                    <Cloud className="h-3.5 w-3.5 text-[#D6D5C9]" strokeWidth={1.8} />
                 )}
                 {project.status === 'Generated' && (
                     <Terminal className="h-3.5 w-3.5 text-[#D6D5C9]" strokeWidth={1.8} />

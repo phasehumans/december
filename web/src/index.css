@@ -10,3 +10,36 @@ button:focus-visible,
     --tw-ring-shadow: 0 0 #0000 !important;
     --tw-shadow: 0 0 #0000 !important;
 }
+
+/* Remove all outline, ring, box-shadow, and borders on focus/active/focus-visible for bg-sidebar children to prevent Chromium click flickers */
+.bg-sidebar button,
+.bg-sidebar a,
+.bg-sidebar button:focus,
+.bg-sidebar button:active,
+.bg-sidebar button:focus-visible,
+.bg-sidebar a:focus,
+.bg-sidebar a:active,
+.bg-sidebar a:focus-visible {
+    outline: none !important;
+    outline-width: 0px !important;
+    box-shadow: none !important;
+    border-color: transparent !important;
+    --tw-ring-offset-shadow: 0 0 #0000 !important;
+    --tw-ring-shadow: 0 0 #0000 !important;
+    --tw-shadow: 0 0 #0000 !important;
+    --tw-ring-color: transparent !important;
+    --tw-ring-width: 0px !important;
+}
+
+/* Code Mirror selection override to prevent text-black from Tailwind selection class and preserve syntax colors with VS Code steel-blue selection highlight */
+.cm-editor *::selection {
+    background-color: rgba(38, 79, 120, 0.4) !important;
+    color: inherit !important;
+}
+.cm-editor ::selection {
+    background-color: rgba(38, 79, 120, 0.4) !important;
+    color: inherit !important;
+}
+.cm-editor .cm-selectionBackground {
+    background-color: rgba(38, 79, 120, 0.4) !important;
+}

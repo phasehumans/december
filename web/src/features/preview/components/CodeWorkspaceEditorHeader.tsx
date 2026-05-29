@@ -1,4 +1,4 @@
-import { X, Copy, Check, Braces } from 'lucide-react'
+import { X, Copy, Check } from 'lucide-react'
 import React from 'react'
 
 import type { CodeFile, CodeFilePath } from '@/features/preview/types'
@@ -13,7 +13,6 @@ interface CodeWorkspaceEditorHeaderProps {
     wordWrap: boolean
     toggleWordWrap: () => void
     fileContent: string
-    onFormatCode: (value: string) => void
 }
 
 interface HeaderTab {
@@ -46,30 +45,15 @@ export const CodeWorkspaceEditorHeader: React.FC<CodeWorkspaceEditorHeaderProps>
     wordWrap,
     toggleWordWrap,
     fileContent,
-    onFormatCode,
 }) => {
     const tabs = React.useMemo(() => getTabs(activeFile, openFiles), [activeFile, openFiles])
     const [isCopied, setIsCopied] = React.useState(false)
-    const [isFormatted, setIsFormatted] = React.useState(false)
 
     const handleCopy = () => {
         if (!fileContent) return
         navigator.clipboard.writeText(fileContent)
         setIsCopied(true)
         setTimeout(() => setIsCopied(false), 2000)
-    }
-
-    const handleFormat = () => {
-        if (!fileContent) return
-        const formatted =
-            fileContent
-                .split('\n')
-                .map((line) => line.trimEnd())
-                .join('\n')
-                .trim() + '\n'
-        onFormatCode(formatted)
-        setIsFormatted(true)
-        setTimeout(() => setIsFormatted(false), 2000)
     }
 
     return (
@@ -123,26 +107,6 @@ export const CodeWorkspaceEditorHeader: React.FC<CodeWorkspaceEditorHeaderProps>
 
             {activeFile && (
                 <div className="flex items-center gap-2 ml-4 shrink-0 text-[#858585]">
-                    <button
-                        type="button"
-                        onClick={handleFormat}
-                        className="p-1.5 hover:bg-white/5 hover:text-white rounded transition-colors flex items-center gap-1.5 outline-none min-w-[32px] justify-center"
-                        title="Format Code (Prettier)"
-                    >
-                        {isFormatted ? (
-                            <>
-                                <Check
-                                    size={14}
-                                    className="text-amber-500 animate-in zoom-in-75 duration-200"
-                                />
-                                <span className="text-[10px] text-amber-500 font-medium font-sans">
-                                    Formatted!
-                                </span>
-                            </>
-                        ) : (
-                            <Braces size={14} />
-                        )}
-                    </button>
                     <button
                         type="button"
                         onClick={handleCopy}

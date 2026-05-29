@@ -16,6 +16,7 @@ export const OutputHeader: React.FC<OutputHeaderProps> = ({
     onOpenNewTab,
     onBack,
     projectName,
+    projectId,
     versions,
     activeVersionId,
     isVersionLoading,
@@ -42,6 +43,7 @@ export const OutputHeader: React.FC<OutputHeaderProps> = ({
 
             <OutputHeaderActions
                 projectName={projectName}
+                projectId={projectId}
                 versions={versions}
                 activeVersionId={activeVersionId}
                 isVersionLoading={isVersionLoading}
