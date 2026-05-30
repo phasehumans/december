@@ -31,6 +31,17 @@ button:focus-visible,
     --tw-ring-width: 0px !important;
 }
 
+/* Allow the upgrade plan badge to keep its visible border */
+.bg-sidebar button.upgrade-plan-btn,
+.bg-sidebar button.upgrade-plan-btn:focus,
+.bg-sidebar button.upgrade-plan-btn:active,
+.bg-sidebar button.upgrade-plan-btn:focus-visible {
+    border-color: #383735 !important;
+}
+.bg-sidebar button.upgrade-plan-btn:hover {
+    border-color: #484745 !important;
+}
+
 /* Code Mirror selection override to prevent text-black from Tailwind selection class and preserve syntax colors with VS Code steel-blue selection highlight */
 ::selection {
     background-color: rgba(38, 79, 120, 0.85) !important;

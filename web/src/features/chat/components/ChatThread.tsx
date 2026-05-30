@@ -140,7 +140,7 @@ export const ChatThread: React.FC<ChatSidebarProps> = ({
                     {messagesList}
                 </div>
 
-                <div className="shrink-0 bg-[#171615] pt-3 pl-1 pr-1 pb-1">{promptInput}</div>
+                <div className="shrink-0 bg-[#171615] pt-3 pl-2.5 pr-2.5 pb-2.5">{promptInput}</div>
             </div>
         )
     }
@@ -193,7 +193,7 @@ export const ChatThread: React.FC<ChatSidebarProps> = ({
                     {messagesList}
                 </div>
 
-                <div className="shrink-0 bg-[#171615] pt-3 pl-1 pr-1 pb-1">{promptInput}</div>
+                <div className="shrink-0 bg-[#171615] pt-3 pl-2.5 pr-2.5 pb-2.5">{promptInput}</div>
             </div>
         </aside>
     )
