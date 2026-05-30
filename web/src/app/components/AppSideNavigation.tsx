@@ -19,6 +19,7 @@ interface AppSideNavigationProps {
     projects: Project[]
     isProjectsInitialLoading: boolean
     onSignOut?: () => void
+    onHomeClick?: () => void
 }
 
 export const AppSideNavigation: React.FC<AppSideNavigationProps> = ({
@@ -33,6 +34,7 @@ export const AppSideNavigation: React.FC<AppSideNavigationProps> = ({
     projects,
     isProjectsInitialLoading,
     onSignOut,
+    onHomeClick,
 }) => {
     if (!showSidebar) {
         return null
@@ -52,6 +54,7 @@ export const AppSideNavigation: React.FC<AppSideNavigationProps> = ({
                 projects={projects}
                 isProjectsLoading={isProjectsInitialLoading}
                 onSignOut={onSignOut}
+                onHomeClick={onHomeClick}
             />
 
             <div className="md:hidden fixed top-4 left-4 z-50">

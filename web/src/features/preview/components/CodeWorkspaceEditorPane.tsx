@@ -61,10 +61,14 @@ export const CodeWorkspaceEditorPane: React.FC<CodeWorkspaceEditorPaneProps> = (
                                 const state = update.state
                                 const head = state.selection.main.head
                                 const line = state.doc.lineAt(head)
-                                onCursorPosChange({
-                                    line: line.number,
-                                    col: head - line.from + 1,
-                                })
+                                const newLine = line.number
+                                const newCol = head - line.from + 1
+                                if (cursorPos.line !== newLine || cursorPos.col !== newCol) {
+                                    onCursorPosChange({
+                                        line: newLine,
+                                        col: newCol,
+                                    })
+                                }
                             }}
                         />
                     ) : (

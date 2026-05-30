@@ -1,7 +1,10 @@
+import { useQuery } from '@tanstack/react-query'
 import React, { useRef, useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 
 import { Icons } from './Icons'
 
+import { billingAPI } from '@/features/billing/api/billing'
 import { useVoiceToText } from '@/shared/lib/useVoiceToText'
 import { cn } from '@/shared/lib/utils'
 
@@ -12,6 +15,7 @@ interface PromptFooterProps {
     isLoading: boolean
     onVoiceTranscript?: (text: string) => void
     onVoiceStateChange?: (isListening: boolean) => void
+    isAuthenticated?: boolean
 }
 
 export const PromptFooter: React.FC<PromptFooterProps> = ({
@@ -21,7 +25,9 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
     isLoading,
     onVoiceTranscript,
     onVoiceStateChange,
+    isAuthenticated,
 }) => {
+    const navigate = useNavigate()
     const [isModelSelectorOpen, setIsModelSelectorOpen] = useState(false)
     const [selectedModel, setSelectedModel] = useState('Auto')
     const selectorRef = useRef<HTMLDivElement>(null)
@@ -45,6 +51,14 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
         document.addEventListener('mousedown', handleClickOutside)
         return () => document.removeEventListener('mousedown', handleClickOutside)
     }, [])
+
+    const { data: overview } = useQuery({
+        queryKey: ['billing-overview'],
+        queryFn: billingAPI.getOverview,
+        staleTime: 10 * 1000,
+        enabled: isAuthenticated,
+    })
+    const isPro = overview?.plan === 'PRO'
 
     const models = [
         { id: 'Auto', name: 'Auto', desc: 'Best model for your task', icon: null },
@@ -130,6 +144,11 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
                                     <button
                                         key={model.id}
                                         onClick={() => {
+                                            if (model.id !== 'Auto' && !isPro) {
+                                                navigate('/profile/billing')
+                                                setIsModelSelectorOpen(false)
+                                                return
+                                            }
                                             setSelectedModel(model.id)
                                             setIsModelSelectorOpen(false)
                                         }}
@@ -140,9 +159,16 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
                                                 : 'text-[#8F8E8D] hover:bg-[#252422] hover:text-[#D6D5D4]'
                                         )}
                                     >
-                                        <span className="text-[13px] font-medium truncate">
-                                            {model.name}
-                                        </span>
+                                        <div className="flex items-center gap-1.5 min-w-0">
+                                            {!isPro && model.id !== 'Auto' && (
+                                                <span className="text-[8px] font-extrabold tracking-wider px-1 py-0.5 rounded bg-[#F5A623]/10 text-[#F5A623] border border-[#F5A623]/20 uppercase select-none shrink-0">
+                                                    Pro
+                                                </span>
+                                            )}
+                                            <span className="text-[13px] font-medium truncate">
+                                                {model.name}
+                                            </span>
+                                        </div>
                                         {isSelected && (
                                             <Icons.Check className="w-4 h-4 text-[#D6D5D4] shrink-0" />
                                         )}
