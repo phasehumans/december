@@ -32,20 +32,30 @@ button:focus-visible,
 }
 
 /* Code Mirror selection override to prevent text-black from Tailwind selection class and preserve syntax colors with VS Code steel-blue selection highlight */
+::selection {
+    background-color: rgba(38, 79, 120, 0.85) !important;
+    color: inherit !important;
+}
+::-moz-selection {
+    background-color: rgba(38, 79, 120, 0.85) !important;
+    color: inherit !important;
+}
 .cm-editor *::selection {
-    background-color: rgba(38, 79, 120, 0.65) !important;
+    background-color: rgba(38, 79, 120, 0.85) !important;
     color: inherit !important;
 }
 .cm-editor ::selection {
-    background-color: rgba(38, 79, 120, 0.65) !important;
+    background-color: rgba(38, 79, 120, 0.85) !important;
     color: inherit !important;
 }
-.cm-editor .cm-selectionBackground {
-    background-color: rgba(38, 79, 120, 0.65) !important;
+.cm-editor .cm-selectionBackground,
+.cm-editor .cm-selectionLayer .cm-selectionBackground,
+.cm-selectionBackground {
+    background-color: rgba(38, 79, 120, 0.85) !important;
 }
 .cm-editor .cm-selectionMatch {
-    background-color: rgba(255, 255, 255, 0.08) !important;
-    outline: 1px solid rgba(255, 255, 255, 0.15) !important;
+    background-color: rgba(255, 255, 255, 0.12) !important;
+    outline: 1px solid rgba(255, 255, 255, 0.22) !important;
     border-radius: 2px;
 }
 .cm-editor .cm-searchMatch {

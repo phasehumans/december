@@ -279,13 +279,20 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
                                 }`}
                             >
                                 <div className="flex items-center justify-between gap-2 pr-6">
-                                    <span
-                                        className={`text-[13px] font-medium truncate ${
-                                            notification.isRead ? 'text-[#CAC9C9]' : 'text-white'
-                                        }`}
-                                    >
-                                        {notification.title}
-                                    </span>
+                                    <div className="flex items-center gap-1.5 min-w-0">
+                                        {!notification.isRead && (
+                                            <span className="w-1.5 h-1.5 rounded-full bg-white shrink-0" />
+                                        )}
+                                        <span
+                                            className={`text-[13px] font-medium truncate ${
+                                                notification.isRead
+                                                    ? 'text-[#CAC9C9]'
+                                                    : 'text-white'
+                                            }`}
+                                        >
+                                            {notification.title}
+                                        </span>
+                                    </div>
                                 </div>
                                 <p className="text-[12px] text-[#8F8E8D] line-clamp-2 mt-0.5 leading-relaxed pr-4">
                                     {notification.message}
@@ -305,7 +312,7 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
                                         e.stopPropagation()
                                         deleteMutation.mutate(notification.id)
                                     }}
-                                    className="absolute top-2.5 right-2.5 p-1.5 rounded-lg bg-[#171615] border border-[#2B2A27] text-[#969593] hover:text-red-400 hover:border-red-500/30 opacity-0 group-hover/notif:opacity-100 transition-all duration-200 hover:bg-red-500/[0.06] outline-none shadow-sm"
+                                    className="absolute top-2.5 right-2.5 p-1.5 rounded-lg bg-[#171615] border border-[#2B2A27] text-[#969593] hover:text-white hover:border-white/20 opacity-0 group-hover/notif:opacity-100 transition-all duration-200 hover:bg-white/[0.06] outline-none shadow-sm"
                                     title="Delete notification"
                                 >
                                     <Trash2 className="w-3.5 h-3.5" strokeWidth={1.5} />

@@ -26,6 +26,9 @@ export const ChatThread: React.FC<ChatSidebarProps> = ({
     onClose,
     mode = 'sidebar',
     projectName,
+    generatedFiles,
+    projectType,
+    onTriggerSimulation,
 }) => {
     const scrollContainerRef = React.useRef<HTMLDivElement | null>(null)
 
@@ -38,9 +41,18 @@ export const ChatThread: React.FC<ChatSidebarProps> = ({
 
         container.scrollTo({
             top: container.scrollHeight,
-            behavior: 'smooth',
+            behavior: 'auto',
         })
-    }, [messages])
+
+        const timeoutId = setTimeout(() => {
+            container.scrollTo({
+                top: container.scrollHeight,
+                behavior: 'auto',
+            })
+        }, 50)
+
+        return () => clearTimeout(timeoutId)
+    }, [messages, generatedFiles, isGenerating])
 
     const handleSubmit = () => {
         const nextPrompt = editPrompt.trim()
@@ -65,10 +77,19 @@ export const ChatThread: React.FC<ChatSidebarProps> = ({
                     key={msg.id}
                     role={msg.role === 'system' ? 'assistant' : msg.role}
                     content={msg.content}
+                    thoughts={msg.thoughts}
+                    plan={msg.plan}
+                    summary={msg.summary}
                     isGenerating={isGenerating}
                     executionTime={executionTime}
                     index={index}
                     status={msg.status}
+                    generatedFiles={generatedFiles}
+                    projectType={projectType}
+                    tokensUsed={msg.tokensUsed}
+                    creditsUsed={msg.creditsUsed}
+                    modelName={msg.modelName}
+                    onTriggerSimulation={onTriggerSimulation}
                 />
             ))}
         </div>
@@ -92,12 +113,12 @@ export const ChatThread: React.FC<ChatSidebarProps> = ({
             <div className="h-full bg-[#171615] rounded-2xl border border-white/10 flex flex-col overflow-hidden font-sans min-h-0">
                 <div
                     ref={scrollContainerRef}
-                    className="flex-1 overflow-y-auto overflow-x-hidden p-4 pb-0 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/10 hover:[&::-webkit-scrollbar-thumb]:bg-white/20"
+                    className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-4 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/10 hover:[&::-webkit-scrollbar-thumb]:bg-white/20"
                 >
                     {messagesList}
                 </div>
 
-                {promptInput}
+                <div className="shrink-0 bg-[#171615] pt-3 pl-1 pr-1 pb-1">{promptInput}</div>
             </div>
         )
     }
@@ -144,12 +165,12 @@ export const ChatThread: React.FC<ChatSidebarProps> = ({
             <div className="flex-1 flex flex-col overflow-hidden min-w-[340px]">
                 <div
                     ref={scrollContainerRef}
-                    className="flex-1 overflow-y-auto overflow-x-hidden p-5 pb-0 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/10 hover:[&::-webkit-scrollbar-thumb]:bg-white/20"
+                    className="flex-1 overflow-y-auto overflow-x-hidden p-5 space-y-4 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/10 hover:[&::-webkit-scrollbar-thumb]:bg-white/20"
                 >
                     {messagesList}
                 </div>
 
-                {promptInput}
+                <div className="shrink-0 bg-[#171615] pt-3 pl-1 pr-1 pb-1">{promptInput}</div>
             </div>
         </aside>
     )
