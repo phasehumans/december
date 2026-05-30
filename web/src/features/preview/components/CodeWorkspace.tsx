@@ -195,7 +195,14 @@ export const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({
                     wordWrap={wordWrap}
                     toggleWordWrap={() => setWordWrap(!wordWrap)}
                     cursorPos={cursorPos}
-                    onCursorPosChange={setCursorPos}
+                    onCursorPosChange={React.useCallback((pos: { line: number; col: number }) => {
+                        setCursorPos((prev) => {
+                            if (prev.line === pos.line && prev.col === pos.col) {
+                                return prev
+                            }
+                            return pos
+                        })
+                    }, [])}
                 />
             </div>
         </div>
