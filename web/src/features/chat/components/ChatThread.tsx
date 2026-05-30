@@ -31,11 +31,30 @@ export const ChatThread: React.FC<ChatSidebarProps> = ({
     onTriggerSimulation,
 }) => {
     const scrollContainerRef = React.useRef<HTMLDivElement | null>(null)
+    const [shouldAutoScroll, setShouldAutoScroll] = React.useState(true)
+    const prevMessagesLengthRef = React.useRef(messages.length)
+
+    React.useEffect(() => {
+        if (messages.length > prevMessagesLengthRef.current) {
+            setShouldAutoScroll(true)
+        }
+        prevMessagesLengthRef.current = messages.length
+    }, [messages.length])
+
+    const handleScroll = () => {
+        const container = scrollContainerRef.current
+        if (!container) return
+
+        const threshold = 35
+        const isAtBottom =
+            container.scrollHeight - container.scrollTop - container.clientHeight <= threshold
+        setShouldAutoScroll(isAtBottom)
+    }
 
     React.useEffect(() => {
         const container = scrollContainerRef.current
 
-        if (!container) {
+        if (!container || !shouldAutoScroll) {
             return
         }
 
@@ -45,14 +64,16 @@ export const ChatThread: React.FC<ChatSidebarProps> = ({
         })
 
         const timeoutId = setTimeout(() => {
-            container.scrollTo({
-                top: container.scrollHeight,
-                behavior: 'auto',
-            })
+            if (shouldAutoScroll) {
+                container.scrollTo({
+                    top: container.scrollHeight,
+                    behavior: 'auto',
+                })
+            }
         }, 50)
 
         return () => clearTimeout(timeoutId)
-    }, [messages, generatedFiles, isGenerating])
+    }, [messages, generatedFiles, isGenerating, shouldAutoScroll])
 
     const handleSubmit = () => {
         const nextPrompt = editPrompt.trim()
@@ -113,6 +134,7 @@ export const ChatThread: React.FC<ChatSidebarProps> = ({
             <div className="h-full bg-[#171615] rounded-2xl border border-white/10 flex flex-col overflow-hidden font-sans min-h-0">
                 <div
                     ref={scrollContainerRef}
+                    onScroll={handleScroll}
                     className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-4 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/10 hover:[&::-webkit-scrollbar-thumb]:bg-white/20"
                 >
                     {messagesList}
@@ -165,6 +187,7 @@ export const ChatThread: React.FC<ChatSidebarProps> = ({
             <div className="flex-1 flex flex-col overflow-hidden min-w-[340px]">
                 <div
                     ref={scrollContainerRef}
+                    onScroll={handleScroll}
                     className="flex-1 overflow-y-auto overflow-x-hidden p-5 space-y-4 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/10 hover:[&::-webkit-scrollbar-thumb]:bg-white/20"
                 >
                     {messagesList}
