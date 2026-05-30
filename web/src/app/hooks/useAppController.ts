@@ -120,6 +120,9 @@ export const useAppController = () => {
         'thinking' | 'building' | 'done' | null
     >(null)
     const [activeOperation, setActiveOperation] = React.useState<OutputOperation | null>(null)
+    const [projectType, setProjectType] = React.useState<'generated' | 'github' | 'zip'>(
+        'generated'
+    )
     const [isGenerating, setIsGenerating] = React.useState(false)
     const [isAuthenticated, setIsAuthenticated] = React.useState(false)
     const [showAuthModal, setShowAuthModal] = React.useState(false)
@@ -535,6 +538,7 @@ export const useAppController = () => {
                 setGenerationPhase(null)
                 setActiveOperation('build')
                 setIsGenerating(true)
+                setProjectType('github')
                 setProjectLoadError(null)
                 setImportState({ status: 'loading', message: 'Validating GitHub repository' })
                 let hasLoadedFinalFiles = false
@@ -616,6 +620,7 @@ export const useAppController = () => {
                 setGenerationPhase(null)
                 setActiveOperation('build')
                 setIsGenerating(true)
+                setProjectType('zip')
                 setProjectLoadError(null)
                 setImportState({ status: 'loading', message: 'Uploading zip archive' })
                 let hasLoadedFinalFiles = false
@@ -785,6 +790,7 @@ export const useAppController = () => {
             setGenerationPhase('thinking')
             setActiveOperation('build')
             setIsGenerating(true)
+            setProjectType('generated')
             setProjectLoadError(null)
 
             const abortController = new AbortController()
@@ -991,6 +997,7 @@ export const useAppController = () => {
             setGenerationPhase('thinking')
             setActiveOperation(kind)
             setIsGenerating(true)
+            setProjectType('generated')
 
             const abortController = new AbortController()
             generationAbortControllerRef.current = abortController
@@ -1284,6 +1291,20 @@ export const useAppController = () => {
         window.location.href = '/'
     }
 
+    const handleHomeClick = React.useCallback(() => {
+        outputOriginViewRef.current = 'chat'
+        if (activeProjectId) {
+            void previewAPI.stopPreview(activeProjectId).catch((err) => {
+                console.error('Failed to stop preview:', err)
+            })
+        }
+        setMessages([])
+        clearOpenedProject()
+        resetGenerationFlow()
+        setImportState({ status: 'idle', message: null })
+        navigate('/')
+    }, [activeProjectId, clearOpenedProject, resetGenerationFlow, navigate])
+
     const handleNavigate = (target: ViewState) => {
         requireAuthOr(() => {
             navigate(getPathForView(target))
@@ -1360,7 +1381,9 @@ export const useAppController = () => {
         previewSession,
         previewSessionError,
         importState,
+        projectType,
         handleNewThread,
+        handleHomeClick,
         handleNavigate,
         handleSignOut,
         handlePromptSubmit,

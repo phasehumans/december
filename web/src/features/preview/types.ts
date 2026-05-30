@@ -92,6 +92,7 @@ export interface OutputScreenProps {
     onDownload?: () => void
     previewSession?: PreviewSessionStatus | null
     previewSessionError?: string | null
+    projectType?: 'generated' | 'github' | 'zip'
 }
 
 export interface OutputHeaderProps {
@@ -125,6 +126,7 @@ export interface PreviewAreaProps {
     previewState?: PreviewRuntimeLifecycleState | null
     previewError?: PreviewSessionError | null
     previewSessionError?: string | null
+    projectType?: 'generated' | 'github' | 'zip'
 }
 
 export interface PreviewWindowProps {

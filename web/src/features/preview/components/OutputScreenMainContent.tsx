@@ -44,6 +44,7 @@ interface OutputScreenMainContentProps {
     onDownload?: () => void
     previewSession?: PreviewSessionStatus | null
     previewSessionError?: string | null
+    projectType?: 'generated' | 'github' | 'zip'
 }
 
 export const OutputScreenMainContent: React.FC<OutputScreenMainContentProps> = ({
@@ -75,6 +76,7 @@ export const OutputScreenMainContent: React.FC<OutputScreenMainContentProps> = (
     onDownload,
     previewSession,
     previewSessionError,
+    projectType,
 }) => {
     return (
         <div className="flex-1 flex flex-col h-full bg-[#171615] relative overflow-hidden transition-all duration-300 min-h-0">
@@ -109,6 +111,7 @@ export const OutputScreenMainContent: React.FC<OutputScreenMainContentProps> = (
                     previewState={previewSession?.state ?? null}
                     previewError={previewSession?.lastError ?? null}
                     previewSessionError={previewSessionError}
+                    projectType={projectType}
                 />
             )}
 
