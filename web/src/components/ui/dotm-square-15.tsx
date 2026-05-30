@@ -164,9 +164,15 @@ export const DotmSquare15: React.FC<DotmSquare15Props> = ({
 
                     // Render color presets (including beautiful aurora gradients and prism-sweep rainbow spectrum)
                     if (pattern === 'prism-sweep') {
-                        // Dynamic shifting spectral hue based on diagonal position and animation step
-                        const hue = (((x + y) / (gridSize * 2)) * 220 + angle * 40) % 360
-                        ctx.fillStyle = `hsl(${hue}, 90%, 65%)`
+                        if (colorPreset === 'white') {
+                            ctx.fillStyle = '#EDEDED'
+                        } else if (colorPreset === 'warm-gray') {
+                            ctx.fillStyle = '#E6E4E3'
+                        } else {
+                            // Dynamic shifting spectral hue based on diagonal position and animation step
+                            const hue = (((x + y) / (gridSize * 2)) * 220 + angle * 40) % 360
+                            ctx.fillStyle = `hsl(${hue}, 90%, 65%)`
+                        }
                     } else if (colorPreset === 'grad-aurora') {
                         // Interpolate gradient across coordinates
                         const ratio = (x + y) / (gridSize * 2)
@@ -184,7 +190,9 @@ export const DotmSquare15: React.FC<DotmSquare15Props> = ({
                     // Bloom shader glow effect
                     if (bloom && finalAlpha > 0.5) {
                         ctx.shadowColor =
-                            pattern === 'prism-sweep'
+                            pattern === 'prism-sweep' &&
+                            colorPreset !== 'white' &&
+                            colorPreset !== 'warm-gray'
                                 ? `hsl(${(((x + y) / (gridSize * 2)) * 220 + angle * 40) % 360}, 90%, 65%)`
                                 : colorPreset === 'grad-aurora'
                                   ? accentColor

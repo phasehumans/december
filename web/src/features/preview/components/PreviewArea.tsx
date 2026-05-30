@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion'
+import { Loader2 } from 'lucide-react'
 import React, { useEffect, useState } from 'react'
 
 import type { PreviewAreaProps } from '@/features/preview/types'
@@ -342,7 +343,7 @@ export const PreviewArea: React.FC<PreviewAreaProps> = ({
                             </div>
 
                             {/* Checklist Steps */}
-                            <div className="space-y-4 w-full border-t border-white/5 pt-4">
+                            <div className="space-y-4 w-full pt-4">
                                 {checklistItems.map((item, index) => {
                                     const isDone = index < activeIndex
                                     const isActive = index === activeIndex
@@ -362,7 +363,10 @@ export const PreviewArea: React.FC<PreviewAreaProps> = ({
                                                 </span>
                                             ) : isActive ? (
                                                 <div className="w-4 h-4 shrink-0 flex items-center justify-center">
-                                                    <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+                                                    <Loader2
+                                                        className="h-3.5 w-3.5 text-[#E6E4E3] animate-spin"
+                                                        strokeWidth={1.8}
+                                                    />
                                                 </div>
                                             ) : (
                                                 <div className="w-4 h-4 shrink-0 flex items-center justify-center">
@@ -416,7 +420,7 @@ export const PreviewArea: React.FC<PreviewAreaProps> = ({
 
                 {/* 4. Minimal floating error pill */}
                 {showFailedState && (
-                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2.5 bg-red-50 border border-red-200/60 rounded-lg px-3.5 py-2 shadow-sm animate-in slide-in-from-bottom-2 duration-300 font-sans">
+                    <div className="absolute bottom-4 right-4 z-50 flex items-center gap-2.5 bg-red-50 border border-red-200/60 rounded-lg px-3.5 py-2 shadow-sm animate-in slide-in-from-bottom-2 duration-300 font-sans">
                         <span className="w-1.5 h-1.5 rounded-full bg-red-400 shrink-0" />
                         <span className="text-[11px] font-medium text-red-700 whitespace-nowrap">
                             Build failed

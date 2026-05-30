@@ -60,9 +60,8 @@ export const SidebarFooter: React.FC<
                 <div className="px-3 py-1.5 flex justify-center">
                     <button
                         onClick={() => navigate('/profile/billing')}
-                        className="flex items-center gap-1.5 px-3.5 py-1.5 border border-white/10 rounded-full hover:bg-white/[0.04] transition-all text-[#CBCACA] hover:text-white text-[12px] font-medium outline-none w-fit mx-auto cursor-pointer"
+                        className="px-3.5 py-1.5 border border-white/10 rounded-full hover:bg-white/[0.04] transition-all text-[#CBCACA] hover:text-white text-[12px] font-medium outline-none w-fit mx-auto cursor-pointer"
                     >
-                        <ArrowUpCircle className="w-[13.5px] h-[13.5px]" />
                         <span>Upgrade plan</span>
                     </button>
                 </div>
