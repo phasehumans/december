@@ -1,12 +1,14 @@
 import { useQuery } from '@tanstack/react-query'
-import { Bell } from 'lucide-react'
+import { Bell, ArrowUpCircle } from 'lucide-react'
 import React, { useState, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 
 import { NotificationsPopover } from './NotificationsPopover'
 import { UserProfilePopover } from './UserProfilePopover'
 
 import type { SidebarFooterProps } from '@/features/navigation/types'
 
+import { billingAPI } from '@/features/billing/api/billing'
 import { notificationAPI } from '@/features/notification/api/notification'
 import { profileAPI } from '@/features/profile/api/profile'
 import { ProfileCardModal } from '@/features/profile/components/ProfileCardModal'
@@ -16,6 +18,7 @@ import { Icons } from '@/shared/components/ui/Icons'
 export const SidebarFooter: React.FC<
     SidebarFooterProps & { user?: { name?: string }; onSignOut?: () => void }
 > = ({ isAuthenticated, isCollapsed, onProfile, onDocs, onOpenAuth, user, onSignOut }) => {
+    const navigate = useNavigate()
     const [isPopoverOpen, setIsPopoverOpen] = useState(false)
     const [isNotifPopoverOpen, setIsNotifPopoverOpen] = useState(false)
     const [isProfileModalOpen, setIsProfileModalOpen] = useState(false)
@@ -42,8 +45,28 @@ export const SidebarFooter: React.FC<
         refetchInterval: 30 * 1000,
     })
 
+    const { data: overview } = useQuery({
+        queryKey: ['billing-overview'],
+        queryFn: billingAPI.getOverview,
+        staleTime: 10 * 1000,
+        enabled: isAuthenticated,
+    })
+    const isPro = overview?.plan === 'PRO'
+    const hasUnread = notifications.some((n: any) => !n.isRead)
+
     return (
         <div className="mt-auto flex flex-col w-full">
+            {isAuthenticated && !isPro && (
+                <div className="px-3 py-1.5 flex justify-center">
+                    <button
+                        onClick={() => navigate('/profile/billing')}
+                        className="flex items-center gap-1.5 px-3.5 py-1.5 border border-white/10 rounded-full hover:bg-white/[0.04] transition-all text-[#CBCACA] hover:text-white text-[12px] font-medium outline-none w-fit mx-auto cursor-pointer"
+                    >
+                        <ArrowUpCircle className="w-[13.5px] h-[13.5px]" />
+                        <span>Upgrade plan</span>
+                    </button>
+                </div>
+            )}
             <div className="w-full border-t border-white/[0.04]"></div>
 
             <div className="pl-[6px] pr-[6px] pt-1 pb-1.5">
@@ -72,6 +95,9 @@ export const SidebarFooter: React.FC<
                                 className="flex items-center justify-center w-7 h-7 rounded-lg hover:bg-[#252422] text-[#8F8E8D] hover:text-[#CBCACA] transition-colors shrink-0 outline-none -ml-1 relative"
                             >
                                 <Bell className="w-[13px] h-[13px]" strokeWidth={2} />
+                                {hasUnread && (
+                                    <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-white rounded-full border border-[#171615]" />
+                                )}
                             </button>
                         </div>
 

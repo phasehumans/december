@@ -38,6 +38,7 @@ const App: React.FC = () => {
         previewSessionError,
         importState,
         handleNewThread,
+        handleHomeClick,
         handleNavigate,
         handleSignOut,
         handlePromptSubmit,
@@ -58,6 +59,7 @@ const App: React.FC = () => {
                 isMobileSidebarOpen={isMobileSidebarOpen}
                 setIsMobileSidebarOpen={setIsMobileSidebarOpen}
                 onNewThread={handleNewThread}
+                onHomeClick={handleHomeClick}
                 onNavigate={handleNavigate}
                 onOpenProject={handleOpenProject}
                 isAuthenticated={isAuthenticated}

@@ -131,6 +131,7 @@ const PromptInput: React.FC<PromptInputProps> = ({
                     isLoading={isLoading}
                     onVoiceTranscript={handleVoiceTranscript}
                     onVoiceStateChange={handleVoiceStateChange}
+                    isAuthenticated={isAuthenticated}
                 />
             </div>
         </div>

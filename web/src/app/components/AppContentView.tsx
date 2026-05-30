@@ -60,6 +60,7 @@ interface AppContentViewProps {
         status: 'idle' | 'loading' | 'failed' | 'ready'
         message?: string | null
     }
+    projectType: 'generated' | 'github' | 'zip'
     onSelectVersion: (versionId: string) => void
     onDownloadProject: () => void
     onSignOut: () => void
@@ -129,6 +130,7 @@ export const AppContentView: React.FC<AppContentViewProps> = ({
     onImportGithub,
     onImportZip,
     importState,
+    projectType,
     onSelectVersion,
     onDownloadProject,
     onSignOut,
@@ -207,6 +209,7 @@ export const AppContentView: React.FC<AppContentViewProps> = ({
                             onSelectVersion={onSelectVersion}
                             onDownload={onDownloadProject}
                             previewSession={previewSession}
+                            projectType={projectType}
                             previewSessionError={
                                 importState.status === 'loading'
                                     ? importState.message || 'Importing project...'
@@ -242,6 +245,7 @@ export const AppContentView: React.FC<AppContentViewProps> = ({
                         onSelectVersion={onSelectVersion}
                         onDownload={onDownloadProject}
                         previewSession={previewSession}
+                        projectType={projectType}
                         previewSessionError={
                             importState.status === 'loading'
                                 ? importState.message || 'Importing project...'

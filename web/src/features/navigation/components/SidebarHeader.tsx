@@ -3,7 +3,10 @@ import React, { useState, useEffect } from 'react'
 import { Icons } from '@/shared/components/ui/Icons'
 import { cn } from '@/shared/lib/utils'
 
-export const SidebarHeader: React.FC<{ onNewThread?: () => void }> = ({ onNewThread }) => {
+export const SidebarHeader: React.FC<{ onNewThread?: () => void; onHomeClick?: () => void }> = ({
+    onNewThread,
+    onHomeClick,
+}) => {
     const [activeTab, setActiveTab] = useState<'home' | 'canvas'>('home')
 
     useEffect(() => {
@@ -31,7 +34,7 @@ export const SidebarHeader: React.FC<{ onNewThread?: () => void }> = ({ onNewThr
                         )
                         const el = document.getElementById('main-scroll-container')
                         el?.scrollTo({ top: 0, behavior: 'smooth' })
-                        if (onNewThread) onNewThread()
+                        if (onHomeClick) onHomeClick()
                     }}
                     className="relative flex items-center gap-2.5 w-full px-2.5 h-[32px] rounded-[10px] transition-colors group outline-none hover:bg-white/[0.02]"
                 >

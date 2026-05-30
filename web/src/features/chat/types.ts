@@ -2,9 +2,15 @@ export interface Message {
     id: string
     role: 'user' | 'assistant' | 'system'
     content: string
+    thoughts?: string
+    plan?: string
+    summary?: string
     type?: 'text' | 'code_preview'
     code?: string
     status?: 'thinking' | 'building' | 'done' | 'error'
+    tokensUsed?: number
+    creditsUsed?: number
+    modelName?: string
 }
 
 export interface SelectedElement {
@@ -15,10 +21,19 @@ export interface SelectedElement {
 export interface ChatMessageProps {
     role: 'user' | 'assistant'
     content: string
+    thoughts?: string
+    plan?: string
+    summary?: string
     isGenerating: boolean
     executionTime: number
     index: number
     status?: 'thinking' | 'building' | 'done' | 'error'
+    generatedFiles?: Record<string, any>
+    projectType?: 'generated' | 'github' | 'zip'
+    tokensUsed?: number
+    creditsUsed?: number
+    modelName?: string
+    onTriggerSimulation?: (type: 'generated' | 'github' | 'zip') => void
 }
 
 export interface ChatPromptInputProps {
@@ -53,12 +68,7 @@ export interface ChatSidebarProps {
     onClose?: () => void
     mode?: 'sidebar' | 'mobile'
     projectName?: string | null
-}
-
-export interface ThoughtProcessProps {
-    isGenerating: boolean
-    steps: string[]
-    executionTime: number
-    isOpen: boolean
-    setIsOpen: (isOpen: boolean) => void
+    generatedFiles?: Record<string, any>
+    projectType?: 'generated' | 'github' | 'zip'
+    onTriggerSimulation?: (type: 'generated' | 'github' | 'zip') => void
 }
