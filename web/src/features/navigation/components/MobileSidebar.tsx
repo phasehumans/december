@@ -57,6 +57,8 @@ export const MobileSidebar: React.FC<MobileSidebarProps & { onSignOut?: () => vo
                     onAllProjects={onAllProjects}
                     onTemplates={onTemplates}
                     onDocs={onDocs}
+                    isAuthenticated={isAuthenticated}
+                    onOpenAuth={onOpenAuth}
                 />
 
                 <div className="flex-1 flex flex-col gap-2 px-3 mt-6 overflow-y-auto no-scrollbar font-sans">

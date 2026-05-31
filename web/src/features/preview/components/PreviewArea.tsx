@@ -259,18 +259,20 @@ export const PreviewArea: React.FC<PreviewAreaProps> = ({
     const isLivePreview = Boolean(previewUrl)
     const showStructurePlaceholder = showStructureOnly && !isGenerating && !isLivePreview
 
+    const showFailedState = Boolean(
+        previewSessionError || previewError || previewState === 'Failed'
+    )
+
     // Determine loading state
     const showFullscreenLoader =
         !isLivePreview &&
-        (isGenerating ||
-            previewState === 'WaitingForRunnableVersion' ||
+        !showFailedState &&
+        isGenerating &&
+        (previewState === 'WaitingForRunnableVersion' ||
             previewState === 'Bootstrapping' ||
             previewState === 'Installing' ||
             previewState === 'Starting')
 
-    const showFailedState = Boolean(
-        previewSessionError || previewError || previewState === 'Failed'
-    )
     const showFullscreenFailed = showFailedState && !isLivePreview && !showFullscreenLoader
 
     // Resolve checklist items
@@ -318,73 +320,62 @@ export const PreviewArea: React.FC<PreviewAreaProps> = ({
                             : 'rounded-xl border border-[#262626] shadow-2xl'
                 )}
             >
-                {/* 1. Dynamic Checklist Logs Loader Screen (Screenshot 5) */}
+                {/* 1. Dynamic Checklist Logs Loader Screen */}
                 {showFullscreenLoader ? (
-                    <div className="absolute inset-0 z-50 flex items-center justify-center bg-[#171615] font-sans">
-                        <div className="flex flex-col items-start gap-5 max-w-sm w-full px-8 text-left select-none">
-                            {/* Dot Matrix Center Glow Indicator */}
-                            <div className="flex items-center gap-3.5 mb-2 w-full justify-start">
+                    <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-[#121110] font-sans p-6">
+                        <div className="flex flex-col max-w-sm w-full select-none text-left">
+                            {/* Top Header */}
+                            <div className="flex items-center gap-4 select-none mb-6">
                                 <DotmSquare15
-                                    size={32}
-                                    dotSize={3.2}
-                                    speed={1.2}
+                                    size={40}
+                                    dotSize={3}
+                                    speed={1.5}
                                     bloom
                                     pattern="prism-sweep"
                                     colorPreset="white"
+                                    className="shrink-0"
                                 />
                                 <div className="flex flex-col gap-0.5">
-                                    <span className="text-[12.5px] font-bold text-[#E6E4E3] tracking-wide uppercase">
-                                        Runtime sandbox
+                                    <span className="text-[14px] font-bold text-white tracking-wider uppercase">
+                                        RUNTIME SANDBOX
                                     </span>
-                                    <span className="text-[9.5px] text-[#8E8D8C] font-medium tracking-widest uppercase animate-pulse">
-                                        Establishing container
+                                    <span className="text-[10px] text-[#8E8D8C] font-semibold tracking-wider uppercase">
+                                        ESTABLISHING CONTAINER
                                     </span>
                                 </div>
                             </div>
 
-                            {/* Checklist Steps */}
-                            <div className="space-y-4 w-full pt-4">
-                                {checklistItems.map((item, index) => {
-                                    const isDone = index < activeIndex
-                                    const isActive = index === activeIndex
-                                    const isQueued = index > activeIndex
+                            {/* Minimal Checklist UI */}
+                            <div className="flex flex-col gap-4 pl-0">
+                                {checklistItems.map((item, idx) => {
+                                    const isDone = idx < activeIndex
+                                    const isActive = idx === activeIndex
+                                    const isPending = idx > activeIndex
 
                                     return (
                                         <div
-                                            key={item.label}
+                                            key={idx}
                                             className={cn(
-                                                'flex items-center gap-3 transition-colors duration-300',
-                                                isQueued ? 'opacity-30' : 'opacity-100'
+                                                'flex items-center gap-4 text-[13px] transition-all duration-300',
+                                                isDone && 'text-[#8E8D8C]/60 font-medium',
+                                                isActive && 'text-[#F5F5F5] font-bold',
+                                                isPending && 'text-[#8E8D8C]/20 font-medium'
                                             )}
                                         >
                                             {isDone ? (
-                                                <span className="text-[#8E8D8C] text-[11px] font-medium shrink-0 w-4 text-center select-none">
+                                                <span className="text-[#8E8D8C]/60 text-[14px] w-5 h-5 flex items-center justify-center shrink-0 select-none">
                                                     ✓
                                                 </span>
                                             ) : isActive ? (
-                                                <div className="w-4 h-4 shrink-0 flex items-center justify-center">
-                                                    <Loader2
-                                                        className="h-3.5 w-3.5 text-[#E6E4E3] animate-spin"
-                                                        strokeWidth={1.8}
-                                                    />
+                                                <div className="w-5 h-5 flex items-center justify-center shrink-0 relative">
+                                                    <div className="w-3.5 h-3.5 border border-t-transparent border-white rounded-full animate-spin" />
                                                 </div>
                                             ) : (
-                                                <div className="w-4 h-4 shrink-0 flex items-center justify-center">
-                                                    <span className="h-1 w-1 rounded-full bg-[#3E3D3C]" />
-                                                </div>
+                                                <span className="text-[#8E8D8C]/20 text-[16px] w-5 h-5 flex items-center justify-center shrink-0 select-none">
+                                                    •
+                                                </span>
                                             )}
-                                            <span
-                                                className={cn(
-                                                    'text-[12px] font-medium tracking-wide',
-                                                    isDone
-                                                        ? 'text-[#8E8D8C] line-through decoration-[#3E3D3C]/40'
-                                                        : isActive
-                                                          ? 'text-[#E6E4E3] font-bold'
-                                                          : 'text-[#5A5958]'
-                                                )}
-                                            >
-                                                {item.label}
-                                            </span>
+                                            <span>{item.label}</span>
                                         </div>
                                     )
                                 })}
@@ -421,7 +412,6 @@ export const PreviewArea: React.FC<PreviewAreaProps> = ({
                 {/* 4. Minimal floating error pill */}
                 {showFailedState && (
                     <div className="absolute bottom-4 right-4 z-50 flex items-center gap-2.5 bg-red-50 border border-red-200/60 rounded-lg px-3.5 py-2 shadow-sm animate-in slide-in-from-bottom-2 duration-300 font-sans">
-                        <span className="w-1.5 h-1.5 rounded-full bg-red-400 shrink-0" />
                         <span className="text-[11px] font-medium text-red-700 whitespace-nowrap">
                             Build failed
                         </span>

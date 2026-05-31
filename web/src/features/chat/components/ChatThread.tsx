@@ -6,6 +6,7 @@ import { ChatPromptInput } from './ChatPromptInput'
 
 import type { ChatSidebarProps } from '@/features/chat/types'
 
+import { Icons } from '@/shared/components/ui/Icons'
 import { cn } from '@/shared/lib/utils'
 
 export const ChatThread: React.FC<ChatSidebarProps> = ({
@@ -156,6 +157,7 @@ export const ChatThread: React.FC<ChatSidebarProps> = ({
         >
             <div className="h-14 flex items-center justify-between shrink-0 px-4 min-w-[340px] w-full">
                 <div className="flex items-center gap-1.5 min-w-0">
+                    <Icons.DecemberLogo className="w-[18px] h-[18px] shrink-0" />
                     <button
                         type="button"
                         onClick={(e) => {
@@ -163,17 +165,17 @@ export const ChatThread: React.FC<ChatSidebarProps> = ({
                             e.stopPropagation()
                             window.location.href = '/'
                         }}
-                        className="text-sm font-medium tracking-wide text-[#91908F] hover:text-white transition-colors"
+                        className="text-sm font-medium tracking-wide text-[#FFFFFF] select-none cursor-pointer outline-none shrink-0"
                         title="Back to Home"
                     >
                         december
                     </button>
                     <span className="text-sm opacity-40 text-[#91908F] select-none">/</span>
                     <span
-                        className="text-sm font-medium text-[#D6D5D4] truncate max-w-[150px]"
-                        title={projectName ?? 'projectname'}
+                        className="text-sm font-medium text-[#FFFFFF] truncate max-w-[150px]"
+                        title={projectName ? projectName.toLowerCase() : 'projectname'}
                     >
-                        {projectName ?? 'projectname'}
+                        {projectName ? projectName.toLowerCase() : 'projectname'}
                     </span>
                 </div>
                 <button
