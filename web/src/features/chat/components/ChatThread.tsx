@@ -165,14 +165,14 @@ export const ChatThread: React.FC<ChatSidebarProps> = ({
                             e.stopPropagation()
                             window.location.href = '/'
                         }}
-                        className="text-sm font-medium tracking-wide text-[#91908F] hover:text-white transition-colors animate-in fade-in duration-200"
+                        className="text-sm font-medium tracking-wide text-[#FFFFFF] select-none cursor-pointer outline-none shrink-0"
                         title="Back to Home"
                     >
                         december
                     </button>
                     <span className="text-sm opacity-40 text-[#91908F] select-none">/</span>
                     <span
-                        className="text-sm font-medium text-[#91908F] truncate max-w-[150px]"
+                        className="text-sm font-medium text-[#FFFFFF] truncate max-w-[150px]"
                         title={projectName ? projectName.toLowerCase() : 'projectname'}
                     >
                         {projectName ? projectName.toLowerCase() : 'projectname'}

@@ -259,18 +259,20 @@ export const PreviewArea: React.FC<PreviewAreaProps> = ({
     const isLivePreview = Boolean(previewUrl)
     const showStructurePlaceholder = showStructureOnly && !isGenerating && !isLivePreview
 
+    const showFailedState = Boolean(
+        previewSessionError || previewError || previewState === 'Failed'
+    )
+
     // Determine loading state
     const showFullscreenLoader =
         !isLivePreview &&
-        (isGenerating ||
-            previewState === 'WaitingForRunnableVersion' ||
+        !showFailedState &&
+        isGenerating &&
+        (previewState === 'WaitingForRunnableVersion' ||
             previewState === 'Bootstrapping' ||
             previewState === 'Installing' ||
             previewState === 'Starting')
 
-    const showFailedState = Boolean(
-        previewSessionError || previewError || previewState === 'Failed'
-    )
     const showFullscreenFailed = showFailedState && !isLivePreview && !showFullscreenLoader
 
     // Resolve checklist items
@@ -344,7 +346,7 @@ export const PreviewArea: React.FC<PreviewAreaProps> = ({
                             </div>
 
                             {/* Minimal Checklist UI */}
-                            <div className="flex flex-col gap-4 pl-[56px]">
+                            <div className="flex flex-col gap-4 pl-0">
                                 {checklistItems.map((item, idx) => {
                                     const isDone = idx < activeIndex
                                     const isActive = idx === activeIndex
