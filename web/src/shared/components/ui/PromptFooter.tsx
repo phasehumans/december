@@ -16,6 +16,7 @@ interface PromptFooterProps {
     onVoiceTranscript?: (text: string) => void
     onVoiceStateChange?: (isListening: boolean) => void
     isAuthenticated?: boolean
+    onOpenAuth?: () => void
 }
 
 export const PromptFooter: React.FC<PromptFooterProps> = ({
@@ -26,6 +27,7 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
     onVoiceTranscript,
     onVoiceStateChange,
     isAuthenticated,
+    onOpenAuth,
 }) => {
     const navigate = useNavigate()
     const [isModelSelectorOpen, setIsModelSelectorOpen] = useState(false)
@@ -145,6 +147,11 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
                                         key={model.id}
                                         onClick={() => {
                                             if (model.id !== 'Auto' && !isPro) {
+                                                if (!isAuthenticated) {
+                                                    onOpenAuth?.()
+                                                    setIsModelSelectorOpen(false)
+                                                    return
+                                                }
                                                 navigate('/profile/billing')
                                                 setIsModelSelectorOpen(false)
                                                 return
@@ -160,14 +167,14 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
                                         )}
                                     >
                                         <div className="flex items-center gap-1.5 min-w-0">
-                                            {!isPro && model.id !== 'Auto' && (
-                                                <span className="text-[8px] font-extrabold tracking-wider px-1 py-0.5 rounded bg-[#F5A623]/10 text-[#F5A623] border border-[#F5A623]/20 uppercase select-none shrink-0">
-                                                    Pro
-                                                </span>
-                                            )}
                                             <span className="text-[13px] font-medium truncate">
                                                 {model.name}
                                             </span>
+                                            {!isPro && model.id !== 'Auto' && (
+                                                <span className="bg-[#D6D5C9]/10 text-[#D6D5C9] rounded-full text-[8px] font-medium px-1 py-0.5 uppercase shrink-0 select-none">
+                                                    Pro
+                                                </span>
+                                            )}
                                         </div>
                                         {isSelected && (
                                             <Icons.Check className="w-4 h-4 text-[#D6D5D4] shrink-0" />
@@ -184,7 +191,13 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
                 {isSupported && (
                     <button
                         type="button"
-                        onClick={toggleListening}
+                        onClick={() => {
+                            if (!isAuthenticated) {
+                                onOpenAuth?.()
+                                return
+                            }
+                            toggleListening()
+                        }}
                         className={cn(
                             'flex items-center justify-center w-8 h-8 rounded-full transition-all',
                             isListening

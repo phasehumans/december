@@ -146,13 +146,6 @@ export const useOutputScreenController = ({
     }, [isGenerating, steps.length])
 
     React.useEffect(() => {
-        if (generationPhase === 'building' && !hasSwitchedToCodeForBuildRef.current) {
-            hasSwitchedToCodeForBuildRef.current = true
-            setActiveTab('code')
-        }
-    }, [generationPhase])
-
-    React.useEffect(() => {
         if (!isGenerating && previewSession?.backendStatus === 'ready') {
             setActiveTab('preview')
         }
