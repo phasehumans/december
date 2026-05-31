@@ -10,6 +10,8 @@ interface MobileSidebarNavProps {
     onAllProjects: () => void
     onTemplates: () => void
     onDocs: () => void
+    isAuthenticated?: boolean
+    onOpenAuth?: () => void
 }
 
 export const MobileSidebarNav: React.FC<MobileSidebarNavProps> = ({
@@ -18,6 +20,8 @@ export const MobileSidebarNav: React.FC<MobileSidebarNavProps> = ({
     onAllProjects,
     onTemplates,
     onDocs,
+    isAuthenticated,
+    onOpenAuth,
 }) => {
     return (
         <div className="flex flex-col gap-1 px-3">
@@ -26,7 +30,11 @@ export const MobileSidebarNav: React.FC<MobileSidebarNavProps> = ({
                 label="Home"
                 collapsed={false}
                 onClick={() => {
-                    onNewThread()
+                    if (!isAuthenticated) {
+                        onOpenAuth?.()
+                    } else {
+                        onNewThread()
+                    }
                     onClose()
                 }}
             />
@@ -35,7 +43,11 @@ export const MobileSidebarNav: React.FC<MobileSidebarNavProps> = ({
                 label="New Project"
                 collapsed={false}
                 onClick={() => {
-                    onNewThread()
+                    if (!isAuthenticated) {
+                        onOpenAuth?.()
+                    } else {
+                        onNewThread()
+                    }
                     onClose()
                 }}
             />

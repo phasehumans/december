@@ -12,10 +12,11 @@ import {
     useCreditsHistory,
 } from '@/features/billing/hooks/useBillingData'
 import { profileAPI } from '@/features/profile/api/profile'
-import { Button } from '@/shared/components/ui/Button'
-import { Input } from '@/shared/components/ui/Input'
-import { Modal } from '@/shared/components/ui/Modal'
 import { ProfileSettingsSkeleton } from './ProfileSettingsSkeleton'
+
+import { RedeemCodeModal } from './RedeemCodeModal'
+import { AddCardModal } from './AddCardModal'
+import { CancellationFlowModal } from './CancellationFlowModal'
 
 interface ProfileBillingSettingsProps {
     profile?: {
@@ -23,272 +24,6 @@ interface ProfileBillingSettingsProps {
         email: string
         username: string
     }
-}
-
-// Minimal Redeem Code Modal
-const RedeemCodeModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
-    const [code, setCode] = useState('')
-    const [error, setError] = useState<string | null>(null)
-    const [isRedeeming, setIsRedeeming] = useState(false)
-
-    const handleRedeem = async () => {
-        if (!code.trim()) {
-            setError('Please enter a redeem code.')
-            return
-        }
-        setIsRedeeming(true)
-        setError(null)
-
-        await new Promise((resolve) => setTimeout(resolve, 800))
-
-        setError('Invalid redeem code. Please check your code and try again.')
-        setIsRedeeming(false)
-    }
-
-    return (
-        <Modal
-            isOpen={true}
-            onClose={onClose}
-            title="Redeem Code"
-            description="Enter your coupon or gift code to claim credits."
-            variant="premium"
-        >
-            <div className="flex flex-col gap-4">
-                <div>
-                    <label
-                        htmlFor="redeem-code-input"
-                        className="text-[11px] font-semibold text-[#8F8E8D] uppercase tracking-wider mb-1.5 block"
-                    >
-                        Code
-                    </label>
-                    <input
-                        id="redeem-code-input"
-                        type="text"
-                        autoFocus
-                        value={code}
-                        onChange={(e) => {
-                            setCode(e.target.value.toUpperCase())
-                            setError(null)
-                        }}
-                        onKeyDown={(e: React.KeyboardEvent) => {
-                            if (e.key === 'Enter') handleRedeem()
-                        }}
-                        className="w-full bg-[#181817] border border-[#2B2A27] rounded-lg px-3.5 py-2.5 text-white text-[13px] focus:outline-none focus:border-[#4E4D49] focus:ring-1 focus:ring-[#4E4D49] transition-[border-color,box-shadow]"
-                        placeholder="K47B9X2P5M1Z"
-                        disabled={isRedeeming}
-                        autoComplete="off"
-                        autoCorrect="off"
-                        autoCapitalize="off"
-                        spellCheck={false}
-                    />
-                </div>
-
-                {error && <p className="text-[12px] text-red-500 font-medium px-1">{error}</p>}
-
-                <div className="mt-1 flex items-center justify-end gap-2.5">
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        disabled={isRedeeming}
-                        className="border border-[#2B2A27] bg-transparent text-white hover:bg-white/5 active:scale-95 transition-[transform,background-color,border-color,color] duration-200 text-[13px] font-medium px-4 py-2 rounded-lg focus:outline-none disabled:opacity-50"
-                    >
-                        Cancel
-                    </button>
-                    <button
-                        type="button"
-                        onClick={handleRedeem}
-                        disabled={!code.trim() || isRedeeming}
-                        className="bg-white text-black hover:bg-neutral-200 active:scale-95 transition-[transform,background-color,border-color,color] duration-200 text-[13px] font-medium px-4 py-2 rounded-lg focus:outline-none disabled:opacity-40 disabled:pointer-events-none flex items-center justify-center min-w-[110px]"
-                    >
-                        {isRedeeming ? (
-                            <div className="flex items-center gap-1.5 justify-center">
-                                <span className="w-3.5 h-3.5 border-2 border-black border-t-transparent rounded-full animate-spin" />
-                                <span>Redeeming...</span>
-                            </div>
-                        ) : (
-                            'Redeem'
-                        )}
-                    </button>
-                </div>
-            </div>
-        </Modal>
-    )
-}
-
-// Minimal Add Card Modal
-const AddCardModal: React.FC<{
-    onClose: () => void
-    onSave: (number: string, expiry: string) => void
-}> = ({ onClose, onSave }) => {
-    const [cardNumber, setCardNumber] = useState('')
-    const [expiry, setExpiry] = useState('')
-    const [cvv, setCvv] = useState('')
-    const [name, setName] = useState('')
-    const [error, setError] = useState<string | null>(null)
-    const [isSaving, setIsSaving] = useState(false)
-
-    const handleSave = async () => {
-        const cleanNumber = cardNumber.replace(/\s+/g, '')
-        if (cleanNumber.length < 16) {
-            setError('Please enter a valid 16-digit card number.')
-            return
-        }
-        if (!/^\d{2}\/\d{2}$/.test(expiry)) {
-            setError('Please enter expiry in MM/YY format.')
-            return
-        }
-        if (cvv.length < 3) {
-            setError('Please enter a valid 3-digit CVV.')
-            return
-        }
-        if (!name.trim()) {
-            setError('Please enter the cardholder name.')
-            return
-        }
-
-        setIsSaving(true)
-        setError(null)
-        await new Promise((resolve) => setTimeout(resolve, 800))
-        onSave(cleanNumber, expiry)
-        setIsSaving(false)
-        onClose()
-    }
-
-    return (
-        <Modal isOpen={true} onClose={onClose} title="Add Payment Card" maxWidth="max-w-[420px]">
-            <div className="space-y-4">
-                <Input
-                    label="Card Number"
-                    value={cardNumber}
-                    onChange={(e) => {
-                        let val = e.target.value.replace(/\D/g, '')
-                        val = val.match(/.{1,4}/g)?.join(' ') || val
-                        setCardNumber(val)
-                        setError(null)
-                    }}
-                    placeholder="•••• •••• •••• ••••"
-                    maxLength={19}
-                    autoFocus
-                />
-                <div className="grid grid-cols-2 gap-4">
-                    <Input
-                        label="Expiry Date"
-                        value={expiry}
-                        onChange={(e) => {
-                            let val = e.target.value.replace(/\D/g, '')
-                            if (val.length > 2) {
-                                val = `${val.slice(0, 2)}/${val.slice(2, 4)}`
-                            }
-                            setExpiry(val)
-                            setError(null)
-                        }}
-                        placeholder="MM/YY"
-                        maxLength={5}
-                    />
-                    <Input
-                        label="CVV"
-                        type="password"
-                        value={cvv}
-                        onChange={(e) => {
-                            setCvv(e.target.value.replace(/\D/g, ''))
-                            setError(null)
-                        }}
-                        placeholder="•••"
-                        maxLength={3}
-                    />
-                </div>
-                <Input
-                    label="Cardholder Name"
-                    value={name}
-                    onChange={(e) => {
-                        setName(e.target.value)
-                        setError(null)
-                    }}
-                    placeholder="John Doe"
-                />
-                {error && <p className="text-[13px] text-red-400 px-1">{error}</p>}
-                <div className="mt-8 flex items-center justify-end gap-3">
-                    <Button variant="ghost" onClick={onClose} disabled={isSaving}>
-                        Cancel
-                    </Button>
-                    <Button
-                        onClick={handleSave}
-                        isLoading={isSaving}
-                        disabled={
-                            cardNumber.length < 19 ||
-                            expiry.length < 5 ||
-                            cvv.length < 3 ||
-                            !name.trim()
-                        }
-                    >
-                        Save Card
-                    </Button>
-                </div>
-            </div>
-        </Modal>
-    )
-}
-
-// Minimal Cancellation Flow Modal
-const CancellationFlowModal: React.FC<{
-    onClose: () => void
-    onConfirm: (feedback: string) => void
-    isCancelling: boolean
-    periodEnd: string
-    limit: string
-}> = ({ onClose, onConfirm, isCancelling, periodEnd, limit }) => {
-    const [feedback, setFeedback] = useState('')
-
-    const handleConfirm = () => {
-        onConfirm(feedback.trim())
-    }
-
-    return (
-        <Modal isOpen={true} onClose={onClose} title="Cancel Subscription" maxWidth="max-w-[440px]">
-            <div className="space-y-4">
-                <p className="text-[13px] text-[#7B7A79] leading-relaxed">
-                    You will retain Pro benefits and your {limit} credits until your billing cycle
-                    ends on{' '}
-                    <span className="font-medium text-[#D6D5C9]">
-                        {new Date(periodEnd).toLocaleDateString()}
-                    </span>
-                    . After this date, your plan will revert to Free.
-                </p>
-
-                <div className="flex flex-col gap-1.5">
-                    <label className="text-sm font-medium text-neutral-300">
-                        Feedback (optional)
-                    </label>
-                    <textarea
-                        value={feedback}
-                        onChange={(e) => setFeedback(e.target.value)}
-                        placeholder="Tell us how we can improve december..."
-                        className="w-full bg-transparent border border-white/10 hover:border-white/20 focus:border-white/30 rounded-xl px-4 py-3 text-[13px] text-[#D6D5C9] placeholder:text-neutral-600 transition-colors min-h-[100px] max-h-[160px] resize-y focus:outline-none"
-                    />
-                </div>
-
-                <div className="mt-8 flex items-center justify-end gap-3">
-                    <Button variant="ghost" onClick={onClose} disabled={isCancelling}>
-                        Keep Pro Plan
-                    </Button>
-                    <button
-                        onClick={handleConfirm}
-                        disabled={isCancelling}
-                        className="px-4 py-2 rounded-xl bg-red-500/10 border border-red-500/20 text-red-300 text-[13px] font-medium hover:bg-red-500/20 transition-all disabled:opacity-50 flex items-center gap-2"
-                    >
-                        {isCancelling ? (
-                            <>
-                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                Cancelling...
-                            </>
-                        ) : (
-                            'Confirm Cancellation'
-                        )}
-                    </button>
-                </div>
-            </div>
-        </Modal>
-    )
 }
 
 export const ProfileBillingSettings: React.FC<ProfileBillingSettingsProps> = ({
@@ -528,17 +263,19 @@ export const ProfileBillingSettings: React.FC<ProfileBillingSettingsProps> = ({
                             {isPro ? (
                                 !isCanceled && (
                                     <button
+                                        type="button"
                                         onClick={() => setShowCancelModal(true)}
-                                        className="px-4 py-1.5 rounded-lg border border-[#383736] text-[13px] text-red-400 hover:bg-red-500/10 transition-colors"
+                                        className="px-4 py-1.5 rounded-lg border border-[#383736] text-[13px] text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer"
                                     >
                                         Cancel Subscription
                                     </button>
                                 )
                             ) : (
                                 <button
+                                    type="button"
                                     onClick={() => handleUpgradeConfirm(true)}
                                     disabled={isUpgrading}
-                                    className="px-4 py-1.5 rounded-lg bg-[#D6D5C9] text-[#171615] text-[13px] font-medium hover:bg-white transition-colors flex items-center gap-1.5 disabled:opacity-50"
+                                    className="px-4 py-1.5 rounded-lg bg-[#D6D5C9] text-[#171615] text-[13px] font-medium hover:bg-white transition-colors flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
                                 >
                                     {isUpgrading ? (
                                         <>
@@ -595,6 +332,7 @@ export const ProfileBillingSettings: React.FC<ProfileBillingSettingsProps> = ({
                             </div>
                         </div>
                         <button
+                            type="button"
                             disabled
                             className="w-full mt-6 py-2 rounded-lg bg-[#242323] text-[#7B7A79] text-[13px] font-medium cursor-not-allowed"
                         >
@@ -646,6 +384,7 @@ export const ProfileBillingSettings: React.FC<ProfileBillingSettingsProps> = ({
                         </div>
                         {isPro ? (
                             <button
+                                type="button"
                                 disabled
                                 className="w-full mt-6 py-2 rounded-lg bg-[#D6D5C9]/10 text-[#D6D5C9] text-[13px] font-medium cursor-not-allowed"
                             >
@@ -653,9 +392,10 @@ export const ProfileBillingSettings: React.FC<ProfileBillingSettingsProps> = ({
                             </button>
                         ) : (
                             <button
+                                type="button"
                                 onClick={() => handleUpgradeConfirm(true)}
                                 disabled={isUpgrading}
-                                className="w-full mt-6 py-2 rounded-lg bg-[#D6D5C9] text-[#171615] text-[13px] font-medium hover:bg-white transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                                className="w-full mt-6 py-2 rounded-lg bg-[#D6D5C9] text-[#171615] text-[13px] font-medium hover:bg-white transition-colors disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
                             >
                                 {isUpgrading ? (
                                     <>
@@ -698,9 +438,11 @@ export const ProfileBillingSettings: React.FC<ProfileBillingSettingsProps> = ({
                             <div className="absolute -right-8 -top-8 w-24 h-24 rounded-full bg-[#D6D5C9]/5 blur-2xl pointer-events-none" />
 
                             <div className="flex justify-between items-start">
-                                {/* Chip representation */}
-                                <div className="w-7 h-5 rounded border border-amber-500/20 bg-amber-500/5 relative overflow-hidden flex items-center justify-center">
-                                    <div className="absolute inset-x-1 inset-y-0.5 border-r border-b border-amber-500/10" />
+                                {/* Silver metallic chip with linear grid details */}
+                                <div className="w-7 h-5 rounded-[4px] border border-white/20 bg-gradient-to-br from-white/10 to-white/5 relative overflow-hidden flex items-center justify-center">
+                                    <div className="absolute inset-x-1 inset-y-0.5 border-r border-b border-white/10" />
+                                    <div className="absolute top-1/2 left-0 right-0 h-[1px] bg-white/10 -translate-y-1/2" />
+                                    <div className="absolute left-1/2 top-0 bottom-0 w-[1px] bg-white/10 -translate-x-1/2" />
                                 </div>
                                 <span className="text-[9px] font-medium tracking-wider text-[#7B7A79]/85 uppercase">
                                     december
@@ -711,7 +453,7 @@ export const ProfileBillingSettings: React.FC<ProfileBillingSettingsProps> = ({
                                 <span className="text-[22px] font-semibold text-[#D6D5C9] tracking-tight">
                                     {unlimited ? 'Unlimited' : formatCents(remainingInCents)}
                                 </span>
-                                <span className="text-[10px] text-[#7B7A79] truncate tracking-wide uppercase font-medium">
+                                <span className="text-[10px] text-[#7B7A79] truncate tracking-wide font-medium">
                                     {profile?.name || 'december User'}
                                 </span>
                             </div>
@@ -839,8 +581,9 @@ export const ProfileBillingSettings: React.FC<ProfileBillingSettingsProps> = ({
                             </span>
                         </div>
                         <button
+                            type="button"
                             onClick={() => setShowRedeemModal(true)}
-                            className="px-4 py-1.5 rounded-lg border border-[#383736] text-[13px] text-[#D6D5C9] hover:bg-[#1E1D1B] transition-colors"
+                            className="px-4 py-1.5 rounded-lg border border-[#383736] text-[13px] text-[#D6D5C9] hover:bg-[#1E1D1B] transition-colors cursor-pointer"
                         >
                             Claim Credits
                         </button>
@@ -855,8 +598,9 @@ export const ProfileBillingSettings: React.FC<ProfileBillingSettingsProps> = ({
                             </span>
                         </div>
                         <button
+                            type="button"
                             onClick={() => navigate('/profile/usage')}
-                            className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg border border-[#383736] text-[13px] text-[#D6D5C9] hover:bg-[#1E1D1B] transition-colors"
+                            className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg border border-[#383736] text-[13px] text-[#D6D5C9] hover:bg-[#1E1D1B] transition-colors cursor-pointer"
                         >
                             Dashboard
                             <ArrowUpRight className="w-3.5 h-3.5 text-[#7B7A79]" />

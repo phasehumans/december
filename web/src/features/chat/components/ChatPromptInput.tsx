@@ -50,7 +50,9 @@ export const ChatPromptInput: React.FC<ChatPromptInputProps> = ({
     useEffect(() => {
         if (textareaRef.current) {
             textareaRef.current.style.height = 'auto'
-            textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 200)}px`
+            const scrollHeight = textareaRef.current.scrollHeight
+            textareaRef.current.style.height = `${Math.min(scrollHeight, 200)}px`
+            textareaRef.current.style.overflowY = scrollHeight >= 200 ? 'auto' : 'hidden'
         }
     }, [value])
 
@@ -101,7 +103,7 @@ export const ChatPromptInput: React.FC<ChatPromptInputProps> = ({
                     onChange={(e) => onChange(e.target.value)}
                     onKeyDown={handleKeyDown}
                     placeholder={selectedElement ? 'Describe changes...' : 'Ask December...'}
-                    className="w-full bg-transparent text-[15px] text-neutral-200 text-left pl-5 pr-5 py-3.5 min-h-[52px] max-h-[200px] resize-none outline-none placeholder-neutral-500 font-medium leading-relaxed scrollbar-hide caret-white"
+                    className="w-full bg-transparent text-[15px] text-neutral-200 text-left pl-5 pr-5 py-3.5 min-h-[52px] max-h-[200px] resize-none outline-none placeholder-neutral-500 font-medium leading-relaxed [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/10 hover:[&::-webkit-scrollbar-thumb]:bg-white/20 caret-white"
                     rows={1}
                 />
 

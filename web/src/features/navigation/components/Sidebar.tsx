@@ -54,16 +54,23 @@ const Sidebar: React.FC<
 
     return (
         <div className="hidden md:flex flex-col h-screen bg-sidebar border-r border-white/5 pt-2 pb-0 z-20 w-[200px] font-sans">
-            <SidebarHeader onNewThread={onNewThread} onHomeClick={onHomeClick} />
+            <SidebarHeader
+                onNewThread={isAuthenticated ? onNewThread : onOpenAuth}
+                onHomeClick={isAuthenticated ? onHomeClick : onOpenAuth}
+            />
 
             <div className="flex flex-col gap-[2px] pl-[10px] pr-3">
                 <SidebarNavItem
                     icon={<Icons.Home />}
                     label="Home"
                     active={isHomeActive}
-                    onClick={onNewThread}
+                    onClick={isAuthenticated ? onNewThread : onOpenAuth}
                 />
-                <SidebarNavItem icon={<Icons.Plus />} label="New Project" onClick={onNewThread} />
+                <SidebarNavItem
+                    icon={<Icons.Plus />}
+                    label="New Project"
+                    onClick={isAuthenticated ? onNewThread : onOpenAuth}
+                />
                 <SidebarNavItem
                     icon={<Icons.Folder />}
                     label="Projects"
