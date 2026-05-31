@@ -6,6 +6,10 @@ import {
     projectChangePlanResponseSchema,
     planAgentResponseSchema,
 } from '../../modules/generation/generation.schema'
+import {
+    autoHealPlanAgentResponse,
+    autoHealChangePlanResponse,
+} from '../../modules/generation/generation.self-healing'
 import { parseModelJson } from '../../utils/parseModelJson'
 import { readChatCompletionText } from '../../utils/readChatCompletionText'
 import { retryAsync } from '../../utils/retry'
@@ -59,11 +63,12 @@ type ChatCompletionWithFinishReason = {
 
 const PLAN_AGENT_MAX_ATTEMPTS = 3
 const PLAN_AGENT_MODEL = 'openai/gpt-oss-20b:free'
-const PLAN_AGENT_MAX_TOKENS = 2400
-const PLAN_AGENT_CHANGE_MAX_TOKENS = 1800
+const PLAN_AGENT_MAX_TOKENS = 4096
+const PLAN_AGENT_CHANGE_MAX_TOKENS = 4096
 
 const validatePlanAgentResponse = (payload: unknown): ExtractProjectPlanResponse => {
-    const parsed = planAgentResponseSchema.safeParse(payload)
+    const healed = autoHealPlanAgentResponse(payload)
+    const parsed = planAgentResponseSchema.safeParse(healed)
 
     if (!parsed.success) {
         throw new Error(`invalid response | plan agent | ${parsed.error.message}`)
@@ -73,7 +78,8 @@ const validatePlanAgentResponse = (payload: unknown): ExtractProjectPlanResponse
 }
 
 const validateChangePlanResponse = (payload: unknown): ExtractProjectChangePlanResponse => {
-    const parsed = projectChangePlanResponseSchema.safeParse(payload)
+    const healed = autoHealChangePlanResponse(payload)
+    const parsed = projectChangePlanResponseSchema.safeParse(healed)
 
     if (!parsed.success) {
         throw new Error(`invalid response | plan agent change | ${parsed.error.message}`)
