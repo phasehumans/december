@@ -486,51 +486,6 @@ I will execute the following steps to implement this movie ticket booking system
 
     return (
         <div className="w-full h-full bg-black text-white font-sans overflow-hidden relative">
-            {/* Developer Simulation Bar */}
-            <div className="absolute top-3.5 right-14 z-[999] flex items-center gap-1.5 bg-[#171615]/90 border border-white/10 rounded-full px-3 py-1 text-xs select-none shadow-2xl backdrop-blur-md">
-                <span className="text-[#91908F] font-bold mr-1 uppercase tracking-wider text-[9px] border-r border-white/10 pr-2.5">
-                    Simulate
-                </span>
-                <button
-                    onClick={() => handleTriggerSimulation('generated')}
-                    className="hover:text-white px-2 py-0.5 text-neutral-400 font-medium transition-colors hover:bg-white/5 rounded text-[10px]"
-                >
-                    Prompt Run
-                </button>
-                <button
-                    onClick={() => handleTriggerSimulation('github')}
-                    className="hover:text-white px-2 py-0.5 text-neutral-400 font-medium transition-colors hover:bg-white/5 rounded text-[10px]"
-                >
-                    GitHub Import
-                </button>
-                <button
-                    onClick={() => handleTriggerSimulation('zip')}
-                    className="hover:text-white px-2 py-0.5 text-neutral-400 font-medium transition-colors hover:bg-white/5 rounded text-[10px]"
-                >
-                    ZIP Upload
-                </button>
-                <button
-                    onClick={handleTriggerErrorSimulation}
-                    className="hover:text-[#FF8A8A] px-2 py-0.5 text-[#FF8A8A]/70 font-medium transition-colors hover:bg-red-500/10 rounded text-[10px]"
-                >
-                    Runtime Error
-                </button>
-                {isSimulating && (
-                    <button
-                        onClick={() => {
-                            setIsSimulating(false)
-                            setSimulatedMessages(null)
-                            setSimulatedFiles(null)
-                            setSimulatedPhase(null)
-                            setSimulatedSession(null)
-                        }}
-                        className="text-emerald-400 hover:text-emerald-300 font-semibold border-l border-white/10 pl-2.5 ml-1 transition-colors text-[10px]"
-                    >
-                        Exit Sim
-                    </button>
-                )}
-            </div>
-
             <div className="md:hidden flex h-full min-h-0 flex-col bg-[#171615]">
                 <div className="flex-1 min-h-0 px-2 pt-2 pb-2 overflow-hidden">
                     <div

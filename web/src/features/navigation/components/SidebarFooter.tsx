@@ -70,7 +70,7 @@ export const SidebarFooter: React.FC<
                     </button>
                 </div>
             )}
-            <div className="w-full border-t border-white/[0.04]"></div>
+            {isAuthenticated && <div className="w-full border-t border-white/[0.04]"></div>}
 
             <div className="pl-[6px] pr-[6px] pt-1 pb-1.5">
                 {isAuthenticated && (

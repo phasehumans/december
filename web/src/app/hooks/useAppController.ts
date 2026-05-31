@@ -73,13 +73,36 @@ const getUserFacingGenerationError = (message: string) => {
     return 'Something went wrong while generating this project. Please try again.'
 }
 
-const mapBackendMessageToUIMessage = (message: BackendProjectMessage): Message => ({
-    id: message.id,
-    role: message.role === 'USER' ? 'user' : message.role === 'SYSTEM' ? 'system' : 'assistant',
-    content: message.content,
-    type: 'text',
-    status: message.status ?? 'done',
-})
+const mapBackendMessageToUIMessage = (message: BackendProjectMessage): Message => {
+    const isAssistant = message.role !== 'USER' && message.role !== 'SYSTEM'
+    let thoughts: string | undefined = undefined
+    let plan: string | undefined = undefined
+    let summary: string | undefined = undefined
+
+    if (isAssistant && message.content) {
+        const parts = message.content.split('\n\n')
+        if (parts.length > 1) {
+            thoughts = parts[0]
+            const remaining = parts.slice(1).join('\n\n')
+            plan = remaining
+            summary = remaining
+        } else {
+            plan = message.content
+            summary = plan
+        }
+    }
+
+    return {
+        id: message.id,
+        role: message.role === 'USER' ? 'user' : message.role === 'SYSTEM' ? 'system' : 'assistant',
+        content: message.content,
+        type: 'text',
+        status: message.status ?? 'done',
+        thoughts,
+        plan,
+        summary,
+    }
+}
 
 const mapStoredFilesToGeneratedFiles = (files: Record<string, string>) =>
     Object.fromEntries(
@@ -220,11 +243,30 @@ export const useAppController = () => {
     )
 
     const appendAssistantChunk = React.useCallback(
-        (messageId: string, chunk: string) => {
-            updateAssistantMessage(messageId, (message) => ({
-                ...message,
-                content: `${message.content}${chunk}`,
-            }))
+        (messageId: string, chunk: string, streamMessageId?: string) => {
+            updateAssistantMessage(messageId, (message) => {
+                const isThinkingStream = streamMessageId?.endsWith(':thinking')
+                const isSummaryStream = streamMessageId?.endsWith(':summary')
+
+                let nextThoughts = message.thoughts ?? ''
+                let nextPlan = message.plan ?? ''
+                let nextSummary = message.summary ?? ''
+
+                if (isThinkingStream) {
+                    nextThoughts = `${nextThoughts}${chunk}`
+                } else if (isSummaryStream) {
+                    nextPlan = `${nextPlan}${chunk}`
+                    nextSummary = `${nextSummary}${chunk}`
+                }
+
+                return {
+                    ...message,
+                    content: `${message.content}${chunk}`,
+                    thoughts: nextThoughts || undefined,
+                    plan: nextPlan || undefined,
+                    summary: nextSummary || undefined,
+                }
+            })
         },
         [updateAssistantMessage]
     )
@@ -837,7 +879,11 @@ export const useAppController = () => {
 
                                     return
                                 case 'message-chunk':
-                                    appendAssistantChunk(activeMessageId, event.data.chunk)
+                                    appendAssistantChunk(
+                                        activeMessageId,
+                                        event.data.chunk,
+                                        event.data.messageId
+                                    )
                                     return
                                 case 'message-complete':
                                     return
@@ -1035,7 +1081,11 @@ export const useAppController = () => {
 
                                 return
                             case 'message-chunk':
-                                appendAssistantChunk(activeMessageId, event.data.chunk)
+                                appendAssistantChunk(
+                                    activeMessageId,
+                                    event.data.chunk,
+                                    event.data.messageId
+                                )
                                 return
                             case 'message-complete':
                             case 'patch-plan':

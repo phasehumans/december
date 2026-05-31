@@ -106,7 +106,7 @@ const PromptInput: React.FC<PromptInputProps> = ({
                     displayText={displayText}
                 />
 
-                <div className="flex items-start w-full relative">
+                <div className="flex items-start w-full relative rounded-t-[16px] overflow-hidden">
                     <textarea
                         ref={textareaRef}
                         value={input}
@@ -118,6 +118,7 @@ const PromptInput: React.FC<PromptInputProps> = ({
                         className={`
                 w-full bg-transparent text-[#D6D5D4] caret-white
                 resize-none focus:outline-none z-10 font-sans font-medium leading-relaxed
+                [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/10 hover:[&::-webkit-scrollbar-thumb]:bg-white/20
                 ${minimized ? 'py-4 pl-5 pr-12 min-h-[54px]' : 'pt-[17px] pl-5 pr-12 pb-3 min-h-[69px] text-[15px]'}
               `}
                         rows={1}
@@ -132,6 +133,7 @@ const PromptInput: React.FC<PromptInputProps> = ({
                     onVoiceTranscript={handleVoiceTranscript}
                     onVoiceStateChange={handleVoiceStateChange}
                     isAuthenticated={isAuthenticated}
+                    onOpenAuth={onOpenAuth}
                 />
             </div>
         </div>

@@ -366,574 +366,465 @@ const SettingsBigModal: React.FC<SettingsModalProps> = ({
                     </button>
                 </div>
                 {/* Content Area */}
-                <div className="flex-1 overflow-y-auto [&::-webkit-scrollbar]:w-[12px] [&::-webkit-scrollbar-track]:bg-[#171615] [&::-webkit-scrollbar-thumb]:bg-[#383736] [&::-webkit-scrollbar-thumb]:bg-clip-padding [&::-webkit-scrollbar-thumb]:border-[4px] [&::-webkit-scrollbar-thumb]:border-solid [&::-webkit-scrollbar-thumb]:border-transparent [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-[#4A4948]">
-                    <div className="w-full flex justify-center px-8 md:px-16 py-4 md:py-6 relative z-10">
-                        {isLoading ? (
-                            <div className="text-center py-20 text-[#7B7A79] text-sm animate-pulse">
-                                Loading project details...
-                            </div>
-                        ) : (
-                            activeTab === 'general' && (
-                                <div className="flex flex-col w-full max-w-[680px] text-[#D6D5C9]">
-                                    <h1 className="text-[16px] font-medium mb-3">
-                                        General Settings
-                                    </h1>
-                                    <div className="flex flex-col gap-6 border-t border-[#242323] pt-6">
-                                        <div className="flex flex-col gap-1.5 text-left">
-                                            <span className="text-[14px] text-[#D6D5C9]">
-                                                Project Name
-                                            </span>
-                                            <span className="text-[13px] text-[#7B7A79] mb-1">
-                                                Change your project name display title.
-                                            </span>
-                                            <PremiumInput
-                                                value={projName}
-                                                onChange={(e) => setProjName(e.target.value)}
-                                            />
-                                        </div>
-                                        <div className="flex flex-col gap-1 text-left">
-                                            <span className="text-[14px] text-[#D6D5C9]">
-                                                Description
-                                            </span>
-                                            <span className="text-[13px] text-[#7B7A79] mb-1">
-                                                Provide an overview description of this workspace.
-                                            </span>
-                                            <PremiumTextarea
-                                                rows={3}
-                                                value={projDesc}
-                                                onChange={(e) => setProjDesc(e.target.value)}
-                                                placeholder="Write a brief overview of your application..."
-                                            />
-                                        </div>
-                                        <div
-                                            className="flex flex-col gap-1.5 text-left"
-                                            ref={categoryDropdownRef}
-                                        >
-                                            <span className="text-[14px] text-[#D6D5C9]">
-                                                Project Category
-                                            </span>
-                                            <span className="text-[13px] text-[#7B7A79] mb-1">
-                                                Select project layout classification category.
-                                            </span>
-                                            <div className="relative w-full">
-                                                <button
-                                                    type="button"
-                                                    onClick={() =>
-                                                        setIsCategoryDropdownOpen(
-                                                            !isCategoryDropdownOpen
-                                                        )
-                                                    }
-                                                    className="w-full flex items-center justify-between bg-[#1A1918] border border-[#2B2A29] hover:border-[#383736] rounded-xl px-3.5 py-2.5 text-white text-[13px] transition-[border-color,background-color] duration-200 focus:outline-none text-left"
-                                                >
-                                                    <span
-                                                        className={
-                                                            category === 'NONE'
-                                                                ? 'text-[#7B7A79]'
-                                                                : 'text-[#D6D5C9]'
-                                                        }
-                                                    >
-                                                        {CATEGORIES.find(
-                                                            (cat) => cat.id === category
-                                                        )?.label ?? 'Select Category...'}
-                                                    </span>
-                                                    <ChevronDown
-                                                        className={`w-4 h-4 text-[#7B7A79] transition-transform duration-200 ${
-                                                            isCategoryDropdownOpen
-                                                                ? 'rotate-180'
-                                                                : ''
-                                                        }`}
-                                                    />
-                                                </button>
-
-                                                <AnimatePresence>
-                                                    {isCategoryDropdownOpen && (
-                                                        <motion.div
-                                                            initial={{
-                                                                opacity: 0,
-                                                                y: -6,
-                                                                scale: 0.98,
-                                                            }}
-                                                            animate={{ opacity: 1, y: 0, scale: 1 }}
-                                                            exit={{
-                                                                opacity: 0,
-                                                                y: -6,
-                                                                scale: 0.98,
-                                                            }}
-                                                            transition={{ duration: 0.15 }}
-                                                            className="absolute left-0 right-0 top-full mt-2 rounded-xl border border-[#383736] bg-[#1E1D1C] py-2 shadow-2xl z-50 max-h-[220px] overflow-y-auto [&::-webkit-scrollbar]:w-[4px] [&::-webkit-scrollbar-thumb]:bg-[#383736]/60 [&::-webkit-scrollbar-thumb]:rounded-full text-left"
-                                                        >
-                                                            {CATEGORIES.map((cat) => (
-                                                                <button
-                                                                    key={cat.id}
-                                                                    type="button"
-                                                                    onClick={() => {
-                                                                        setCategory(cat.id as any)
-                                                                        setIsCategoryDropdownOpen(
-                                                                            false
-                                                                        )
-                                                                    }}
-                                                                    className="w-full flex items-center justify-between px-3.5 py-2 text-[13px] text-[#D6D5C9] hover:bg-[#242323] hover:text-white transition-colors text-left"
-                                                                >
-                                                                    <span
-                                                                        className={
-                                                                            cat.id === 'NONE'
-                                                                                ? 'text-[#7B7A79]'
-                                                                                : ''
-                                                                        }
-                                                                    >
-                                                                        {cat.label}
-                                                                    </span>
-                                                                    {category === cat.id && (
-                                                                        <Check className="h-3.5 w-3.5 text-[#D6D5C9]" />
-                                                                    )}
-                                                                </button>
-                                                            ))}
-                                                        </motion.div>
-                                                    )}
-                                                </AnimatePresence>
-                                            </div>
-                                        </div>
-
-                                        {/* Star / Favourite Row */}
-                                        <div className="flex items-center justify-between border-t border-[#242323] pt-6">
-                                            <div className="flex flex-col gap-0.5 text-left">
-                                                <span className="text-[14px] text-[#D6D5C9]">
-                                                    Add to Favourites
-                                                </span>
-                                                <span className="text-[13px] text-[#7B7A79]">
-                                                    Star this project to make it easily accessible
-                                                    from home.
-                                                </span>
-                                            </div>
-                                            <PremiumToggle
-                                                active={isFavorite}
-                                                onChange={() => setIsFavorite(!isFavorite)}
-                                            />
-                                        </div>
-
-                                        {/* Share as Template Row */}
-                                        <div className="flex items-center justify-between border-t border-[#242323] pt-6">
-                                            <div className="flex flex-col gap-0.5 text-left">
-                                                <span className="text-[14px] text-[#D6D5C9]">
-                                                    {isTemplate
-                                                        ? 'Unshare as Template'
-                                                        : 'Share as Template'}
-                                                </span>
-                                                <span className="text-[13px] text-[#7B7A79]">
-                                                    Allow others to duplicate this project as a
-                                                    community layout.
-                                                </span>
-                                            </div>
-                                            <button
-                                                type="button"
-                                                onClick={() => setIsShareModalOpen(true)}
-                                                className="px-4 py-1.5 rounded-lg border border-[#383736] text-[13px] text-[#D6D5C9] hover:bg-[#242323] transition-colors font-medium"
-                                            >
-                                                {isTemplate ? 'Unshare' : 'Share'}
-                                            </button>
-                                        </div>
-
-                                        {/* Delete Project Row */}
-                                        <div className="flex items-center justify-between border-t border-[#242323] pt-6">
-                                            <div className="flex flex-col gap-0.5 text-left">
-                                                <span className="text-[14px] text-[#D6D5C9]">
-                                                    Delete Project
-                                                </span>
-                                                <span className="text-[13px] text-[#7B7A79]">
-                                                    Permanently delete this project from your
-                                                    workspace.
-                                                </span>
-                                            </div>
-                                            <button
-                                                type="button"
-                                                onClick={() => setIsDeleteModalOpen(true)}
-                                                className="px-4 py-1.5 rounded-lg border border-[#383736] text-[13px] text-[#D6D5C9] hover:bg-[#242323] transition-colors font-medium"
-                                            >
-                                                Delete
-                                            </button>
-                                        </div>
-
-                                        <div className="pt-4 border-t border-[#242323] flex justify-start">
-                                            <button
-                                                onClick={handleSaveChanges}
-                                                disabled={isSaving}
-                                                className="px-4 py-1.5 rounded-lg bg-[#E8E7E4] text-[#171615] hover:bg-white font-medium text-[13px] transition-colors disabled:opacity-50 flex items-center gap-2"
-                                            >
-                                                {isSaving ? 'Saving...' : 'Save Changes'}
-                                            </button>
-                                        </div>
-                                    </div>
+                <div className="flex-1 overflow-y-auto [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/10 hover:[&::-webkit-scrollbar-thumb]:bg-white/20 p-5">
+                    {activeTab === 'general' && (
+                        <div className="flex flex-col w-full max-w-[680px] text-[#D6D5C9] animate-in fade-in duration-200">
+                            <h1 className="text-[16px] font-medium mb-3">General Settings</h1>
+                            <div className="flex flex-col gap-6 border-t border-[#242323] pt-6">
+                                <div className="flex flex-col gap-1.5 text-left">
+                                    <span className="text-[14px] text-[#D6D5C9]">Project Name</span>
+                                    <span className="text-[13px] text-[#7B7A79] mb-1">
+                                        Change your project name display title.
+                                    </span>
+                                    <PremiumInput
+                                        value={projName}
+                                        onChange={(e) => setProjName(e.target.value)}
+                                    />
                                 </div>
-                            )
-                        )}
+                                <div className="flex flex-col gap-1 text-left">
+                                    <span className="text-[14px] text-[#D6D5C9]">Description</span>
+                                    <span className="text-[13px] text-[#7B7A79] mb-1">
+                                        Provide an overview description of this workspace.
+                                    </span>
+                                    <PremiumTextarea
+                                        rows={3}
+                                        value={projDesc}
+                                        onChange={(e) => setProjDesc(e.target.value)}
+                                        placeholder="Write a brief overview of your application..."
+                                    />
+                                </div>
 
-                        {activeTab === 'publish' && (
-                            <div className="flex flex-col w-full max-w-[680px] text-[#D6D5C9]">
-                                <h1 className="text-[16px] font-medium mb-3">
-                                    Publish Application
-                                </h1>
-                                <div className="flex flex-col gap-6 border-t border-[#242323] pt-6">
-                                    {/* Environment Branch Select */}
-                                    <div className="flex flex-col gap-3 text-left">
-                                        <span className="text-[14px] font-medium text-[#D6D5C9]">
-                                            Target Environment
+                                {/* Star / Favourite Row */}
+                                <div className="flex items-center justify-between border-t border-[#242323] pt-6">
+                                    <div className="flex flex-col gap-0.5 text-left">
+                                        <span className="text-[14px] text-[#D6D5C9]">
+                                            Add to Favourites
                                         </span>
                                         <span className="text-[13px] text-[#7B7A79]">
-                                            Select the deployment target environment branch.
+                                            Star this project to make it easily accessible from
+                                            home.
                                         </span>
-                                        <div className="grid grid-cols-3 gap-3">
-                                            {[
-                                                {
-                                                    id: 'preview',
-                                                    label: 'Preview',
-                                                    desc: 'Temporary developer test branch',
-                                                },
-                                                {
-                                                    id: 'staging',
-                                                    label: 'Staging',
-                                                    desc: 'Pre-production QA sandbox',
-                                                },
-                                                {
-                                                    id: 'production',
-                                                    label: 'Production',
-                                                    desc: 'Live public application',
-                                                },
-                                            ].map((item) => (
-                                                <button
-                                                    key={item.id}
-                                                    onClick={() => setEnv(item.id)}
-                                                    className={`p-3 rounded-xl border text-left flex flex-col gap-1.5 transition-colors outline-none ${
-                                                        env === item.id
-                                                            ? 'bg-[#242323] border-[#383736] text-[#D6D5C9]'
-                                                            : 'bg-[#1A1918] border-[#2B2A29] text-[#7B7A79] hover:text-[#D6D5C9] hover:bg-[#1E1D1B]'
-                                                    }`}
-                                                >
-                                                    <span className="font-semibold text-[13px] capitalize">
-                                                        {item.label}
-                                                    </span>
-                                                    <span className="text-[11px] opacity-75">
-                                                        {item.desc}
-                                                    </span>
-                                                </button>
-                                            ))}
-                                        </div>
                                     </div>
+                                    <PremiumToggle
+                                        active={isFavorite}
+                                        onChange={() => setIsFavorite(!isFavorite)}
+                                    />
+                                </div>
 
-                                    {/* Deployment Controls */}
-                                    <div className="flex flex-col gap-3 border-t border-[#242323] pt-6 text-left">
-                                        <span className="text-[14px] font-medium text-[#D6D5C9]">
-                                            Production Deployment
+                                {/* Share as Template Row */}
+                                <div className="flex items-center justify-between border-t border-[#242323] pt-6">
+                                    <div className="flex flex-col gap-0.5 text-left">
+                                        <span className="text-[14px] text-[#D6D5C9]">
+                                            {isTemplate
+                                                ? 'Unshare as Template'
+                                                : 'Share as Template'}
                                         </span>
                                         <span className="text-[13px] text-[#7B7A79]">
-                                            Deploy the active visual workspace to the live global
-                                            edge sandbox.
+                                            Allow others to duplicate this project as a community
+                                            layout.
                                         </span>
-                                        <div className="p-6 rounded-xl border border-[#242323] bg-[#1A1918]/20 flex flex-col items-center justify-center text-center space-y-4">
-                                            <Rocket
-                                                className="w-12 h-12 text-[#7B7A79]"
-                                                strokeWidth={1.5}
-                                            />
-                                            <div className="space-y-1">
-                                                <span className="block text-[14px] font-semibold text-white">
-                                                    Deploy Live Application
-                                                </span>
-                                                <span className="block text-xs text-[#7B7A79] max-w-[400px]">
-                                                    Compile the active visual workspace, bundle
-                                                    files, and push them globally.
-                                                </span>
-                                            </div>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsShareModalOpen(true)}
+                                        className="px-4 py-1.5 rounded-lg border border-[#383736] text-[13px] text-[#D6D5C9] hover:bg-[#242323] transition-colors font-medium"
+                                    >
+                                        {isTemplate ? 'Unshare' : 'Share'}
+                                    </button>
+                                </div>
+
+                                {/* Delete Project Row */}
+                                <div className="flex items-center justify-between border-t border-[#242323] pt-6">
+                                    <div className="flex flex-col gap-0.5 text-left">
+                                        <span className="text-[14px] text-[#D6D5C9]">
+                                            Delete Project
+                                        </span>
+                                        <span className="text-[13px] text-[#7B7A79]">
+                                            Permanently delete this project from your workspace.
+                                        </span>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsDeleteModalOpen(true)}
+                                        className="px-4 py-1.5 rounded-lg border border-[#383736] text-[13px] text-[#D6D5C9] hover:bg-[#242323] transition-colors font-medium"
+                                    >
+                                        Delete
+                                    </button>
+                                </div>
+
+                                <div className="pt-4 border-t border-[#242323] flex justify-start">
+                                    <button
+                                        onClick={handleSaveChanges}
+                                        disabled={isSaving}
+                                        className="px-4 py-1.5 rounded-lg bg-[#E8E7E4] text-[#171615] hover:bg-white font-medium text-[13px] transition-colors disabled:opacity-50 flex items-center gap-2"
+                                    >
+                                        {isSaving ? 'Saving...' : 'Save Changes'}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'publish' && (
+                        <div className="flex flex-col w-full max-w-[680px] text-[#D6D5C9] animate-in fade-in duration-200">
+                            <h1 className="text-[16px] font-medium mb-3">Publish Application</h1>
+                            <div className="flex flex-col gap-6 border-t border-[#242323] pt-6">
+                                {/* Environment Branch Select */}
+                                <div className="flex flex-col gap-3 text-left">
+                                    <span className="text-[14px] font-medium text-[#D6D5C9]">
+                                        Target Environment
+                                    </span>
+                                    <span className="text-[13px] text-[#7B7A79]">
+                                        Select the deployment target environment branch.
+                                    </span>
+                                    <div className="grid grid-cols-3 gap-3">
+                                        {[
+                                            {
+                                                id: 'preview',
+                                                label: 'Preview',
+                                                desc: 'Temporary developer test branch',
+                                            },
+                                            {
+                                                id: 'staging',
+                                                label: 'Staging',
+                                                desc: 'Pre-production QA sandbox',
+                                            },
+                                            {
+                                                id: 'production',
+                                                label: 'Production',
+                                                desc: 'Live public application',
+                                            },
+                                        ].map((item) => (
                                             <button
-                                                onClick={handleDeploy}
-                                                disabled={deploying || deployed}
-                                                className={`rounded-lg px-5 py-2 text-[13px] font-semibold transition-colors outline-none ${
-                                                    deployed
-                                                        ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                                                        : deploying
-                                                          ? 'bg-[#242323] border border-[#383736] text-[#7B7A79] cursor-not-allowed'
-                                                          : 'bg-[#E8E7E4] text-[#171615] hover:bg-white'
+                                                key={item.id}
+                                                onClick={() => setEnv(item.id)}
+                                                className={`p-3 rounded-xl border text-left flex flex-col gap-1.5 transition-colors outline-none ${
+                                                    env === item.id
+                                                        ? 'bg-[#242323] border-[#383736] text-[#D6D5C9]'
+                                                        : 'bg-[#1A1918] border-[#2B2A29] text-[#7B7A79] hover:text-[#D6D5C9] hover:bg-[#1E1D1B]'
                                                 }`}
                                             >
-                                                {deploying ? (
-                                                    <span className="flex items-center gap-1.5 justify-center">
-                                                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                                                        <span>Bundling Assets...</span>
-                                                    </span>
-                                                ) : deployed ? (
-                                                    <span className="flex items-center gap-1.5 justify-center">
-                                                        <CheckCircle2 className="w-3.5 h-3.5" />
-                                                        <span>Deployed Successfully!</span>
-                                                    </span>
-                                                ) : (
-                                                    'Deploy to Production'
-                                                )}
+                                                <span className="font-semibold text-[13px] capitalize">
+                                                    {item.label}
+                                                </span>
+                                                <span className="text-[11px] opacity-75">
+                                                    {item.desc}
+                                                </span>
                                             </button>
-                                        </div>
-                                    </div>
-
-                                    {/* Domain Settings */}
-                                    <div className="flex flex-col gap-4 border-t border-[#242323] pt-6 text-left">
-                                        <span className="text-[14px] font-medium text-[#D6D5C9]">
-                                            Domain Configuration
-                                        </span>
-                                        <div className="flex flex-col gap-1.5">
-                                            <span className="text-[13px] text-[#7B7A79]">
-                                                Your free default system subdomain.
-                                            </span>
-                                            <div className="flex gap-2 items-center">
-                                                <PremiumInput
-                                                    value={subDomain}
-                                                    onChange={(e) => setSubDomain(e.target.value)}
-                                                    className="flex-1"
-                                                />
-                                                <span className="text-[13px] text-[#7B7A79] font-mono">
-                                                    .december.dev
-                                                </span>
-                                            </div>
-                                        </div>
-                                        <div className="flex flex-col gap-1.5">
-                                            <span className="text-[13px] text-[#7B7A79]">
-                                                Point your own branded domain name to this build.
-                                            </span>
-                                            <PremiumInput
-                                                value={customDomain}
-                                                onChange={(e) => setCustomDomain(e.target.value)}
-                                                placeholder="www.my-awesome-app.com"
-                                            />
-                                        </div>
-                                    </div>
-
-                                    {/* Protection Settings */}
-                                    <div className="flex flex-col gap-4 border-t border-[#242323] pt-6 text-left">
-                                        <span className="text-[14px] font-medium text-[#D6D5C9]">
-                                            Access Protection
-                                        </span>
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex flex-col gap-0.5">
-                                                <span className="text-[13px] text-[#D6D5C9]">
-                                                    Password Protection
-                                                </span>
-                                                <span className="text-[12px] text-[#7B7A79]">
-                                                    Require visitors to input a password to view
-                                                    this staging/preview deploy.
-                                                </span>
-                                            </div>
-                                            <PremiumToggle
-                                                active={pwdProtection}
-                                                onChange={() => setPwdProtection(!pwdProtection)}
-                                            />
-                                        </div>
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex flex-col gap-0.5">
-                                                <span className="text-[13px] text-[#D6D5C9]">
-                                                    Block Search Indexing
-                                                </span>
-                                                <span className="text-[12px] text-[#7B7A79]">
-                                                    Instruct crawlers and search engines to ignore
-                                                    this deployment.
-                                                </span>
-                                            </div>
-                                            <PremiumToggle
-                                                active={noIndex}
-                                                onChange={() => setNoIndex(!noIndex)}
-                                            />
-                                        </div>
-                                    </div>
-
-                                    {/* Build Logs Console & History */}
-                                    <div className="flex flex-col gap-4 border-t border-[#242323] pt-6 text-left">
-                                        <span className="text-[14px] font-medium text-[#D6D5C9]">
-                                            Terminal Build Logs & History
-                                        </span>
-                                        <div className="h-44 bg-[#100E12] rounded-xl border border-[#2B2A29] p-4 font-mono text-[11px] text-green-400 overflow-y-auto space-y-1 [&::-webkit-scrollbar]:w-[4px] [&::-webkit-scrollbar-thumb]:bg-[#383736]/60 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent">
-                                            <div className="text-neutral-500">
-                                                [12:02:11] $ bun run build.ts
-                                            </div>
-                                            <div>[12:02:12] 🚀 Starting compile loops...</div>
-                                            <div>[12:02:13] 🗑️ Cleaning dist cache folder...</div>
-                                            <div>
-                                                [12:02:15] 📄 Processing components index
-                                                mappings...
-                                            </div>
-                                            <div>
-                                                [12:02:18] 📦 Bundling 4 JSX modules (vite v5.2)...
-                                            </div>
-                                            <div>
-                                                [12:02:22] ✅ Assets generated: chunk-xbhnt5se.js
-                                                (1.30 MB)
-                                            </div>
-                                            <div className="text-emerald-400 animate-pulse font-bold">
-                                                [12:02:24] ✅ Deploying to edge... Ready!
-                                            </div>
-                                        </div>
-                                        <div className="p-4 rounded-xl border border-[#2B2A29] bg-[#1A1918]/20 flex items-center justify-between text-[12.5px]">
-                                            <div className="space-y-0.5">
-                                                <span className="block text-[#D6D5C9] font-semibold">
-                                                    Last Active Deployment
-                                                </span>
-                                                <span className="block text-xs text-[#7B7A79] font-mono">
-                                                    Build ID: dep_xbh726e • 5 minutes ago
-                                                </span>
-                                            </div>
-                                            <span className="text-[10px] font-bold uppercase bg-green-950/40 border border-green-900/30 text-green-400 rounded-xl px-2.5 py-0.5 select-none flex items-center gap-1">
-                                                <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-                                                Success
-                                            </span>
-                                        </div>
+                                        ))}
                                     </div>
                                 </div>
-                            </div>
-                        )}
 
-                        {activeTab === 'share' && (
-                            <div className="flex flex-col w-full max-w-[680px] text-[#D6D5C9]">
-                                <h1 className="text-[16px] font-medium mb-3">Share</h1>
-                                <div className="flex flex-col gap-6 border-t border-[#242323] pt-6">
-                                    {/* Visibility Cards */}
-                                    <div className="flex flex-col gap-3 text-left">
-                                        <span className="text-[14px] font-medium text-[#D6D5C9]">
-                                            Visibility
-                                        </span>
-                                        <span className="text-[13px] text-[#7B7A79]">
-                                            Configure who can see and duplicate this workspace
-                                            template.
-                                        </span>
-                                        <div className="grid grid-cols-3 gap-3">
-                                            {[
-                                                {
-                                                    id: 'private',
-                                                    label: 'Private',
-                                                    icon: <Lock size={14} />,
-                                                    desc: 'Only you can access',
-                                                },
-                                                {
-                                                    id: 'link',
-                                                    label: 'Anyone with Link',
-                                                    icon: <Globe size={14} />,
-                                                    desc: 'Access via preview URL',
-                                                },
-                                                {
-                                                    id: 'public',
-                                                    label: 'Public',
-                                                    icon: <Users size={14} />,
-                                                    desc: 'Shared on Templates',
-                                                },
-                                            ].map((opt) => (
-                                                <button
-                                                    key={opt.id}
-                                                    onClick={() => setVisibility(opt.id as any)}
-                                                    className={`p-3 rounded-xl border text-left flex flex-col gap-1.5 transition-colors outline-none ${
-                                                        visibility === opt.id
-                                                            ? 'bg-[#242323] border-[#383736] text-[#D6D5C9]'
-                                                            : 'bg-[#1A1918] border-[#2B2A29] text-[#7B7A79] hover:text-[#D6D5C9] hover:bg-[#1E1D1B]'
-                                                    }`}
-                                                >
-                                                    <div className="flex items-center gap-2 font-semibold text-[13px]">
-                                                        {opt.icon}
-                                                        <span>{opt.label}</span>
-                                                    </div>
-                                                    <span className="text-[11px] opacity-75">
-                                                        {opt.desc}
-                                                    </span>
-                                                </button>
-                                            ))}
+                                {/* Deployment Controls */}
+                                <div className="flex flex-col gap-3 border-t border-[#242323] pt-6 text-left">
+                                    <span className="text-[14px] font-medium text-[#D6D5C9]">
+                                        Production Deployment
+                                    </span>
+                                    <span className="text-[13px] text-[#7B7A79]">
+                                        Deploy the active visual workspace to the live global edge
+                                        sandbox.
+                                    </span>
+                                    <div className="p-6 rounded-xl border border-[#242323] bg-[#1A1918]/20 flex flex-col items-center justify-center text-center space-y-4">
+                                        <Rocket
+                                            className="w-12 h-12 text-[#7B7A79]"
+                                            strokeWidth={1.5}
+                                        />
+                                        <div className="space-y-1">
+                                            <span className="block text-[14px] font-semibold text-white">
+                                                Deploy Live Application
+                                            </span>
+                                            <span className="block text-xs text-[#7B7A79] max-w-[400px]">
+                                                Compile the active visual workspace, bundle files,
+                                                and push them globally.
+                                            </span>
                                         </div>
+                                        <button
+                                            onClick={handleDeploy}
+                                            disabled={deploying || deployed}
+                                            className={`rounded-lg px-5 py-2 text-[13px] font-semibold transition-colors outline-none ${
+                                                deployed
+                                                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                                                    : deploying
+                                                      ? 'bg-[#242323] border border-[#383736] text-[#7B7A79] cursor-not-allowed'
+                                                      : 'bg-[#E8E7E4] text-[#171615] hover:bg-white'
+                                            }`}
+                                        >
+                                            {deploying ? (
+                                                <span className="flex items-center gap-1.5 justify-center">
+                                                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                                                    <span>Bundling Assets...</span>
+                                                </span>
+                                            ) : deployed ? (
+                                                <span className="flex items-center gap-1.5 justify-center">
+                                                    <CheckCircle2 className="w-3.5 h-3.5" />
+                                                    <span>Deployed Successfully!</span>
+                                                </span>
+                                            ) : (
+                                                'Deploy to Production'
+                                            )}
+                                        </button>
                                     </div>
+                                </div>
 
-                                    {/* Invite User */}
-                                    <div className="flex flex-col gap-3 text-left">
-                                        <span className="text-[14px] font-medium text-[#D6D5C9]">
-                                            Invite Collaborator
-                                        </span>
+                                {/* Domain Settings */}
+                                <div className="flex flex-col gap-4 border-t border-[#242323] pt-6 text-left">
+                                    <span className="text-[14px] font-medium text-[#D6D5C9]">
+                                        Domain Configuration
+                                    </span>
+                                    <div className="flex flex-col gap-1.5">
                                         <span className="text-[13px] text-[#7B7A79]">
-                                            Add team members directly to this project workspace.
+                                            Your free default system subdomain.
                                         </span>
-                                        <div className="flex gap-2">
+                                        <div className="flex gap-2 items-center">
                                             <PremiumInput
-                                                placeholder="collaborator@email.com"
-                                                value={email}
-                                                onChange={(e) => setEmail(e.target.value)}
+                                                value={subDomain}
+                                                onChange={(e) => setSubDomain(e.target.value)}
                                                 className="flex-1"
                                             />
-                                            <select
-                                                value={inviteRole}
-                                                onChange={(e) => setInviteRole(e.target.value)}
-                                                className="bg-[#1A1918] border border-[#2B2A29] rounded-xl px-3.5 py-2 text-[13px] text-[#D6D5C9] outline-none"
-                                            >
-                                                <option value="view">View</option>
-                                                <option value="edit">Edit</option>
-                                                <option value="admin">Admin</option>
-                                            </select>
-                                            <button className="px-4 py-2 border border-[#383736] rounded-lg text-[13px] font-medium text-[#D6D5C9] hover:bg-[#242323] transition-colors shadow-sm flex items-center gap-1.5 outline-none font-sans">
-                                                <UserPlus size={14} />
-                                                <span>Invite</span>
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {activeTab === 'integrations' && (
-                            <div className="flex flex-col w-full max-w-[680px] text-[#D6D5C9]">
-                                <h1 className="text-[16px] font-medium mb-3">Integrations</h1>
-                                <div className="flex flex-col gap-6 border-t border-[#242323] pt-6">
-                                    <div className="text-center py-12 text-[#7B7A79] text-[13px]">
-                                        Connect third-party tools and services to sync your project
-                                        workflow. (Coming Soon)
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {activeTab === 'variables' && (
-                            <div className="flex flex-col w-full max-w-[680px] text-[#D6D5C9]">
-                                <h1 className="text-[16px] font-medium mb-3">
-                                    Environment Variables
-                                </h1>
-                                <div className="flex flex-col gap-6 border-t border-[#242323] pt-6">
-                                    <div className="text-center py-12 text-[#7B7A79] text-[13px]">
-                                        Configure secure environment variables, API tokens, and
-                                        secrets. (Coming Soon)
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {activeTab === 'domains' && (
-                            <div className="flex flex-col w-full max-w-[680px] text-[#D6D5C9]">
-                                <h1 className="text-[16px] font-medium mb-3">Domains</h1>
-                                <div className="flex flex-col gap-6 border-t border-[#242323] pt-6">
-                                    <div className="text-center py-12 text-[#7B7A79] text-[13px]">
-                                        Link a custom branded domain or configure secure subdomains.
-                                        (Coming Soon)
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {activeTab === 'analytics' && (
-                            <div className="flex flex-col w-full max-w-[680px] text-[#D6D5C9]">
-                                <h1 className="text-[16px] font-medium mb-3">Analytics Settings</h1>
-                                <div className="flex flex-col gap-6 border-t border-[#242323] pt-6">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex flex-col gap-0.5 text-left">
-                                            <span className="text-[14px] text-[#D6D5C9]">
-                                                Enable Analytics
-                                            </span>
-                                            <span className="text-[13px] text-[#7B7A79]">
-                                                Track compile loops, page loading cycles, and visual
-                                                interactions.
+                                            <span className="text-[13px] text-[#7B7A79] font-mono">
+                                                .december.dev
                                             </span>
                                         </div>
-                                        <PremiumToggle
-                                            active={analytics}
-                                            onChange={() => setAnalytics(!analytics)}
+                                    </div>
+                                    <div className="flex flex-col gap-1.5">
+                                        <span className="text-[13px] text-[#7B7A79]">
+                                            Point your own branded domain name to this build.
+                                        </span>
+                                        <PremiumInput
+                                            value={customDomain}
+                                            onChange={(e) => setCustomDomain(e.target.value)}
+                                            placeholder="www.my-awesome-app.com"
                                         />
                                     </div>
                                 </div>
+
+                                {/* Protection Settings */}
+                                <div className="flex flex-col gap-4 border-t border-[#242323] pt-6 text-left">
+                                    <span className="text-[14px] font-medium text-[#D6D5C9]">
+                                        Access Protection
+                                    </span>
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex flex-col gap-0.5">
+                                            <span className="text-[13px] text-[#D6D5C9]">
+                                                Password Protection
+                                            </span>
+                                            <span className="text-[12px] text-[#7B7A79]">
+                                                Require visitors to input a password to view this
+                                                staging/preview deploy.
+                                            </span>
+                                        </div>
+                                        <PremiumToggle
+                                            active={pwdProtection}
+                                            onChange={() => setPwdProtection(!pwdProtection)}
+                                        />
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex flex-col gap-0.5">
+                                            <span className="text-[13px] text-[#D6D5C9]">
+                                                Block Search Indexing
+                                            </span>
+                                            <span className="text-[12px] text-[#7B7A79]">
+                                                Instruct crawlers and search engines to ignore this
+                                                deployment.
+                                            </span>
+                                        </div>
+                                        <PremiumToggle
+                                            active={noIndex}
+                                            onChange={() => setNoIndex(!noIndex)}
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Build Logs Console & History */}
+                                <div className="flex flex-col gap-4 border-t border-[#242323] pt-6 text-left">
+                                    <span className="text-[14px] font-medium text-[#D6D5C9]">
+                                        Terminal Build Logs & History
+                                    </span>
+                                    <div className="h-44 bg-[#100E12] rounded-xl border border-[#2B2A29] p-4 font-mono text-[11px] text-green-400 overflow-y-auto space-y-1 [&::-webkit-scrollbar]:w-[4px] [&::-webkit-scrollbar-thumb]:bg-[#383736]/60 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent">
+                                        <div className="text-neutral-500">
+                                            [12:02:11] $ bun run build.ts
+                                        </div>
+                                        <div>[12:02:12] 🚀 Starting compile loops...</div>
+                                        <div>[12:02:13] 🗑️ Cleaning dist cache folder...</div>
+                                        <div>
+                                            [12:02:15] 📄 Processing components index mappings...
+                                        </div>
+                                        <div>
+                                            [12:02:18] 📦 Bundling 4 JSX modules (vite v5.2)...
+                                        </div>
+                                        <div>
+                                            [12:02:22] ✅ Assets generated: chunk-xbhnt5se.js (1.30
+                                            MB)
+                                        </div>
+                                        <div className="text-emerald-400 animate-pulse font-bold">
+                                            [12:02:24] ✅ Deploying to edge... Ready!
+                                        </div>
+                                    </div>
+                                    <div className="p-4 rounded-xl border border-[#2B2A29] bg-[#1A1918]/20 flex items-center justify-between text-[12.5px]">
+                                        <div className="space-y-0.5">
+                                            <span className="block text-[#D6D5C9] font-semibold">
+                                                Last Active Deployment
+                                            </span>
+                                            <span className="block text-xs text-[#7B7A79] font-mono">
+                                                Build ID: dep_xbh726e • 5 minutes ago
+                                            </span>
+                                        </div>
+                                        <span className="text-[10px] font-bold uppercase bg-green-950/40 border border-green-900/30 text-green-400 rounded-xl px-2.5 py-0.5 select-none flex items-center gap-1">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                                            Success
+                                        </span>
+                                    </div>
+                                </div>
                             </div>
-                        )}
-                    </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'share' && (
+                        <div className="flex flex-col w-full max-w-[680px] text-[#D6D5C9] animate-in fade-in duration-200">
+                            <h1 className="text-[16px] font-medium mb-3">Share</h1>
+                            <div className="flex flex-col gap-6 border-t border-[#242323] pt-6">
+                                {/* Visibility Cards */}
+                                <div className="flex flex-col gap-3 text-left">
+                                    <span className="text-[14px] font-medium text-[#D6D5C9]">
+                                        Visibility
+                                    </span>
+                                    <span className="text-[13px] text-[#7B7A79]">
+                                        Configure who can see and duplicate this workspace template.
+                                    </span>
+                                    <div className="grid grid-cols-3 gap-3">
+                                        {[
+                                            {
+                                                id: 'private',
+                                                label: 'Private',
+                                                icon: <Lock size={14} />,
+                                                desc: 'Only you can access',
+                                            },
+                                            {
+                                                id: 'link',
+                                                label: 'Anyone with Link',
+                                                icon: <Globe size={14} />,
+                                                desc: 'Access via preview URL',
+                                            },
+                                            {
+                                                id: 'public',
+                                                label: 'Public',
+                                                icon: <Users size={14} />,
+                                                desc: 'Shared on Templates',
+                                            },
+                                        ].map((opt) => (
+                                            <button
+                                                key={opt.id}
+                                                onClick={() => setVisibility(opt.id as any)}
+                                                className={`p-3 rounded-xl border text-left flex flex-col gap-1.5 transition-colors outline-none ${
+                                                    visibility === opt.id
+                                                        ? 'bg-[#242323] border-[#383736] text-[#D6D5C9]'
+                                                        : 'bg-[#1A1918] border-[#2B2A29] text-[#7B7A79] hover:text-[#D6D5C9] hover:bg-[#1E1D1B]'
+                                                }`}
+                                            >
+                                                <div className="flex items-center gap-2 font-semibold text-[13px]">
+                                                    {opt.icon}
+                                                    <span>{opt.label}</span>
+                                                </div>
+                                                <span className="text-[11px] opacity-75">
+                                                    {opt.desc}
+                                                </span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Invite User */}
+                                <div className="flex flex-col gap-3 text-left">
+                                    <span className="text-[14px] font-medium text-[#D6D5C9]">
+                                        Invite Collaborator
+                                    </span>
+                                    <span className="text-[13px] text-[#7B7A79]">
+                                        Add team members directly to this project workspace.
+                                    </span>
+                                    <div className="flex gap-2">
+                                        <PremiumInput
+                                            placeholder="collaborator@email.com"
+                                            value={email}
+                                            onChange={(e) => setEmail(e.target.value)}
+                                            className="flex-1"
+                                        />
+                                        <select
+                                            value={inviteRole}
+                                            onChange={(e) => setInviteRole(e.target.value)}
+                                            className="bg-[#1A1918] border border-[#2B2A29] rounded-xl px-3.5 py-2 text-[13px] text-[#D6D5C9] outline-none"
+                                        >
+                                            <option value="view">View</option>
+                                            <option value="edit">Edit</option>
+                                            <option value="admin">Admin</option>
+                                        </select>
+                                        <button className="px-4 py-2 border border-[#383736] rounded-lg text-[13px] font-medium text-[#D6D5C9] hover:bg-[#242323] transition-colors shadow-sm flex items-center gap-1.5 outline-none font-sans">
+                                            <UserPlus size={14} />
+                                            <span>Invite</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'integrations' && (
+                        <div className="flex flex-col w-full max-w-[680px] text-[#D6D5C9] animate-in fade-in duration-200">
+                            <h1 className="text-[16px] font-medium mb-3">Integrations</h1>
+                            <div className="flex flex-col gap-6 border-t border-[#242323] pt-6">
+                                <div className="text-center py-12 text-[#7B7A79] text-[13px]">
+                                    Connect third-party tools and services to sync your project
+                                    workflow. (Coming Soon)
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'variables' && (
+                        <div className="flex flex-col w-full max-w-[680px] text-[#D6D5C9] animate-in fade-in duration-200">
+                            <h1 className="text-[16px] font-medium mb-3">Environment Variables</h1>
+                            <div className="flex flex-col gap-6 border-t border-[#242323] pt-6">
+                                <div className="text-center py-12 text-[#7B7A79] text-[13px]">
+                                    Configure secure environment variables, API tokens, and secrets.
+                                    (Coming Soon)
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'domains' && (
+                        <div className="flex flex-col w-full max-w-[680px] text-[#D6D5C9] animate-in fade-in duration-200">
+                            <h1 className="text-[16px] font-medium mb-3">Domains</h1>
+                            <div className="flex flex-col gap-6 border-t border-[#242323] pt-6">
+                                <div className="text-center py-12 text-[#7B7A79] text-[13px]">
+                                    Link a custom branded domain or configure secure subdomains.
+                                    (Coming Soon)
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'analytics' && (
+                        <div className="flex flex-col w-full max-w-[680px] text-[#D6D5C9] animate-in fade-in duration-200">
+                            <h1 className="text-[16px] font-medium mb-3">Analytics Settings</h1>
+                            <div className="flex flex-col gap-6 border-t border-[#242323] pt-6">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex flex-col gap-0.5 text-left">
+                                        <span className="text-[14px] text-[#D6D5C9]">
+                                            Enable Analytics
+                                        </span>
+                                        <span className="text-[13px] text-[#7B7A79]">
+                                            Track compile loops, page loading cycles, and visual
+                                            interactions.
+                                        </span>
+                                    </div>
+                                    <PremiumToggle
+                                        active={analytics}
+                                        onChange={() => setAnalytics(!analytics)}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
 

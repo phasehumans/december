@@ -238,9 +238,6 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                 <div className="flex-1 overflow-y-auto [&::-webkit-scrollbar]:w-[12px] [&::-webkit-scrollbar-track]:bg-[#171615] [&::-webkit-scrollbar-thumb]:bg-[#383736] [&::-webkit-scrollbar-thumb]:bg-clip-padding [&::-webkit-scrollbar-thumb]:border-[4px] [&::-webkit-scrollbar-thumb]:border-solid [&::-webkit-scrollbar-thumb]:border-transparent [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-[#4A4948]">
                     <div className="w-full flex justify-center px-8 md:px-16 py-8 md:py-12 relative z-10">
                         <div className="flex flex-col items-end gap-2 absolute top-12 right-16">
-                            {isProfileFetching && !isProfileLoading && (
-                                <div className="text-xs text-neutral-500">Syncing profile...</div>
-                            )}
                             {profileErrorMessage && (
                                 <ErrorAlert
                                     message={profileErrorMessage}

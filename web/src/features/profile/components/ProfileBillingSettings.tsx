@@ -229,7 +229,7 @@ const AddCardModal: React.FC<{
     )
 }
 
-// Minimal Cancellation Flow Modal
+// Premium Cancellation Flow Modal
 const CancellationFlowModal: React.FC<{
     onClose: () => void
     onConfirm: (feedback: string) => void
@@ -237,50 +237,74 @@ const CancellationFlowModal: React.FC<{
     periodEnd: string
     limit: string
 }> = ({ onClose, onConfirm, isCancelling, periodEnd, limit }) => {
-    const [feedback, setFeedback] = useState('')
+    const [confirmText, setConfirmText] = useState('')
+    const isConfirmEnabled = confirmText === 'cancel'
 
     const handleConfirm = () => {
-        onConfirm(feedback.trim())
+        if (isConfirmEnabled) {
+            onConfirm('')
+        }
     }
 
     return (
-        <Modal isOpen={true} onClose={onClose} title="Cancel Subscription" maxWidth="max-w-[440px]">
-            <div className="space-y-4">
-                <p className="text-[13px] text-[#7B7A79] leading-relaxed">
-                    You will retain Pro benefits and your {limit} credits until your billing cycle
-                    ends on{' '}
-                    <span className="font-medium text-[#D6D5C9]">
-                        {new Date(periodEnd).toLocaleDateString()}
-                    </span>
-                    . After this date, your plan will revert to Free.
+        <Modal
+            isOpen={true}
+            onClose={onClose}
+            title="Cancel Subscription"
+            description={`You will retain Pro benefits and your ${limit} credits until your billing cycle ends on ${new Date(periodEnd).toLocaleDateString()}.`}
+            maxWidth="max-w-[420px]"
+            variant="premium"
+        >
+            <div className="flex flex-col gap-4">
+                <p className="text-[13px] text-[#8F8E8D] leading-relaxed">
+                    After this date, your plan will revert to Free.
                 </p>
 
-                <div className="flex flex-col gap-1.5">
-                    <label className="text-sm font-medium text-neutral-300">
-                        Feedback (optional)
+                <div>
+                    <label
+                        htmlFor="cancel-confirm-input"
+                        className="text-[13px] text-[#8F8E8D] mb-2 block leading-relaxed"
+                    >
+                        To confirm, type{' '}
+                        <span className="font-semibold text-white bg-white/[0.06] px-1.5 py-0.5 rounded text-[12px] font-mono">
+                            cancel
+                        </span>{' '}
+                        below:
                     </label>
-                    <textarea
-                        value={feedback}
-                        onChange={(e) => setFeedback(e.target.value)}
-                        placeholder="Tell us how we can improve december..."
-                        className="w-full bg-transparent border border-white/10 hover:border-white/20 focus:border-white/30 rounded-xl px-4 py-3 text-[13px] text-[#D6D5C9] placeholder:text-neutral-600 transition-colors min-h-[100px] max-h-[160px] resize-y focus:outline-none"
+                    <input
+                        id="cancel-confirm-input"
+                        type="text"
+                        autoFocus
+                        value={confirmText}
+                        onChange={(e) => setConfirmText(e.target.value)}
+                        className="w-full bg-[#181817] border border-[#2B2A27] rounded-lg px-3.5 py-2.5 text-white text-[13px] focus:outline-none focus:border-[#4E4D49] focus:ring-1 focus:ring-[#4E4D49] transition-[border-color,box-shadow] duration-200 placeholder:text-[#4A4948]"
+                        placeholder="cancel"
+                        disabled={isCancelling}
+                        autoComplete="off"
+                        spellCheck={false}
                     />
                 </div>
 
-                <div className="mt-8 flex items-center justify-end gap-3">
-                    <Button variant="ghost" onClick={onClose} disabled={isCancelling}>
-                        Keep Pro Plan
-                    </Button>
+                <div className="mt-1 flex items-center justify-end gap-2.5">
                     <button
-                        onClick={handleConfirm}
+                        type="button"
+                        onClick={onClose}
                         disabled={isCancelling}
-                        className="px-4 py-2 rounded-xl bg-red-500/10 border border-red-500/20 text-red-300 text-[13px] font-medium hover:bg-red-500/20 transition-all disabled:opacity-50 flex items-center gap-2"
+                        className="border border-[#2B2A27] bg-transparent text-white hover:bg-white/5 active:scale-95 transition-[transform,background-color,border-color,color] duration-200 text-[13px] font-medium px-4 py-2 rounded-lg focus:outline-none disabled:opacity-50"
+                    >
+                        Keep Pro Plan
+                    </button>
+                    <button
+                        type="button"
+                        onClick={handleConfirm}
+                        disabled={!isConfirmEnabled || isCancelling}
+                        className="bg-red-500/10 border border-red-500/20 text-red-300 hover:bg-red-500/20 active:scale-[0.97] transition-[transform,background-color,border-color,color] duration-200 text-[13px] font-medium px-4 py-2 rounded-lg focus:outline-none disabled:opacity-30 disabled:pointer-events-none flex items-center gap-1.5 justify-center min-w-[150px]"
                     >
                         {isCancelling ? (
-                            <>
-                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                Cancelling...
-                            </>
+                            <div className="flex items-center gap-1.5 justify-center">
+                                <span className="w-3.5 h-3.5 border-2 border-red-300 border-t-transparent rounded-full animate-spin" />
+                                <span>Cancelling...</span>
+                            </div>
                         ) : (
                             'Confirm Cancellation'
                         )}
@@ -698,9 +722,11 @@ export const ProfileBillingSettings: React.FC<ProfileBillingSettingsProps> = ({
                             <div className="absolute -right-8 -top-8 w-24 h-24 rounded-full bg-[#D6D5C9]/5 blur-2xl pointer-events-none" />
 
                             <div className="flex justify-between items-start">
-                                {/* Chip representation */}
-                                <div className="w-7 h-5 rounded border border-amber-500/20 bg-amber-500/5 relative overflow-hidden flex items-center justify-center">
-                                    <div className="absolute inset-x-1 inset-y-0.5 border-r border-b border-amber-500/10" />
+                                {/* Silver metallic chip with linear grid details */}
+                                <div className="w-7 h-5 rounded-[4px] border border-white/20 bg-gradient-to-br from-white/10 to-white/5 relative overflow-hidden flex items-center justify-center">
+                                    <div className="absolute inset-x-1 inset-y-0.5 border-r border-b border-white/10" />
+                                    <div className="absolute top-1/2 left-0 right-0 h-[1px] bg-white/10 -translate-y-1/2" />
+                                    <div className="absolute left-1/2 top-0 bottom-0 w-[1px] bg-white/10 -translate-x-1/2" />
                                 </div>
                                 <span className="text-[9px] font-medium tracking-wider text-[#7B7A79]/85 uppercase">
                                     december
@@ -711,7 +737,7 @@ export const ProfileBillingSettings: React.FC<ProfileBillingSettingsProps> = ({
                                 <span className="text-[22px] font-semibold text-[#D6D5C9] tracking-tight">
                                     {unlimited ? 'Unlimited' : formatCents(remainingInCents)}
                                 </span>
-                                <span className="text-[10px] text-[#7B7A79] truncate tracking-wide uppercase font-medium">
+                                <span className="text-[10px] text-[#7B7A79] truncate tracking-wide font-medium">
                                     {profile?.name || 'december User'}
                                 </span>
                             </div>
