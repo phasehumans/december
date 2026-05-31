@@ -50,7 +50,9 @@ export const ChatPromptInput: React.FC<ChatPromptInputProps> = ({
     useEffect(() => {
         if (textareaRef.current) {
             textareaRef.current.style.height = 'auto'
-            textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 200)}px`
+            const scrollHeight = textareaRef.current.scrollHeight
+            textareaRef.current.style.height = `${Math.min(scrollHeight, 200)}px`
+            textareaRef.current.style.overflowY = scrollHeight >= 200 ? 'auto' : 'hidden'
         }
     }, [value])
 

@@ -251,15 +251,21 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                 {/* Assistant Meta */}
                 <div className="flex items-center gap-2 text-[11px] font-medium tracking-wide">
                     <span className="text-[#8E8D8C]">December</span>
-                    <span
-                        className={
-                            isThinkingPhase || isBuildingPhase
-                                ? 'text-[#A1A09F] animate-pulse'
-                                : 'text-[#6F6E6D]'
-                        }
-                    >
-                        {isThinkingPhase ? 'Thinking...' : isBuildingPhase ? 'Building...' : 'Done'}
-                    </span>
+                    {(isThinkingPhase || isBuildingPhase || status === 'error') && (
+                        <span
+                            className={
+                                isThinkingPhase || isBuildingPhase
+                                    ? 'text-[#A1A09F] animate-pulse'
+                                    : 'text-red-400'
+                            }
+                        >
+                            {isThinkingPhase
+                                ? 'Thinking...'
+                                : isBuildingPhase
+                                  ? 'Building...'
+                                  : 'Error'}
+                        </span>
+                    )}
                 </div>
 
                 {/* 1. Thinking phase collapsible block */}

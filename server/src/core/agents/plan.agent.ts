@@ -66,6 +66,31 @@ const PLAN_AGENT_MODEL = 'openai/gpt-oss-20b:free'
 const PLAN_AGENT_MAX_TOKENS = 4096
 const PLAN_AGENT_CHANGE_MAX_TOKENS = 4096
 
+const cleanCanvasItem = (item: any) => {
+    if (!item) return item
+    const cleaned = { ...item }
+    if (cleaned.type === 'image') {
+        delete cleaned.content
+    }
+    if (cleaned.points) {
+        delete cleaned.points
+    }
+    return cleaned
+}
+
+const cleanCanvasState = (state: any) => {
+    if (!state) return state
+    try {
+        const cleaned = { ...state }
+        if (Array.isArray(cleaned.items)) {
+            cleaned.items = cleaned.items.map(cleanCanvasItem)
+        }
+        return cleaned
+    } catch {
+        return state
+    }
+}
+
 const validatePlanAgentResponse = (payload: unknown): ExtractProjectPlanResponse => {
     const healed = autoHealPlanAgentResponse(payload)
     const parsed = planAgentResponseSchema.safeParse(healed)
@@ -106,6 +131,11 @@ const parsePlanAgentPayload = (
 }
 
 export const extractProjectPlan = async (data: ExtractProjectPlan) => {
+    const compactData = {
+        userPrompt: data.userPrompt,
+        canvasState: cleanCanvasState(data.canvasState),
+    }
+
     return retryAsync({
         label: 'plan agent',
         maxAttempts: PLAN_AGENT_MAX_ATTEMPTS,
@@ -121,7 +151,7 @@ export const extractProjectPlan = async (data: ExtractProjectPlan) => {
                     },
                     {
                         role: 'user',
-                        content: JSON.stringify(data),
+                        content: JSON.stringify(compactData),
                     },
                     ...(attempt > 1
                         ? [
@@ -152,7 +182,7 @@ const toCompactChangePlanInput = (data: ExtractProjectChangePlan) => ({
     runtimeError: data.runtimeError,
     project: data.project,
     baseVersion: data.baseVersion,
-    canvasState: data.canvasState,
+    canvasState: cleanCanvasState(data.canvasState),
     fileTree: data.fileTree,
     recentMessages: data.recentMessages,
 })
