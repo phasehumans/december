@@ -8,6 +8,8 @@ import { fileURLToPath } from 'url'
 import { prisma } from '../../config/db'
 import { assetKey, putBinaryFile, temporaryCanvasAssetKey } from '../../lib/project-storage'
 
+import { persistCanvasDocument } from './canvas.persistence'
+
 type CreateWebClipsInput = {
     url: string
     userId: string
@@ -239,6 +241,52 @@ const createWebClips = async ({ url, userId, projectId }: CreateWebClipsInput) =
     }
 }
 
+type SaveCanvasInput = {
+    projectId: string
+    userId: string
+    versionId?: string
+    canvasState: any
+}
+
+const saveCanvas = async ({ projectId, userId, versionId, canvasState }: SaveCanvasInput) => {
+    await assertProjectAccess(projectId, userId)
+
+    const project = await prisma.project.findUnique({
+        where: { id: projectId },
+        select: { currentVersionId: true },
+    })
+
+    if (!project) {
+        throw new Error('project not found')
+    }
+
+    const targetVersionId = versionId || project.currentVersionId
+    if (!targetVersionId) {
+        throw new Error('no project version found to save canvas state')
+    }
+
+    const persistedCanvas = await persistCanvasDocument({
+        projectId,
+        userId,
+        versionId: targetVersionId,
+        canvasState,
+    })
+
+    await prisma.projectVersion.update({
+        where: { id: targetVersionId },
+        data: {
+            canvasStateJson: persistedCanvas.canvasStateJson as any,
+            canvasAssetManifestJson: persistedCanvas.canvasAssetManifestJson as any,
+        },
+    })
+
+    return {
+        success: true,
+        canvasState: persistedCanvas.canvasStateJson,
+    }
+}
+
 export const canvasService = {
     createWebClips,
+    saveCanvas,
 }

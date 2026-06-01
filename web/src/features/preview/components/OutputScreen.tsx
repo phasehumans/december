@@ -39,6 +39,8 @@ export const OutputScreen: React.FC<OutputScreenProps> = ({
     previewSession,
     previewSessionError,
     projectType = 'generated',
+    selectedModel,
+    setSelectedModel,
 }) => {
     const {
         activeTab,
@@ -635,6 +637,8 @@ I will execute the following steps to implement this movie ticket booking system
                     previewSession={activePreviewSession}
                     previewSessionError={activePreviewSessionError}
                     projectType={activeProjectType}
+                    selectedModel={selectedModel}
+                    setSelectedModel={setSelectedModel}
                 />
             </div>
         </div>

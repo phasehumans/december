@@ -29,6 +29,8 @@ export type Profile = {
     memories?: string | null
     skills?: string | null
     avatarUrl?: string | null
+    subscriptionPlan?: 'FREE' | 'PRO'
+    subscriptionStatus?: 'FREE' | 'ACTIVE' | 'PAST_DUE' | 'CANCELED'
 }
 
 type BackendProfile = Profile

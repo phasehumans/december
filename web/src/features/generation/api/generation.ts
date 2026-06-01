@@ -153,6 +153,7 @@ type GenerateProjectInput = {
     prompt: string
     projectId?: string | null
     canvasState?: CanvasDocument
+    model?: string
     signal?: AbortSignal
     onEvent: (event: GenerationStreamEvent) => void
 }
@@ -162,6 +163,7 @@ type ApplyProjectEditInput = {
     prompt: string
     selectedElement?: PreviewSelectedElementPayload | null
     canvasState?: CanvasDocument
+    model?: string
     signal?: AbortSignal
     onEvent: (event: GenerationStreamEvent) => void
 }
@@ -170,6 +172,7 @@ type ApplyProjectFixInput = {
     versionId?: string | null
     errorMessage: string
     stack?: string
+    model?: string
     signal?: AbortSignal
     onEvent: (event: GenerationStreamEvent) => void
 }
@@ -261,6 +264,7 @@ const generateProjectStream = async ({
             prompt,
             ...(projectId ? { projectId } : {}),
             ...(sanitizedCanvasState ? { canvasState: sanitizedCanvasState } : {}),
+            ...(data.model ? { model: data.model } : {}),
         }),
         signal,
     })
@@ -385,6 +389,7 @@ const applyProjectEdit = async (data: ApplyProjectEditInput) => {
             prompt: data.prompt,
             ...(data.selectedElement ? { selectedElement: data.selectedElement } : {}),
             ...(sanitizedCanvasState ? { canvasState: sanitizedCanvasState } : {}),
+            ...(data.model ? { model: data.model } : {}),
         }),
         signal: data.signal,
     })
@@ -403,6 +408,7 @@ const applyProjectFix = async (data: ApplyProjectFixInput) => {
             ...(data.versionId ? { versionId: data.versionId } : {}),
             errorMessage: data.errorMessage,
             ...(data.stack ? { stack: data.stack } : {}),
+            ...(data.model ? { model: data.model } : {}),
         }),
         signal: data.signal,
     })

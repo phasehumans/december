@@ -23,6 +23,7 @@ import {
 import { importsAPI, type ProjectImportStatus } from '@/features/home/api'
 import { previewAPI } from '@/features/preview/api'
 import { profileAPI } from '@/features/profile/api/profile'
+import { canvasAPI } from '@/features/canvas/api'
 import {
     projectAPI,
     type BackendProjectDetail,
@@ -155,6 +156,10 @@ export const useAppController = () => {
     const [canvasState, setCanvasState] = React.useState<CanvasDocument>(() =>
         createEmptyCanvasDocument()
     )
+    const [selectedModel, setSelectedModel] = React.useState<string>(() => {
+        return localStorage.getItem('december_selected_model') || ''
+    })
+    const lastSavedCanvasRef = React.useRef<string>('')
     const [projectVersions, setProjectVersions] = React.useState<BackendProjectVersionSummary[]>([])
     const [activeProjectVersionId, setActiveProjectVersionId] = React.useState<string | null>(null)
     const [isProjectOpening, setIsProjectOpening] = React.useState(false)
@@ -496,6 +501,9 @@ export const useAppController = () => {
             setProjectLoadError(null)
             setMessages(detail.chatMessages.map(mapBackendMessageToUIMessage))
             setCanvasState(detail.canvasState ?? createEmptyCanvasDocument())
+            lastSavedCanvasRef.current = JSON.stringify(
+                detail.canvasState ?? createEmptyCanvasDocument()
+            )
             replaceGeneratedOutput(detail.generatedFiles)
             setGenerationPhase(null)
             setActiveOperation(null)
@@ -519,6 +527,7 @@ export const useAppController = () => {
             setMessages(result.chatMessages.map(mapBackendMessageToUIMessage))
             replaceGeneratedOutput(result.generatedFiles, preferredPath)
             setGenerationPhase('done')
+            lastSavedCanvasRef.current = JSON.stringify(canvasState)
         },
         [replaceGeneratedOutput]
     )
@@ -590,6 +599,48 @@ export const useAppController = () => {
         location.pathname,
         openProject,
     ])
+
+    // Sync selected model to localStorage
+    React.useEffect(() => {
+        if (selectedModel) {
+            localStorage.setItem('december_selected_model', selectedModel)
+        } else {
+            localStorage.removeItem('december_selected_model')
+        }
+    }, [selectedModel])
+
+    // Auto-save canvas state to backend
+    React.useEffect(() => {
+        if (!isAuthenticated || !activeProjectId) {
+            return
+        }
+
+        const serialized = JSON.stringify(canvasState)
+        if (serialized === lastSavedCanvasRef.current) {
+            return
+        }
+
+        // Skip auto-saving if it is the default empty canvas document and user hasn't interacted
+        if (canvasState.items.length === 0 && !canvasState.hasInteracted) {
+            return
+        }
+
+        const timer = setTimeout(async () => {
+            try {
+                lastSavedCanvasRef.current = serialized
+                await canvasAPI.saveCanvas({
+                    projectId: activeProjectId,
+                    versionId: activeProjectVersionId,
+                    canvasState,
+                })
+                console.log('[canvas] auto-saved successfully')
+            } catch (err) {
+                console.error('[canvas] failed to auto-save:', err)
+            }
+        }, 1500)
+
+        return () => clearTimeout(timer)
+    }, [canvasState, activeProjectId, activeProjectVersionId, isAuthenticated])
 
     const beginImportOutput = React.useCallback(
         (message: string) => {
@@ -920,6 +971,7 @@ export const useAppController = () => {
                         prompt,
                         projectId,
                         canvasState: nextCanvasState,
+                        model: selectedModel || undefined,
                         signal: abortController.signal,
                         onEvent: (event) => {
                             const activeMessageId = activeAssistantMessageIdRef.current
@@ -1217,6 +1269,7 @@ export const useAppController = () => {
                                   prompt: prompt ?? '',
                                   ...(selectedElement ? { selectedElement } : {}),
                                   ...(canvasState ? { canvasState } : {}),
+                                  model: selectedModel || undefined,
                                   signal: abortController.signal,
                                   onEvent: handleStreamEvent,
                               })
@@ -1225,6 +1278,7 @@ export const useAppController = () => {
                                   versionId: activeProjectVersionId,
                                   errorMessage: errorMessage ?? '',
                                   ...(stack ? { stack } : {}),
+                                  model: selectedModel || undefined,
                                   signal: abortController.signal,
                                   onEvent: handleStreamEvent,
                               })
@@ -1503,6 +1557,8 @@ export const useAppController = () => {
         activeProjectName,
         canvasState,
         setCanvasState,
+        selectedModel,
+        setSelectedModel,
         projectVersions,
         activeProjectVersionId,
         isProjectOpening,

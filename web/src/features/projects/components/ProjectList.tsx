@@ -4,6 +4,7 @@ import { useProjectListMutations } from '../hooks/useProjectListMutations'
 
 import { ProjectListModals } from './ProjectListModals'
 import { ProjectListView } from './ProjectListView'
+import { SettingsBigModal } from '@/features/preview/components/settings/SettingsBigModal'
 
 import type {
     DeleteModalState,
@@ -26,6 +27,8 @@ export const ProjectList: React.FC<ProjectListProps> = ({
     isLoading,
     isFetching,
     errorMessage,
+    selectedModel,
+    setSelectedModel,
 }) => {
     const [menuOpenId, setMenuOpenId] = useState<string | null>(null)
     const [searchQuery, setSearchQuery] = useState('')
@@ -45,6 +48,13 @@ export const ProjectList: React.FC<ProjectListProps> = ({
         project: null,
     })
     const [deleteModal, setDeleteModal] = useState<DeleteModalState>({
+        isOpen: false,
+        project: null,
+    })
+    const [settingsModal, setSettingsModal] = useState<{
+        isOpen: boolean
+        project: Project | null
+    }>({
         isOpen: false,
         project: null,
     })
@@ -143,6 +153,9 @@ export const ProjectList: React.FC<ProjectListProps> = ({
     const openDeleteModal = (project: Project, event: React.MouseEvent) =>
         openModal(event, () => setDeleteModal({ isOpen: true, project }))
 
+    const openSettingsModal = (project: Project, event: React.MouseEvent) =>
+        openModal(event, () => setSettingsModal({ isOpen: true, project }))
+
     const handleRename = (event: React.FormEvent) => {
         event.preventDefault()
         if (!renameModal.project || !renameModal.value.trim()) return
@@ -192,6 +205,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({
                     onOpenDuplicate={openDuplicateModal}
                     onOpenShare={openShareModal}
                     onOpenDelete={openDeleteModal}
+                    onOpenSettings={openSettingsModal}
                     searchQuery={searchQuery}
                     onSearchChange={setSearchQuery}
                     sortOption={sortOption}
@@ -223,6 +237,17 @@ export const ProjectList: React.FC<ProjectListProps> = ({
                 onCloseDelete={() => setDeleteModal((prev) => ({ ...prev, isOpen: false }))}
                 onDeleteConfirm={handleDelete}
             />
+
+            {settingsModal.isOpen && settingsModal.project && (
+                <SettingsBigModal
+                    onClose={() => setSettingsModal({ isOpen: false, project: null })}
+                    initialTab="general"
+                    projectName={settingsModal.project.title}
+                    projectId={settingsModal.project.id}
+                    selectedModel={selectedModel}
+                    setSelectedModel={setSelectedModel}
+                />
+            )}
         </div>
     )
 }

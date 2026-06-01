@@ -14,6 +14,8 @@ interface OutputHeaderActionsProps {
     isVersionLoading?: boolean
     onSelectVersion?: (versionId: string) => void
     onDownload?: () => void
+    selectedModel?: string
+    setSelectedModel?: (val: string) => void
 }
 
 export const OutputHeaderActions: React.FC<OutputHeaderActionsProps> = ({
@@ -22,6 +24,8 @@ export const OutputHeaderActions: React.FC<OutputHeaderActionsProps> = ({
     activeVersionId,
     isVersionLoading = false,
     onDownload,
+    selectedModel,
+    setSelectedModel,
 }) => {
     const isDownloadDisabled = !activeVersionId || isVersionLoading
     const [activePanel, setActivePanel] = useState<'settings' | null>(null)
@@ -74,6 +78,8 @@ export const OutputHeaderActions: React.FC<OutputHeaderActionsProps> = ({
                     initialTab={settingsTab}
                     projectName={projectName ?? 'untitled'}
                     projectId={projectId}
+                    selectedModel={selectedModel}
+                    setSelectedModel={setSelectedModel}
                 />
             )}
         </div>

@@ -65,6 +65,8 @@ interface AppContentViewProps {
     onDownloadProject: () => void
     onSignOut: () => void
     onDocs?: () => void
+    selectedModel?: string
+    setSelectedModel?: (val: string) => void
 }
 
 const pageTransition = {
@@ -135,6 +137,8 @@ export const AppContentView: React.FC<AppContentViewProps> = ({
     onDownloadProject,
     onSignOut,
     onDocs,
+    selectedModel,
+    setSelectedModel,
 }) => {
     return (
         <AnimatePresence mode="wait" initial={false}>
@@ -147,6 +151,8 @@ export const AppContentView: React.FC<AppContentViewProps> = ({
                         isLoading={isProjectsInitialLoading}
                         isFetching={isProjectsFetching}
                         errorMessage={projectsErrorMessage}
+                        selectedModel={selectedModel}
+                        setSelectedModel={setSelectedModel}
                     />
                 </AnimatedPage>
             )}
@@ -217,6 +223,8 @@ export const AppContentView: React.FC<AppContentViewProps> = ({
                                       ? importState.message || 'Import failed'
                                       : previewSessionError
                             }
+                            selectedModel={selectedModel}
+                            setSelectedModel={setSelectedModel}
                         />
                     </AnimatedPage>
                 ))}
@@ -253,6 +261,8 @@ export const AppContentView: React.FC<AppContentViewProps> = ({
                                   ? importState.message || 'Import failed'
                                   : previewSessionError
                         }
+                        selectedModel={selectedModel}
+                        setSelectedModel={setSelectedModel}
                     />
                 </AnimatedPage>
             )}

@@ -34,6 +34,8 @@ interface SettingsModalProps {
         | 'publish'
     projectName: string
     projectId?: string | null
+    selectedModel?: string
+    setSelectedModel?: (val: string) => void
 }
 
 export const SettingsBigModal: React.FC<SettingsModalProps> = ({
@@ -41,6 +43,8 @@ export const SettingsBigModal: React.FC<SettingsModalProps> = ({
     initialTab,
     projectName,
     projectId,
+    selectedModel = '',
+    setSelectedModel = () => {},
 }) => {
     const [activeTab, setActiveTab] = useState(initialTab)
     const [projName, setProjName] = useState(projectName)
@@ -266,6 +270,8 @@ export const SettingsBigModal: React.FC<SettingsModalProps> = ({
                                     onOpenDeleteModal={() => setIsDeleteModalOpen(true)}
                                     handleSaveChanges={handleSaveChanges}
                                     isSaving={isSaving}
+                                    selectedModel={selectedModel}
+                                    setSelectedModel={setSelectedModel}
                                 />
                             )}
 

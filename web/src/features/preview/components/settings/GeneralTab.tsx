@@ -1,6 +1,9 @@
+import { useQuery } from '@tanstack/react-query'
 import React from 'react'
 
 import { PremiumInput, PremiumTextarea, PremiumToggle } from './SettingsFormControls'
+
+import { profileAPI } from '@/features/profile/api/profile'
 
 interface GeneralTabProps {
     projName: string
@@ -14,6 +17,8 @@ interface GeneralTabProps {
     onOpenDeleteModal: () => void
     handleSaveChanges: () => void
     isSaving: boolean
+    selectedModel: string
+    setSelectedModel: (val: string) => void
 }
 
 export const GeneralTab: React.FC<GeneralTabProps> = ({
@@ -28,7 +33,16 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
     onOpenDeleteModal,
     handleSaveChanges,
     isSaving,
+    selectedModel,
+    setSelectedModel,
 }) => {
+    const { data: profile } = useQuery({
+        queryKey: ['profile'],
+        queryFn: profileAPI.getProfile,
+    })
+
+    const isPro = profile?.subscriptionPlan === 'PRO' && profile?.subscriptionStatus === 'ACTIVE'
+
     return (
         <div className="flex flex-col w-full max-w-[680px] text-[#D6D5C9] animate-in fade-in duration-200">
             <h1 className="text-[16px] font-medium mb-3">General Settings</h1>
@@ -51,6 +65,52 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
                         onChange={(e) => setProjDesc(e.target.value)}
                         placeholder="Write a brief overview of your application..."
                     />
+                </div>
+
+                {/* LLM Model Selection Row */}
+                <div className="flex flex-col gap-1.5 text-left border-t border-[#242323] pt-6">
+                    <div className="flex items-center justify-between mb-1">
+                        <div className="flex flex-col gap-0.5">
+                            <span className="text-[14px] text-[#D6D5C9]">Agent LLM Model</span>
+                            <span className="text-[13px] text-[#7B7A79]">
+                                Choose the intelligence driving your workspace agents.
+                            </span>
+                        </div>
+                        {!isPro && (
+                            <span className="text-[9px] font-bold bg-[#E8AF30]/10 text-[#E8AF30] border border-[#E8AF30]/20 px-2 py-0.5 rounded-full uppercase tracking-wider select-none">
+                                PRO Feature
+                            </span>
+                        )}
+                    </div>
+                    {isPro ? (
+                        <select
+                            value={selectedModel}
+                            onChange={(e) => setSelectedModel(e.target.value)}
+                            className="w-full bg-[#1A1918] border border-[#2B2A29] rounded-xl px-3.5 py-2 text-[13px] text-[#D6D5C9] outline-none focus:border-[#4A4948] transition-colors cursor-pointer"
+                        >
+                            <option value="">Auto Model (Default)</option>
+                            <option value="openai/gpt-oss-20b:free">GPT OSS 20B (Free)</option>
+                            <option value="meta-llama/llama-3-8b-instruct:free">
+                                Llama 3 8B Instruct (Free)
+                            </option>
+                            <option value="google/gemini-2.5-flash">Gemini 2.5 Flash</option>
+                            <option value="anthropic/claude-3-haiku">Claude 3 Haiku</option>
+                        </select>
+                    ) : (
+                        <div className="relative">
+                            <select
+                                disabled
+                                value=""
+                                className="w-full bg-[#1A1918]/50 border border-[#2B2A29]/50 rounded-xl px-3.5 py-2 text-[13px] text-[#7B7A79] outline-none opacity-60 cursor-not-allowed select-none"
+                            >
+                                <option value="">Auto Model (Default)</option>
+                            </select>
+                            <span className="text-[12px] text-[#7B7A79] block mt-1.5 italic">
+                                Only PRO users can choose custom LLM models. Upgrade to select other
+                                models.
+                            </span>
+                        </div>
+                    )}
                 </div>
 
                 {/* Star / Favourite Row */}

@@ -22,6 +22,8 @@ export interface ProjectListProps {
     isLoading: boolean
     isFetching: boolean
     errorMessage: string | null
+    selectedModel?: string
+    setSelectedModel?: (val: string) => void
 }
 
 export interface RenameModalState {
@@ -58,6 +60,7 @@ export interface ProjectListRowProps {
     onOpenDuplicate: (project: Project, event: MouseEvent) => void
     onOpenShare: (project: Project, event: MouseEvent) => void
     onOpenDelete: (project: Project, event: MouseEvent) => void
+    onOpenSettings: (project: Project, event: MouseEvent) => void
 }
 
 export interface ProjectRenameModalProps {

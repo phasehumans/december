@@ -17,6 +17,7 @@ export type GenerateWebsiteInput = {
     userId: string
     projectId?: string
     canvasState?: CanvasDocument
+    model?: string
     onEvent?: (event: GenerationStreamEvent) => Promise<void> | void
 }
 

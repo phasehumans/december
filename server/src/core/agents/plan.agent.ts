@@ -130,7 +130,7 @@ const parsePlanAgentPayload = (
     }
 }
 
-export const extractProjectPlan = async (data: ExtractProjectPlan) => {
+export const extractProjectPlan = async (data: ExtractProjectPlan & { model?: string }) => {
     const compactData = {
         userPrompt: data.userPrompt,
         canvasState: cleanCanvasState(data.canvasState),
@@ -141,7 +141,7 @@ export const extractProjectPlan = async (data: ExtractProjectPlan) => {
         maxAttempts: PLAN_AGENT_MAX_ATTEMPTS,
         task: async (attempt, lastError) => {
             const completion = await openai.chat.completions.create({
-                model: PLAN_AGENT_MODEL,
+                model: data.model || process.env.AUTO_MODEL || PLAN_AGENT_MODEL,
                 max_tokens: PLAN_AGENT_MAX_TOKENS,
                 temperature: 0,
                 messages: [
@@ -187,13 +187,15 @@ const toCompactChangePlanInput = (data: ExtractProjectChangePlan) => ({
     recentMessages: data.recentMessages,
 })
 
-export const extractProjectChangePlan = async (data: ExtractProjectChangePlan) => {
+export const extractProjectChangePlan = async (
+    data: ExtractProjectChangePlan & { model?: string }
+) => {
     return retryAsync({
         label: `plan agent ${data.mode}`,
         maxAttempts: PLAN_AGENT_MAX_ATTEMPTS,
         task: async (attempt, lastError) => {
             const completion = await openai.chat.completions.create({
-                model: PLAN_AGENT_MODEL,
+                model: data.model || process.env.AUTO_MODEL || PLAN_AGENT_MODEL,
                 max_tokens: PLAN_AGENT_CHANGE_MAX_TOKENS,
                 temperature: 0,
                 messages: [
