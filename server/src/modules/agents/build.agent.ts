@@ -6,14 +6,13 @@ import {
     projectPatchOperationSchema,
     projectIntentSchema,
     projectPlanSchema,
-} from '../../modules/generation/generation.schema'
+} from '../generation/generation.schema'
 import {
     assertFrontendWorkspacePath,
     isFrontendWorkspacePath,
-} from '../../modules/generation/generation.utils'
-import { readChatCompletionText } from '../../utils/readChatCompletionText'
-import { retryAsync } from '../../utils/retry'
-import { BUILD_AGENT_PROMPT } from '../prompts/build.prompt'
+} from '../generation/generation.utils'
+import { readChatCompletionText, retryAsync } from './agents.utils'
+import { BUILD_AGENT_PROMPT } from './build.prompt'
 
 type ProjectIntent = z.infer<typeof projectIntentSchema>
 type ProjectPlan = z.infer<typeof projectPlanSchema>

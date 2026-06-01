@@ -1,5 +1,5 @@
 import { prisma } from '../../config/db'
-import { AppError } from '../../utils/appError'
+import { AppError } from '../../shared/appError'
 
 const FREE_MONTHLY_CREDIT_CENTS = 100
 

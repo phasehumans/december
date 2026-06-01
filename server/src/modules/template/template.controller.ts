@@ -1,4 +1,4 @@
-import { AppError } from '../../utils/appError'
+import { AppError } from '../../shared/appError'
 
 import { toggleLikeSchema } from './template.schema'
 import { templateService } from './template.service'

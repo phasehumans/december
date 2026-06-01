@@ -30,7 +30,7 @@ mock.module('crypto', () => ({
     randomUUID: () => 'fixed-uuid',
 }))
 
-mock.module('../../src/lib/project-storage', () => ({
+mock.module('../../src/modules/project/project-storage', () => ({
     assetKey: (projectId: string, assetPath: string) =>
         `projects/${projectId}/assets/${assetPath.replace(/^\/+/, '')}`,
     assetPrefix: (projectId: string) => `projects/${projectId}/assets/`,

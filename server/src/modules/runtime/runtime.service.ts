@@ -3,8 +3,8 @@ import {
     getLatestPreviewManifestRef,
     publishStoredPreviewManifest,
     type PreviewManifestRef,
-} from '../../lib/preview-manifest'
-import { getBinaryFile } from '../../lib/project-storage'
+} from '../project/preview-manifest'
+import { getBinaryFile } from '../project/project-storage'
 
 export type RuntimePreviewError = {
     class:

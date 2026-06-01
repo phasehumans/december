@@ -62,24 +62,24 @@ Path Rules:
 
 Generator Rules:
 - static:
-  - generate a complete static file such as HTML or CSS
+-   generate a complete static file such as HTML or CSS
 - app-shell:
-  - generate the root app entry or top-level shell only
-  - wire only planned routes, pages, providers, or modules
+-   generate the root app entry or top-level shell only
+-   wire only planned routes, pages, providers, or modules
 - page:
-  - generate a route-level React page component
-  - export default component unless the planned project structure clearly uses named exports for pages
-  - match the planned page purpose exactly
+-   generate a route-level React page component
+-   export default component unless the planned project structure clearly uses named exports for pages
+-   match the planned page purpose exactly
 - component:
-  - generate a focused reusable React component
+-   generate a focused reusable React component
 - layout:
-  - generate a reusable layout or structural wrapper component
+-   generate a reusable layout or structural wrapper component
 - route:
-  - generate a frontend route wrapper or route composition module
+-   generate a frontend route wrapper or route composition module
 - config:
-  - generate a complete valid config file
+-   generate a complete valid config file
 - lib:
-  - generate a small focused shared utility module
+-   generate a small focused shared utility module
 
 Default Scaffold File Rules:
 - some Bun scaffold files must be generated using stable default templates when their path is requested
@@ -97,13 +97,13 @@ Canonical Default Files:
 
 Default Scaffold Behavior:
 - if target path is one of the canonical default files above:
-  - generate the stable Bun React baseline version
-  - keep it compile-safe and minimal
-  - only apply small safe substitutions when required by the plan:
-    - package name may reflect buildPlan.data.projectName
-    - package.json dependencies/devDependencies/scripts must stay aligned with buildPlan.data
-    - index.html title may reflect project name or app purpose
-    - src/frontend.tsx imports must match the planned App export shape if already implied by related file context
+-   generate the stable Bun React baseline version
+-   keep it compile-safe and minimal
+-   only apply small safe substitutions when required by the plan:
+-     package name may reflect buildPlan.data.projectName
+-     package.json dependencies/devDependencies/scripts must stay aligned with buildPlan.data
+-     index.html title may reflect project name or app purpose
+-     src/frontend.tsx imports must match the planned App export shape if already implied by related file context
 - do not invent extra config complexity for canonical default files
 
 Frontend Rules:
@@ -154,26 +154,26 @@ Canonical Default Content Requirements:
 For tsconfig.json:
 - use a Bun-friendly TypeScript config
 - include:
-  - lib: ["ESNext", "DOM"]
-  - target: "ESNext"
-  - module: "Preserve"
-  - moduleDetection: "force"
-  - jsx: "react-jsx"
-  - allowJs: true
-  - moduleResolution: "bundler"
-  - allowImportingTsExtensions: true
-  - verbatimModuleSyntax: true
-  - noEmit: true
-  - strict: true
-  - skipLibCheck: true
-  - noFallthroughCasesInSwitch: true
-  - noUncheckedIndexedAccess: true
-  - noImplicitOverride: true
-  - baseUrl: "."
-  - paths: { "@/*": ["./src/*"] }
-  - noUnusedLocals: false
-  - noUnusedParameters: false
-  - noPropertyAccessFromIndexSignature: false
+-   lib: ["ESNext", "DOM"]
+-   target: "ESNext"
+-   module: "Preserve"
+-   moduleDetection: "force"
+-   jsx: "react-jsx"
+-   allowJs: true
+-   moduleResolution: "bundler"
+-   allowImportingTsExtensions: true
+-   verbatimModuleSyntax: true
+-   noEmit: true
+-   strict: true
+-   skipLibCheck: true
+-   noFallthroughCasesInSwitch: true
+-   noUncheckedIndexedAccess: true
+-   noImplicitOverride: true
+-   baseUrl: "."
+-   paths: { "@/*": ["./src/*"] }
+-   noUnusedLocals: false
+-   noUnusedParameters: false
+-   noPropertyAccessFromIndexSignature: false
 - exclude should include: ["dist", "node_modules"]
 
 For package.json:
@@ -181,17 +181,17 @@ For package.json:
 - use type: "module"
 - use Bun scripts compatible with the planned structure
 - default scripts should be:
-  - "dev": "bun --hot src/index.ts"
-  - "start": "NODE_ENV=production bun src/index.ts"
-  - "build": "bun run build.ts"
+-   "dev": "bun --hot src/index.ts"
+-   "start": "NODE_ENV=production bun src/index.ts"
+-   "build": "bun run build.ts"
 - if the plan clearly omits src/index.ts, adapt scripts safely to the planned entry shape
 - dependencies and devDependencies must align with buildPlan.data.dependencies and buildPlan.data.devDependencies
 - if buildPlan.data.projectName exists, derive a safe kebab-case package name from it
 
 For bun-env.d.ts:
 - generate the Bun init style declarations for:
-  - "*.svg"
-  - "*.module.css"
+-   "*.svg"
+-   "*.module.css"
 
 For build.ts:
 - generate a Bun build script compatible with Bun HTML entrypoints at the project root
@@ -209,9 +209,9 @@ For .gitignore:
 For index.html:
 - generate a complete Bun HTML entry document
 - include:
-  - <!doctype html>
-  - root mount div with id="root"
-  - <script type="module" src="./frontend.tsx"></script>
+-   <!doctype html>
+-   root mount div with id="root"
+-   <script type="module" src="./frontend.tsx"></script>
 - title may reflect project name or app purpose
 
 For src/frontend.tsx:
@@ -220,8 +220,8 @@ For src/frontend.tsx:
 - prefer createRoot from react-dom/client
 - be safe against DOMContentLoaded timing
 - import App in a way that matches likely consumers:
-  - prefer named import { App } from "./App" if related file context clearly implies that
-  - otherwise prefer default import App from "./App"
+-   prefer named import { App } from "./App" if related file context clearly implies that
+-   otherwise prefer default import App from "./App"
 
 Output Rule:
 - return ONLY the file contents for the target file.`

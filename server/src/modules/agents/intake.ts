@@ -1,9 +1,9 @@
 import {
     extractProjectChangePlan as extractProjectChangePlanAgent,
     extractProjectPlan as extractProjectPlanAgent,
-} from '../../agents/plan.agent'
+} from './plan.agent'
 
-import type { GenerateWebsiteInput } from '../../../modules/generation/generation.types'
+import type { GenerateWebsiteInput } from '../generation/generation.types'
 
 export const extractProjectPlan = (input: {
     userPrompt: string

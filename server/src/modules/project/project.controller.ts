@@ -1,4 +1,4 @@
-import { AppError } from '../../utils/appError'
+import { AppError } from '../../shared/appError'
 
 import {
     createProjectSchema,

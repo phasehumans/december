@@ -3,7 +3,7 @@ import crypto from 'crypto'
 import bcrypt from 'bcrypt'
 
 import { prisma } from '../../config/db'
-import { AppError } from '../../utils/appError'
+import { AppError } from '../../shared/appError'
 
 // import { authSession, deleteSessionById, isSessionExpired } from './auth.session'
 // import { authToken } from './auth.token'
