@@ -1,10 +1,9 @@
-import { Globe } from 'lucide-react'
 import React from 'react'
-import { createPortal } from 'react-dom'
 
 import type { CanvasItemDraft } from '@/features/canvas/types'
 
 import { canvasAPI } from '@/features/canvas/api'
+import { Modal } from '@/shared/components/ui/Modal'
 
 interface CanvasWebClipPopoverProps {
     isOpen: boolean
@@ -52,112 +51,22 @@ const mapClipToCanvasItem = (clip: {
 
 export const CanvasWebClipPopover: React.FC<CanvasWebClipPopoverProps> = ({
     isOpen,
-    anchorRef,
-    containerRef,
     onClose,
     onInteract,
     onAddItems,
     projectId,
 }) => {
-    const popoverRef = React.useRef<HTMLDivElement | null>(null)
     const [url, setUrl] = React.useState('')
     const [error, setError] = React.useState<string | null>(null)
     const [isSubmitting, setIsSubmitting] = React.useState(false)
-    const [position, setPosition] = React.useState<{
-        top: number
-        left: number
-        width: number
-    } | null>(null)
 
     React.useEffect(() => {
         if (!isOpen) {
             setUrl('')
             setError(null)
             setIsSubmitting(false)
-            setPosition(null)
         }
     }, [isOpen])
-
-    React.useLayoutEffect(() => {
-        if (!isOpen || !anchorRef.current || typeof window === 'undefined') {
-            return
-        }
-
-        const updatePosition = () => {
-            const anchor = anchorRef.current
-            const container = containerRef?.current
-            if (!anchor) {
-                return
-            }
-
-            const horizontalPadding = 12
-            const width = Math.min(440, window.innerWidth - horizontalPadding * 2)
-
-            // If containerRef is provided (the toolbar), align with it
-            // Otherwise align with the anchor button
-            const targetElement = container || anchor
-            const rect = targetElement.getBoundingClientRect()
-
-            const unclampedLeft = rect.left + rect.width / 2 - width / 2
-            const left = Math.min(
-                Math.max(unclampedLeft, horizontalPadding),
-                window.innerWidth - width - horizontalPadding
-            )
-
-            setPosition({
-                top: rect.bottom + 8,
-                left,
-                width,
-            })
-        }
-
-        updatePosition()
-
-        window.addEventListener('resize', updatePosition)
-        window.addEventListener('scroll', updatePosition, true)
-
-        return () => {
-            window.removeEventListener('resize', updatePosition)
-            window.removeEventListener('scroll', updatePosition, true)
-        }
-    }, [anchorRef, containerRef, isOpen])
-
-    React.useEffect(() => {
-        if (!isOpen) {
-            return
-        }
-
-        const handlePointerDown = (event: MouseEvent | TouchEvent) => {
-            const target = event.target as Node | null
-
-            if (
-                (target && popoverRef.current?.contains(target)) ||
-                (target && anchorRef.current?.contains(target))
-            ) {
-                return
-            }
-
-            if (!isSubmitting) {
-                onClose()
-            }
-        }
-
-        const handleKeyDown = (event: KeyboardEvent) => {
-            if (event.key === 'Escape' && !isSubmitting) {
-                onClose()
-            }
-        }
-
-        document.addEventListener('mousedown', handlePointerDown)
-        document.addEventListener('touchstart', handlePointerDown)
-        document.addEventListener('keydown', handleKeyDown)
-
-        return () => {
-            document.removeEventListener('mousedown', handlePointerDown)
-            document.removeEventListener('touchstart', handlePointerDown)
-            document.removeEventListener('keydown', handleKeyDown)
-        }
-    }, [anchorRef, isOpen, isSubmitting, onClose])
 
     const handleSubmit = async () => {
         const nextUrl = url.trim()
@@ -195,56 +104,84 @@ export const CanvasWebClipPopover: React.FC<CanvasWebClipPopoverProps> = ({
         }
     }
 
-    if (!isOpen || !position || typeof document === 'undefined') {
-        return null
-    }
-
-    return createPortal(
-        <div
-            ref={popoverRef}
-            className="fixed z-[70] rounded-[14px] border border-white/10 bg-[#171615]/90 backdrop-blur-xl p-1.5 pointer-events-auto animate-popoverIn"
-            style={{
-                top: position.top,
-                left: position.left,
-                width: position.width,
-            }}
+    return (
+        <Modal
+            isOpen={isOpen}
+            onClose={isSubmitting ? () => {} : onClose}
+            title="Web Clipper"
+            description="Enter a website URL to instantly clip screenshots and content onto your visual Canvas workspace."
+            variant="premium"
         >
-            <div className="flex items-center gap-1.5">
-                <div className="relative flex-1">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <Globe className="w-3.5 h-3.5 text-[#656565]" strokeWidth={2} />
+            <div className="flex flex-col gap-4">
+                {!isSubmitting ? (
+                    <>
+                        <div>
+                            <label
+                                htmlFor="webclipper-url-input"
+                                className="text-[11px] font-semibold text-[#8F8E8D] uppercase tracking-wider mb-1.5 block"
+                            >
+                                Website URL
+                            </label>
+                            <input
+                                id="webclipper-url-input"
+                                type="url"
+                                autoFocus
+                                value={url}
+                                onChange={(e) => {
+                                    setUrl(e.target.value)
+                                    setError(null)
+                                }}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                        e.preventDefault()
+                                        void handleSubmit()
+                                    }
+                                }}
+                                className="w-full bg-[#181817] border border-[#2B2A27] rounded-lg px-3.5 py-2.5 text-white text-[13px] focus:outline-none focus:border-[#4E4D49] focus:ring-1 focus:ring-[#4E4D49] transition-[border-color,box-shadow]"
+                                placeholder="https://example.com"
+                                autoComplete="off"
+                                disabled={isSubmitting}
+                            />
+                        </div>
+
+                        {error && (
+                            <p className="text-[12px] text-red-500 font-medium px-1">{error}</p>
+                        )}
+
+                        <div className="mt-1 flex items-center justify-end gap-2.5">
+                            <button
+                                type="button"
+                                onClick={onClose}
+                                disabled={isSubmitting}
+                                className="border border-[#2B2A27] bg-transparent text-white hover:bg-white/5 active:scale-95 transition-[transform,background-color,border-color,color] duration-200 text-[13px] font-medium px-4 py-2 rounded-lg focus:outline-none cursor-pointer disabled:opacity-50"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => void handleSubmit()}
+                                disabled={!url.trim() || isSubmitting}
+                                className="bg-white text-black hover:bg-neutral-200 active:scale-95 transition-[transform,background-color,border-color,color] duration-200 text-[13px] font-medium px-4 py-2 rounded-lg focus:outline-none disabled:opacity-40 disabled:pointer-events-none flex items-center justify-center min-w-[110px] cursor-pointer"
+                            >
+                                Continue
+                            </button>
+                        </div>
+                    </>
+                ) : (
+                    <div className="flex flex-col items-center justify-center py-6 text-center gap-4 animate-in fade-in duration-300">
+                        <div className="w-10 h-10 border-2 border-[#D6D5C9]/20 border-t-[#D6D5C9] rounded-full animate-spin" />
+                        <div className="flex flex-col gap-1">
+                            <h3 className="text-white font-medium text-[14px]">
+                                Clipping in progress
+                            </h3>
+                            <p className="text-[12px] text-[#8F8E8D] leading-relaxed max-w-[280px]">
+                                This clipping process takes 60-90 seconds. Please wait while we
+                                generate screenshots and structure elements...
+                            </p>
+                        </div>
                     </div>
-                    <input
-                        autoFocus
-                        type="url"
-                        placeholder="https://example.com"
-                        value={url}
-                        disabled={isSubmitting}
-                        onChange={(event) => setUrl(event.target.value)}
-                        onKeyDown={(event) => {
-                            if (event.key === 'Enter') {
-                                event.preventDefault()
-                                void handleSubmit()
-                            }
-                        }}
-                        className="w-full bg-[#0D0D0B] border border-white/5 focus:border-white/20 rounded-[10px] h-10 pl-9 pr-3 text-[13px] text-[#D6D5D4] placeholder-[#4A4A4A] outline-none transition-all disabled:opacity-50 font-medium"
-                    />
-                </div>
-                <button
-                    type="button"
-                    disabled={isSubmitting || !url.trim()}
-                    onClick={() => void handleSubmit()}
-                    className="h-10 px-4 rounded-[10px] bg-[#D6D5D4] hover:bg-white text-[#111] text-[13px] font-semibold disabled:opacity-30 disabled:grayscale transition-all shrink-0 flex items-center justify-center min-w-[90px] shadow-sm active:scale-[0.98]"
-                >
-                    {isSubmitting ? (
-                        <div className="w-3.5 h-3.5 border-2 border-[#111]/20 border-t-[#111] rounded-full animate-spin" />
-                    ) : (
-                        'Get Clips'
-                    )}
-                </button>
+                )}
             </div>
-            {error && <p className="mt-2.5 px-2 text-[11px] text-red-500 font-medium">{error}</p>}
-        </div>,
-        document.body
+        </Modal>
     )
 }

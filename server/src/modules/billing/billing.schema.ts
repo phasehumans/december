@@ -30,3 +30,9 @@ export const creditsHistoryQuerySchema = z.object({
     periodStart: z.string().optional(),
     periodEnd: z.string().optional(),
 })
+
+export const redeemCodeSchema = z
+    .object({
+        code: z.string().trim().min(1, { message: 'redeem code cannot be empty' }),
+    })
+    .strict()

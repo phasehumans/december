@@ -245,31 +245,48 @@ export const useAppController = () => {
                 const ctx = new AudioContext()
                 const now = ctx.currentTime
 
-                const osc1 = ctx.createOscillator()
-                const osc2 = ctx.createOscillator()
-                const gainNode = ctx.createGain()
+                const playBell = (
+                    freq: number,
+                    startTime: number,
+                    duration: number,
+                    vol: number
+                ) => {
+                    const osc = ctx.createOscillator()
+                    const gain = ctx.createGain()
 
-                osc1.type = 'sine'
-                osc1.frequency.setValueAtTime(523.25, now) // C5
-                osc1.frequency.exponentialRampToValueAtTime(783.99, now + 0.12) // G5
+                    // Combine sine and triangle for a bright, rich bell sound with body
+                    osc.type = 'triangle'
+                    osc.frequency.setValueAtTime(freq, startTime)
 
-                osc2.type = 'sine'
-                osc2.frequency.setValueAtTime(392.0, now) // G4
-                osc2.frequency.exponentialRampToValueAtTime(659.25, now + 0.12) // E5
+                    // Add subtle pitch vibration (vibrato) for a premium metallic chime feel
+                    const lfo = ctx.createOscillator()
+                    const lfoGain = ctx.createGain()
+                    lfo.frequency.value = 8 // 8Hz vibration
+                    lfoGain.gain.value = freq * 0.003 // pitch deviation depth
+                    lfo.connect(lfoGain)
+                    lfoGain.connect(osc.frequency)
 
-                gainNode.gain.setValueAtTime(0, now)
-                gainNode.gain.linearRampToValueAtTime(0.12, now + 0.04) // Soft attack
-                gainNode.gain.exponentialRampToValueAtTime(0.0001, now + 0.7) // Nice decay tail
+                    gain.gain.setValueAtTime(0, startTime)
+                    gain.gain.linearRampToValueAtTime(vol, startTime + 0.015) // snappy attack
+                    gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration) // long natural decay tail
 
-                osc1.connect(gainNode)
-                osc2.connect(gainNode)
-                gainNode.connect(ctx.destination)
+                    osc.connect(gain)
+                    gain.connect(ctx.destination)
 
-                osc1.start(now)
-                osc2.start(now)
+                    lfo.start(startTime)
+                    osc.start(startTime)
 
-                osc1.stop(now + 0.7)
-                osc2.stop(now + 0.7)
+                    lfo.stop(startTime + duration)
+                    osc.stop(startTime + duration)
+                }
+
+                // Play a gorgeous, rapid arpeggiated C-major 7 chord that builds excitement
+                const baseVolume = 0.28
+                playBell(261.63, now, 1.2, baseVolume * 0.8) // C4: Warm base note
+                playBell(329.63, now + 0.055, 1.0, baseVolume * 0.9) // E4: Sweet harmony
+                playBell(392.0, now + 0.11, 0.9, baseVolume) // G4: Bright tone
+                playBell(523.25, now + 0.165, 0.8, baseVolume * 0.95) // C5: Soaring peak arpeggio
+                playBell(783.99, now + 0.22, 0.7, baseVolume * 0.7) // G5: Dreamy upper harmonics
             } catch (err) {
                 console.error('Failed to play generation notification sound:', err)
             }

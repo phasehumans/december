@@ -1,29 +1,5 @@
-import {
-    ChevronLeft,
-    Rocket,
-    BookOpen,
-    Terminal,
-    Users,
-    Shield,
-    CreditCard,
-    Layout,
-    Code,
-    Cpu,
-    GitBranch,
-    Globe,
-    Settings,
-    HelpCircle,
-    Info,
-    CheckCircle,
-    AlertTriangle,
-    ShieldAlert,
-    Key,
-    Layers,
-    Sparkles,
-    Database,
-    Palette,
-} from 'lucide-react'
-import React, { useState, useEffect } from 'react'
+import { ChevronLeft } from 'lucide-react'
+import React, { useState, useEffect, useRef } from 'react'
 
 import { Skeleton } from '@/shared/components/ui/Skeleton'
 
@@ -31,32 +7,116 @@ interface DocsPageProps {
     onBack: () => void
 }
 
+// Custom CDN-backed Mermaid component matching the elegant dark theme
+interface MermaidProps {
+    chart: string
+}
+
+const Mermaid: React.FC<MermaidProps> = ({ chart }) => {
+    const containerRef = useRef<HTMLDivElement>(null)
+    const [svg, setSvg] = useState<string>('')
+    const [error, setError] = useState<boolean>(false)
+
+    useEffect(() => {
+        let isMounted = true
+
+        const renderChart = async () => {
+            try {
+                if (!(window as any).mermaid) {
+                    const script = document.createElement('script')
+                    script.src = 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js'
+                    script.async = true
+                    await new Promise((resolve, reject) => {
+                        script.onload = resolve
+                        script.onerror = reject
+                        document.head.appendChild(script)
+                    })
+                }
+
+                const mermaid = (window as any).mermaid
+                mermaid.initialize({
+                    startOnLoad: false,
+                    theme: 'dark',
+                    securityLevel: 'loose',
+                    themeVariables: {
+                        background: '#151413',
+                        primaryColor: '#242322',
+                        primaryTextColor: '#D6D5C9',
+                        lineColor: '#383736',
+                        secondaryColor: '#171615',
+                        arrowheadColor: '#8F8E8D',
+                    },
+                })
+
+                const id = `mermaid-${Math.random().toString(36).substring(2, 11)}`
+                const { svg: renderedSvg } = await mermaid.render(id, chart)
+
+                if (isMounted) {
+                    setSvg(renderedSvg)
+                    setError(false)
+                }
+            } catch (err) {
+                console.error('Mermaid render error:', err)
+                if (isMounted) {
+                    setError(true)
+                }
+            }
+        }
+
+        void renderChart()
+
+        return () => {
+            isMounted = false
+        }
+    }, [chart])
+
+    if (error) {
+        return (
+            <div className="p-4 bg-[#1E1D1B] border border-[#2B2A29] rounded-xl text-center text-xs text-[#7B7A79] font-mono whitespace-pre overflow-x-auto my-4">
+                {chart}
+            </div>
+        )
+    }
+
+    if (!svg) {
+        return (
+            <div className="h-44 w-full bg-[#1E1D1B]/50 border border-[#2B2A29]/50 rounded-xl flex items-center justify-center animate-pulse my-4">
+                <span className="text-xs text-[#7B7A79] font-medium">
+                    Generating visual diagram...
+                </span>
+            </div>
+        )
+    }
+
+    return (
+        <div
+            ref={containerRef}
+            className="w-full flex justify-center bg-[#151413] border border-[#242322] rounded-xl p-5 my-5 overflow-x-auto select-none [&>svg]:max-w-full [&>svg]:h-auto"
+            dangerouslySetInnerHTML={{ __html: svg }}
+        />
+    )
+}
+
 const DocsSkeleton = () => (
-    <div className="flex flex-col gap-8 w-full animate-in fade-in duration-300">
-        <div className="flex flex-col gap-4">
-            <Skeleton className="h-10 w-3/4 max-w-[400px] rounded-lg" />
+    <div className="flex flex-col gap-6 w-full animate-in fade-in duration-300">
+        <div className="flex flex-col gap-3">
+            <Skeleton className="h-9 w-2/3 max-w-[360px] rounded-lg" />
             <Skeleton className="h-4 w-full rounded-md" />
-            <Skeleton className="h-4 w-[90%] rounded-md" />
-            <Skeleton className="h-4 w-2/3 rounded-md" />
+            <Skeleton className="h-4 w-[92%] rounded-md" />
         </div>
-        <div className="flex flex-col gap-4 mt-6">
-            <Skeleton className="h-8 w-1/2 max-w-[250px] rounded-lg" />
-            <Skeleton className="h-4 w-[95%] rounded-md" />
-            <Skeleton className="h-4 w-full rounded-md" />
+        <div className="flex flex-col gap-3 mt-4">
+            <Skeleton className="h-7 w-1/2 max-w-[200px] rounded-lg" />
+            <Skeleton className="h-4 w-[94%] rounded-md" />
             <Skeleton className="h-4 w-[85%] rounded-md" />
-            <Skeleton className="h-4 w-[80%] rounded-md" />
         </div>
     </div>
 )
 
 const DocsSidebarSkeleton = () => (
-    <div className="flex flex-col gap-2 mt-4 animate-in fade-in duration-300">
-        <Skeleton className="h-3 w-24 ml-3 rounded-md mb-1 mt-2" />
-        <Skeleton className="h-8 w-[90%] mx-auto rounded-xl" />
-        <Skeleton className="h-8 w-[90%] mx-auto rounded-xl" />
-        <Skeleton className="h-3 w-32 ml-3 rounded-md mb-1 mt-4" />
-        <Skeleton className="h-8 w-[90%] mx-auto rounded-xl" />
-        <Skeleton className="h-8 w-[90%] mx-auto rounded-xl" />
+    <div className="flex flex-col gap-1.5 mt-2 animate-in fade-in duration-300 px-1">
+        {[...Array(12)].map((_, i) => (
+            <Skeleton key={i} className="h-8 w-full rounded-lg" />
+        ))}
     </div>
 )
 
@@ -66,37 +126,31 @@ const Callout: React.FC<{
     children: React.ReactNode
 }> = ({ type = 'info', title, children }) => {
     const styles = {
-        info: 'bg-blue-500/5 border-blue-500/20 text-blue-400',
-        tip: 'bg-[#1E1D1B] border-[#383736] text-[#A3A299]',
-        warning: 'bg-yellow-500/5 border-yellow-500/20 text-yellow-400',
-        alert: 'bg-red-500/5 border-red-500/20 text-red-400',
-    }
-
-    const icons = {
-        info: <Info className="w-4 h-4 text-blue-400" />,
-        tip: <Sparkles className="w-4 h-4 text-amber-400" />,
-        warning: <AlertTriangle className="w-4 h-4 text-yellow-500" />,
-        alert: <ShieldAlert className="w-4 h-4 text-red-500" />,
+        info: 'bg-[#1E1D1B] border-[#2B2A29] text-[#A3A299]',
+        tip: 'bg-[#1C1F1E] border-[#292D2C] text-[#9FB5A5]',
+        warning: 'bg-[#221F1B] border-[#383025] text-[#D4AF8B]',
+        alert: 'bg-[#221B1C] border-[#382527] text-[#D48B8E]',
     }
 
     return (
         <div className={`flex flex-col gap-1 p-4 rounded-xl border ${styles[type]} mt-4 mb-4`}>
-            <div className="flex items-center gap-2 font-semibold text-[14px] text-white">
-                {icons[type]}
+            <div className="flex items-center gap-2 font-semibold text-[13.5px] text-white">
                 {title}
             </div>
-            <div className="text-[13.5px] text-[#A3A299] leading-relaxed ml-6">{children}</div>
+            <div className="text-[13px] leading-relaxed mt-1 font-medium">{children}</div>
         </div>
     )
 }
 
 const CodeBlock: React.FC<{ code: string; language?: string }> = ({ code, language = 'bash' }) => (
-    <div className="flex flex-col rounded-xl border border-[#2B2A29] bg-[#100E12] overflow-hidden mt-3 mb-3">
-        <div className="flex items-center justify-between px-4 py-2 bg-[#171615] border-b border-[#2B2A29]">
-            <span className="text-[11px] text-[#7B7A79] font-mono">{language}</span>
+    <div className="flex flex-col rounded-xl border border-[#242322] bg-[#0E0E0D] overflow-hidden mt-3 mb-3 font-mono">
+        <div className="flex items-center justify-between px-4 py-1.5 bg-[#171615] border-b border-[#242322]">
+            <span className="text-[10px] text-[#7B7A79] uppercase font-bold tracking-wider">
+                {language}
+            </span>
         </div>
         <div className="p-4 overflow-x-auto">
-            <pre className="text-[12.5px] text-[#D6D5C9] font-mono leading-relaxed">
+            <pre className="text-[12px] text-[#D6D5C9] leading-relaxed">
                 <code>{code}</code>
             </pre>
         </div>
@@ -104,100 +158,62 @@ const CodeBlock: React.FC<{ code: string; language?: string }> = ({ code, langua
 )
 
 export const DocsPage: React.FC<DocsPageProps> = ({ onBack }) => {
-    const [activeTab, setActiveTab] = useState('welcome')
+    const [activeTab, setActiveTab] = useState('introduction')
     const [isInitialLoading, setIsInitialLoading] = useState(true)
 
     useEffect(() => {
         const timer = setTimeout(() => {
             setIsInitialLoading(false)
-        }, 300)
+        }, 200)
         return () => clearTimeout(timer)
     }, [])
 
-    const sidebarCategories = [
-        {
-            title: 'Getting Started',
-            items: [
-                { id: 'welcome', label: 'Welcome to December', icon: Rocket },
-                { id: 'quickstart', label: 'Quickstart Guide', icon: BookOpen },
-                { id: 'concepts', label: 'Core Concepts', icon: Cpu },
-                { id: 'shortcuts', label: 'Keyboard Shortcuts', icon: Terminal },
-            ],
-        },
-        {
-            title: 'Workspace & Security',
-            items: [
-                { id: 'workspace', label: 'Workspace & RBAC', icon: Users },
-                { id: 'security', label: 'Security & Compliance', icon: Shield },
-                { id: 'billing', label: 'Billing & Tokenomics', icon: CreditCard },
-            ],
-        },
-        {
-            title: 'Editor & Canvas',
-            items: [
-                { id: 'canvas-workflow', label: 'Canvas Visual Workflow', icon: Layout },
-                { id: 'dual-editor', label: 'Dual-Engine Architecture', icon: Code },
-                { id: 'styling', label: 'Custom Styling & Themes', icon: Palette },
-                { id: 'prompting-tips', label: 'AI Assist & Prompting', icon: Cpu },
-            ],
-        },
-        {
-            title: 'Integrations',
-            items: [
-                { id: 'github-sync', label: 'GitHub Sync & Git Flow', icon: GitBranch },
-                { id: 'database', label: 'Database & Persistence', icon: Database },
-                { id: 'stripe', label: 'Stripe & Subscriptions', icon: CreditCard },
-                { id: 'cloud-deploys', label: 'Cloud Deploys & Domains', icon: Globe },
-                { id: 'cli-api', label: 'Programmatic CLI & APIs', icon: Settings },
-            ],
-        },
+    const subpages = [
+        { id: 'introduction', label: 'Introduction' },
+        { id: 'quickstart', label: 'Quick Start' },
+        { id: 'architecture', label: 'Architecture' },
+        { id: 'agent', label: 'Agent' },
+        { id: 'canvas', label: 'Context Canvas' },
+        { id: 'runtime', label: 'Runtime' },
+        { id: 'deployments', label: 'Deployments' },
+        { id: 'settings', label: 'Settings' },
+        { id: 'security', label: 'Security' },
+        { id: 'changelog', label: 'Changelog' },
+        { id: 'privacy', label: 'Privacy Policy' },
+        { id: 'terms', label: 'Terms of Service' },
     ]
 
     return (
         <div className="flex w-full h-full bg-[#100E12] overflow-hidden p-1.5 md:p-[8px]">
             <div className="flex w-full h-full bg-[#171615] rounded-lg border border-[#242323] overflow-hidden">
-                {/* Docs Sidebar */}
-                <div className="w-[230px] md:w-[280px] shrink-0 border-r border-[#242323] flex flex-col py-4">
-                    <div className="px-4 mb-6">
+                {/* Flat Docs Sidebar */}
+                <div className="w-[210px] md:w-[250px] shrink-0 border-r border-[#242323] flex flex-col py-4">
+                    <div className="px-4 mb-5">
                         <button
                             onClick={onBack}
-                            className="flex items-center text-[#7B7A79] hover:text-[#D6D5D4] hover:bg-[#1E1D1B] px-2 py-1 -ml-2 rounded-lg text-[13px] font-semibold transition-colors"
+                            className="flex items-center text-[#7B7A79] hover:text-[#D6D5D4] hover:bg-[#1E1D1B] px-2.5 py-1 -ml-1 rounded-lg text-[13px] font-semibold transition-colors"
                         >
-                            <ChevronLeft className="w-4 h-4 mr-1.5" />
+                            <ChevronLeft className="w-4 h-4 mr-1" />
                             Home
                         </button>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto px-3 flex flex-col gap-4 [&::-webkit-scrollbar]:w-[4px] [&::-webkit-scrollbar-thumb]:bg-[#383736] [&::-webkit-scrollbar-thumb]:rounded-full">
+                    <div className="flex-1 overflow-y-auto px-3 flex flex-col gap-[2px] [&::-webkit-scrollbar]:w-[4px] [&::-webkit-scrollbar-thumb]:bg-[#383736] [&::-webkit-scrollbar-thumb]:rounded-full">
                         {isInitialLoading ? (
                             <DocsSidebarSkeleton />
                         ) : (
-                            sidebarCategories.map((category) => (
-                                <div key={category.title} className="flex flex-col gap-1">
-                                    <div className="px-3 py-1.5 text-[11px] font-bold text-[#7B7A79] uppercase tracking-wider">
-                                        {category.title}
-                                    </div>
-                                    {category.items.map((item) => {
-                                        const Icon = item.icon
-                                        return (
-                                            <button
-                                                key={item.id}
-                                                onClick={() => setActiveTab(item.id)}
-                                                className={`flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-[13px] font-medium transition-colors text-left ${
-                                                    activeTab === item.id
-                                                        ? 'bg-[#1E1D1B] border border-[#2B2A29] text-[#D6D5C9] shadow-sm'
-                                                        : 'text-[#7B7A79] hover:text-[#D6D5C9] hover:bg-[#1E1D1B]/50 border border-transparent'
-                                                }`}
-                                            >
-                                                <Icon
-                                                    className="w-[15px] h-[15px] shrink-0"
-                                                    strokeWidth={1.5}
-                                                />
-                                                <span className="truncate">{item.label}</span>
-                                            </button>
-                                        )
-                                    })}
-                                </div>
+                            subpages.map((item) => (
+                                <button
+                                    key={item.id}
+                                    onClick={() => setActiveTab(item.id)}
+                                    className={`px-3 py-1.5 rounded-lg text-[13px] font-medium transition-colors text-left border ${
+                                        activeTab === item.id
+                                            ? 'bg-[#1E1D1B] border-[#2B2A29] text-[#D6D5C9] shadow-sm font-semibold'
+                                            : 'text-[#7B7A79] hover:text-[#D6D5C9] hover:bg-[#1E1D1B]/40 border-transparent'
+                                    }`}
+                                >
+                                    {item.label}
+                                </button>
                             ))
                         )}
                     </div>
@@ -205,966 +221,599 @@ export const DocsPage: React.FC<DocsPageProps> = ({ onBack }) => {
 
                 {/* Main Content */}
                 <div className="flex-1 overflow-y-auto [&::-webkit-scrollbar]:w-[12px] [&::-webkit-scrollbar-track]:bg-[#171615] [&::-webkit-scrollbar-thumb]:bg-[#383736] [&::-webkit-scrollbar-thumb]:bg-clip-padding [&::-webkit-scrollbar-thumb]:border-[4px] [&::-webkit-scrollbar-thumb]:border-solid [&::-webkit-scrollbar-thumb]:border-transparent [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-[#4A4948]">
-                    <div className="w-full max-w-[800px] mx-auto px-8 md:px-16 py-8 md:py-16 text-[#D6D5C9]">
+                    <div className="w-full max-w-[740px] mx-auto px-6 md:px-12 py-8 md:py-12 text-[#D6D5C9]">
                         {isInitialLoading ? (
                             <DocsSkeleton />
-                        ) : activeTab === 'welcome' ? (
-                            <div className="flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                                <div className="flex flex-col gap-3.5">
-                                    <h1 className="text-[36px] md:text-[44px] font-semibold text-white tracking-tight leading-tight">
-                                        Welcome to December
+                        ) : activeTab === 'introduction' ? (
+                            <div className="flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-1 duration-200">
+                                <div className="flex flex-col gap-2">
+                                    <h1 className="text-[28px] font-semibold text-white tracking-tight leading-tight">
+                                        Introduction to December
                                     </h1>
-                                    <p className="text-[16px] md:text-[18px] text-[#A3A299] leading-relaxed">
-                                        December is a premium, visual-first AI development platform
-                                        designed to build, iterate, and deploy full-stack web
-                                        applications dynamically. Describe your ideas, refine
-                                        components in real-time, and control code natively via Git.
+                                    <p className="text-[14.5px] text-[#A3A299] leading-relaxed">
+                                        December is a premium, visual-first development platform
+                                        that empowers teams to prototype, design, and deploy
+                                        full-stack applications instantly. Describe your app concept
+                                        in plain language, construct layout blocks on a responsive
+                                        visual canvas, and compile production-ready React +
+                                        TypeScript code natively backed by Git version control.
                                     </p>
                                 </div>
 
-                                <div className="flex flex-col gap-4 mt-2">
-                                    <h2 className="text-[22px] font-semibold text-white border-b border-[#242323] pb-2 tracking-tight">
-                                        Dual-Engine Philosophy
+                                <Mermaid
+                                    chart={`graph LR
+                                        A[User Prompt] --> B[Dual-Engine Pipeline]
+                                        B --> C[Visual Canvas]
+                                        B --> D[React TypeScript Code]
+                                        C --> E[Premium Sandbox Preview]
+                                        D --> E`}
+                                />
+
+                                <div className="flex flex-col gap-3">
+                                    <h2 className="text-[18px] font-medium text-white tracking-tight">
+                                        Core Design Philosophy
                                     </h2>
-                                    <p className="text-[14.5px] text-[#A3A299] leading-relaxed">
-                                        Unlike typical generative templates or black-box builders,
-                                        December operates on a **dual-engine pipeline**. It bridges
-                                        natural language generation with direct code manipulation.
-                                        Your designs translate to clean React/TypeScript code synced
-                                        directly to Git branches in real-time.
+                                    <p className="text-[13.5px] text-[#A3A299] leading-relaxed">
+                                        Traditional app builders are often black boxes, hiding code
+                                        behind complex visual properties or rendering inflexible
+                                        structures. December bridges visual manipulation and
+                                        developer-first codebase integrity in real-time. Everything
+                                        you draw on the Canvas generates readable components under
+                                        absolute control.
                                     </p>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
-                                        <div className="bg-[#1E1D1B] border border-[#2B2A29] rounded-xl p-5 flex flex-col gap-2">
-                                            <strong className="text-white text-[14px]">
-                                                Visual First Design
-                                            </strong>
-                                            <p className="text-[13px] text-[#A3A299] leading-relaxed">
-                                                Mock up, draw, and structure components visually on
-                                                the Canvas. Swapping layouts and generating
-                                                structures feels native, responsive, and tactile.
-                                            </p>
-                                        </div>
-                                        <div className="bg-[#1E1D1B] border border-[#2B2A29] rounded-xl p-5 flex flex-col gap-2">
-                                            <strong className="text-white text-[14px]">
-                                                Developer Centric Git Flow
-                                            </strong>
-                                            <p className="text-[13px] text-[#A3A299] leading-relaxed">
-                                                Every visual box represents an isolated JSX
-                                                component. December outputs high-performance
-                                                packages under version control with continuous
-                                                integration.
-                                            </p>
-                                        </div>
-                                    </div>
                                 </div>
 
-                                <div className="flex flex-col gap-4 mt-4">
-                                    <h2 className="text-[22px] font-semibold text-white border-b border-[#242323] pb-2 tracking-tight">
-                                        Core Stack & Technologies
-                                    </h2>
-                                    <p className="text-[14.5px] text-[#A3A299] leading-relaxed">
-                                        December generates modern, robust web applications using
-                                        state-of-the-art technologies:
-                                    </p>
-                                    <table className="w-full text-left text-[13.5px] text-[#A3A299] border-collapse mt-2">
-                                        <thead>
-                                            <tr className="border-b border-[#2B2A29] text-white">
-                                                <th className="py-2.5 font-medium">Layer</th>
-                                                <th className="py-2.5 font-medium">Stack</th>
-                                                <th className="py-2.5 font-medium">Description</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <tr className="border-b border-[#2B2A29]/40">
-                                                <td className="py-3.5 font-medium text-[#D6D5C9]">
-                                                    Frontend Logic
-                                                </td>
-                                                <td className="py-3.5 text-white">
-                                                    React 18 + TypeScript
-                                                </td>
-                                                <td className="py-3.5">
-                                                    Strict typed, component-oriented, state-driven
-                                                    interfaces.
-                                                </td>
-                                            </tr>
-                                            <tr className="border-b border-[#2B2A29]/40">
-                                                <td className="py-3.5 font-medium text-[#D6D5C9]">
-                                                    UI Styling
-                                                </td>
-                                                <td className="py-3.5 text-white">
-                                                    TailwindCSS v4
-                                                </td>
-                                                <td className="py-3.5">
-                                                    Harmonized styling tokens and dynamic utilities.
-                                                </td>
-                                            </tr>
-                                            <tr className="border-b border-[#2B2A29]/40">
-                                                <td className="py-3.5 font-medium text-[#D6D5C9]">
-                                                    Bundler & Tooling
-                                                </td>
-                                                <td className="py-3.5 text-white">Vite / Bun</td>
-                                                <td className="py-3.5">
-                                                    Extremely fast local compilation, build cycles,
-                                                    and testing runner.
-                                                </td>
-                                            </tr>
-                                            <tr className="border-b border-[#2B2A29]/40">
-                                                <td className="py-3.5 font-medium text-[#D6D5C9]">
-                                                    Database & ORM
-                                                </td>
-                                                <td className="py-3.5 text-white">
-                                                    Supabase / Prisma
-                                                </td>
-                                                <td className="py-3.5">
-                                                    Automated schema generation, query builders, and
-                                                    database migrator.
-                                                </td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
+                                <Callout title="Premium Developer Sync" type="tip">
+                                    Connect your repository in seconds. Every visual shift
+                                    compile-merges straight to Git, keeping your local codebase,
+                                    pull requests, and edge releases synchronized perfectly.
+                                </Callout>
                             </div>
                         ) : activeTab === 'quickstart' ? (
-                            <div className="flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                                <div className="flex flex-col gap-3.5">
-                                    <h1 className="text-[36px] font-semibold text-white tracking-tight">
-                                        Quickstart Guide
+                            <div className="flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-1 duration-200">
+                                <div className="flex flex-col gap-2">
+                                    <h1 className="text-[28px] font-semibold text-white tracking-tight">
+                                        Quick Start Guide
                                     </h1>
-                                    <p className="text-[16px] text-[#A3A299] leading-relaxed">
-                                        Build and launch your first live application in under 3
-                                        minutes with December's visual editor.
+                                    <p className="text-[14.5px] text-[#A3A299] leading-relaxed">
+                                        Launch your first fully collaborative full-stack web
+                                        application in less than three minutes using our
+                                        visual-first workflow.
                                     </p>
                                 </div>
 
-                                <div className="flex flex-col gap-6 mt-2">
-                                    <div className="flex gap-4">
-                                        <div className="w-8 h-8 rounded-full bg-[#1E1D1B] border border-[#2B2A29] flex items-center justify-center font-bold text-white shrink-0 mt-0.5 shadow-sm">
+                                <div className="flex flex-col gap-5 mt-2">
+                                    <div className="flex gap-3">
+                                        <div className="w-7 h-7 rounded-lg bg-[#1E1D1B] border border-[#2B2A29] flex items-center justify-center font-bold text-white shrink-0 shadow-sm text-sm">
                                             1
                                         </div>
-                                        <div className="flex flex-col gap-1.5">
-                                            <h3 className="text-white font-medium text-[16px]">
-                                                Initialize a New Project
+                                        <div className="flex flex-col gap-1">
+                                            <h3 className="text-white font-medium text-[15px]">
+                                                Prompt and Initialize
                                             </h3>
-                                            <p className="text-[14px] text-[#A3A299] leading-relaxed">
-                                                Head to the Home page and type your core application
-                                                intent in the prompt input, or click the **"New
-                                                Project"** button in the sidebar. Describe your core
-                                                goal (e.g., *"Create a real-time developer metrics
-                                                dashboard"*).
+                                            <p className="text-[13.5px] text-[#A3A299] leading-relaxed">
+                                                On the Home screen, input your core concept (e.g.,
+                                                *"Create a real-time developer metrics dashboard"*).
+                                                This instantiates a clean thread and compiles the
+                                                initial visual component layers.
                                             </p>
                                         </div>
                                     </div>
 
-                                    <div className="flex gap-4">
-                                        <div className="w-8 h-8 rounded-full bg-[#1E1D1B] border border-[#2B2A29] flex items-center justify-center font-bold text-white shrink-0 mt-0.5 shadow-sm">
+                                    <div className="flex gap-3">
+                                        <div className="w-7 h-7 rounded-lg bg-[#1E1D1B] border border-[#2B2A29] flex items-center justify-center font-bold text-white shrink-0 shadow-sm text-sm">
                                             2
                                         </div>
-                                        <div className="flex flex-col gap-1.5">
-                                            <h3 className="text-white font-medium text-[16px]">
-                                                Refine Natively in Visual Mode
+                                        <div className="flex flex-col gap-1">
+                                            <h3 className="text-white font-medium text-[15px]">
+                                                Visually Edit and Refine
                                             </h3>
-                                            <p className="text-[14px] text-[#A3A299] leading-relaxed">
-                                                Describe adjustments in natural language inside the
-                                                AI chat sidebar. Highlight specific visual elements
-                                                in **"Visual Mode"** to focus edits on that specific
-                                                card, button, or list row directly.
+                                            <p className="text-[13.5px] text-[#A3A299] leading-relaxed">
+                                                Point and select any block to enter Visual Mode.
+                                                Describe adjustments locally or drag canvas
+                                                properties to instantly manipulate flexboxes,
+                                                alignment, colors, or backend databases.
                                             </p>
                                         </div>
                                     </div>
 
-                                    <div className="flex gap-4">
-                                        <div className="w-8 h-8 rounded-full bg-[#1E1D1B] border border-[#2B2A29] flex items-center justify-center font-bold text-white shrink-0 mt-0.5 shadow-sm">
+                                    <div className="flex gap-3">
+                                        <div className="w-7 h-7 rounded-lg bg-[#1E1D1B] border border-[#2B2A29] flex items-center justify-center font-bold text-white shrink-0 shadow-sm text-sm">
                                             3
                                         </div>
-                                        <div className="flex flex-col gap-1.5">
-                                            <h3 className="text-white font-medium text-[16px]">
-                                                Inspect Code, Canvas & Structure
+                                        <div className="flex flex-col gap-1">
+                                            <h3 className="text-white font-medium text-[15px]">
+                                                Inspect and Verify
                                             </h3>
-                                            <p className="text-[14px] text-[#A3A299] leading-relaxed">
-                                                Toggle between **"Preview"** to test active
-                                                interactions, **"Code"** to see raw compiled React
-                                                TypeScript in the Editor, and **"Canvas"** to view
-                                                flexbox frames and drag-and-drop structural
-                                                elements.
+                                            <p className="text-[13.5px] text-[#A3A299] leading-relaxed">
+                                                Toggle between **Preview** to interact, **Code** to
+                                                inspect clean React/TypeScript, and **Canvas** to
+                                                manipulate structure, flexboxes, and assets.
                                             </p>
                                         </div>
                                     </div>
 
-                                    <div className="flex gap-4">
-                                        <div className="w-8 h-8 rounded-full bg-[#1E1D1B] border border-[#2B2A29] flex items-center justify-center font-bold text-white shrink-0 mt-0.5 shadow-sm">
+                                    <div className="flex gap-3">
+                                        <div className="w-7 h-7 rounded-lg bg-[#1E1D1B] border border-[#2B2A29] flex items-center justify-center font-bold text-white shrink-0 shadow-sm text-sm">
                                             4
                                         </div>
-                                        <div className="flex flex-col gap-1.5">
-                                            <h3 className="text-white font-medium text-[16px]">
-                                                Deploy Globally
+                                        <div className="flex flex-col gap-1">
+                                            <h3 className="text-white font-medium text-[15px]">
+                                                Publish to the Edge
                                             </h3>
-                                            <p className="text-[14px] text-[#A3A299] leading-relaxed">
-                                                Click the **"Publish"** button in the preview
-                                                header. Your project is instantly assigned a public
-                                                `december.dev` preview domain and deployed globally
-                                                on our fast edge network.
+                                            <p className="text-[13.5px] text-[#A3A299] leading-relaxed">
+                                                Click **Publish** in the editor header. Your project
+                                                is automatically deployed on our globally optimized
+                                                CDN under an instant custom `december.dev` domain.
                                             </p>
                                         </div>
                                     </div>
                                 </div>
-
-                                <Callout title="Continuous Integration" type="tip">
-                                    Every visual iteration compiles and merges to a dedicated
-                                    branch. By connecting your GitHub account, December
-                                    automatically builds and pushes clean, well-formatted commits
-                                    straight to Git.
-                                </Callout>
                             </div>
-                        ) : activeTab === 'shortcuts' ? (
-                            <div className="flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                                <div className="flex flex-col gap-3.5">
-                                    <h1 className="text-[36px] font-semibold text-white tracking-tight">
-                                        Keyboard Shortcuts
+                        ) : activeTab === 'architecture' ? (
+                            <div className="flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-1 duration-200">
+                                <div className="flex flex-col gap-2">
+                                    <h1 className="text-[28px] font-semibold text-white tracking-tight">
+                                        Platform Architecture
                                     </h1>
-                                    <p className="text-[16px] text-[#A3A299] leading-relaxed">
-                                        Accelerate your visual editor design and Canvas workflows
-                                        with these single-key shortcuts.
+                                    <p className="text-[14.5px] text-[#A3A299] leading-relaxed">
+                                        December operates on an asynchronous dual-engine pipeline.
+                                        Visual changes compile into an Abstract Syntax Tree (AST),
+                                        generating clean code, while runtime sandboxes synchronize
+                                        state instantly.
                                     </p>
                                 </div>
 
-                                <div className="flex flex-col gap-4 mt-2">
-                                    <h2 className="text-[20px] font-medium text-white border-b border-[#242323] pb-2 tracking-tight">
-                                        Canvas Selection Shortcuts
+                                <Mermaid
+                                    chart={`graph TD
+                                        A[Visual Web Client] -->|State / Prompts| B[REST / API Gateway]
+                                        B -->|AST Changes| C[Code Agent Service]
+                                        C -->|Surgical Diff| D[Isolated Vite Runtime]
+                                        D -->|HMR Updates| A
+                                        C -->|Git Commit| E[GitHub Repository]
+                                        B -->|Publish| F[Edge CDN Platform]`}
+                                />
+
+                                <div className="flex flex-col gap-3">
+                                    <h2 className="text-[18px] font-medium text-white tracking-tight">
+                                        Key Architectural Highlights
                                     </h2>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
-                                        <div className="bg-[#1E1D1B] border border-[#2B2A29] rounded-xl p-4 flex items-center justify-between gap-4">
-                                            <div className="flex flex-col gap-1">
-                                                <strong className="text-white text-[13.5px]">
-                                                    Select Tool
-                                                </strong>
-                                                <p className="text-[11.5px] text-[#7B7A79]">
-                                                    Select, grab, and move layers and components.
-                                                </p>
-                                            </div>
-                                            <kbd className="bg-[#242323] border border-[#383736] rounded px-2.5 py-0.5 text-[12px] font-mono text-[#D6D5C9] font-semibold">
-                                                V
-                                            </kbd>
-                                        </div>
-
-                                        <div className="bg-[#1E1D1B] border border-[#2B2A29] rounded-xl p-4 flex items-center justify-between gap-4">
-                                            <div className="flex flex-col gap-1">
-                                                <strong className="text-white text-[13.5px]">
-                                                    Hand / Pan Tool
-                                                </strong>
-                                                <p className="text-[11.5px] text-[#7B7A79]">
-                                                    Navigate and scroll across the Canvas view.
-                                                </p>
-                                            </div>
-                                            <kbd className="bg-[#242323] border border-[#383736] rounded px-2.5 py-0.5 text-[12px] font-mono text-[#D6D5C9] font-semibold">
-                                                H
-                                            </kbd>
-                                        </div>
-
-                                        <div className="bg-[#1E1D1B] border border-[#2B2A29] rounded-xl p-4 flex items-center justify-between gap-4">
-                                            <div className="flex flex-col gap-1">
-                                                <strong className="text-white text-[13.5px]">
-                                                    Frame Container
-                                                </strong>
-                                                <p className="text-[11.5px] text-[#7B7A79]">
-                                                    Create flexible bounding layout frames.
-                                                </p>
-                                            </div>
-                                            <kbd className="bg-[#242323] border border-[#383736] rounded px-2.5 py-0.5 text-[12px] font-mono text-[#D6D5C9] font-semibold">
-                                                F
-                                            </kbd>
-                                        </div>
-
-                                        <div className="bg-[#1E1D1B] border border-[#2B2A29] rounded-xl p-4 flex items-center justify-between gap-4">
-                                            <div className="flex flex-col gap-1">
-                                                <strong className="text-white text-[13.5px]">
-                                                    Pen Tool
-                                                </strong>
-                                                <p className="text-[11.5px] text-[#7B7A79]">
-                                                    Draw customized drawings and notes.
-                                                </p>
-                                            </div>
-                                            <kbd className="bg-[#242323] border border-[#383736] rounded px-2.5 py-0.5 text-[12px] font-mono text-[#D6D5C9] font-semibold">
-                                                P
-                                            </kbd>
-                                        </div>
-
-                                        <div className="bg-[#1E1D1B] border border-[#2B2A29] rounded-xl p-4 flex items-center justify-between gap-4">
-                                            <div className="flex flex-col gap-1">
-                                                <strong className="text-white text-[13.5px]">
-                                                    Eraser Tool
-                                                </strong>
-                                                <p className="text-[11.5px] text-[#7B7A79]">
-                                                    Remove canvas vector strokes and components.
-                                                </p>
-                                            </div>
-                                            <kbd className="bg-[#242323] border border-[#383736] rounded px-2.5 py-0.5 text-[12px] font-mono text-[#D6D5C9] font-semibold">
-                                                E
-                                            </kbd>
-                                        </div>
-
-                                        <div className="bg-[#1E1D1B] border border-[#2B2A29] rounded-xl p-4 flex items-center justify-between gap-4">
-                                            <div className="flex flex-col gap-1">
-                                                <strong className="text-white text-[13.5px]">
-                                                    Rectangle Shape
-                                                </strong>
-                                                <p className="text-[11.5px] text-[#7B7A79]">
-                                                    Draw standard square boxes on the canvas.
-                                                </p>
-                                            </div>
-                                            <kbd className="bg-[#242323] border border-[#383736] rounded px-2.5 py-0.5 text-[12px] font-mono text-[#D6D5C9] font-semibold">
-                                                R
-                                            </kbd>
-                                        </div>
-
-                                        <div className="bg-[#1E1D1B] border border-[#2B2A29] rounded-xl p-4 flex items-center justify-between gap-4">
-                                            <div className="flex flex-col gap-1">
-                                                <strong className="text-white text-[13.5px]">
-                                                    Text Tool
-                                                </strong>
-                                                <p className="text-[11.5px] text-[#7B7A79]">
-                                                    Create editable on-screen typography layers.
-                                                </p>
-                                            </div>
-                                            <kbd className="bg-[#242323] border border-[#383736] rounded px-2.5 py-0.5 text-[12px] font-mono text-[#D6D5C9] font-semibold">
-                                                T
-                                            </kbd>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="flex flex-col gap-4 mt-4">
-                                    <h2 className="text-[20px] font-medium text-white border-b border-[#242323] pb-2 tracking-tight">
-                                        Tactile Workspace Modifiers
-                                    </h2>
-                                    <ul className="list-disc pl-5 flex flex-col gap-3 text-[14px] text-[#A3A299]">
+                                    <ul className="list-disc pl-5 flex flex-col gap-2 text-[13.5px] text-[#A3A299]">
                                         <li>
-                                            <strong className="text-[#D6D5C9]">
-                                                Spacebar or Shift:
+                                            <strong className="text-white">
+                                                Dual-Engine Compiler:
                                             </strong>{' '}
-                                            Hold down temporarily to switch your tool to the **Hand
-                                            (Pan)** tool. Releasing the key instantly restores your
-                                            active tool. Useful when dragging large component
-                                            structures.
+                                            Visually parsed node coordinates compile straight to
+                                            React/JSX elements with styled-utility tokens.
                                         </li>
                                         <li>
-                                            <strong className="text-[#D6D5C9]">Escape:</strong>{' '}
-                                            Clears the current visual element selection, resets
-                                            highlighted borders, and closes popup menu drawers
-                                            immediately.
+                                            <strong className="text-white">
+                                                Git Version Control:
+                                            </strong>{' '}
+                                            Commits, branches, and merges are managed
+                                            programmatically via headless repository agents.
                                         </li>
                                         <li>
-                                            <strong className="text-[#D6D5C9]">
-                                                Cmd / Ctrl + K:
+                                            <strong className="text-white">
+                                                Isolated Sandbox:
                                             </strong>{' '}
-                                            Opens the global Workspace Command Palette from
-                                            anywhere.
+                                            Individual app frames execute on virtual local runtimes
+                                            using fast Bun-backed services.
                                         </li>
                                     </ul>
                                 </div>
                             </div>
-                        ) : activeTab === 'workspace' ? (
-                            <div className="flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                                <div className="flex flex-col gap-3.5">
-                                    <h1 className="text-[36px] font-semibold text-white tracking-tight">
-                                        Workspace & Team Collaborations
+                        ) : activeTab === 'agent' ? (
+                            <div className="flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-1 duration-200">
+                                <div className="flex flex-col gap-2">
+                                    <h1 className="text-[28px] font-semibold text-white tracking-tight">
+                                        AI Code Agent
                                     </h1>
-                                    <p className="text-[16px] text-[#A3A299] leading-relaxed">
-                                        Organize projects, assign roles, and manage permissions
-                                        across collaborative teams in your Workspace.
+                                    <p className="text-[14.5px] text-[#A3A299] leading-relaxed">
+                                        The December Agent is a specialized self-healing system
+                                        designed to generate complete files, apply precise AST
+                                        surgical diffs, and dynamically repair build issues.
+                                    </p>
+                                </div>
+
+                                <Mermaid
+                                    chart={`graph TD
+                                        A[Receive Prompt / Change] --> B[Generate Component Diffs]
+                                        B --> C[Verify Bun Compilation]
+                                        C -->|Errors Found| D[Auto-Fix Compiler Error]
+                                        C -->|Clean Build| E[Run Headless E2E Tests]
+                                        E -->|Console Errors| D
+                                        E -->|Success| F[Synchronize Canvas State]
+                                        D --> B`}
+                                />
+
+                                <div className="flex flex-col gap-3">
+                                    <h2 className="text-[18px] font-medium text-white tracking-tight">
+                                        Self-Healing Loop
+                                    </h2>
+                                    <p className="text-[13.5px] text-[#A3A299] leading-relaxed">
+                                        Every compile process runs verification pipelines. If a
+                                        component introduces standard TypeScript warnings or
+                                        rendering faults, our headless agent captures logs
+                                        immediately, reasons through dependencies, and automatically
+                                        executes repair patches before showing you the preview.
+                                    </p>
+                                </div>
+                            </div>
+                        ) : activeTab === 'canvas' ? (
+                            <div className="flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-1 duration-200">
+                                <div className="flex flex-col gap-2">
+                                    <h1 className="text-[28px] font-semibold text-white tracking-tight">
+                                        Context Canvas
+                                    </h1>
+                                    <p className="text-[14.5px] text-[#A3A299] leading-relaxed">
+                                        Our visual layout canvas allows you to manipulate
+                                        structures, assets, and component trees through direct
+                                        selection bounds and flexbox properties.
                                     </p>
                                 </div>
 
                                 <div className="flex flex-col gap-4 mt-2">
-                                    <h2 className="text-[20px] font-medium text-white border-b border-[#242323] pb-2 tracking-tight">
-                                        Role-Based Access Control (RBAC)
-                                    </h2>
-                                    <p className="text-[14.5px] text-[#A3A299] leading-relaxed">
-                                        December supports four standard roles to maintain security
-                                        boundaries across your workspace:
-                                    </p>
-                                    <div className="flex flex-col gap-3.5 mt-2">
-                                        <div className="bg-[#1E1D1B] border border-[#2B2A29] rounded-xl p-4 flex flex-col gap-1">
-                                            <strong className="text-white text-[14px]">
-                                                Owner / Admin
-                                            </strong>
-                                            <p className="text-[13px] text-[#A3A299]">
-                                                Full billing control, member invitations, API key
-                                                management, custom domains, and deletion
-                                                capabilities.
-                                            </p>
-                                        </div>
-                                        <div className="bg-[#1E1D1B] border border-[#2B2A29] rounded-xl p-4 flex flex-col gap-1">
-                                            <strong className="text-white text-[14px]">
-                                                Editor
-                                            </strong>
-                                            <p className="text-[13px] text-[#A3A299]">
-                                                Create, modify, compile, and duplicate projects. Can
-                                                push deployments, synchronize databases, and sync
-                                                back to Git branches.
-                                            </p>
-                                        </div>
-                                        <div className="bg-[#1E1D1B] border border-[#2B2A29] rounded-xl p-4 flex flex-col gap-1">
-                                            <strong className="text-white text-[14px]">
-                                                Viewer
-                                            </strong>
-                                            <p className="text-[13px] text-[#A3A299]">
-                                                Read-only access. Review active preview screens,
-                                                read code repositories, inspect canvas structures,
-                                                and check audit histories.
-                                            </p>
-                                        </div>
+                                    <div className="flex flex-col gap-1.5">
+                                        <h3 className="text-white font-medium text-[15px]">
+                                            Visual Node Tree
+                                        </h3>
+                                        <p className="text-[13.5px] text-[#A3A299] leading-relaxed">
+                                            Every bounding box represents a JSX tag. December maps
+                                            absolute and relative flexbox grids onto coordinate
+                                            spaces, resolving nesting, margins, and borders into
+                                            standard layout tokens.
+                                        </p>
+                                    </div>
+
+                                    <div className="flex flex-col gap-1.5">
+                                        <h3 className="text-white font-medium text-[15px]">
+                                            Tactile Asset Binding
+                                        </h3>
+                                        <p className="text-[13.5px] text-[#A3A299] leading-relaxed">
+                                            Upload pictures, embed media, or clip online content
+                                            straight onto your canvas. December assigns each element
+                                            a secure temporary key, scaling images reactively to fit
+                                            layout components perfectly.
+                                        </p>
                                     </div>
                                 </div>
+                            </div>
+                        ) : activeTab === 'runtime' ? (
+                            <div className="flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-1 duration-200">
+                                <div className="flex flex-col gap-2">
+                                    <h1 className="text-[28px] font-semibold text-white tracking-tight">
+                                        Isolated Runtime
+                                    </h1>
+                                    <p className="text-[14.5px] text-[#A3A299] leading-relaxed">
+                                        A look under the hood at December's secure, lightning-fast
+                                        compilation sandboxes.
+                                    </p>
+                                </div>
 
-                                <Callout title="Billing Boundaries" type="warning">
-                                    Only Workspace Owners can subscribe to plans, invite billing
-                                    contacts, configure credit cards, and perform plan changes or
-                                    cancellation flows.
-                                </Callout>
+                                <div className="flex flex-col gap-4 mt-2">
+                                    <p className="text-[13.5px] text-[#A3A299] leading-relaxed">
+                                        Each workspace instance is running inside an isolated local
+                                        container. We compile React 18 and strict TypeScript using
+                                        custom, high-speed Vite bundlers.
+                                    </p>
+                                    <table className="w-full text-left text-[13px] text-[#A3A299] border-collapse mt-1">
+                                        <thead>
+                                            <tr className="border-b border-[#242322] text-white">
+                                                <th className="py-2 font-medium">Metric</th>
+                                                <th className="py-2 font-medium">Technology</th>
+                                                <th className="py-2 font-medium">
+                                                    Performance Goal
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr className="border-b border-[#242322]/40">
+                                                <td className="py-3 text-[#D6D5C9] font-medium">
+                                                    Hot Reload
+                                                </td>
+                                                <td className="py-3 text-white">Vite HMR</td>
+                                                <td className="py-3">&lt; 150ms state updates</td>
+                                            </tr>
+                                            <tr className="border-b border-[#242322]/40">
+                                                <td className="py-3 text-[#D6D5C9] font-medium">
+                                                    Server Execution
+                                                </td>
+                                                <td className="py-3 text-white">
+                                                    Bun / Rust runtime
+                                                </td>
+                                                <td className="py-3">&lt; 3.0s total cold start</td>
+                                            </tr>
+                                            <tr className="border-b border-[#242322]/40">
+                                                <td className="py-3 text-[#D6D5C9] font-medium">
+                                                    Database ORM
+                                                </td>
+                                                <td className="py-3 text-white">
+                                                    Prisma DB adapter
+                                                </td>
+                                                <td className="py-3">
+                                                    &lt; 50ms schema migrations
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        ) : activeTab === 'deployments' ? (
+                            <div className="flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-1 duration-200">
+                                <div className="flex flex-col gap-2">
+                                    <h1 className="text-[28px] font-semibold text-white tracking-tight">
+                                        Deployments & Domains
+                                    </h1>
+                                    <p className="text-[14.5px] text-[#A3A299] leading-relaxed">
+                                        Deploy production-ready projects globally on our fast edge
+                                        content delivery network in single-click actions.
+                                    </p>
+                                </div>
+
+                                <div className="flex flex-col gap-4 mt-2">
+                                    <div className="flex flex-col gap-1.5">
+                                        <h3 className="text-white font-medium text-[15px]">
+                                            Edge Deployments
+                                        </h3>
+                                        <p className="text-[13.5px] text-[#A3A299] leading-relaxed">
+                                            When you click **Publish**, December builds an optimized
+                                            static bundle, deploys database assets, and provisions
+                                            routing tables. Your projects load globally under
+                                            sub-second latency from regional centers.
+                                        </p>
+                                    </div>
+
+                                    <div className="flex flex-col gap-1.5">
+                                        <h3 className="text-white font-medium text-[15px]">
+                                            Custom Domains
+                                        </h3>
+                                        <p className="text-[13.5px] text-[#A3A299] leading-relaxed">
+                                            Workspace settings support pointing projects to personal
+                                            domains (e.g. `yourname.com`). We provision automatic
+                                            SSL certificates, handling DNS verification, caching,
+                                            and regional edge load-balancing.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        ) : activeTab === 'settings' ? (
+                            <div className="flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-1 duration-200">
+                                <div className="flex flex-col gap-2">
+                                    <h1 className="text-[28px] font-semibold text-white tracking-tight">
+                                        Account Settings
+                                    </h1>
+                                    <p className="text-[14.5px] text-[#A3A299] leading-relaxed">
+                                        Manage your account, customize UI parameters, choose sounds,
+                                        and monitor available credits.
+                                    </p>
+                                </div>
+
+                                <div className="flex flex-col gap-4 mt-2">
+                                    <div className="flex flex-col gap-1.5">
+                                        <h3 className="text-white font-medium text-[15px]">
+                                            Notification Sound Preferences
+                                        </h3>
+                                        <p className="text-[13.5px] text-[#A3A299] leading-relaxed">
+                                            Adjust generation sound parameters inside
+                                            **Preferences**. By default, our snappy, high-fidelity
+                                            arpeggiated synth bell chime plays upon successful
+                                            visual compilations. This can be configured to play
+                                            *Always*, *First Generation Only*, or *Never*.
+                                        </p>
+                                    </div>
+
+                                    <div className="flex flex-col gap-1.5">
+                                        <h3 className="text-white font-medium text-[15px]">
+                                            Billing and Credit Balance
+                                        </h3>
+                                        <p className="text-[13.5px] text-[#A3A299] leading-relaxed">
+                                            Free tiers grant $1.00 base credit limit. Upgrade to
+                                            **Pro** to receive $5.00 monthly refreshes. If you have
+                                            a gift card, coupon, or promotional code, click **Claim
+                                            Credits** on the Billing tab to increase your balance
+                                            instantly.
+                                        </p>
+                                    </div>
+                                </div>
                             </div>
                         ) : activeTab === 'security' ? (
-                            <div className="flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                                <div className="flex flex-col gap-3.5">
-                                    <h1 className="text-[36px] font-semibold text-white tracking-tight">
-                                        Security & Compliance
+                            <div className="flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-1 duration-200">
+                                <div className="flex flex-col gap-2">
+                                    <h1 className="text-[28px] font-semibold text-white tracking-tight">
+                                        Security & Data Privacy
                                     </h1>
-                                    <p className="text-[16px] text-[#A3A299] leading-relaxed">
-                                        Enterprise-grade code security, isolated data boundaries,
-                                        and strict compliance structures.
+                                    <p className="text-[14.5px] text-[#A3A299] leading-relaxed">
+                                        How we isolate, encrypt, and secure codebases, databases,
+                                        and visual workspaces.
                                     </p>
                                 </div>
 
                                 <div className="flex flex-col gap-4 mt-2">
-                                    <h2 className="text-[20px] font-medium text-white border-b border-[#242323] pb-2 tracking-tight">
-                                        AI Training Data Privacy Policy
-                                    </h2>
-                                    <p className="text-[14.5px] text-[#A3A299] leading-relaxed">
-                                        At December, your code remains exclusively yours. We
-                                        strictly partition workspace contexts. Custom generation
-                                        models are completely isolated and **never** trained on your
-                                        private inputs, prompt history, database models, or codebase
-                                        repositories. Workspace owners can toggle strict
-                                        workspace-wide opt-outs inside Account Settings to enforce
-                                        local LLM inference configurations.
-                                    </p>
-                                </div>
+                                    <div className="flex flex-col gap-1.5">
+                                        <h3 className="text-white font-medium text-[15px]">
+                                            Zero Training Data Leakage
+                                        </h3>
+                                        <p className="text-[13.5px] text-[#A3A299] leading-relaxed">
+                                            At December, we partition workspaces. Your custom code,
+                                            assets, prompts, and database parameters are completely
+                                            isolated. **We never train** LLMs or generative
+                                            algorithms on your private inputs or database data.
+                                        </p>
+                                    </div>
 
-                                <div className="flex flex-col gap-4 mt-4">
-                                    <h2 className="text-[20px] font-medium text-white border-b border-[#242323] pb-2 tracking-tight">
-                                        Compliance & Isolation
-                                    </h2>
-                                    <ul className="list-disc pl-5 flex flex-col gap-2.5 text-[14.0px] text-[#A3A299]">
-                                        <li>
-                                            <strong className="text-[#D6D5C9]">
-                                                SOC 2 Type II Compliance:
-                                            </strong>{' '}
-                                            Enforced access controls, continuous network
-                                            vulnerability scanning, and annual third-party audits.
-                                        </li>
-                                        <li>
-                                            <strong className="text-[#D6D5C9]">
-                                                ISO/IEC 27001:2022:
-                                            </strong>{' '}
-                                            Certified information security management systems
-                                            covering infrastructure, databases, and deployment
-                                            pipelines.
-                                        </li>
-                                        <li>
-                                            <strong className="text-[#D6D5C9]">
-                                                GDPR / CCPA Alignment:
-                                            </strong>{' '}
-                                            Native data residency selection (EU, US, APAC region
-                                            centers) and instant data purging controls.
-                                        </li>
-                                    </ul>
+                                    <div className="flex flex-col gap-1.5">
+                                        <h3 className="text-white font-medium text-[15px]">
+                                            Compliance Standard Alignments
+                                        </h3>
+                                        <p className="text-[13.5px] text-[#A3A299] leading-relaxed">
+                                            Our systems align with strict SOC 2 Type II and ISO
+                                            27001 boundaries. We enforce encrypted tables, automated
+                                            regular backups, regional data storage centers, and
+                                            secure access audits.
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
-                        ) : activeTab === 'billing' ? (
-                            <div className="flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                                <div className="flex flex-col gap-3.5">
-                                    <h1 className="text-[36px] font-semibold text-white tracking-tight">
-                                        Billing & Token Economics
+                        ) : activeTab === 'changelog' ? (
+                            <div className="flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-1 duration-200">
+                                <div className="flex flex-col gap-2">
+                                    <h1 className="text-[28px] font-semibold text-white tracking-tight">
+                                        Product Changelog
                                     </h1>
-                                    <p className="text-[16px] text-[#A3A299] leading-relaxed">
-                                        Understand subscriptions, credit caps, and credit
-                                        consumption rates inside December.
-                                    </p>
-                                </div>
-
-                                <div className="flex flex-col gap-4 mt-2">
-                                    <h2 className="text-[20px] font-medium text-white border-b border-[#242323] pb-2 tracking-tight">
-                                        Model Consumption Matrix
-                                    </h2>
                                     <p className="text-[14.5px] text-[#A3A299] leading-relaxed">
-                                        Generative edits and plans consume credits in cents
-                                        depending on model intelligence and token output.
-                                    </p>
-                                    <table className="w-full text-left text-[13px] text-[#A3A299] border-collapse mt-2">
-                                        <thead>
-                                            <tr className="border-b border-[#2B2A29] text-white">
-                                                <th className="py-2.5 font-medium">Model</th>
-                                                <th className="py-2.5 font-medium">
-                                                    Input/1M Tokens
-                                                </th>
-                                                <th className="py-2.5 font-medium">
-                                                    Output/1M Tokens
-                                                </th>
-                                                <th className="py-2.5 font-medium">
-                                                    Average cost per edit
-                                                </th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <tr className="border-b border-[#2B2A29]/40">
-                                                <td className="py-3 font-medium text-[#D6D5C9]">
-                                                    Claude 3.5 Sonnet
-                                                </td>
-                                                <td className="py-3">$3.00</td>
-                                                <td className="py-3">$15.00</td>
-                                                <td className="py-3 text-white">~ 4.0 cents</td>
-                                            </tr>
-                                            <tr className="border-b border-[#2B2A29]/40">
-                                                <td className="py-3 font-medium text-[#D6D5C9]">
-                                                    GPT-4o
-                                                </td>
-                                                <td className="py-3">$2.50</td>
-                                                <td className="py-3">$10.00</td>
-                                                <td className="py-3 text-white">~ 3.0 cents</td>
-                                            </tr>
-                                            <tr className="border-b border-[#2B2A29]/40">
-                                                <td className="py-3 font-medium text-[#D6D5C9]">
-                                                    Gemini 2.5 Flash
-                                                </td>
-                                                <td className="py-3">$0.075</td>
-                                                <td className="py-3">$0.30</td>
-                                                <td className="py-3 text-white">~ 0.2 cents</td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-
-                                <Callout title="Auto-Replenish Limits" type="info">
-                                    When remaining credits fall to $0, AI generations are paused.
-                                    You can activate Auto-Replenish inside Billing Settings to
-                                    configure automated top-ups (e.g. $10 additions) when your
-                                    credits fall below $2.
-                                </Callout>
-                            </div>
-                        ) : activeTab === 'canvas-workflow' ? (
-                            <div className="flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                                <div className="flex flex-col gap-3.5">
-                                    <h1 className="text-[36px] font-semibold text-white tracking-tight">
-                                        Canvas Visual Workflow
-                                    </h1>
-                                    <p className="text-[16px] text-[#A3A299] leading-relaxed">
-                                        Build structural components, arrange layouts, and link
-                                        database models completely visually.
+                                        Follow along with recent product improvements, arpeggiated
+                                        sound upgrades, and secure coupon systems.
                                     </p>
                                 </div>
 
-                                <div className="flex flex-col gap-4 mt-2">
-                                    <h2 className="text-[20px] font-medium text-white border-b border-[#242323] pb-2 tracking-tight">
-                                        Component Linking & Flow
-                                    </h2>
-                                    <p className="text-[14.5px] text-[#A3A299] leading-relaxed">
-                                        On the Canvas, drag components into **"Frames"** to group
-                                        them inside flexbox wrappers. To bind user actions (e.g.
-                                        form submission) to backend mutations (e.g. database
-                                        insert), simply drag a connection arrow from the button node
-                                        to the database table entity. December automatically
-                                        generates the required client-side fetch handlers and Prisma
-                                        service endpoints.
-                                    </p>
-                                </div>
+                                <div className="flex flex-col gap-4 mt-3 border-l border-[#242323] pl-4">
+                                    <div className="flex flex-col gap-1 relative">
+                                        <div className="absolute -left-[21px] top-1.5 w-2.5 h-2.5 rounded-full bg-[#D6D5C9]" />
+                                        <span className="text-[11px] font-mono text-[#7B7A79] font-bold">
+                                            JUNE 2026
+                                        </span>
+                                        <h4 className="text-white font-semibold text-[14px]">
+                                            Chime Audio Engines & Premium Web Clipper Modal
+                                        </h4>
+                                        <p className="text-[13px] text-[#A3A299] leading-relaxed">
+                                            - Replaced simple beep tone with high-fidelity C-major
+                                            arpeggiated bell chime.
+                                            <br />
+                                            - Refactored canvas toolbar popover into full-screen
+                                            premium visual modal.
+                                            <br />- Added 60-90 second capturing warnings during
+                                            visual clipping phases.
+                                        </p>
+                                    </div>
 
-                                <Callout title="Drawing Vectors" type="tip">
-                                    Use the **Pen Tool (P)** to sketch UI additions, notes, or flow
-                                    diagrams directly on top of generated elements. Drawings are
-                                    saved inside the project version manifest under vector layers.
-                                </Callout>
-                            </div>
-                        ) : activeTab === 'dual-editor' ? (
-                            <div className="flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                                <div className="flex flex-col gap-3.5">
-                                    <h1 className="text-[36px] font-semibold text-white tracking-tight">
-                                        Dual-Engine Architecture
-                                    </h1>
-                                    <p className="text-[16px] text-[#A3A299] leading-relaxed">
-                                        How December seamlessly bridges the gap between visual
-                                        layout designers and real source code.
-                                    </p>
-                                </div>
-
-                                <div className="flex flex-col gap-4 mt-2">
-                                    <h2 className="text-[20px] font-medium text-white border-b border-[#242323] pb-2 tracking-tight">
-                                        Synchronization Flow
-                                    </h2>
-                                    <p className="text-[14.5px] text-[#A3A299] leading-relaxed">
-                                        Our dual-engine pipeline ensures the visual layout remains
-                                        completely synced with the React code:
-                                    </p>
-                                    <ol className="list-decimal pl-5 flex flex-col gap-3.5 text-[14px] text-[#A3A299] marker:text-[#7B7A79] marker:font-bold">
-                                        <li className="pl-1">
-                                            <strong className="text-[#D6D5C9]">
-                                                Visual Action:
-                                            </strong>{' '}
-                                            When you drag or add a component on the Canvas, it
-                                            registers in our local Rust compiler.
-                                        </li>
-                                        <li className="pl-1">
-                                            <strong className="text-[#D6D5C9]">
-                                                AST Compiling:
-                                            </strong>{' '}
-                                            The AST (Abstract Syntax Tree) is compiled, generating
-                                            clean JSX and Tailwind v4 classes in memory.
-                                        </li>
-                                        <li className="pl-1">
-                                            <strong className="text-[#D6D5C9]">
-                                                Direct Code Sync:
-                                            </strong>{' '}
-                                            The generated code compiles and mounts inside CodeMirror
-                                            instantly. Any manual code adjustments you type inside
-                                            the Code tab immediately re-render visual Canvas
-                                            components.
-                                        </li>
-                                    </ol>
+                                    <div className="flex flex-col gap-1 relative mt-4">
+                                        <div className="absolute -left-[21px] top-1.5 w-2.5 h-2.5 rounded-full bg-[#383736]" />
+                                        <span className="text-[11px] font-mono text-[#7B7A79] font-bold">
+                                            MAY 2026
+                                        </span>
+                                        <h4 className="text-white font-semibold text-[14px]">
+                                            Secure Offline CLI Code Redemption
+                                        </h4>
+                                        <p className="text-[13px] text-[#A3A299] leading-relaxed">
+                                            - Implemented SHA-256 hashed transaction-bound credit
+                                            redeem endpoints.
+                                            <br />
+                                            - Added standalone secure CLI code generation scripts
+                                            exporting to local CSVs.
+                                            <br />- Introduced rate limiters to secure the code
+                                            redemptions.
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
-                        ) : activeTab === 'prompting-tips' ? (
-                            <div className="flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                                <div className="flex flex-col gap-3.5">
-                                    <h1 className="text-[36px] font-semibold text-white tracking-tight">
-                                        AI Assist & Prompting Tips
+                        ) : activeTab === 'privacy' ? (
+                            <div className="flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-1 duration-200">
+                                <div className="flex flex-col gap-2">
+                                    <h1 className="text-[28px] font-semibold text-white tracking-tight">
+                                        Privacy Policy
                                     </h1>
-                                    <p className="text-[16px] text-[#A3A299] leading-relaxed">
-                                        Master prompting structures to generate production-ready
-                                        architectures instantly.
+                                    <p className="text-[11px] text-[#7B7A79] font-mono">
+                                        Last Updated: June 1, 2026
                                     </p>
                                 </div>
 
-                                <div className="flex flex-col gap-4 mt-2">
-                                    <h2 className="text-[20px] font-medium text-white border-b border-[#242323] pb-2 tracking-tight">
-                                        Targeted Visual Prompting
-                                    </h2>
-                                    <p className="text-[14.5px] text-[#A3A299] leading-relaxed">
-                                        Instead of writing broad, sweeping prompts, toggle **"Visual
-                                        Mode"** inside the editor. Click on the specific element you
-                                        want to edit (e.g. the main navigation bar). This isolates
-                                        that component's JSX subtree, allowing you to prompt small,
-                                        focused changes (e.g., *"Make this bar sticky and add a
-                                        subtle blur shadow"*) without affecting the rest of the
-                                        layout.
+                                <div className="flex flex-col gap-4 text-[13.5px] text-[#A3A299] leading-relaxed">
+                                    <p>
+                                        This Privacy Policy outlines how December collects, secures,
+                                        and handles information across our visual development
+                                        interfaces, local workspaces, and server API pipelines.
                                     </p>
-                                </div>
-
-                                <div className="flex flex-col gap-4 mt-4">
-                                    <h2 className="text-[20px] font-medium text-white border-b border-[#242323] pb-2 tracking-tight">
-                                        Prompting Best Practices
-                                    </h2>
-                                    <ul className="list-disc pl-5 flex flex-col gap-2.5 text-[14px] text-[#A3A299]">
-                                        <li>
-                                            <strong className="text-[#D6D5C9]">
-                                                Specify state:
-                                            </strong>{' '}
-                                            Ask for active, hover, and empty states explicitly
-                                            (*"Show a beautiful skeleton card loader while list is
-                                            empty"*).
-                                        </li>
-                                        <li>
-                                            <strong className="text-[#D6D5C9]">
-                                                Define boundaries:
-                                            </strong>{' '}
-                                            Guide layout scopes (*"Wrap this in an isolated flex
-                                            layout"*).
-                                        </li>
-                                        <li>
-                                            <strong className="text-[#D6D5C9]">
-                                                Iterative refinements:
-                                            </strong>{' '}
-                                            Prompt incremental, step-by-step changes rather than
-                                            large structural modifications all at once.
-                                        </li>
-                                    </ul>
+                                    <div>
+                                        <h4 className="text-white font-medium mb-1">
+                                            1. Information Collection
+                                        </h4>
+                                        <p>
+                                            We collect email credentials, Git authorization
+                                            parameters, prompt history, and visual state
+                                            modifications solely to provision sandboxes, build code,
+                                            and manage regional deployments.
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <h4 className="text-white font-medium mb-1">
+                                            2. Data Security & Storage
+                                        </h4>
+                                        <p>
+                                            Code outputs, variables, and database assets are
+                                            encrypted in transit and at rest. Multi-tenant
+                                            partitioning ensures complete data isolation. We retain
+                                            your data only as long as you maintain an active
+                                            workspace account.
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <h4 className="text-white font-medium mb-1">
+                                            3. Your Data Rights
+                                        </h4>
+                                        <p>
+                                            You retain full ownership of all compiled code, assets,
+                                            and database schemas. You can export complete project
+                                            folders or request a total, permanent purge of your
+                                            workspace data at any time.
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
-                        ) : activeTab === 'github-sync' ? (
-                            <div className="flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                                <div className="flex flex-col gap-3.5">
-                                    <h1 className="text-[36px] font-semibold text-white tracking-tight">
-                                        GitHub Sync & Git Flow
+                        ) : (
+                            <div className="flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-1 duration-200">
+                                <div className="flex flex-col gap-2">
+                                    <h1 className="text-[28px] font-semibold text-white tracking-tight">
+                                        Terms of Service
                                     </h1>
-                                    <p className="text-[16px] text-[#A3A299] leading-relaxed">
-                                        Manage your repository syncing, branch commits, and conflict
-                                        resolutions.
+                                    <p className="text-[11px] text-[#7B7A79] font-mono">
+                                        Last Updated: June 1, 2026
                                     </p>
                                 </div>
 
-                                <div className="flex flex-col gap-4 mt-2">
-                                    <h2 className="text-[20px] font-medium text-white border-b border-[#242323] pb-2 tracking-tight">
-                                        Silent Pushes & Pull Requests
-                                    </h2>
-                                    <p className="text-[14.5px] text-[#A3A299] leading-relaxed">
-                                        Once GitHub is connected, December sets up a continuous
-                                        integration pipeline. Every single successfully compiled
-                                        visual iteration triggers a silent commit and pushes it
-                                        straight to a dedicated `december/feature-name` branch. When
-                                        you are ready to merge into `main`, click **"Create PR"**
-                                        directly from December to generate a beautifully structured
-                                        pull request with diff summaries.
+                                <div className="flex flex-col gap-4 text-[13.5px] text-[#A3A299] leading-relaxed">
+                                    <p>
+                                        Please read these Terms of Service carefully before
+                                        utilizing December's visual editor, API endpoints, or edge
+                                        deployment platforms.
                                     </p>
-                                </div>
-
-                                <Callout title="Conflict Resolutions" type="warning">
-                                    If another developer pushes direct edits to your Git branch,
-                                    December automatically triggers a background branch merge. If
-                                    merge conflicts arise, they are highlighted in the direct Code
-                                    tab, letting you resolve conflicts manually before compiling.
-                                </Callout>
-                            </div>
-                        ) : activeTab === 'cloud-deploys' ? (
-                            <div className="flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                                <div className="flex flex-col gap-3.5">
-                                    <h1 className="text-[36px] font-semibold text-white tracking-tight">
-                                        Cloud Deploys & Custom Domains
-                                    </h1>
-                                    <p className="text-[16px] text-[#A3A299] leading-relaxed">
-                                        Deploy applications globally, configure routing, and connect
-                                        custom domains.
-                                    </p>
-                                </div>
-
-                                <div className="flex flex-col gap-4 mt-2">
-                                    <h2 className="text-[20px] font-medium text-white border-b border-[#242323] pb-2 tracking-tight">
-                                        Setting up Custom Domains
-                                    </h2>
-                                    <p className="text-[14.5px] text-[#A3A299] leading-relaxed">
-                                        Pro subscribers can easily link custom domains (e.g.
-                                        `app.mybrand.com`) to their December preview deployments:
-                                    </p>
-                                    <ol className="list-decimal pl-5 flex flex-col gap-3 text-[14px] text-[#A3A299] marker:text-[#7B7A79] marker:font-bold">
-                                        <li>
-                                            Open **Project Settings** and navigate to the
-                                            **Domains** tab.
-                                        </li>
-                                        <li>
-                                            Add your custom domain and copy the target CNAME target.
-                                        </li>
-                                        <li>
-                                            Configure your DNS provider with the following
-                                            parameters:
-                                        </li>
-                                    </ol>
-                                    <table className="w-full text-left text-[13px] text-[#A3A299] border-collapse mt-2">
-                                        <thead>
-                                            <tr className="border-b border-[#2B2A29] text-white">
-                                                <th className="py-2.5 font-medium">Type</th>
-                                                <th className="py-2.5 font-medium">Host</th>
-                                                <th className="py-2.5 font-medium">Value</th>
-                                                <th className="py-2.5 font-medium">TTL</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <tr className="border-b border-[#2B2A29]/40">
-                                                <td className="py-3 font-medium text-[#D6D5C9]">
-                                                    CNAME
-                                                </td>
-                                                <td className="py-3">@ / app</td>
-                                                <td className="py-3">dns.december.dev</td>
-                                                <td className="py-3">Automatic</td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
+                                    <div>
+                                        <h4 className="text-white font-medium mb-1">
+                                            1. Account & Use Quotas
+                                        </h4>
+                                        <p>
+                                            You must maintain secure authentication details. You are
+                                            responsible for all workspace transactions, prompt
+                                            requests, database executions, and credit usage events
+                                            under your session.
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <h4 className="text-white font-medium mb-1">
+                                            2. Credits & Billing Terms
+                                        </h4>
+                                        <p>
+                                            Subscription plans are billed monthly. Standard credits
+                                            do not carry over across monthly cycles. Gifted credit
+                                            balance claimed via promotional coupons is bound to the
+                                            specific user account and cannot be refunded or
+                                            transferred.
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <h4 className="text-white font-medium mb-1">
+                                            3. Limitations & Liabilities
+                                        </h4>
+                                        <p>
+                                            December builds applications based on dynamic prompt
+                                            reasoning. While our Code Agent runs self-healing tests,
+                                            you remain responsible for final code review and
+                                            compliance verification before final deployment.
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
-                        ) : activeTab === 'cli-api' ? (
-                            <div className="flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                                <div className="flex flex-col gap-3.5">
-                                    <h1 className="text-[36px] font-semibold text-white tracking-tight">
-                                        Programmatic CLI & APIs
-                                    </h1>
-                                    <p className="text-[16px] text-[#A3A299] leading-relaxed">
-                                        Trigger generations, sync databases, and manage environments
-                                        programmatically.
-                                    </p>
-                                </div>
-
-                                <div className="flex flex-col gap-4 mt-2">
-                                    <h2 className="text-[20px] font-medium text-white border-b border-[#242323] pb-2 tracking-tight">
-                                        December CLI
-                                    </h2>
-                                    <p className="text-[14.5px] text-[#A3A299] leading-relaxed">
-                                        Deploy our headless CLI to integrate December into your
-                                        local shell and CI pipeline workflow:
-                                    </p>
-                                    <CodeBlock
-                                        code={`# Install December global CLI
-npm install -g @december/cli
-
-# Login and authorize account
-december login
-
-# Initialize database schema from current Prisma model
-december db pull --project-id <your-uuid>`}
-                                        language="bash"
-                                    />
-                                </div>
-                            </div>
-                        ) : activeTab === 'concepts' ? (
-                            <div className="flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                                <div className="flex flex-col gap-3.5">
-                                    <h1 className="text-[36px] font-semibold text-white tracking-tight">
-                                        Core Concepts
-                                    </h1>
-                                    <p className="text-[16px] text-[#A3A299] leading-relaxed">
-                                        Explore the foundational architecture that drives the
-                                        December platform.
-                                    </p>
-                                </div>
-
-                                <div className="flex flex-col gap-4 mt-2">
-                                    <h2 className="text-[20px] font-medium text-white border-b border-[#242323] pb-2 tracking-tight">
-                                        Abstract Syntax Tree (AST) Modification
-                                    </h2>
-                                    <p className="text-[14.5px] text-[#A3A299] leading-relaxed">
-                                        Instead of generating arbitrary text or writing simple code
-                                        scripts, December maps the visual nodes you draw directly to
-                                        a structured React/TypeScript Abstract Syntax Tree (AST).
-                                        Every visually selected component is mapped to its exact
-                                        matching TSX representation.
-                                    </p>
-                                    <p className="text-[14.5px] text-[#A3A299] leading-relaxed">
-                                        When you edit elements via the chat interface, the AI works
-                                        with a semantic representation of the tree, modifying exact
-                                        React components, styling nodes, and import trees without
-                                        disrupting the surrounding layout.
-                                    </p>
-                                </div>
-
-                                <div className="flex flex-col gap-4 mt-2">
-                                    <h2 className="text-[20px] font-medium text-white border-b border-[#242323] pb-2 tracking-tight">
-                                        Isolated Component Frameworks
-                                    </h2>
-                                    <p className="text-[14.5px] text-[#A3A299] leading-relaxed">
-                                        To maintain a production-grade, easily maintainable layout,
-                                        generated apps are designed around strict component
-                                        boundaries. Feature-driven directories in `src/features`
-                                        isolate complex stateful code, while `src/shared` hosts
-                                        atomic, highly reusable buttons, badges, and modals.
-                                    </p>
-                                </div>
-                            </div>
-                        ) : activeTab === 'styling' ? (
-                            <div className="flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                                <div className="flex flex-col gap-3.5">
-                                    <h1 className="text-[36px] font-semibold text-white tracking-tight">
-                                        Custom Styling & Themes
-                                    </h1>
-                                    <p className="text-[16px] text-[#A3A299] leading-relaxed">
-                                        December uses a robust, developer-centric styling system
-                                        built on TailwindCSS.
-                                    </p>
-                                </div>
-
-                                <div className="flex flex-col gap-4 mt-2">
-                                    <h2 className="text-[20px] font-medium text-white border-b border-[#242323] pb-2 tracking-tight">
-                                        Harmonized Design Tokens
-                                    </h2>
-                                    <p className="text-[14.5px] text-[#A3A299] leading-relaxed">
-                                        Every project generated comes pre-configured with a
-                                        carefully curated, harmonized palette. Standard styling
-                                        features (HWB / HSL color mappings, glassmorphic headers,
-                                        card gradients, and backdrop-blur panels) reside within the
-                                        standard tokens.
-                                    </p>
-                                </div>
-
-                                <div className="flex flex-col gap-4 mt-2">
-                                    <h2 className="text-[20px] font-medium text-white border-b border-[#242323] pb-2 tracking-tight">
-                                        Transitions & Micro-Animations
-                                    </h2>
-                                    <p className="text-[14.5px] text-[#A3A299] leading-relaxed">
-                                        Interactable buttons and input panels default to precise
-                                        transitions (e.g. `transition-[border-color,box-shadow]` and
-                                        `transition-[transform,background-color]`), removing
-                                        standard browser layout flickers and auto-focus sparks.
-                                        Framer Motion is fully integrated for beautiful page-level
-                                        and stateful modal transitions.
-                                    </p>
-                                </div>
-                            </div>
-                        ) : activeTab === 'database' ? (
-                            <div className="flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                                <div className="flex flex-col gap-3.5">
-                                    <h1 className="text-[36px] font-semibold text-white tracking-tight">
-                                        Database & Persistence
-                                    </h1>
-                                    <p className="text-[16px] text-[#A3A299] leading-relaxed">
-                                        Manage database tables, schemas, and relationships natively
-                                        in your projects.
-                                    </p>
-                                </div>
-
-                                <div className="flex flex-col gap-4 mt-2">
-                                    <h2 className="text-[20px] font-medium text-white border-b border-[#242323] pb-2 tracking-tight">
-                                        Prisma ORM Integration
-                                    </h2>
-                                    <p className="text-[14.5px] text-[#A3A299] leading-relaxed">
-                                        December projects are backed by Prisma, facilitating
-                                        automated relational migrations. You can visually add data
-                                        fields, customize relation fields, and generate queries
-                                        without typing raw SQL.
-                                    </p>
-                                </div>
-
-                                <div className="flex flex-col gap-4 mt-2">
-                                    <h2 className="text-[20px] font-medium text-white border-b border-[#242323] pb-2 tracking-tight">
-                                        Dynamic API Endpoints
-                                    </h2>
-                                    <p className="text-[14.5px] text-[#A3A299] leading-relaxed">
-                                        Every database table added automatically scaffolds
-                                        corresponding TypeScript controller, service, routing, and
-                                        Zod validation files. This makes back-end persistence
-                                        immediately available to the web front-end interface.
-                                    </p>
-                                </div>
-                            </div>
-                        ) : activeTab === 'stripe' ? (
-                            <div className="flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                                <div className="flex flex-col gap-3.5">
-                                    <h1 className="text-[36px] font-semibold text-white tracking-tight">
-                                        Stripe & Subscriptions
-                                    </h1>
-                                    <p className="text-[16px] text-[#A3A299] leading-relaxed">
-                                        Easily monetize your generated web application using Stripe
-                                        integration.
-                                    </p>
-                                </div>
-
-                                <div className="flex flex-col gap-4 mt-2">
-                                    <h2 className="text-[20px] font-medium text-white border-b border-[#242323] pb-2 tracking-tight">
-                                        Scaffolding Subscription Plans
-                                    </h2>
-                                    <p className="text-[14.5px] text-[#A3A299] leading-relaxed">
-                                        Quickly set up Free, Pro, and Enterprise subscription tiers.
-                                        The platform automatically creates backend middleware to
-                                        guard API endpoints and locks specific UI actions depending
-                                        on active checkout cycles and subscription flags.
-                                    </p>
-                                </div>
-
-                                <div className="flex flex-col gap-4 mt-2">
-                                    <h2 className="text-[20px] font-medium text-white border-b border-[#242323] pb-2 tracking-tight">
-                                        Checkout Flows & Webhook Listeners
-                                    </h2>
-                                    <p className="text-[14.5px] text-[#A3A299] leading-relaxed">
-                                        December provisions complete Stripe Checkout routes,
-                                        customized Razorpay integrations, billing transaction
-                                        tables, and standard webhook routers to securely process
-                                        payment status updates in real-time.
-                                    </p>
-                                </div>
-                            </div>
-                        ) : null}
+                        )}
                     </div>
                 </div>
             </div>
