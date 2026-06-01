@@ -3,8 +3,8 @@ import React from 'react'
 import { OutputScreenMainContent } from './OutputScreenMainContent'
 import { PreviewArea } from './PreviewArea'
 
-import type { OutputScreenProps } from '@/features/preview/types'
 import type { Message } from '@/features/chat/types'
+import type { OutputScreenProps } from '@/features/preview/types'
 import type {
     GeneratedProjectFile,
     PreviewSessionStatus,

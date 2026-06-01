@@ -1,8 +1,8 @@
 import { Frown, Meh, Smile } from 'lucide-react'
 import React, { useState, useEffect } from 'react'
 
-import { Modal } from '@/shared/components/ui/Modal'
 import { profileAPI } from '@/features/profile/api/profile'
+import { Modal } from '@/shared/components/ui/Modal'
 
 interface ProfileFeedbackModalProps {
     isOpen: boolean

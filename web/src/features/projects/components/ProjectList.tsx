@@ -4,7 +4,6 @@ import { useProjectListMutations } from '../hooks/useProjectListMutations'
 
 import { ProjectListModals } from './ProjectListModals'
 import { ProjectListView } from './ProjectListView'
-import { toProjectSlug } from '@/app/types'
 
 import type {
     DeleteModalState,
@@ -14,6 +13,8 @@ import type {
     RenameModalState,
     ShareModalState,
 } from '@/features/projects/types'
+
+import { toProjectSlug } from '@/app/types'
 
 export type SortOption = 'newest' | 'oldest'
 export type StatusFilter = 'any' | 'Draft' | 'Generating' | 'Generated' | 'Deployed' | 'Failed'

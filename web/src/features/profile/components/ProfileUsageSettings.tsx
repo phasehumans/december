@@ -1,21 +1,10 @@
 import { useQuery } from '@tanstack/react-query'
-import {
-    ChevronDown,
-    Download,
-    ExternalLink,
-    Info,
-    ChevronLeft,
-    ChevronRight,
-    Loader2,
-    Image,
-} from 'lucide-react'
+import { ChevronDown, Download, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react'
 import React, { useState, useEffect } from 'react'
 
-import { billingAPI } from '@/features/billing/api/billing'
 import { useCreditsHistory, useBillingOverview } from '@/features/billing/hooks/useBillingData'
 import { profileAPI } from '@/features/profile/api/profile'
 import { ErrorAlert } from '@/shared/components/ui/ErrorAlert'
-import { Icons } from '@/shared/components/ui/Icons'
 import { Skeleton } from '@/shared/components/ui/Skeleton'
 
 // Mock data so the table is never empty

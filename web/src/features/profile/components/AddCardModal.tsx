@@ -1,7 +1,8 @@
 import React, { useState } from 'react'
-import { Modal } from '@/shared/components/ui/Modal'
-import { Input } from '@/shared/components/ui/Input'
+
 import { Button } from '@/shared/components/ui/Button'
+import { Input } from '@/shared/components/ui/Input'
+import { Modal } from '@/shared/components/ui/Modal'
 
 interface AddCardModalProps {
     onClose: () => void

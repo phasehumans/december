@@ -20,4 +20,4 @@ bunx prisma migrate reset --force
 echo "Resetting test database..."
 bunx dotenv -e .env.test -- bunx prisma migrate reset --force
 
-echo "Database reset completed successfully!"
+echo "Database reset completed successfully"

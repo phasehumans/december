@@ -3,6 +3,11 @@ import { ArrowUpRight, Loader2, Check } from 'lucide-react'
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
+import { AddCardModal } from './AddCardModal'
+import { CancellationFlowModal } from './CancellationFlowModal'
+import { ProfileSettingsSkeleton } from './ProfileSettingsSkeleton'
+import { RedeemCodeModal } from './RedeemCodeModal'
+
 import {
     useBillingOverview,
     useCreateSubscription,
@@ -12,11 +17,6 @@ import {
     useCreditsHistory,
 } from '@/features/billing/hooks/useBillingData'
 import { profileAPI } from '@/features/profile/api/profile'
-import { ProfileSettingsSkeleton } from './ProfileSettingsSkeleton'
-
-import { RedeemCodeModal } from './RedeemCodeModal'
-import { AddCardModal } from './AddCardModal'
-import { CancellationFlowModal } from './CancellationFlowModal'
 
 interface ProfileBillingSettingsProps {
     profile?: {
