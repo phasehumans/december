@@ -26,7 +26,7 @@ export const Modal: React.FC<ModalProps> = ({
     if (variant === 'premium') {
         const premiumMaxWidth = maxWidth === 'max-w-[480px]' ? 'max-w-[400px]' : maxWidth
         return (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-auto">
                 <div className="absolute inset-0 bg-black/75 backdrop-blur-sm" onClick={onClose} />
                 <div
                     className={`relative w-full ${premiumMaxWidth} bg-[#121211] border border-white/5 rounded-[20px] shadow-2xl overflow-visible animate-in fade-in zoom-in-95 duration-200`}
@@ -60,7 +60,7 @@ export const Modal: React.FC<ModalProps> = ({
     }
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-auto">
             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
             <div
                 className={`relative w-full ${maxWidth} bg-[#171615] border border-white/10 rounded-xl shadow-2xl overflow-visible animate-in fade-in zoom-in-95 duration-200`}
