@@ -168,15 +168,16 @@ export const CanvasWebClipPopover: React.FC<CanvasWebClipPopoverProps> = ({
                         </div>
                     </>
                 ) : (
-                    <div className="flex flex-col items-center justify-center py-6 text-center gap-4 animate-in fade-in duration-300">
-                        <div className="w-10 h-10 border-2 border-[#D6D5C9]/20 border-t-[#D6D5C9] rounded-full animate-spin" />
-                        <div className="flex flex-col gap-1">
+                    <div className="flex flex-col items-center justify-center py-10 text-center gap-4 animate-in fade-in duration-300">
+                        {/* Elegant, minimal spinner */}
+                        <div className="w-6 h-6 border-[2px] border-[#D6D5C9]/20 border-t-[#D6D5C9] rounded-full animate-spin" />
+                        <div className="flex flex-col gap-1 max-w-[280px]">
                             <h3 className="text-white font-medium text-[14px]">
-                                Clipping in progress
+                                Clipping webpage...
                             </h3>
-                            <p className="text-[12px] text-[#8F8E8D] leading-relaxed max-w-[280px]">
-                                This clipping process takes 60-90 seconds. Please wait while we
-                                generate screenshots and structure elements...
+                            <p className="text-[12px] text-[#8F8E8D] leading-relaxed">
+                                This process takes 60-90 seconds. Please wait while we generate
+                                screenshots and structure elements.
                             </p>
                         </div>
                     </div>

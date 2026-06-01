@@ -209,6 +209,9 @@ export const ProfileBillingSettings: React.FC<ProfileBillingSettingsProps> = ({
     const usedInCents = overview.credits.usedInCents
     const remainingInCents = overview.credits.remainingInCents
     const unlimited = overview.credits.unlimited
+    const giftedCreditsInCents = overview.credits.giftedCreditsInCents
+    const remainingPlanCreditsInCents = overview.credits.remainingPlanCreditsInCents
+    const remainingGiftedCreditsInCents = overview.credits.remainingGiftedCreditsInCents
 
     const formatCents = (cents: number | null) => {
         if (cents === null) return 'Unlimited'
@@ -462,14 +465,19 @@ export const ProfileBillingSettings: React.FC<ProfileBillingSettingsProps> = ({
                         <div className="flex-1 w-full flex flex-col justify-center gap-3.5 text-[13px]">
                             <div className="flex justify-between items-center text-[#7B7A79]">
                                 <span>Gifted Credits</span>
-                                <span>$0.00</span>
+                                <span>
+                                    {formatCents(remainingGiftedCreditsInCents)} /{' '}
+                                    {formatCents(giftedCreditsInCents)}
+                                </span>
                             </div>
                             <div className="flex justify-between items-center text-[#D6D5C9]">
-                                <span>{isPro ? 'Monthly Credits' : 'One-Time Credits'}</span>
+                                <span>
+                                    {isPro ? 'Monthly Plan Credits' : 'One-Time Plan Credits'}
+                                </span>
                                 <span>
                                     {unlimited
                                         ? 'Unlimited'
-                                        : `${formatCents(usedInCents)} / ${formatCents(limitInCents)}`}
+                                        : `${formatCents(remainingPlanCreditsInCents)} / ${formatCents(limitInCents)}`}
                                 </span>
                             </div>
                             <div className="flex justify-between items-center text-[#D6D5C9] font-medium pt-3 border-t border-[#242323]">
@@ -492,12 +500,15 @@ export const ProfileBillingSettings: React.FC<ProfileBillingSettingsProps> = ({
                         <span className="w-1/3">Credit Balance</span>
                         <span className="w-1/3 text-right">Expiration</span>
                     </div>
-                    <div className="flex justify-between py-4 text-[13px] text-[#D6D5C9]">
-                        <span className="w-1/3 font-medium">{isPro ? 'Monthly' : 'One-Time'}</span>
+                    {/* Plan Credits Row */}
+                    <div className="flex justify-between py-4 border-b border-[#242323]/50 text-[13px] text-[#D6D5C9]">
+                        <span className="w-1/3 font-medium">
+                            {isPro ? 'Monthly Plan Credits' : 'One-Time Plan Credits'}
+                        </span>
                         <span className="w-1/3">
                             {unlimited
                                 ? 'Unlimited'
-                                : `${formatCents(remainingInCents)} / ${formatCents(limitInCents)}`}
+                                : `${formatCents(remainingPlanCreditsInCents)} / ${formatCents(limitInCents)}`}
                         </span>
                         <span className="w-1/3 text-right">
                             {isPro
@@ -508,6 +519,14 @@ export const ProfileBillingSettings: React.FC<ProfileBillingSettingsProps> = ({
                                   })
                                 : 'Does not expire'}
                         </span>
+                    </div>
+                    {/* Gifted Credits Row */}
+                    <div className="flex justify-between py-4 text-[13px] text-[#D6D5C9]">
+                        <span className="w-1/3 font-medium">Gifted Credits</span>
+                        <span className="w-1/3">
+                            {`${formatCents(remainingGiftedCreditsInCents)} / ${formatCents(giftedCreditsInCents)}`}
+                        </span>
+                        <span className="w-1/3 text-right">Does not expire</span>
                     </div>
                 </div>
             </div>

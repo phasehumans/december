@@ -118,6 +118,7 @@ const getOverview = async (userId: string) => {
             isDeleted: true,
             createdAt: true,
             creditBalance: true,
+            giftedCredits: true,
         },
     })
 
@@ -169,6 +170,11 @@ const getOverview = async (userId: string) => {
     const usedInCents = aggregate._sum.costInCents ?? 0
     const creditLimitInCents = (isPro ? 500 : 100) + user.creditBalance
 
+    const remainingPlanCreditsInCents = Math.max(creditLimitInCents - usedInCents, 0)
+    const usedGiftedInCents = Math.max(usedInCents - creditLimitInCents, 0)
+    const remainingGiftedCreditsInCents = Math.max(user.giftedCredits - usedGiftedInCents, 0)
+    const remainingInCents = remainingPlanCreditsInCents + remainingGiftedCreditsInCents
+
     return {
         ...buildSubscriptionSummary(user),
         periodStart,
@@ -181,9 +187,11 @@ const getOverview = async (userId: string) => {
         },
         credits: {
             limitInCents: creditLimitInCents,
+            giftedCreditsInCents: user.giftedCredits,
             usedInCents,
-            remainingInCents:
-                creditLimitInCents === null ? null : Math.max(creditLimitInCents - usedInCents, 0),
+            remainingPlanCreditsInCents,
+            remainingGiftedCreditsInCents,
+            remainingInCents,
             unlimited: creditLimitInCents === null,
         },
     }
@@ -731,7 +739,7 @@ const redeemCode = async (data: { userId: string; code: string }) => {
         const updatedUser = await tx.user.update({
             where: { id: userId },
             data: {
-                creditBalance: {
+                giftedCredits: {
                     increment: dbCode.creditAmount,
                 },
             },
@@ -755,7 +763,7 @@ const redeemCode = async (data: { userId: string; code: string }) => {
 
         return {
             creditAmount: dbCode.creditAmount,
-            newBalance: updatedUser.creditBalance,
+            newBalance: updatedUser.giftedCredits,
         }
     })
 

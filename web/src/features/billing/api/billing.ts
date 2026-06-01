@@ -32,7 +32,10 @@ export interface BillingOverview {
     }
     credits: {
         limitInCents: number | null
+        giftedCreditsInCents: number
         usedInCents: number
+        remainingPlanCreditsInCents: number
+        remainingGiftedCreditsInCents: number
         remainingInCents: number | null
         unlimited: boolean
     }
