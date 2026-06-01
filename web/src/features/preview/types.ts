@@ -93,6 +93,8 @@ export interface OutputScreenProps {
     previewSession?: PreviewSessionStatus | null
     previewSessionError?: string | null
     projectType?: 'generated' | 'github' | 'zip'
+    selectedModel?: string
+    setSelectedModel?: (val: string) => void
 }
 
 export interface OutputHeaderProps {
@@ -111,6 +113,8 @@ export interface OutputHeaderProps {
     isVersionLoading?: boolean
     onSelectVersion?: (versionId: string) => void
     onDownload?: () => void
+    selectedModel?: string
+    setSelectedModel?: (val: string) => void
 }
 
 export interface PreviewAreaProps {

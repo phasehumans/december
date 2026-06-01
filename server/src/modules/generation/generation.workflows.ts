@@ -42,6 +42,7 @@ type ApplyProjectEditInput = {
         textContent: string
     }
     canvasState?: GenerateWebsiteInput['canvasState']
+    model?: string
     onEvent?: GenerateWebsiteInput['onEvent']
 }
 
@@ -51,6 +52,7 @@ type ApplyProjectFixInput = {
     versionId?: string
     errorMessage: string
     stack?: string
+    model?: string
     onEvent?: GenerateWebsiteInput['onEvent']
 }
 
@@ -63,6 +65,18 @@ const fileTreeForPlanning = (files: Record<string, string>) =>
         }))
 
 const toVisibleMessage = (lines: string[]) => lines.join('\n')
+
+const resolveModel = async (userId: string, requestedModel?: string): Promise<string> => {
+    const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { subscriptionPlan: true, subscriptionStatus: true },
+    })
+    const isPro = user?.subscriptionPlan === 'PRO' && user?.subscriptionStatus === 'ACTIVE'
+    if (isPro && requestedModel) {
+        return requestedModel
+    }
+    return process.env.AUTO_MODEL || 'openai/gpt-oss-20b:free'
+}
 
 export const generateWebsite = async (data: GenerateWebsiteInput) => {
     const { prompt, onEvent } = data
@@ -121,9 +135,12 @@ export const generateWebsite = async (data: GenerateWebsiteInput) => {
             },
         })
 
+        const resolvedModel = await resolveModel(data.userId, data.model)
+
         const rawPlanResponse = await extractProjectPlan({
             userPrompt,
             canvasState: persistedCanvas.canvasStateJson as any,
+            model: resolvedModel,
         })
         const parsePlan = planAgentResponseSchema.safeParse(rawPlanResponse)
 
@@ -203,6 +220,7 @@ export const generateWebsite = async (data: GenerateWebsiteInput) => {
                     plan,
                     targetFile: file,
                     generatedFiles,
+                    model: resolvedModel,
                 })
 
                 generatedFiles[file.path] = content
@@ -378,6 +396,8 @@ const applyProjectChange = async (
         },
     })
 
+    const resolvedModel = await resolveModel(data.userId, data.model)
+
     const rawPlanResponse = await extractProjectChangePlan({
         mode,
         ...(isEdit ? { prompt: editData.prompt } : {}),
@@ -414,6 +434,7 @@ const applyProjectChange = async (
         },
         fileTree: fileTreeForPlanning(base.baseFiles),
         recentMessages: toRecentMessages(base.baseVersion),
+        model: resolvedModel,
     })
 
     if (!rawPlanResponse.plan.success) {
@@ -505,6 +526,7 @@ const applyProjectChange = async (
                           }
                         : {}),
                 },
+                model: resolvedModel,
             })
 
             workingFiles[operation.path] = content

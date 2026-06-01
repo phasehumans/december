@@ -128,7 +128,7 @@ const selectRelatedFiles = (targetPath: string, generatedFiles: Record<string, s
     }))
 }
 
-export const generateProjectFile = async (data: GenerateProjectFileInput) => {
+export const generateProjectFile = async (data: GenerateProjectFileInput & { model?: string }) => {
     assertFrontendWorkspacePath(data.targetFile.path, 'target frontend file')
 
     return retryAsync({
@@ -136,7 +136,7 @@ export const generateProjectFile = async (data: GenerateProjectFileInput) => {
         maxAttempts: BUILD_AGENT_MAX_ATTEMPTS,
         task: async (attempt, lastError) => {
             const completion = await openai.chat.completions.create({
-                model: BUILD_AGENT_MODEL,
+                model: data.model || process.env.AUTO_MODEL || BUILD_AGENT_MODEL,
                 temperature: 0,
                 messages: [
                     {
@@ -226,7 +226,9 @@ Rules:
 - React files must have valid imports and exports.
 - If fixing an error, preserve working behavior and fix the smallest likely cause.`
 
-export const generateProjectPatchFile = async (data: GenerateProjectPatchInput) => {
+export const generateProjectPatchFile = async (
+    data: GenerateProjectPatchInput & { model?: string }
+) => {
     assertFrontendWorkspacePath(data.operation.path, 'target frontend patch file')
 
     if (data.operation.action === 'delete') {
@@ -238,7 +240,7 @@ export const generateProjectPatchFile = async (data: GenerateProjectPatchInput) 
         maxAttempts: BUILD_AGENT_MAX_ATTEMPTS,
         task: async (attempt, lastError) => {
             const completion = await openai.chat.completions.create({
-                model: BUILD_AGENT_MODEL,
+                model: data.model || process.env.AUTO_MODEL || BUILD_AGENT_MODEL,
                 temperature: 0,
                 messages: [
                     {

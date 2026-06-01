@@ -18,6 +18,7 @@ export const ProjectListRow: React.FC<ProjectListRowProps> = ({
     onOpenDuplicate,
     onOpenShare,
     onOpenDelete,
+    onOpenSettings,
 }) => {
     return (
         <div
@@ -116,15 +117,18 @@ export const ProjectListRow: React.FC<ProjectListRowProps> = ({
                             <Icons.Star className="h-4 w-4 text-[#7B7A79]" />{' '}
                             {project.isStarred ? 'Remove from favourites' : 'Add to favourites'}
                         </button>
-                        {/* <button className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-[14px] text-[#D6D5C9] transition-colors hover:bg-[#252422]">
-                            <Icons.Settings className="h-4 w-4 text-[#7B7A79]" /> Settings
-                        </button> */}
                         <button
                             onClick={(e) => onOpenShare(project, e)}
                             className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-[14px] text-[#D6D5C9] transition-colors hover:bg-[#252422]"
                         >
                             <Icons.Bookmark className="h-4 w-4 text-[#7B7A79]" />{' '}
                             {project.isSharedAsTemplate ? 'Unshare template' : 'Share as template'}
+                        </button>
+                        <button
+                            onClick={(e) => onOpenSettings(project, e)}
+                            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-[14px] text-[#D6D5C9] transition-colors hover:bg-[#252422]"
+                        >
+                            <Icons.Settings className="h-4 w-4 text-[#7B7A79]" /> Settings
                         </button>
                         <div className="mx-2 my-1.5 h-px bg-[#383736]" />
                         <button

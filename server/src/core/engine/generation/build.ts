@@ -1,4 +1,4 @@
-﻿import {
+import {
     generateProjectFile as generateProjectFileAgent,
     generateProjectPatchFile as generateProjectPatchFileAgent,
 } from '../../agents/build.agent'
@@ -15,6 +15,7 @@ export const generateProjectFile = (input: {
     plan: ProjectPlan
     targetFile: PlannedProjectFile
     generatedFiles: Record<string, string>
+    model?: string
 }) => generateProjectFileAgent(input)
 
 export const generateProjectPatchFile = (input: {
@@ -37,4 +38,5 @@ export const generateProjectPatchFile = (input: {
             textContent: string
         }
     }
+    model?: string
 }) => generateProjectPatchFileAgent(input)

@@ -28,6 +28,18 @@ const createWebClips = (data: { url: string; projectId?: string | null }) => {
     })
 }
 
+const saveCanvas = (data: { projectId: string; versionId?: string | null; canvasState: any }) => {
+    return apiRequest<{ success: boolean; canvasState: any }>('/canvas/save', {
+        method: 'POST',
+        body: JSON.stringify({
+            projectId: data.projectId,
+            ...(data.versionId ? { versionId: data.versionId } : {}),
+            canvasState: data.canvasState,
+        }),
+    })
+}
+
 export const canvasAPI = {
     createWebClips,
+    saveCanvas,
 }

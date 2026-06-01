@@ -1,4 +1,4 @@
-﻿import {
+import {
     extractProjectChangePlan as extractProjectChangePlanAgent,
     extractProjectPlan as extractProjectPlanAgent,
 } from '../../agents/plan.agent'
@@ -8,6 +8,7 @@ import type { GenerateWebsiteInput } from '../../../modules/generation/generatio
 export const extractProjectPlan = (input: {
     userPrompt: string
     canvasState?: GenerateWebsiteInput['canvasState']
+    model?: string
 }) => extractProjectPlanAgent(input)
 
 export const extractProjectChangePlan = extractProjectChangePlanAgent

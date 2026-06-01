@@ -27,6 +27,7 @@ interface ProjectListViewProps {
     onOpenDuplicate: (project: Project, event: React.MouseEvent) => void
     onOpenShare: (project: Project, event: React.MouseEvent) => void
     onOpenDelete: (project: Project, event: React.MouseEvent) => void
+    onOpenSettings: (project: Project, event: React.MouseEvent) => void
     searchQuery: string
     onSearchChange: (query: string) => void
     sortOption: SortOption
@@ -172,6 +173,7 @@ export const ProjectListView: React.FC<ProjectListViewProps> = ({
     onOpenDuplicate,
     onOpenShare,
     onOpenDelete,
+    onOpenSettings,
     searchQuery,
     onSearchChange,
     sortOption,
@@ -364,6 +366,7 @@ export const ProjectListView: React.FC<ProjectListViewProps> = ({
                                 onOpenDuplicate={onOpenDuplicate}
                                 onOpenShare={onOpenShare}
                                 onOpenDelete={onOpenDelete}
+                                onOpenSettings={onOpenSettings}
                             />
                         ))}
                     </div>

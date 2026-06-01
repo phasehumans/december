@@ -31,6 +31,8 @@ const App: React.FC = () => {
         activeProjectName,
         canvasState,
         setCanvasState,
+        selectedModel,
+        setSelectedModel,
         projectVersions,
         activeProjectVersionId,
         isProjectOpening,
@@ -118,6 +120,8 @@ const App: React.FC = () => {
                     onDownloadProject={handleDownloadProject}
                     onSignOut={handleSignOut}
                     onDocs={() => handleNavigate('docs')}
+                    selectedModel={selectedModel}
+                    setSelectedModel={setSelectedModel}
                 />
             </div>
         </div>

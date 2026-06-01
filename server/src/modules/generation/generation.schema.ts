@@ -36,6 +36,7 @@ export const generateWebsiteSchema = z.object({
     prompt: z.string().min(5),
     projectId: z.string().uuid().optional(),
     canvasState: canvasDocumentSchema.optional(),
+    model: z.string().optional(),
 })
 
 export const previewSelectedElementSchema = z
@@ -51,6 +52,7 @@ export const applyProjectEditSchema = z.object({
     prompt: z.string().min(1),
     selectedElement: previewSelectedElementSchema.optional(),
     canvasState: canvasDocumentSchema.optional(),
+    model: z.string().optional(),
 })
 
 export const applyProjectFixSchema = z.object({
@@ -58,6 +60,7 @@ export const applyProjectFixSchema = z.object({
     versionId: z.string().uuid().optional(),
     errorMessage: z.string().min(1),
     stack: z.string().optional(),
+    model: z.string().optional(),
 })
 
 export const projectIntentSchema = z.object({

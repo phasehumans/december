@@ -8,5 +8,6 @@ const canvasRouter = Router()
 
 canvasRouter.use(authMiddleware)
 canvasRouter.post('/web-clips', canvasController.createWebClips)
+canvasRouter.post('/save', canvasController.saveCanvas)
 
 export default canvasRouter

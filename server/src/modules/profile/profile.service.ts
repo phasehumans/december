@@ -32,6 +32,8 @@ export const profileSelect = {
     generationSound: true,
     skills: true,
     avatarUrl: true,
+    subscriptionPlan: true,
+    subscriptionStatus: true,
     isDeleted: true,
 }
 
