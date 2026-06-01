@@ -8,7 +8,8 @@
         "format:check": "prettier --check .",
         "lint": "eslint .",
         "lint:fix": "eslint . --fix",
-        "docker:kill": "docker rm -f $(docker ps -aq --filter \"name=december-preview\")"
+        "docker:kill": "docker rm -f $(docker ps -aq --filter \"name=december-preview\")",
+        "getcode": "bun scripts/getcode.ts --count 1 --amount 100 --limit 5 --expiry 1 --desc \"1 Dollar Promo for 5 Users - 24hr Expiry\""
     },
     "devDependencies": {
         "@commitlint/cli": "^21.0.1",
@@ -16,6 +17,7 @@
         "@eslint/js": "^10.0.1",
         "@playwright/test": "^1.58.2",
         "@types/bun": "latest",
+        "dotenv": "^17.4.1",
         "@types/react": "^19.2.14",
         "@types/react-dom": "^19.2.3",
         "eslint": "9",

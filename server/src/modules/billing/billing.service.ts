@@ -1,3 +1,4 @@
+import crypto from 'crypto'
 import { prisma } from '../../config/db'
 import { razorpay } from '../../config/razorpay'
 import { AppError } from '../../utils/appError'
@@ -116,6 +117,7 @@ const getOverview = async (userId: string) => {
             subscription: true,
             isDeleted: true,
             createdAt: true,
+            creditBalance: true,
         },
     })
 
@@ -165,7 +167,7 @@ const getOverview = async (userId: string) => {
     })
 
     const usedInCents = aggregate._sum.costInCents ?? 0
-    const creditLimitInCents = isPro ? 500 : 100
+    const creditLimitInCents = (isPro ? 500 : 100) + user.creditBalance
 
     return {
         ...buildSubscriptionSummary(user),
@@ -685,6 +687,92 @@ const handleRazorpayWebhook = async (data: RazorpayWebhookInput) => {
     }
 }
 
+const redeemCode = async (data: { userId: string; code: string }) => {
+    const { userId, code } = data
+
+    const normalizedCode = code.trim().toUpperCase()
+    if (!normalizedCode) {
+        throw new AppError('Redeem code cannot be empty', 400)
+    }
+
+    const codeHash = crypto.createHash('sha256').update(normalizedCode).digest('hex')
+
+    const result = await prisma.$transaction(async (tx) => {
+        const dbCode = await tx.redeemCode.findUnique({
+            where: { codeHash },
+        })
+
+        if (!dbCode) {
+            throw new AppError('Invalid or expired redeem code.', 404)
+        }
+
+        const now = new Date()
+        if (dbCode.expiresAt && dbCode.expiresAt < now) {
+            throw new AppError('This redeem code has expired.', 400)
+        }
+
+        if (dbCode.maxRedemptions !== null && dbCode.redemptionCount >= dbCode.maxRedemptions) {
+            throw new AppError('This redeem code has reached its maximum redemptions.', 400)
+        }
+
+        const existingClaim = await tx.redeemCodeClaim.findUnique({
+            where: {
+                redeemCodeId_userId: {
+                    redeemCodeId: dbCode.id,
+                    userId,
+                },
+            },
+        })
+
+        if (existingClaim) {
+            throw new AppError('You have already redeemed this code.', 409)
+        }
+
+        const updatedUser = await tx.user.update({
+            where: { id: userId },
+            data: {
+                creditBalance: {
+                    increment: dbCode.creditAmount,
+                },
+            },
+        })
+
+        await tx.redeemCodeClaim.create({
+            data: {
+                redeemCodeId: dbCode.id,
+                userId,
+            },
+        })
+
+        await tx.redeemCode.update({
+            where: { id: dbCode.id },
+            data: {
+                redemptionCount: {
+                    increment: 1,
+                },
+            },
+        })
+
+        return {
+            creditAmount: dbCode.creditAmount,
+            newBalance: updatedUser.creditBalance,
+        }
+    })
+
+    try {
+        await sendNotificationToUser({
+            userId,
+            title: 'Code Redeemed Successfully',
+            message: `Successfully claimed $${(result.creditAmount / 100).toFixed(2)} in gifted credits!`,
+            type: 'SUCCESS',
+        })
+    } catch (err) {
+        console.error('Failed to send redemption notification:', err)
+    }
+
+    return result
+}
+
 export const billingService = {
     getOverview,
     getPlans,
@@ -694,4 +782,5 @@ export const billingService = {
     getCreditsHistory,
     createPortalSession,
     handleRazorpayWebhook,
+    redeemCode,
 }

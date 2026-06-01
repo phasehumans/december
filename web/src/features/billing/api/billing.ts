@@ -179,6 +179,13 @@ const createPortalSession = () => {
     })
 }
 
+const redeemCode = (code: string) => {
+    return apiRequest<{ creditAmount: number; newBalance: number }>('/billing/redeem-code', {
+        method: 'POST',
+        body: JSON.stringify({ code }),
+    })
+}
+
 export const billingAPI = {
     getOverview,
     getPlans,
@@ -187,4 +194,5 @@ export const billingAPI = {
     cancelSubscription,
     getCreditsHistory,
     createPortalSession,
+    redeemCode,
 }

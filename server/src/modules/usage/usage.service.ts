@@ -13,6 +13,7 @@ type UsageUser = {
         currentPeriodEnd: Date
     } | null
     createdAt: Date
+    creditBalance: number
 }
 
 type RecordUsageEventInput = {
@@ -72,7 +73,7 @@ const resolveCreditLimit = (user: UsageUser) => {
         return null
     }
 
-    return FREE_MONTHLY_CREDIT_CENTS
+    return FREE_MONTHLY_CREDIT_CENTS + user.creditBalance
 }
 
 const getUsageUser = async (userId: string): Promise<UsageUser> => {
@@ -87,6 +88,7 @@ const getUsageUser = async (userId: string): Promise<UsageUser> => {
             subscriptionPlan: true,
             subscriptionStatus: true,
             createdAt: true,
+            creditBalance: true,
             subscription: {
                 select: {
                     currentPeriodStart: true,

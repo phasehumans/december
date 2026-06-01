@@ -5,6 +5,7 @@ import {
     createSubscriptionSchema,
     creditsHistoryQuerySchema,
     verifySubscriptionSchema,
+    redeemCodeSchema,
 } from './billing.schema'
 import { billingService } from './billing.service'
 
@@ -321,6 +322,54 @@ const handleRazorpayWebhook = async (req: Request, res: Response) => {
     }
 }
 
+const redeemCode = async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
+
+    if (!userId) {
+        return res.status(401).json({
+            success: false,
+            message: 'unauthorized',
+        })
+    }
+
+    const parsedBody = redeemCodeSchema.safeParse(req.body)
+
+    if (!parsedBody.success) {
+        return res.status(400).json({
+            success: false,
+            message: 'validation failed',
+            errors: parsedBody.error.flatten().fieldErrors,
+        })
+    }
+
+    try {
+        const result = await billingService.redeemCode({
+            userId,
+            code: parsedBody.data.code,
+        })
+
+        return res.status(200).json({
+            success: true,
+            message: 'Code redeemed successfully.',
+            data: result,
+        })
+    } catch (error) {
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({
+                success: false,
+                message: 'Failed to redeem code.',
+                errors: error.message,
+            })
+        }
+
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to redeem code.',
+            errors: error instanceof Error ? error.message : 'unknown error',
+        })
+    }
+}
+
 export const billingController = {
     getOverview,
     getPlans,
@@ -330,4 +379,5 @@ export const billingController = {
     getCreditsHistory,
     createPortalSession,
     handleRazorpayWebhook,
+    redeemCode,
 }

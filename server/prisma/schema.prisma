@@ -60,6 +60,7 @@ model User {
   subscriptionStatus SubscriptionStatus @default(FREE)
   subscriptionPlan   SubscriptionPlan   @default(FREE)
   currentPeriodEnd   DateTime?
+  creditBalance      Int                @default(0)
 
   sessions      Session[]
   projects      Project[]
@@ -68,6 +69,7 @@ model User {
   notifications Notification[]
   subscription  Subscription?
   usageEvents   UsageEvent[]
+  redeemClaims  RedeemCodeClaim[]
 }
 
 model Notification {
@@ -354,4 +356,33 @@ enum ProviderSubscriptionStatus {
   PAST_DUE
   TRIALING
   UNPAID
+}
+
+model RedeemCode {
+  id              String            @id @default(uuid())
+  codeHash        String            @unique // SHA-256 hash of normalized code
+  creditAmount    Int // amount to grant in cents
+  maxRedemptions  Int? // null means unlimited
+  redemptionCount Int               @default(0)
+  expiresAt       DateTime?
+  metadata        Json?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  claims          RedeemCodeClaim[]
+
+  @@map("redeem_codes")
+}
+
+model RedeemCodeClaim {
+  id           String   @id @default(uuid())
+  redeemCodeId String
+  userId       String
+  redeemedAt   DateTime @default(now())
+
+  redeemCode RedeemCode @relation(fields: [redeemCodeId], references: [id], onDelete: Cascade)
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([redeemCodeId, userId])
+  @@index([userId])
+  @@map("redeem_code_claims")
 }
