@@ -218,6 +218,65 @@ export const useAppController = () => {
                 .map(mapBackendProjectToUIProject),
     })
 
+    const { data: profile } = useQuery({
+        queryKey: ['profile'],
+        queryFn: profileAPI.getProfile,
+        enabled: isAuthenticated,
+    })
+
+    const playNotificationSound = React.useCallback(
+        (type: 'first' | 'followup') => {
+            const preference = profile?.generationSound ?? 'FIRST_GENERATION'
+
+            if (preference === 'NEVER') {
+                return
+            }
+
+            if (preference === 'FIRST_GENERATION' && type !== 'first') {
+                return
+            }
+
+            try {
+                const AudioContext = window.AudioContext || (window as any).webkitAudioContext
+                if (!AudioContext) {
+                    return
+                }
+
+                const ctx = new AudioContext()
+                const now = ctx.currentTime
+
+                const osc1 = ctx.createOscillator()
+                const osc2 = ctx.createOscillator()
+                const gainNode = ctx.createGain()
+
+                osc1.type = 'sine'
+                osc1.frequency.setValueAtTime(523.25, now) // C5
+                osc1.frequency.exponentialRampToValueAtTime(783.99, now + 0.12) // G5
+
+                osc2.type = 'sine'
+                osc2.frequency.setValueAtTime(392.0, now) // G4
+                osc2.frequency.exponentialRampToValueAtTime(659.25, now + 0.12) // E5
+
+                gainNode.gain.setValueAtTime(0, now)
+                gainNode.gain.linearRampToValueAtTime(0.12, now + 0.04) // Soft attack
+                gainNode.gain.exponentialRampToValueAtTime(0.0001, now + 0.7) // Nice decay tail
+
+                osc1.connect(gainNode)
+                osc2.connect(gainNode)
+                gainNode.connect(ctx.destination)
+
+                osc1.start(now)
+                osc2.start(now)
+
+                osc1.stop(now + 0.7)
+                osc2.stop(now + 0.7)
+            } catch (err) {
+                console.error('Failed to play generation notification sound:', err)
+            }
+        },
+        [profile?.generationSound]
+    )
+
     const setActiveGeneratedFilePath = React.useCallback((path: string | null) => {
         activeGeneratedFilePathRef.current = path
         setActiveGeneratedFilePathState(path)
@@ -915,6 +974,7 @@ export const useAppController = () => {
                                         originView: outputOriginViewRef.current,
                                         abortActiveGeneration: false,
                                     })
+                                    playNotificationSound('first')
                                     return
                                 case 'error':
                                     if (activeGeneratedFilePathRef.current) {
@@ -1123,6 +1183,7 @@ export const useAppController = () => {
                                         assistantMessage: event.data.assistantMessage,
                                     })
                                     void queryClient.invalidateQueries({ queryKey: ['projects'] })
+                                    playNotificationSound('followup')
                                 }
                                 return
                             case 'project-created':
@@ -1158,6 +1219,7 @@ export const useAppController = () => {
                     if (result && !didHydrateStreamResult) {
                         hydrateAppliedProjectChange(result)
                         void queryClient.invalidateQueries({ queryKey: ['projects'] })
+                        playNotificationSound('followup')
                     }
                 } catch (error) {
                     if (abortController.signal.aborted) {
