@@ -1,7 +1,7 @@
 import bcrypt from 'bcrypt'
 
 import { prisma } from '../../config/db'
-import { AppError } from '../../utils/appError'
+import { AppError } from '../../shared/appError'
 
 import type { GenerationSound } from './profile.schema'
 

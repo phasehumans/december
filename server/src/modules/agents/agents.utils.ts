@@ -1,3 +1,92 @@
+// Consolidated Agent Utilities
+
+// ----------------------------------------------------
+// 1. Retry Utilities (from server/src/utils/retry.ts)
+// ----------------------------------------------------
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
+export interface RetryAsyncOptions<T> {
+    label: string
+    maxAttempts?: number
+    initialDelayMs?: number
+    maxDelayMs?: number
+    task: (attempt: number, lastError: Error | null) => Promise<T>
+}
+
+export const retryAsync = async <T>(options: RetryAsyncOptions<T>) => {
+    const { label, maxAttempts = 3, initialDelayMs = 250, maxDelayMs = 1500, task } = options
+
+    let lastError: Error | null = null
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+        try {
+            return await task(attempt, lastError)
+        } catch (error) {
+            lastError = error instanceof Error ? error : new Error(String(error))
+
+            if (attempt === maxAttempts) {
+                throw new Error(
+                    `${label} failed after ${maxAttempts} attempts | ${lastError.message}`
+                )
+            }
+
+            const delayMs = Math.min(initialDelayMs * 2 ** (attempt - 1), maxDelayMs)
+            await sleep(delayMs)
+        }
+    }
+
+    throw new Error(`${label} failed without producing a result`)
+}
+
+// -------------------------------------------------------------------------
+// 2. Chat Completion Text Reader (from server/src/utils/readChatCompletionText.ts)
+// -------------------------------------------------------------------------
+
+export type CompletionTextPart =
+    | string
+    | {
+          type?: string
+          text?: string
+      }
+
+export type ChatCompletionLike = {
+    choices?: Array<{
+        message?: {
+            content?: string | CompletionTextPart[] | null
+        }
+    }>
+}
+
+export const readChatCompletionText = (completion: ChatCompletionLike | null | undefined) => {
+    const content = completion?.choices?.[0]?.message?.content
+
+    if (typeof content === 'string') {
+        return content
+    }
+
+    if (Array.isArray(content)) {
+        const text = content
+            .map((part) => {
+                if (typeof part === 'string') {
+                    return part
+                }
+
+                return typeof part.text === 'string' ? part.text : ''
+            })
+            .join('')
+            .trim()
+
+        return text || null
+    }
+
+    return null
+}
+
+// -------------------------------------------------------------------------
+// 3. Model JSON Parsing (from server/src/utils/parseModelJson.ts)
+// -------------------------------------------------------------------------
+
 const stripCodeFence = (content: string) => {
     const trimmed = content.trim()
 
@@ -6,7 +95,7 @@ const stripCodeFence = (content: string) => {
     }
 
     return trimmed
-        .replace(/^```(?:json)?\s*/i, '')
+        .replace(/^```json\s*/i, '')
         .replace(/\s*```$/, '')
         .trim()
 }

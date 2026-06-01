@@ -1,7 +1,7 @@
 import fs from 'fs'
 import path from 'path'
 
-import { AppError } from '../../utils/appError'
+import { AppError } from '../../shared/appError'
 import { authCookie } from '../auth/auth.cookie'
 
 import {

@@ -1,4 +1,4 @@
-import { AppError } from '../../utils/appError'
+import { AppError } from '../../shared/appError'
 
 import { recordUsageEventSchema, usageCheckQuerySchema } from './usage.schema'
 import { usageService } from './usage.service'

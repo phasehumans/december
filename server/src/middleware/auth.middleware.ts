@@ -2,7 +2,7 @@ import jwt from 'jsonwebtoken'
 
 import { prisma } from '../config/db'
 
-import type { TokenPayload } from '../modules/auth/auth.token'
+import type { TokenPayload } from '../modules/auth/auth.utils'
 import type { Request, Response, NextFunction } from 'express'
 
 export const authMiddleware = async (req: Request, res: Response, next: NextFunction) => {

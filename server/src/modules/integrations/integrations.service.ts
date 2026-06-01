@@ -1,7 +1,7 @@
 import axios from 'axios'
 
 import { prisma } from '../../config/db'
-import { AppError } from '../../utils/appError'
+import { AppError } from '../../shared/appError'
 import { sendNotificationToUser } from '../notification/notification.service'
 
 type GithubRepo = {

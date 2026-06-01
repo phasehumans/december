@@ -8,7 +8,7 @@ import {
     projectChangePlanResponseSchema,
 } from '../../src/modules/generation/generation.schema'
 import { isFrontendWorkspacePath } from '../../src/modules/generation/generation.utils'
-import { parseModelJson } from '../../src/utils/parseModelJson'
+import { parseModelJson } from '../../src/modules/agents/agents.utils'
 
 describe('generation schemas', () => {
     test('accepts a unified plan response with thinking, summary, intent, and build handoff', () => {

@@ -1,8 +1,8 @@
 import crypto from 'crypto'
 
 import { prisma } from '../../config/db'
-import { saveProjectFiles } from '../../lib/save-project-files'
-import { AppError } from '../../utils/appError'
+import { saveProjectFiles } from '../project/save-project-files'
+import { AppError } from '../../shared/appError'
 import { hydrateCanvasDocument, persistCanvasDocument } from '../canvas/canvas.persistence'
 import { sendNotificationToUser } from '../notification/notification.service'
 import { loadGeneratedFilesFromManifest } from '../project/project.service'

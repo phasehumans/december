@@ -4,8 +4,8 @@ import {
     extractProjectPlan,
     generateProjectFile,
     generateProjectPatchFile,
-} from '../../core/engine/generation'
-import { saveProjectFiles } from '../../lib/save-project-files'
+} from '../agents'
+import { saveProjectFiles } from '../project/save-project-files'
 import { persistCanvasDocument } from '../canvas/canvas.persistence'
 import { cleanPrompt } from '../generation/generation.utils'
 

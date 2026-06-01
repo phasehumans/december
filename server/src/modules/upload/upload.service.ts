@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
 
 import { prisma } from '../../config/db'
-import { publishPreviewManifest, type PreviewManifestFile } from '../../lib/preview-manifest'
+import { publishPreviewManifest, type PreviewManifestFile } from '../project/preview-manifest'
 import {
     deletePrefix,
     currentKey,
@@ -12,7 +12,7 @@ import {
     storageBucket,
     versionKey,
     versionPrefix,
-} from '../../lib/project-storage'
+} from '../project/project-storage'
 import { runtimeService, type RuntimePreviewStatus } from '../runtime/runtime.service'
 
 import { downloadGitHubRepoArchive } from './downloadzip'
@@ -24,7 +24,7 @@ import {
     type ValidatedImportProject,
 } from './import-project.utils'
 import { parseGitHubRepoUrl, verifyGitHubRepoAccess } from './upload.utils'
-import { AppError } from '../../utils/appError'
+import { AppError } from '../../shared/appError'
 
 type UploadRepo = {
     userId: string

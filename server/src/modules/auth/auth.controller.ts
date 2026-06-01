@@ -1,7 +1,7 @@
-﻿import axios from 'axios'
+import axios from 'axios'
 import { OAuth2Client } from 'google-auth-library'
 
-import { AppError } from '../../utils/appError'
+import { AppError } from '../../shared/appError'
 
 import { authCookie } from './auth.cookie'
 import {

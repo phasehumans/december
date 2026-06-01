@@ -1,14 +1,14 @@
 import {
     generateProjectFile as generateProjectFileAgent,
     generateProjectPatchFile as generateProjectPatchFileAgent,
-} from '../../agents/build.agent'
+} from './build.agent'
 
 import type {
     PlannedProjectFile,
     ProjectPatchOperation,
     ProjectIntent,
     ProjectPlan,
-} from '../../../modules/generation/generation.types'
+} from '../generation/generation.types'
 
 export const generateProjectFile = (input: {
     brief: ProjectIntent

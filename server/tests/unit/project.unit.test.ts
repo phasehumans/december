@@ -142,9 +142,9 @@ describe('project.schema', () => {
             expect(renameProjectSchema.safeParse(data).success).toBe(true)
         })
 
-        test('should pass with empty string rename (no min set)', () => {
+        test('should fail with empty string rename (min 3 chars required)', () => {
             const data = { rename: '' }
-            expect(renameProjectSchema.safeParse(data).success).toBe(true)
+            expect(renameProjectSchema.safeParse(data).success).toBe(false)
         })
 
         test('should fail if rename is missing', () => {

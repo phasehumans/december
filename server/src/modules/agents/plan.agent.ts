@@ -5,15 +5,13 @@ import {
     extractProjectPlanSchema,
     projectChangePlanResponseSchema,
     planAgentResponseSchema,
-} from '../../modules/generation/generation.schema'
+} from '../generation/generation.schema'
 import {
     autoHealPlanAgentResponse,
     autoHealChangePlanResponse,
-} from '../../modules/generation/generation.self-healing'
-import { parseModelJson } from '../../utils/parseModelJson'
-import { readChatCompletionText } from '../../utils/readChatCompletionText'
-import { retryAsync } from '../../utils/retry'
-import { CHANGE_PLAN_AGENT_PROMPT, PLAN_AGENT_PROMPT } from '../prompts/plan.prompt'
+} from '../generation/generation.self-healing'
+import { parseModelJson, readChatCompletionText, retryAsync } from './agents.utils'
+import { CHANGE_PLAN_AGENT_PROMPT, PLAN_AGENT_PROMPT } from './plan.prompt'
 
 type ExtractProjectPlan = z.infer<typeof extractProjectPlanSchema>
 type ExtractProjectPlanResponse = z.infer<typeof planAgentResponseSchema>

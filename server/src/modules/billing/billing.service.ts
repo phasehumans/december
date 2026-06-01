@@ -1,7 +1,7 @@
 import crypto from 'crypto'
 import { prisma } from '../../config/db'
 import { razorpay } from '../../config/razorpay'
-import { AppError } from '../../utils/appError'
+import { AppError } from '../../shared/appError'
 import { sendNotificationToUser } from '../notification/notification.service'
 
 import {
