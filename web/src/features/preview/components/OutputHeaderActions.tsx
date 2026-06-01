@@ -1,9 +1,10 @@
 import { Download, Settings } from 'lucide-react'
 import React, { useState } from 'react'
 
+import { SettingsBigModal } from './settings/SettingsBigModal'
+
 import { type BackendProjectVersionSummary } from '@/features/projects/api/project'
 import { Button } from '@/shared/components/ui/Button'
-import { SettingsBigModal } from './settings/SettingsBigModal'
 
 interface OutputHeaderActionsProps {
     projectName?: string | null

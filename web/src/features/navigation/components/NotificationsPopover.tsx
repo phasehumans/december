@@ -1,14 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import {
-    Inbox,
-    Trash2,
-    ArrowLeft,
-    Loader2,
-    Info,
-    AlertTriangle,
-    CheckCircle2,
-    XCircle,
-} from 'lucide-react'
+import { Inbox, Trash2, ArrowLeft } from 'lucide-react'
 import React, { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 

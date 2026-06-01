@@ -12,15 +12,15 @@ import {
 } from 'lucide-react'
 import React, { useState, useEffect } from 'react'
 
-import { projectAPI } from '@/features/projects/api/project'
-import { ProjectShareModal } from '@/features/projects/components/ProjectShareModal'
-import { ProjectDuplicateModal } from '@/features/projects/components/ProjectDuplicateModal'
-import { ProjectDeleteModal } from '@/features/projects/components/ProjectDeleteModal'
-
-import { BigModalOverlay, PremiumToggle } from './SettingsFormControls'
 import { GeneralTab } from './GeneralTab'
 import { PublishTab } from './PublishTab'
+import { BigModalOverlay, PremiumToggle } from './SettingsFormControls'
 import { ShareTab } from './ShareTab'
+
+import { projectAPI } from '@/features/projects/api/project'
+import { ProjectDeleteModal } from '@/features/projects/components/ProjectDeleteModal'
+import { ProjectDuplicateModal } from '@/features/projects/components/ProjectDuplicateModal'
+import { ProjectShareModal } from '@/features/projects/components/ProjectShareModal'
 
 interface SettingsModalProps {
     onClose: () => void

@@ -1,10 +1,8 @@
-import { motion } from 'framer-motion'
-import { Loader2 } from 'lucide-react'
 import React, { useEffect, useState } from 'react'
 
 import type { PreviewAreaProps } from '@/features/preview/types'
-import { DotmSquare15 } from '@/components/ui/dotm-square-15'
 
+import { DotmSquare15 } from '@/components/ui/dotm-square-15'
 import { PREVIEW_HTML } from '@/features/preview/constants/preview'
 import { cn } from '@/shared/lib/utils'
 

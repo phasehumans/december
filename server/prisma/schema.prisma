@@ -371,7 +371,6 @@ model RedeemCode {
   updatedAt       DateTime          @updatedAt
   claims          RedeemCodeClaim[]
 
-  @@map("redeem_codes")
 }
 
 model RedeemCodeClaim {
@@ -385,5 +384,4 @@ model RedeemCodeClaim {
 
   @@unique([redeemCodeId, userId])
   @@index([userId])
-  @@map("redeem_code_claims")
 }

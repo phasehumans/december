@@ -11,6 +11,7 @@ import {
 import React from 'react'
 
 import type { ChatMessageProps } from '@/features/chat/types'
+
 import { cn } from '@/shared/lib/utils'
 
 const parseInlineFormatting = (text: string): React.ReactNode[] => {

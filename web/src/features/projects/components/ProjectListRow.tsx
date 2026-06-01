@@ -1,5 +1,5 @@
-import React from 'react'
 import { Folder, Loader2, Terminal, Cloud, AlertCircle } from 'lucide-react'
+import React from 'react'
 
 import type { ProjectListRowProps } from '@/features/projects/types'
 

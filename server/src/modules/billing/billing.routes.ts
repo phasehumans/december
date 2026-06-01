@@ -18,7 +18,6 @@ billingRouter.post('/subscription/cancel', billingController.cancelSubscription)
 billingRouter.get('/credits/history', billingController.getCreditsHistory)
 billingRouter.post('/portal', billingController.createPortalSession)
 
-// Code Redemption Endpoint (rate-limited to 5 requests per 15 minutes)
 billingRouter.post(
     '/redeem-code',
     createRateLimiter({
