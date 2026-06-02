@@ -168,7 +168,15 @@ export const extractProjectPlan = async (data: ExtractProjectPlan & { model?: st
                 throw new Error('no response from plan agent')
             }
 
-            return validatePlanAgentResponse(parsePlanAgentPayload(content, completion))
+            const data = validatePlanAgentResponse(parsePlanAgentPayload(content, completion))
+            return {
+                data,
+                usage: {
+                    inputTokens: (completion as any).usage?.prompt_tokens ?? 0,
+                    outputTokens: (completion as any).usage?.completion_tokens ?? 0,
+                    totalTokens: (completion as any).usage?.total_tokens ?? 0,
+                },
+            }
         },
     })
 }
@@ -222,7 +230,17 @@ export const extractProjectChangePlan = async (
                 throw new Error(`no response from plan agent ${data.mode}`)
             }
 
-            return validateChangePlanResponse(parsePlanAgentPayload(content, completion))
+            const parsedData = validateChangePlanResponse(
+                parsePlanAgentPayload(content, completion)
+            )
+            return {
+                data: parsedData,
+                usage: {
+                    inputTokens: (completion as any).usage?.prompt_tokens ?? 0,
+                    outputTokens: (completion as any).usage?.completion_tokens ?? 0,
+                    totalTokens: (completion as any).usage?.total_tokens ?? 0,
+                },
+            }
         },
     })
 }

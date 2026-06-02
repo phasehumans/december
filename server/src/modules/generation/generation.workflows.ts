@@ -29,6 +29,7 @@ import {
 } from './generation.runtime'
 import { planAgentResponseSchema } from './generation.schema'
 import { emitAssistantMessage, emitFileStream, emitPatchFileStream } from './generation.stream'
+import { usageService } from '../usage/usage.service'
 
 import type { GenerateWebsiteInput, ProjectPlan, ProjectRecord } from './generation.types'
 
@@ -88,6 +89,9 @@ export const generateWebsite = async (data: GenerateWebsiteInput) => {
     let hadCurrentVersion = false
     let assistantMessageContent = ''
     let messagesPersisted = false
+    let totalInputTokens = 0
+    let totalOutputTokens = 0
+    let resolvedModelName = 'auto'
 
     try {
         const initializedTarget = await initializeGenerationTarget({
@@ -136,13 +140,17 @@ export const generateWebsite = async (data: GenerateWebsiteInput) => {
         })
 
         const resolvedModel = await resolveModel(data.userId, data.model)
+        resolvedModelName = resolvedModel
 
         const rawPlanResponse = await extractProjectPlan({
             userPrompt,
             canvasState: persistedCanvas.canvasStateJson as any,
             model: resolvedModel,
         })
-        const parsePlan = planAgentResponseSchema.safeParse(rawPlanResponse)
+        totalInputTokens += rawPlanResponse.usage.inputTokens
+        totalOutputTokens += rawPlanResponse.usage.outputTokens
+
+        const parsePlan = planAgentResponseSchema.safeParse(rawPlanResponse.data)
 
         if (!parsePlan.success) {
             throw new Error('invalid response | plan agent')
@@ -215,13 +223,16 @@ export const generateWebsite = async (data: GenerateWebsiteInput) => {
 
         for (const [fileIndex, file] of orderedFiles.entries()) {
             try {
-                const content = await generateProjectFile({
+                const buildRes = await generateProjectFile({
                     brief: intent,
                     plan,
                     targetFile: file,
                     generatedFiles,
                     model: resolvedModel,
                 })
+                totalInputTokens += buildRes.usage.inputTokens
+                totalOutputTokens += buildRes.usage.outputTokens
+                const content = buildRes.content
 
                 generatedFiles[file.path] = content
 
@@ -371,6 +382,20 @@ export const generateWebsite = async (data: GenerateWebsiteInput) => {
         }
 
         throw error
+    } finally {
+        if (totalInputTokens > 0 || totalOutputTokens > 0) {
+            usageService
+                .recordUsageEvent({
+                    userId: data.userId,
+                    model: resolvedModelName,
+                    inputTokens: totalInputTokens,
+                    outputTokens: totalOutputTokens,
+                    totalTokens: totalInputTokens + totalOutputTokens,
+                    costInCents: 1, // flat rate tracking
+                    projectId: project?.id,
+                })
+                .catch((e) => console.error('Failed to record usage event:', e))
+        }
     }
 }
 
@@ -389,213 +414,243 @@ const applyProjectChange = async (
     const sourcePrompt = isEdit ? editData.prompt : `Fix preview error: ${fixData.errorMessage}`
     let assistantMessageContent = ''
 
-    await data.onEvent?.({
-        type: 'phase',
-        data: {
-            phase: 'thinking',
-        },
-    })
+    let totalInputTokens = 0
+    let totalOutputTokens = 0
+    let resolvedModelName = 'auto'
 
-    const resolvedModel = await resolveModel(data.userId, data.model)
+    try {
+        await data.onEvent?.({
+            type: 'phase',
+            data: {
+                phase: 'thinking',
+            },
+        })
 
-    const rawPlanResponse = await extractProjectChangePlan({
-        mode,
-        ...(isEdit ? { prompt: editData.prompt } : {}),
-        ...(isEdit && editData.selectedElement
-            ? { selectedElement: editData.selectedElement }
-            : {}),
-        ...(isEdit && (editData.canvasState ?? base.baseVersion.canvasStateJson)
-            ? { canvasState: editData.canvasState ?? base.baseVersion.canvasStateJson }
-            : {}),
-        ...(!isEdit && base.baseVersion.canvasStateJson
-            ? { canvasState: base.baseVersion.canvasStateJson }
-            : {}),
-        ...(!isEdit
-            ? {
-                  runtimeError: {
-                      message: fixData.errorMessage,
-                      ...(fixData.stack ? { stack: fixData.stack } : {}),
-                  },
-              }
-            : {}),
-        project: {
-            id: base.project.id,
-            name: base.project.name,
-            description: base.project.description,
-            prompt: base.project.prompt,
-        },
-        baseVersion: {
-            id: base.baseVersion.id,
-            versionNumber: base.baseVersion.versionNumber,
-            summary: base.baseVersion.summary,
-            sourcePrompt: base.baseVersion.sourcePrompt,
-            intentJson: base.baseVersion.intentJson,
-            planJson: base.baseVersion.planJson,
-        },
-        fileTree: fileTreeForPlanning(base.baseFiles),
-        recentMessages: toRecentMessages(base.baseVersion),
-        model: resolvedModel,
-    })
+        const resolvedModel = await resolveModel(data.userId, data.model)
 
-    if (!rawPlanResponse.plan.success) {
-        throw new Error(rawPlanResponse.plan.errors[0] || `invalid response | plan agent ${mode}`)
-    }
+        const rawPlanResponse = await extractProjectChangePlan({
+            mode,
+            ...(isEdit ? { prompt: editData.prompt } : {}),
+            ...(isEdit && editData.selectedElement
+                ? { selectedElement: editData.selectedElement }
+                : {}),
+            ...(isEdit && (editData.canvasState ?? base.baseVersion.canvasStateJson)
+                ? { canvasState: editData.canvasState ?? base.baseVersion.canvasStateJson }
+                : {}),
+            ...(!isEdit && base.baseVersion.canvasStateJson
+                ? { canvasState: base.baseVersion.canvasStateJson }
+                : {}),
+            ...(!isEdit
+                ? {
+                      runtimeError: {
+                          message: fixData.errorMessage,
+                          ...(fixData.stack ? { stack: fixData.stack } : {}),
+                      },
+                  }
+                : {}),
+            project: {
+                id: base.project.id,
+                name: base.project.name,
+                description: base.project.description,
+                prompt: base.project.prompt,
+            },
+            baseVersion: {
+                id: base.baseVersion.id,
+                versionNumber: base.baseVersion.versionNumber,
+                summary: base.baseVersion.summary,
+                sourcePrompt: base.baseVersion.sourcePrompt,
+                intentJson: base.baseVersion.intentJson,
+                planJson: base.baseVersion.planJson,
+            },
+            fileTree: fileTreeForPlanning(base.baseFiles),
+            recentMessages: toRecentMessages(base.baseVersion),
+            model: resolvedModel,
+        })
+        totalInputTokens += rawPlanResponse.usage.inputTokens
+        totalOutputTokens += rawPlanResponse.usage.outputTokens
 
-    if (!rawPlanResponse.plan.data) {
-        throw new Error(`plan agent returned empty ${mode} plan data`)
-    }
+        if (!rawPlanResponse.data.plan.success) {
+            throw new Error(
+                rawPlanResponse.data.plan.errors[0] || `invalid response | plan agent ${mode}`
+            )
+        }
 
-    const plan = rawPlanResponse.plan
-    const planData = plan.data as NonNullable<typeof plan.data>
-    assertFrontendOnlyChangePlan(plan)
-    const thinkingMessage = toVisibleMessage(rawPlanResponse.thinking)
-    const summaryMessage = toVisibleMessage(rawPlanResponse.summary)
-    assistantMessageContent = appendAssistantMessageContent(
-        assistantMessageContent,
-        thinkingMessage
-    )
+        if (!rawPlanResponse.data.plan.data) {
+            throw new Error(`plan agent returned empty ${mode} plan data`)
+        }
 
-    await emitAssistantMessage(data.onEvent, {
-        messageId: `${base.project.id}:plan-agent:${mode}:thinking`,
-        status: 'thinking',
-        content: thinkingMessage,
-    })
+        const plan = rawPlanResponse.data.plan
+        const planData = plan.data as NonNullable<typeof plan.data>
+        assertFrontendOnlyChangePlan(plan)
+        const thinkingMessage = toVisibleMessage(rawPlanResponse.data.thinking)
+        const summaryMessage = toVisibleMessage(rawPlanResponse.data.summary)
+        assistantMessageContent = appendAssistantMessageContent(
+            assistantMessageContent,
+            thinkingMessage
+        )
 
-    assistantMessageContent = appendAssistantMessageContent(assistantMessageContent, summaryMessage)
+        await emitAssistantMessage(data.onEvent, {
+            messageId: `${base.project.id}:plan-agent:${mode}:thinking`,
+            status: 'thinking',
+            content: thinkingMessage,
+        })
 
-    await emitAssistantMessage(data.onEvent, {
-        messageId: `${base.project.id}:plan-agent:${mode}:summary`,
-        status: 'thinking',
-        content: `\n\n${summaryMessage}`,
-    })
+        assistantMessageContent = appendAssistantMessageContent(
+            assistantMessageContent,
+            summaryMessage
+        )
 
-    const operations = planData.operations
-    await data.onEvent?.({
-        type: 'patch-plan',
-        data: {
-            files: operations,
-            totalFiles: operations.length,
-        },
-    })
+        await emitAssistantMessage(data.onEvent, {
+            messageId: `${base.project.id}:plan-agent:${mode}:summary`,
+            status: 'thinking',
+            content: `\n\n${summaryMessage}`,
+        })
 
-    await data.onEvent?.({
-        type: 'phase',
-        data: {
-            phase: 'building',
-        },
-    })
+        const operations = planData.operations
+        await data.onEvent?.({
+            type: 'patch-plan',
+            data: {
+                files: operations,
+                totalFiles: operations.length,
+            },
+        })
 
-    const updatedFiles: Array<{ path: string; content: string }> = []
-    const deletedFiles: string[] = []
-    const workingFiles = { ...base.baseFiles }
+        await data.onEvent?.({
+            type: 'phase',
+            data: {
+                phase: 'building',
+            },
+        })
 
-    for (const [operationIndex, operation] of operations.entries()) {
-        try {
-            if (operation.action === 'delete') {
-                deletedFiles.push(operation.path)
-                delete workingFiles[operation.path]
+        const updatedFiles: Array<{ path: string; content: string }> = []
+        const deletedFiles: string[] = []
+        const workingFiles = { ...base.baseFiles }
+
+        for (const [operationIndex, operation] of operations.entries()) {
+            try {
+                if (operation.action === 'delete') {
+                    deletedFiles.push(operation.path)
+                    delete workingFiles[operation.path]
+                    await emitPatchFileStream(data.onEvent, {
+                        file: operation,
+                        content: '',
+                        index: operationIndex + 1,
+                        total: operations.length,
+                    })
+                    continue
+                }
+
+                const patchRes = await generateProjectPatchFile({
+                    operation,
+                    currentFiles: workingFiles,
+                    projectContext: {
+                        projectName: base.project.name,
+                        sourcePrompt: base.baseVersion.sourcePrompt,
+                        summary: base.baseVersion.summary,
+                    },
+                    request: {
+                        mode,
+                        ...(isEdit ? { prompt: editData.prompt } : {}),
+                        ...(isEdit && editData.selectedElement
+                            ? { selectedElement: editData.selectedElement }
+                            : {}),
+                        ...(!isEdit
+                            ? {
+                                  runtimeError: {
+                                      message: fixData.errorMessage,
+                                      ...(fixData.stack ? { stack: fixData.stack } : {}),
+                                  },
+                              }
+                            : {}),
+                    },
+                    model: resolvedModel,
+                })
+                totalInputTokens += patchRes.usage.inputTokens
+                totalOutputTokens += patchRes.usage.outputTokens
+                const content = patchRes.content
+
+                workingFiles[operation.path] = content
+                updatedFiles.push({
+                    path: operation.path,
+                    content,
+                })
+
                 await emitPatchFileStream(data.onEvent, {
                     file: operation,
-                    content: '',
+                    content,
                     index: operationIndex + 1,
                     total: operations.length,
                 })
-                continue
+            } catch (error) {
+                const message =
+                    error instanceof Error ? error.message : `failed to patch ${operation.path}`
+
+                await data.onEvent?.({
+                    type: 'file-error',
+                    data: {
+                        path: operation.path,
+                        message,
+                    },
+                })
+
+                throw error
             }
+        }
 
-            const content = await generateProjectPatchFile({
-                operation,
-                currentFiles: workingFiles,
-                projectContext: {
-                    projectName: base.project.name,
-                    sourcePrompt: base.baseVersion.sourcePrompt,
-                    summary: base.baseVersion.summary,
-                },
-                request: {
-                    mode,
-                    ...(isEdit ? { prompt: editData.prompt } : {}),
-                    ...(isEdit && editData.selectedElement
-                        ? { selectedElement: editData.selectedElement }
-                        : {}),
-                    ...(!isEdit
-                        ? {
-                              runtimeError: {
-                                  message: fixData.errorMessage,
-                                  ...(fixData.stack ? { stack: fixData.stack } : {}),
-                              },
-                          }
-                        : {}),
-                },
-                model: resolvedModel,
-            })
+        const { mergedFiles, appliedFiles, removedFiles } = mergeProjectFiles({
+            currentFiles: base.baseFiles,
+            updatedFiles,
+            deletedFiles,
+        })
 
-            workingFiles[operation.path] = content
-            updatedFiles.push({
-                path: operation.path,
-                content,
-            })
+        const persisted = await persistProjectRevision({
+            project: base.project,
+            userId: data.userId,
+            baseVersion: base.baseVersion,
+            nextVersionNumber: base.nextVersionNumber,
+            mergedFiles,
+            removedFiles,
+            sourcePrompt,
+            assistantMessage: assistantMessageContent,
+            summary: summaryMessage || planData.summary,
+            ...(isEdit ? { nextProjectPrompt: editData.prompt } : {}),
+            ...(isEdit && editData.canvasState ? { canvasState: editData.canvasState } : {}),
+        })
 
-            await emitPatchFileStream(data.onEvent, {
-                file: operation,
-                content,
-                index: operationIndex + 1,
-                total: operations.length,
-            })
-        } catch (error) {
-            const message =
-                error instanceof Error ? error.message : `failed to patch ${operation.path}`
+        const result = {
+            project: persisted.project,
+            version: persisted.version,
+            versions: persisted.versions,
+            chatMessages: persisted.chatMessages,
+            intent: (base.baseVersion.intentJson ?? {}) as any,
+            plan,
+            generatedFiles: persisted.generatedFiles,
+            appliedFiles,
+            deletedFiles: removedFiles,
+            assistantMessage: persisted.assistantMessage,
+        }
 
-            await data.onEvent?.({
-                type: 'file-error',
-                data: {
-                    path: operation.path,
-                    message,
-                },
-            })
+        await data.onEvent?.({
+            type: 'result',
+            data: result,
+        })
 
-            throw error
+        return result
+    } finally {
+        if (totalInputTokens > 0 || totalOutputTokens > 0) {
+            usageService
+                .recordUsageEvent({
+                    userId: data.userId,
+                    model: resolvedModelName,
+                    inputTokens: totalInputTokens,
+                    outputTokens: totalOutputTokens,
+                    totalTokens: totalInputTokens + totalOutputTokens,
+                    costInCents: 1, // flat rate tracking
+                    projectId: base.project.id,
+                })
+                .catch((e) => console.error('Failed to record usage event:', e))
         }
     }
-
-    const { mergedFiles, appliedFiles, removedFiles } = mergeProjectFiles({
-        currentFiles: base.baseFiles,
-        updatedFiles,
-        deletedFiles,
-    })
-
-    const persisted = await persistProjectRevision({
-        project: base.project,
-        userId: data.userId,
-        baseVersion: base.baseVersion,
-        nextVersionNumber: base.nextVersionNumber,
-        mergedFiles,
-        removedFiles,
-        sourcePrompt,
-        assistantMessage: assistantMessageContent,
-        summary: summaryMessage || planData.summary,
-        ...(isEdit ? { nextProjectPrompt: editData.prompt } : {}),
-        ...(isEdit && editData.canvasState ? { canvasState: editData.canvasState } : {}),
-    })
-
-    const result = {
-        project: persisted.project,
-        version: persisted.version,
-        versions: persisted.versions,
-        chatMessages: persisted.chatMessages,
-        intent: (base.baseVersion.intentJson ?? {}) as any,
-        plan,
-        generatedFiles: persisted.generatedFiles,
-        appliedFiles,
-        deletedFiles: removedFiles,
-        assistantMessage: persisted.assistantMessage,
-    }
-
-    await data.onEvent?.({
-        type: 'result',
-        data: result,
-    })
-
-    return result
 }
 
 export const applyProjectEdit = (data: ApplyProjectEditInput) => applyProjectChange('edit', data)

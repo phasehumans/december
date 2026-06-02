@@ -51,8 +51,6 @@ export const OutputHeader: React.FC<OutputHeaderProps> = ({
                 isVersionLoading={isVersionLoading}
                 onSelectVersion={onSelectVersion}
                 onDownload={onDownload}
-                selectedModel={selectedModel}
-                setSelectedModel={setSelectedModel}
             />
         </header>
     )
