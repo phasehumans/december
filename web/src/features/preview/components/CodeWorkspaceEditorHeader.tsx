@@ -47,14 +47,6 @@ export const CodeWorkspaceEditorHeader: React.FC<CodeWorkspaceEditorHeaderProps>
     fileContent,
 }) => {
     const tabs = React.useMemo(() => getTabs(activeFile, openFiles), [activeFile, openFiles])
-    const [isCopied, setIsCopied] = React.useState(false)
-
-    const handleCopy = () => {
-        if (!fileContent) return
-        navigator.clipboard.writeText(fileContent)
-        setIsCopied(true)
-        setTimeout(() => setIsCopied(false), 2000)
-    }
 
     return (
         <div className="h-10 shrink-0 border-b border-[#2d2d2d] bg-[#171615] flex items-center justify-between px-3">
@@ -104,31 +96,6 @@ export const CodeWorkspaceEditorHeader: React.FC<CodeWorkspaceEditorHeaderProps>
                     })
                 )}
             </div>
-
-            {activeFile && (
-                <div className="flex items-center gap-2 ml-4 shrink-0 text-[#858585]">
-                    <button
-                        type="button"
-                        onClick={handleCopy}
-                        className="p-1.5 hover:bg-white/5 hover:text-white rounded transition-colors flex items-center gap-1.5 outline-none min-w-[32px] justify-center"
-                        title="Copy Code"
-                    >
-                        {isCopied ? (
-                            <>
-                                <Check
-                                    size={14}
-                                    className="text-green-500 animate-in zoom-in-75 duration-200"
-                                />
-                                <span className="text-[10px] text-green-500 font-medium font-sans">
-                                    Copied!
-                                </span>
-                            </>
-                        ) : (
-                            <Copy size={14} />
-                        )}
-                    </button>
-                </div>
-            )}
         </div>
     )
 }
