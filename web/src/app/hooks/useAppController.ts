@@ -84,12 +84,11 @@ const mapBackendMessageToUIMessage = (message: BackendProjectMessage): Message =
         const parts = message.content.split('\n\n')
         if (parts.length > 1) {
             thoughts = parts[0]
-            const remaining = parts.slice(1).join('\n\n')
-            plan = remaining
-            summary = remaining
+            plan = parts.slice(1).join('\n\n')
+            summary = '' // We don't use summary anymore
         } else {
             plan = message.content
-            summary = plan
+            summary = ''
         }
     }
 
@@ -326,8 +325,8 @@ export const useAppController = () => {
     const appendAssistantChunk = React.useCallback(
         (messageId: string, chunk: string, streamMessageId?: string) => {
             updateAssistantMessage(messageId, (message) => {
-                const isThinkingStream = streamMessageId?.endsWith(':thinking')
-                const isSummaryStream = streamMessageId?.endsWith(':summary')
+                const isThinkingStream = streamMessageId?.endsWith(':thoughts')
+                const isSummaryStream = streamMessageId?.endsWith(':plan_of_action')
 
                 let nextThoughts = message.thoughts ?? ''
                 let nextPlan = message.plan ?? ''
@@ -337,7 +336,6 @@ export const useAppController = () => {
                     nextThoughts = `${nextThoughts}${chunk}`
                 } else if (isSummaryStream) {
                     nextPlan = `${nextPlan}${chunk}`
-                    nextSummary = `${nextSummary}${chunk}`
                 }
 
                 return {

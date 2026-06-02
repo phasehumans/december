@@ -138,6 +138,7 @@ export const extractProjectPlan = async (data: ExtractProjectPlan & { model?: st
         label: 'plan agent',
         maxAttempts: PLAN_AGENT_MAX_ATTEMPTS,
         task: async (attempt, lastError) => {
+            console.log(`[generation] plan agent starting, attempt: ${attempt}`)
             const completion = await openai.chat.completions.create({
                 model: data.model || process.env.AUTO_MODEL || PLAN_AGENT_MODEL,
                 max_tokens: PLAN_AGENT_MAX_TOKENS,
@@ -165,12 +166,14 @@ export const extractProjectPlan = async (data: ExtractProjectPlan & { model?: st
             const content = readChatCompletionText(completion)
 
             if (!content) {
+                console.log(`[generation] plan agent failed: no response`)
                 throw new Error('no response from plan agent')
             }
 
-            const data = validatePlanAgentResponse(parsePlanAgentPayload(content, completion))
+            console.log(`[generation] plan agent completed successfully`)
+            const parsedData = validatePlanAgentResponse(parsePlanAgentPayload(content, completion))
             return {
-                data,
+                data: parsedData,
                 usage: {
                     inputTokens: (completion as any).usage?.prompt_tokens ?? 0,
                     outputTokens: (completion as any).usage?.completion_tokens ?? 0,
@@ -200,6 +203,9 @@ export const extractProjectChangePlan = async (
         label: `plan agent ${data.mode}`,
         maxAttempts: PLAN_AGENT_MAX_ATTEMPTS,
         task: async (attempt, lastError) => {
+            console.log(
+                `[generation change] plan agent starting, mode: ${data.mode}, attempt: ${attempt}`
+            )
             const completion = await openai.chat.completions.create({
                 model: data.model || process.env.AUTO_MODEL || PLAN_AGENT_MODEL,
                 max_tokens: PLAN_AGENT_CHANGE_MAX_TOKENS,
@@ -227,8 +233,11 @@ export const extractProjectChangePlan = async (
             const content = readChatCompletionText(completion)
 
             if (!content) {
+                console.log(`[generation change] plan agent failed: no response`)
                 throw new Error(`no response from plan agent ${data.mode}`)
             }
+
+            console.log(`[generation change] plan agent completed successfully`)
 
             const parsedData = validateChangePlanResponse(
                 parsePlanAgentPayload(content, completion)

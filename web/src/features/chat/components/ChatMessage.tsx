@@ -310,7 +310,10 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
 
                 {/* 2. Plan of Action (normal text, streamed) */}
                 {showPlan && displayedPlan.trim().length > 0 && (
-                    <div className="space-y-2.5 animate-in fade-in duration-300 w-full">
+                    <div className="space-y-2.5 animate-in fade-in duration-300 w-full pt-1">
+                        <div className="text-[12px] font-bold text-[#E6E4E3] tracking-wide uppercase font-sans mb-2">
+                            PLAN OF ACTION
+                        </div>
                         {renderRichContent(displayedPlan)}
                     </div>
                 )}
