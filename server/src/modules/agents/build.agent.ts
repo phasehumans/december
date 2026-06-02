@@ -174,7 +174,15 @@ export const generateProjectFile = async (data: GenerateProjectFileInput & { mod
                 throw new Error(`no response from build agent for ${data.targetFile.path}`)
             }
 
-            return validateGeneratedFileContent(data.targetFile.path, content)
+            const validatedContent = validateGeneratedFileContent(data.targetFile.path, content)
+            return {
+                content: validatedContent,
+                usage: {
+                    inputTokens: (completion as any).usage?.prompt_tokens ?? 0,
+                    outputTokens: (completion as any).usage?.completion_tokens ?? 0,
+                    totalTokens: (completion as any).usage?.total_tokens ?? 0,
+                },
+            }
         },
     })
 }
@@ -231,7 +239,10 @@ export const generateProjectPatchFile = async (
     assertFrontendWorkspacePath(data.operation.path, 'target frontend patch file')
 
     if (data.operation.action === 'delete') {
-        return ''
+        return {
+            content: '',
+            usage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 },
+        }
     }
 
     return retryAsync({
@@ -280,7 +291,15 @@ export const generateProjectPatchFile = async (
                 throw new Error(`no response from build agent for ${data.operation.path}`)
             }
 
-            return validateGeneratedFileContent(data.operation.path, content)
+            const validatedContent = validateGeneratedFileContent(data.operation.path, content)
+            return {
+                content: validatedContent,
+                usage: {
+                    inputTokens: (completion as any).usage?.prompt_tokens ?? 0,
+                    outputTokens: (completion as any).usage?.completion_tokens ?? 0,
+                    totalTokens: (completion as any).usage?.total_tokens ?? 0,
+                },
+            }
         },
     })
 }

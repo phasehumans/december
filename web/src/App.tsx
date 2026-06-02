@@ -120,6 +120,7 @@ const App: React.FC = () => {
                     onDownloadProject={handleDownloadProject}
                     onSignOut={handleSignOut}
                     onDocs={() => handleNavigate('docs')}
+                    projectType={'generated'}
                     selectedModel={selectedModel}
                     setSelectedModel={setSelectedModel}
                 />
