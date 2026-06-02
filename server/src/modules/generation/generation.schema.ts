@@ -218,8 +218,8 @@ export const generateProjectFileSchema = projectPlanSchema
 
 export const planAgentResponseSchema = z
     .object({
-        thinking: z.array(z.string().min(1)).min(1),
-        summary: z.array(z.string().min(1)).min(1),
+        thoughts: z.array(z.string().min(1)).min(1),
+        plan_of_action: z.array(z.string().min(1)).min(1),
         intent: projectIntentSchema,
         plan: projectPlanSchema,
     })
@@ -333,8 +333,8 @@ export const projectChangePlanSchema = z
 
 export const projectChangePlanResponseSchema = z
     .object({
-        thinking: z.array(z.string().min(1)).min(1),
-        summary: z.array(z.string().min(1)).min(1),
+        thoughts: z.array(z.string().min(1)).min(1),
+        plan_of_action: z.array(z.string().min(1)).min(1),
         plan: projectChangePlanSchema,
     })
     .strict()

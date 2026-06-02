@@ -3,7 +3,7 @@ import { currentKey, deleteObject, getTextFile } from '../project/project-storag
 import { saveProjectFiles } from '../project/save-project-files'
 import { persistCanvasDocument } from '../canvas/canvas.persistence'
 
-import { createProjectName, mapVersionSummary, parseStoredProjectFiles } from './generation.helpers'
+import { createProjectName, mapVersionSummary, parseStoredProjectFiles } from './generation.utils'
 import { publishFinalPreviewSnapshot } from './generation.runtime'
 
 import type {

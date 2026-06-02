@@ -76,9 +76,9 @@ export const autoHealPlanAgentResponse = (payload: any): any => {
 
     const copy = { ...payload }
 
-    // 1. thinking & summary
-    copy.thinking = ensureArrayOfNonEmptyStrings(copy.thinking, ['Analyzing prompt requirements'])
-    copy.summary = ensureArrayOfNonEmptyStrings(copy.summary, [
+    // 1. thoughts & plan_of_action
+    copy.thoughts = ensureArrayOfNonEmptyStrings(copy.thoughts, ['Analyzing prompt requirements'])
+    copy.plan_of_action = ensureArrayOfNonEmptyStrings(copy.plan_of_action, [
         'Drafting initial project architecture',
     ])
 
@@ -236,8 +236,8 @@ export const autoHealPlanAgentResponse = (payload: any): any => {
         data.files = Array.from(filesMap.values())
 
         // buildOrder
-        const generatedPaths = new Set(
-            data.files.filter((f: any) => f.generate).map((f: any) => f.path)
+        const generatedPaths = new Set<string>(
+            data.files.filter((f: any) => f.generate).map((f: any) => f.path as string)
         )
         const orderList = Array.isArray(data.buildOrder)
             ? data.buildOrder.filter((o: any) => typeof o === 'string')
@@ -295,8 +295,10 @@ export const autoHealChangePlanResponse = (payload: any): any => {
 
     const copy = { ...payload }
 
-    copy.thinking = ensureArrayOfNonEmptyStrings(copy.thinking, ['Analyzing follow-up request'])
-    copy.summary = ensureArrayOfNonEmptyStrings(copy.summary, ['Applying targeted updates'])
+    copy.thoughts = ensureArrayOfNonEmptyStrings(copy.thoughts, ['Analyzing follow-up request'])
+    copy.plan_of_action = ensureArrayOfNonEmptyStrings(copy.plan_of_action, [
+        'Applying targeted updates',
+    ])
 
     if (!copy.plan || typeof copy.plan !== 'object') {
         copy.plan = {}
