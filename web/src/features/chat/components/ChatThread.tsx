@@ -36,6 +36,7 @@ export const ChatThread: React.FC<ChatSidebarProps> = ({
     onOpenAuth,
 }) => {
     const scrollContainerRef = React.useRef<HTMLDivElement | null>(null)
+    const contentRef = React.useRef<HTMLDivElement | null>(null)
     const [shouldAutoScroll, setShouldAutoScroll] = React.useState(true)
     const prevMessagesLengthRef = React.useRef(messages.length)
 
@@ -50,11 +51,36 @@ export const ChatThread: React.FC<ChatSidebarProps> = ({
         const container = scrollContainerRef.current
         if (!container) return
 
-        const threshold = 35
+        const threshold = 150
         const isAtBottom =
-            container.scrollHeight - container.scrollTop - container.clientHeight <= threshold
-        setShouldAutoScroll(isAtBottom)
+            Math.abs(container.scrollHeight - container.scrollTop - container.clientHeight) <=
+            threshold
+
+        if (!isAtBottom) {
+            setShouldAutoScroll(false)
+        } else {
+            setShouldAutoScroll(true)
+        }
     }
+
+    React.useEffect(() => {
+        const container = scrollContainerRef.current
+        const content = contentRef.current
+
+        if (!container || !content) return
+
+        const observer = new ResizeObserver(() => {
+            if (shouldAutoScroll) {
+                container.scrollTo({
+                    top: container.scrollHeight,
+                    behavior: 'auto',
+                })
+            }
+        })
+
+        observer.observe(content)
+        return () => observer.disconnect()
+    }, [shouldAutoScroll])
 
     React.useEffect(() => {
         const container = scrollContainerRef.current
@@ -67,17 +93,6 @@ export const ChatThread: React.FC<ChatSidebarProps> = ({
             top: container.scrollHeight,
             behavior: 'auto',
         })
-
-        const timeoutId = setTimeout(() => {
-            if (shouldAutoScroll) {
-                container.scrollTo({
-                    top: container.scrollHeight,
-                    behavior: 'auto',
-                })
-            }
-        }, 50)
-
-        return () => clearTimeout(timeoutId)
     }, [messages, generatedFiles, isGenerating, shouldAutoScroll])
 
     const handleSubmit = () => {
@@ -97,7 +112,7 @@ export const ChatThread: React.FC<ChatSidebarProps> = ({
     }
 
     const messagesList = (
-        <div className="flex flex-col gap-8">
+        <div className="flex flex-col gap-8" ref={contentRef}>
             {messages.map((msg, index) => (
                 <ChatMessage
                     key={msg.id}

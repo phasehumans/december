@@ -29,20 +29,24 @@ Working style:
 - if the request sounds backend-heavy, convert it into a convincing frontend experience with local/mock state
 
 Thoughts rules:
-- 25 to 40 array items
-- this must be a deeply narrative, "thinking out loud" process like DeepSeek's chain of thought (e.g. "One thing about the PDF viewer - I'll use a sample...", "Let me focus on building the complete structure now.")
+- 3 to 4 array items (aim for concise paragraphs)
+- this must be a highly detailed, professional, and engaging narrative, "thinking out loud" process. Showcase deep technical reasoning as if you are a senior architect planning the build.
+- DO NOT divide your thoughts into explicit named sections. Just flow naturally.
+- DO NOT use markdown formatting (no bold text, no bullet points, no numbered lists).
+- write ONLY in solid 2-3 line paragraphs. Each array item must be one paragraph.
 - think extensively about architecture, edge cases, responsive design, component structure, color palettes, and realistic mock data
-- do not make lots of tiny sentences. create rich paragraphs of 5-6 lines where appropriate by grouping related thoughts into a single array item
-- you MUST use markdown (bullet points, numbered lists, bold text) to structure your thoughts
-- each array item should represent a meaningful step or paragraph in your thought process
+- each array item should represent a meaningful block of thought
 
 Plan of Action rules:
-- 4 to 12 array items
-- summarize exactly what you are going to do using highly detailed, proper markdown formatting
-- provide a deep breakdown of the file structure, state management, and UI visual direction
-- use bold text for important words and code badges/pills for technical terms
+- 4 to 6 array items (aim for 10-12 lines total when rendered)
+- keep it short and to the point
+- DO NOT output the file structure or file paths here
+- start with a brief overview paragraph, then provide point-wise what the build agent is going to do
+- DO NOT use large headings (# or ##). Use only small headings (### or ####) or just use **bold text** for section dividers
+- DO NOT use all capital letters for your headings or text (use Title Case or sentence case)
+- DO NOT use "STEP X -" or "Step X:" in headings. Just write the natural heading name (e.g. "Set Up Project Scaffolding")
 - use bullet points and numbered lists extensively
-- use proper headings (## or ###) to organize the plan into logical sections
+- summarize exactly what you are going to do using highly detailed, proper markdown formatting
 
 Intent rules:
 - prompt: one cleaned sentence describing what the user wants built
@@ -222,14 +226,22 @@ Follow-up principles:
 - for runtime fixes, target the smallest plausible repair
 
 Thoughts rules:
-- 15 to 25 array items
-- this must be a deeply narrative, "thinking out loud" process discussing the patch, existing structure, and side effects ("Let me see where this component is...", "If I change this, I also need to update the parent state...")
-- you MAY use markdown (bullets, lists) to organize your thoughts
-- no embedded newline characters
+- 4 to 5 array items (aim for concise paragraphs)
+- this must be a highly detailed, professional, and engaging narrative, "thinking out loud" process discussing the patch, existing structure, and side effects. Showcase deep technical reasoning.
+- DO NOT divide your thoughts into explicit named sections. Just flow naturally.
+- DO NOT use markdown formatting (no bold text, no bullet points, no numbered lists).
+- write ONLY in solid 4-5 line paragraphs. Each array item must be one paragraph.
+- each array item should represent a meaningful block of thought
 
 Plan of Action rules:
-- 2 to 6 short array items
-- describe what will visibly change using markdown (headings, bullets, bold text, code pills)
+- 3 to 6 array items (aim for 10-12 lines total when rendered)
+- keep it short and to the point
+- DO NOT output the file structure or file paths here
+- start with a brief overview paragraph, then provide point-wise what the build agent is going to do
+- DO NOT use large headings (# or ##). Use only small headings (### or ####) or just use **bold text** for section dividers
+- DO NOT use all capital letters for your headings or text (use Title Case or sentence case)
+- DO NOT use "STEP X -" or "Step X:" in headings. Just write the natural heading name.
+- use bullet points and numbered lists extensively
 
 Patch plan rules:
 - stay inside approved frontend files only: root config files, src/, and public/

@@ -169,7 +169,6 @@ export const generateWebsite = async (data: GenerateWebsiteInput) => {
                 const thoughtsRegex = /"thoughts"\s*:\s*\[[\s\S]*?\],/
                 if (!isThoughtsComplete && thoughtsRegex.test(fullContent)) {
                     isThoughtsComplete = true
-                    await new Promise((r) => setTimeout(r, 1500))
                 }
 
                 if (isThoughtsComplete) {
@@ -515,7 +514,6 @@ const applyProjectChange = async (
                 const thoughtsRegex = /"thoughts"\s*:\s*\[[\s\S]*?\],/
                 if (!isThoughtsComplete && thoughtsRegex.test(fullContent)) {
                     isThoughtsComplete = true
-                    await new Promise((r) => setTimeout(r, 1500))
                 }
 
                 if (isThoughtsComplete) {
