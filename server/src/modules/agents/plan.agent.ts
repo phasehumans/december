@@ -128,7 +128,9 @@ const parsePlanAgentPayload = (
     }
 }
 
-export const extractProjectPlan = async (data: ExtractProjectPlan & { model?: string }) => {
+export const extractProjectPlan = async (
+    data: ExtractProjectPlan & { model?: string; onStream?: (fullContent: string) => Promise<void> }
+) => {
     const compactData = {
         userPrompt: data.userPrompt,
         canvasState: cleanCanvasState(data.canvasState),
@@ -156,14 +158,22 @@ export const extractProjectPlan = async (data: ExtractProjectPlan & { model?: st
                         ? [
                               {
                                   role: 'system' as const,
-                                  content: `Retry attempt ${attempt}. The previous plan could not be used: ${lastError?.message ?? 'unknown error'}. Return only one valid JSON object in the exact required shape. thinking and summary must be JSON arrays of short strings with no embedded newline characters. Keep unique frontend file paths and a complete buildOrder.`,
+                                  content: `Retry attempt ${attempt}. The previous plan could not be used: ${lastError?.message ?? 'unknown error'}. Return only one valid JSON object in the exact required shape. thoughts and plan_of_action must be JSON arrays of short strings with no embedded newline characters. Keep unique frontend file paths and a complete buildOrder.`,
                               },
                           ]
                         : []),
                 ],
+                stream: true,
             })
 
-            const content = readChatCompletionText(completion)
+            let content = ''
+            for await (const chunk of completion) {
+                const delta = chunk.choices[0]?.delta?.content || ''
+                content += delta
+                if (data.onStream) {
+                    await data.onStream(content)
+                }
+            }
 
             if (!content) {
                 console.log(`[generation] plan agent failed: no response`)
@@ -171,7 +181,7 @@ export const extractProjectPlan = async (data: ExtractProjectPlan & { model?: st
             }
 
             console.log(`[generation] plan agent completed successfully`)
-            const parsedData = validatePlanAgentResponse(parsePlanAgentPayload(content, completion))
+            const parsedData = validatePlanAgentResponse(parsePlanAgentPayload(content, undefined))
             return {
                 data: parsedData,
                 usage: {
@@ -197,7 +207,10 @@ const toCompactChangePlanInput = (data: ExtractProjectChangePlan) => ({
 })
 
 export const extractProjectChangePlan = async (
-    data: ExtractProjectChangePlan & { model?: string }
+    data: ExtractProjectChangePlan & {
+        model?: string
+        onStream?: (fullContent: string) => Promise<void>
+    }
 ) => {
     return retryAsync({
         label: `plan agent ${data.mode}`,
@@ -223,14 +236,22 @@ export const extractProjectChangePlan = async (
                         ? [
                               {
                                   role: 'system' as const,
-                                  content: `Retry attempt ${attempt}. The previous change plan could not be used: ${lastError?.message ?? 'unknown error'}. Return only one valid JSON object in the exact required shape. thinking and summary must be JSON arrays of short strings with no embedded newline characters. Keep unique frontend paths.`,
+                                  content: `Retry attempt ${attempt}. The previous change plan could not be used: ${lastError?.message ?? 'unknown error'}. Return only one valid JSON object in the exact required shape. thoughts and plan_of_action must be JSON arrays of short strings with no embedded newline characters. Keep unique frontend paths.`,
                               },
                           ]
                         : []),
                 ],
+                stream: true,
             })
 
-            const content = readChatCompletionText(completion)
+            let content = ''
+            for await (const chunk of completion) {
+                const delta = chunk.choices[0]?.delta?.content || ''
+                content += delta
+                if (data.onStream) {
+                    await data.onStream(content)
+                }
+            }
 
             if (!content) {
                 console.log(`[generation change] plan agent failed: no response`)
@@ -239,9 +260,7 @@ export const extractProjectChangePlan = async (
 
             console.log(`[generation change] plan agent completed successfully`)
 
-            const parsedData = validateChangePlanResponse(
-                parsePlanAgentPayload(content, completion)
-            )
+            const parsedData = validateChangePlanResponse(parsePlanAgentPayload(content, undefined))
             return {
                 data: parsedData,
                 usage: {

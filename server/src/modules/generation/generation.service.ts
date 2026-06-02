@@ -16,6 +16,7 @@ import {
     getFilesInGenerationOrder,
     mergeProjectFiles,
     toRecentMessages,
+    parsePartialArray,
 } from './generation.utils'
 import {
     getProjectRevisionBase,
@@ -145,10 +146,45 @@ export const generateWebsite = async (data: GenerateWebsiteInput) => {
             `[generation] user: ${data.userId} requested model: ${data.model || 'auto'}, resolved to: ${resolvedModelName}`
         )
 
+        let lastThoughtsLength = 0
+        let lastPlanLength = 0
+        let isThoughtsComplete = false
+
         const rawPlanResponse = await extractProjectPlan({
             userPrompt,
             canvasState: persistedCanvas.canvasStateJson as any,
             model: resolvedModel,
+            onStream: async (fullContent: string) => {
+                const thoughts = parsePartialArray(fullContent, 'thoughts')
+                if (thoughts.length > lastThoughtsLength) {
+                    const chunk = thoughts.slice(lastThoughtsLength)
+                    lastThoughtsLength = thoughts.length
+                    await emitAssistantMessage(onEvent, {
+                        messageId: `${project!.id}:plan-agent:thoughts`,
+                        status: 'thinking',
+                        content: chunk,
+                    })
+                }
+
+                const thoughtsRegex = /"thoughts"\s*:\s*\[[\s\S]*?\],/
+                if (!isThoughtsComplete && thoughtsRegex.test(fullContent)) {
+                    isThoughtsComplete = true
+                    await new Promise((r) => setTimeout(r, 1500))
+                }
+
+                if (isThoughtsComplete) {
+                    const planOfAction = parsePartialArray(fullContent, 'plan_of_action')
+                    if (planOfAction.length > lastPlanLength) {
+                        const chunk = planOfAction.slice(lastPlanLength)
+                        lastPlanLength = planOfAction.length
+                        await emitAssistantMessage(onEvent, {
+                            messageId: `${project!.id}:plan-agent:plan_of_action`,
+                            status: 'thinking',
+                            content: chunk,
+                        })
+                    }
+                }
+            },
         })
         totalInputTokens += rawPlanResponse.usage.inputTokens
         totalOutputTokens += rawPlanResponse.usage.outputTokens
@@ -181,22 +217,10 @@ export const generateWebsite = async (data: GenerateWebsiteInput) => {
             thoughtsMessage
         )
 
-        await emitAssistantMessage(onEvent, {
-            messageId: `${project.id}:plan-agent:thoughts`,
-            status: 'thinking',
-            content: thoughtsMessage,
-        })
-
         assistantMessageContent = appendAssistantMessageContent(
             assistantMessageContent,
             planOfActionMessage
         )
-
-        await emitAssistantMessage(onEvent, {
-            messageId: `${project.id}:plan-agent:plan_of_action`,
-            status: 'thinking',
-            content: `\n\n${planOfActionMessage}`,
-        })
 
         project = await prisma.project.update({
             where: {
@@ -435,6 +459,10 @@ const applyProjectChange = async (
             `[generation change] user: ${data.userId} requested model: ${data.model || 'auto'}, resolved to: ${resolvedModelName}`
         )
 
+        let lastThoughtsLength = 0
+        let lastPlanLength = 0
+        let isThoughtsComplete = false
+
         const rawPlanResponse = await extractProjectChangePlan({
             mode,
             ...(isEdit ? { prompt: editData.prompt } : {}),
@@ -472,6 +500,37 @@ const applyProjectChange = async (
             fileTree: fileTreeForPlanning(base.baseFiles),
             recentMessages: toRecentMessages(base.baseVersion),
             model: resolvedModel,
+            onStream: async (fullContent) => {
+                const thoughts = parsePartialArray(fullContent, 'thoughts')
+                if (thoughts.length > lastThoughtsLength) {
+                    const chunk = thoughts.slice(lastThoughtsLength)
+                    lastThoughtsLength = thoughts.length
+                    await emitAssistantMessage(data.onEvent, {
+                        messageId: `${base.project.id}:plan-agent:${mode}:thoughts`,
+                        status: 'thinking',
+                        content: chunk,
+                    })
+                }
+
+                const thoughtsRegex = /"thoughts"\s*:\s*\[[\s\S]*?\],/
+                if (!isThoughtsComplete && thoughtsRegex.test(fullContent)) {
+                    isThoughtsComplete = true
+                    await new Promise((r) => setTimeout(r, 1500))
+                }
+
+                if (isThoughtsComplete) {
+                    const planOfAction = parsePartialArray(fullContent, 'plan_of_action')
+                    if (planOfAction.length > lastPlanLength) {
+                        const chunk = planOfAction.slice(lastPlanLength)
+                        lastPlanLength = planOfAction.length
+                        await emitAssistantMessage(data.onEvent, {
+                            messageId: `${base.project.id}:plan-agent:${mode}:plan_of_action`,
+                            status: 'thinking',
+                            content: chunk,
+                        })
+                    }
+                }
+            },
         })
         totalInputTokens += rawPlanResponse.usage.inputTokens
         totalOutputTokens += rawPlanResponse.usage.outputTokens
@@ -497,22 +556,10 @@ const applyProjectChange = async (
             thoughtsMessage
         )
 
-        await emitAssistantMessage(data.onEvent, {
-            messageId: `${base.project.id}:plan-agent:${mode}:thoughts`,
-            status: 'thinking',
-            content: thoughtsMessage,
-        })
-
         assistantMessageContent = appendAssistantMessageContent(
             assistantMessageContent,
             planOfActionMessage
         )
-
-        await emitAssistantMessage(data.onEvent, {
-            messageId: `${base.project.id}:plan-agent:${mode}:plan_of_action`,
-            status: 'thinking',
-            content: `\n\n${planOfActionMessage}`,
-        })
 
         const operations = planData.operations
         await data.onEvent?.({
