@@ -55,28 +55,46 @@ export const ChatPromptInput: React.FC<ChatPromptInputProps> = ({
     const models = [
         { id: 'Auto', name: 'Auto', desc: 'Best model for your task', icon: null },
         {
-            id: 'openai/gpt-oss-20b:free',
-            name: 'GPT OSS 20B',
-            desc: 'Free standard model',
-            icon: Icons.OpenAI,
-        },
-        {
-            id: 'meta-llama/llama-3-8b-instruct:free',
-            name: 'Llama 3 8B',
-            desc: 'Free instruct model',
+            id: 'Claude Opus 4.1',
+            name: 'Claude Opus 4.1',
+            desc: "Anthropic's Most Capable Model",
             icon: Icons.Claude,
         },
         {
-            id: 'google/gemini-2.5-flash',
+            id: 'Claude Sonnet 4',
+            name: 'Claude Sonnet 4',
+            desc: "Anthropic's Latest Model",
+            icon: Icons.Claude,
+        },
+        {
+            id: 'GPT-5.5',
+            name: 'GPT-5.5',
+            desc: "OpenAI's Latest flagship",
+            icon: Icons.OpenAI,
+        },
+        {
+            id: 'GPT-5.5 Mini',
+            name: 'GPT-5.5 Mini',
+            desc: "OpenAI's Fast and smart model",
+            icon: Icons.OpenAI,
+        },
+        {
+            id: 'Gemini 2.5 Pro',
+            name: 'Gemini 2.5 Pro',
+            desc: "Google's Advanced intelligence",
+            icon: Icons.Gemini,
+        },
+        {
+            id: 'Gemini 2.5 Flash',
             name: 'Gemini 2.5 Flash',
             desc: "Google's High-speed processing",
             icon: Icons.Gemini,
         },
         {
-            id: 'anthropic/claude-3-haiku',
-            name: 'Claude 3 Haiku',
-            desc: "Anthropic's Fast Model",
-            icon: Icons.Claude,
+            id: 'DeepSeek V3',
+            name: 'DeepSeek V3',
+            desc: 'Powerful Open Source',
+            icon: Icons.Deepseek,
         },
     ]
 
@@ -200,8 +218,7 @@ export const ChatPromptInput: React.FC<ChatPromptInputProps> = ({
                                 <div className="absolute bottom-[calc(100%+8px)] left-0 w-[240px] bg-[#1E1D1C] border border-white/[0.08] rounded-xl p-1 shadow-2xl z-50 flex flex-col gap-[2px]">
                                     {models.map((model) => {
                                         const isSelected = selectedModel === model.id
-                                        const isFreeModel =
-                                            model.id === 'Auto' || model.id.endsWith(':free')
+                                        const isFreeModel = model.id === 'Auto'
                                         return (
                                             <button
                                                 key={model.id}
