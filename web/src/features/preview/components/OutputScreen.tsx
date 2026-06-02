@@ -11,6 +11,11 @@ import type {
     OutputOperation,
 } from '@/features/preview/types'
 
+import { useQuery } from '@tanstack/react-query'
+import { Check } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+
+import { billingAPI } from '@/features/billing/api/billing'
 import { ChatThread as ChatSidebar } from '@/features/chat/components/ChatThread'
 import { useOutputScreenController } from '@/features/preview/hooks/useOutputScreenController'
 
@@ -42,6 +47,20 @@ export const OutputScreen: React.FC<OutputScreenProps> = ({
     selectedModel,
     setSelectedModel,
 }) => {
+    const navigate = useNavigate()
+    const { data: overview } = useQuery({
+        queryKey: ['billing-overview'],
+        queryFn: billingAPI.getOverview,
+        staleTime: 10 * 1000,
+    })
+
+    const remainingInCents = overview?.credits?.remainingInCents ?? 100
+    const unlimited = overview?.credits?.unlimited ?? false
+    const isPro = overview?.plan === 'PRO'
+
+    const isOutOfCredits = !unlimited && overview !== undefined && remainingInCents === 0
+    const showLowCreditsWarning = !unlimited && remainingInCents > 0 && remainingInCents < 10
+
     const {
         activeTab,
         setActiveTab,
@@ -355,6 +374,7 @@ I will execute the following steps to implement this movie ticket booking system
                                         setTimeout(() => {
                                             const completedPath = file.path
                                             setSimulatedFiles((prev) => {
+                                                if (!prev) return prev
                                                 const curr = prev[completedPath]
                                                 if (!curr) return prev
                                                 return {
@@ -499,6 +519,7 @@ I will execute the following steps to implement this movie ticket booking system
                             mode="mobile"
                             messages={activeMessages}
                             onPromptSubmit={(prompt) => {
+                                if (isOutOfCredits) return
                                 void onPromptSubmit(prompt)
                             }}
                             onBack={handleBack}
@@ -581,6 +602,7 @@ I will execute the following steps to implement this movie ticket booking system
                 <ChatSidebar
                     messages={activeMessages}
                     onPromptSubmit={(prompt) => {
+                        if (isOutOfCredits) return
                         void onPromptSubmit(prompt)
                     }}
                     onBack={handleBack}
@@ -641,6 +663,95 @@ I will execute the following steps to implement this movie ticket booking system
                     setSelectedModel={setSelectedModel}
                 />
             </div>
+
+            {/* Low Credits Warning Toast */}
+            {showLowCreditsWarning && !isOutOfCredits && (
+                <div className="absolute top-6 left-1/2 -translate-x-1/2 z-50 bg-amber-500/10 border border-amber-500/20 text-amber-500 px-4 py-2 rounded-xl text-sm font-medium shadow-xl flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                    Low Credits! You have less than $0.10 remaining.
+                </div>
+            )}
+
+            {/* Out of Credits Upgrade Card Overlay */}
+            {isOutOfCredits && (
+                <div className="absolute inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+                    <div className="bg-[#171615] border border-[#242323] rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col">
+                        <div className="p-6 border-b border-[#242323] flex flex-col gap-2">
+                            <h2 className="text-xl font-medium text-[#D6D5C9]">Out of Credits</h2>
+                            <p className="text-sm text-[#7B7A79]">
+                                You have used all your available credits. Upgrade to Pro to continue
+                                generating.
+                            </p>
+                        </div>
+
+                        <div className="p-6 bg-[#100E12]/30 flex flex-col md:flex-row gap-5">
+                            {/* Free Plan */}
+                            <div className="flex-1 rounded-xl border border-[#242323] p-5 flex flex-col justify-between opacity-50">
+                                <div>
+                                    <div className="mb-2">
+                                        <span className="text-[15px] font-medium text-[#D6D5C9]">
+                                            Free Plan
+                                        </span>
+                                    </div>
+                                    <div className="mb-4">
+                                        <span className="text-[22px] font-semibold text-[#D6D5C9]">
+                                            $0
+                                        </span>
+                                        <span className="text-[#7B7A79] text-[12px] ml-1">
+                                            / month
+                                        </span>
+                                    </div>
+                                    <div className="flex flex-col gap-2.5 text-[13px] text-[#7B7A79]">
+                                        <div className="flex items-center gap-2">
+                                            <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+                                            <span>$1.00 standard credit limit</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+                                            <span>Standard execution speed</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Pro Plan */}
+                            <div className="flex-1 rounded-xl border border-[#D6D5C9]/40 bg-[#D6D5C9]/5 p-5 flex flex-col justify-between relative overflow-hidden">
+                                <div>
+                                    <div className="mb-2">
+                                        <span className="text-[15px] font-medium text-[#D6D5C9]">
+                                            Pro Plan
+                                        </span>
+                                    </div>
+                                    <div className="mb-4">
+                                        <span className="text-[22px] font-semibold text-[#D6D5C9]">
+                                            $5
+                                        </span>
+                                        <span className="text-[#7B7A79] text-[12px] ml-1">
+                                            / month
+                                        </span>
+                                    </div>
+                                    <div className="flex flex-col gap-2.5 text-[13px] text-[#D6D5C9]">
+                                        <div className="flex items-center gap-2">
+                                            <Check className="w-4 h-4 text-[#D6D5C9] shrink-0" />
+                                            <span>$5.00 monthly credit refreshes</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <Check className="w-4 h-4 text-[#D6D5C9] shrink-0" />
+                                            <span>Priority execution speed</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => navigate('/profile/billing')}
+                                    className="w-full mt-6 py-2.5 rounded-lg bg-[#D6D5C9] text-[#171615] text-[14px] font-medium hover:bg-white transition-colors flex items-center justify-center gap-2"
+                                >
+                                    Upgrade to Pro
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }
