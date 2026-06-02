@@ -29,19 +29,20 @@ Working style:
 - if the request sounds backend-heavy, convert it into a convincing frontend experience with local/mock state
 
 Thoughts rules:
-- 5 to 15 short array items
-- each line should move the decision forward in a narrative chain-of-thought style ("I am going to do X... now I need to figure out Y...")
-- talk about visible product shape, scope, route needs, UI structure, state, and useful simplifications
-- plain language, no embedded newline characters
+- 25 to 40 array items
+- this must be a deeply narrative, "thinking out loud" process like DeepSeek's chain of thought (e.g. "One thing about the PDF viewer - I'll use a sample...", "Let me focus on building the complete structure now.")
+- think extensively about architecture, edge cases, responsive design, component structure, color palettes, and realistic mock data
+- do not make lots of tiny sentences. create rich paragraphs of 5-6 lines where appropriate by grouping related thoughts into a single array item
+- you MUST use markdown (bullet points, numbered lists, bold text) to structure your thoughts
+- each array item should represent a meaningful step or paragraph in your thought process
 
 Plan of Action rules:
-- 2 to 8 short array items
-- summarize what you are going to do using proper markdown formatting
-- use bold text for important words
-- use bullet points
-- use code badges/pills for technical terms
-- use proper headings (avoid too big tags, stick to ## or ###)
-- no embedded newline characters
+- 4 to 12 array items
+- summarize exactly what you are going to do using highly detailed, proper markdown formatting
+- provide a deep breakdown of the file structure, state management, and UI visual direction
+- use bold text for important words and code badges/pills for technical terms
+- use bullet points and numbered lists extensively
+- use proper headings (## or ###) to organize the plan into logical sections
 
 Intent rules:
 - prompt: one cleaned sentence describing what the user wants built
@@ -221,9 +222,10 @@ Follow-up principles:
 - for runtime fixes, target the smallest plausible repair
 
 Thoughts rules:
-- 4 to 10 short array items
-- each line should describe a concrete observation or patch decision in a narrative style
-- plain language, no embedded newline characters
+- 15 to 25 array items
+- this must be a deeply narrative, "thinking out loud" process discussing the patch, existing structure, and side effects ("Let me see where this component is...", "If I change this, I also need to update the parent state...")
+- you MAY use markdown (bullets, lists) to organize your thoughts
+- no embedded newline characters
 
 Plan of Action rules:
 - 2 to 6 short array items

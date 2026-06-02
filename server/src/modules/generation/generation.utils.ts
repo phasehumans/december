@@ -5,6 +5,23 @@ export const cleanPrompt = (input: string): string => {
     return input.replace(/\r\n?/g, ' ').replace(/\t/g, ' ').replace(/\s+/g, ' ').trim()
 }
 
+export const parsePartialArray = (jsonString: string, key: string): string => {
+    const startRegex = new RegExp(`"${key}"\\s*:\\s*\\[`)
+    const match = startRegex.exec(jsonString)
+    if (!match) return ''
+
+    const content = jsonString.slice(match.index + match[0].length)
+    const endIdx = content.indexOf('],')
+    const arrayStr = endIdx === -1 ? content : content.slice(0, endIdx)
+
+    const stringMatches = [...arrayStr.matchAll(/"([^"\\]*(?:\\.[^"\\]*)*)"/g)]
+    try {
+        return stringMatches.map((m) => JSON.parse(`"${m[1]}"`)).join('\n\n')
+    } catch {
+        return ''
+    }
+}
+
 const ROOT_FRONTEND_FILE_PATTERNS = [
     /^\.gitignore$/,
     /^build\.ts$/,

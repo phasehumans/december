@@ -298,8 +298,8 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                                 >
                                     <div className="flex gap-3 pl-0.5">
                                         <div className="w-[1.5px] bg-[#2E2D2C] rounded shrink-0 self-stretch" />
-                                        <div className="text-[11.5px] leading-relaxed text-[#8E8D8C] font-sans whitespace-pre-wrap select-text py-0.5">
-                                            {thinkingText}
+                                        <div className="text-[12.5px] leading-relaxed text-[#8E8D8C] font-sans select-text py-0.5 space-y-2">
+                                            {renderRichContent(thinkingText)}
                                         </div>
                                     </div>
                                 </motion.div>
