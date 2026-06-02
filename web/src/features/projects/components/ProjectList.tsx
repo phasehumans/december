@@ -244,8 +244,6 @@ export const ProjectList: React.FC<ProjectListProps> = ({
                     initialTab="general"
                     projectName={settingsModal.project.title}
                     projectId={settingsModal.project.id}
-                    selectedModel={selectedModel}
-                    setSelectedModel={setSelectedModel}
                 />
             )}
         </div>

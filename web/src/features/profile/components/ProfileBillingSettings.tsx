@@ -226,6 +226,17 @@ export const ProfileBillingSettings: React.FC<ProfileBillingSettingsProps> = ({
                 </div>
             )}
 
+            {!unlimited &&
+                remainingInCents !== null &&
+                remainingInCents > 0 &&
+                remainingInCents < 10 && (
+                    <div className="mb-6 p-4 rounded-xl border border-amber-500/20 bg-amber-500/10 text-amber-500 text-sm flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                        <strong>Low Credits:</strong> You have less than $0.10 remaining. Upgrade
+                        your plan to avoid interruption.
+                    </div>
+                )}
+
             {/* Current Plan */}
             <div className="flex flex-col mb-8">
                 <h1 className="text-[16px] font-medium mb-4">Current Plan</h1>

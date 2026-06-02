@@ -251,6 +251,7 @@ const generateProjectStream = async ({
     prompt,
     projectId,
     canvasState,
+    model,
     signal,
     onEvent,
 }: GenerateProjectInput) => {
@@ -264,7 +265,7 @@ const generateProjectStream = async ({
             prompt,
             ...(projectId ? { projectId } : {}),
             ...(sanitizedCanvasState ? { canvasState: sanitizedCanvasState } : {}),
-            ...(data.model ? { model: data.model } : {}),
+            ...(model ? { model } : {}),
         }),
         signal,
     })

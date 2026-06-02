@@ -30,6 +30,10 @@ export const ChatThread: React.FC<ChatSidebarProps> = ({
     generatedFiles,
     projectType,
     onTriggerSimulation,
+    selectedModel,
+    setSelectedModel,
+    isAuthenticated,
+    onOpenAuth,
 }) => {
     const scrollContainerRef = React.useRef<HTMLDivElement | null>(null)
     const [shouldAutoScroll, setShouldAutoScroll] = React.useState(true)
@@ -127,6 +131,10 @@ export const ChatThread: React.FC<ChatSidebarProps> = ({
             selectedElement={selectedElement}
             onClearSelection={handleClearSelection}
             isApplyingEdit={isApplyingEdit}
+            selectedModel={selectedModel}
+            setSelectedModel={setSelectedModel}
+            isAuthenticated={isAuthenticated}
+            onOpenAuth={onOpenAuth}
         />
     )
 

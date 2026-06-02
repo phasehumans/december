@@ -34,8 +34,6 @@ interface SettingsModalProps {
         | 'publish'
     projectName: string
     projectId?: string | null
-    selectedModel?: string
-    setSelectedModel?: (val: string) => void
 }
 
 export const SettingsBigModal: React.FC<SettingsModalProps> = ({
@@ -43,8 +41,6 @@ export const SettingsBigModal: React.FC<SettingsModalProps> = ({
     initialTab,
     projectName,
     projectId,
-    selectedModel = '',
-    setSelectedModel = () => {},
 }) => {
     const [activeTab, setActiveTab] = useState(initialTab)
     const [projName, setProjName] = useState(projectName)
@@ -103,7 +99,7 @@ export const SettingsBigModal: React.FC<SettingsModalProps> = ({
                     setProjDesc(res.project.description ?? '')
                     setIsFavorite(res.project.isStarred)
                     setIsTemplate(res.project.isSharedAsTemplate)
-                    setCategory((res.project.projectCategory as any) ?? 'NONE')
+                    setCategory((res.project as any).projectCategory ?? 'NONE')
                 }
             })
             .catch((err) => console.error('Failed to load project details:', err))
@@ -270,8 +266,6 @@ export const SettingsBigModal: React.FC<SettingsModalProps> = ({
                                     onOpenDeleteModal={() => setIsDeleteModalOpen(true)}
                                     handleSaveChanges={handleSaveChanges}
                                     isSaving={isSaving}
-                                    selectedModel={selectedModel}
-                                    setSelectedModel={setSelectedModel}
                                 />
                             )}
 
