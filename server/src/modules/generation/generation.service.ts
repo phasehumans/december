@@ -1,7 +1,713 @@
-﻿import { applyProjectEdit, applyProjectFix, generateWebsite } from './generation.workflows'
+import { prisma } from '../../config/db'
+import {
+    extractProjectChangePlan,
+    extractProjectPlan,
+    generateProjectFile,
+    generateProjectPatchFile,
+} from '../agents'
+import { saveProjectFiles } from '../project/save-project-files'
+import { persistCanvasDocument } from '../canvas/canvas.persistence'
+import { cleanPrompt } from '../generation/generation.utils'
 
-export const generateService = {
-    applyProjectEdit,
-    applyProjectFix,
-    generateWebsite: generateWebsite,
+import {
+    appendAssistantMessageContent,
+    assertFrontendOnlyChangePlan,
+    assertFrontendOnlyPlan,
+    getFilesInGenerationOrder,
+    mergeProjectFiles,
+    toRecentMessages,
+    parsePartialArray,
+} from './generation.utils'
+import {
+    getProjectRevisionBase,
+    initializeGenerationTarget,
+    markGenerationFailed,
+    persistProjectRevision,
+} from './generation.repository'
+import {
+    publishFinalPreviewSnapshot,
+    publishIncrementalPreviewSnapshot,
+} from './generation.runtime'
+import { planAgentResponseSchema } from './generation.schema'
+import { emitAssistantMessage, emitFileStream, emitPatchFileStream } from './generation.stream'
+import { usageService } from '../usage/usage.service'
+
+import type { GenerateWebsiteInput, ProjectPlan, ProjectRecord } from './generation.types'
+
+type ApplyProjectEditInput = {
+    userId: string
+    projectId: string
+    versionId?: string
+    prompt: string
+    selectedElement?: {
+        tagName: string
+        textContent: string
+    }
+    canvasState?: GenerateWebsiteInput['canvasState']
+    model?: string
+    onEvent?: GenerateWebsiteInput['onEvent']
 }
+
+type ApplyProjectFixInput = {
+    userId: string
+    projectId: string
+    versionId?: string
+    errorMessage: string
+    stack?: string
+    model?: string
+    onEvent?: GenerateWebsiteInput['onEvent']
+}
+
+const fileTreeForPlanning = (files: Record<string, string>) =>
+    Object.entries(files)
+        .sort(([pathA], [pathB]) => pathA.localeCompare(pathB))
+        .map(([path, content]) => ({
+            path,
+            excerpt: content.slice(0, 1400),
+        }))
+
+const toVisibleMessage = (lines: string[]) => lines.join('\n')
+
+const resolveModel = async (userId: string, requestedModel?: string): Promise<string> => {
+    const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { subscriptionPlan: true, subscriptionStatus: true },
+    })
+    const isPro = user?.subscriptionPlan === 'PRO' && user?.subscriptionStatus === 'ACTIVE'
+    if (isPro && requestedModel) {
+        return requestedModel
+    }
+    return process.env.AUTO_MODEL || 'openai/gpt-oss-20b:free'
+}
+
+export const generateWebsite = async (data: GenerateWebsiteInput) => {
+    const { prompt, onEvent } = data
+    const userPrompt = cleanPrompt(prompt)
+    let project: ProjectRecord | null = null
+    let versionId = ''
+    let versionNumber = 0
+    let versionLabel = ''
+    let hadCurrentVersion = false
+    let assistantMessageContent = ''
+    let messagesPersisted = false
+    let totalInputTokens = 0
+    let totalOutputTokens = 0
+    let resolvedModelName = 'auto'
+
+    try {
+        const initializedTarget = await initializeGenerationTarget({
+            ...data,
+            prompt,
+        })
+
+        project = initializedTarget.project
+        versionId = initializedTarget.version.id
+        versionNumber = initializedTarget.version.versionNumber
+        versionLabel = initializedTarget.version.label ?? `v${versionNumber}`
+        hadCurrentVersion = initializedTarget.hadCurrentVersion
+        const persistedCanvas = await persistCanvasDocument({
+            projectId: project.id,
+            userId: data.userId,
+            versionId,
+            canvasState: data.canvasState,
+        })
+
+        await prisma.projectVersion.update({
+            where: {
+                id: versionId,
+            },
+            data: {
+                canvasStateJson: persistedCanvas.canvasStateJson as any,
+                canvasAssetManifestJson: persistedCanvas.canvasAssetManifestJson as any,
+            },
+        })
+        await onEvent?.({
+            type: 'project-created',
+            data: {
+                project,
+                version: {
+                    id: versionId,
+                    versionNumber,
+                    label: versionLabel,
+                },
+            },
+        })
+
+        await onEvent?.({
+            type: 'phase',
+            data: {
+                phase: 'thinking',
+            },
+        })
+
+        const resolvedModel = await resolveModel(data.userId, data.model)
+        resolvedModelName = resolvedModel
+        console.log(
+            `[generation] user: ${data.userId} requested model: ${data.model || 'auto'}, resolved to: ${resolvedModelName}`
+        )
+
+        let lastThoughtsLength = 0
+        let lastPlanLength = 0
+        let isThoughtsComplete = false
+
+        const rawPlanResponse = await extractProjectPlan({
+            userPrompt,
+            canvasState: persistedCanvas.canvasStateJson as any,
+            model: resolvedModel,
+            onStream: async (fullContent: string) => {
+                const thoughts = parsePartialArray(fullContent, 'thoughts')
+                if (thoughts.length > lastThoughtsLength) {
+                    const chunk = thoughts.slice(lastThoughtsLength)
+                    lastThoughtsLength = thoughts.length
+                    await emitAssistantMessage(onEvent, {
+                        messageId: `${project!.id}:plan-agent:thoughts`,
+                        status: 'thinking',
+                        content: chunk,
+                    })
+                }
+
+                const thoughtsRegex = /"thoughts"\s*:\s*\[[\s\S]*?\],/
+                if (!isThoughtsComplete && thoughtsRegex.test(fullContent)) {
+                    isThoughtsComplete = true
+                }
+
+                if (isThoughtsComplete) {
+                    const planOfAction = parsePartialArray(fullContent, 'plan_of_action')
+                    if (planOfAction.length > lastPlanLength) {
+                        const chunk = planOfAction.slice(lastPlanLength)
+                        lastPlanLength = planOfAction.length
+                        await emitAssistantMessage(onEvent, {
+                            messageId: `${project!.id}:plan-agent:plan_of_action`,
+                            status: 'thinking',
+                            content: chunk,
+                        })
+                    }
+                }
+            },
+        })
+        totalInputTokens += rawPlanResponse.usage.inputTokens
+        totalOutputTokens += rawPlanResponse.usage.outputTokens
+
+        const parsePlan = planAgentResponseSchema.safeParse(rawPlanResponse.data)
+
+        if (!parsePlan.success) {
+            throw new Error('invalid response | plan agent')
+        }
+
+        if (!parsePlan.data.plan.success) {
+            throw new Error(parsePlan.data.plan.errors[0] || 'invalid response | plan agent')
+        }
+
+        if (!parsePlan.data.plan.data) {
+            throw new Error('plan agent returned empty plan data')
+        }
+
+        const intent = parsePlan.data.intent
+        const plan = parsePlan.data.plan
+        const planData = plan.data as NonNullable<ProjectPlan['data']>
+        assertFrontendOnlyPlan(plan)
+        const orderedFiles = getFilesInGenerationOrder(plan)
+        const generatedFiles: Record<string, string> = {}
+        let previewManifestSequence = 0
+        const thoughtsMessage = toVisibleMessage(parsePlan.data.thoughts)
+        const planOfActionMessage = toVisibleMessage(parsePlan.data.plan_of_action)
+        assistantMessageContent = appendAssistantMessageContent(
+            assistantMessageContent,
+            thoughtsMessage
+        )
+
+        assistantMessageContent = appendAssistantMessageContent(
+            assistantMessageContent,
+            planOfActionMessage
+        )
+
+        project = await prisma.project.update({
+            where: {
+                id: project.id,
+            },
+            data: {
+                name: planData.projectName,
+                description: intent.summary,
+                prompt,
+            },
+        })
+
+        await onEvent?.({
+            type: 'phase',
+            data: {
+                phase: 'building',
+            },
+        })
+
+        await onEvent?.({
+            type: 'build-plan',
+            data: {
+                files: orderedFiles,
+                totalFiles: orderedFiles.length,
+            },
+        })
+
+        for (const [fileIndex, file] of orderedFiles.entries()) {
+            try {
+                const buildRes = await generateProjectFile({
+                    brief: intent,
+                    plan,
+                    targetFile: file,
+                    generatedFiles,
+                    model: resolvedModel,
+                })
+                totalInputTokens += buildRes.usage.inputTokens
+                totalOutputTokens += buildRes.usage.outputTokens
+                const content = buildRes.content
+
+                generatedFiles[file.path] = content
+
+                await emitFileStream(onEvent, {
+                    file,
+                    content,
+                    index: fileIndex + 1,
+                    total: orderedFiles.length,
+                })
+
+                previewManifestSequence += 1
+                await publishIncrementalPreviewSnapshot({
+                    projectId: project.id,
+                    versionId,
+                    path: file.path,
+                    content,
+                    generatedFiles,
+                    sequence: previewManifestSequence,
+                })
+            } catch (error) {
+                const message =
+                    error instanceof Error ? error.message : `failed to generate ${file.path}`
+
+                await onEvent?.({
+                    type: 'file-error',
+                    data: {
+                        path: file.path,
+                        message,
+                    },
+                })
+
+                throw error
+            }
+        }
+
+        const savedFiles = await saveProjectFiles({
+            projectId: project.id,
+            versionId,
+            files: Object.entries(generatedFiles).map(([path, content]) => ({
+                path,
+                content,
+            })),
+        })
+
+        await publishFinalPreviewSnapshot({
+            projectId: project.id,
+            versionId,
+            files: savedFiles.map((file) => ({
+                path: file.path,
+                key: file.key,
+                contentType: file.contentType,
+                size: file.size,
+            })),
+        })
+
+        const persisted = await prisma.$transaction(async (tx) => {
+            const updatedVersion = await tx.projectVersion.update({
+                where: {
+                    id: versionId,
+                },
+                data: {
+                    summary: intent.summary,
+                    status: 'READY',
+                    manifestJson: savedFiles.map((file) => ({
+                        path: file.path,
+                        key: file.key,
+                        contentType: file.contentType,
+                        size: file.size,
+                    })),
+                    canvasStateJson: persistedCanvas.canvasStateJson as any,
+                    canvasAssetManifestJson: persistedCanvas.canvasAssetManifestJson as any,
+                    intentJson: intent as any,
+                    planJson: plan as any,
+                    messages: {
+                        create: [
+                            {
+                                projectId: project!.id,
+                                role: 'USER',
+                                content: prompt,
+                                sequence: 1,
+                            },
+                            {
+                                projectId: project!.id,
+                                role: 'ASSISTANT',
+                                content: assistantMessageContent,
+                                status: 'done',
+                                sequence: 2,
+                            },
+                        ],
+                    },
+                },
+            })
+
+            const updatedProject = await tx.project.update({
+                where: {
+                    id: project!.id,
+                },
+                data: {
+                    name: planData.projectName,
+                    description: intent.summary,
+                    prompt,
+                    projectStatus: 'READY',
+                    currentVersionId: updatedVersion.id,
+                    versionCount: versionNumber,
+                },
+            })
+
+            return {
+                project: updatedProject,
+                version: updatedVersion,
+            }
+        })
+
+        messagesPersisted = true
+        project = persisted.project
+
+        const result = {
+            project,
+            version: {
+                id: persisted.version.id,
+                versionNumber: persisted.version.versionNumber,
+                label: persisted.version.label ?? versionLabel,
+                status: 'READY' as const,
+            },
+            intent,
+            plan,
+            generatedFiles,
+        }
+
+        await onEvent?.({
+            type: 'result',
+            data: result,
+        })
+
+        return result
+    } catch (error) {
+        if (project && versionId) {
+            await markGenerationFailed({
+                project,
+                versionId,
+                prompt,
+                assistantMessageContent,
+                hadCurrentVersion,
+                messagesPersisted,
+                error,
+            })
+        }
+
+        throw error
+    } finally {
+        if (totalInputTokens > 0 || totalOutputTokens > 0) {
+            usageService
+                .recordUsageEvent({
+                    userId: data.userId,
+                    model: resolvedModelName,
+                    inputTokens: totalInputTokens,
+                    outputTokens: totalOutputTokens,
+                    totalTokens: totalInputTokens + totalOutputTokens,
+                    costInCents: 1, // flat rate tracking
+                    projectId: project?.id,
+                })
+                .catch((e) => console.error('Failed to record usage event:', e))
+        }
+    }
+}
+
+const applyProjectChange = async (
+    mode: 'edit' | 'fix',
+    data: ApplyProjectEditInput | ApplyProjectFixInput
+) => {
+    const base = await getProjectRevisionBase({
+        userId: data.userId,
+        projectId: data.projectId,
+        versionId: data.versionId,
+    })
+    const isEdit = mode === 'edit'
+    const editData = data as ApplyProjectEditInput
+    const fixData = data as ApplyProjectFixInput
+    const sourcePrompt = isEdit ? editData.prompt : `Fix preview error: ${fixData.errorMessage}`
+    let assistantMessageContent = ''
+
+    let totalInputTokens = 0
+    let totalOutputTokens = 0
+    let resolvedModelName = 'auto'
+
+    try {
+        await data.onEvent?.({
+            type: 'phase',
+            data: {
+                phase: 'thinking',
+            },
+        })
+
+        const resolvedModel = await resolveModel(data.userId, data.model)
+        resolvedModelName = resolvedModel
+        console.log(
+            `[generation change] user: ${data.userId} requested model: ${data.model || 'auto'}, resolved to: ${resolvedModelName}`
+        )
+
+        let lastThoughtsLength = 0
+        let lastPlanLength = 0
+        let isThoughtsComplete = false
+
+        const rawPlanResponse = await extractProjectChangePlan({
+            mode,
+            ...(isEdit ? { prompt: editData.prompt } : {}),
+            ...(isEdit && editData.selectedElement
+                ? { selectedElement: editData.selectedElement }
+                : {}),
+            ...(isEdit && (editData.canvasState ?? base.baseVersion.canvasStateJson)
+                ? { canvasState: editData.canvasState ?? base.baseVersion.canvasStateJson }
+                : {}),
+            ...(!isEdit && base.baseVersion.canvasStateJson
+                ? { canvasState: base.baseVersion.canvasStateJson }
+                : {}),
+            ...(!isEdit
+                ? {
+                      runtimeError: {
+                          message: fixData.errorMessage,
+                          ...(fixData.stack ? { stack: fixData.stack } : {}),
+                      },
+                  }
+                : {}),
+            project: {
+                id: base.project.id,
+                name: base.project.name,
+                description: base.project.description,
+                prompt: base.project.prompt,
+            },
+            baseVersion: {
+                id: base.baseVersion.id,
+                versionNumber: base.baseVersion.versionNumber,
+                summary: base.baseVersion.summary,
+                sourcePrompt: base.baseVersion.sourcePrompt,
+                intentJson: base.baseVersion.intentJson,
+                planJson: base.baseVersion.planJson,
+            },
+            fileTree: fileTreeForPlanning(base.baseFiles),
+            recentMessages: toRecentMessages(base.baseVersion),
+            model: resolvedModel,
+            onStream: async (fullContent) => {
+                const thoughts = parsePartialArray(fullContent, 'thoughts')
+                if (thoughts.length > lastThoughtsLength) {
+                    const chunk = thoughts.slice(lastThoughtsLength)
+                    lastThoughtsLength = thoughts.length
+                    await emitAssistantMessage(data.onEvent, {
+                        messageId: `${base.project.id}:plan-agent:${mode}:thoughts`,
+                        status: 'thinking',
+                        content: chunk,
+                    })
+                }
+
+                const thoughtsRegex = /"thoughts"\s*:\s*\[[\s\S]*?\],/
+                if (!isThoughtsComplete && thoughtsRegex.test(fullContent)) {
+                    isThoughtsComplete = true
+                }
+
+                if (isThoughtsComplete) {
+                    const planOfAction = parsePartialArray(fullContent, 'plan_of_action')
+                    if (planOfAction.length > lastPlanLength) {
+                        const chunk = planOfAction.slice(lastPlanLength)
+                        lastPlanLength = planOfAction.length
+                        await emitAssistantMessage(data.onEvent, {
+                            messageId: `${base.project.id}:plan-agent:${mode}:plan_of_action`,
+                            status: 'thinking',
+                            content: chunk,
+                        })
+                    }
+                }
+            },
+        })
+        totalInputTokens += rawPlanResponse.usage.inputTokens
+        totalOutputTokens += rawPlanResponse.usage.outputTokens
+
+        if (!rawPlanResponse.data.plan.success) {
+            throw new Error(
+                rawPlanResponse.data.plan.errors[0] || `invalid response | plan agent ${mode}`
+            )
+        }
+
+        if (!rawPlanResponse.data.plan.data) {
+            throw new Error(`plan agent returned empty ${mode} plan data`)
+        }
+
+        const plan = rawPlanResponse.data.plan
+        const planData = plan.data as NonNullable<typeof plan.data>
+        assertFrontendOnlyChangePlan(plan)
+        const thoughtsMessage = toVisibleMessage(rawPlanResponse.data.thoughts)
+        const planOfActionMessage = toVisibleMessage(rawPlanResponse.data.plan_of_action)
+
+        assistantMessageContent = appendAssistantMessageContent(
+            assistantMessageContent,
+            thoughtsMessage
+        )
+
+        assistantMessageContent = appendAssistantMessageContent(
+            assistantMessageContent,
+            planOfActionMessage
+        )
+
+        const operations = planData.operations
+        await data.onEvent?.({
+            type: 'patch-plan',
+            data: {
+                files: operations,
+                totalFiles: operations.length,
+            },
+        })
+
+        await data.onEvent?.({
+            type: 'phase',
+            data: {
+                phase: 'building',
+            },
+        })
+
+        const updatedFiles: Array<{ path: string; content: string }> = []
+        const deletedFiles: string[] = []
+        const workingFiles = { ...base.baseFiles }
+
+        for (const [operationIndex, operation] of operations.entries()) {
+            try {
+                if (operation.action === 'delete') {
+                    deletedFiles.push(operation.path)
+                    delete workingFiles[operation.path]
+                    await emitPatchFileStream(data.onEvent, {
+                        file: operation,
+                        content: '',
+                        index: operationIndex + 1,
+                        total: operations.length,
+                    })
+                    continue
+                }
+
+                const patchRes = await generateProjectPatchFile({
+                    operation,
+                    currentFiles: workingFiles,
+                    projectContext: {
+                        projectName: base.project.name,
+                        sourcePrompt: base.baseVersion.sourcePrompt,
+                        summary: base.baseVersion.summary,
+                    },
+                    request: {
+                        mode,
+                        ...(isEdit ? { prompt: editData.prompt } : {}),
+                        ...(isEdit && editData.selectedElement
+                            ? { selectedElement: editData.selectedElement }
+                            : {}),
+                        ...(!isEdit
+                            ? {
+                                  runtimeError: {
+                                      message: fixData.errorMessage,
+                                      ...(fixData.stack ? { stack: fixData.stack } : {}),
+                                  },
+                              }
+                            : {}),
+                    },
+                    model: resolvedModel,
+                })
+                totalInputTokens += patchRes.usage.inputTokens
+                totalOutputTokens += patchRes.usage.outputTokens
+                const content = patchRes.content
+
+                workingFiles[operation.path] = content
+                updatedFiles.push({
+                    path: operation.path,
+                    content,
+                })
+
+                await emitPatchFileStream(data.onEvent, {
+                    file: operation,
+                    content,
+                    index: operationIndex + 1,
+                    total: operations.length,
+                })
+            } catch (error) {
+                const message =
+                    error instanceof Error ? error.message : `failed to patch ${operation.path}`
+
+                await data.onEvent?.({
+                    type: 'file-error',
+                    data: {
+                        path: operation.path,
+                        message,
+                    },
+                })
+
+                throw error
+            }
+        }
+
+        const { mergedFiles, appliedFiles, removedFiles } = mergeProjectFiles({
+            currentFiles: base.baseFiles,
+            updatedFiles,
+            deletedFiles,
+        })
+
+        const persisted = await persistProjectRevision({
+            project: base.project,
+            userId: data.userId,
+            baseVersion: base.baseVersion,
+            nextVersionNumber: base.nextVersionNumber,
+            mergedFiles,
+            removedFiles,
+            sourcePrompt,
+            assistantMessage: assistantMessageContent,
+            summary: planOfActionMessage || planData.summary,
+            ...(isEdit ? { nextProjectPrompt: editData.prompt } : {}),
+            ...(isEdit && editData.canvasState ? { canvasState: editData.canvasState } : {}),
+        })
+
+        const result = {
+            project: persisted.project,
+            version: persisted.version,
+            versions: persisted.versions,
+            chatMessages: persisted.chatMessages,
+            intent: (base.baseVersion.intentJson ?? {}) as any,
+            plan,
+            generatedFiles: persisted.generatedFiles,
+            appliedFiles,
+            deletedFiles: removedFiles,
+            assistantMessage: persisted.assistantMessage,
+        }
+
+        await data.onEvent?.({
+            type: 'result',
+            data: result,
+        })
+
+        return result
+    } finally {
+        if (totalInputTokens > 0 || totalOutputTokens > 0) {
+            usageService
+                .recordUsageEvent({
+                    userId: data.userId,
+                    model: resolvedModelName,
+                    inputTokens: totalInputTokens,
+                    outputTokens: totalOutputTokens,
+                    totalTokens: totalInputTokens + totalOutputTokens,
+                    costInCents: 1, // flat rate tracking
+                    projectId: base.project.id,
+                })
+                .catch((e) => console.error('Failed to record usage event:', e))
+        }
+    }
+}
+
+export const applyProjectEdit = (data: ApplyProjectEditInput) => applyProjectChange('edit', data)
+
+export const applyProjectFix = (data: ApplyProjectFixInput) => applyProjectChange('fix', data)
+
+export const generateService = { applyProjectEdit, applyProjectFix, generateWebsite }
