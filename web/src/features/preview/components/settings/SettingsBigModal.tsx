@@ -9,6 +9,7 @@ import {
     ChevronLeft,
     X,
     Settings,
+    Github,
 } from 'lucide-react'
 import React, { useState, useEffect } from 'react'
 
@@ -301,10 +302,25 @@ export const SettingsBigModal: React.FC<SettingsModalProps> = ({
                             {activeTab === 'integrations' && (
                                 <div className="flex flex-col w-full max-w-[680px] text-[#D6D5C9] animate-in fade-in duration-200">
                                     <h1 className="text-[16px] font-medium mb-3">Integrations</h1>
-                                    <div className="flex flex-col gap-6 border-t border-[#242323] pt-6">
-                                        <div className="text-center py-12 text-[#7B7A79] text-[13px]">
-                                            Connect third-party tools and services to sync your
-                                            project workflow. (Coming Soon)
+                                    <div className="flex flex-col gap-5 border-t border-[#242323] pt-6">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-10 h-10 rounded-lg bg-[#1E1D1B] border border-[#383736] flex items-center justify-center shrink-0">
+                                                    <Github className="w-5 h-5 text-[#D6D5C9]" />
+                                                </div>
+                                                <div className="flex flex-col gap-0.5">
+                                                    <span className="text-[14px] font-medium text-[#D6D5C9]">
+                                                        GitHub
+                                                    </span>
+                                                    <span className="text-[13px] text-[#7B7A79] max-w-[380px]">
+                                                        Link a GitHub repository to this project for
+                                                        automatic deployments.
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <button className="px-4 py-1.5 rounded-lg border border-[#2B2A29] text-[#4A4948] text-[13px] font-medium cursor-not-allowed">
+                                                Soon
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
@@ -315,10 +331,32 @@ export const SettingsBigModal: React.FC<SettingsModalProps> = ({
                                     <h1 className="text-[16px] font-medium mb-3">
                                         Environment Variables
                                     </h1>
-                                    <div className="flex flex-col gap-6 border-t border-[#242323] pt-6">
-                                        <div className="text-center py-12 text-[#7B7A79] text-[13px]">
-                                            Configure secure environment variables, API tokens, and
-                                            secrets. (Coming Soon)
+                                    <div className="flex flex-col gap-4 border-t border-[#242323] pt-6">
+                                        <p className="text-[13px] text-[#7B7A79] mb-2">
+                                            Manage your environment variables and secrets here.
+                                            These are encrypted at rest.
+                                        </p>
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                type="text"
+                                                placeholder="Key (e.g. DATABASE_URL)"
+                                                className="flex-1 bg-[#100E12]/50 border border-[#383736] rounded-lg px-3 py-1.5 text-[13px] text-[#D6D5C9] outline-none"
+                                                disabled
+                                            />
+                                            <input
+                                                type="text"
+                                                placeholder="Value"
+                                                className="flex-1 bg-[#100E12]/50 border border-[#383736] rounded-lg px-3 py-1.5 text-[13px] text-[#D6D5C9] outline-none"
+                                                disabled
+                                            />
+                                            <button className="px-4 py-1.5 rounded-lg bg-[#2B2A29] text-[#7B7A79] text-[13px] font-medium cursor-not-allowed">
+                                                Add
+                                            </button>
+                                        </div>
+                                        <div className="border border-dashed border-[#383736] rounded-xl py-8 flex flex-col items-center justify-center gap-2 bg-[#100E12]/30 mt-4">
+                                            <span className="text-[13px] text-[#7B7A79]">
+                                                No environment variables defined yet.
+                                            </span>
                                         </div>
                                     </div>
                                 </div>
@@ -326,11 +364,41 @@ export const SettingsBigModal: React.FC<SettingsModalProps> = ({
 
                             {activeTab === 'domains' && (
                                 <div className="flex flex-col w-full max-w-[680px] text-[#D6D5C9] animate-in fade-in duration-200">
-                                    <h1 className="text-[16px] font-medium mb-3">Domains</h1>
-                                    <div className="flex flex-col gap-6 border-t border-[#242323] pt-6">
-                                        <div className="text-center py-12 text-[#7B7A79] text-[13px]">
-                                            Link a custom branded domain or configure secure
-                                            subdomains. (Coming Soon)
+                                    <h1 className="text-[16px] font-medium mb-3">Custom Domains</h1>
+                                    <div className="flex flex-col gap-4 border-t border-[#242323] pt-6">
+                                        <p className="text-[13px] text-[#7B7A79] mb-2">
+                                            Assign custom domains to your project for a branded
+                                            experience.
+                                        </p>
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                type="text"
+                                                placeholder="e.g. my-awesome-site.com"
+                                                className="w-2/3 bg-[#100E12]/50 border border-[#383736] rounded-lg px-3 py-1.5 text-[13px] text-[#D6D5C9] outline-none"
+                                                disabled
+                                            />
+                                            <button className="px-4 py-1.5 rounded-lg bg-[#2B2A29] text-[#7B7A79] text-[13px] font-medium cursor-not-allowed">
+                                                Add Domain
+                                            </button>
+                                        </div>
+                                        <div className="border border-[#242323] rounded-xl p-4 flex items-center justify-between mt-4 bg-[#100E12]/30">
+                                            <div className="flex items-center gap-3">
+                                                <Globe className="w-5 h-5 text-[#7B7A79]" />
+                                                <div className="flex flex-col">
+                                                    <span className="text-[14px] font-medium text-[#D6D5C9]">
+                                                        {projectName
+                                                            .toLowerCase()
+                                                            .replace(/\s+/g, '-')}
+                                                        .december.dev
+                                                    </span>
+                                                    <span className="text-[12px] text-emerald-500">
+                                                        Active
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <span className="text-[12px] text-[#7B7A79] px-2 py-1 rounded bg-[#1E1D1B]">
+                                                Default
+                                            </span>
                                         </div>
                                     </div>
                                 </div>
@@ -338,24 +406,28 @@ export const SettingsBigModal: React.FC<SettingsModalProps> = ({
 
                             {activeTab === 'analytics' && (
                                 <div className="flex flex-col w-full max-w-[680px] text-[#D6D5C9] animate-in fade-in duration-200">
-                                    <h1 className="text-[16px] font-medium mb-3">
-                                        Analytics Settings
-                                    </h1>
+                                    <h1 className="text-[16px] font-medium mb-3">Analytics</h1>
                                     <div className="flex flex-col gap-6 border-t border-[#242323] pt-6">
                                         <div className="flex items-center justify-between">
                                             <div className="flex flex-col gap-0.5 text-left">
                                                 <span className="text-[14px] text-[#D6D5C9]">
-                                                    Enable Analytics
+                                                    Enable Web Analytics
                                                 </span>
                                                 <span className="text-[13px] text-[#7B7A79]">
-                                                    Track compile loops, page loading cycles, and
-                                                    visual interactions.
+                                                    Track page views, visitors, and performance
+                                                    metrics.
                                                 </span>
                                             </div>
                                             <PremiumToggle
                                                 active={analytics}
                                                 onChange={() => setAnalytics(!analytics)}
                                             />
+                                        </div>
+                                        <div className="border border-[#242323] rounded-xl py-12 flex flex-col items-center justify-center gap-3 bg-[#100E12]/30 mt-2">
+                                            <Activity className="w-6 h-6 text-[#4A4948]" />
+                                            <span className="text-[13px] text-[#7B7A79]">
+                                                Not enough data to display metrics yet.
+                                            </span>
                                         </div>
                                     </div>
                                 </div>
