@@ -47,7 +47,7 @@ const parseInlineFormatting = (text: string): React.ReactNode[] => {
     })
 }
 
-const renderRichContent = (text: string) => {
+const renderRichContent = (text: string, isThoughts = false) => {
     if (!text) return null
 
     const lines = text.split('\n').map((l) => l.trim())
@@ -76,7 +76,7 @@ const renderRichContent = (text: string) => {
             elements.push(
                 <h3
                     key={index}
-                    className="text-[12px] font-bold text-[#E6E4E3] tracking-wide mt-3 mb-1 uppercase font-sans"
+                    className="text-[12px] font-bold text-[#E6E4E3] tracking-wide mt-3 mb-1 font-sans"
                 >
                     {parseInlineFormatting(line.slice(4))}
                 </h3>
@@ -96,7 +96,7 @@ const renderRichContent = (text: string) => {
             elements.push(
                 <h2
                     key={index}
-                    className="text-[13px] font-bold text-[#E6E4E3] tracking-wide mt-4 mb-1.5 uppercase font-sans"
+                    className="text-[13px] font-bold text-[#E6E4E3] tracking-wide mt-4 mb-1.5 font-sans"
                 >
                     {parseInlineFormatting(line.slice(3))}
                 </h2>
@@ -115,12 +115,19 @@ const renderRichContent = (text: string) => {
             )
         } else {
             flushList(index)
+            const processedLine = line
+                .replace(/^\*\*Overview:\*\*\s*/i, '')
+                .replace(/^Overview:\s*/i, '')
             elements.push(
                 <p
                     key={index}
-                    className="text-[12.5px] leading-relaxed text-[#D1D0CF] whitespace-pre-wrap select-text mb-2"
+                    className={
+                        isThoughts
+                            ? 'text-[12px] leading-relaxed text-[#8E8D8C] whitespace-pre-wrap select-text mb-1.5'
+                            : 'text-[12.5px] leading-relaxed text-[#D1D0CF] whitespace-pre-wrap select-text mb-2'
+                    }
                 >
-                    {parseInlineFormatting(line)}
+                    {parseInlineFormatting(processedLine)}
                 </p>
             )
         }
@@ -152,15 +159,18 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
     const hasAutoCollapsedRef = React.useRef(false)
 
     React.useEffect(() => {
-        if ((status === 'building' || status === 'done') && !hasAutoCollapsedRef.current) {
+        if (
+            (status === 'building' || status === 'done' || Boolean(plan)) &&
+            !hasAutoCollapsedRef.current
+        ) {
             setIsThoughtsOpen(false)
             hasAutoCollapsedRef.current = true
         }
-        if (status === 'thinking') {
+        if (status === 'thinking' && !Boolean(plan)) {
             setIsThoughtsOpen(true)
             hasAutoCollapsedRef.current = false
         }
-    }, [status])
+    }, [status, plan])
 
     if (role === 'user') {
         return (
@@ -183,15 +193,13 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
     const showThinking = isThinkingPhase || Boolean(thoughts)
     const thinkingText = thoughts || (isThinkingPhase && !thoughts ? content : '')
 
-    const showPlan = Boolean(plan) || (isThinkingPhase && thoughts !== undefined && thoughts !== '')
-    const planText = plan || (isThinkingPhase && thoughts ? content : '')
+    const showPlan = Boolean(plan)
+    const planText = plan || ''
 
     const showFiles = (isBuildingPhase || isCompletedPhase) && totalFiles > 0
 
-    const showSummary =
-        Boolean(summary) ||
-        (isCompletedPhase && content && content !== plan && content !== thoughts)
-    const summaryText = summary || (isCompletedPhase ? content : '')
+    const showSummary = Boolean(summary)
+    const summaryText = summary || ''
 
     const [displayedPlan, setDisplayedPlan] = React.useState('')
     const [displayedSummary, setDisplayedSummary] = React.useState('')
@@ -284,7 +292,9 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                                     isThoughtsOpen ? 'rotate-0' : '-rotate-90'
                                 )}
                             />
-                            <span className="font-medium">Thinking</span>
+                            <span className="font-medium">
+                                {isThinkingPhase && !plan ? 'Thinking' : 'Thoughts'}
+                            </span>
                         </button>
 
                         <AnimatePresence initial={false}>
@@ -298,8 +308,8 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                                 >
                                     <div className="flex gap-3 pl-0.5">
                                         <div className="w-[1.5px] bg-[#2E2D2C] rounded shrink-0 self-stretch" />
-                                        <div className="text-[11.5px] leading-relaxed text-[#8E8D8C] font-sans whitespace-pre-wrap select-text py-0.5">
-                                            {thinkingText}
+                                        <div className="text-[12.5px] leading-relaxed text-[#8E8D8C] font-sans select-text py-0.5 space-y-2">
+                                            {renderRichContent(thinkingText, true)}
                                         </div>
                                     </div>
                                 </motion.div>
@@ -310,7 +320,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
 
                 {/* 2. Plan of Action (normal text, streamed) */}
                 {showPlan && displayedPlan.trim().length > 0 && (
-                    <div className="space-y-2.5 animate-in fade-in duration-300 w-full">
+                    <div className="space-y-2.5 animate-in fade-in duration-300 w-full pt-1">
                         {renderRichContent(displayedPlan)}
                     </div>
                 )}
