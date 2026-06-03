@@ -183,6 +183,46 @@ describe('notification.service.integration', () => {
         })
     })
 
+    describe('deleteAllReadNotification', () => {
+        it('should delete all read notifications for user successfully', async () => {
+            const readNotif = await notificationService.sendNotificationToUser({
+                userId,
+                title: 'Read notification',
+                message: 'Hello',
+            })
+            await notificationService.markAsRead(userId, readNotif.id)
+
+            const unreadNotif = await notificationService.sendNotificationToUser({
+                userId,
+                title: 'Unread notification',
+                message: 'World',
+            })
+
+            await notificationService.deleteAllReadNotification(userId)
+
+            const fetchedRead = await notificationService.getNotificationById(userId, readNotif.id)
+            expect(fetchedRead).toBeNull()
+
+            const fetchedUnread = await notificationService.getNotificationById(
+                userId,
+                unreadNotif.id
+            )
+            expect(fetchedUnread).not.toBeNull()
+        })
+
+        it('should throw user not found if user does not exist', async () => {
+            try {
+                await notificationService.deleteAllReadNotification(
+                    '864e432c-687f-4424-aa61-a831518f8e12'
+                )
+                throw new Error('expected function to throw')
+            } catch (error: any) {
+                expect(error.message).toBe('user not found')
+                expect(error.statusCode).toBe(404)
+            }
+        })
+    })
+
     describe('sendNotificationToUser', () => {
         it('should send notification to valid user', async () => {
             const created = await notificationService.sendNotificationToUser({

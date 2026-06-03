@@ -61,6 +61,7 @@ describe('notification.routes.integration', () => {
         testRouter.get('/:id', notificationController.getNotificationById)
         testRouter.patch('/:id/read', notificationController.markAsRead)
         testRouter.delete('/:id', notificationController.deleteNotification)
+        testRouter.delete('/', notificationController.deleteAllReadNotification)
         app.use('/api/v1/notifications', testRouter)
     })
 
@@ -186,6 +187,43 @@ describe('notification.routes.integration', () => {
             // Verify it was deleted
             const dbNotif = await prisma.notification.findUnique({ where: { id: notif.id } })
             expect(dbNotif).toBeNull()
+        })
+    })
+
+    describe('DELETE /', () => {
+        it('should delete all read notifications for user', async () => {
+            // Create read notification
+            const notifRead = await prisma.notification.create({
+                data: {
+                    userId: TEST_USER_ID,
+                    title: 'Read notification',
+                    message: 'Hello',
+                    isRead: true,
+                },
+            })
+
+            // Create unread notification
+            const notifUnread = await prisma.notification.create({
+                data: {
+                    userId: TEST_USER_ID,
+                    title: 'Unread notification',
+                    message: 'World',
+                    isRead: false,
+                },
+            })
+
+            const res = await request(app).delete('/api/v1/notifications')
+
+            expect(res.status).toBe(200)
+            expect(res.body.success).toBe(true)
+
+            // Verify read notification is deleted
+            const dbRead = await prisma.notification.findUnique({ where: { id: notifRead.id } })
+            expect(dbRead).toBeNull()
+
+            // Verify unread notification still exists
+            const dbUnread = await prisma.notification.findUnique({ where: { id: notifUnread.id } })
+            expect(dbUnread).not.toBeNull()
         })
     })
 
