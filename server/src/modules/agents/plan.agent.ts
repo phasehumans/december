@@ -180,7 +180,9 @@ export const extractProjectPlan = async (
                 throw new Error('no response from plan agent')
             }
 
-            console.log(`[generation] plan agent completed successfully`)
+            console.log(
+                `[generation] plan agent completed successfully. Full response:\n${content}`
+            )
             const parsedData = validatePlanAgentResponse(parsePlanAgentPayload(content, undefined))
             return {
                 data: parsedData,
@@ -258,7 +260,9 @@ export const extractProjectChangePlan = async (
                 throw new Error(`no response from plan agent ${data.mode}`)
             }
 
-            console.log(`[generation change] plan agent completed successfully`)
+            console.log(
+                `[generation change] plan agent completed successfully. Full response:\n${content}`
+            )
 
             const parsedData = validateChangePlanResponse(parsePlanAgentPayload(content, undefined))
             return {

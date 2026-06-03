@@ -76,6 +76,15 @@ export const autoHealPlanAgentResponse = (payload: any): any => {
 
     const copy = { ...payload }
 
+    if (copy.thinking !== undefined) {
+        if (copy.thoughts === undefined) copy.thoughts = copy.thinking
+        delete copy.thinking
+    }
+    if (copy.summary !== undefined) {
+        if (copy.plan_of_action === undefined) copy.plan_of_action = copy.summary
+        delete copy.summary
+    }
+
     // 1. thoughts & plan_of_action
     copy.thoughts = ensureArrayOfNonEmptyStrings(copy.thoughts, ['Analyzing prompt requirements'])
     copy.plan_of_action = ensureArrayOfNonEmptyStrings(copy.plan_of_action, [
@@ -294,6 +303,15 @@ export const autoHealChangePlanResponse = (payload: any): any => {
     }
 
     const copy = { ...payload }
+
+    if (copy.thinking !== undefined) {
+        if (copy.thoughts === undefined) copy.thoughts = copy.thinking
+        delete copy.thinking
+    }
+    if (copy.summary !== undefined) {
+        if (copy.plan_of_action === undefined) copy.plan_of_action = copy.summary
+        delete copy.summary
+    }
 
     copy.thoughts = ensureArrayOfNonEmptyStrings(copy.thoughts, ['Analyzing follow-up request'])
     copy.plan_of_action = ensureArrayOfNonEmptyStrings(copy.plan_of_action, [

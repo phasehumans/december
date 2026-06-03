@@ -52,6 +52,7 @@ const App: React.FC = () => {
         handleOpenProject,
         handleSelectVersion,
         handleDownloadProject,
+        handleOpenFile,
     } = useAppController()
 
     return (
@@ -123,6 +124,7 @@ const App: React.FC = () => {
                     projectType={'generated'}
                     selectedModel={selectedModel}
                     setSelectedModel={setSelectedModel}
+                    onOpenFile={handleOpenFile}
                 />
             </div>
         </div>
