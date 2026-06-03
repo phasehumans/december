@@ -12,7 +12,11 @@ import {
     isFrontendWorkspacePath,
 } from '../generation/generation.utils'
 import { readChatCompletionText, retryAsync } from './agents.utils'
-import { BUILD_AGENT_PROMPT, BUILD_PATCH_AGENT_PROMPT } from './build.prompt'
+import {
+    BUILD_AGENT_PROMPT,
+    BUILD_PATCH_AGENT_PROMPT,
+    BUILD_SUMMARY_AGENT_PROMPT,
+} from './build.prompt'
 
 type ProjectIntent = z.infer<typeof projectIntentSchema>
 type ProjectPlan = z.infer<typeof projectPlanSchema>
@@ -134,6 +138,9 @@ export const generateProjectFile = async (data: GenerateProjectFileInput & { mod
         label: `build agent (${data.targetFile.path})`,
         maxAttempts: BUILD_AGENT_MAX_ATTEMPTS,
         task: async (attempt, lastError) => {
+            console.log(
+                `[build agent] starting file generation for ${data.targetFile.path}, attempt: ${attempt}`
+            )
             const completion = await openai.chat.completions.create({
                 model: data.model || process.env.AUTO_MODEL || BUILD_AGENT_MODEL,
                 temperature: 0,
@@ -171,9 +178,15 @@ export const generateProjectFile = async (data: GenerateProjectFileInput & { mod
             const content = readChatCompletionText(completion)
 
             if (!content) {
+                console.log(
+                    `[build agent] file generation failed for ${data.targetFile.path}: no response`
+                )
                 throw new Error(`no response from build agent for ${data.targetFile.path}`)
             }
 
+            console.log(
+                `[build agent] file generation completed successfully for ${data.targetFile.path}. Full response:\n${content}`
+            )
             const validatedContent = validateGeneratedFileContent(data.targetFile.path, content)
             return {
                 content: validatedContent,
@@ -221,6 +234,9 @@ export const generateProjectPatchFile = async (
         label: `build agent patch (${data.operation.path})`,
         maxAttempts: BUILD_AGENT_MAX_ATTEMPTS,
         task: async (attempt, lastError) => {
+            console.log(
+                `[build agent patch] starting patch generation for ${data.operation.path}, attempt: ${attempt}`
+            )
             const completion = await openai.chat.completions.create({
                 model: data.model || process.env.AUTO_MODEL || BUILD_AGENT_MODEL,
                 temperature: 0,
@@ -260,9 +276,15 @@ export const generateProjectPatchFile = async (
             const content = readChatCompletionText(completion)
 
             if (!content) {
+                console.log(
+                    `[build agent patch] patch generation failed for ${data.operation.path}: no response`
+                )
                 throw new Error(`no response from build agent for ${data.operation.path}`)
             }
 
+            console.log(
+                `[build agent patch] patch generation completed successfully for ${data.operation.path}. Full response:\n${content}`
+            )
             const validatedContent = validateGeneratedFileContent(data.operation.path, content)
             return {
                 content: validatedContent,
@@ -274,4 +296,48 @@ export const generateProjectPatchFile = async (
             }
         },
     })
+}
+
+export type GenerateWorkDoneSummaryInput = {
+    prompt: string
+    plan: any
+    generatedFiles: string[]
+    model?: string
+    onStream?: (chunk: string) => Promise<void> | void
+}
+
+export const generateWorkDoneSummary = async (data: GenerateWorkDoneSummaryInput) => {
+    console.log(`[build agent summary] starting summary generation`)
+    const stream = await openai.chat.completions.create({
+        model: data.model || 'claude-3-5-sonnet-latest',
+        messages: [
+            {
+                role: 'system',
+                content: BUILD_SUMMARY_AGENT_PROMPT,
+            },
+            {
+                role: 'user',
+                content: JSON.stringify({
+                    intentPrompt: data.prompt,
+                    originalPlan: data.plan,
+                    filesGeneratedOrModified: data.generatedFiles,
+                }),
+            },
+        ],
+        stream: true,
+    })
+
+    let fullContent = ''
+    for await (const chunk of stream) {
+        const text = chunk.choices[0]?.delta?.content || ''
+        if (text) {
+            fullContent += text
+            await data.onStream?.(text)
+        }
+    }
+
+    console.log(
+        `[build agent summary] summary generation completed successfully. Full response:\n${fullContent}`
+    )
+    return fullContent
 }

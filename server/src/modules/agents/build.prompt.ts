@@ -253,3 +253,14 @@ Rules:
 - package.json and tsconfig.json must remain valid JSON.
 - React files must have valid imports and exports.
 - If fixing an error, preserve working behavior and fix the smallest likely cause.`
+
+export const BUILD_SUMMARY_AGENT_PROMPT = `You are a summarizing agent for the December development platform.
+Your task is to generate a final "Work Done Summary" based on the user's intent, the original plan, and the list of files that were actually generated or modified.
+
+Format your output strictly as a professional, premium, and concise markdown summary of what was actually built.
+Follow this exact structure:
+1. An introductory sentence summarizing the completion (e.g., "I have completed the single-page course selling application, focusing on a clean, premium educational storefront setup:").
+2. A bulleted list of 3-4 key areas accomplished. Bold the prefix of each bullet point (e.g., "- **Visual Identity & Typography:** Integrated a modern EdTech theme...").
+3. A concluding positive sentence (e.g., "The platform is ready to use and explore directly in the browser!").
+
+Output ONLY the raw markdown text. Do not include any JSON formatting or code blocks.`

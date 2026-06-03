@@ -46,6 +46,7 @@ export const OutputScreen: React.FC<OutputScreenProps> = ({
     projectType = 'generated',
     selectedModel,
     setSelectedModel,
+    onOpenFile,
 }) => {
     const navigate = useNavigate()
     const { data: overview } = useQuery({
@@ -98,6 +99,16 @@ export const OutputScreen: React.FC<OutputScreenProps> = ({
 
     const [mobileActiveTab, setMobileActiveTab] = React.useState<MobileOutputTab>('chat')
     const handleBack = onBack || (() => {})
+
+    const handleOpenFileWrapper = React.useCallback(
+        (path: string) => {
+            setActiveTab('code')
+            if (onOpenFile) {
+                onOpenFile(path)
+            }
+        },
+        [setActiveTab, onOpenFile]
+    )
 
     // Simulation States for Developer Verification
     const [isSimulating, setIsSimulating] = React.useState<boolean>(false)
@@ -414,7 +425,7 @@ I will execute the following steps to implement this movie ticket booking system
                                                             m.id === 'sim-assistant'
                                                                 ? {
                                                                       ...m,
-                                                                      content: currentSummaryText,
+                                                                      summary: currentSummaryText,
                                                                   }
                                                                 : m
                                                         )
@@ -544,6 +555,7 @@ I will execute the following steps to implement this movie ticket booking system
                             generatedFiles={activeFiles}
                             projectType={activeProjectType}
                             onTriggerSimulation={handleTriggerSimulation}
+                            onOpenFile={handleOpenFileWrapper}
                         />
                     </div>
 
@@ -627,6 +639,7 @@ I will execute the following steps to implement this movie ticket booking system
                     generatedFiles={activeFiles}
                     projectType={activeProjectType}
                     onTriggerSimulation={handleTriggerSimulation}
+                    onOpenFile={handleOpenFileWrapper}
                 />
 
                 <OutputScreenMainContent

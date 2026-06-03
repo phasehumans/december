@@ -67,6 +67,7 @@ interface AppContentViewProps {
     onDocs?: () => void
     selectedModel?: string
     setSelectedModel?: (val: string) => void
+    onOpenFile?: (path: string) => void
 }
 
 const pageTransition = {
@@ -139,6 +140,7 @@ export const AppContentView: React.FC<AppContentViewProps> = ({
     onDocs,
     selectedModel,
     setSelectedModel,
+    onOpenFile,
 }) => {
     return (
         <AnimatePresence mode="wait" initial={false}>
@@ -225,6 +227,7 @@ export const AppContentView: React.FC<AppContentViewProps> = ({
                             }
                             selectedModel={selectedModel}
                             setSelectedModel={setSelectedModel}
+                            onOpenFile={onOpenFile}
                         />
                     </AnimatedPage>
                 ))}
@@ -263,6 +266,7 @@ export const AppContentView: React.FC<AppContentViewProps> = ({
                         }
                         selectedModel={selectedModel}
                         setSelectedModel={setSelectedModel}
+                        onOpenFile={onOpenFile}
                     />
                 </AnimatedPage>
             )}
