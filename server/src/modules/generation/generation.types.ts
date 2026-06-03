@@ -77,7 +77,7 @@ export type GenerationStreamEvent =
           type: 'message-start'
           data: {
               messageId: string
-              status: 'thinking'
+              status: 'thinking' | 'done'
           }
       }
     | {

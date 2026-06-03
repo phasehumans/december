@@ -326,7 +326,8 @@ export const useAppController = () => {
         (messageId: string, chunk: string, streamMessageId?: string) => {
             updateAssistantMessage(messageId, (message) => {
                 const isThinkingStream = streamMessageId?.endsWith(':thoughts')
-                const isSummaryStream = streamMessageId?.endsWith(':plan_of_action')
+                const isPlanStream = streamMessageId?.endsWith(':plan_of_action')
+                const isSummaryStream = streamMessageId?.endsWith(':summary')
 
                 let nextThoughts = message.thoughts ?? ''
                 let nextPlan = message.plan ?? ''
@@ -334,13 +335,15 @@ export const useAppController = () => {
 
                 if (isThinkingStream) {
                     nextThoughts = `${nextThoughts}${chunk}`
-                } else if (isSummaryStream) {
+                } else if (isPlanStream) {
                     nextPlan = `${nextPlan}${chunk}`
+                } else if (isSummaryStream) {
+                    nextSummary = `${nextSummary}${chunk}`
                 }
 
                 return {
                     ...message,
-                    content: `${message.content}${chunk}`,
+                    content: isSummaryStream ? message.content : `${message.content}${chunk}`,
                     thoughts: nextThoughts || undefined,
                     plan: nextPlan || undefined,
                     summary: nextSummary || undefined,
@@ -497,7 +500,20 @@ export const useAppController = () => {
             setProjectVersions(detail.versions)
             setActiveProjectVersionId(detail.selectedVersionId)
             setProjectLoadError(null)
-            setMessages(detail.chatMessages.map(mapBackendMessageToUIMessage))
+
+            const uiMessages = detail.chatMessages.map(mapBackendMessageToUIMessage)
+            const activeVersionSummary = detail.activeVersion?.summary
+            if (activeVersionSummary) {
+                const lastAssistantIdx = [...uiMessages]
+                    .reverse()
+                    .findIndex((m) => m.role === 'assistant')
+                if (lastAssistantIdx !== -1) {
+                    const idx = uiMessages.length - 1 - lastAssistantIdx
+                    uiMessages[idx].summary = activeVersionSummary
+                }
+            }
+            setMessages(uiMessages)
+
             setCanvasState(detail.canvasState ?? createEmptyCanvasDocument())
             lastSavedCanvasRef.current = JSON.stringify(
                 detail.canvasState ?? createEmptyCanvasDocument()
@@ -522,7 +538,22 @@ export const useAppController = () => {
             setProjectVersions(result.versions)
             setActiveProjectVersionId(result.version.id)
             setProjectLoadError(null)
-            setMessages(result.chatMessages.map(mapBackendMessageToUIMessage))
+
+            const uiMessages = result.chatMessages.map(mapBackendMessageToUIMessage)
+            const activeVersionSummary = result.versions.find(
+                (v) => v.id === result.version.id
+            )?.summary
+            if (activeVersionSummary) {
+                const lastAssistantIdx = [...uiMessages]
+                    .reverse()
+                    .findIndex((m) => m.role === 'assistant')
+                if (lastAssistantIdx !== -1) {
+                    const idx = uiMessages.length - 1 - lastAssistantIdx
+                    uiMessages[idx].summary = activeVersionSummary
+                }
+            }
+            setMessages(uiMessages)
+
             replaceGeneratedOutput(result.generatedFiles, preferredPath)
             setGenerationPhase('done')
             lastSavedCanvasRef.current = JSON.stringify(canvasState)
@@ -1578,5 +1609,6 @@ export const useAppController = () => {
         handleOpenProject,
         handleSelectVersion,
         handleDownloadProject,
+        handleOpenFile: setActiveGeneratedFilePath,
     }
 }

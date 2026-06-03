@@ -95,6 +95,7 @@ export interface OutputScreenProps {
     projectType?: 'generated' | 'github' | 'zip'
     selectedModel?: string
     setSelectedModel?: (val: string) => void
+    onOpenFile?: (path: string) => void
 }
 
 export interface OutputHeaderProps {

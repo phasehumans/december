@@ -32,8 +32,8 @@ export interface ChatMessageProps {
     projectType?: 'generated' | 'github' | 'zip'
     tokensUsed?: number
     creditsUsed?: number
-    modelName?: string
     onTriggerSimulation?: (type: 'generated' | 'github' | 'zip') => void
+    onOpenFile?: (path: string) => void
 }
 
 export interface ChatPromptInputProps {
@@ -75,6 +75,7 @@ export interface ChatSidebarProps {
     generatedFiles?: Record<string, any>
     projectType?: 'generated' | 'github' | 'zip'
     onTriggerSimulation?: (type: 'generated' | 'github' | 'zip') => void
+    onOpenFile?: (path: string) => void
     selectedModel?: string
     setSelectedModel?: (val: string) => void
     isAuthenticated?: boolean

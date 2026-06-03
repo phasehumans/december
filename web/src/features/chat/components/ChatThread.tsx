@@ -34,6 +34,7 @@ export const ChatThread: React.FC<ChatSidebarProps> = ({
     setSelectedModel,
     isAuthenticated,
     onOpenAuth,
+    onOpenFile,
 }) => {
     const scrollContainerRef = React.useRef<HTMLDivElement | null>(null)
     const contentRef = React.useRef<HTMLDivElement | null>(null)
@@ -131,6 +132,7 @@ export const ChatThread: React.FC<ChatSidebarProps> = ({
                     creditsUsed={msg.creditsUsed}
                     modelName={msg.modelName}
                     onTriggerSimulation={onTriggerSimulation}
+                    onOpenFile={onOpenFile}
                 />
             ))}
         </div>
