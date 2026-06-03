@@ -11,10 +11,10 @@ import { isFrontendWorkspacePath } from '../../src/modules/generation/generation
 import { parseModelJson } from '../../src/modules/agents/agents.utils'
 
 describe('generation schemas', () => {
-    test('accepts a unified plan response with thinking, summary, intent, and build handoff', () => {
+    test('accepts a unified plan response with thoughts, plan_of_action, intent, and build handoff', () => {
         const parsed = planAgentResponseSchema.safeParse({
-            thinking: ['This should stay compact', 'A single route is enough'],
-            summary: ['Build a focused landing page first.'],
+            thoughts: ['This should stay compact', 'A single route is enough'],
+            plan_of_action: ['Build a focused landing page first.'],
             intent: {
                 prompt: 'Create a landing page for a design studio.',
                 summary: 'A polished studio landing page',
@@ -191,10 +191,10 @@ describe('generation schemas', () => {
         expect(parsed.success).toBe(false)
     })
 
-    test('accepts follow-up planning responses with thinking and summary', () => {
+    test('accepts follow-up planning responses with thoughts and plan_of_action', () => {
         const parsed = projectChangePlanResponseSchema.safeParse({
-            thinking: ['The change is local', 'App.tsx owns that section'],
-            summary: ['Tighten the hero without reshaping the rest of the page.'],
+            thoughts: ['The change is local', 'App.tsx owns that section'],
+            plan_of_action: ['Tighten the hero without reshaping the rest of the page.'],
             plan: {
                 success: true,
                 message: 'Patch plan generated successfully',

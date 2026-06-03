@@ -115,9 +115,10 @@ const renderRichContent = (text: string, isThoughts = false) => {
             )
         } else {
             flushList(index)
-            const processedLine = line
-                .replace(/^\*\*Overview:\*\*\s*/i, '')
-                .replace(/^Overview:\s*/i, '')
+            const processedLine = line.replace(
+                /^(\*\*Overview:\*\*|\*\*Overview\*\*|Overview:?)\s*[\-–—]?\s*/i,
+                ''
+            )
             elements.push(
                 <p
                     key={index}
@@ -153,9 +154,12 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
     creditsUsed,
     modelName,
     onTriggerSimulation,
+    onOpenFile,
 }) => {
     const [feedback, setFeedback] = React.useState<'like' | 'dislike' | null>(null)
     const [isThoughtsOpen, setIsThoughtsOpen] = React.useState<boolean>(true)
+    const [displayedPlan, setDisplayedPlan] = React.useState('')
+    const [displayedSummary, setDisplayedSummary] = React.useState('')
     const hasAutoCollapsedRef = React.useRef(false)
 
     React.useEffect(() => {
@@ -196,13 +200,11 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
     const showPlan = Boolean(plan)
     const planText = plan || ''
 
-    const showFiles = (isBuildingPhase || isCompletedPhase) && totalFiles > 0
+    const isPlanFinished = !planText || displayedPlan.length >= planText.length
+    const showFiles = (isBuildingPhase || isCompletedPhase) && totalFiles > 0 && isPlanFinished
 
     const showSummary = Boolean(summary)
     const summaryText = summary || ''
-
-    const [displayedPlan, setDisplayedPlan] = React.useState('')
-    const [displayedSummary, setDisplayedSummary] = React.useState('')
 
     React.useEffect(() => {
         if (status === 'done') {
@@ -255,7 +257,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                 initial={{ opacity: 0, y: 5 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3, delay: 0.06 }}
-                className="pl-1 space-y-4"
+                className="pl-1 flex flex-col gap-2.5"
             >
                 {/* Assistant Meta */}
                 <div className="flex items-center gap-2 text-[11px] font-medium tracking-wide">
@@ -320,7 +322,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
 
                 {/* 2. Plan of Action (normal text, streamed) */}
                 {showPlan && displayedPlan.trim().length > 0 && (
-                    <div className="space-y-2.5 animate-in fade-in duration-300 w-full pt-1">
+                    <div className="space-y-2.5 animate-in fade-in duration-300 w-full">
                         {renderRichContent(displayedPlan)}
                     </div>
                 )}
@@ -344,8 +346,9 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                                 return (
                                     <div
                                         key={file.path}
+                                        onClick={() => onOpenFile?.(file.path)}
                                         className={cn(
-                                            'flex items-center justify-between px-3 py-1.5 hover:bg-white/5 transition-colors cursor-default',
+                                            'flex items-center justify-between px-3 py-1.5 hover:bg-white/5 transition-colors cursor-pointer',
                                             hasDivider ? 'border-b border-white/5' : ''
                                         )}
                                     >

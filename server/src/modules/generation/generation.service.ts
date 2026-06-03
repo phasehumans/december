@@ -4,6 +4,7 @@ import {
     extractProjectPlan,
     generateProjectFile,
     generateProjectPatchFile,
+    generateWorkDoneSummary,
 } from '../agents'
 import { saveProjectFiles } from '../project/save-project-files'
 import { persistCanvasDocument } from '../canvas/canvas.persistence'
@@ -294,6 +295,30 @@ export const generateWebsite = async (data: GenerateWebsiteInput) => {
             }
         }
 
+        const summaryMessageId = `${project!.id}:plan-agent:summary`
+        await onEvent?.({
+            type: 'message-start',
+            data: { messageId: summaryMessageId, status: 'done' },
+        })
+
+        const generatedSummary = await generateWorkDoneSummary({
+            prompt: userPrompt,
+            plan: planData,
+            generatedFiles: Object.keys(generatedFiles),
+            model: resolvedModelName,
+            onStream: async (chunk) => {
+                await onEvent?.({
+                    type: 'message-chunk',
+                    data: { messageId: summaryMessageId, chunk },
+                })
+            },
+        })
+
+        await onEvent?.({
+            type: 'message-complete',
+            data: { messageId: summaryMessageId, status: 'done' },
+        })
+
         const savedFiles = await saveProjectFiles({
             projectId: project.id,
             versionId,
@@ -320,7 +345,7 @@ export const generateWebsite = async (data: GenerateWebsiteInput) => {
                     id: versionId,
                 },
                 data: {
-                    summary: intent.summary,
+                    summary: generatedSummary,
                     status: 'READY',
                     manifestJson: savedFiles.map((file) => ({
                         path: file.path,
@@ -656,6 +681,30 @@ const applyProjectChange = async (
             deletedFiles,
         })
 
+        const summaryMessageId = `${base.project.id}:plan-agent:${mode}:summary`
+        await data.onEvent?.({
+            type: 'message-start',
+            data: { messageId: summaryMessageId, status: 'done' },
+        })
+
+        const generatedSummary = await generateWorkDoneSummary({
+            prompt: sourcePrompt,
+            plan: planData,
+            generatedFiles: appliedFiles.concat(removedFiles),
+            model: resolvedModelName,
+            onStream: async (chunk) => {
+                await data.onEvent?.({
+                    type: 'message-chunk',
+                    data: { messageId: summaryMessageId, chunk },
+                })
+            },
+        })
+
+        await data.onEvent?.({
+            type: 'message-complete',
+            data: { messageId: summaryMessageId, status: 'done' },
+        })
+
         const persisted = await persistProjectRevision({
             project: base.project,
             userId: data.userId,
@@ -665,7 +714,7 @@ const applyProjectChange = async (
             removedFiles,
             sourcePrompt,
             assistantMessage: assistantMessageContent,
-            summary: planOfActionMessage || planData.summary,
+            summary: generatedSummary,
             ...(isEdit ? { nextProjectPrompt: editData.prompt } : {}),
             ...(isEdit && editData.canvasState ? { canvasState: editData.canvasState } : {}),
         })

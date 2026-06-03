@@ -40,3 +40,5 @@ export const generateProjectPatchFile = (input: {
     }
     model?: string
 }) => generateProjectPatchFileAgent(input)
+
+export { generateWorkDoneSummary } from './build.agent'
