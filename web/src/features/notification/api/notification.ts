@@ -32,7 +32,7 @@ const deleteNotification = (id: string) => {
 }
 
 const deleteAllRead = () => {
-    return apiRequest<void>('/notification/read', {
+    return apiRequest<void>('/notification', {
         method: 'DELETE',
     })
 }

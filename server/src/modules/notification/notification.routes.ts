@@ -14,5 +14,6 @@ notificationRouter.post('/send', notificationController.sendNotificationToUser)
 notificationRouter.get('/:id', notificationController.getNotificationById)
 notificationRouter.patch('/:id/read', notificationController.markAsRead)
 notificationRouter.delete('/:id', notificationController.deleteNotification)
+notificationRouter.delete('/', notificationController.deleteAllReadNotification)
 
 export default notificationRouter

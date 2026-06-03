@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Inbox, Trash2, ArrowLeft } from 'lucide-react'
+import { Inbox, Trash2, ArrowLeft, MoreHorizontal, Settings } from 'lucide-react'
 import React, { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 
@@ -17,6 +17,7 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
     isOpen,
     anchorRef,
     onClose,
+    onSettings,
 }) => {
     const popoverRef = useRef<HTMLDivElement | null>(null)
     const [position, setPosition] = useState<{
@@ -50,6 +51,18 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
         },
     })
 
+    const deleteAllReadMutation = useMutation({
+        mutationFn: notificationAPI.deleteAllRead,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['notifications'] })
+            setIsMenuOpen(false)
+        },
+    })
+
+    const [isMenuOpen, setIsMenuOpen] = useState(false)
+    const menuRef = useRef<HTMLDivElement | null>(null)
+    const menuTriggerRef = useRef<HTMLButtonElement | null>(null)
+
     React.useLayoutEffect(() => {
         if (!isOpen || !anchorRef.current || typeof window === 'undefined') {
             return
@@ -62,7 +75,7 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
             const rect = anchor.getBoundingClientRect()
 
             setPosition({
-                bottom: window.innerHeight - rect.top + 8,
+                bottom: window.innerHeight - rect.top + 12,
                 left: rect.left - 250,
                 width: 280,
             })
@@ -76,12 +89,36 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
         }
     }, [anchorRef, isOpen])
 
-    // Reset selected notification when popover closes
+    // Reset selected notification and menu when popover closes
     useEffect(() => {
         if (!isOpen) {
             setSelectedNotification(null)
+            setIsMenuOpen(false)
         }
     }, [isOpen])
+
+    useEffect(() => {
+        if (!isMenuOpen) return
+
+        const handleOutsideClick = (e: MouseEvent | TouchEvent) => {
+            const target = e.target as Node | null
+            if (
+                menuRef.current &&
+                !menuRef.current.contains(target) &&
+                menuTriggerRef.current &&
+                !menuTriggerRef.current.contains(target)
+            ) {
+                setIsMenuOpen(false)
+            }
+        }
+
+        document.addEventListener('mousedown', handleOutsideClick)
+        document.addEventListener('touchstart', handleOutsideClick)
+        return () => {
+            document.removeEventListener('mousedown', handleOutsideClick)
+            document.removeEventListener('touchstart', handleOutsideClick)
+        }
+    }, [isMenuOpen])
 
     React.useEffect(() => {
         if (!isOpen) return
@@ -215,9 +252,56 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
                 height: 320,
             }}
         >
-            <div className="flex items-center justify-between px-3 py-1.5 shrink-0">
+            <div className="flex items-center justify-between px-3 py-1.5 shrink-0 relative">
                 <div className="flex items-center gap-1.5">
                     <span className="text-[14px] font-medium text-[#CBCACA]">Notifications</span>
+                </div>
+                {/* 3 Dots Menu Button */}
+                <div className="relative">
+                    <button
+                        ref={menuTriggerRef}
+                        onClick={(e) => {
+                            e.stopPropagation()
+                            setIsMenuOpen(!isMenuOpen)
+                        }}
+                        className="flex items-center justify-center w-7 h-7 rounded-lg hover:bg-[#252422] text-[#8F8E8D] hover:text-[#CBCACA] transition-colors outline-none cursor-pointer"
+                        title="More options"
+                    >
+                        <MoreHorizontal className="w-[15px] h-[15px]" />
+                    </button>
+                    {isMenuOpen && (
+                        <div
+                            ref={menuRef}
+                            className="absolute right-[-144px] top-8 z-[110] w-[180px] rounded-2xl border border-[#2E2D2C] bg-[#1E1D1C] shadow-2xl p-2 flex flex-col gap-0.5 animate-in fade-in zoom-in-95 duration-100"
+                        >
+                            <button
+                                onClick={() => {
+                                    onSettings?.()
+                                    onClose()
+                                    setIsMenuOpen(false)
+                                }}
+                                className="flex items-center gap-3 w-full px-3 py-1.5 rounded-xl hover:bg-[#252422] text-[#CBCACA] hover:text-white transition-colors text-left text-[14px] cursor-pointer outline-none group"
+                            >
+                                <Settings
+                                    className="w-[18px] h-[18px] text-[#CBCACA] group-hover:text-white transition-colors"
+                                    strokeWidth={1.5}
+                                />
+                                <span>Settings</span>
+                            </button>
+                            <button
+                                onClick={() => {
+                                    deleteAllReadMutation.mutate()
+                                }}
+                                className="flex items-center gap-3 w-full px-3 py-1.5 rounded-xl hover:bg-[#252422] text-[#CBCACA] hover:text-white transition-colors text-left text-[14px] cursor-pointer outline-none group"
+                            >
+                                <Trash2
+                                    className="w-[18px] h-[18px] text-[#CBCACA] group-hover:text-white transition-colors"
+                                    strokeWidth={1.5}
+                                />
+                                <span>Delete all read</span>
+                            </button>
+                        </div>
+                    )}
                 </div>
             </div>
 

@@ -1,3 +1,4 @@
+import { success } from 'zod'
 import { AppError } from '../../shared/appError'
 
 import {
@@ -270,6 +271,39 @@ const sendNotificationToAll = async (req: Request, res: Response) => {
     }
 }
 
+const deleteAllReadNotification = async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
+
+    if (!userId) {
+        return res.status(200).json({
+            success: false,
+            message: 'unauthorized',
+        })
+    }
+
+    try {
+        await notificationService.deleteAllReadNotification(userId)
+        return res.status(200).json({
+            success: true,
+            message: 'read notifications successfully',
+        })
+    } catch (error) {
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({
+                success: false,
+                message: 'failed to delete read notifications',
+                errors: error.message,
+            })
+        }
+
+        return res.status(500).json({
+            success: false,
+            message: 'failed to delete read notifications',
+            errors: error instanceof Error ? error.message : 'unknown error',
+        })
+    }
+}
+
 export const notificationController = {
     getNotifications,
     getNotificationById,
@@ -277,4 +311,5 @@ export const notificationController = {
     deleteNotification,
     sendNotificationToUser,
     sendNotificationToAll,
+    deleteAllReadNotification,
 }

@@ -196,6 +196,29 @@ const sendNotificationToAll = async (data: {
     })
 }
 
+const deleteAllReadNotification = async (data: string) => {
+    const user = await prisma.user.findUnique({
+        where: {
+            id: data,
+        },
+        select: {
+            id: true,
+            isDeleted: true,
+        },
+    })
+
+    if (!user || user.isDeleted === true) {
+        throw new AppError('user not found', 404)
+    }
+
+    return prisma.notification.deleteMany({
+        where: {
+            userId: data,
+            isRead: true,
+        },
+    })
+}
+
 export const notificationService = {
     getNotifications,
     getNotificationById,
@@ -203,6 +226,7 @@ export const notificationService = {
     deleteNotification,
     sendNotificationToUser,
     sendNotificationToAll,
+    deleteAllReadNotification,
 }
 
 export { sendNotificationToUser }
