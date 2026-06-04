@@ -245,6 +245,7 @@ export const PreviewArea: React.FC<PreviewAreaProps> = ({
     previewError,
     previewSessionError,
     projectType = 'generated',
+    projectId,
 }) => {
     useEffect(() => {
         window.addEventListener('message', onMessage)
@@ -252,6 +253,40 @@ export const PreviewArea: React.FC<PreviewAreaProps> = ({
     }, [onMessage])
 
     const [isCopied, setIsCopied] = useState(false)
+    const [isImportStreaming, setIsImportStreaming] = useState(false)
+
+    useEffect(() => {
+        const handleStart = (e: Event) => {
+            const customEvent = e as CustomEvent
+            if (customEvent.detail?.projectId === projectId) {
+                setIsImportStreaming(true)
+            }
+        }
+        const handleEnd = (e: Event) => {
+            const customEvent = e as CustomEvent
+            if (customEvent.detail?.projectId === projectId) {
+                setIsImportStreaming(false)
+            }
+        }
+
+        window.addEventListener('december-import-stream-start', handleStart)
+        window.addEventListener('december-import-stream-end', handleEnd)
+
+        if (
+            projectId &&
+            sessionStorage.getItem(`december_import_stream_running_${projectId}`) === 'true'
+        ) {
+            setIsImportStreaming(true)
+        } else {
+            setIsImportStreaming(false)
+        }
+
+        return () => {
+            window.removeEventListener('december-import-stream-start', handleStart)
+            window.removeEventListener('december-import-stream-end', handleEnd)
+        }
+    }, [projectId])
+
     const srcDoc = React.useMemo(() => injectPreviewBridge(html), [html])
     const isLivePreview = Boolean(previewUrl) && previewState === 'Healthy'
     const showStructurePlaceholder = showStructureOnly && !isGenerating && !isLivePreview
@@ -268,7 +303,8 @@ export const PreviewArea: React.FC<PreviewAreaProps> = ({
 
     // Determine loading state
     const showFullscreenLoader =
-        !showFailedState && (isStartupState || (!isLivePreview && isGenerating))
+        !showFailedState &&
+        (isStartupState || (!isLivePreview && isGenerating) || isImportStreaming)
 
     const showFullscreenFailed = showFailedState && !isLivePreview
 
@@ -276,6 +312,7 @@ export const PreviewArea: React.FC<PreviewAreaProps> = ({
     const checklistItems = RUNTIME_CHECKLISTS[projectType] || RUNTIME_CHECKLISTS.generated
     const stateKeys = ['WaitingForRunnableVersion', 'Bootstrapping', 'Installing', 'Starting']
     const activeIndex = previewState ? stateKeys.indexOf(previewState) : 0
+    const allCompleted = previewState === 'Healthy'
 
     const statusLabel = previewError?.message || previewSessionError || 'Compiling...'
 
@@ -338,9 +375,9 @@ export const PreviewArea: React.FC<PreviewAreaProps> = ({
                             {/* Minimal Checklist UI */}
                             <div className="flex flex-col gap-4 pl-0">
                                 {checklistItems.map((item, idx) => {
-                                    const isDone = idx < activeIndex
-                                    const isActive = idx === activeIndex
-                                    const isPending = idx > activeIndex
+                                    const isDone = allCompleted || idx < activeIndex
+                                    const isActive = !allCompleted && idx === activeIndex
+                                    const isPending = !allCompleted && idx > activeIndex
 
                                     return (
                                         <div

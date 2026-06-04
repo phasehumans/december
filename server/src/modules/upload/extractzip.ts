@@ -83,6 +83,7 @@ export async function extractUploadedZipArchive(
     }
 
     let directories: { name: string }[]
+    let files: { name: string }[]
 
     try {
         const entries = await readdir(extractDir, {
@@ -92,6 +93,10 @@ export async function extractUploadedZipArchive(
 
         directories = entries
             .filter((entry) => entry.isDirectory() && entry.name !== '__MACOSX')
+            .map((entry) => ({ name: entry.name }))
+
+        files = entries
+            .filter((entry) => entry.isFile() && entry.name !== '.DS_Store')
             .map((entry) => ({ name: entry.name }))
     } catch {
         return {
@@ -103,9 +108,7 @@ export async function extractUploadedZipArchive(
 
     let repoRootDir: string
 
-    if (directories.length === 0) {
-        repoRootDir = extractDir
-    } else {
+    if (files.length === 0 && directories.length === 1) {
         const rootDirectory = directories[0]
 
         if (!rootDirectory) {
@@ -117,6 +120,8 @@ export async function extractUploadedZipArchive(
         }
 
         repoRootDir = join(extractDir, rootDirectory.name)
+    } else {
+        repoRootDir = extractDir
     }
 
     return {

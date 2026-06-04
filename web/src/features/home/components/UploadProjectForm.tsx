@@ -9,6 +9,7 @@ interface UploadProjectFormProps {
     isImporting?: boolean
     importMessage?: string | null
     importError?: string | null
+    onResetImportState?: () => void
 }
 
 export const UploadProjectForm: React.FC<UploadProjectFormProps> = ({
@@ -17,16 +18,30 @@ export const UploadProjectForm: React.FC<UploadProjectFormProps> = ({
     isImporting = false,
     importMessage,
     importError,
+    onResetImportState,
 }) => {
     const fileInputRef = useRef<HTMLInputElement>(null)
     const [isDragOver, setIsDragOver] = useState(false)
     const [selectedFiles, setSelectedFiles] = useState<File[]>([])
+    const [validationError, setValidationError] = useState<string | null>(null)
+
+    const handleFileSelect = (file: File) => {
+        setValidationError(null)
+        onResetImportState?.()
+
+        if (file.size > 50 * 1024 * 1024) {
+            setValidationError('ZIP file is too large. Maximum allowed size is 50 MB.')
+            setSelectedFiles([file])
+        } else {
+            setSelectedFiles([file])
+        }
+    }
 
     const handleDrop = (e: React.DragEvent) => {
         e.preventDefault()
         setIsDragOver(false)
         if (e.dataTransfer.files.length > 0) {
-            setSelectedFiles([e.dataTransfer.files[0]!])
+            handleFileSelect(e.dataTransfer.files[0]!)
         }
     }
 
@@ -41,7 +56,7 @@ export const UploadProjectForm: React.FC<UploadProjectFormProps> = ({
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files.length > 0) {
-            setSelectedFiles([e.target.files[0]!])
+            handleFileSelect(e.target.files[0]!)
         }
     }
 
@@ -49,12 +64,18 @@ export const UploadProjectForm: React.FC<UploadProjectFormProps> = ({
         const file = selectedFiles[0]
 
         if (file) {
+            if (file.size > 50 * 1024 * 1024) {
+                setValidationError('ZIP file is too large. Maximum allowed size is 50 MB.')
+                return
+            }
             onUpload?.(file)
         }
     }
 
-    const removeFile = (index: number) => {
-        setSelectedFiles((prev) => prev.filter((_, i) => i !== index))
+    const removeFile = () => {
+        setSelectedFiles([])
+        setValidationError(null)
+        onResetImportState?.()
     }
 
     const formatFileSize = (bytes: number) => {
@@ -62,6 +83,17 @@ export const UploadProjectForm: React.FC<UploadProjectFormProps> = ({
         if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
         return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
     }
+
+    // Auto-reset error messages after 5 seconds
+    React.useEffect(() => {
+        if (importError || validationError) {
+            const timer = setTimeout(() => {
+                setValidationError(null)
+                onResetImportState?.()
+            }, 5000)
+            return () => clearTimeout(timer)
+        }
+    }, [importError, validationError, onResetImportState])
 
     return (
         <motion.div
@@ -150,7 +182,7 @@ export const UploadProjectForm: React.FC<UploadProjectFormProps> = ({
                             </div>
                             <div className="flex items-center gap-3 mt-2">
                                 <button
-                                    onClick={() => setSelectedFiles([])}
+                                    onClick={removeFile}
                                     disabled={isImporting}
                                     className="h-[36px] px-4 rounded-[10px] bg-[#252422] hover:bg-[#2E2D2C] text-[#A1A1AA] text-[13px] font-medium transition-colors"
                                 >
@@ -158,15 +190,17 @@ export const UploadProjectForm: React.FC<UploadProjectFormProps> = ({
                                 </button>
                                 <button
                                     onClick={handleSubmit}
-                                    disabled={isImporting}
-                                    className="h-[36px] px-6 rounded-[10px] bg-[#D6D5D4] hover:bg-[#EAE9E8] text-[#111] text-[13px] font-semibold transition-all"
+                                    disabled={isImporting || !!validationError}
+                                    className="h-[36px] px-6 rounded-[10px] bg-[#D6D5D4] hover:bg-[#EAE9E8] text-[#111] text-[13px] font-semibold disabled:opacity-40 disabled:pointer-events-none transition-all"
                                 >
                                     {isImporting ? 'Importing' : 'Upload Project'}
                                 </button>
                             </div>
-                            {(importError || importMessage) && (
-                                <p className="text-[12px] text-[#656565] mt-1 max-w-[420px] truncate">
-                                    {importError || importMessage}
+                            {(validationError || importError || importMessage) && (
+                                <p
+                                    className={`text-[12px] mt-1 max-w-[420px] truncate ${validationError || importError ? 'text-red-400 font-medium' : 'text-[#656565]'}`}
+                                >
+                                    {validationError || importError || importMessage}
                                 </p>
                             )}
                         </div>

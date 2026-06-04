@@ -22,6 +22,7 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
     onImportGithub,
     onImportZip,
     importState,
+    onResetImportState,
 }) => {
     const canvasRef = useRef<CanvasRef>(null)
     const [prompt, setPrompt] = React.useState('')
@@ -48,6 +49,7 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
             return
         }
 
+        onResetImportState?.()
         setActiveImportForm((prev) => (prev === form ? null : form))
     }
 
@@ -112,7 +114,10 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
                             {activeImportForm === 'github' && (
                                 <GitHubRepoForm
                                     key="github-form"
-                                    onClose={() => setActiveImportForm(null)}
+                                    onClose={() => {
+                                        setActiveImportForm(null)
+                                        onResetImportState?.()
+                                    }}
                                     onSubmitRepo={onImportGithub}
                                     isImporting={importState?.status === 'loading'}
                                     importMessage={importState?.message}
@@ -121,12 +126,16 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
                                             ? importState.message
                                             : null
                                     }
+                                    onResetImportState={onResetImportState}
                                 />
                             )}
                             {activeImportForm === 'upload' && (
                                 <UploadProjectForm
                                     key="upload-form"
-                                    onClose={() => setActiveImportForm(null)}
+                                    onClose={() => {
+                                        setActiveImportForm(null)
+                                        onResetImportState?.()
+                                    }}
                                     onUpload={(file) => onImportZip?.(file)}
                                     isImporting={importState?.status === 'loading'}
                                     importMessage={importState?.message}
@@ -135,6 +144,7 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
                                             ? importState.message
                                             : null
                                     }
+                                    onResetImportState={onResetImportState}
                                 />
                             )}
                         </AnimatePresence>

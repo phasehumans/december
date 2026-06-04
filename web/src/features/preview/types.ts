@@ -132,6 +132,7 @@ export interface PreviewAreaProps {
     previewError?: PreviewSessionError | null
     previewSessionError?: string | null
     projectType?: 'generated' | 'github' | 'zip'
+    projectId?: string | null
 }
 
 export interface PreviewWindowProps {

@@ -54,6 +54,7 @@ const App: React.FC = () => {
         handleSelectVersion,
         handleDownloadProject,
         handleOpenFile,
+        resetImportState,
     } = useAppController()
 
     return (
@@ -126,6 +127,7 @@ const App: React.FC = () => {
                     selectedModel={selectedModel}
                     setSelectedModel={setSelectedModel}
                     onOpenFile={handleOpenFile}
+                    onResetImportState={resetImportState}
                 />
             </div>
         </div>

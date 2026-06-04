@@ -784,6 +784,10 @@ export const useAppController = () => {
                     const queuedImport = await importsAPI.importGithub(repoUrl)
 
                     if (queuedImport.projectId) {
+                        sessionStorage.setItem(
+                            `december_actively_importing_${queuedImport.projectId}`,
+                            'true'
+                        )
                         void queryClient.invalidateQueries({ queryKey: ['projects'] })
                         await openProject({
                             projectId: queuedImport.projectId,
@@ -866,6 +870,10 @@ export const useAppController = () => {
                     const queuedImport = await importsAPI.importZip(file)
 
                     if (queuedImport.projectId) {
+                        sessionStorage.setItem(
+                            `december_actively_importing_${queuedImport.projectId}`,
+                            'true'
+                        )
                         void queryClient.invalidateQueries({ queryKey: ['projects'] })
                         await openProject({
                             projectId: queuedImport.projectId,
@@ -937,6 +945,10 @@ export const useAppController = () => {
         resetGeneratedOutput()
         setIsGenerating(false)
     }, [abortGenerationRequest, resetGeneratedOutput, resetGenerationRefs])
+
+    const handleResetImportState = React.useCallback(() => {
+        setImportState({ status: 'idle', message: null })
+    }, [])
 
     React.useEffect(() => {
         if (!isAuthenticated || !activeProjectId || !activeProjectVersionId) {
@@ -1649,5 +1661,6 @@ export const useAppController = () => {
         handleSelectVersion,
         handleDownloadProject,
         handleOpenFile: setActiveGeneratedFilePath,
+        resetImportState: handleResetImportState,
     }
 }

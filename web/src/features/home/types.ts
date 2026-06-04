@@ -21,6 +21,7 @@ export interface HomeHeroProps {
         status: 'idle' | 'loading' | 'failed' | 'ready'
         message?: string | null
     }
+    onResetImportState?: () => void
 }
 
 export interface PromptInputProps {
