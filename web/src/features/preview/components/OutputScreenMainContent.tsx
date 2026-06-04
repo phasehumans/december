@@ -118,6 +118,7 @@ export const OutputScreenMainContent: React.FC<OutputScreenMainContentProps> = (
                     previewError={previewSession?.lastError ?? null}
                     previewSessionError={previewSessionError}
                     projectType={projectType}
+                    projectId={projectId}
                 />
             )}
 

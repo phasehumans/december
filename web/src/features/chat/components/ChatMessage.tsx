@@ -156,6 +156,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
     modelName,
     onTriggerSimulation,
     onOpenFile,
+    projectId,
 }) => {
     const [feedback, setFeedback] = React.useState<'like' | 'dislike' | null>(null)
     const [isThoughtsOpen, setIsThoughtsOpen] = React.useState<boolean>(true)
@@ -166,7 +167,10 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
 
     const isFirstImportView = projectType !== 'generated' && index === 1
     const cacheKey = `december_msg_streamed_${id}`
-    const shouldForceStream = isFirstImportView && !sessionStorage.getItem(cacheKey)
+    const justImported = projectId
+        ? sessionStorage.getItem(`december_actively_importing_${projectId}`) === 'true'
+        : false
+    const shouldForceStream = isFirstImportView && justImported && !sessionStorage.getItem(cacheKey)
 
     React.useEffect(() => {
         if (shouldForceStream) return
@@ -233,6 +237,13 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
         let isCancelled = false
 
         const runStream = async () => {
+            if (projectId) {
+                sessionStorage.setItem(`december_import_stream_running_${projectId}`, 'true')
+                window.dispatchEvent(
+                    new CustomEvent('december-import-stream-start', { detail: { projectId } })
+                )
+            }
+
             // 1. Stream thoughts with accordion open
             if (thinkingText) {
                 setIsThoughtsOpen(true)
@@ -279,6 +290,12 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
 
             if (!isCancelled) {
                 sessionStorage.setItem(cacheKey, 'true')
+                if (projectId) {
+                    sessionStorage.removeItem(`december_import_stream_running_${projectId}`)
+                    window.dispatchEvent(
+                        new CustomEvent('december-import-stream-end', { detail: { projectId } })
+                    )
+                }
             }
         }
 
@@ -286,8 +303,14 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
 
         return () => {
             isCancelled = true
+            if (projectId) {
+                sessionStorage.removeItem(`december_import_stream_running_${projectId}`)
+                window.dispatchEvent(
+                    new CustomEvent('december-import-stream-end', { detail: { projectId } })
+                )
+            }
         }
-    }, [thinkingText, planText, summaryText, shouldForceStream, cacheKey, projectType])
+    }, [thinkingText, planText, summaryText, shouldForceStream, cacheKey, projectType, projectId])
 
     return (
         <div className="flex flex-col gap-2 animate-in fade-in duration-500 font-sans w-full">

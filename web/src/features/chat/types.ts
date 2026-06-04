@@ -34,6 +34,7 @@ export interface ChatMessageProps {
     creditsUsed?: number
     onTriggerSimulation?: (type: 'generated' | 'github' | 'zip') => void
     onOpenFile?: (path: string) => void
+    projectId?: string | null
 }
 
 export interface ChatPromptInputProps {
@@ -80,4 +81,5 @@ export interface ChatSidebarProps {
     setSelectedModel?: (val: string) => void
     isAuthenticated?: boolean
     onOpenAuth?: () => void
+    projectId?: string | null
 }

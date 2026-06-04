@@ -68,6 +68,7 @@ interface AppContentViewProps {
     selectedModel?: string
     setSelectedModel?: (val: string) => void
     onOpenFile?: (path: string) => void
+    onResetImportState?: () => void
 }
 
 const pageTransition = {
@@ -141,6 +142,7 @@ export const AppContentView: React.FC<AppContentViewProps> = ({
     selectedModel,
     setSelectedModel,
     onOpenFile,
+    onResetImportState,
 }) => {
     return (
         <AnimatePresence mode="wait" initial={false}>
@@ -191,6 +193,7 @@ export const AppContentView: React.FC<AppContentViewProps> = ({
                             onImportGithub={onImportGithub}
                             onImportZip={onImportZip}
                             importState={importState}
+                            onResetImportState={onResetImportState}
                         />
                     </AnimatedPage>
                 ) : (

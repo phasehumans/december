@@ -614,6 +614,7 @@ You can now ask me to explain specific files, add new features, or debug any iss
                             projectType={activeProjectType}
                             onTriggerSimulation={handleTriggerSimulation}
                             onOpenFile={handleOpenFileWrapper}
+                            projectId={projectId}
                         />
                     </div>
 
@@ -638,6 +639,7 @@ You can now ask me to explain specific files, add new features, or debug any iss
                             previewError={activePreviewSession?.lastError ?? null}
                             previewSessionError={activePreviewSessionError}
                             projectType={activeProjectType}
+                            projectId={projectId}
                         />
                     </div>
                 </div>
@@ -698,6 +700,7 @@ You can now ask me to explain specific files, add new features, or debug any iss
                     projectType={activeProjectType}
                     onTriggerSimulation={handleTriggerSimulation}
                     onOpenFile={handleOpenFileWrapper}
+                    projectId={projectId}
                 />
 
                 <OutputScreenMainContent

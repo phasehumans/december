@@ -11,6 +11,7 @@ interface GitHubRepoFormProps {
     isImporting?: boolean
     importMessage?: string | null
     importError?: string | null
+    onResetImportState?: () => void
 }
 
 export const GitHubRepoForm: React.FC<GitHubRepoFormProps> = ({
@@ -19,9 +20,11 @@ export const GitHubRepoForm: React.FC<GitHubRepoFormProps> = ({
     isImporting = false,
     importMessage,
     importError,
+    onResetImportState,
 }) => {
     const [selectedRepo, setSelectedRepo] = useState('')
     const [connectError, setConnectError] = useState<string | null>(null)
+    const [validationError, setValidationError] = useState<string | null>(null)
 
     // Fetch quickInfo to check GitHub connection status
     const { data: quickInfo, isLoading: isQuickInfoLoading } = useQuery({
@@ -52,11 +55,65 @@ export const GitHubRepoForm: React.FC<GitHubRepoFormProps> = ({
         }
     }
 
-    const handleSubmit = () => {
-        if (selectedRepo.trim()) {
-            onSubmitRepo?.(selectedRepo.trim())
+    const validateGitHubUrl = (url: string): string | null => {
+        const raw = url.trim()
+        if (!raw) return 'Repository URL is required.'
+
+        const sshMatch = raw.match(/^git@github\.com:([^/]+)\/([^/]+?)(?:\.git)?$/i)
+        if (sshMatch) return null
+
+        let candidate = raw
+        if (/^www\.github\.com\//i.test(candidate)) {
+            candidate = `https://${candidate}`
+        } else if (/^github\.com\//i.test(candidate)) {
+            candidate = `https://${candidate}`
         }
+
+        let parsed: URL
+        try {
+            parsed = new URL(candidate)
+        } catch {
+            return 'Invalid URL format. Please enter a valid URL.'
+        }
+
+        const host = parsed.hostname.toLowerCase()
+        if (host !== 'github.com' && host !== 'www.github.com') {
+            return 'URL must be a github.com repository URL.'
+        }
+
+        const parts = parsed.pathname
+            .replace(/^\/+|\/+$/g, '')
+            .split('/')
+            .filter(Boolean)
+
+        if (parts.length < 2) {
+            return 'URL must include both the owner and repository name.'
+        }
+
+        return null
     }
+
+    const handleSubmit = () => {
+        const url = selectedRepo.trim()
+        const error = validateGitHubUrl(url)
+        if (error) {
+            setValidationError(error)
+            return
+        }
+        setValidationError(null)
+        onSubmitRepo?.(url)
+    }
+
+    // Auto-reset error messages back to the default message after 5 seconds
+    React.useEffect(() => {
+        if (importError || validationError) {
+            const timer = setTimeout(() => {
+                setValidationError(null)
+                onResetImportState?.()
+            }, 5000)
+            return () => clearTimeout(timer)
+        }
+    }, [importError, validationError, onResetImportState])
 
     return (
         <motion.div
@@ -122,7 +179,11 @@ export const GitHubRepoForm: React.FC<GitHubRepoFormProps> = ({
                                 <input
                                     type="text"
                                     value={selectedRepo}
-                                    onChange={(e) => setSelectedRepo(e.target.value)}
+                                    onChange={(e) => {
+                                        setSelectedRepo(e.target.value)
+                                        setValidationError(null)
+                                        onResetImportState?.()
+                                    }}
                                     placeholder="https://github.com/user/repo"
                                     disabled={isImporting}
                                     className="w-full bg-[#141312] border border-[#2E2D2C] focus:border-[#454443] rounded-[10px] h-[40px] pl-9 pr-3.5 text-[13px] text-[#D6D5D4] placeholder-[#4A4A4A] outline-none transition-colors"
@@ -136,11 +197,23 @@ export const GitHubRepoForm: React.FC<GitHubRepoFormProps> = ({
                                 {isImporting ? 'Importing' : 'Import'}
                             </button>
                         </div>
-                        <p className="text-[12px] text-[#656565] mt-3 ml-1">
-                            {importError ||
-                                importMessage ||
-                                'Enter the URL of your repository or any public GitHub repository.'}
-                        </p>
+                        <div className="text-[12px] mt-3 ml-1 flex flex-col gap-1">
+                            <p
+                                className={
+                                    validationError || importError
+                                        ? 'text-red-400 font-medium'
+                                        : 'text-[#656565]'
+                                }
+                            >
+                                {validationError ||
+                                    importError ||
+                                    importMessage ||
+                                    'Enter the URL of your repository or any public GitHub repository.'}
+                            </p>
+                            <p className="text-[11px] text-[#4A4A4A] italic">
+                                Note: We currently only support frontend React projects.
+                            </p>
+                        </div>
                     </div>
                 )}
             </div>
