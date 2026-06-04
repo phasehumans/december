@@ -41,6 +41,7 @@ struct DockerSandboxState {
     container_name: Option<String>,
     host_port: Option<u16>,
     workspace_host_path: Option<PathBuf>,
+    port_mappings: HashMap<u16, u16>,
 }
 
 impl DockerSandbox {
@@ -206,6 +207,108 @@ impl DockerSandbox {
             )),
         }
     }
+
+    async fn check_port_health(&self, host_port: u16) -> Result<HealthCheckResult, RuntimeServiceError> {
+        let target_url = format!("http://127.0.0.1:{host_port}");
+        info!(preview_id = %self.preview_id, url = %target_url, "running sandbox port health check");
+        let response = match self.http_client.get(format!("{target_url}/")).send().await {
+            Ok(response) => response,
+            Err(error) => {
+                return Ok(HealthCheckResult {
+                    healthy: false,
+                    detail: Some(error.to_string()),
+                    body_excerpt: None,
+                });
+            }
+        };
+
+        let status = response.status();
+        let body = response.text().await.unwrap_or_default();
+        let excerpt = trim_output(&body);
+        let compile_error = contains_compile_error(&body);
+
+        Ok(HealthCheckResult {
+            healthy: status.is_success() && !compile_error,
+            detail: if compile_error {
+                Some("detected Vite compile/runtime error page".to_string())
+            } else if !status.is_success() {
+                Some(format!("preview health check returned {status}"))
+            } else {
+                None
+            },
+            body_excerpt: if excerpt.is_empty() {
+                None
+            } else {
+                Some(excerpt)
+            },
+        })
+    }
+
+    async fn determine_dev_command(&self, workspace_host_path: Option<&Path>) -> String {
+        let container_port = self.config.container_port;
+        let default_cmd = format!(
+            "env PORT={port} HOST=0.0.0.0 HOSTNAME=0.0.0.0 bun run dev --host 0.0.0.0 --port {port}",
+            port = container_port
+        );
+
+        let workspace_path = match workspace_host_path {
+            Some(path) => path,
+            None => return default_cmd,
+        };
+
+        let package_json_path = workspace_path.join("package.json");
+        if !package_json_path.exists() {
+            return default_cmd;
+        }
+
+        let content = match std::fs::read_to_string(&package_json_path) {
+            Ok(c) => c,
+            Err(_) => return default_cmd,
+        };
+
+        let json: serde_json::Value = match serde_json::from_str(&content) {
+            Ok(j) => j,
+            Err(_) => return default_cmd,
+        };
+
+        let has_dep = |name: &str| -> bool {
+            if let Some(deps) = json.get("dependencies").and_then(|d| d.as_object()) {
+                if deps.contains_key(name) {
+                    return true;
+                }
+            }
+            if let Some(dev_deps) = json.get("devDependencies").and_then(|d| d.as_object()) {
+                if dev_deps.contains_key(name) {
+                    return true;
+                }
+            }
+            false
+        };
+
+        let dev_script = json
+            .get("scripts")
+            .and_then(|s| s.get("dev"))
+            .and_then(|d| d.as_str())
+            .unwrap_or("");
+
+        if has_dep("vite") || dev_script.contains("vite") {
+            format!(
+                "env PORT={port} HOST=0.0.0.0 bun run dev -- --host 0.0.0.0 --port {port}",
+                port = container_port
+            )
+        } else if has_dep("next") || dev_script.contains("next") {
+            format!("env PORT={port} HOSTNAME=0.0.0.0 bun run dev", port = container_port)
+        } else if has_dep("react-scripts") || dev_script.contains("react-scripts") {
+            format!("env PORT={port} HOST=0.0.0.0 bun run dev", port = container_port)
+        } else if has_dep("astro") || dev_script.contains("astro") {
+            format!(
+                "env PORT={port} HOST=0.0.0.0 bun run dev -- --host 0.0.0.0 --port {port}",
+                port = container_port
+            )
+        } else {
+            default_cmd
+        }
+    }
 }
 #[async_trait]
 impl Sandbox for DockerSandbox {
@@ -215,9 +318,50 @@ impl Sandbox for DockerSandbox {
             return Ok(());
         }
 
-        let host_port = reserve_local_port()?;
+        let candidate_ports = vec![
+            self.config.container_port, // 4173
+            4500,
+            5173,
+            3000,
+            3001,
+            5000,
+            8080,
+            8000,
+        ];
+
+        let mut port_mappings = HashMap::new();
+        let mut port_bindings = HashMap::new();
+        let mut exposed_ports = HashMap::new();
+
+        for &c_port in &candidate_ports {
+            if port_mappings.contains_key(&c_port) {
+                continue;
+            }
+            let h_port = reserve_local_port()?;
+            port_mappings.insert(c_port, h_port);
+
+            port_bindings.insert(
+                format!("{}/tcp", c_port),
+                Some(vec![PortBinding {
+                    host_ip: Some("0.0.0.0".to_string()),
+                    host_port: Some(h_port.to_string()),
+                }]),
+            );
+
+            exposed_ports.insert(
+                format!("{}/tcp", c_port),
+                HashMap::new(),
+            );
+        }
+
+        let default_host_port = *port_mappings.get(&self.config.container_port).unwrap_or(&0);
         let container_name = self.container_name();
-        info!(preview_id = %self.preview_id, name = %container_name, port = host_port, "ensuring preview sandbox is started");
+        info!(
+            preview_id = %self.preview_id,
+            name = %container_name,
+            port_mappings = ?port_mappings,
+            "ensuring preview sandbox is started with port mappings"
+        );
         self.ensure_image_available().await?;
         let workspace = workspace_host_path.canonicalize().map_err(|error| {
             RuntimeServiceError::infra_runtime(
@@ -226,21 +370,6 @@ impl Sandbox for DockerSandbox {
             )
         })?;
         info!(preview_id = %self.preview_id, workspace = %workspace.display(), "using canonicalized workspace path");
-
-        let mut port_bindings = HashMap::new();
-        port_bindings.insert(
-            format!("{}/tcp", self.config.container_port),
-            Some(vec![PortBinding {
-                host_ip: Some("127.0.0.1".to_string()),
-                host_port: Some(host_port.to_string()),
-            }]),
-        );
-
-        let mut exposed_ports = HashMap::new();
-        exposed_ports.insert(
-            format!("{}/tcp", self.config.container_port),
-            HashMap::new(),
-        );
 
         if self
             .docker
@@ -276,16 +405,24 @@ impl Sandbox for DockerSandbox {
                     tty: Some(true),
                     working_dir: Some(self.config.workdir_in_container.clone()),
                     host_config: Some(HostConfig {
-                        binds: Some(vec![format!(
-                            "{}:{}",
-                            workspace.display(),
-                            self.config.workdir_in_container
-                        )]),
+                        binds: Some(vec![
+                            format!(
+                                "{}:{}",
+                                workspace.display(),
+                                self.config.workdir_in_container
+                            ),
+                            "december-bun-cache:/root/.bun/install/cache".to_string(),
+                        ]),
                         port_bindings: Some(port_bindings),
                         auto_remove: Some(true),
                         ..Default::default()
                     }),
                     exposed_ports: Some(exposed_ports),
+                    volumes: Some({
+                        let mut vols = HashMap::new();
+                        vols.insert("/workspace/node_modules".to_string(), HashMap::new());
+                        vols
+                    }),
                     cmd: Some(vec![
                         "sh".to_string(),
                         "-lc".to_string(),
@@ -316,7 +453,8 @@ impl Sandbox for DockerSandbox {
 
         info!(preview_id = %self.preview_id, name = %container_name, "preview container started successfully");
         state.container_name = Some(container_name);
-        state.host_port = Some(host_port);
+        state.host_port = Some(default_host_port);
+        state.port_mappings = port_mappings;
         state.workspace_host_path = Some(workspace);
         Ok(())
     }
@@ -333,7 +471,7 @@ impl Sandbox for DockerSandbox {
         let (exit_code, output) = self
             .run_shell(
                 &container_name,
-                "cd /workspace && bun install --no-progress",
+                "cd /workspace && bun install --no-progress --backend=copyfile",
             )
             .await?;
 
@@ -350,23 +488,33 @@ impl Sandbox for DockerSandbox {
     }
 
     async fn restart_dev_server(&self) -> Result<(), RuntimeServiceError> {
-        let container_name = {
+        let (container_name, workspace_host_path) = {
             let state = self.state.lock().await;
-            state.container_name.clone().ok_or_else(|| {
-                RuntimeServiceError::infra_runtime("preview container is not started", None)
-            })?
+            (
+                state.container_name.clone().ok_or_else(|| {
+                    RuntimeServiceError::infra_runtime("preview container is not started", None)
+                })?,
+                state.workspace_host_path.clone(),
+            )
         };
 
         info!(preview_id = %self.preview_id, name = %container_name, "stopping existing dev server inside container...");
         self.stop_dev_server_process(&container_name).await?;
 
-        info!(preview_id = %self.preview_id, name = %container_name, "starting Vitest/Vite dev server on port 4173 inside container...");
-        let (exit_code, output) = self
-            .run_shell(
-                &container_name,
-                "mkdir -p /workspace/.december && cd /workspace && nohup bun run dev --host 0.0.0.0 --port 4173 > /workspace/.december/dev-server.log 2>&1 & echo $! > /workspace/.december/dev-server.pid",
-            )
-            .await?;
+        let dev_cmd = self.determine_dev_command(workspace_host_path.as_deref()).await;
+        info!(
+            preview_id = %self.preview_id,
+            name = %container_name,
+            cmd = %dev_cmd,
+            "starting dev server inside container..."
+        );
+
+        let shell_script = format!(
+            "mkdir -p /workspace/.december && cd /workspace && nohup {} > /workspace/.december/dev-server.log 2>&1 & echo $! > /workspace/.december/dev-server.pid",
+            dev_cmd
+        );
+
+        let (exit_code, output) = self.run_shell(&container_name, &shell_script).await?;
 
         if exit_code != 0 {
             error!(preview_id = %self.preview_id, name = %container_name, exit_code, "failed to start preview dev server inside container");
@@ -402,42 +550,48 @@ impl Sandbox for DockerSandbox {
     }
 
     async fn health_check(&self) -> Result<HealthCheckResult, RuntimeServiceError> {
-        let target_url = self.preview_target_url().await.ok_or_else(|| {
-            RuntimeServiceError::infra_runtime("preview target URL is unavailable", None)
-        })?;
-
-        info!(preview_id = %self.preview_id, url = %target_url, "running sandbox health check");
-        let response = match self.http_client.get(format!("{target_url}/")).send().await {
-            Ok(response) => response,
-            Err(error) => {
-                return Ok(HealthCheckResult {
-                    healthy: false,
-                    detail: Some(error.to_string()),
-                    body_excerpt: None,
-                });
-            }
+        let (current_host_port, port_mappings) = {
+            let state = self.state.lock().await;
+            (state.host_port, state.port_mappings.clone())
         };
 
-        let status = response.status();
-        let body = response.text().await.unwrap_or_default();
-        let excerpt = trim_output(&body);
-        let compile_error = contains_compile_error(&body);
+        if let Some(host_port) = current_host_port {
+            let res = self.check_port_health(host_port).await?;
+            if res.healthy {
+                return Ok(res);
+            }
+        }
 
-        Ok(HealthCheckResult {
-            healthy: status.is_success() && !compile_error,
-            detail: if compile_error {
-                Some("detected Vite compile/runtime error page".to_string())
-            } else if !status.is_success() {
-                Some(format!("preview health check returned {status}"))
-            } else {
-                None
-            },
-            body_excerpt: if excerpt.is_empty() {
-                None
-            } else {
-                Some(excerpt)
-            },
-        })
+        // Try other ports
+        let mut last_res = None;
+        for (&container_port, &host_port) in &port_mappings {
+            if Some(host_port) == current_host_port {
+                continue;
+            }
+            let res = self.check_port_health(host_port).await?;
+            if res.healthy {
+                info!(
+                    preview_id = %self.preview_id,
+                    port = container_port,
+                    host_port = host_port,
+                    "found healthy container dev server port"
+                );
+                let mut state = self.state.lock().await;
+                state.host_port = Some(host_port);
+                return Ok(res);
+            }
+            last_res = Some(res);
+        }
+
+        if let Some(res) = last_res {
+            Ok(res)
+        } else {
+            Ok(HealthCheckResult {
+                healthy: false,
+                detail: Some("no mapped ports were checked or found healthy".to_string()),
+                body_excerpt: None,
+            })
+        }
     }
 
     async fn preview_target_url(&self) -> Option<String> {

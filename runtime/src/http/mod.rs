@@ -123,13 +123,19 @@ async fn display_preview(
 ) -> Result<impl IntoResponse, RuntimeServiceError> {
     let snapshot = state.registry.status(&id).await?;
 
-    if let Some(target_url) = snapshot.preview_target_url {
-        return Ok(Redirect::temporary(&target_url).into_response());
+    if snapshot.state == crate::app::state::PreviewLifecycleState::Healthy {
+        if let Some(target_url) = snapshot.preview_target_url {
+            return Ok(Redirect::temporary(&target_url).into_response());
+        }
     }
 
-    warn!(preview_id = %id, "preview display requested before target URL was ready");
+    warn!(preview_id = %id, state = ?snapshot.state, "preview display requested before target URL was ready");
     Ok(Html(
-        r#"<!doctype html><html><body style="font-family: sans-serif; padding: 24px; background: #111; color: #eee;"><h1>Preview is starting</h1><p>The preview session exists but the dev server is not ready yet.</p></body></html>"#,
+        r#"<!doctype html><html><body style="font-family: sans-serif; padding: 24px; background: #111; color: #eee;">
+            <h1>Preview is starting</h1>
+            <p>The preview session exists but the dev server is not ready yet. Dependencies may be installing...</p>
+            <script>setTimeout(() => window.location.reload(), 3000);</script>
+        </body></html>"#,
     )
     .into_response())
 }
