@@ -471,7 +471,7 @@ impl Sandbox for DockerSandbox {
         let (exit_code, output) = self
             .run_shell(
                 &container_name,
-                "cd /workspace && bun install --no-progress --backend=copyfile",
+                "cd /workspace && bun install --no-progress --backend=copyfile --prefer-offline",
             )
             .await?;
 
