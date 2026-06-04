@@ -181,8 +181,9 @@ export const OutputScreen: React.FC<OutputScreenProps> = ({
             setSimulatedExecutionTime((Date.now() - startTime) / 1000)
         }, 100)
 
-        // Phased Streaming Contents
-        const thoughtsText = `The user has answered the questions. Let me summarize their requirements:
+        const thoughtsText =
+            type === 'generated'
+                ? `The user has answered the questions. Let me summarize their requirements:
 
 Database: Neon (Serverless PostgreSQL)
 Payments: Yes, Stripe integration
@@ -192,16 +193,47 @@ Core Features:
 • Interactive seat selection with layout
 
 Now I should create a comprehensive plan for building this movie ticket booking website. I'll need to set up Neon database integration, design the schema for movies, theaters, showtimes, bookings, and seats, and integrate Stripe.`
+                : type === 'github'
+                  ? `I am initiating a comprehensive review of the imported GitHub repository to map its workspace architecture and build system.
 
-        const planText = `### Plan of Action
+First, I will scan the root directory for standard configuration entrypoints like \`package.json\`, \`tsconfig.json\`, \`vite.config.ts\`, or \`next.config.js\` to identify the runtime, build environment, and core framework dependencies. I also need to verify if this is a monorepo setup (e.g., using pnpm-workspace, Lerna, or Bun workspaces) to correctly set up build scopes.
+
+Next, I will inspect the source folder layout (\`src\`, \`app\`, \`pages\`, or \`components\`) to trace the component architecture, entry routers, and styles (e.g., Tailwind CSS, styled-components, or vanilla CSS modules). I will map how the state is managed and check for API patterns (Axios, Fetch, or tRPC client configurations).
+
+Finally, I will analyze the environment file placeholders, database prisma schemas, or container setups if present, to ensure local execution alignment. This detailed codebase blueprint will allow me to precisely execute any future edit requests or refactoring goals.`
+                  : `I am initiating a comprehensive review of the uploaded ZIP archive to map its workspace architecture and build system.
+
+First, I will extract and scan the package files in the archive to find standard configuration entrypoints like \`package.json\`, \`tsconfig.json\`, \`vite.config.ts\`, or \`next.config.js\` to identify the runtime, build environment, and core framework dependencies. I also need to check for nested workspaces to correctly set up build scopes.
+
+Next, I will inspect the source folder layout (\`src\`, \`app\`, \`pages\`, or \`components\`) to trace the component architecture, entry routers, and styles (e.g., Tailwind CSS, styled-components, or vanilla CSS modules). I will map how the state is managed and check for API patterns (Axios, Fetch, or tRPC client configurations).
+
+Finally, I will analyze the environment file placeholders, database prisma schemas, or container setups if present, to ensure local execution alignment. This detailed codebase blueprint will allow me to precisely execute any future edit requests or refactoring goals.`
+
+        const planText =
+            type === 'generated'
+                ? `### Plan of Action
 
 I will execute the following steps to implement this movie ticket booking system:
 - **Database Setup**: Set up Neon PostgreSQL with tables for \`User\`, \`Movie\`, \`Showtime\`, \`Booking\`, and \`Seat\`.
 - **Interactive Seating**: Create a high-fidelity \`<SeatSelection>\` component with seat category blocks (VIP, Standard).
 - **Payment Integration**: Implement Stripe checkout flows using Stripe elements sheets.
 - **Frontend Shell**: Craft movie listings with Outfit typography, filtering, and smooth Framer Motion page transitions.`
+                : `### Project Metadata
 
-        const summaryText = `I have successfully built the Movie Ticket Booking system with fully integrated Neon DB schema, Stripe payments, and interactive seating layout. Here is a summary of the changes:
+I have successfully analyzed the codebase and mapped the architecture:
+
+- **Project Type**: ${type === 'github' ? 'Imported GitHub Repository' : 'Uploaded ZIP Archive'}
+- **Detected Framework**: Automatically detected from source
+- **Workspace Architecture**: Single-page React/Vite Application
+- **Build Configuration**: Configured and validated
+- **Environment Status**: Container initialized, dependencies mapped
+- **Total Files Mapped**: 12
+
+You can now ask me to explain specific files, add new features, or debug any issues in the code.`
+
+        const summaryText =
+            type === 'generated'
+                ? `I have successfully built the Movie Ticket Booking system with fully integrated Neon DB schema, Stripe payments, and interactive seating layout. Here is a summary of the changes:
 
 1. **Database Schema & Server Config**:
    • Created \`prisma/schema.prisma\` with robust tables for \`User\`, \`Movie\`, \`Showtime\`, \`Booking\`, and \`Seat\`.
@@ -212,6 +244,7 @@ I will execute the following steps to implement this movie ticket booking system
    • Added complete payment element sheets, secure client keys, and booking webhook endpoints.
 4. **Frontend Architecture & Navigation**:
    • Tailored movie browsing with smooth animations, genre tags, responsive carousels, and Outfit typography.`
+                : ``
 
         const operationSteps =
             type === 'generated'
@@ -257,7 +290,7 @@ I will execute the following steps to implement this movie ticket booking system
                         m.id === 'sim-assistant' ? { ...m, content: currentThoughtsText } : m
                     )
                 })
-                tCharIdx += 5
+                tCharIdx += Math.floor(Math.random() * 2) + 1
             } else {
                 clearInterval(thoughtsTimer)
 
@@ -284,7 +317,7 @@ I will execute the following steps to implement this movie ticket booking system
                                         : m
                                 )
                             })
-                            pCharIdx += 5
+                            pCharIdx += Math.floor(Math.random() * 2) + 1
 
                             const progressRatio = pCharIdx / planText.length
                             if (progressRatio > 0.35 && progressRatio < 0.4) {
@@ -300,8 +333,33 @@ I will execute the following steps to implement this movie ticket booking system
                         } else {
                             clearInterval(planTimer)
 
-                            // Phase 3: Transition to Building Phase and output file changes list
                             setTimeout(() => {
+                                if (type !== 'generated') {
+                                    setSimulatedPhase('done')
+                                    setSimulatedMessages((prev) => {
+                                        if (!prev) return null
+                                        return prev.map((m) =>
+                                            m.id === 'sim-assistant'
+                                                ? { ...m, status: 'done', content: '' }
+                                                : m
+                                        )
+                                    })
+                                    setSimulatedIsGenerating(false)
+                                    clearInterval(timer)
+                                    setSimulatedSession((prev) =>
+                                        prev
+                                            ? {
+                                                  ...prev,
+                                                  state: 'Healthy',
+                                                  backendStatus: 'ready',
+                                                  previewUrl:
+                                                      'https://preview-sample.december.dev/movies',
+                                              }
+                                            : null
+                                    )
+                                    return
+                                }
+
                                 setSimulatedPhase('building')
                                 setSimulatedMessages((prev) => {
                                     if (!prev) return null
@@ -504,8 +562,8 @@ I will execute the following steps to implement this movie ticket booking system
         })
     }, [])
 
-    // Map properties to simulation when active
     const activeMessages = isSimulating && simulatedMessages ? simulatedMessages : messages
+
     const activeFiles = isSimulating && simulatedFiles ? simulatedFiles : generatedFiles
     const activePhase = isSimulating ? simulatedPhase : generationPhase
     const activeIsGenerating = isSimulating ? simulatedIsGenerating : isGenerating

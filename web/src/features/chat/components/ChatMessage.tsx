@@ -66,7 +66,7 @@ const renderRichContent = (text: string, isThoughts = false) => {
     }
 
     lines.forEach((line, index) => {
-        if (!line) {
+        if (!line || line.trim().toLowerCase() === '### overview') {
             flushList(index)
             return
         }
@@ -139,6 +139,7 @@ const renderRichContent = (text: string, isThoughts = false) => {
 }
 
 export const ChatMessage: React.FC<ChatMessageProps> = ({
+    id,
     role,
     content,
     thoughts,
@@ -159,10 +160,17 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
     const [feedback, setFeedback] = React.useState<'like' | 'dislike' | null>(null)
     const [isThoughtsOpen, setIsThoughtsOpen] = React.useState<boolean>(true)
     const [displayedPlan, setDisplayedPlan] = React.useState('')
+    const [displayedThoughts, setDisplayedThoughts] = React.useState('')
     const [displayedSummary, setDisplayedSummary] = React.useState('')
     const hasAutoCollapsedRef = React.useRef(false)
 
+    const isFirstImportView = projectType !== 'generated' && index === 1
+    const cacheKey = `december_msg_streamed_${id}`
+    const shouldForceStream = isFirstImportView && !sessionStorage.getItem(cacheKey)
+
     React.useEffect(() => {
+        if (shouldForceStream) return
+
         if (
             (status === 'building' || status === 'done' || Boolean(plan)) &&
             !hasAutoCollapsedRef.current
@@ -174,7 +182,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
             setIsThoughtsOpen(true)
             hasAutoCollapsedRef.current = false
         }
-    }, [status, plan])
+    }, [status, plan, shouldForceStream])
 
     if (role === 'user') {
         return (
@@ -201,55 +209,85 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
     const planText = plan || ''
 
     const isPlanFinished = !planText || displayedPlan.length >= planText.length
-    const showFiles = (isBuildingPhase || isCompletedPhase) && totalFiles > 0 && isPlanFinished
+    const showFiles =
+        projectType === 'generated' &&
+        (isBuildingPhase || isCompletedPhase) &&
+        totalFiles > 0 &&
+        isPlanFinished
 
-    const showSummary = Boolean(summary)
+    const showSummary = projectType === 'generated' && Boolean(summary)
     const summaryText = summary || ''
 
+    // For normal messages, we don't animate thoughts because SSE handles it.
+    // But for forceStream messages, we simulate the thoughts streaming too.
+    const activeThoughtsText = shouldForceStream ? displayedThoughts : thinkingText
+
     React.useEffect(() => {
-        if (status === 'done') {
+        if (!shouldForceStream) {
+            setDisplayedThoughts(thinkingText)
             setDisplayedPlan(planText)
             setDisplayedSummary(summaryText)
             return
         }
 
-        let planIntervalId: number
-        if (planText) {
-            planIntervalId = window.setInterval(() => {
-                setDisplayedPlan((prev) => {
-                    if (prev.length >= planText.length) {
-                        clearInterval(planIntervalId)
-                        return planText
-                    }
-                    const nextLen = Math.min(prev.length + 2, planText.length)
-                    return planText.slice(0, nextLen)
-                })
-            }, 15)
-        } else {
-            setDisplayedPlan('')
+        let isCancelled = false
+
+        const runStream = async () => {
+            // 1. Stream thoughts with accordion open
+            if (thinkingText) {
+                setIsThoughtsOpen(true)
+                let currentThoughts = ''
+                while (currentThoughts.length < thinkingText.length) {
+                    if (isCancelled) return
+                    const increment = Math.floor(Math.random() * 2) + 1
+                    currentThoughts = thinkingText.slice(0, currentThoughts.length + increment)
+                    setDisplayedThoughts(currentThoughts)
+                    await new Promise((resolve) => setTimeout(resolve, 30))
+                }
+            }
+
+            // Collapse the thoughts accordion
+            if (isCancelled) return
+            setIsThoughtsOpen(false)
+
+            // Brief pause to let the collapse transition run before starting metadata stream
+            await new Promise((resolve) => setTimeout(resolve, 350))
+
+            // 2. Stream plan
+            if (planText) {
+                let currentPlan = ''
+                while (currentPlan.length < planText.length) {
+                    if (isCancelled) return
+                    const increment = Math.floor(Math.random() * 2) + 1
+                    currentPlan = planText.slice(0, currentPlan.length + increment)
+                    setDisplayedPlan(currentPlan)
+                    await new Promise((resolve) => setTimeout(resolve, 20))
+                }
+            }
+
+            // 3. Stream summary (only if generated project)
+            if (projectType === 'generated' && summaryText) {
+                let currentSummary = ''
+                while (currentSummary.length < summaryText.length) {
+                    if (isCancelled) return
+                    const increment = Math.floor(Math.random() * 2) + 1
+                    currentSummary = summaryText.slice(0, currentSummary.length + increment)
+                    setDisplayedSummary(currentSummary)
+                    await new Promise((resolve) => setTimeout(resolve, 25))
+                }
+            }
+
+            if (!isCancelled) {
+                sessionStorage.setItem(cacheKey, 'true')
+            }
         }
 
-        let summaryIntervalId: number
-        if (summaryText) {
-            summaryIntervalId = window.setInterval(() => {
-                setDisplayedSummary((prev) => {
-                    if (prev.length >= summaryText.length) {
-                        clearInterval(summaryIntervalId)
-                        return summaryText
-                    }
-                    const nextLen = Math.min(prev.length + 3, summaryText.length)
-                    return summaryText.slice(0, nextLen)
-                })
-            }, 10)
-        } else {
-            setDisplayedSummary('')
-        }
+        runStream()
 
         return () => {
-            if (planIntervalId) clearInterval(planIntervalId)
-            if (summaryIntervalId) clearInterval(summaryIntervalId)
+            isCancelled = true
         }
-    }, [planText, summaryText, status])
+    }, [thinkingText, planText, summaryText, shouldForceStream, cacheKey, projectType])
 
     return (
         <div className="flex flex-col gap-2 animate-in fade-in duration-500 font-sans w-full">
@@ -280,7 +318,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                 </div>
 
                 {/* 1. Thinking phase collapsible block */}
-                {showThinking && thinkingText.trim().length > 0 && (
+                {showThinking && activeThoughtsText.trim().length > 0 && (
                     <div className="space-y-1.5">
                         <button
                             type="button"
@@ -311,7 +349,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                                     <div className="flex gap-3 pl-0.5">
                                         <div className="w-[1.5px] bg-[#2E2D2C] rounded shrink-0 self-stretch" />
                                         <div className="text-[12.5px] leading-relaxed text-[#8E8D8C] font-sans select-text py-0.5 space-y-2">
-                                            {renderRichContent(thinkingText, true)}
+                                            {renderRichContent(activeThoughtsText, true)}
                                         </div>
                                     </div>
                                 </motion.div>

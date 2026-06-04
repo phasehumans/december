@@ -39,6 +39,7 @@ const App: React.FC = () => {
         previewSession,
         previewSessionError,
         importState,
+        projectType,
         handleNewThread,
         handleHomeClick,
         handleNavigate,
@@ -121,7 +122,7 @@ const App: React.FC = () => {
                     onDownloadProject={handleDownloadProject}
                     onSignOut={handleSignOut}
                     onDocs={() => handleNavigate('docs')}
-                    projectType={'generated'}
+                    projectType={projectType}
                     selectedModel={selectedModel}
                     setSelectedModel={setSelectedModel}
                     onOpenFile={handleOpenFile}

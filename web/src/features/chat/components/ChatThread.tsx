@@ -117,6 +117,7 @@ export const ChatThread: React.FC<ChatSidebarProps> = ({
             {messages.map((msg, index) => (
                 <ChatMessage
                     key={msg.id}
+                    id={msg.id}
                     role={msg.role === 'system' ? 'assistant' : msg.role}
                     content={msg.content}
                     thoughts={msg.thoughts}

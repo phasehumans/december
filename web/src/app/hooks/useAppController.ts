@@ -81,14 +81,21 @@ const mapBackendMessageToUIMessage = (message: BackendProjectMessage): Message =
     let summary: string | undefined = undefined
 
     if (isAssistant && message.content) {
-        const parts = message.content.split('\n\n')
-        if (parts.length > 1) {
-            thoughts = parts[0]
-            plan = parts.slice(1).join('\n\n')
-            summary = '' // We don't use summary anymore
-        } else {
-            plan = message.content
+        if (message.content.includes('### Project Metadata')) {
+            const index = message.content.indexOf('### Project Metadata')
+            thoughts = message.content.slice(0, index).trim()
+            plan = message.content.slice(index).trim()
             summary = ''
+        } else {
+            const parts = message.content.split('\n\n')
+            if (parts.length > 1) {
+                thoughts = parts[0]
+                plan = parts.slice(1).join('\n\n')
+                summary = '' // We don't use summary anymore
+            } else {
+                plan = message.content
+                summary = ''
+            }
         }
     }
 
@@ -513,6 +520,38 @@ export const useAppController = () => {
                 }
             }
             setMessages(uiMessages)
+
+            let resolvedType: 'generated' | 'github' | 'zip' = 'generated'
+            const firstMsg = uiMessages[0]
+            if (firstMsg && firstMsg.role === 'user') {
+                const content = firstMsg.content
+                if (
+                    content.startsWith('Importing GitHub repository') ||
+                    content === 'Imported project files'
+                ) {
+                    resolvedType = 'github'
+                } else if (content.startsWith('Uploading ZIP archive')) {
+                    resolvedType = 'zip'
+                }
+            }
+
+            // Fallback to project prompt/description if messages are empty (e.g. during initial placeholder load)
+            if (resolvedType === 'generated') {
+                const projectPrompt = detail.project.prompt?.toLowerCase() || ''
+                if (
+                    projectPrompt.includes('imported from') ||
+                    projectPrompt.startsWith('importing github repository')
+                ) {
+                    resolvedType = 'github'
+                } else if (
+                    projectPrompt.startsWith('uploading zip archive') ||
+                    projectPrompt.includes('project.zip')
+                ) {
+                    resolvedType = 'zip'
+                }
+            }
+
+            setProjectType(resolvedType)
 
             setCanvasState(detail.canvasState ?? createEmptyCanvasDocument())
             lastSavedCanvasRef.current = JSON.stringify(
