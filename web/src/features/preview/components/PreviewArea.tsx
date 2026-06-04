@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react'
 
 import type { PreviewAreaProps } from '@/features/preview/types'
 
-import { DotmSquare15 } from '@/components/ui/dotm-square-15'
 import { PREVIEW_HTML } from '@/features/preview/constants/preview'
 import { cn } from '@/shared/lib/utils'
 
@@ -214,21 +213,21 @@ const injectPreviewBridge = (html: string) => {
 const RUNTIME_CHECKLISTS = {
     generated: [
         { state: 'WaitingForRunnableVersion', label: 'Initializing sandbox container' },
-        { state: 'Bootstrapping', label: 'Creating structure and files' },
-        { state: 'Installing', label: 'Installing project dependencies' },
-        { state: 'Starting', label: 'Starting live preview server' },
+        { state: 'Bootstrapping', label: 'Generating structure and writing files' },
+        { state: 'Installing', label: 'Resolving and installing dependencies' },
+        { state: 'Starting', label: 'Starting live development server' },
     ],
     github: [
-        { state: 'WaitingForRunnableVersion', label: 'Connecting to GitHub repository' },
-        { state: 'Bootstrapping', label: 'Downloading codebase sources' },
-        { state: 'Installing', label: 'Resolving and installing npm packages' },
-        { state: 'Starting', label: 'Launching Vite development runtime' },
+        { state: 'WaitingForRunnableVersion', label: 'Connecting to remote repository' },
+        { state: 'Bootstrapping', label: 'Cloning repository and mapping workspace structure' },
+        { state: 'Installing', label: 'Installing project dependencies' },
+        { state: 'Starting', label: 'Booting environment' },
     ],
     zip: [
-        { state: 'WaitingForRunnableVersion', label: 'Uploading and extracting ZIP archive' },
-        { state: 'Bootstrapping', label: 'Verifying structure and manifest' },
-        { state: 'Installing', label: 'Installing workspace dependencies' },
-        { state: 'Starting', label: 'Launching live development runtime' },
+        { state: 'WaitingForRunnableVersion', label: 'Uploading and extracting archive' },
+        { state: 'Bootstrapping', label: 'Verifying files and mapping workspace structure' },
+        { state: 'Installing', label: 'Installing project dependencies' },
+        { state: 'Starting', label: 'Booting environment' },
     ],
 }
 
@@ -254,24 +253,24 @@ export const PreviewArea: React.FC<PreviewAreaProps> = ({
 
     const [isCopied, setIsCopied] = useState(false)
     const srcDoc = React.useMemo(() => injectPreviewBridge(html), [html])
-    const isLivePreview = Boolean(previewUrl)
+    const isLivePreview = Boolean(previewUrl) && previewState === 'Healthy'
     const showStructurePlaceholder = showStructureOnly && !isGenerating && !isLivePreview
 
     const showFailedState = Boolean(
         previewSessionError || previewError || previewState === 'Failed'
     )
 
+    const isStartupState =
+        previewState === 'WaitingForRunnableVersion' ||
+        previewState === 'Bootstrapping' ||
+        previewState === 'Installing' ||
+        previewState === 'Starting'
+
     // Determine loading state
     const showFullscreenLoader =
-        !isLivePreview &&
-        !showFailedState &&
-        isGenerating &&
-        (previewState === 'WaitingForRunnableVersion' ||
-            previewState === 'Bootstrapping' ||
-            previewState === 'Installing' ||
-            previewState === 'Starting')
+        !showFailedState && (isStartupState || (!isLivePreview && isGenerating))
 
-    const showFullscreenFailed = showFailedState && !isLivePreview && !showFullscreenLoader
+    const showFullscreenFailed = showFailedState && !isLivePreview
 
     // Resolve checklist items
     const checklistItems = RUNTIME_CHECKLISTS[projectType] || RUNTIME_CHECKLISTS.generated
@@ -323,24 +322,17 @@ export const PreviewArea: React.FC<PreviewAreaProps> = ({
                     <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-[#121110] font-sans p-6">
                         <div className="flex flex-col max-w-sm w-full select-none text-left">
                             {/* Top Header */}
-                            <div className="flex items-center gap-4 select-none mb-6">
-                                <DotmSquare15
-                                    size={40}
-                                    dotSize={3}
-                                    speed={1.5}
-                                    bloom
-                                    pattern="prism-sweep"
-                                    colorPreset="white"
-                                    className="shrink-0"
-                                />
-                                <div className="flex flex-col gap-0.5">
-                                    <span className="text-[14px] font-bold text-white tracking-wider uppercase">
-                                        RUNTIME SANDBOX
-                                    </span>
-                                    <span className="text-[10px] text-[#8E8D8C] font-semibold tracking-wider uppercase">
-                                        ESTABLISHING CONTAINER
-                                    </span>
-                                </div>
+                            <div className="flex flex-col gap-0.5 select-none mb-6">
+                                <span className="text-[14px] font-bold text-white tracking-wider uppercase">
+                                    RUNTIME SANDBOX
+                                </span>
+                                <span className="text-[10px] text-[#8E8D8C] font-semibold tracking-wider uppercase">
+                                    {projectType === 'github'
+                                        ? 'CLONING REPOSITORY'
+                                        : projectType === 'zip'
+                                          ? 'UPLOADING ARCHIVE'
+                                          : 'ESTABLISHING CONTAINER'}
+                                </span>
                             </div>
 
                             {/* Minimal Checklist UI */}
@@ -356,7 +348,7 @@ export const PreviewArea: React.FC<PreviewAreaProps> = ({
                                             className={cn(
                                                 'flex items-center gap-4 text-[13px] transition-all duration-300',
                                                 isDone && 'text-[#8E8D8C]/60 font-medium',
-                                                isActive && 'text-[#F5F5F5] font-bold',
+                                                isActive && 'text-[#F5F5F5] font-medium',
                                                 isPending && 'text-[#8E8D8C]/20 font-medium'
                                             )}
                                         >
@@ -380,6 +372,9 @@ export const PreviewArea: React.FC<PreviewAreaProps> = ({
                             </div>
                         </div>
                     </div>
+                ) : showFullscreenFailed ? (
+                    /* 1.5. Solid dark background for failed state to hide iframe fallback */
+                    <div className="absolute inset-0 z-50 bg-[#171615]" />
                 ) : showStructurePlaceholder ? (
                     /* 2. Structure Placeholder */
                     <div className="absolute inset-0 z-40 bg-[#171716] p-5">
@@ -395,7 +390,7 @@ export const PreviewArea: React.FC<PreviewAreaProps> = ({
                         </div>
                     </div>
                 ) : (
-                    /* 3. Main IFrame browser viewport (kept visible even on errors) */
+                    /* 3. Main IFrame browser viewport (kept visible even on errors unless explicitly failed during startup) */
                     <iframe
                         ref={iframeRef}
                         className={cn(

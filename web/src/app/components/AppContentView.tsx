@@ -219,11 +219,9 @@ export const AppContentView: React.FC<AppContentViewProps> = ({
                             previewSession={previewSession}
                             projectType={projectType}
                             previewSessionError={
-                                importState.status === 'loading'
-                                    ? importState.message || 'Importing project...'
-                                    : importState.status === 'failed'
-                                      ? importState.message || 'Import failed'
-                                      : previewSessionError
+                                importState.status === 'failed'
+                                    ? importState.message || 'Import failed'
+                                    : previewSessionError
                             }
                             selectedModel={selectedModel}
                             setSelectedModel={setSelectedModel}
@@ -258,11 +256,9 @@ export const AppContentView: React.FC<AppContentViewProps> = ({
                         previewSession={previewSession}
                         projectType={projectType}
                         previewSessionError={
-                            importState.status === 'loading'
-                                ? importState.message || 'Importing project...'
-                                : importState.status === 'failed'
-                                  ? importState.message || 'Import failed'
-                                  : previewSessionError
+                            importState.status === 'failed'
+                                ? importState.message || 'Import failed'
+                                : previewSessionError
                         }
                         selectedModel={selectedModel}
                         setSelectedModel={setSelectedModel}
