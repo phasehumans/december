@@ -231,6 +231,19 @@ describe('generation workspace paths', () => {
         expect(isFrontendWorkspacePath('index.html')).toBe(true)
     })
 
+    test('allows configuration files at root', () => {
+        expect(isFrontendWorkspacePath('vite.config.ts')).toBe(true)
+        expect(isFrontendWorkspacePath('vite.config.js')).toBe(true)
+        expect(isFrontendWorkspacePath('vite.config.mjs')).toBe(true)
+        expect(isFrontendWorkspacePath('vite.config.cjs')).toBe(true)
+        expect(isFrontendWorkspacePath('tailwind.config.js')).toBe(true)
+        expect(isFrontendWorkspacePath('tailwind.config.ts')).toBe(true)
+        expect(isFrontendWorkspacePath('postcss.config.js')).toBe(true)
+        expect(isFrontendWorkspacePath('tsconfig.node.json')).toBe(true)
+        expect(isFrontendWorkspacePath('components.json')).toBe(true)
+        expect(isFrontendWorkspacePath('vite-env.d.ts')).toBe(true)
+    })
+
     test('keeps backend files out of patch plans', () => {
         expect(isFrontendWorkspacePath('server/src/api.ts')).toBe(false)
     })

@@ -28,8 +28,14 @@ const ROOT_FRONTEND_FILE_PATTERNS = [
     /^bun-env\.d\.ts$/,
     /^README\.md$/,
     /^tsconfig\.json$/,
+    /^tsconfig\.node\.json$/,
     /^package\.json$/,
     /^index\.html$/,
+    /^vite\.config\.(ts|js|mjs|cjs)$/,
+    /^tailwind\.config\.(ts|js|cjs)$/,
+    /^postcss\.config\.(js|cjs|ts)$/,
+    /^components\.json$/,
+    /^vite-env\.d\.ts$/,
 ]
 
 const FRONTEND_DIRECTORY_PREFIXES = ['src/', 'public/']

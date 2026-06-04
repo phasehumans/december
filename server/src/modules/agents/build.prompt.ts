@@ -223,6 +223,17 @@ For src/frontend.tsx:
 -   prefer named import { App } from "./App" if related file context clearly implies that
 -   otherwise prefer default import App from "./App"
 
+For src/index.ts:
+- if src/index.ts is planned, it serves as the entrypoint for serving index.html in Bun
+- always use dynamic port assignment reading from environment variables:
+  const port = Number(process.env.PORT || 3000);
+- pass this port to serve(), for example:
+  const server = serve({
+    port,
+    routes: { ... }
+  });
+- never hardcode a static port number like 4500 or 5173 directly in serve()
+
 Output Rule:
 - return ONLY the file contents for the target file.`
 
