@@ -709,6 +709,7 @@ const importFromGithub = async (data: UploadRepo) => {
             id: true,
             githubToken: true,
             isDeleted: true,
+            subscriptionPlan: true,
         },
     })
 
@@ -718,6 +719,22 @@ const importFromGithub = async (data: UploadRepo) => {
 
     if (!user.githubToken) {
         throw new AppError('GitHub access token not found', 404)
+    }
+
+    if (user.subscriptionPlan === 'FREE') {
+        const importCount = await prisma.projectImport.count({
+            where: {
+                userId,
+                sourceType: 'GITHUB',
+            },
+        })
+
+        if (importCount >= 1) {
+            throw new AppError(
+                'Import limit exceeded. Upgrade to Pro to import more repositories.',
+                403
+            )
+        }
     }
 
     const projectId = randomUUID()
@@ -758,11 +775,27 @@ const importFromZip = async (data: ImportFromZip) => {
 
     const user = await prisma.user.findUnique({
         where: { id: userId },
-        select: { id: true },
+        select: { id: true, subscriptionPlan: true },
     })
 
     if (!user) {
         throw new Error('user not found')
+    }
+
+    if (user.subscriptionPlan === 'FREE') {
+        const importCount = await prisma.projectImport.count({
+            where: {
+                userId,
+                sourceType: 'ZIP',
+            },
+        })
+
+        if (importCount >= 1) {
+            throw new AppError(
+                'Import limit exceeded. Upgrade to Pro to import more archives.',
+                403
+            )
+        }
     }
 
     const isZip =

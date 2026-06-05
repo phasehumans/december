@@ -2,6 +2,7 @@ import React from 'react'
 
 import { OutputScreenMainContent } from './OutputScreenMainContent'
 import { PreviewArea } from './PreviewArea'
+import { ExitConfirmModal } from './ExitConfirmModal'
 
 import type { Message } from '@/features/chat/types'
 import type { OutputScreenProps } from '@/features/preview/types'
@@ -98,7 +99,19 @@ export const OutputScreen: React.FC<OutputScreenProps> = ({
     })
 
     const [mobileActiveTab, setMobileActiveTab] = React.useState<MobileOutputTab>('chat')
-    const handleBack = onBack || (() => {})
+    const [showExitModal, setShowExitModal] = React.useState(false)
+
+    const handleTriggerExit = React.useCallback(() => {
+        if (isGenerating) {
+            setShowExitModal(true)
+        } else {
+            if (onBack) onBack()
+        }
+    }, [isGenerating, onBack])
+
+    const handleConfirmExit = React.useCallback(() => {
+        if (onBack) onBack()
+    }, [onBack])
 
     const handleOpenFileWrapper = React.useCallback(
         (path: string) => {
@@ -591,7 +604,7 @@ You can now ask me to explain specific files, add new features, or debug any iss
                                 if (isOutOfCredits) return
                                 void onPromptSubmit(prompt)
                             }}
-                            onBack={handleBack}
+                            onBack={handleTriggerExit}
                             isGenerating={activeIsGenerating}
                             steps={activeSteps}
                             executionTime={activeExecutionTime}
@@ -677,7 +690,7 @@ You can now ask me to explain specific files, add new features, or debug any iss
                         if (isOutOfCredits) return
                         void onPromptSubmit(prompt)
                     }}
-                    onBack={handleBack}
+                    onBack={handleTriggerExit}
                     isGenerating={activeIsGenerating}
                     steps={activeSteps}
                     executionTime={activeExecutionTime}
@@ -711,7 +724,7 @@ You can now ask me to explain specific files, add new features, or debug any iss
                     isChatSidebarCollapsed={isChatSidebarCollapsed}
                     onToggleSidebar={() => setIsChatSidebarCollapsed(!isChatSidebarCollapsed)}
                     onOpenInNewTab={handleOpenInNewTab}
-                    onBack={onBack}
+                    onBack={handleTriggerExit}
                     previewHtml={previewHtml}
                     setPreviewHtml={setPreviewHtml}
                     generatedFiles={activeFiles}
@@ -745,43 +758,48 @@ You can now ask me to explain specific files, add new features, or debug any iss
                     Low Credits! You have less than $0.10 remaining.
                 </div>
             )}
-
             {/* Out of Credits Upgrade Card Overlay */}
             {isOutOfCredits && (
-                <div className="absolute inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-                    <div className="bg-[#171615] border border-[#242323] rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col">
-                        <div className="p-6 border-b border-[#242323] flex flex-col gap-2">
-                            <h2 className="text-xl font-medium text-[#D6D5C9]">Out of Credits</h2>
-                            <p className="text-sm text-[#7B7A79]">
-                                You have used all your available credits. Upgrade to Pro to continue
-                                generating.
+                <div className="absolute inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+                    <div className="bg-[#171615] border border-white/10 rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col relative animate-in fade-in zoom-in-95 duration-300">
+                        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500" />
+                        <div className="p-8 border-b border-white/5 flex flex-col gap-3 relative overflow-hidden">
+                            <div className="absolute -right-20 -top-20 w-60 h-60 bg-blue-500/10 blur-[80px] rounded-full pointer-events-none" />
+                            <h2 className="text-2xl font-bold text-white tracking-tight">
+                                Out of Credits
+                            </h2>
+                            <p className="text-[15px] text-[#A1A1AA] leading-relaxed max-w-[90%]">
+                                You have used all your available credits. Upgrade to Pro to unlock
+                                unlimited power and priority execution.
                             </p>
                         </div>
 
-                        <div className="p-6 bg-[#100E12]/30 flex flex-col md:flex-row gap-5">
+                        <div className="p-8 bg-[#100E12] flex flex-col md:flex-row gap-6 relative">
                             {/* Free Plan */}
-                            <div className="flex-1 rounded-xl border border-[#242323] p-5 flex flex-col justify-between opacity-50">
+                            <div className="flex-1 rounded-2xl border border-white/5 bg-white/[0.02] p-6 flex flex-col justify-between opacity-50 backdrop-blur-sm transition-all hover:bg-white/[0.04]">
                                 <div>
-                                    <div className="mb-2">
-                                        <span className="text-[15px] font-medium text-[#D6D5C9]">
+                                    <div className="mb-3">
+                                        <span className="text-[14px] uppercase tracking-wider font-semibold text-[#A1A1AA]">
                                             Free Plan
                                         </span>
                                     </div>
-                                    <div className="mb-4">
-                                        <span className="text-[22px] font-semibold text-[#D6D5C9]">
-                                            $0
-                                        </span>
-                                        <span className="text-[#7B7A79] text-[12px] ml-1">
+                                    <div className="mb-6">
+                                        <span className="text-3xl font-bold text-white">$0</span>
+                                        <span className="text-[#7B7A79] text-sm ml-1 font-medium">
                                             / month
                                         </span>
                                     </div>
-                                    <div className="flex flex-col gap-2.5 text-[13px] text-[#7B7A79]">
-                                        <div className="flex items-center gap-2">
-                                            <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+                                    <div className="flex flex-col gap-3.5 text-sm text-[#A1A1AA]">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-5 h-5 rounded-full bg-emerald-500/10 flex items-center justify-center shrink-0">
+                                                <Check className="w-3 h-3 text-emerald-500" />
+                                            </div>
                                             <span>$1.00 standard credit limit</span>
                                         </div>
-                                        <div className="flex items-center gap-2">
-                                            <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-5 h-5 rounded-full bg-emerald-500/10 flex items-center justify-center shrink-0">
+                                                <Check className="w-3 h-3 text-emerald-500" />
+                                            </div>
                                             <span>Standard execution speed</span>
                                         </div>
                                     </div>
@@ -789,35 +807,49 @@ You can now ask me to explain specific files, add new features, or debug any iss
                             </div>
 
                             {/* Pro Plan */}
-                            <div className="flex-1 rounded-xl border border-[#D6D5C9]/40 bg-[#D6D5C9]/5 p-5 flex flex-col justify-between relative overflow-hidden">
-                                <div>
-                                    <div className="mb-2">
-                                        <span className="text-[15px] font-medium text-[#D6D5C9]">
+                            <div className="flex-1 rounded-2xl border border-blue-500/30 bg-blue-500/[0.04] p-6 flex flex-col justify-between relative overflow-hidden backdrop-blur-sm group hover:bg-blue-500/[0.08] transition-all duration-300 shadow-[0_0_40px_-15px_rgba(59,130,246,0.3)] hover:shadow-[0_0_60px_-15px_rgba(59,130,246,0.4)]">
+                                <div className="absolute -right-10 -bottom-10 w-40 h-40 bg-blue-500/20 blur-[50px] rounded-full pointer-events-none group-hover:bg-blue-500/30 transition-colors" />
+
+                                <div className="relative z-10">
+                                    <div className="mb-3">
+                                        <span className="text-[14px] uppercase tracking-wider font-semibold text-blue-400">
                                             Pro Plan
                                         </span>
                                     </div>
-                                    <div className="mb-4">
-                                        <span className="text-[22px] font-semibold text-[#D6D5C9]">
-                                            $5
-                                        </span>
-                                        <span className="text-[#7B7A79] text-[12px] ml-1">
+                                    <div className="mb-6">
+                                        <span className="text-3xl font-bold text-white">$5</span>
+                                        <span className="text-blue-400/60 text-sm ml-1 font-medium">
                                             / month
                                         </span>
                                     </div>
-                                    <div className="flex flex-col gap-2.5 text-[13px] text-[#D6D5C9]">
-                                        <div className="flex items-center gap-2">
-                                            <Check className="w-4 h-4 text-[#D6D5C9] shrink-0" />
-                                            <span>$5.00 monthly credit refreshes</span>
+                                    <div className="flex flex-col gap-3.5 text-sm text-[#E4E4E7]">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-5 h-5 rounded-full bg-blue-500/20 flex items-center justify-center shrink-0">
+                                                <Check className="w-3 h-3 text-blue-400" />
+                                            </div>
+                                            <span className="font-medium text-white">
+                                                $5.00 monthly credits
+                                            </span>
                                         </div>
-                                        <div className="flex items-center gap-2">
-                                            <Check className="w-4 h-4 text-[#D6D5C9] shrink-0" />
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-5 h-5 rounded-full bg-blue-500/20 flex items-center justify-center shrink-0">
+                                                <Check className="w-3 h-3 text-blue-400" />
+                                            </div>
                                             <span>Priority execution speed</span>
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-5 h-5 rounded-full bg-blue-500/20 flex items-center justify-center shrink-0">
+                                                <Check className="w-3 h-3 text-blue-400" />
+                                            </div>
+                                            <span>Premium models & tools</span>
                                         </div>
                                     </div>
                                 </div>
                                 <button
-                                    onClick={() => navigate('/profile/billing')}
-                                    className="w-full mt-6 py-2.5 rounded-lg bg-[#D6D5C9] text-[#171615] text-[14px] font-medium hover:bg-white transition-colors flex items-center justify-center gap-2"
+                                    onClick={() => {
+                                        navigate('/profile/billing')
+                                    }}
+                                    className="w-full mt-8 py-3.5 rounded-xl bg-white text-black text-[14px] font-bold hover:scale-[1.02] hover:shadow-lg transition-all active:scale-[0.98] flex items-center justify-center gap-2 relative z-10"
                                 >
                                     Upgrade to Pro
                                 </button>
@@ -826,6 +858,12 @@ You can now ask me to explain specific files, add new features, or debug any iss
                     </div>
                 </div>
             )}
+
+            <ExitConfirmModal
+                isOpen={showExitModal}
+                onClose={() => setShowExitModal(false)}
+                onConfirm={handleConfirmExit}
+            />
         </div>
     )
 }

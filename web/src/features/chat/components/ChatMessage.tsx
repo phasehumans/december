@@ -399,9 +399,8 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                                     : `Edited ${totalFiles} files`}
                             </span>
                         </div>
-                        <div className="bg-[#1C1C1C] border border-white/5 rounded-lg overflow-hidden w-full max-w-md">
-                            {filesArray.map((file, idx) => {
-                                const hasDivider = idx < filesArray.length - 1
+                        <div className="bg-[#1C1C1C] border border-white/5 rounded-lg overflow-hidden w-full max-w-md divide-y divide-white/5">
+                            {filesArray.map((file) => {
                                 const isFileBuilding = file.status === 'building'
 
                                 return (
@@ -409,8 +408,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                                         key={file.path}
                                         onClick={() => onOpenFile?.(file.path)}
                                         className={cn(
-                                            'flex items-center justify-between px-3 py-1.5 hover:bg-white/5 transition-colors cursor-pointer',
-                                            hasDivider ? 'border-b border-white/5' : ''
+                                            'flex items-center justify-between px-3 py-1.5 hover:bg-white/5 transition-colors cursor-pointer'
                                         )}
                                     >
                                         <span className="text-[11px] text-[#D4D4D8] font-mono opacity-80 truncate">
