@@ -6,6 +6,7 @@ import { HomeHeader } from './HomeHeader'
 import PromptInput from './PromptInput'
 import { UploadProjectForm } from './UploadProjectForm'
 
+import { ProUpgradeModal } from '@/features/billing/components/ProUpgradeModal'
 import type { HomeHeroProps } from '@/features/home/types'
 
 import Canvas, { type CanvasRef } from '@/features/canvas/components/Canvas'
@@ -27,6 +28,16 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
     const canvasRef = useRef<CanvasRef>(null)
     const [prompt, setPrompt] = React.useState('')
     const [activeImportForm, setActiveImportForm] = useState<'github' | 'upload' | null>(null)
+    const [showUpgradeModal, setShowUpgradeModal] = useState(false)
+
+    useEffect(() => {
+        if (
+            importState?.status === 'failed' &&
+            importState.message?.includes('Import limit exceeded')
+        ) {
+            setShowUpgradeModal(true)
+        }
+    }, [importState])
 
     useEffect(() => {
         const observer = new IntersectionObserver(
@@ -172,6 +183,8 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
                     />
                 </div>
             </div>
+
+            <ProUpgradeModal isOpen={showUpgradeModal} onClose={() => setShowUpgradeModal(false)} />
         </main>
     )
 }

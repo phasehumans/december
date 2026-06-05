@@ -191,7 +191,7 @@ export const ChatThread: React.FC<ChatSidebarProps> = ({
                         onClick={(e) => {
                             e.preventDefault()
                             e.stopPropagation()
-                            window.location.href = '/'
+                            if (onBack) onBack()
                         }}
                         className="text-sm font-medium tracking-wide text-[#FFFFFF] select-none cursor-pointer outline-none shrink-0"
                         title="Back to Home"

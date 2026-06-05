@@ -255,13 +255,13 @@ export const vscodeDarkPlusTheme = EditorView.theme(
         },
 
         '.cm-selectionBackground, .cm-content ::selection': {
-            backgroundColor: 'rgba(38, 79, 120, 0.65) !important',
+            backgroundColor: 'rgba(56, 139, 253, 0.4) !important',
             color: 'inherit !important',
         },
 
         '.cm-selectionMatch': {
-            backgroundColor: 'rgba(255, 255, 255, 0.08) !important',
-            outline: '1px solid rgba(255, 255, 255, 0.15) !important',
+            backgroundColor: 'rgba(56, 139, 253, 0.2) !important',
+            outline: '1px solid rgba(56, 139, 253, 0.4) !important',
             borderRadius: '2px',
         },
 
