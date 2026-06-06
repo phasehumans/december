@@ -150,6 +150,21 @@ export const useAppController = () => {
         'thinking' | 'building' | 'done' | null
     >(null)
     const [activeOperation, setActiveOperation] = React.useState<OutputOperation | null>(null)
+    const [currentGenerationFilePaths, setCurrentGenerationFilePaths] = React.useState<string[]>([])
+
+    const activeFilesToDisplay = React.useMemo(() => {
+        if (currentGenerationFilePaths.length === 0) {
+            return generatedFiles
+        }
+        const filtered: Record<string, GeneratedProjectFile> = {}
+        for (const path of currentGenerationFilePaths) {
+            if (generatedFiles[path]) {
+                filtered[path] = generatedFiles[path]
+            }
+        }
+        return filtered
+    }, [generatedFiles, currentGenerationFilePaths])
+
     const [projectType, setProjectType] = React.useState<'generated' | 'github' | 'zip'>(
         'generated'
     )
@@ -375,6 +390,16 @@ export const useAppController = () => {
         [updateAssistantMessage]
     )
 
+    const setAssistantAppliedFiles = React.useCallback(
+        (messageId: string, appliedFiles: string[]) => {
+            updateAssistantMessage(messageId, (message) => ({
+                ...message,
+                appliedFiles,
+            }))
+        },
+        [updateAssistantMessage]
+    )
+
     const replaceGeneratedOutput = React.useCallback(
         (files: Record<string, string>, preferredPath?: string | null) => {
             const paths = Object.keys(files)
@@ -398,6 +423,7 @@ export const useAppController = () => {
         activeAssistantMessageIdRef.current = null
         setGenerationPhase(null)
         setActiveOperation(null)
+        setCurrentGenerationFilePaths([])
     }, [])
 
     const clearOpenedProject = React.useCallback(() => {
@@ -727,6 +753,7 @@ export const useAppController = () => {
             resetGeneratedOutput()
             setGenerationPhase(null)
             setActiveOperation('build')
+            setCurrentGenerationFilePaths([])
             setIsGenerating(true)
             setProjectLoadError(null)
         },
@@ -1038,6 +1065,7 @@ export const useAppController = () => {
             activeAssistantMessageIdRef.current = assistantMessageId
             setGenerationPhase('thinking')
             setActiveOperation('build')
+            setCurrentGenerationFilePaths([])
             setIsGenerating(true)
             setProjectType('generated')
             setProjectLoadError(null)
@@ -1096,8 +1124,14 @@ export const useAppController = () => {
                                 case 'message-complete':
                                     return
                                 case 'build-plan':
+                                case 'patch-plan':
                                     return
                                 case 'file-start':
+                                    setCurrentGenerationFilePaths((prev) =>
+                                        prev.includes(event.data.path)
+                                            ? prev
+                                            : [...prev, event.data.path]
+                                    )
                                     startGeneratedFile(event.data)
                                     return
                                 case 'file-chunk':
@@ -1251,6 +1285,7 @@ export const useAppController = () => {
             activeAssistantMessageIdRef.current = assistantMessageId
             setGenerationPhase('thinking')
             setActiveOperation(kind)
+            setCurrentGenerationFilePaths([])
             setIsGenerating(true)
             setProjectType('generated')
 
@@ -1297,10 +1332,25 @@ export const useAppController = () => {
                                 )
                                 return
                             case 'message-complete':
+                                return
                             case 'patch-plan':
+                                setAssistantAppliedFiles(
+                                    activeMessageId,
+                                    event.data.files.map((f) => f.path)
+                                )
+                                return
                             case 'build-plan':
+                                setAssistantAppliedFiles(
+                                    activeMessageId,
+                                    event.data.files.map((f) => f.path)
+                                )
                                 return
                             case 'file-start':
+                                setCurrentGenerationFilePaths((prev) =>
+                                    prev.includes(event.data.path)
+                                        ? prev
+                                        : [...prev, event.data.path]
+                                )
                                 startGeneratedFile(event.data)
                                 return
                             case 'file-chunk':
@@ -1407,6 +1457,7 @@ export const useAppController = () => {
             queryClient,
             resetGenerationRefs,
             setAssistantError,
+            setAssistantAppliedFiles,
             setAssistantStatus,
             startGeneratedFile,
         ]
@@ -1612,6 +1663,7 @@ export const useAppController = () => {
         view,
         messages,
         generatedFiles,
+        activeFilesToDisplay,
         activeGeneratedFilePath,
         generationPhase,
         activeOperation,

@@ -219,6 +219,7 @@ For src/frontend.tsx:
 - render the planned App component into #root
 - prefer createRoot from react-dom/client
 - be safe against DOMContentLoaded timing
+- you MUST include 'import "./index.css"' at the top of the file
 - import App in a way that matches likely consumers:
 -   prefer named import { App } from "./App" if related file context clearly implies that
 -   otherwise prefer default import App from "./App"

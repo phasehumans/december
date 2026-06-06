@@ -151,6 +151,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
     status = 'done',
     generatedFiles,
     projectType = 'generated',
+    appliedFiles,
     tokensUsed,
     creditsUsed,
     modelName,
@@ -198,7 +199,11 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
         )
     }
 
-    const filesArray = generatedFiles ? Object.values(generatedFiles) : []
+    const allFilesArray = generatedFiles ? Object.values(generatedFiles) : []
+    const filesArray =
+        appliedFiles && appliedFiles.length > 0
+            ? allFilesArray.filter((f: any) => appliedFiles.includes(f.path))
+            : allFilesArray
     const totalFiles = filesArray.length
     const isThinkingPhase = status === 'thinking'
     const isBuildingPhase = status === 'building'
@@ -292,6 +297,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                 sessionStorage.setItem(cacheKey, 'true')
                 if (projectId) {
                     sessionStorage.removeItem(`december_import_stream_running_${projectId}`)
+                    sessionStorage.removeItem(`december_actively_importing_${projectId}`)
                     window.dispatchEvent(
                         new CustomEvent('december-import-stream-end', { detail: { projectId } })
                     )

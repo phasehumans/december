@@ -29,6 +29,7 @@ export const OutputScreen: React.FC<OutputScreenProps> = ({
     onRuntimeError,
     messages,
     generatedFiles,
+    activeFilesToDisplay,
     activeGeneratedFilePath,
     generationPhase,
     activeOperation,
@@ -127,6 +128,10 @@ export const OutputScreen: React.FC<OutputScreenProps> = ({
         string,
         GeneratedProjectFile
     > | null>(null)
+    const [simulatedFilesToDisplay, setSimulatedFilesToDisplay] = React.useState<Record<
+        string,
+        GeneratedProjectFile
+    > | null>(null)
     const [simulatedPhase, setSimulatedPhase] = React.useState<
         'thinking' | 'building' | 'done' | null
     >(null)
@@ -185,6 +190,7 @@ export const OutputScreen: React.FC<OutputScreenProps> = ({
 
         setSimulatedMessages([userMsg, assistantMsg])
         setSimulatedFiles({})
+        setSimulatedFilesToDisplay({})
 
         const startTime = Date.now()
         const timer = setInterval(() => {
@@ -440,6 +446,16 @@ You can now ask me to explain specific files, add new features, or debug any iss
                                                 generator: file.generator,
                                             },
                                         }))
+                                        setSimulatedFilesToDisplay((prev) => ({
+                                            ...prev,
+                                            [file.path]: {
+                                                path: file.path,
+                                                content: `// Generating ${file.path}...\n`,
+                                                status: 'building',
+                                                purpose: file.purpose,
+                                                generator: file.generator,
+                                            },
+                                        }))
                                         setSimulatedActiveFilePath(file.path)
                                         setSimulatedActiveOperation('build')
 
@@ -453,6 +469,19 @@ You can now ask me to explain specific files, add new features, or debug any iss
                                         setTimeout(() => {
                                             const completedPath = file.path
                                             setSimulatedFiles((prev) => {
+                                                if (!prev) return prev
+                                                const curr = prev[completedPath]
+                                                if (!curr) return prev
+                                                return {
+                                                    ...prev,
+                                                    [completedPath]: {
+                                                        ...curr,
+                                                        status: 'done',
+                                                        content: `// Completed ${completedPath}\n`,
+                                                    },
+                                                }
+                                            })
+                                            setSimulatedFilesToDisplay((prev) => {
                                                 if (!prev) return prev
                                                 const curr = prev[completedPath]
                                                 if (!curr) return prev
@@ -575,6 +604,8 @@ You can now ask me to explain specific files, add new features, or debug any iss
     const activeMessages = isSimulating && simulatedMessages ? simulatedMessages : messages
 
     const activeFiles = isSimulating && simulatedFiles ? simulatedFiles : generatedFiles
+    const activeDisplayFiles =
+        isSimulating && simulatedFilesToDisplay ? simulatedFilesToDisplay : activeFilesToDisplay
     const activePhase = isSimulating ? simulatedPhase : generationPhase
     const activeIsGenerating = isSimulating ? simulatedIsGenerating : isGenerating
     const activePreviewSession = isSimulating ? simulatedSession : previewSession
@@ -620,7 +651,7 @@ You can now ask me to explain specific files, add new features, or debug any iss
                             isCollapsed={false}
                             onClose={() => {}}
                             projectName={projectName}
-                            generatedFiles={activeFiles}
+                            generatedFiles={activeDisplayFiles}
                             projectType={activeProjectType}
                             onTriggerSimulation={handleTriggerSimulation}
                             onOpenFile={handleOpenFileWrapper}
@@ -706,7 +737,7 @@ You can now ask me to explain specific files, add new features, or debug any iss
                     isCollapsed={isChatSidebarCollapsed}
                     onClose={() => setIsChatSidebarCollapsed(true)}
                     projectName={projectName}
-                    generatedFiles={activeFiles}
+                    generatedFiles={activeDisplayFiles}
                     projectType={activeProjectType}
                     onTriggerSimulation={handleTriggerSimulation}
                     onOpenFile={handleOpenFileWrapper}

@@ -1,19 +1,48 @@
-.PHONY: dev build test lint format clean
+.PHONY: install dev server web runtime format check-format lint lint-fix test test-integration clean db-start db-stop migrate studio
+
+install:
+	bun install
 
 dev:
-	bun run dev
+	./scripts/start.sh
 
-build:
-	bun run build
+server:
+	cd server && bun run dev
 
-test:
-	bun test
+web:
+	cd web && bun run dev
 
-lint:
-	bunx eslint .
+runtime:
+	cd runtime && cargo run
+
+db-start:
+	./scripts/containers.sh start
+
+db-stop:
+	./scripts/containers.sh stop
+
+migrate:
+	cd server && bunx prisma migrate dev
+
+studio:
+	cd server && bun run studio
 
 format:
-	bunx prettier --write .
+	bun run format
+
+check-format:
+	bun run format:check
+
+lint:
+	bun run lint
+
+lint-fix:
+	bun run lint:fix
+
+test:
+	./scripts/test.sh
 
 clean:
-	rm -rf dist
+	rm -rf node_modules server/node_modules web/node_modules
+	rm -rf server/dist web/dist
+	cd runtime && cargo clean

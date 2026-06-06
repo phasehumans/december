@@ -1,0 +1,10 @@
+{
+  "recommendations": [
+    "esbenp.prettier-vscode",
+    "dbaeumer.vscode-eslint",
+    "rust-lang.rust-analyzer",
+    "bradlc.vscode-tailwindcss",
+    "oven.bun-vscode",
+    "Prisma.prisma"
+  ]
+}

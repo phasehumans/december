@@ -115,29 +115,33 @@ export const ChatThread: React.FC<ChatSidebarProps> = ({
 
     const messagesList = (
         <div className="flex flex-col gap-8" ref={contentRef}>
-            {messages.map((msg, index) => (
-                <ChatMessage
-                    key={msg.id}
-                    id={msg.id}
-                    role={msg.role === 'system' ? 'assistant' : msg.role}
-                    content={msg.content}
-                    thoughts={msg.thoughts}
-                    plan={msg.plan}
-                    summary={msg.summary}
-                    isGenerating={isGenerating}
-                    executionTime={executionTime}
-                    index={index}
-                    status={msg.status}
-                    generatedFiles={generatedFiles}
-                    projectType={projectType}
-                    tokensUsed={msg.tokensUsed}
-                    creditsUsed={msg.creditsUsed}
-                    modelName={msg.modelName}
-                    onTriggerSimulation={onTriggerSimulation}
-                    onOpenFile={onOpenFile}
-                    projectId={projectId}
-                />
-            ))}
+            {messages.map((msg, index) => {
+                const isLast = index === messages.length - 1
+                return (
+                    <ChatMessage
+                        key={msg.id}
+                        id={msg.id}
+                        role={msg.role === 'system' ? 'assistant' : msg.role}
+                        content={msg.content}
+                        thoughts={msg.thoughts}
+                        plan={msg.plan}
+                        summary={msg.summary}
+                        isGenerating={isGenerating}
+                        executionTime={executionTime}
+                        index={index}
+                        status={msg.status}
+                        generatedFiles={isLast ? generatedFiles : undefined}
+                        appliedFiles={msg.appliedFiles}
+                        projectType={projectType}
+                        tokensUsed={msg.tokensUsed}
+                        creditsUsed={msg.creditsUsed}
+                        modelName={msg.modelName}
+                        onTriggerSimulation={onTriggerSimulation}
+                        onOpenFile={onOpenFile}
+                        projectId={projectId}
+                    />
+                )
+            })}
         </div>
     )
 

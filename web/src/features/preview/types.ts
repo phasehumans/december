@@ -76,6 +76,7 @@ export interface OutputScreenProps {
     onRuntimeError?: (error: PreviewRuntimeError) => Promise<void> | void
     messages: Message[]
     generatedFiles?: Record<string, GeneratedProjectFile>
+    activeFilesToDisplay?: Record<string, GeneratedProjectFile>
     activeGeneratedFilePath?: string | null
     generationPhase?: 'thinking' | 'building' | 'done' | null
     activeOperation?: OutputOperation | null
