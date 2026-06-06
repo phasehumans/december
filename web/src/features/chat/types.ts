@@ -11,6 +11,7 @@ export interface Message {
     tokensUsed?: number
     creditsUsed?: number
     modelName?: string
+    appliedFiles?: string[]
 }
 
 export interface SelectedElement {
@@ -29,6 +30,7 @@ export interface ChatMessageProps {
     index: number
     status?: 'thinking' | 'building' | 'done' | 'error'
     generatedFiles?: Record<string, any>
+    appliedFiles?: string[]
     projectType?: 'generated' | 'github' | 'zip'
     tokensUsed?: number
     creditsUsed?: number

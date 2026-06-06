@@ -11,6 +11,7 @@ const App: React.FC = () => {
         view,
         messages,
         generatedFiles,
+        activeFilesToDisplay,
         activeGeneratedFilePath,
         generationPhase,
         activeOperation,
@@ -91,6 +92,7 @@ const App: React.FC = () => {
                     isHome={isHome}
                     messages={messages}
                     generatedFiles={generatedFiles}
+                    activeFilesToDisplay={activeFilesToDisplay}
                     activeGeneratedFilePath={activeGeneratedFilePath}
                     generationPhase={generationPhase}
                     activeOperation={activeOperation}

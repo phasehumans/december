@@ -254,6 +254,17 @@ export const PreviewArea: React.FC<PreviewAreaProps> = ({
 
     const [isCopied, setIsCopied] = useState(false)
     const [isImportStreaming, setIsImportStreaming] = useState(false)
+    const [hasLoadedOnce, setHasLoadedOnce] = useState(false)
+
+    useEffect(() => {
+        setHasLoadedOnce(false)
+    }, [projectId])
+
+    useEffect(() => {
+        if (previewState === 'Healthy' && previewUrl) {
+            setHasLoadedOnce(true)
+        }
+    }, [previewState, previewUrl])
 
     useEffect(() => {
         const handleStart = (e: Event) => {
@@ -304,6 +315,7 @@ export const PreviewArea: React.FC<PreviewAreaProps> = ({
     // Determine loading state
     const showFullscreenLoader =
         !showFailedState &&
+        !hasLoadedOnce &&
         (isStartupState || (!isLivePreview && isGenerating) || isImportStreaming)
 
     const showFullscreenFailed = showFailedState && !isLivePreview

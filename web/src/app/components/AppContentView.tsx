@@ -26,6 +26,7 @@ interface AppContentViewProps {
     isHome: boolean
     messages: Message[]
     generatedFiles: Record<string, GeneratedProjectFile>
+    activeFilesToDisplay: Record<string, GeneratedProjectFile>
     activeGeneratedFilePath: string | null
     generationPhase: 'thinking' | 'building' | 'done' | null
     activeOperation: OutputOperation | null
@@ -106,6 +107,7 @@ export const AppContentView: React.FC<AppContentViewProps> = ({
     isHome,
     messages,
     generatedFiles,
+    activeFilesToDisplay,
     activeGeneratedFilePath,
     generationPhase,
     activeOperation,
@@ -206,6 +208,7 @@ export const AppContentView: React.FC<AppContentViewProps> = ({
                             onRuntimeError={onPreviewRuntimeError}
                             messages={messages}
                             generatedFiles={generatedFiles}
+                            activeFilesToDisplay={activeFilesToDisplay}
                             activeGeneratedFilePath={activeGeneratedFilePath}
                             generationPhase={generationPhase}
                             activeOperation={activeOperation}
@@ -243,6 +246,7 @@ export const AppContentView: React.FC<AppContentViewProps> = ({
                         onRuntimeError={onPreviewRuntimeError}
                         messages={messages}
                         generatedFiles={generatedFiles}
+                        activeFilesToDisplay={activeFilesToDisplay}
                         activeGeneratedFilePath={activeGeneratedFilePath}
                         generationPhase={generationPhase}
                         activeOperation={activeOperation}

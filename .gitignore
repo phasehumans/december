@@ -18,10 +18,6 @@ coverage/
 .env.production
 .env.test
 
-.vscode/
-.idea/
-.DS_Store
-
 logs/
 *.log
 
@@ -36,3 +32,4 @@ infra/postgres/data/
 runtime/data
 .december-imports/
 server/.december-imports/
+codes.md

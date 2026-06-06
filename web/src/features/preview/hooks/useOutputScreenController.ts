@@ -31,12 +31,26 @@ const getPreviewHtmlFromFiles = (generatedFiles?: Record<string, GeneratedProjec
         return ''
     }
 
-    return (
+    let html =
         generatedFiles['index.html']?.content ||
         generatedFiles['public/index.html']?.content ||
         generatedFiles['web/index.html']?.content ||
         ''
-    )
+
+    const cssContents = Object.values(generatedFiles)
+        .filter((file) => file.path.endsWith('.css') && file.content)
+        .map((file) => file.content)
+
+    if (cssContents.length > 0 && html) {
+        const styleTag = `\n<style>\n${cssContents.join('\n')}\n</style>\n`
+        if (html.includes('</head>')) {
+            html = html.replace('</head>', `${styleTag}</head>`)
+        } else {
+            html += styleTag
+        }
+    }
+
+    return html
 }
 
 const getOperationSteps = (operation: OutputOperation | null | undefined) => {
@@ -119,7 +133,7 @@ export const useOutputScreenController = ({
         setSteps([])
         setIsThoughtsOpen(true)
         hasSwitchedToCodeForBuildRef.current = false
-        setActiveTab(activeOperation === 'build' || !activeOperation ? 'preview' : 'code')
+        setActiveTab((prev) => (activeOperation === 'build' || !activeOperation ? 'preview' : prev))
 
         const sequences = getOperationSteps(activeOperation)
         let stepIndex = 0
