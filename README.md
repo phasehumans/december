@@ -1,51 +1,60 @@
-# December
+<p align="center">
+  <a href="https://december.phasehumans.com">
+    <img src="web/public/logo.png" alt="December Logo" height="150">
+  </a>
+  <p align="center">
+  <a href="https://withdecember.com">withdecember.com</a>
+</p>
+</p>
+<h1 align="center">December</h1>
 
-December is an advanced, AI-driven platform for generating, managing, and interacting with web applications. Powered by a robust Bun/TypeScript monorepo and a fast Rust runtime, December bridges the gap between natural language intent and functional, runnable frontend code.
+December is an advanced, AI-driven platform for generating, managing, and interacting with web applications. Powered by a robust Bun/TypeScript monorepo and a blazing-fast Rust runtime, December bridges the gap between natural language intent and functional, runnable frontend code. Think of it as a highly capable AI engineer that lives in your browser—capable of planning, building, and deploying React web applications on the fly.
 
 ## Features
 
 - **AI-Powered Code Generation**: Translate user intents into structured project plans and automatically generate runnable React applications using specialized Build and Plan agents.
-- **Visual Canvas Interface**: A rich, interactive web client for previewing and manipulating the state of your generated projects.
-- **Robust Monorepo Structure**: Fully typed TypeScript backend and frontend combined with a lightweight, high-performance Rust runtime.
-- **Seamless Integrations**: Integrated with external AI models and built-in template sharing capabilities.
-- **Self-Hosting Ready**: Containerized local dependencies (PostgreSQL, MinIO) for easy deployment and testing.
+- **Visual Canvas Interface**: A rich, interactive web client for previewing and manipulating the state of your generated projects in real-time.
+- **Robust Monorepo Structure**: Fully typed TypeScript backend and frontend combined with a lightweight, high-performance Rust runtime for heavy lifting.
+- **Seamless Integrations**: Integrated with external AI models and built-in template sharing capabilities for a collaborative ecosystem.
+- **Self-Hosting Ready**: Containerized local dependencies (PostgreSQL, MinIO) for easy, reproducible deployment and testing.
+- **Extensible Architecture**: Designed from the ground up to support new AI models, frameworks, and deployment targets.
 
 ## Architecture
 
-December is organized into three primary environments:
+December is organized into three primary environments, working in harmony to deliver a seamless experience:
 
-- **Web Client**: A React-based frontend providing the visual canvas, code editor, and project management interfaces.
-- **API Server**: A Bun/Express backend handling database persistence, AI agent orchestration, and business logic.
-- **Runtime**: A Rust-based execution environment for secure execution and validation.
+- **Web Client (`web/src`)**: A React-based frontend providing the visual canvas, code editor, and project management interfaces. It utilizes modern state management and responsive design.
+- **API Server (`server/src`)**: A Bun/Express backend handling database persistence, AI agent orchestration, and complex business logic. It securely manages user projects and templates.
+- **Runtime (`runtime/src`)**: A Rust-based execution environment for secure, isolated code execution and fast validation of generated applications.
 
 For an in-depth look at our architecture, module boundaries, and system diagrams, please read the [Architecture Documentation](ARCHITECTURE.md).
 
 ## Prerequisites
 
-Before setting up the project, ensure you have the following installed on your machine:
+Before setting up the project, ensure you have the following installed on your local machine:
 
-- **[Bun](https://bun.sh/)**: Required for installing dependencies, running the server, and building the web client.
-- **[Rust & Cargo](https://www.rust-lang.org/)**: Required for running and compiling the runtime environment.
-- **[Docker Desktop](https://www.docker.com/)**: Required for running the local Postgres database and MinIO object storage containers. Ensure the Docker daemon is actively running.
+- **[Bun](https://bun.sh/)**: Required for installing dependencies, running the API server, and building the web client.
+- **[Rust & Cargo](https://www.rust-lang.org/)**: Required for compiling and running the runtime execution environment.
+- **[Docker Desktop](https://www.docker.com/)**: Required for running the local Postgres database and MinIO object storage containers. Ensure the Docker daemon is actively running before proceeding.
 
-## Setup
+## Setup & Installation
 
 1. **Install Dependencies**
-   Run the following command at the root of the repository. This will install dependencies for both the `web` and `server` packages.
+   Run the following command at the root of the repository. This will resolve and install dependencies for both the `web` and `server` packages.
 
     ```bash
     bun install
     ```
 
 2. **Start Local Infrastructure**
-   Initialize the local PostgreSQL and MinIO S3 containers. This step requires Docker to be running.
+   Initialize the local PostgreSQL and MinIO S3 containers. This step requires Docker to be running in the background.
 
     ```bash
     ./scripts/containers.sh start
     ```
 
 3. **Initialize the Database**
-   Apply the Prisma migrations to set up the database schema for the server.
+   Apply the Prisma migrations to set up the database schema for the server. This ensures your local database matches the current application state.
 
     ```bash
     cd server
@@ -53,20 +62,20 @@ Before setting up the project, ensure you have the following installed on your m
     ```
 
 4. **Start the Application Stack**
-   Launch the web client, the API server, and the Rust runtime together. This script uses a tmux session to manage the processes.
+   Launch the web client, the API server, and the Rust runtime together. This script uses a tmux session to manage the processes cleanly.
 
     ```bash
     ./scripts/start.sh
     ```
 
-    Alternatively, you can run them manually in separate terminals:
-    - **Server**: `cd server && bun run dev`
-    - **Web**: `cd web && bun run dev`
+    Alternatively, you can run them manually in separate terminals if you prefer:
+    - **Server**: `cd server && bun run dev` (Runs on port 3000 by default)
+    - **Web**: `cd web && bun run dev` (Runs on port 5173 by default)
     - **Runtime**: `cd runtime && cargo run`
 
 ## Testing
 
-December uses Bun's built-in test runner for the server and Cargo for the Rust runtime.
+December uses Bun's built-in test runner for the API server and Cargo for the Rust runtime, ensuring fast and reliable test execution.
 
 **Running Server Unit Tests:**
 To verify the integrity of the server modules without relying on the database:
@@ -91,6 +100,10 @@ cd runtime
 cargo test
 ```
 
+## Contributing
+
+We welcome contributions! Please follow the coding style and naming conventions outlined in our repository guidelines. Ensure you run `bun run format:check` and all relevant tests before submitting a pull request.
+
 ## Contact
 
-For questions, feedback, or support, please contact us at phasehumans@gmail.com.
+For questions, feedback, or support, please contact us at [phasehumans@gmail.com](mailto:phasehumans@gmail.com). Let's build the future of AI-driven development together!
