@@ -1599,17 +1599,12 @@ export const useAppController = () => {
     const projectsErrorMessage = projectsError instanceof Error ? projectsError.message : null
 
     const handleBackFromOutput = () => {
-        const nextView = 'chat'
         if (activeProjectId) {
             void previewAPI.stopPreview(activeProjectId).catch((err) => {
                 console.error('Failed to stop preview:', err)
             })
         }
-        clearOpenedProject()
-        setMessages([])
-        resetGenerationFlow()
-        setImportState({ status: 'idle', message: null })
-        navigate(getPathForView(nextView))
+        window.location.href = '/'
     }
 
     return {
