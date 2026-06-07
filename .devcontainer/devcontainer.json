@@ -1,0 +1,23 @@
+{
+  "name": "December Monorepo",
+  "image": "mcr.microsoft.com/devcontainers/rust:1",
+  "features": {
+    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {},
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "lts"
+    }
+  },
+  "onCreateCommand": "curl -fsSL https://bun.sh/install | bash",
+  "postCreateCommand": "bash -c 'source ~/.bashrc && bun install'",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "rust-lang.rust-analyzer",
+        "esbenp.prettier-vscode",
+        "dbaeumer.vscode-eslint",
+        "Prisma.prisma",
+        "tamasfe.even-better-toml"
+      ]
+    }
+  }
+}
