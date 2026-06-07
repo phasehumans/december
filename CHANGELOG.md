@@ -1,5 +1,11 @@
 ## [unreleased]
 
+### Miscellaneous Tasks
+
+- Add release automation
+
+## [0.1.0] - 2026-06-07
+
 ### Features
 
 - _(auth)_ Add user authentication(#8)
@@ -175,6 +181,17 @@
 - _(ui)_ Split into sub components and minor ui fix
 - _(plan agent)_ Plan agent cot and plan of action, update cot and poa display in chatbar #83
 
+### Other
+
+- Portfolio
+- Quiz app
+- Dairy website
+- Countdown timer
+- Color picker
+- Form validation
+- Sidebar and prompt input
+- Sidebar collpase state
+
 ### Refactor
 
 - _(ui)_ Components(#12)
@@ -194,6 +211,7 @@
 ### Documentation
 
 - Del contribution
+- Update changelog for v0.1.0
 
 ### Testing
 
