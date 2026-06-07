@@ -211,3 +211,4 @@
 - Add initial changeset
 - Remove changesets
 - Configure git-cliff
+- Add changeset
