@@ -2,11 +2,7 @@
   <a href="https://december.phasehumans.com">
     <img src="web/public/logo.png" alt="December Logo" height="150">
   </a>
-  <p align="center">
-  <a href="https://withdecember.com">withdecember.com</a>
 </p>
-</p>
-<h1 align="center">December</h1>
 
 December is an advanced, AI-driven platform for generating, managing, and interacting with web applications. Powered by a robust Bun/TypeScript monorepo and a blazing-fast Rust runtime, December bridges the gap between natural language intent and functional, runnable frontend code. Think of it as a highly capable AI engineer that lives in your browser—capable of planning, building, and deploying React web applications on the fly.
 
