@@ -32,7 +32,7 @@
     },
     "server": {
       "name": "@december/server",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "dependencies": {
         "@aws-sdk/client-s3": "^3.1014.0",
         "@notionhq/client": "^5.22.0",
@@ -80,7 +80,7 @@
     },
     "web": {
       "name": "@december/web",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "dependencies": {
         "@codemirror/lang-css": "^6.3.1",
         "@codemirror/lang-html": "^6.4.11",
