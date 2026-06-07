@@ -2,6 +2,10 @@
     "name": "december",
     "type": "module",
     "private": true,
+    "workspaces": [
+        "web",
+        "server"
+    ],
     "scripts": {
         "prepare": "husky",
         "format": "prettier --write .",
@@ -12,14 +16,15 @@
         "getcode": "bun scripts/getcode.ts --count 1 --amount 100 --limit 5 --expiry 1 --desc \"1 Dollar Gift Credits for 5 Users - 24hr Expiry\""
     },
     "devDependencies": {
+        "@changesets/cli": "^2.31.0",
         "@commitlint/cli": "^21.0.1",
         "@commitlint/config-conventional": "^21.0.1",
         "@eslint/js": "^10.0.1",
         "@playwright/test": "^1.58.2",
         "@types/bun": "latest",
-        "dotenv": "^17.4.1",
         "@types/react": "^19.2.14",
         "@types/react-dom": "^19.2.3",
+        "dotenv": "^17.4.1",
         "eslint": "9",
         "eslint-config-prettier": "^10.1.8",
         "eslint-plugin-import": "^2.32.0",
