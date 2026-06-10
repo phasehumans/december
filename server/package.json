@@ -10,7 +10,8 @@
         "test": "bun test",
         "studio": "bunx prisma studio --browser none --port 5555",
         "studio:test": "bunx dotenv -e .env.test -- bunx prisma studio --browser none --port 5556",
-        "test:migrate": "dotenv -e .env.test -- bunx prisma migrate deploy"
+        "test:migrate": "dotenv -e .env.test -- bunx prisma migrate deploy",
+        "generate": "prisma generate"
     },
     "devDependencies": {
         "@types/adm-zip": "^0.5.8",
@@ -21,6 +22,7 @@
         "@types/express": "^5.0.6",
         "@types/jsonwebtoken": "^9.0.10",
         "@types/multer": "^2.1.0",
+        "@types/nodemailer": "^8.0.0",
         "@types/pg": "^8.16.0",
         "@types/supertest": "^7.2.0",
         "dotenv-cli": "^11.0.0",
@@ -47,6 +49,7 @@
         "google-auth-library": "^10.6.1",
         "jsonwebtoken": "^9.0.3",
         "multer": "^2.1.1",
+        "nodemailer": "^8.0.10",
         "openai": "^6.27.0",
         "pg": "^8.18.0",
         "playwright": "^1.58.2",

@@ -4,7 +4,12 @@
   </a>
 </p>
 
-December is an advanced, AI-driven platform for generating, managing, and interacting with web applications. Powered by a robust Bun/TypeScript monorepo and a blazing-fast Rust runtime, December bridges the gap between natural language intent and functional, runnable frontend code. Think of it as a highly capable AI engineer that lives in your browser—capable of planning, building, and deploying React web applications on the fly.
+December is a unified, AI-driven development workspace and platform for generating, managing, and interacting with applications. Fusing design-focused frontend generation (similar to Lovable and v0) with code-focused engineering environments (similar to Codex), December bridges the gap between natural language intent and functional, production-ready codebases. It serves as a comprehensive AI-powered workspace capable of planning, visual building, and command-line execution.
+
+## Key Workspaces
+
+- **Web Workspace (Visual Client)**: A design and frontend-oriented visual workspace (similar to Lovable and v0) where you can build layout blocks, manipulate elements, and preview live, hot-reloaded react bundles. (Fully operational)
+- **CLI Workspace (`december-cli`)**: A technical, terminal-focused workspace (similar to Codex) designed for focused command-line workflows and heavy-duty code engineering. (Development in progress)
 
 ## Features
 
@@ -20,6 +25,7 @@ December is an advanced, AI-driven platform for generating, managing, and intera
 December is organized into three primary environments, working in harmony to deliver a seamless experience:
 
 - **Web Client (`web/src`)**: A React-based frontend providing the visual canvas, code editor, and project management interfaces. It utilizes modern state management and responsive design.
+- **CLI Client (`december-cli`)**: A Rust-based terminal interface designed for focused developers.
 - **API Server (`server/src`)**: A Bun/Express backend handling database persistence, AI agent orchestration, and complex business logic. It securely manages user projects and templates.
 - **Runtime (`runtime/src`)**: A Rust-based execution environment for secure, isolated code execution and fast validation of generated applications.
 
