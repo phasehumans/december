@@ -54,7 +54,8 @@ model User {
   chatSuggestions Boolean         @default(false)
   generationSound GenerationSound @default(FIRST_GENERATION)
 
-  skills String?
+  design String?
+  hasCompletedOnboarding Boolean @default(false)
 
   stripeCustomerId   String?            @unique
   subscriptionStatus SubscriptionStatus @default(FREE)
@@ -370,7 +371,6 @@ model RedeemCode {
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
   claims          RedeemCodeClaim[]
-
 }
 
 model RedeemCodeClaim {

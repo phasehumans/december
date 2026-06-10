@@ -14,6 +14,7 @@ profileRouter.patch('/username', profileController.updateUsername)
 profileRouter.patch('/avatar', profileController.updateAvatarUrl)
 profileRouter.patch('/password', profileController.changePassword)
 profileRouter.patch('/notifications', profileController.updateNotifications)
+profileRouter.patch('/onboarding', profileController.completeOnboarding)
 profileRouter.post('/signout', profileController.signout)
 profileRouter.post('/signout/all', profileController.signoutAll)
 profileRouter.delete('/', profileController.deleteAccount)
@@ -23,8 +24,8 @@ profileRouter.post('/sound', profileController.generationSound)
 
 profileRouter.post('/feedback', profileController.submitFeedback)
 
-profileRouter.get('/skills', profileController.getSkills)
-profileRouter.post('/skills', profileController.updateSkills)
-profileRouter.delete('/skills', profileController.deleteSkills)
+profileRouter.get('/design', profileController.getdesign)
+profileRouter.post('/design', profileController.updatedesign)
+profileRouter.delete('/design', profileController.deletedesign)
 
 export default profileRouter

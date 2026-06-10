@@ -441,10 +441,66 @@ const toggleLike = async (data: ToggleLike) => {
     return created
 }
 
+const getTemplatePreviewHtml = async (templateId: string) => {
+    const template = await prisma.project.findFirst({
+        where: { id: templateId, isSharedAsTemplate: true },
+        select: { id: true },
+    })
+
+    if (!template) {
+        throw new AppError('template not found', 404)
+    }
+
+    const currentVersion = await prisma.projectVersion.findFirst({
+        where: { projectId: templateId },
+        orderBy: { versionNumber: 'desc' },
+    })
+
+    if (!currentVersion) {
+        return ''
+    }
+
+    const manifest = parseStoredProjectFiles(currentVersion.manifestJson)
+    const generatedFiles = await loadGeneratedFilesFromManifest(manifest)
+
+    let html =
+        generatedFiles['index.html'] ||
+        generatedFiles['public/index.html'] ||
+        generatedFiles['web/index.html'] ||
+        ''
+
+    const cssContents = Object.entries(generatedFiles)
+        .filter(([path, content]) => path.endsWith('.css') && content)
+        .map(([_, content]) => content)
+
+    if (cssContents.length > 0 && html) {
+        const styleTag = `\n<style>\n${cssContents.join('\n')}\n</style>\n`
+        if (/<\/head>/i.test(html)) {
+            html = html.replace(/<\/head>/i, () => `${styleTag}</head>`)
+        } else {
+            html += styleTag
+        }
+    }
+
+    let documentHtml = html.trim()
+    if (documentHtml && !/<html[\s>]/i.test(documentHtml)) {
+        documentHtml = `<!DOCTYPE html><html><head></head><body>${documentHtml}</body></html>`
+    }
+    if (documentHtml && !/<head[\s>]/i.test(documentHtml)) {
+        documentHtml = documentHtml.replace(/<html([^>]*)>/i, '<html$1><head></head>')
+    }
+    if (documentHtml && !/<body[\s>]/i.test(documentHtml)) {
+        documentHtml = documentHtml.replace(/<\/head>/i, '</head><body></body>')
+    }
+
+    return documentHtml
+}
+
 export const templateService = {
     getAllTemplates,
     getTemplateById,
     getFeaturedTemplates,
     remixTemplate,
     toggleLike,
+    getTemplatePreviewHtml,
 }

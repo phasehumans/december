@@ -16,8 +16,7 @@ export type TokenPayload = {
 
 export const sendOTP = async (email: string, otp: string) => {
     await resend.emails.send({
-        from: 'Chaitanya Sonawane <onboarding@resend.dev>',
-        // from: 'Chaitanya Sonawane <team@withdecember.com>',
+        from: 'December <onboarding@resend.dev>',
         to: email,
         subject: 'Your Verification Code',
         html: `

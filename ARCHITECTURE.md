@@ -1,13 +1,15 @@
 # December Architecture
 
-December is a modern, modular monorepo combining a React frontend, a Bun/Express API backend, and a Rust runtime environment. This document outlines the system architecture in detail, mapping out the relationships between the core modules and the overarching infrastructure.
+December is a unified AI development workspace combining a React visual web client, a Bun/Express API backend, a Rust runtime environment, and a dedicated Rust terminal client (`december-cli`). Fusing visual layout styling (like Lovable/v0) with technical command-line engineering (like Codex), December is architected to support both design-oriented visual interfaces and developer-focused terminal workflows. This document outlines the system architecture, mapping out the relationships between the core modules and the overarching infrastructure.
 
 ## High-Level System Overview
 
 ```mermaid
 graph TD
-    User([End User]) -->|HTTP / WebSocket| Web[Web Client React / Vite]
+    User([End User]) -->|Browser UI| Web[Web Client React / Vite]
+    User -->|Terminal / CLI| CLI[CLI Client december-cli]
     Web -->|REST API| Server[API Server Bun / Express]
+    CLI -->|REST API / RPC| Server
 
     subgraph Infrastructure
         Server -->|Prisma ORM| Postgres[(PostgreSQL)]
@@ -21,6 +23,7 @@ graph TD
 
     subgraph Execution
         Server -.->|RPC / Sandboxing| Runtime[Rust Runtime Environment]
+        CLI -.->|Local Sandboxing| Runtime
     end
 ```
 
@@ -147,6 +150,16 @@ graph TD
 - **Billing (`features/billing`)**: Subscription management and usage visualization.
 - **Navigation (`features/navigation`)**: Global sidebars, headers, and routing elements.
 - **Notification (`features/notification`)**: Real-time alerts and toast management.
+
+---
+
+## 2.5 CLI Client (`december-cli/`)
+
+The CLI workspace provides a focused, technical terminal interface (similar to Codex). It compiles into a standalone binary using Rust and connects to the same backend APIs for project management, agent querying, and workspace synchronization. It consists of:
+
+- `cli/`: Command-line interface logic, flags, and query commands.
+- `december-core/`: Core shared libraries, API clients, and network protocol utilities.
+- `tui/`: Text User Interface widgets for terminal-based layout adjustments and status dashboards.
 
 ---
 

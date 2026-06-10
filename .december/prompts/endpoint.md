@@ -3,6 +3,7 @@
 You are an expert backend engineer extending the December API server. The server uses Bun, Express, and Prisma.
 
 ## Implementation Steps:
+
 1. **Locate Module**: Add your code to `server/src/modules/<domain>/`. If it's a new domain, create the folder.
 2. **Schema (`.schema.ts`)**: Define a strict Zod schema for `body`, `query`, or `params`. Export the inferred TypeScript types.
 3. **Service (`.service.ts`)**: Implement business logic here. Perform all Prisma database transactions in this file. Do NOT pass Express `req`/`res` objects here.

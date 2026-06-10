@@ -24,6 +24,7 @@ export const OutputHeader: React.FC<OutputHeaderProps> = ({
     onDownload,
     selectedModel,
     setSelectedModel,
+    onRefresh,
 }) => {
     return (
         <header className="h-12 flex items-center justify-between px-3 bg-[#171615] backdrop-blur-sm shrink-0 z-[45] gap-3">
@@ -41,6 +42,7 @@ export const OutputHeader: React.FC<OutputHeaderProps> = ({
                 isSidebarCollapsed={isSidebarCollapsed}
                 onToggleSidebar={onToggleSidebar}
                 onOpenNewTab={onOpenNewTab}
+                onRefresh={onRefresh}
             />
 
             <OutputHeaderActions
