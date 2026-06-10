@@ -7,6 +7,7 @@ import request from 'supertest'
 import { prisma } from '../../../src/config/db'
 
 const sendOTPMock = mock(async () => {})
+const sendWelcomeEmailMock = mock(async () => {})
 const axiosPostMock = mock()
 const verifyIdTokenMock = mock()
 const sendNotificationMock = mock(async () => ({}))
@@ -16,6 +17,7 @@ mock.module('../../../src/modules/auth/auth.utils', () => {
     return {
         ...actual,
         sendOTP: sendOTPMock,
+        sendWelcomeEmail: sendWelcomeEmailMock,
     }
 })
 
@@ -85,6 +87,7 @@ describe('auth.routes.integration', () => {
         if (isCleaningUp) return
         app = createApp()
         sendOTPMock.mockClear()
+        sendWelcomeEmailMock.mockClear()
         axiosPostMock.mockReset()
         verifyIdTokenMock.mockReset()
         sendNotificationMock.mockClear()
@@ -205,6 +208,9 @@ describe('auth.routes.integration', () => {
             const cookies = getCookies(res)
             expect(cookies.some((c) => c.includes('accessToken'))).toBe(true)
             expect(cookies.some((c) => c.includes('refreshToken'))).toBe(true)
+
+            expect(sendWelcomeEmailMock).toHaveBeenCalledTimes(1)
+            expect(sendWelcomeEmailMock).toHaveBeenCalledWith('verify@example.com', 'Test User')
         })
 
         it('should fail if otp missing', async () => {

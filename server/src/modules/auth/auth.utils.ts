@@ -1,4 +1,6 @@
 import { Resend } from 'resend'
+import { readFileSync } from 'fs'
+import { join } from 'path'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 import { randomUUID } from 'crypto'
@@ -14,7 +16,71 @@ export type TokenPayload = {
     exp?: number
 }
 
+const getLogoAttachment = () => {
+    try {
+        const filePath = join(process.cwd(), '../web/public/maillogo.png')
+        const content = readFileSync(filePath)
+        return {
+            content,
+            filename: 'maillogo.png',
+            contentId: 'maillogo',
+        }
+    } catch (e) {
+        console.error('Failed to load maillogo.png:', e)
+        return null
+    }
+}
+
+const getGithubAttachment = () => {
+    try {
+        const filePath = join(process.cwd(), '../web/public/github.png')
+        const content = readFileSync(filePath)
+        return {
+            content,
+            filename: 'github.png',
+            contentId: 'github',
+        }
+    } catch (e) {
+        console.error('Failed to load github.png:', e)
+        return null
+    }
+}
+
+const getXAttachment = () => {
+    try {
+        const filePath = join(process.cwd(), '../web/public/x.png')
+        const content = readFileSync(filePath)
+        return {
+            content,
+            filename: 'x.png',
+            contentId: 'x',
+        }
+    } catch (e) {
+        console.error('Failed to load x.png:', e)
+        return null
+    }
+}
+
 export const sendOTP = async (email: string, otp: string) => {
+    const attachments: any[] = []
+    const logo = getLogoAttachment()
+    const github = getGithubAttachment()
+    const x = getXAttachment()
+
+    if (logo) attachments.push(logo)
+    if (github) attachments.push(github)
+    if (x) attachments.push(x)
+
+    const logoSrc = logo
+        ? 'cid:maillogo'
+        : 'https://raw.githubusercontent.com/phasehumans/december/main/web/public/maillogo.png'
+    const githubSrc = github
+        ? 'cid:github'
+        : 'https://raw.githubusercontent.com/phasehumans/december/main/web/public/github.png'
+    const xSrc = x
+        ? 'cid:x'
+        : 'https://raw.githubusercontent.com/phasehumans/december/main/web/public/x.png'
+
     await resend.emails.send({
         from: 'December <onboarding@resend.dev>',
         to: email,
@@ -26,150 +92,116 @@ export const sendOTP = async (email: string, otp: string) => {
             <meta charset='UTF-8' />
             <meta name='viewport' content='width=device-width, initial-scale=1.0' />
             <title>December Verification Code</title>
+            <style>
+              body {
+                margin: 0;
+                padding: 0;
+                width: 100% !important;
+                -webkit-text-size-adjust: 100%;
+                -ms-text-size-adjust: 100%;
+              }
+              @media (prefers-color-scheme: dark) {
+                .body-bg {
+                  background-color: #0c0a09 !important;
+                }
+                .text-primary {
+                  color: #fafaf9 !important;
+                }
+                .text-secondary {
+                  color: #a8a29e !important;
+                }
+                .text-muted {
+                  color: #78716c !important;
+                }
+                .logo-img {
+                  filter: invert(1) !important;
+                }
+                .otp-box {
+                  background-color: #1c1917 !important;
+                  color: #fafaf9 !important;
+                  border-color: #292524 !important;
+                }
+                .divider {
+                  background-color: #292524 !important;
+                }
+                .social-icon {
+                  filter: invert(1) !important;
+                }
+                .link {
+                  color: #fafaf9 !important;
+                }
+              }
+            </style>
           </head>
-
-          <body style='margin:0; padding:0; background:#ffffff; font-family:Arial, Helvetica, sans-serif;'>
-            <table
-              role='presentation'
-              width='100%'
-              cellspacing='0'
-              cellpadding='0'
-              border='0'
-              style='background:#ffffff; margin:0; padding:40px 16px;'
-            >
+          <body class='body-bg' style='margin: 0; padding: 48px 16px; background-color: #ffffff; color: #1c1917; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased;'>
+            <table role='presentation' width='100%' cellspacing='0' cellpadding='0' border='0'>
               <tr>
                 <td align='center'>
-                  <table
-                    role='presentation'
-                    width='100%'
-                    cellspacing='0'
-                    cellpadding='0'
-                    border='0'
-                    style='
-                      max-width:560px;
-                      background:#171615;
-                      border:1px solid #2A2927;
-                      border-radius:20px;
-                      overflow:hidden;
-                    '
-                  >
-                    <!-- Header -->
+                  <table role='presentation' width='100%' cellspacing='0' cellpadding='0' border='0' style='max-width: 520px; margin: 0 auto; text-align: left;'>
+                    <!-- Logo Header -->
                     <tr>
-                      <td style='padding:36px 32px 20px; text-align:center;'>
-                        <h1
-                          style='
-                            margin:0;
-                            font-size:26px;
-                            line-height:32px;
-                            font-weight:600;
-                            color:#F5F5F4;
-                            letter-spacing:-0.3px;
-                          '
-                        >
-                          December
-                        </h1>
-
-                        <p
-                          style='
-                            margin:14px 0 0;
-                            font-size:14px;
-                            line-height:22px;
-                            color:#A8A29E;
-                          '
-                        >
+                      <td align='center' style='padding-bottom: 32px;'>
+                        <img class='logo-img' src='${logoSrc}' alt='December Logo' width='48' height='48' style='display: block; border: 0; outline: none; width: 48px; height: 48px; margin: 0 auto;' />
+                      </td>
+                    </tr>
+                    <!-- Heading -->
+                    <tr>
+                      <td style='padding-bottom: 16px; text-align: center;'>
+                        <h1 class='text-primary' style='margin: 0; font-size: 20px; font-weight: 600; line-height: 28px; color: #1c1917; letter-spacing: -0.3px;'>
                           Verify your email
+                        </h1>
+                      </td>
+                    </tr>
+                    <!-- Body Text -->
+                    <tr>
+                      <td style='padding-bottom: 24px; text-align: center;'>
+                        <p class='text-secondary' style='margin: 0; font-size: 14px; line-height: 22px; color: #57534e;'>
+                          Use the verification code below to continue to December.
                         </p>
                       </td>
                     </tr>
-
+                    <!-- OTP Box -->
+                    <tr>
+                      <td align='center' style='padding-bottom: 24px;'>
+                        <div class='otp-box' style='display: inline-block; padding: 14px 28px; background-color: #f5f5f4; border: 1px solid #e7e5e4; border-radius: 10px; color: #1c1917; font-size: 30px; line-height: 36px; font-weight: 700; letter-spacing: 8px; font-family: Menlo, Monaco, Consolas, "Courier New", monospace; text-align: center;'>
+                          ${otp}
+                        </div>
+                      </td>
+                    </tr>
+                    <!-- Expiry & Fallback -->
+                    <tr>
+                      <td style='padding-bottom: 36px; text-align: center;'>
+                        <p class='text-secondary' style='margin: 0; font-size: 13px; line-height: 20px; color: #57534e;'>
+                          This code expires in <strong class='text-primary' style='color: #1c1917; font-weight: 600;'>10 minutes</strong>.
+                        </p>
+                        <p class='text-muted' style='margin: 0; font-size: 12px; line-height: 18px; color: #a8a29e;'>
+                          If you didn’t request this code, you can safely ignore this email.
+                        </p>
+                      </td>
+                    </tr>
                     <!-- Divider -->
                     <tr>
-                      <td style='padding:0 32px;'>
-                        <div style='height:1px; background:#2A2927;'></div>
+                      <td style='padding-bottom: 24px;'>
+                        <div class='divider' style='height: 1px; background-color: #f5f5f4; border-bottom: 1px solid #e7e5e4;'></div>
                       </td>
                     </tr>
-
-                    <!-- Body -->
-                    <tr>
-                      <td style='padding:28px 32px 32px;'>
-                        <p
-                          style='
-                            margin:0 0 20px;
-                            font-size:15px;
-                            line-height:24px;
-                            color:#D6D3D1;
-                            text-align:center;
-                          '
-                        >
-                          Use the verification code below to continue.
-                        </p>
-
-                        <!-- OTP Box -->
-                        <div style='margin:0 0 24px; text-align:center;'>
-                          <div
-                            style='
-                              display:inline-block;
-                              min-width:220px;
-                              padding:18px 24px;
-                              background:#1E1D1B;
-                              border:1px solid #2A2927;
-                              border-radius:14px;
-                              color:#FAFAF9;
-                              font-size:34px;
-                              line-height:40px;
-                              font-weight:700;
-                              letter-spacing:10px;
-                              font-family:'Courier New', monospace;
-                              text-align:center;
-                            '
-                          >
-                            ${otp}
-                          </div>
-                        </div>
-
-                        <p
-                          style='
-                            margin:0 0 8px;
-                            font-size:14px;
-                            line-height:22px;
-                            color:#D6D3D1;
-                            text-align:center;
-                          '
-                        >
-                          This code will expire in <strong style='color:#FAFAF9;'>10 minutes</strong>.
-                        </p>
-
-                        <p
-                          style='
-                            margin:0;
-                            font-size:13px;
-                            line-height:22px;
-                            color:#78716C;
-                            text-align:center;
-                          '
-                        >
-                          If you didn’t request this, you can safely ignore this email.
-                        </p>
-                      </td>
-                    </tr>
-
                     <!-- Footer -->
                     <tr>
-                      <td
-                        style='
-                          padding:18px 32px 24px;
-                          border-top:1px solid #2A2927;
-                          text-align:center;
-                        '
-                      >
-                        <p
-                          style='
-                            margin:0;
-                            font-size:12px;
-                            line-height:18px;
-                            color:#78716C;
-                          '
-                        >
+                      <td style='text-align: center;'>
+                        <!-- Social links -->
+                        <div style='padding-bottom: 16px; display: inline-block;'>
+                          <a href='https://github.com/phasehumans/december' target='_blank' style='text-decoration: none; margin: 0 8px; display: inline-block;'>
+                            <img class='social-icon' src='${githubSrc}' alt='GitHub' width='20' height='20' style='display: block; border: 0; outline: none; width: 20px; height: 20px;' />
+                          </a>
+                          <a href='https://x.com/phasehumans' target='_blank' style='text-decoration: none; margin: 0 8px; display: inline-block;'>
+                            <img class='social-icon' src='${xSrc}' alt='X' width='20' height='20' style='display: block; border: 0; outline: none; width: 20px; height: 20px;' />
+                          </a>
+                        </div>
+                        <!-- Support email & copyright -->
+                        <p class='text-muted' style='margin: 0 0 6px 0; font-size: 11px; line-height: 16px; color: #a8a29e;'>
+                          Questions? Reach out to <a class='link' href='mailto:phasehumans@gmail.com' style='color: #57534e; text-decoration: underline;'>phasehumans@gmail.com</a>
+                        </p>
+                        <p class='text-muted' style='margin: 0; font-size: 10px; line-height: 14px; color: #a8a29e; letter-spacing: 0.2px;'>
                           Automated email from December
                         </p>
                       </td>
@@ -181,6 +213,158 @@ export const sendOTP = async (email: string, otp: string) => {
           </body>
         </html>
       `,
+        attachments,
+    })
+}
+
+export const sendWelcomeEmail = async (email: string, name: string) => {
+    const attachments: any[] = []
+    const logo = getLogoAttachment()
+    const github = getGithubAttachment()
+    const x = getXAttachment()
+
+    if (logo) attachments.push(logo)
+    if (github) attachments.push(github)
+    if (x) attachments.push(x)
+
+    const logoSrc = logo
+        ? 'cid:maillogo'
+        : 'https://raw.githubusercontent.com/phasehumans/december/main/web/public/maillogo.png'
+    const githubSrc = github
+        ? 'cid:github'
+        : 'https://raw.githubusercontent.com/phasehumans/december/main/web/public/github.png'
+    const xSrc = x
+        ? 'cid:x'
+        : 'https://raw.githubusercontent.com/phasehumans/december/main/web/public/x.png'
+
+    await resend.emails.send({
+        from: 'December <onboarding@resend.dev>',
+        to: email,
+        subject: 'Welcome to December',
+        html: `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset='UTF-8' />
+            <meta name='viewport' content='width=device-width, initial-scale=1.0' />
+            <title>Welcome to December</title>
+            <style>
+              body {
+                margin: 0;
+                padding: 0;
+                width: 100% !important;
+                -webkit-text-size-adjust: 100%;
+                -ms-text-size-adjust: 100%;
+              }
+              @media (prefers-color-scheme: dark) {
+                .body-bg {
+                  background-color: #0c0a09 !important;
+                }
+                .text-primary {
+                  color: #fafaf9 !important;
+                }
+                .text-secondary {
+                  color: #a8a29e !important;
+                }
+                .text-muted {
+                  color: #78716c !important;
+                }
+                .logo-img {
+                  filter: invert(1) !important;
+                }
+                .divider {
+                  background-color: #292524 !important;
+                }
+                .social-icon {
+                  filter: invert(1) !important;
+                }
+                .link {
+                  color: #fafaf9 !important;
+                }
+              }
+            </style>
+          </head>
+          <body class='body-bg' style='margin: 0; padding: 48px 16px; background-color: #ffffff; color: #1c1917; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased;'>
+            <table role='presentation' width='100%' cellspacing='0' cellpadding='0' border='0'>
+              <tr>
+                <td align='center'>
+                  <table role='presentation' width='100%' cellspacing='0' cellpadding='0' border='0' style='max-width: 520px; margin: 0 auto; text-align: left;'>
+                    <!-- Logo Header -->
+                    <tr>
+                      <td align='center' style='padding-bottom: 32px;'>
+                        <img class='logo-img' src='${logoSrc}' alt='December Logo' width='48' height='48' style='display: block; border: 0; outline: none; width: 48px; height: 48px; margin: 0 auto;' />
+                      </td>
+                    </tr>
+                    <!-- Heading -->
+                    <tr>
+                      <td style='padding-bottom: 20px;'>
+                        <h1 class='text-primary' style='margin: 0; font-size: 20px; font-weight: 600; line-height: 28px; color: #1c1917; letter-spacing: -0.3px;'>
+                          Welcome to December
+                        </h1>
+                      </td>
+                    </tr>
+                    <!-- Body Text -->
+                    <tr>
+                      <td style='padding-bottom: 24px;'>
+                        <p class='text-secondary' style='margin: 0 0 16px 0; font-size: 14px; line-height: 22px; color: #57534e;'>
+                          Hi ${name || 'there'},
+                        </p>
+                        <p class='text-secondary' style='margin: 0 0 16px 0; font-size: 14px; line-height: 22px; color: #57534e;'>
+                          We’re thrilled to welcome you to <strong>December</strong>. December is a unified development workspace powered by AI, designed to help you design, build, and deploy web applications directly from natural language.
+                        </p>
+                        <p class='text-secondary' style='margin: 0 0 16px 0; font-size: 14px; line-height: 22px; color: #57534e;'>
+                          Here is how you can get started:
+                        </p>
+                        <ul class='text-secondary' style='margin: 0 0 16px 0; padding-left: 20px; font-size: 14px; line-height: 22px; color: #57534e;'>
+                          <li style='margin-bottom: 8px;'><strong>Interactive Canvas:</strong> Design and iterate on your frontend interface with live, hot-reloaded previews.</li>
+                          <li style='margin-bottom: 8px;'><strong>AI-Driven Workspace:</strong> Generate full-stack applications and features with agent assistance.</li>
+                          <li style='margin-bottom: 8px;'><strong>Project Management:</strong> Manage, edit, and export your production-ready projects.</li>
+                        </ul>
+                        <p class='text-secondary' style='margin: 0 0 24px 0; font-size: 14px; line-height: 22px; color: #57534e;'>
+                          If you ever have any questions or feedback, feel free to reply to this email or reach out to our team at <a class='link' href='mailto:phasehumans@gmail.com' style='color: #1c1917; text-decoration: underline; font-weight: 500;'>phasehumans@gmail.com</a>.
+                        </p>
+                        <p class='text-secondary' style='margin: 0; font-size: 14px; line-height: 22px; color: #57534e;'>
+                          Welcome aboard,
+                          <br />
+                          <span class='text-primary' style='font-weight: 600; color: #1c1917;'>The December Team</span>
+                        </p>
+                      </td>
+                    </tr>
+                    <!-- Divider -->
+                    <tr>
+                      <td style='padding-top: 16px; padding-bottom: 24px;'>
+                        <div class='divider' style='height: 1px; background-color: #f5f5f4; border-bottom: 1px solid #e7e5e4;'></div>
+                      </td>
+                    </tr>
+                    <!-- Footer -->
+                    <tr>
+                      <td style='text-align: center;'>
+                        <!-- Social links -->
+                        <div style='padding-bottom: 16px; display: inline-block;'>
+                          <a href='https://github.com/phasehumans/december' target='_blank' style='text-decoration: none; margin: 0 8px; display: inline-block;'>
+                            <img class='social-icon' src='${githubSrc}' alt='GitHub' width='20' height='20' style='display: block; border: 0; outline: none; width: 20px; height: 20px;' />
+                          </a>
+                          <a href='https://x.com/phasehumans' target='_blank' style='text-decoration: none; margin: 0 8px; display: inline-block;'>
+                            <img class='social-icon' src='${xSrc}' alt='X' width='20' height='20' style='display: block; border: 0; outline: none; width: 20px; height: 20px;' />
+                          </a>
+                        </div>
+                        <!-- Support email & copyright -->
+                        <p class='text-muted' style='margin: 0 0 6px 0; font-size: 11px; line-height: 16px; color: #a8a29e;'>
+                          Questions? Reach out to <a class='link' href='mailto:phasehumans@gmail.com' style='color: #57534e; text-decoration: underline;'>phasehumans@gmail.com</a>
+                        </p>
+                        <p class='text-muted' style='margin: 0; font-size: 10px; line-height: 14px; color: #a8a29e; letter-spacing: 0.2px;'>
+                          Automated email from December
+                        </p>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+          </body>
+        </html>
+      `,
+        attachments,
     })
 }
 
