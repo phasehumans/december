@@ -27,10 +27,11 @@ export type Profile = {
     chatSuggestions?: boolean
     generationSound?: 'FIRST_GENERATION' | 'ALWAYS' | 'NEVER'
     memories?: string | null
-    skills?: string | null
+    design?: string | null
     avatarUrl?: string | null
     subscriptionPlan?: 'FREE' | 'PRO'
     subscriptionStatus?: 'FREE' | 'ACTIVE' | 'PAST_DUE' | 'CANCELED'
+    hasCompletedOnboarding?: boolean
 }
 
 type BackendProfile = Profile
@@ -213,25 +214,25 @@ const deleteMemories = () => {
     })
 }
 
-// --- Skills ---
+// --- design ---
 
-type UpdateSkillsInput = {
-    skills: string
+type UpdatedesignInput = {
+    design: string
 }
 
-const getSkills = () => {
-    return apiRequest<{ skills: string | null }>('/profile/skills')
+const getdesign = () => {
+    return apiRequest<{ design: string | null }>('/profile/design')
 }
 
-const updateSkills = (data: UpdateSkillsInput) => {
-    return apiRequest<{ skills: string | null }>('/profile/skills', {
+const updatedesign = (data: UpdatedesignInput) => {
+    return apiRequest<{ design: string | null }>('/profile/design', {
         method: 'POST',
         body: JSON.stringify(data),
     })
 }
 
-const deleteSkills = () => {
-    return apiRequest<void>('/profile/skills', {
+const deletedesign = () => {
+    return apiRequest<void>('/profile/design', {
         method: 'DELETE',
     })
 }
@@ -292,6 +293,12 @@ const submitFeedback = (data: { rating: 'sad' | 'neutral' | 'happy' | null; feed
     })
 }
 
+const completeOnboarding = () => {
+    return apiRequest<BackendProfile>('/profile/onboarding', {
+        method: 'PATCH',
+    })
+}
+
 export const profileAPI = {
     getProfile,
     updateName,
@@ -308,9 +315,9 @@ export const profileAPI = {
     getMemories,
     updateMemories,
     deleteMemories,
-    getSkills,
-    updateSkills,
-    deleteSkills,
+    getdesign,
+    updatedesign,
+    deletedesign,
     getGithubRepos,
     getGithubConnectUrl,
     getVercelConnectUrl,
@@ -318,4 +325,5 @@ export const profileAPI = {
     getNotionConnectUrl,
     getFigmaConnectUrl,
     submitFeedback,
+    completeOnboarding,
 }

@@ -30,11 +30,12 @@ export const profileSelect = {
     notifySecurityAlerts: true,
     chatSuggestions: true,
     generationSound: true,
-    skills: true,
+    design: true,
     avatarUrl: true,
     subscriptionPlan: true,
     subscriptionStatus: true,
     isDeleted: true,
+    hasCompletedOnboarding: true,
 }
 
 type UpdateName = {
@@ -88,9 +89,9 @@ type GenerationSoundType = {
     generationSound: GenerationSound
 }
 
-type UpdateSkills = {
+type Updatedesign = {
     userId: string
-    skills: string
+    design: string
 }
 
 const getInfo = async (data: string) => {
@@ -552,13 +553,13 @@ const generationSound = async (data: GenerationSoundType) => {
     return updatedUser
 }
 
-const getSkills = async (userId: string) => {
+const getdesign = async (userId: string) => {
     const user = await prisma.user.findUnique({
         where: {
             id: userId,
         },
         select: {
-            skills: true,
+            design: true,
             isDeleted: true,
         },
     })
@@ -567,11 +568,11 @@ const getSkills = async (userId: string) => {
         throw new AppError('user not found', 404)
     }
 
-    return { skills: user.skills }
+    return { design: user.design }
 }
 
-const updateSkills = async (data: UpdateSkills) => {
-    const { userId, skills } = data
+const updatedesign = async (data: Updatedesign) => {
+    const { userId, design } = data
 
     const existingUser = await prisma.user.findUnique({
         where: {
@@ -592,17 +593,17 @@ const updateSkills = async (data: UpdateSkills) => {
             id: userId,
         },
         data: {
-            skills,
+            design,
         },
         select: {
-            skills: true,
+            design: true,
         },
     })
 
-    return { skills: updatedUser.skills }
+    return { design: updatedUser.design }
 }
 
-const deleteSkills = async (userId: string) => {
+const deletedesign = async (userId: string) => {
     const existingUser = await prisma.user.findUnique({
         where: {
             id: userId,
@@ -622,12 +623,43 @@ const deleteSkills = async (userId: string) => {
             id: userId,
         },
         data: {
-            skills: null,
+            design: null,
         },
         select: {
             id: true,
         },
     })
+}
+
+const completeOnboarding = async (userId: string) => {
+    const existingUser = await prisma.user.findUnique({
+        where: {
+            id: userId,
+        },
+        select: {
+            id: true,
+            isDeleted: true,
+        },
+    })
+
+    if (!existingUser || existingUser.isDeleted === true) {
+        throw new AppError('user not found', 404)
+    }
+
+    const updatedUser = await prisma.user.update({
+        where: {
+            id: userId,
+        },
+        data: {
+            hasCompletedOnboarding: true,
+        },
+        select: {
+            id: true,
+            hasCompletedOnboarding: true,
+        },
+    })
+
+    return updatedUser
 }
 
 export const profileService = {
@@ -644,7 +676,8 @@ export const profileService = {
     deleteAccount,
     chatSuggestions,
     generationSound,
-    getSkills,
-    updateSkills,
-    deleteSkills,
+    getdesign,
+    updatedesign,
+    deletedesign,
+    completeOnboarding,
 }

@@ -43,14 +43,14 @@ export const ProfileSettingsSkeleton: React.FC<ProfileSettingsSkeletonProps> = (
                     </div>
                 </div>
 
-                {/* Custom Skills Section */}
+                {/* Custom design Section */}
                 <div className="flex flex-col mb-10">
                     <Skeleton className="h-[18px] w-32 mb-4 bg-white/[0.06]" />
                     <div className="flex flex-col gap-4 border border-[#242323] rounded-xl p-5 bg-[#171615]">
                         <Skeleton className="h-3.5 w-[90%] bg-white/[0.04]" />
                         <Skeleton className="h-3.5 w-3/4 mb-4 bg-white/[0.04]" />
 
-                        {/* Skills Editor skeleton */}
+                        {/* design Editor skeleton */}
                         <div className="flex flex-col border border-[#2B2A29] rounded-xl overflow-hidden bg-[#131211]">
                             <div className="flex items-center justify-between px-4 py-3 bg-[#131211] border-b border-[#2B2A29]">
                                 <Skeleton className="h-4 w-20 bg-white/[0.06]" />

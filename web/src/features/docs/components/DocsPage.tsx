@@ -231,13 +231,27 @@ export const DocsPage: React.FC<DocsPageProps> = ({ onBack }) => {
                                         Introduction to December
                                     </h1>
                                     <p className="text-[14.5px] text-[#A3A299] leading-relaxed">
-                                        December is a premium, visual-first development platform
-                                        that empowers teams to prototype, design, and deploy
-                                        full-stack applications instantly. Describe your app concept
-                                        in plain language, construct layout blocks on a responsive
-                                        visual canvas, and compile production-ready React +
-                                        TypeScript code natively backed by Git version control.
+                                        December is a unified AI development workspace and platform
+                                        that empowers teams to build, edit, and orchestrate
+                                        applications seamlessly. Fusing design-focused frontend
+                                        generation (similar to Lovable and v0) with code-focused
+                                        engineering environments (similar to Codex), December
+                                        supports two primary workspaces:
                                     </p>
+                                    <ul className="list-disc pl-5 flex flex-col gap-1.5 text-[13.5px] text-[#A3A299] mt-2">
+                                        <li>
+                                            <strong className="text-white">Web Workspace:</strong> A
+                                            design and visual-first interface (similar to
+                                            Lovable/v0) where you select nodes, draw canvas changes,
+                                            and generate clean React components. (Fully operational)
+                                        </li>
+                                        <li>
+                                            <strong className="text-white">CLI Workspace:</strong> A
+                                            terminal-based developer tool (similar to Codex)
+                                            designed for focused command-line workflows and code
+                                            editing. (Development in progress)
+                                        </li>
+                                    </ul>
                                 </div>
 
                                 <Mermaid

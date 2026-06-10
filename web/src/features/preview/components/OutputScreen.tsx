@@ -89,6 +89,7 @@ export const OutputScreen: React.FC<OutputScreenProps> = ({
         handleApplyEdit,
         handleClearSelection,
         handleOpenInNewTab,
+        handleRefreshPreview,
     } = useOutputScreenController({
         isGenerating,
         generatedFiles,
@@ -776,6 +777,7 @@ You can now ask me to explain specific files, add new features, or debug any iss
                     projectType={activeProjectType}
                     selectedModel={selectedModel}
                     setSelectedModel={setSelectedModel}
+                    onRefresh={handleRefreshPreview}
                 />
             </div>
 

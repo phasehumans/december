@@ -8,12 +8,14 @@ interface OutputHeaderDevicePickerProps {
     device: PreviewDevice
     setDevice: (device: PreviewDevice) => void
     onOpenNewTab: () => void
+    onRefresh?: () => void
 }
 
 export const OutputHeaderDevicePicker: React.FC<OutputHeaderDevicePickerProps> = ({
     device,
     setDevice,
     onOpenNewTab,
+    onRefresh,
 }) => {
     const [isDeviceMenuOpen, setIsDeviceMenuOpen] = useState(false)
     const dropdownRef = useRef<HTMLDivElement>(null)
@@ -87,7 +89,11 @@ export const OutputHeaderDevicePicker: React.FC<OutputHeaderDevicePickerProps> =
             <div className="flex-1 text-sm text-[#91908F] truncate font-mono opacity-60 text-center"></div>
 
             <div className="flex items-center gap-1 pl-2">
-                <button className="p-1.5 text-[#91908F] hover:text-white hover:bg-white/5 rounded transition-colors">
+                <button
+                    onClick={onRefresh}
+                    className="p-1.5 text-[#91908F] hover:text-white hover:bg-white/5 rounded transition-colors"
+                    title="Refresh preview"
+                >
                     <RefreshCw size={12} />
                 </button>
                 <button

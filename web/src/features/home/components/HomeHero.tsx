@@ -11,6 +11,9 @@ import type { HomeHeroProps } from '@/features/home/types'
 
 import Canvas, { type CanvasRef } from '@/features/canvas/components/Canvas'
 import { Icons } from '@/shared/components/ui/Icons'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { profileAPI } from '@/features/profile/api/profile'
+import { OnboardingModal } from './OnboardingModal'
 
 export const HomeHero: React.FC<HomeHeroProps> = ({
     onPromptSubmit,
@@ -29,6 +32,36 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
     const [prompt, setPrompt] = React.useState('')
     const [activeImportForm, setActiveImportForm] = useState<'github' | 'upload' | null>(null)
     const [showUpgradeModal, setShowUpgradeModal] = useState(false)
+
+    const queryClient = useQueryClient()
+    const { data: profile } = useQuery({
+        queryKey: ['profile'],
+        queryFn: profileAPI.getProfile,
+        enabled: isAuthenticated,
+    })
+
+    const completeOnboardingMutation = useMutation({
+        mutationFn: profileAPI.completeOnboarding,
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: ['profile'] })
+        },
+    })
+
+    const [showOnboarding, setShowOnboarding] = useState(false)
+
+    useEffect(() => {
+        let timer: any = null
+        if (isAuthenticated && profile && profile.hasCompletedOnboarding === false) {
+            timer = setTimeout(() => {
+                setShowOnboarding(true)
+            }, 3000)
+        } else {
+            setShowOnboarding(false)
+        }
+        return () => {
+            if (timer) clearTimeout(timer)
+        }
+    }, [isAuthenticated, profile])
 
     useEffect(() => {
         if (
@@ -183,6 +216,15 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
                     />
                 </div>
             </div>
+
+            <OnboardingModal
+                isOpen={showOnboarding}
+                onClose={() => setShowOnboarding(false)}
+                onConfirm={() => {
+                    completeOnboardingMutation.mutate()
+                    setShowOnboarding(false)
+                }}
+            />
 
             <ProUpgradeModal isOpen={showUpgradeModal} onClose={() => setShowUpgradeModal(false)} />
         </main>

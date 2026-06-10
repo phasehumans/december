@@ -211,10 +211,29 @@ const toggleLike = async (req: Request, res: Response) => {
     }
 }
 
+const getTemplatePreviewHtml = async (req: Request, res: Response) => {
+    const templateId = req.params.templateId as string | undefined
+
+    if (!templateId) {
+        return res.status(400).send('templateId is required')
+    }
+
+    try {
+        const html = await templateService.getTemplatePreviewHtml(templateId)
+        res.setHeader('Content-Type', 'text/html')
+        return res.status(200).send(html)
+    } catch (error: any) {
+        return res
+            .status(error instanceof AppError ? error.statusCode : 500)
+            .send('failed to load preview')
+    }
+}
+
 export const templateController = {
     getAllTemplates,
     getTemplateById,
     getFeaturedTemplates,
     remixTemplate,
     toggleLike,
+    getTemplatePreviewHtml,
 }

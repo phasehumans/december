@@ -19,53 +19,53 @@ export const ProfileGeneralSettings: React.FC<ProfileGeneralSettingsProps> = ({
 }) => {
     const queryClient = useQueryClient()
 
-    // --- Skills ---
-    const skillsQuery = useQuery({
-        queryKey: ['profile', 'skills'],
-        queryFn: profileAPI.getSkills,
+    // --- design ---
+    const designQuery = useQuery({
+        queryKey: ['profile', 'design'],
+        queryFn: profileAPI.getdesign,
     })
 
-    const [skillsText, setSkillsText] = useState('')
-    const [skillsActive, setSkillsActive] = useState(false)
-    const [skillsDirty, setSkillsDirty] = useState(false)
+    const [designText, setdesignText] = useState('')
+    const [designActive, setdesignActive] = useState(false)
+    const [designDirty, setdesignDirty] = useState(false)
 
     useEffect(() => {
-        if (skillsQuery.data?.skills) {
-            setSkillsText(skillsQuery.data.skills)
-            setSkillsActive(true)
+        if (designQuery.data?.design) {
+            setdesignText(designQuery.data.design)
+            setdesignActive(true)
         }
-    }, [skillsQuery.data])
+    }, [designQuery.data])
 
-    const updateSkillsMutation = useMutation({
-        mutationFn: profileAPI.updateSkills,
+    const updatedesignMutation = useMutation({
+        mutationFn: profileAPI.updatedesign,
         onSuccess: () => {
-            setSkillsDirty(false)
-            queryClient.invalidateQueries({ queryKey: ['profile', 'skills'] })
+            setdesignDirty(false)
+            queryClient.invalidateQueries({ queryKey: ['profile', 'design'] })
             queryClient.invalidateQueries({ queryKey: ['profile'] })
         },
     })
 
-    const deleteSkillsMutation = useMutation({
-        mutationFn: profileAPI.deleteSkills,
+    const deletedesignMutation = useMutation({
+        mutationFn: profileAPI.deletedesign,
         onSuccess: () => {
-            setSkillsText('')
-            setSkillsActive(false)
-            setSkillsDirty(false)
-            queryClient.invalidateQueries({ queryKey: ['profile', 'skills'] })
+            setdesignText('')
+            setdesignActive(false)
+            setdesignDirty(false)
+            queryClient.invalidateQueries({ queryKey: ['profile', 'design'] })
             queryClient.invalidateQueries({ queryKey: ['profile'] })
         },
     })
 
-    const defaultSkillContent = `---
-name: skill
-description: Describe what this skill does and when december should use it. Be specific - this is how december decides to trigger the skill.
+    const defaultdesignContent = `---
+name: design
+description: Describe what this design does and when december should use it. Be specific - this is how december decides to trigger the design.
 ---
 
-# skill
+# design
 
 ## Instructions
 
-Write the steps december should follow when this skill is triggered.
+Write the steps december should follow when this design is triggered.
 Focus on what december wouldn't already know - domain-specific details, preferred patterns, or exact sequences.`
 
     return (
@@ -182,82 +182,82 @@ Focus on what december wouldn't already know - domain-specific details, preferre
                 </div>
             </div>
 
-            {/* Custom Skills */}
+            {/* Custom design */}
             <div className="flex flex-col mb-10">
-                <h1 className="text-[16px] font-medium mb-4">Custom Skills</h1>
+                <h1 className="text-[16px] font-medium mb-4">Custom design</h1>
                 <div className="flex flex-col gap-4 border border-[#242323] rounded-xl p-5 bg-[#171615]">
                     <p className="text-[13px] text-[#7B7A79] mb-4 leading-relaxed">
-                        Create reusable skills that december can apply during conversations. Each
-                        skill has a SKILLS.md that defines when it triggers and what instructions to
-                        follow.{' '}
+                        Create reusable design that december can apply during conversations. Each
+                        design has a design.md that defines when it triggers and what instructions
+                        to follow.{' '}
                         <a
                             href="/docs"
                             className="inline-flex items-center gap-1.5 text-[#7B7A79] hover:text-[#D6D5C9] transition-colors"
                         >
-                            View sample SKILLS.md in docs
+                            View sample design.md in docs
                             <ExternalLink className="w-3.5 h-3.5" />
                         </a>
                     </p>
 
-                    {!skillsActive ? (
+                    {!designActive ? (
                         <div>
                             <button
                                 onClick={() => {
-                                    setSkillsActive(true)
-                                    if (!skillsText) {
-                                        setSkillsText(defaultSkillContent)
-                                        setSkillsDirty(true)
+                                    setdesignActive(true)
+                                    if (!designText) {
+                                        setdesignText(defaultdesignContent)
+                                        setdesignDirty(true)
                                     }
                                 }}
                                 className="flex items-center gap-2 px-4 py-2 border border-[#383736] rounded-lg text-[14px] font-medium text-[#D6D5C9] hover:bg-[#242323] transition-colors w-fit shadow-sm"
                             >
                                 <FilePlus className="w-4 h-4" />
-                                Create a skill
+                                Create a design
                             </button>
                         </div>
                     ) : (
                         <div className="flex flex-col border border-[#2B2A29] rounded-xl overflow-hidden bg-[#131211]">
                             <div className="flex items-center justify-between px-4 py-3 bg-[#131211] border-b border-[#2B2A29]">
                                 <span className="text-[13px] font-medium text-[#D6D5C9]">
-                                    SKILLS.md
+                                    design.md
                                 </span>
                                 <span className="text-[12px] text-[#4A4948]">
-                                    {skillsText.length} chars
+                                    {designText.length} chars
                                 </span>
                             </div>
                             <div className="p-4 bg-[#131211]">
                                 <textarea
                                     className="w-full h-[500px] bg-[#0E0D0C] border border-[#2B2A29] rounded-lg p-4 text-[13.5px] text-[#D6D5C9] placeholder:text-[#4A4948] font-mono leading-[1.6] resize-none focus:outline-none focus:border-[#383736] transition-colors caret-[#D6D5C9] no-scrollbar"
                                     spellCheck={false}
-                                    value={skillsText}
+                                    value={designText}
                                     onChange={(e) => {
-                                        setSkillsText(e.target.value)
-                                        setSkillsDirty(true)
+                                        setdesignText(e.target.value)
+                                        setdesignDirty(true)
                                     }}
                                 ></textarea>
                                 <div className="flex items-center gap-3 mt-4">
                                     <button
                                         onClick={() => {
-                                            if (skillsText.trim()) {
-                                                updateSkillsMutation.mutate({
-                                                    skills: skillsText,
+                                            if (designText.trim()) {
+                                                updatedesignMutation.mutate({
+                                                    design: designText,
                                                 })
                                             }
                                         }}
-                                        disabled={!skillsDirty || updateSkillsMutation.isPending}
+                                        disabled={!designDirty || updatedesignMutation.isPending}
                                         className="px-4 py-1.5 rounded-lg border border-[#383736] text-[13px] font-medium text-[#D6D5C9] hover:bg-[#242323] transition-colors disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-2"
                                     >
-                                        {updateSkillsMutation.isPending && (
+                                        {updatedesignMutation.isPending && (
                                             <Loader2 className="w-3.5 h-3.5 animate-spin" />
                                         )}
                                         Save
                                     </button>
                                     <button
-                                        onClick={() => deleteSkillsMutation.mutate()}
-                                        disabled={deleteSkillsMutation.isPending}
+                                        onClick={() => deletedesignMutation.mutate()}
+                                        disabled={deletedesignMutation.isPending}
                                         className="flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-medium text-[#7B7A79] hover:text-red-400 transition-colors rounded-lg disabled:opacity-30"
                                     >
-                                        {deleteSkillsMutation.isPending ? (
+                                        {deletedesignMutation.isPending ? (
                                             <Loader2 className="w-[15px] h-[15px] animate-spin" />
                                         ) : (
                                             <Trash2 className="w-[15px] h-[15px]" />
