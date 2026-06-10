@@ -8,7 +8,7 @@ import {
     changePasswordSchema,
     chatSuggestionsSchema,
     generationSoundSchema,
-    skillsSchema,
+    designSchema,
     updateNameSchema,
     updateNotificationSchema,
     updateUsernameSchema,
@@ -549,7 +549,7 @@ const generationSound = async (req: Request, res: Response) => {
     }
 }
 
-const getSkills = async (req: Request, res: Response) => {
+const getdesign = async (req: Request, res: Response) => {
     const userId = req.user?.userId as string | undefined
 
     if (!userId) {
@@ -560,32 +560,32 @@ const getSkills = async (req: Request, res: Response) => {
     }
 
     try {
-        const result = await profileService.getSkills(userId)
+        const result = await profileService.getdesign(userId)
         return res.status(200).json({
             success: true,
-            message: 'skills fetched successfully',
+            message: 'design fetched successfully',
             data: result,
         })
     } catch (error) {
         if (error instanceof AppError) {
             return res.status(error.statusCode).json({
                 success: false,
-                message: 'failed to fetch skills',
+                message: 'failed to fetch design',
                 errors: error.message,
             })
         }
 
         return res.status(500).json({
             success: false,
-            message: 'failed to fetch skills',
+            message: 'failed to fetch design',
             errors: error instanceof Error ? error.message : 'unknown error',
         })
     }
 }
 
-const updateSkills = async (req: Request, res: Response) => {
+const updatedesign = async (req: Request, res: Response) => {
     const userId = req.user?.userId as string | undefined
-    const parseData = skillsSchema.safeParse(req.body)
+    const parseData = designSchema.safeParse(req.body)
 
     if (!userId) {
         return res.status(400).json({
@@ -602,33 +602,33 @@ const updateSkills = async (req: Request, res: Response) => {
         })
     }
 
-    const { skills } = parseData.data
+    const { design } = parseData.data
 
     try {
-        const result = await profileService.updateSkills({ userId, skills })
+        const result = await profileService.updatedesign({ userId, design })
         return res.status(200).json({
             success: true,
-            message: 'skills updated successfully',
+            message: 'design updated successfully',
             data: result,
         })
     } catch (error) {
         if (error instanceof AppError) {
             return res.status(error.statusCode).json({
                 success: false,
-                message: 'failed to update skills',
+                message: 'failed to update design',
                 errors: error.message,
             })
         }
 
         return res.status(500).json({
             success: false,
-            message: 'failed to update skills',
+            message: 'failed to update design',
             errors: error instanceof Error ? error.message : 'unknown error',
         })
     }
 }
 
-const deleteSkills = async (req: Request, res: Response) => {
+const deletedesign = async (req: Request, res: Response) => {
     const userId = req.user?.userId as string | undefined
 
     if (!userId) {
@@ -639,23 +639,23 @@ const deleteSkills = async (req: Request, res: Response) => {
     }
 
     try {
-        await profileService.deleteSkills(userId)
+        await profileService.deletedesign(userId)
         return res.status(200).json({
             success: true,
-            message: 'skills deleted successfully',
+            message: 'design deleted successfully',
         })
     } catch (error) {
         if (error instanceof AppError) {
             return res.status(error.statusCode).json({
                 success: false,
-                message: 'failed to delete skills',
+                message: 'failed to delete design',
                 errors: error.message,
             })
         }
 
         return res.status(500).json({
             success: false,
-            message: 'failed to delete skills',
+            message: 'failed to delete design',
             errors: error instanceof Error ? error.message : 'unknown error',
         })
     }
@@ -703,6 +703,40 @@ const submitFeedback = async (req: Request, res: Response) => {
     }
 }
 
+const completeOnboarding = async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
+
+    if (!userId) {
+        return res.status(401).json({
+            success: false,
+            message: 'unauthorized',
+        })
+    }
+
+    try {
+        const result = await profileService.completeOnboarding(userId)
+        return res.status(200).json({
+            success: true,
+            message: 'onboarding completed successfully',
+            data: result,
+        })
+    } catch (error) {
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({
+                success: false,
+                message: 'failed to complete onboarding',
+                errors: error.message,
+            })
+        }
+
+        return res.status(500).json({
+            success: false,
+            message: 'failed to complete onboarding',
+            errors: error instanceof Error ? error.message : 'unknown error',
+        })
+    }
+}
+
 export const profileController = {
     getInfo,
     getProfileCard,
@@ -717,8 +751,9 @@ export const profileController = {
     deleteAccount,
     chatSuggestions,
     generationSound,
-    getSkills,
-    updateSkills,
-    deleteSkills,
+    getdesign,
+    updatedesign,
+    deletedesign,
     submitFeedback,
+    completeOnboarding,
 }

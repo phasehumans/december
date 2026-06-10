@@ -11,7 +11,7 @@ const createUser = async (overrides: Record<string, unknown> = {}) => {
             name: 'Chaitanya Sonawane',
             email: `test-${crypto.randomUUID()}@example.com`,
             username: `user_${crypto.randomUUID().slice(0, 12)}`,
-            password: await bcrypt.hash('Password123', 10),
+            password: await bcrypt.hash('Password123', 1),
             emailVerified: true,
             notifyProductUpdates: false,
             notifyProjectActivity: false,
@@ -559,6 +559,29 @@ describe('profile.service.integration', () => {
             })
 
             expect(result.generationSound).toBe(GenerationSound.NEVER)
+        })
+    })
+
+    describe('completeOnboarding', () => {
+        it('should update hasCompletedOnboarding to true successfully', async () => {
+            const result = await profileService.completeOnboarding(userId)
+            expect(result.hasCompletedOnboarding).toBe(true)
+
+            const db = await prisma.user.findUnique({ where: { id: userId } })
+            expect(db!.hasCompletedOnboarding).toBe(true)
+        })
+
+        it('should fail if user not found', async () => {
+            await expect(profileService.completeOnboarding('invalid-id')).rejects.toThrow(
+                'user not found'
+            )
+        })
+
+        it('should fail for soft-deleted user', async () => {
+            const deleted = await createSoftDeletedUser()
+            await expect(profileService.completeOnboarding(deleted.id)).rejects.toThrow(
+                'user not found'
+            )
         })
     })
 })

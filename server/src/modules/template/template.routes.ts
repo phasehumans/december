@@ -5,6 +5,7 @@ import { authMiddleware } from '../../middleware/auth.middleware'
 import { templateController } from './template.controller'
 const templateRouter = Router()
 
+templateRouter.get('/:templateId/preview.html', templateController.getTemplatePreviewHtml)
 templateRouter.use(authMiddleware)
 templateRouter.get('/', templateController.getAllTemplates)
 templateRouter.get('/featured', templateController.getFeaturedTemplates)

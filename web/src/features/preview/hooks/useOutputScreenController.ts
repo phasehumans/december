@@ -35,7 +35,21 @@ const getPreviewHtmlFromFiles = (generatedFiles?: Record<string, GeneratedProjec
         generatedFiles['index.html']?.content ||
         generatedFiles['public/index.html']?.content ||
         generatedFiles['web/index.html']?.content ||
-        ''
+        generatedFiles['src/index.html']?.content
+
+    if (!html) {
+        // Fallback: Find any index.html
+        const anyIndexHtml = Object.values(generatedFiles).find((f) =>
+            f.path.endsWith('index.html')
+        )
+        if (anyIndexHtml) {
+            html = anyIndexHtml.content
+        } else {
+            // Fallback: Find any .html file
+            const anyHtml = Object.values(generatedFiles).find((f) => f.path.endsWith('.html'))
+            html = anyHtml?.content || ''
+        }
+    }
 
     const cssContents = Object.values(generatedFiles)
         .filter((file) => file.path.endsWith('.css') && file.content)
@@ -43,8 +57,8 @@ const getPreviewHtmlFromFiles = (generatedFiles?: Record<string, GeneratedProjec
 
     if (cssContents.length > 0 && html) {
         const styleTag = `\n<style>\n${cssContents.join('\n')}\n</style>\n`
-        if (html.includes('</head>')) {
-            html = html.replace('</head>', `${styleTag}</head>`)
+        if (/<\/head>/i.test(html)) {
+            html = html.replace(/<\/head>/i, () => `${styleTag}</head>`)
         } else {
             html += styleTag
         }
@@ -267,6 +281,26 @@ export const useOutputScreenController = ({
         }
     }
 
+    const handleRefreshPreview = React.useCallback(() => {
+        if (iframeRef.current) {
+            try {
+                if (iframeRef.current.contentWindow) {
+                    iframeRef.current.contentWindow.location.reload()
+                }
+            } catch (e) {
+                if (iframeRef.current.src) {
+                    const src = iframeRef.current.src
+                    iframeRef.current.src = ''
+                    iframeRef.current.src = src
+                } else if (iframeRef.current.srcdoc) {
+                    const srcdoc = iframeRef.current.srcdoc
+                    iframeRef.current.srcdoc = ''
+                    iframeRef.current.srcdoc = srcdoc
+                }
+            }
+        }
+    }, [])
+
     return {
         activeTab,
         setActiveTab,
@@ -291,5 +325,6 @@ export const useOutputScreenController = ({
         handleApplyEdit,
         handleClearSelection,
         handleOpenInNewTab,
+        handleRefreshPreview,
     }
 }

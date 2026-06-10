@@ -172,6 +172,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
         ? sessionStorage.getItem(`december_actively_importing_${projectId}`) === 'true'
         : false
     const shouldForceStream = isFirstImportView && justImported && !sessionStorage.getItem(cacheKey)
+    const [isStreamFinished, setIsStreamFinished] = React.useState(!shouldForceStream)
 
     React.useEffect(() => {
         if (shouldForceStream) return
@@ -208,7 +209,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
     const isThinkingPhase = status === 'thinking'
     const isBuildingPhase = status === 'building'
     const isCompletedPhase = status === 'done'
-    const showActions = !isGenerating && isCompletedPhase
+    const showActions = !isGenerating && isCompletedPhase && isStreamFinished
 
     // Segment calculation
     const showThinking = isThinkingPhase || Boolean(thoughts)
@@ -294,6 +295,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
             }
 
             if (!isCancelled) {
+                setIsStreamFinished(true)
                 sessionStorage.setItem(cacheKey, 'true')
                 if (projectId) {
                     sessionStorage.removeItem(`december_import_stream_running_${projectId}`)

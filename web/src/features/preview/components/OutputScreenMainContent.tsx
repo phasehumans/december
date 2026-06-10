@@ -47,6 +47,7 @@ interface OutputScreenMainContentProps {
     projectType?: 'generated' | 'github' | 'zip'
     selectedModel?: string
     setSelectedModel?: (val: string) => void
+    onRefresh?: () => void
 }
 
 export const OutputScreenMainContent: React.FC<OutputScreenMainContentProps> = ({
@@ -81,6 +82,7 @@ export const OutputScreenMainContent: React.FC<OutputScreenMainContentProps> = (
     projectType,
     selectedModel,
     setSelectedModel,
+    onRefresh,
 }) => {
     return (
         <div className="flex-1 flex flex-col h-full bg-[#171615] relative overflow-hidden transition-all duration-300 min-h-0">
@@ -102,6 +104,7 @@ export const OutputScreenMainContent: React.FC<OutputScreenMainContentProps> = (
                 onDownload={onDownload}
                 selectedModel={selectedModel}
                 setSelectedModel={setSelectedModel}
+                onRefresh={onRefresh}
             />
 
             {activeTab === 'preview' && (

@@ -12,6 +12,7 @@ interface OutputHeaderCenterControlsProps {
     isSidebarCollapsed: boolean
     onToggleSidebar: () => void
     onOpenNewTab: () => void
+    onRefresh?: () => void
 }
 
 export const OutputHeaderCenterControls: React.FC<OutputHeaderCenterControlsProps> = ({
@@ -20,6 +21,7 @@ export const OutputHeaderCenterControls: React.FC<OutputHeaderCenterControlsProp
     isSidebarCollapsed,
     onToggleSidebar,
     onOpenNewTab,
+    onRefresh,
 }) => {
     return (
         <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
@@ -56,6 +58,7 @@ export const OutputHeaderCenterControls: React.FC<OutputHeaderCenterControlsProp
                 device={device}
                 setDevice={setDevice}
                 onOpenNewTab={onOpenNewTab}
+                onRefresh={onRefresh}
             />
         </div>
     )
