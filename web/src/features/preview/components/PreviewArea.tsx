@@ -299,7 +299,9 @@ export const PreviewArea: React.FC<PreviewAreaProps> = ({
     }, [projectId])
 
     const srcDoc = React.useMemo(() => injectPreviewBridge(html), [html])
-    const isLivePreview = Boolean(previewUrl) && previewState === 'Healthy'
+    const isVanillaHtml =
+        html !== PREVIEW_HTML && !html.includes('type="module"') && !html.includes("type='module'")
+    const isLivePreview = Boolean(previewUrl) && previewState === 'Healthy' && !isVanillaHtml
     const showStructurePlaceholder = showStructureOnly && !isGenerating && !isLivePreview
 
     const showFailedState = Boolean(
@@ -447,7 +449,7 @@ export const PreviewArea: React.FC<PreviewAreaProps> = ({
                             isVisualMode ? 'cursor-crosshair' : ''
                         )}
                         title="Preview"
-                        {...(previewUrl ? { src: previewUrl } : { srcDoc })}
+                        {...(isLivePreview ? { src: previewUrl } : { srcDoc })}
                     />
                 )}
 

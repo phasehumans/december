@@ -59,8 +59,8 @@ export const generationSoundSchema = z.object({
     generationSound: z.nativeEnum(GenerationSound, { message: 'invalid generation sound option' }),
 })
 
-export const skillsSchema = z.object({
-    skills: z
-        .string({ message: 'skills content is required' })
-        .max(10000, 'skills must be at most 10000 characters'),
+export const designSchema = z.object({
+    design: z
+        .string({ message: 'design content is required' })
+        .max(10000, 'design must be at most 10000 characters'),
 })

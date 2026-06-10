@@ -4,6 +4,7 @@ import type { Template } from '@/features/templates/types'
 
 import { Icons } from '@/shared/components/ui/Icons'
 import { cn } from '@/shared/lib/utils'
+import { API_BASE_URL } from '@/shared/api/client'
 
 interface TemplateCardProps {
     template: Template
@@ -11,18 +12,6 @@ interface TemplateCardProps {
     isRemixPending?: boolean
     onToggleLike: (template: Template) => void
     onRemix: (template: Template) => void
-}
-
-const previewImages = [
-    'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&q=80&w=900&h=560',
-    'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&q=80&w=900&h=560',
-    'https://images.unsplash.com/photo-1499951360447-b19be8fe80f5?auto=format&fit=crop&q=80&w=900&h=560',
-    'https://images.unsplash.com/photo-1555421689-491a97ff2040?auto=format&fit=crop&q=80&w=900&h=560',
-]
-
-const getPreviewImage = (templateId: string) => {
-    const sum = Array.from(templateId).reduce((acc, char) => acc + char.charCodeAt(0), 0)
-    return previewImages[sum % previewImages.length]!
 }
 
 export const TemplateCard: React.FC<TemplateCardProps> = ({
@@ -43,11 +32,15 @@ export const TemplateCard: React.FC<TemplateCardProps> = ({
         <div className="group flex flex-col gap-3.5 cursor-pointer w-full">
             {/* Image Container */}
             <div className="relative aspect-[16/10] bg-[#111] overflow-hidden rounded-xl border border-[#242323] transition-all duration-300">
-                <img
-                    src={getPreviewImage(template.id)}
-                    alt={template.title}
-                    className="w-full h-full object-cover transition-transform duration-700 ease-[0.25,1,0.5,1]"
-                />
+                <div className="absolute w-[300%] h-[300%] origin-top-left scale-[0.333333] transition-transform duration-700 ease-[0.25,1,0.5,1] group-hover:scale-[0.34]">
+                    <iframe
+                        src={`${API_BASE_URL}/template/${template.id}/preview.html`}
+                        title={template.title}
+                        className="w-full h-full border-0 pointer-events-none select-none bg-white"
+                        loading="lazy"
+                        sandbox="allow-scripts allow-same-origin"
+                    />
+                </div>
 
                 {/* Soft bottom gradient for depth */}
                 <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/60 to-transparent pointer-events-none opacity-60"></div>

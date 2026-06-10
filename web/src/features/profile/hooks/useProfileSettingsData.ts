@@ -219,6 +219,35 @@ export const useProfileSettingsData = ({
         },
     })
 
+    const completeOnboardingMutation = useMutation({
+        mutationFn: profileAPI.completeOnboarding,
+        onMutate: async () => {
+            setProfileActionError(null)
+
+            await queryClient.cancelQueries({ queryKey: profileQueryKey })
+
+            const previousProfile = queryClient.getQueryData<Profile>(profileQueryKey)
+
+            queryClient.setQueryData<Profile>(profileQueryKey, (currentProfile) =>
+                currentProfile
+                    ? { ...currentProfile, hasCompletedOnboarding: true }
+                    : currentProfile
+            )
+
+            return { previousProfile }
+        },
+        onError: (error, _variables, context) => {
+            if (context?.previousProfile) {
+                queryClient.setQueryData(profileQueryKey, context.previousProfile)
+            }
+
+            setProfileActionError(getErrorMessage(error, 'Failed to complete onboarding'))
+        },
+        onSettled: () => {
+            queryClient.invalidateQueries({ queryKey: profileQueryKey })
+        },
+    })
+
     return {
         profile,
         profileQuery,
@@ -228,5 +257,6 @@ export const useProfileSettingsData = ({
         updateNotificationMutation,
         updateChatSuggestionsMutation,
         updateGenerationSoundMutation,
+        completeOnboardingMutation,
     }
 }

@@ -117,6 +117,7 @@ export interface OutputHeaderProps {
     onDownload?: () => void
     selectedModel?: string
     setSelectedModel?: (val: string) => void
+    onRefresh?: () => void
 }
 
 export interface PreviewAreaProps {
