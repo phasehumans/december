@@ -1,8 +1,22 @@
 ## [unreleased]
 
+### Bug Fixes
+
+- Followup edits and add user onboarding #85
+
+### Miscellaneous Tasks
+
+- Configure .devcontainer and project workspace settings
+- Add ai skills and prompts to .december workspace
+- Add more ai skills and prompts to .december
+- Rename and refine ai skills and prompts
+
+## [0.1.1] - 2026-06-07
+
 ### Miscellaneous Tasks
 
 - Add release automation
+- _(release)_ V0.1.1
 
 ## [0.1.0] - 2026-06-07
 
