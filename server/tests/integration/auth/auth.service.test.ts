@@ -4,6 +4,7 @@ import { describe, it, expect, beforeEach, afterAll, mock } from 'bun:test'
 import { prisma } from '../../../src/config/db'
 
 const sendOTPMock = mock(async () => {})
+const sendWelcomeEmailMock = mock(async () => {})
 const sendNotificationMock = mock(async () => ({}))
 
 mock.module('../../../src/modules/auth/auth.utils', () => {
@@ -11,6 +12,7 @@ mock.module('../../../src/modules/auth/auth.utils', () => {
     return {
         ...actual,
         sendOTP: sendOTPMock,
+        sendWelcomeEmail: sendWelcomeEmailMock,
     }
 })
 
@@ -40,6 +42,7 @@ describe('auth.service.integration', () => {
     beforeEach(async () => {
         if (isCleaningUp) return
         sendOTPMock.mockClear()
+        sendWelcomeEmailMock.mockClear()
         sendNotificationMock.mockClear()
         await prisma.session.deleteMany()
         await prisma.user.deleteMany()
@@ -145,6 +148,9 @@ describe('auth.service.integration', () => {
 
             const session = await prisma.session.findFirst({ where: { userId: user.id } })
             expect(session).not.toBeNull()
+
+            expect(sendWelcomeEmailMock).toHaveBeenCalledTimes(1)
+            expect(sendWelcomeEmailMock).toHaveBeenCalledWith('verify@example.com', 'Test User')
         })
 
         it('should fail if otp is invalid', async () => {
