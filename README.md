@@ -1,6 +1,6 @@
 <p align="center">
   <a href="https://december.phasehumans.com">
-    <img src="web/public/logo.png" alt="December Logo" height="150">
+    <img src="web/public/logo.png" alt="December Logo" height="200">
   </a>
 </p>
 
