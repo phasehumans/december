@@ -311,13 +311,12 @@ describe('auth.utils', () => {
             expect(username.length).toBeGreaterThan(0)
         })
 
-        test('should follow pattern: word_word_suffix', () => {
+        test('should follow pattern: word_word', () => {
             const username = getUsername()
             const parts = username.split('_')
-            expect(parts.length).toBe(3)
+            expect(parts.length).toBe(2)
             expect(parts[0]!.length).toBeGreaterThan(0)
             expect(parts[1]!.length).toBeGreaterThan(0)
-            expect(parts[2]!.length).toBe(4)
         })
 
         test('should generate different usernames (probabilistic)', () => {
@@ -328,9 +327,9 @@ describe('auth.utils', () => {
             expect(usernames.size).toBeGreaterThan(1)
         })
 
-        test('should only contain lowercase letters, underscores, and digits in suffix', () => {
+        test('should only contain lowercase letters and underscores', () => {
             const username = getUsername()
-            expect(username).toMatch(/^[a-z]+_[a-z]+_[a-z0-9]{4}$/)
+            expect(username).toMatch(/^[a-z]+_[a-z]+$/)
         })
     })
 })

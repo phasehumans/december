@@ -11,6 +11,7 @@ import { sendNotificationToUser } from '../notification/notification.service'
 
 import {
     sendOTP,
+    sendWelcomeEmail,
     getNameFromEmail,
     getUsername,
     generateAccessToken,
@@ -202,6 +203,12 @@ const verifyOtp = async (data: VerifyOtp) => {
         })
     } catch (error) {
         console.error('failed to send welcome notification:', error)
+    }
+
+    try {
+        await sendWelcomeEmail(user.email, user.name || '')
+    } catch (error) {
+        console.error('failed to send welcome email:', error)
     }
 
     return {
