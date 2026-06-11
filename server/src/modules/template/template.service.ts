@@ -1,6 +1,7 @@
 import crypto from 'crypto'
 
 import { prisma } from '../../config/db'
+import { getBinaryFile } from '../project/project-storage'
 import { saveProjectFiles } from '../project/save-project-files'
 import { AppError } from '../../shared/appError'
 import { hydrateCanvasDocument, persistCanvasDocument } from '../canvas/canvas.persistence'
@@ -35,6 +36,7 @@ type TemplateWithLikeMeta = {
     authorUsername: string
     likeCount: number
     isLiked: boolean
+    previewImageKey?: string | null
 }
 
 const mapTemplateWithLikeMeta = (
@@ -49,6 +51,7 @@ const mapTemplateWithLikeMeta = (
         createdAt: Date
         updatedAt: Date
         userId: string
+        previewImageKey: string | null
         user: {
             name: string
             username: string
@@ -78,6 +81,7 @@ const mapTemplateWithLikeMeta = (
         authorUsername: template.user.username,
         likeCount,
         isLiked: viewerLike?.isLiked ?? false,
+        previewImageKey: template.previewImageKey,
     }
 }
 
@@ -101,6 +105,7 @@ const getAllTemplates = async (userId?: string) => {
                 createdAt: true,
                 updatedAt: true,
                 userId: true,
+                previewImageKey: true,
                 user: {
                     select: {
                         name: true,
@@ -145,6 +150,7 @@ const getTemplateById = async (data: string | { userId: string; templateId: stri
             createdAt: true,
             updatedAt: true,
             userId: true,
+            previewImageKey: true,
             user: {
                 select: {
                     name: true,
@@ -192,6 +198,7 @@ const getFeaturedTemplates = async (userId?: string) => {
                 createdAt: true,
                 updatedAt: true,
                 userId: true,
+                previewImageKey: true,
                 user: {
                     select: {
                         name: true,
@@ -496,6 +503,28 @@ const getTemplatePreviewHtml = async (templateId: string) => {
     return documentHtml
 }
 
+const getTemplatePreviewImage = async (templateId: string) => {
+    const template = await prisma.project.findFirst({
+        where: { id: templateId, isSharedAsTemplate: true },
+        select: { id: true, previewImageKey: true },
+    })
+
+    if (!template) {
+        throw new AppError('template not found', 404)
+    }
+
+    if (!template.previewImageKey) {
+        return null
+    }
+
+    const file = await getBinaryFile(template.previewImageKey)
+    if (!file) {
+        return null
+    }
+
+    return Buffer.from(file.body)
+}
+
 export const templateService = {
     getAllTemplates,
     getTemplateById,
@@ -503,4 +532,5 @@ export const templateService = {
     remixTemplate,
     toggleLike,
     getTemplatePreviewHtml,
+    getTemplatePreviewImage,
 }
