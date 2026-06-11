@@ -215,7 +215,7 @@ export const ChatPromptInput: React.FC<ChatPromptInputProps> = ({
                             </button>
 
                             {isModelSelectorOpen && (
-                                <div className="absolute bottom-[calc(100%+8px)] left-0 w-[150px] bg-[#1E1D1C] border border-white/[0.08] rounded-lg p-0.5 shadow-2xl z-50 flex flex-col gap-[1px]">
+                                <div className="absolute bottom-[calc(100%+8px)] left-0 w-[200px] bg-[#1E1D1C] border border-white/[0.08] rounded-xl p-1.5 shadow-2xl z-50 flex flex-col gap-[4px]">
                                     {models.map((model) => {
                                         const isSelected = selectedModel === model.id
                                         const isFreeModel = model.id === 'Auto'
@@ -237,24 +237,24 @@ export const ChatPromptInput: React.FC<ChatPromptInputProps> = ({
                                                     setIsModelSelectorOpen(false)
                                                 }}
                                                 className={cn(
-                                                    'flex items-center justify-between px-2 py-0.5 rounded-md text-left transition-colors outline-none',
+                                                    'flex items-center justify-between px-3 py-1.5 rounded-lg text-left transition-colors outline-none',
                                                     isSelected
                                                         ? 'bg-[#252422] text-[#D6D5D4]'
                                                         : 'text-[#8F8E8D] hover:bg-[#252422] hover:text-[#D6D5D4]'
                                                 )}
                                             >
-                                                <div className="flex items-center gap-1 min-w-0">
-                                                    <span className="text-[11px] font-medium truncate">
+                                                <div className="flex items-center gap-1.5 min-w-0">
+                                                    <span className="text-[13px] font-medium truncate">
                                                         {model.name}
                                                     </span>
                                                     {!isPro && !isFreeModel && (
-                                                        <span className="bg-[#D6D5C9]/10 text-[#D6D5C9] rounded-full text-[7px] font-medium px-1 py-0.5 uppercase shrink-0 select-none">
+                                                        <span className="bg-[#D6D5C9]/10 text-[#D6D5C9] rounded-full text-[8px] font-medium px-1 py-0.5 uppercase shrink-0 select-none">
                                                             Pro
                                                         </span>
                                                     )}
                                                 </div>
                                                 {isSelected && (
-                                                    <Icons.Check className="w-3 h-3 text-[#D6D5D4] shrink-0" />
+                                                    <Icons.Check className="w-4 h-4 text-[#D6D5D4] shrink-0" />
                                                 )}
                                             </button>
                                         )

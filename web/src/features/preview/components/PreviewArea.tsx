@@ -271,14 +271,21 @@ export const PreviewArea: React.FC<PreviewAreaProps> = ({
     const [isCopied, setIsCopied] = useState(false)
     const [isImportStreaming, setIsImportStreaming] = useState(false)
     const [hasLoadedOnce, setHasLoadedOnce] = useState(false)
+    const [isMounted, setIsMounted] = useState(false)
 
     useEffect(() => {
+        const timer = setTimeout(() => {
+            setIsMounted(true)
+        }, 500)
+
         const handleRefreshTriggered = () => {
             setHasLoadedOnce(true)
         }
         window.addEventListener('december-preview-refresh-triggered', handleRefreshTriggered)
-        return () =>
+        return () => {
+            clearTimeout(timer)
             window.removeEventListener('december-preview-refresh-triggered', handleRefreshTriggered)
+        }
     }, [])
 
     useEffect(() => {
@@ -383,7 +390,8 @@ export const PreviewArea: React.FC<PreviewAreaProps> = ({
 
             <div
                 className={cn(
-                    'relative transition-all duration-500 bg-[#171615] shadow-2xl overflow-hidden group w-full h-full',
+                    'relative bg-[#171615] shadow-2xl overflow-hidden group w-full h-full',
+                    isMounted && 'transition-all duration-500',
                     fullscreen
                         ? 'rounded-2xl border border-white/10'
                         : device === 'mobile'

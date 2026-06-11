@@ -41,6 +41,14 @@ export const ChatThread: React.FC<ChatSidebarProps> = ({
     const contentRef = React.useRef<HTMLDivElement | null>(null)
     const [shouldAutoScroll, setShouldAutoScroll] = React.useState(true)
     const prevMessagesLengthRef = React.useRef(messages.length)
+    const [isMounted, setIsMounted] = React.useState(false)
+
+    React.useEffect(() => {
+        const timer = setTimeout(() => {
+            setIsMounted(true)
+        }, 500)
+        return () => clearTimeout(timer)
+    }, [])
 
     React.useEffect(() => {
         if (messages.length > prevMessagesLengthRef.current) {
@@ -181,7 +189,8 @@ export const ChatThread: React.FC<ChatSidebarProps> = ({
     return (
         <aside
             className={cn(
-                'h-full bg-[#171615] flex flex-col overflow-hidden shrink-0 z-20 transition-all duration-300 ease-in-out font-sans',
+                'h-full bg-[#171615] flex flex-col overflow-hidden shrink-0 z-20 font-sans',
+                isMounted && 'transition-all duration-300 ease-in-out',
                 isCollapsed
                     ? 'w-0 border-r-0'
                     : 'w-full md:w-[340px] absolute md:relative inset-0 md:inset-auto'
