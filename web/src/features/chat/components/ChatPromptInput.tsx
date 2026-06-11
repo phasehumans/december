@@ -181,7 +181,7 @@ export const ChatPromptInput: React.FC<ChatPromptInputProps> = ({
                     onChange={(e) => onChange(e.target.value)}
                     onKeyDown={handleKeyDown}
                     placeholder={selectedElement ? 'Describe changes...' : 'Ask December...'}
-                    className="w-full bg-transparent text-[13px] text-neutral-200 text-left pl-5 pr-5 py-3.5 min-h-[52px] max-h-[200px] resize-none outline-none placeholder-neutral-500 font-medium leading-relaxed [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/10 hover:[&::-webkit-scrollbar-thumb]:bg-white/20 caret-white"
+                    className="w-full bg-transparent text-[13px] text-neutral-200 text-left pl-5 pr-5 py-4 min-h-[58px] max-h-[200px] resize-none outline-none placeholder-neutral-500 font-medium leading-relaxed [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/10 hover:[&::-webkit-scrollbar-thumb]:bg-white/20 caret-white"
                     rows={1}
                 />
 
@@ -191,24 +191,24 @@ export const ChatPromptInput: React.FC<ChatPromptInputProps> = ({
                             className="p-1 rounded-full text-[#727272] hover:text-white hover:bg-white/5 transition-all"
                             title="Add attachment"
                         >
-                            <Plus size={18} strokeWidth={2.5} />
+                            <Plus size={15} strokeWidth={2.5} />
                         </button>
                         <div className="relative" ref={selectorRef}>
                             <button
                                 onClick={() => setIsModelSelectorOpen(!isModelSelectorOpen)}
                                 className={cn(
-                                    'flex items-center gap-2 px-2.5 py-1 rounded-full transition-colors outline-none bg-[#2B2A29]',
+                                    'flex items-center gap-2 px-2 py-0.5 rounded-full transition-colors outline-none bg-[#2B2A29]',
                                     isModelSelectorOpen
                                         ? 'text-white'
                                         : 'text-[#8F8E8D] hover:text-white'
                                 )}
                             >
-                                <span className="text-[12px] font-medium">
+                                <span className="text-[11px] font-medium">
                                     {selectedModelData.name}
                                 </span>
                                 <Icons.ChevronDown
                                     className={cn(
-                                        'w-[11px] h-[11px] transition-transform',
+                                        'w-[10px] h-[10px] transition-transform',
                                         isModelSelectorOpen ? 'rotate-180' : 'rotate-0'
                                     )}
                                 />
@@ -265,7 +265,7 @@ export const ChatPromptInput: React.FC<ChatPromptInputProps> = ({
                         <button
                             onClick={onToggleVisualMode}
                             className={cn(
-                                'flex items-center px-3 py-1.5 rounded-full text-xs font-medium transition-all select-none border border-dashed hidden md:flex',
+                                'flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium transition-all select-none border border-dashed hidden md:flex',
                                 isVisualMode
                                     ? 'bg-white/10 text-white border-neutral-500'
                                     : 'text-[#727272] border-[#363534] hover:text-white hover:border-neutral-500'
@@ -281,20 +281,20 @@ export const ChatPromptInput: React.FC<ChatPromptInputProps> = ({
                                 type="button"
                                 onClick={toggleListening}
                                 className={cn(
-                                    'flex items-center justify-center w-8 h-8 rounded-full transition-all',
+                                    'flex items-center justify-center w-7 h-7 rounded-full transition-all',
                                     isListening
                                         ? 'bg-white/10 text-white'
                                         : 'text-[#727272] hover:bg-white/5 hover:text-white'
                                 )}
                                 title={isListening ? 'Stop listening' : 'Voice input'}
                             >
-                                <Icons.Microphone className="w-[14px] h-[14px] stroke-[2.5px] relative z-10" />
+                                <Icons.Microphone className="w-[12px] h-[12px] stroke-[2.5px] relative z-10" />
                             </button>
                         )}
                         <button
                             onClick={onSubmit}
                             className={`
-                                flex items-center justify-center w-8 h-8 rounded-full transition-colors duration-200
+                                flex items-center justify-center w-7 h-7 rounded-full transition-colors duration-200
                                 ${
                                     value.trim() && !isApplyingEdit
                                         ? 'bg-[#D6D5D4] text-black'
@@ -302,7 +302,7 @@ export const ChatPromptInput: React.FC<ChatPromptInputProps> = ({
                                 }
                             `}
                         >
-                            <ArrowRight size={18} strokeWidth={1.8} />
+                            <ArrowRight size={15} strokeWidth={1.8} />
                         </button>
                     </div>
                 </div>

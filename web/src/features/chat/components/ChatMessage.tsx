@@ -400,7 +400,6 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                 {showFiles && (
                     <div className="mt-2 pl-0.5 animate-in fade-in duration-300">
                         <div className="flex items-center gap-2 text-[#91908F] mb-1.5">
-                            <Pen size={10} />
                             <span className="text-[11px] font-medium">
                                 {isBuildingPhase
                                     ? `Editing ${totalFiles} files`
@@ -494,14 +493,6 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                                 </button>
                             </div>
                         </div>
-
-                        <button
-                            type="button"
-                            className="h-7 text-xs gap-1.5 bg-[#1F1E1D] hover:bg-[#2A2928] text-[#E6E4E3] border border-white/5 rounded-lg px-3 flex items-center transition-colors cursor-pointer select-none font-medium"
-                        >
-                            <RotateCcw size={11} />
-                            Restore
-                        </button>
                     </div>
                 )}
             </motion.div>
