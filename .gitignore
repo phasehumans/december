@@ -33,3 +33,5 @@ runtime/data
 .december-imports/
 server/.december-imports/
 codes.md
+agentguide.md
+deploy.md

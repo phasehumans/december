@@ -282,6 +282,7 @@ export const useOutputScreenController = ({
     }
 
     const handleRefreshPreview = React.useCallback(() => {
+        window.dispatchEvent(new CustomEvent('december-preview-refresh-triggered'))
         if (iframeRef.current) {
             try {
                 if (iframeRef.current.contentWindow) {

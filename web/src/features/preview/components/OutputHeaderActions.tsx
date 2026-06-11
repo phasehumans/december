@@ -62,7 +62,8 @@ export const OutputHeaderActions: React.FC<OutputHeaderActionsProps> = ({
             {/* Publish */}
             <Button
                 onClick={() => openSettings('publish')}
-                className="ml-2 bg-[#1E1D1B] text-white border border-[#363534] rounded-xl font-medium hidden md:flex px-4 py-1.5 h-auto transition-colors outline-none border-none ring-0 focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 active:outline-none active:ring-0"
+                variant="secondary"
+                className="ml-2 bg-[#1E1D1B] text-white border border-[#363534] hover:bg-[#1E1D1B] hover:text-white hover:border-[#363534] rounded-xl font-medium hidden md:flex px-4 py-1.5 h-auto transition-colors outline-none ring-0 focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 active:outline-none active:ring-0"
             >
                 Publish
             </Button>

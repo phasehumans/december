@@ -559,7 +559,7 @@ export const ProfileUsageSettings: React.FC = () => {
                     {isLoading ? (
                         <div className="flex flex-col border border-[#242323] rounded-xl overflow-hidden bg-[#100E12] shadow-sm">
                             {/* Table Header skeleton */}
-                            <div className="grid grid-cols-[130px_1fr_140px_100px_70px] items-center py-3.5 px-5 border-b border-[#242323] bg-[#171615] text-[12px] text-[#7B7A79] font-medium">
+                            <div className="grid grid-cols-[130px_200px_1fr_100px_70px] items-center py-3.5 px-5 border-b border-[#242323] bg-[#171615] text-[12px] text-[#7B7A79] font-medium">
                                 <div>Date</div>
                                 <div>Project</div>
                                 <div>Model</div>
@@ -570,7 +570,7 @@ export const ProfileUsageSettings: React.FC = () => {
                             {Array.from({ length: 8 }).map((_, i) => (
                                 <div
                                     key={i}
-                                    className="grid grid-cols-[130px_1fr_140px_100px_70px] items-center py-5 px-5 border-b border-[#242323]/50 last:border-b-0"
+                                    className="grid grid-cols-[130px_200px_1fr_100px_70px] items-center py-5 px-5 border-b border-[#242323]/50 last:border-b-0"
                                 >
                                     <div className="pr-4">
                                         <Skeleton className="h-4 w-24 bg-white/[0.06] rounded" />
@@ -603,7 +603,7 @@ export const ProfileUsageSettings: React.FC = () => {
                     ) : (
                         <div className="flex flex-col border border-[#242323] rounded-xl overflow-hidden bg-[#100E12] shadow-sm">
                             {/* Header */}
-                            <div className="grid grid-cols-[130px_1fr_140px_100px_70px] items-center py-3.5 px-5 border-b border-[#242323] bg-[#171615] text-[12px] text-[#7B7A79] font-medium">
+                            <div className="grid grid-cols-[130px_200px_1fr_100px_70px] items-center py-3.5 px-5 border-b border-[#242323] bg-[#171615] text-[12px] text-[#7B7A79] font-medium">
                                 <div>Date</div>
                                 <div>Project</div>
                                 <div>Model</div>
@@ -616,7 +616,7 @@ export const ProfileUsageSettings: React.FC = () => {
                                 {paginatedEvents.map((row) => (
                                     <div
                                         key={row.id}
-                                        className="grid grid-cols-[130px_1fr_140px_100px_70px] items-center py-5 px-5 text-[13px] hover:bg-[#1A1918] transition-colors"
+                                        className="grid grid-cols-[130px_200px_1fr_100px_70px] items-center py-5 px-5 text-[13px] hover:bg-[#1A1918] transition-colors"
                                     >
                                         {/* Date */}
                                         <div className="text-[#D6D5C9]">

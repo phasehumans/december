@@ -18,8 +18,8 @@ export type TokenPayload = {
 
 const getLogoAttachment = () => {
     try {
-        const filePath = join(process.cwd(), '../web/public/maillogo.png')
-        const content = readFileSync(filePath)
+        const filePath = join(import.meta.dir, '../../../../web/public/maillogo.png')
+        const content = readFileSync(filePath).toString('base64')
         return {
             content,
             filename: 'maillogo.png',
@@ -33,8 +33,8 @@ const getLogoAttachment = () => {
 
 const getGithubAttachment = () => {
     try {
-        const filePath = join(process.cwd(), '../web/public/github.png')
-        const content = readFileSync(filePath)
+        const filePath = join(import.meta.dir, '../../../../web/public/github.png')
+        const content = readFileSync(filePath).toString('base64')
         return {
             content,
             filename: 'github.png',
@@ -48,8 +48,8 @@ const getGithubAttachment = () => {
 
 const getXAttachment = () => {
     try {
-        const filePath = join(process.cwd(), '../web/public/x.png')
-        const content = readFileSync(filePath)
+        const filePath = join(import.meta.dir, '../../../../web/public/x.png')
+        const content = readFileSync(filePath).toString('base64')
         return {
             content,
             filename: 'x.png',
@@ -81,8 +81,10 @@ export const sendOTP = async (email: string, otp: string) => {
         ? 'cid:x'
         : 'https://raw.githubusercontent.com/phasehumans/december/main/web/public/x.png'
 
+    const fromEmail = process.env.SENDER_EMAIL || 'onboarding@resend.dev'
+
     await resend.emails.send({
-        from: 'December <onboarding@resend.dev>',
+        from: `December <${fromEmail}>`,
         to: email,
         subject: 'Your Verification Code',
         html: `
@@ -141,7 +143,13 @@ export const sendOTP = async (email: string, otp: string) => {
                     <!-- Logo Header -->
                     <tr>
                       <td align='center' style='padding-bottom: 32px;'>
-                        <img class='logo-img' src='${logoSrc}' alt='December Logo' width='48' height='48' style='display: block; border: 0; outline: none; width: 48px; height: 48px; margin: 0 auto;' />
+                        <table role='presentation' cellspacing='0' cellpadding='0' border='0' style='margin: 0 auto;'>
+                          <tr>
+                            <td align='center' valign='middle' width='80' height='80' style='background-color: #0c0a09; border-radius: 18px; width: 80px; height: 80px; text-align: center; vertical-align: middle;'>
+                              <img class='logo-img' src='${logoSrc}' alt='December Logo' width='40' height='40' style='display: block; border: 0; outline: none; width: 40px; height: 40px; margin: 0 auto; filter: invert(1);' />
+                            </td>
+                          </tr>
+                        </table>
                       </td>
                     </tr>
                     <!-- Heading -->
@@ -199,7 +207,7 @@ export const sendOTP = async (email: string, otp: string) => {
                         </div>
                         <!-- Support email & copyright -->
                         <p class='text-muted' style='margin: 0 0 6px 0; font-size: 11px; line-height: 16px; color: #a8a29e;'>
-                          Questions? Reach out to <a class='link' href='mailto:phasehumans@gmail.com' style='color: #57534e; text-decoration: underline;'>phasehumans@gmail.com</a>
+                          Questions? Reach out to <a class='link' href='mailto:${fromEmail}' style='color: #57534e; text-decoration: underline;'>${fromEmail}</a>
                         </p>
                         <p class='text-muted' style='margin: 0; font-size: 10px; line-height: 14px; color: #a8a29e; letter-spacing: 0.2px;'>
                           Automated email from December
@@ -237,8 +245,10 @@ export const sendWelcomeEmail = async (email: string, name: string) => {
         ? 'cid:x'
         : 'https://raw.githubusercontent.com/phasehumans/december/main/web/public/x.png'
 
+    const fromEmail = process.env.SENDER_EMAIL || 'onboarding@resend.dev'
+
     await resend.emails.send({
-        from: 'December <onboarding@resend.dev>',
+        from: `December <${fromEmail}>`,
         to: email,
         subject: 'Welcome to December',
         html: `
@@ -281,6 +291,13 @@ export const sendWelcomeEmail = async (email: string, name: string) => {
                 .link {
                   color: #fafaf9 !important;
                 }
+                .btn-bg {
+                  background-color: #fafaf9 !important;
+                }
+                .btn-text {
+                  color: #1c1917 !important;
+                  border-color: #fafaf9 !important;
+                }
               }
             </style>
           </head>
@@ -292,7 +309,13 @@ export const sendWelcomeEmail = async (email: string, name: string) => {
                     <!-- Logo Header -->
                     <tr>
                       <td align='center' style='padding-bottom: 32px;'>
-                        <img class='logo-img' src='${logoSrc}' alt='December Logo' width='48' height='48' style='display: block; border: 0; outline: none; width: 48px; height: 48px; margin: 0 auto;' />
+                        <table role='presentation' cellspacing='0' cellpadding='0' border='0' style='margin: 0 auto;'>
+                          <tr>
+                            <td align='center' valign='middle' width='80' height='80' style='background-color: #0c0a09; border-radius: 18px; width: 80px; height: 80px; text-align: center; vertical-align: middle;'>
+                              <img class='logo-img' src='${logoSrc}' alt='December Logo' width='40' height='40' style='display: block; border: 0; outline: none; width: 40px; height: 40px; margin: 0 auto; filter: invert(1);' />
+                            </td>
+                          </tr>
+                        </table>
                       </td>
                     </tr>
                     <!-- Heading -->
@@ -320,13 +343,25 @@ export const sendWelcomeEmail = async (email: string, name: string) => {
                           <li style='margin-bottom: 8px;'><strong>AI-Driven Workspace:</strong> Generate full-stack applications and features with agent assistance.</li>
                           <li style='margin-bottom: 8px;'><strong>Project Management:</strong> Manage, edit, and export your production-ready projects.</li>
                         </ul>
+                        
+                        <!-- CTA Button -->
+                        <table role='presentation' cellspacing='0' cellpadding='0' border='0' style='margin: 24px 0;'>
+                          <tr>
+                            <td align='left' style='border-radius: 8px; background-color: #1c1917;' class='btn-bg'>
+                              <a href='https://trydecember.com' target='_blank' class='btn-text' style='border: 1px solid #1c1917; border-radius: 8px; color: #fafaf9; display: inline-block; font-size: 14px; font-weight: 600; line-height: 20px; padding: 12px 24px; text-decoration: none;'>
+                                Start building now
+                              </a>
+                            </td>
+                          </tr>
+                        </table>
+
                         <p class='text-secondary' style='margin: 0 0 24px 0; font-size: 14px; line-height: 22px; color: #57534e;'>
-                          If you ever have any questions or feedback, feel free to reply to this email or reach out to our team at <a class='link' href='mailto:phasehumans@gmail.com' style='color: #1c1917; text-decoration: underline; font-weight: 500;'>phasehumans@gmail.com</a>.
+                          If you ever have any questions or feedback, feel free to reply to this email or reach out to our team at <a class='link' href='mailto:${fromEmail}' style='color: #1c1917; text-decoration: underline; font-weight: 500;'>${fromEmail}</a>.
                         </p>
                         <p class='text-secondary' style='margin: 0; font-size: 14px; line-height: 22px; color: #57534e;'>
                           Welcome aboard,
                           <br />
-                          <span class='text-primary' style='font-weight: 600; color: #1c1917;'>The December Team</span>
+                          <span class='text-primary' style='font-weight: 600; color: #1c1917;'>Chaitanya Sonawane</span>
                         </p>
                       </td>
                     </tr>
@@ -350,7 +385,7 @@ export const sendWelcomeEmail = async (email: string, name: string) => {
                         </div>
                         <!-- Support email & copyright -->
                         <p class='text-muted' style='margin: 0 0 6px 0; font-size: 11px; line-height: 16px; color: #a8a29e;'>
-                          Questions? Reach out to <a class='link' href='mailto:phasehumans@gmail.com' style='color: #57534e; text-decoration: underline;'>phasehumans@gmail.com</a>
+                          Questions? Reach out to <a class='link' href='mailto:${fromEmail}' style='color: #57534e; text-decoration: underline;'>${fromEmail}</a>
                         </p>
                         <p class='text-muted' style='margin: 0; font-size: 10px; line-height: 14px; color: #a8a29e; letter-spacing: 0.2px;'>
                           Automated email from December
@@ -365,6 +400,112 @@ export const sendWelcomeEmail = async (email: string, name: string) => {
         </html>
       `,
         attachments,
+    })
+}
+
+export const sendInternalWelcomeNotification = async (
+    userEmail: string,
+    userName: string,
+    method: string
+) => {
+    const fromEmail = process.env.SENDER_EMAIL || 'onboarding@resend.dev'
+
+    await resend.emails.send({
+        from: `December <${fromEmail}>`,
+        to: fromEmail,
+        subject: `New User Sign Up: ${userName || userEmail}`,
+        html: `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset='UTF-8' />
+            <meta name='viewport' content='width=device-width, initial-scale=1.0' />
+            <title>New User Sign Up</title>
+            <style>
+              body {
+                margin: 0;
+                padding: 0;
+                width: 100% !important;
+                -webkit-text-size-adjust: 100%;
+                -ms-text-size-adjust: 100%;
+              }
+              @media (prefers-color-scheme: dark) {
+                .body-bg {
+                  background-color: #0c0a09 !important;
+                }
+                .text-primary {
+                  color: #fafaf9 !important;
+                }
+                .text-secondary {
+                  color: #a8a29e !important;
+                }
+                .text-muted {
+                  color: #78716c !important;
+                }
+                .divider {
+                  background-color: #292524 !important;
+                }
+              }
+            </style>
+          </head>
+          <body class='body-bg' style='margin: 0; padding: 48px 16px; background-color: #ffffff; color: #1c1917; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased;'>
+            <table role='presentation' width='100%' cellspacing='0' cellpadding='0' border='0'>
+              <tr>
+                <td align='center'>
+                  <table role='presentation' width='100%' cellspacing='0' cellpadding='0' border='0' style='max-width: 520px; margin: 0 auto; text-align: left;'>
+                    <!-- Heading -->
+                    <tr>
+                      <td style='padding-bottom: 20px;'>
+                        <h1 class='text-primary' style='margin: 0; font-size: 20px; font-weight: 600; line-height: 28px; color: #1c1917; letter-spacing: -0.3px;'>
+                          New User Sign Up Notification
+                        </h1>
+                      </td>
+                    </tr>
+                    <!-- Body Text -->
+                    <tr>
+                      <td style='padding-bottom: 24px;'>
+                        <p class='text-secondary' style='margin: 0 0 16px 0; font-size: 14px; line-height: 22px; color: #57534e;'>
+                          Hi Chaitanya,
+                        </p>
+                        <p class='text-secondary' style='margin: 0 0 16px 0; font-size: 14px; line-height: 22px; color: #57534e;'>
+                          A new user has registered on <strong>December</strong>.
+                        </p>
+                        <p class='text-secondary' style='margin: 0 0 16px 0; font-size: 14px; line-height: 22px; color: #57534e;'>
+                          <strong>User Details:</strong>
+                        </p>
+                        <ul class='text-secondary' style='margin: 0 0 24px 0; padding-left: 20px; font-size: 14px; line-height: 22px; color: #57534e;'>
+                          <li style='margin-bottom: 8px;'><strong>Name:</strong> ${userName || 'N/A'}</li>
+                          <li style='margin-bottom: 8px;'><strong>Email:</strong> ${userEmail}</li>
+                          <li style='margin-bottom: 8px;'><strong>Signup Method:</strong> ${method}</li>
+                        </ul>
+                        <p class='text-secondary' style='margin: 0; font-size: 14px; line-height: 22px; color: #57534e;'>
+                          Best regards,
+                          <br />
+                          <span class='text-primary' style='font-weight: 600; color: #1c1917;'>December System</span>
+                        </p>
+                      </td>
+                    </tr>
+                    <!-- Divider -->
+                    <tr>
+                      <td style='padding-top: 16px; padding-bottom: 24px;'>
+                        <div class='divider' style='height: 1px; background-color: #f5f5f4; border-bottom: 1px solid #e7e5e4;'></div>
+                      </td>
+                    </tr>
+                    <!-- Footer -->
+                    <tr>
+                      <td style='text-align: center;'>
+                        <p class='text-muted' style='margin: 0; font-size: 10px; line-height: 14px; color: #a8a29e; letter-spacing: 0.2px;'>
+                          Automated system notification from December
+                        </p>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+          </body>
+        </html>
+      `,
     })
 }
 

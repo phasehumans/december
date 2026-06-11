@@ -21,6 +21,22 @@ const previewBridgeStyle = `
         outline-offset: 2px !important;
         box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.12) !important;
     }
+
+    /* Custom scrollbar styling to match code workspace/scrollbar */
+    ::-webkit-scrollbar {
+        width: 4px;
+        height: 4px;
+    }
+    ::-webkit-scrollbar-thumb {
+        background-color: rgba(56, 55, 54, 0.6);
+        border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+        background-color: rgba(74, 73, 72, 0.8);
+    }
+    ::-webkit-scrollbar-track {
+        background-color: transparent;
+    }
 </style>`
 
 const previewBridgeScript = `
@@ -257,6 +273,15 @@ export const PreviewArea: React.FC<PreviewAreaProps> = ({
     const [hasLoadedOnce, setHasLoadedOnce] = useState(false)
 
     useEffect(() => {
+        const handleRefreshTriggered = () => {
+            setHasLoadedOnce(true)
+        }
+        window.addEventListener('december-preview-refresh-triggered', handleRefreshTriggered)
+        return () =>
+            window.removeEventListener('december-preview-refresh-triggered', handleRefreshTriggered)
+    }, [])
+
+    useEffect(() => {
         setHasLoadedOnce(false)
     }, [projectId])
 
@@ -340,7 +365,7 @@ export const PreviewArea: React.FC<PreviewAreaProps> = ({
     return (
         <div
             className={cn(
-                'overflow-hidden relative bg-[#171615]',
+                'overflow-auto relative bg-[#171615] [&::-webkit-scrollbar]:w-[4px] [&::-webkit-scrollbar-thumb]:bg-[#383736]/60 hover:[&::-webkit-scrollbar-thumb]:bg-[#4A4948]/80 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent',
                 fullscreen
                     ? 'h-full w-full min-h-0'
                     : 'flex-1 flex items-center justify-center p-0.5 pb-2'
@@ -445,7 +470,7 @@ export const PreviewArea: React.FC<PreviewAreaProps> = ({
                     <iframe
                         ref={iframeRef}
                         className={cn(
-                            'w-full h-full border-0 transition-opacity bg-white',
+                            'w-full h-full border-0 transition-opacity bg-white [&::-webkit-scrollbar]:w-[4px] [&::-webkit-scrollbar-thumb]:bg-[#383736]/60 hover:[&::-webkit-scrollbar-thumb]:bg-[#4A4948]/80 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent',
                             isVisualMode ? 'cursor-crosshair' : ''
                         )}
                         title="Preview"
