@@ -4,6 +4,10 @@
 
 - _(view)_ Fix template preview and add email onboarding #86
 
+### Miscellaneous Tasks
+
+- _(release)_ V0.2.0
+
 ## [0.2.0] - 2026-06-10
 
 ### Bug Fixes
