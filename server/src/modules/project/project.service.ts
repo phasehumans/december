@@ -3,7 +3,15 @@ import crypto from 'crypto'
 import { prisma } from '../../config/db'
 import { Prisma } from '../../generated/prisma/client'
 import { buildProjectZip } from './build-project-zip'
-import { deletePrefix, projectPrefix, getTextFile } from './project-storage'
+import {
+    deletePrefix,
+    projectPrefix,
+    getTextFile,
+    getBinaryFile,
+    putBinaryFile,
+    versionKey,
+    currentKey,
+} from './project-storage'
 import { saveProjectFiles } from './save-project-files'
 import { AppError } from '../../shared/appError'
 import { hydrateCanvasDocument, persistCanvasDocument } from '../canvas/canvas.persistence'
@@ -457,6 +465,138 @@ const deleteProject = async (data: DeleteProject) => {
     return { message: 'project deleted' }
 }
 
+export const copyProjectVersionsAndMessages = async (
+    sourceProjectId: string,
+    newProjectId: string,
+    newUserId: string,
+    sourceCurrentVersionId: string | null
+) => {
+    const versions = await prisma.projectVersion.findMany({
+        where: {
+            projectId: sourceProjectId,
+        },
+        orderBy: {
+            versionNumber: 'asc',
+        },
+        include: {
+            messages: {
+                orderBy: {
+                    sequence: 'asc',
+                },
+            },
+        },
+    })
+
+    const versionIdMap = new Map<string, string>()
+
+    for (const version of versions) {
+        const newVersionId = crypto.randomUUID()
+        versionIdMap.set(version.id, newVersionId)
+
+        const manifest = parseStoredProjectFiles(version.manifestJson)
+
+        const newManifest: any[] = []
+        for (const file of manifest) {
+            const fileData = await getBinaryFile(file.key)
+            if (fileData) {
+                const newVersionFileKey = versionKey(newProjectId, newVersionId, file.path)
+                await putBinaryFile({
+                    key: newVersionFileKey,
+                    content: Buffer.from(fileData.body),
+                    contentType: fileData.contentType,
+                })
+
+                const isLatestVersion =
+                    sourceCurrentVersionId === version.id ||
+                    version.id === versions[versions.length - 1]?.id
+                if (isLatestVersion) {
+                    const newCurrentFileKey = currentKey(newProjectId, file.path)
+                    await putBinaryFile({
+                        key: newCurrentFileKey,
+                        content: Buffer.from(fileData.body),
+                        contentType: fileData.contentType,
+                    })
+                }
+
+                newManifest.push({
+                    path: file.path,
+                    key: newVersionFileKey,
+                    size: fileData.body.byteLength,
+                    ...(fileData.contentType ? { contentType: fileData.contentType } : {}),
+                })
+            }
+        }
+
+        const hydratedCanvasState = await hydrateCanvasDocument({
+            canvasState: version.canvasStateJson,
+            canvasAssetManifest: version.canvasAssetManifestJson,
+        })
+        const persistedCanvas = await persistCanvasDocument({
+            projectId: newProjectId,
+            userId: newUserId,
+            versionId: newVersionId,
+            canvasState: hydratedCanvasState,
+        })
+
+        await prisma.projectVersion.create({
+            data: {
+                id: newVersionId,
+                projectId: newProjectId,
+                versionNumber: version.versionNumber,
+                label: version.label,
+                sourcePrompt: version.sourcePrompt,
+                summary: version.summary ?? undefined,
+                status: version.status,
+                objectStoragePrefix: `projects/${newProjectId}/previous-version/${newVersionId}`,
+                manifestJson: newManifest,
+                canvasStateJson: persistedCanvas.canvasStateJson as any,
+                canvasAssetManifestJson: persistedCanvas.canvasAssetManifestJson as any,
+                isDatabaseEnabled: version.isDatabaseEnabled,
+                databaseUrl: version.databaseUrl,
+                ...(version.intentJson !== null ? { intentJson: version.intentJson as any } : {}),
+                ...(version.planJson !== null ? { planJson: version.planJson as any } : {}),
+                messages: {
+                    create: version.messages.map((message: any) => ({
+                        projectId: newProjectId,
+                        role: message.role,
+                        content: message.content,
+                        ...(message.status ? { status: message.status } : {}),
+                        sequence: message.sequence,
+                    })),
+                },
+            },
+        })
+    }
+
+    const newCurrentVersionId = sourceCurrentVersionId
+        ? versionIdMap.get(sourceCurrentVersionId)
+        : null
+
+    try {
+        await prisma.project.update({
+            where: {
+                id: newProjectId,
+            },
+            data: {
+                currentVersionId: newCurrentVersionId,
+                versionCount: versions.length,
+            },
+            select: {
+                id: true,
+            },
+        })
+    } catch (error) {
+        if (!isVersionSchemaMissing(error)) {
+            throw error
+        }
+    }
+
+    return {
+        newCurrentVersionId,
+        versionCount: versions.length,
+    }
+}
+
 const duplicateProject = async (data: DuplicateProject) => {
     const { projectId, userId, name } = data
 
@@ -481,6 +621,7 @@ const duplicateProject = async (data: DuplicateProject) => {
             description: true,
             prompt: true,
             projectStatus: true,
+            currentVersionId: true,
         },
     })
 
@@ -488,36 +629,25 @@ const duplicateProject = async (data: DuplicateProject) => {
         throw new AppError('project not found', 404)
     }
 
-    let currentVersion: any = null
-
-    try {
-        currentVersion = await prisma.projectVersion.findFirst({
-            where: {
-                projectId: sourceProject.id,
-            },
-            orderBy: {
-                versionNumber: 'desc',
-            },
-            include: {
-                messages: {
-                    orderBy: {
-                        sequence: 'asc',
-                    },
-                },
-            },
-        })
-    } catch (error) {
-        if (!isVersionSchemaMissing(error)) {
-            throw error
-        }
-    }
+    const latestVersion = await prisma.projectVersion.findFirst({
+        where: {
+            projectId: sourceProject.id,
+        },
+        orderBy: {
+            versionNumber: 'desc',
+        },
+        select: {
+            id: true,
+            sourcePrompt: true,
+        },
+    })
 
     const newProject = await prisma.project.create({
         data: {
             name: name || `Copy of ${sourceProject.name}`,
             description: sourceProject.description,
-            prompt: currentVersion?.sourcePrompt ?? sourceProject.prompt,
-            projectStatus: currentVersion ? 'READY' : sourceProject.projectStatus,
+            prompt: latestVersion?.sourcePrompt ?? sourceProject.prompt,
+            projectStatus: latestVersion ? 'READY' : sourceProject.projectStatus,
             userId: userId,
         },
         select: {
@@ -536,83 +666,19 @@ const duplicateProject = async (data: DuplicateProject) => {
         },
     })
 
-    if (!currentVersion) {
+    if (!latestVersion) {
         return newProject
     }
 
-    const manifest = parseStoredProjectFiles(currentVersion.manifestJson)
-    const generatedFiles = await loadGeneratedFilesFromManifest(manifest)
-    const versionRecordId = crypto.randomUUID()
-    const hydratedCanvasState = await hydrateCanvasDocument({
-        canvasState: currentVersion.canvasStateJson,
-        canvasAssetManifest: currentVersion.canvasAssetManifestJson,
-    })
-    const persistedCanvas = await persistCanvasDocument({
-        projectId: newProject.id,
+    const copyResult = await copyProjectVersionsAndMessages(
+        sourceProject.id,
+        newProject.id,
         userId,
-        versionId: versionRecordId,
-        canvasState: hydratedCanvasState,
-    })
-    const savedFiles = await saveProjectFiles({
-        projectId: newProject.id,
-        versionId: versionRecordId,
-        files: Object.entries(generatedFiles).map(([path, content]) => ({ path, content })),
-    })
+        sourceProject.currentVersionId
+    )
 
-    await prisma.projectVersion.create({
-        data: {
-            id: versionRecordId,
-            projectId: newProject.id,
-            versionNumber: 1,
-            label: 'v1',
-            sourcePrompt: currentVersion.sourcePrompt,
-            summary: currentVersion.summary ?? undefined,
-            status: 'READY',
-            objectStoragePrefix: `projects/${newProject.id}/previous-version/${versionRecordId}`,
-            manifestJson: savedFiles.map((file) => ({
-                path: file.path,
-                key: file.key,
-                ...(file.contentType ? { contentType: file.contentType } : {}),
-                size: file.size,
-            })),
-            canvasStateJson: persistedCanvas.canvasStateJson as any,
-            canvasAssetManifestJson: persistedCanvas.canvasAssetManifestJson as any,
-            ...(currentVersion.intentJson !== null
-                ? { intentJson: currentVersion.intentJson as any }
-                : {}),
-            ...(currentVersion.planJson !== null
-                ? { planJson: currentVersion.planJson as any }
-                : {}),
-            messages: {
-                create: currentVersion.messages.map((message: any) => ({
-                    projectId: newProject.id,
-                    role: message.role,
-                    content: message.content,
-                    ...(message.status ? { status: message.status } : {}),
-                    sequence: message.sequence,
-                })),
-            },
-        },
-    })
-
-    try {
-        await prisma.project.update({
-            where: {
-                id: newProject.id,
-            },
-            data: {
-                currentVersionId: versionRecordId,
-                versionCount: 1,
-            },
-            select: {
-                id: true,
-            },
-        })
-    } catch (error) {
-        if (!isVersionSchemaMissing(error)) {
-            throw error
-        }
-    }
+    newProject.currentVersionId = copyResult.newCurrentVersionId
+    newProject.versionCount = copyResult.versionCount
 
     return newProject
 }

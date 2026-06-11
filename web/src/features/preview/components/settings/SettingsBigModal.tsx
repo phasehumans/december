@@ -22,6 +22,7 @@ import { projectAPI } from '@/features/projects/api/project'
 import { ProjectDeleteModal } from '@/features/projects/components/ProjectDeleteModal'
 import { ProjectDuplicateModal } from '@/features/projects/components/ProjectDuplicateModal'
 import { ProjectShareModal } from '@/features/projects/components/ProjectShareModal'
+import { toProjectSlug } from '@/app/types'
 
 interface SettingsModalProps {
     onClose: () => void
@@ -73,6 +74,7 @@ export const SettingsBigModal: React.FC<SettingsModalProps> = ({
     const [isShareModalOpen, setIsShareModalOpen] = useState(false)
     const [isDuplicateModalOpen, setIsDuplicateModalOpen] = useState(false)
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+    const [hasSavedChanges, setHasSavedChanges] = useState(false)
 
     const handleDeploy = () => {
         setDeploying(true)
@@ -119,13 +121,24 @@ export const SettingsBigModal: React.FC<SettingsModalProps> = ({
                 isSharedAsTemplate: isTemplate,
                 projectCategory: category,
             })
-            onClose()
-            // Quick page reload to reflect project changes
-            window.location.reload()
+            setHasSavedChanges(true)
         } catch (err) {
             console.error('Failed to save project settings:', err)
         } finally {
             setIsSaving(false)
+        }
+    }
+
+    const handleClose = () => {
+        if (hasSavedChanges) {
+            if (window.location.pathname.startsWith('/project/')) {
+                const slug = toProjectSlug(projName)
+                window.location.href = `/project/${slug}`
+            } else {
+                window.location.reload()
+            }
+        } else {
+            onClose()
         }
     }
 
@@ -188,18 +201,20 @@ export const SettingsBigModal: React.FC<SettingsModalProps> = ({
         },
         { id: 'publish', label: 'Publish', icon: <Cloud size={15} /> },
         { id: 'variables', label: 'Env Variables', icon: <Terminal size={15} /> },
-        { id: 'domains', label: 'Domains', icon: <Globe size={15} /> },
-        { id: 'analytics', label: 'Analytics', icon: <Activity size={15} /> },
     ]
 
     return (
-        <BigModalOverlay title="Project Settings" icon={<Settings size={16} />} onClose={onClose}>
+        <BigModalOverlay
+            title="Project Settings"
+            icon={<Settings size={16} />}
+            onClose={handleClose}
+        >
             {/* Sidebar */}
             <div className="w-[220px] shrink-0 border-r border-[#242323] flex flex-col py-4">
                 <div className="px-4 mb-6">
                     <button
                         type="button"
-                        onClick={onClose}
+                        onClick={handleClose}
                         className="flex items-center text-[#7B7A79] hover:text-[#D6D5D4] hover:bg-[#1E1D1B] px-2 py-1 -ml-2 rounded-lg text-[13px] font-medium transition-colors cursor-pointer"
                     >
                         <ChevronLeft className="w-4 h-4 mr-2" />
@@ -240,7 +255,7 @@ export const SettingsBigModal: React.FC<SettingsModalProps> = ({
                 <div className="h-10 flex items-center justify-end px-5 shrink-0">
                     <button
                         type="button"
-                        onClick={onClose}
+                        onClick={handleClose}
                         className="p-1.5 rounded-lg text-[#7B7A79] hover:text-[#D6D5D4] hover:bg-white/5 transition-colors outline-none cursor-pointer"
                     >
                         <X size={15} />
@@ -356,77 +371,6 @@ export const SettingsBigModal: React.FC<SettingsModalProps> = ({
                                         <div className="border border-dashed border-[#383736] rounded-xl py-8 flex flex-col items-center justify-center gap-2 bg-[#100E12]/30 mt-4">
                                             <span className="text-[13px] text-[#7B7A79]">
                                                 No environment variables defined yet.
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-
-                            {activeTab === 'domains' && (
-                                <div className="flex flex-col w-full max-w-[680px] text-[#D6D5C9] animate-in fade-in duration-200">
-                                    <h1 className="text-[16px] font-medium mb-3">Custom Domains</h1>
-                                    <div className="flex flex-col gap-4 border-t border-[#242323] pt-6">
-                                        <p className="text-[13px] text-[#7B7A79] mb-2">
-                                            Assign custom domains to your project for a branded
-                                            experience.
-                                        </p>
-                                        <div className="flex items-center gap-2">
-                                            <input
-                                                type="text"
-                                                placeholder="e.g. my-awesome-site.com"
-                                                className="w-2/3 bg-[#100E12]/50 border border-[#383736] rounded-lg px-3 py-1.5 text-[13px] text-[#D6D5C9] outline-none"
-                                                disabled
-                                            />
-                                            <button className="px-4 py-1.5 rounded-lg bg-[#2B2A29] text-[#7B7A79] text-[13px] font-medium cursor-not-allowed">
-                                                Add Domain
-                                            </button>
-                                        </div>
-                                        <div className="border border-[#242323] rounded-xl p-4 flex items-center justify-between mt-4 bg-[#100E12]/30">
-                                            <div className="flex items-center gap-3">
-                                                <Globe className="w-5 h-5 text-[#7B7A79]" />
-                                                <div className="flex flex-col">
-                                                    <span className="text-[14px] font-medium text-[#D6D5C9]">
-                                                        {projectName
-                                                            .toLowerCase()
-                                                            .replace(/\s+/g, '-')}
-                                                        .december.dev
-                                                    </span>
-                                                    <span className="text-[12px] text-emerald-500">
-                                                        Active
-                                                    </span>
-                                                </div>
-                                            </div>
-                                            <span className="text-[12px] text-[#7B7A79] px-2 py-1 rounded bg-[#1E1D1B]">
-                                                Default
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-
-                            {activeTab === 'analytics' && (
-                                <div className="flex flex-col w-full max-w-[680px] text-[#D6D5C9] animate-in fade-in duration-200">
-                                    <h1 className="text-[16px] font-medium mb-3">Analytics</h1>
-                                    <div className="flex flex-col gap-6 border-t border-[#242323] pt-6">
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex flex-col gap-0.5 text-left">
-                                                <span className="text-[14px] text-[#D6D5C9]">
-                                                    Enable Web Analytics
-                                                </span>
-                                                <span className="text-[13px] text-[#7B7A79]">
-                                                    Track page views, visitors, and performance
-                                                    metrics.
-                                                </span>
-                                            </div>
-                                            <PremiumToggle
-                                                active={analytics}
-                                                onChange={() => setAnalytics(!analytics)}
-                                            />
-                                        </div>
-                                        <div className="border border-[#242323] rounded-xl py-12 flex flex-col items-center justify-center gap-3 bg-[#100E12]/30 mt-2">
-                                            <Activity className="w-6 h-6 text-[#4A4948]" />
-                                            <span className="text-[13px] text-[#7B7A79]">
-                                                Not enough data to display metrics yet.
                                             </span>
                                         </div>
                                     </div>

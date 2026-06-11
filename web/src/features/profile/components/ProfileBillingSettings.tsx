@@ -329,19 +329,19 @@ export const ProfileBillingSettings: React.FC<ProfileBillingSettingsProps> = ({
                             <div className="flex flex-col gap-2.5 text-[13px] text-[#7B7A79]">
                                 <div className="flex items-center gap-2">
                                     <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                                    <span>$1.00 standard credit limit</span>
+                                    <span>$1.00 credit limit (one-time grant)</span>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                                    <span>Standard execution speed</span>
+                                    <span>Auto model selection only</span>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                                    <span>Community support</span>
+                                    <span>1 active project workspace</span>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                                    <span>One-time credits (no expiry)</span>
+                                    <span>No GitHub import or ZIP upload</span>
                                 </div>
                             </div>
                         </div>
@@ -384,15 +384,15 @@ export const ProfileBillingSettings: React.FC<ProfileBillingSettingsProps> = ({
                                 </div>
                                 <div className="flex items-center gap-2 text-[#D6D5C9]">
                                     <Check className="w-4 h-4 text-[#D6D5C9] shrink-0" />
-                                    <span>Priority execution speed</span>
+                                    <span>Full model access (all LLMs available)</span>
                                 </div>
                                 <div className="flex items-center gap-2 text-[#D6D5C9]">
                                     <Check className="w-4 h-4 text-[#D6D5C9] shrink-0" />
-                                    <span>Premium 24/7 support</span>
+                                    <span>Unlimited projects & visual workspaces</span>
                                 </div>
                                 <div className="flex items-center gap-2 text-[#D6D5C9]">
                                     <Check className="w-4 h-4 text-[#D6D5C9] shrink-0" />
-                                    <span>Early access to new features</span>
+                                    <span>Unlimited GitHub imports & ZIP uploads</span>
                                 </div>
                             </div>
                         </div>

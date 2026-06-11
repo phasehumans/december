@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Volume1, Volume2, VolumeX, FilePlus, Trash2, Loader2, ExternalLink } from 'lucide-react'
 import React, { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 
 import { profileAPI } from '@/features/profile/api/profile'
 
@@ -67,6 +68,7 @@ export const ProfileGeneralSettings: React.FC<ProfileGeneralSettingsProps> = ({
     onGenerationSoundChange,
 }) => {
     const queryClient = useQueryClient()
+    const navigate = useNavigate()
 
     // --- design ---
     const designQuery = useQuery({
@@ -106,16 +108,12 @@ export const ProfileGeneralSettings: React.FC<ProfileGeneralSettingsProps> = ({
     })
 
     const defaultdesignContent = `---
-name: design
-description: Describe what this design does and when december should use it. Be specific - this is how december decides to trigger the design.
+name: Custom Design
+description: Persistent instructions defining custom rules for how december should generate layouts and components.
 ---
 
-# design
-
-## Instructions
-
-Write the steps december should follow when this design is triggered.
-Focus on what december wouldn't already know - domain-specific details, preferred patterns, or exact sequences.`
+# Custom Design Rules
+Use this template file to specify coding styles, design tokens, responsive grids, and layout rules for december to follow.`
 
     return (
         <div className="flex flex-col w-full max-w-[800px] text-[#D6D5C9]">
@@ -237,16 +235,20 @@ Focus on what december wouldn't already know - domain-specific details, preferre
                 </div>
             </div>
 
-            {/* Custom design */}
+            {/* Custom Design */}
             <div className="flex flex-col mb-10">
-                <h1 className="text-[16px] font-medium mb-4">Custom design</h1>
+                <h1 className="text-[16px] font-medium mb-4">Custom Design</h1>
                 <div className="flex flex-col gap-4 border border-[#242323] rounded-xl p-5 bg-[#171615]">
                     <p className="text-[13px] text-[#7B7A79] mb-4 leading-relaxed">
-                        Create reusable design that december can apply during conversations. Each
-                        design has a design.md that defines when it triggers and what instructions
-                        to follow.{' '}
+                        Create reusable design guidelines that december can apply during
+                        conversations. Each design has a design.md that defines custom layout rules
+                        and triggers.{' '}
                         <a
-                            href="/docs"
+                            href="/docs#custom-design"
+                            onClick={(e) => {
+                                e.preventDefault()
+                                navigate('/docs#custom-design')
+                            }}
                             className="inline-flex items-center gap-1.5 text-[#7B7A79] hover:text-[#D6D5C9] transition-colors"
                         >
                             View sample design.md in docs
@@ -267,7 +269,7 @@ Focus on what december wouldn't already know - domain-specific details, preferre
                                 className="flex items-center gap-2 px-4 py-2 border border-[#383736] rounded-lg text-[14px] font-medium text-[#D6D5C9] hover:bg-[#242323] transition-colors w-fit shadow-sm"
                             >
                                 <FilePlus className="w-4 h-4" />
-                                Create a design
+                                Create design.md
                             </button>
                         </div>
                     ) : (

@@ -12,6 +12,7 @@ import { sendNotificationToUser } from '../notification/notification.service'
 import {
     sendOTP,
     sendWelcomeEmail,
+    sendInternalWelcomeNotification,
     getNameFromEmail,
     getUsername,
     generateAccessToken,
@@ -209,6 +210,12 @@ const verifyOtp = async (data: VerifyOtp) => {
         await sendWelcomeEmail(user.email, user.name || '')
     } catch (error) {
         console.error('failed to send welcome email:', error)
+    }
+
+    try {
+        await sendInternalWelcomeNotification(user.email, user.name || '', 'Email/OTP')
+    } catch (error) {
+        console.error('failed to send internal welcome notification:', error)
     }
 
     return {
@@ -456,6 +463,18 @@ const google = async (data: Google) => {
             })
         } catch (error) {
             console.error('failed to send welcome notification:', error)
+        }
+
+        try {
+            await sendWelcomeEmail(user.email, user.name || '')
+        } catch (error) {
+            console.error('failed to send welcome email:', error)
+        }
+
+        try {
+            await sendInternalWelcomeNotification(user.email, user.name || '', 'Google')
+        } catch (error) {
+            console.error('failed to send internal welcome notification:', error)
         }
     } else if (user.deletedAt || user.isDeleted) {
         throw new AppError('account has been deleted', 403)

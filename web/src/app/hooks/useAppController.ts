@@ -676,7 +676,9 @@ export const useAppController = () => {
             const parts = location.pathname.split('/')
             const slug = parts[parts.length - 1]
             if (slug && slug !== 'untitled') {
-                const matchingProject = projects.find((p) => toProjectSlug(p.title) === slug)
+                const matchingProject = projects.find(
+                    (p) => p.id === slug || toProjectSlug(p.title) === slug
+                )
                 if (matchingProject) {
                     void openProject({
                         projectId: matchingProject.id,

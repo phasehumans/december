@@ -200,28 +200,28 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
                 <div className="h-[1px] bg-[#2B2A29] mx-1 my-1 shrink-0" />
 
                 <div
-                    className="px-3 py-3 flex flex-col gap-2 overflow-y-auto"
+                    className="px-3 py-3 flex flex-col gap-3 overflow-y-auto"
                     style={{ scrollbarWidth: 'none' }}
                 >
-                    <h3 className="text-[14px] font-medium text-[#E8E8E8] leading-snug">
-                        {selectedNotification.title}
-                    </h3>
-                    <div className="flex items-center gap-2 mt-0.5">
-                        <span
-                            className={`text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded-md border ${badgeColor}`}
-                        >
-                            {selectedNotification.type}
-                        </span>
-                        <span className="text-[10px] text-[#6F6E6D]">
-                            {new Date(selectedNotification.createdAt).toLocaleString(undefined, {
-                                month: 'short',
-                                day: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit',
-                            })}
-                        </span>
+                    <div>
+                        <h3 className="text-[15px] font-semibold text-white leading-snug">
+                            {selectedNotification.title}
+                        </h3>
+                        <div className="flex items-center gap-2 mt-1">
+                            <span className="text-[10px] text-[#8F8E8D]">
+                                {new Date(selectedNotification.createdAt).toLocaleString(
+                                    undefined,
+                                    {
+                                        month: 'short',
+                                        day: 'numeric',
+                                        hour: '2-digit',
+                                        minute: '2-digit',
+                                    }
+                                )}
+                            </span>
+                        </div>
                     </div>
-                    <p className="text-[13px] text-[#A3A3A3] leading-relaxed whitespace-pre-wrap mt-2">
+                    <p className="text-[13px] text-[#CACACA] leading-relaxed whitespace-pre-wrap mt-1">
                         {selectedNotification.message}
                     </p>
                     {selectedNotification.link && (
@@ -229,9 +229,9 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
                             href={selectedNotification.link}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-[12px] text-[#D6D5C9]/85 hover:text-[#D6D5C9] hover:underline mt-2 font-medium"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-[#383736] rounded-lg text-[12px] font-medium text-[#D6D5C9] hover:bg-[#252422] transition-colors w-fit shadow-sm mt-2"
                         >
-                            View link →
+                            View Details →
                         </a>
                     )}
                 </div>

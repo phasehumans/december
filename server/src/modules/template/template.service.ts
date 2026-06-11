@@ -6,7 +6,10 @@ import { saveProjectFiles } from '../project/save-project-files'
 import { AppError } from '../../shared/appError'
 import { hydrateCanvasDocument, persistCanvasDocument } from '../canvas/canvas.persistence'
 import { sendNotificationToUser } from '../notification/notification.service'
-import { loadGeneratedFilesFromManifest } from '../project/project.service'
+import {
+    loadGeneratedFilesFromManifest,
+    copyProjectVersionsAndMessages,
+} from '../project/project.service'
 import { parseStoredProjectFiles } from '../project/project.utils'
 
 type ToggleLike = {
@@ -225,7 +228,6 @@ const getFeaturedTemplates = async (userId?: string) => {
 }
 
 const remixTemplate = async (data: RemixTemplate) => {
-    // add COW (copy on write) to copy the files ; TODO
     const { userId, templateId, name } = data
 
     const user = await prisma.user.findUnique({
@@ -234,8 +236,6 @@ const remixTemplate = async (data: RemixTemplate) => {
         },
     })
 
-    // better optimize; findunique uses indexing,
-    // if search w/ isDeleted, reduce optimisation due to unneccassary filteing
     if (!user || user.isDeleted == true) {
         throw new AppError('user not found', 404)
     }
@@ -251,6 +251,7 @@ const remixTemplate = async (data: RemixTemplate) => {
             prompt: true,
             isSharedAsTemplate: true,
             projectStatus: true,
+            currentVersionId: true,
         },
     })
 
@@ -258,12 +259,16 @@ const remixTemplate = async (data: RemixTemplate) => {
         throw new AppError('template not found', 404)
     }
 
-    const currentVersion = await prisma.projectVersion.findFirst({
+    const latestVersion = await prisma.projectVersion.findFirst({
         where: {
             projectId: template.id,
         },
         orderBy: {
             versionNumber: 'desc',
+        },
+        select: {
+            id: true,
+            sourcePrompt: true,
         },
     })
 
@@ -271,8 +276,8 @@ const remixTemplate = async (data: RemixTemplate) => {
         data: {
             name: name || `Remix of ${template.name}`,
             description: template.description,
-            prompt: currentVersion?.sourcePrompt ?? template.prompt,
-            projectStatus: currentVersion ? 'READY' : template.projectStatus,
+            prompt: latestVersion?.sourcePrompt ?? template.prompt,
+            projectStatus: latestVersion ? 'READY' : template.projectStatus,
             userId: userId,
         },
         select: {
@@ -291,69 +296,19 @@ const remixTemplate = async (data: RemixTemplate) => {
         },
     })
 
-    if (!currentVersion) {
+    if (!latestVersion) {
         return newProject
     }
 
-    const manifest = parseStoredProjectFiles(currentVersion.manifestJson)
-    const generatedFiles = await loadGeneratedFilesFromManifest(manifest)
-
-    const versionRecordId = crypto.randomUUID()
-
-    const hydratedCanvasState = await hydrateCanvasDocument({
-        canvasState: currentVersion.canvasStateJson,
-        canvasAssetManifest: currentVersion.canvasAssetManifestJson,
-    })
-    const persistedCanvas = await persistCanvasDocument({
-        projectId: newProject.id,
+    const copyResult = await copyProjectVersionsAndMessages(
+        template.id,
+        newProject.id,
         userId,
-        versionId: versionRecordId,
-        canvasState: hydratedCanvasState,
-    })
+        template.currentVersionId
+    )
 
-    const savedFiles = await saveProjectFiles({
-        projectId: newProject.id,
-        versionId: versionRecordId,
-        files: Object.entries(generatedFiles).map(([path, content]) => ({
-            path,
-            content,
-        })),
-    })
-
-    await prisma.projectVersion.create({
-        data: {
-            id: versionRecordId,
-            projectId: newProject.id,
-            versionNumber: 1,
-            label: 'v1',
-            sourcePrompt: currentVersion.sourcePrompt,
-            status: 'READY',
-            objectStoragePrefix: `projects/${newProject.id}/previous-version/${versionRecordId}`,
-
-            manifestJson: savedFiles.map((file) => ({
-                path: file.path,
-                key: file.key,
-                size: file.size,
-                ...(file.contentType ? { contentType: file.contentType } : {}),
-            })),
-            canvasStateJson: persistedCanvas.canvasStateJson as any,
-            canvasAssetManifestJson: persistedCanvas.canvasAssetManifestJson as any,
-            ...(currentVersion.intentJson !== null
-                ? { intentJson: currentVersion.intentJson as any }
-                : {}),
-            ...(currentVersion.planJson !== null
-                ? { planJson: currentVersion.planJson as any }
-                : {}),
-        },
-    })
-
-    await prisma.project.update({
-        where: { id: newProject.id },
-        data: {
-            currentVersionId: versionRecordId,
-            versionCount: 1,
-        },
-    })
+    newProject.currentVersionId = copyResult.newCurrentVersionId
+    newProject.versionCount = copyResult.versionCount
 
     return newProject
 }

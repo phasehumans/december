@@ -1,5 +1,6 @@
 import { ChevronLeft } from 'lucide-react'
 import React, { useState, useEffect, useRef } from 'react'
+import { useLocation } from 'react-router-dom'
 
 import { Skeleton } from '@/shared/components/ui/Skeleton'
 
@@ -158,6 +159,7 @@ const CodeBlock: React.FC<{ code: string; language?: string }> = ({ code, langua
 )
 
 export const DocsPage: React.FC<DocsPageProps> = ({ onBack }) => {
+    const location = useLocation()
     const [activeTab, setActiveTab] = useState('introduction')
     const [isInitialLoading, setIsInitialLoading] = useState(true)
 
@@ -171,6 +173,7 @@ export const DocsPage: React.FC<DocsPageProps> = ({ onBack }) => {
     const subpages = [
         { id: 'introduction', label: 'Introduction' },
         { id: 'quickstart', label: 'Quick Start' },
+        { id: 'custom-design', label: 'Custom Design' },
         { id: 'architecture', label: 'Architecture' },
         { id: 'agent', label: 'Agent' },
         { id: 'canvas', label: 'Context Canvas' },
@@ -182,6 +185,14 @@ export const DocsPage: React.FC<DocsPageProps> = ({ onBack }) => {
         { id: 'privacy', label: 'Privacy Policy' },
         { id: 'terms', label: 'Terms of Service' },
     ]
+
+    useEffect(() => {
+        const params = new URLSearchParams(location.search)
+        const tab = params.get('tab') || location.hash.replace('#', '')
+        if (tab && subpages.some((p) => p.id === tab)) {
+            setActiveTab(tab)
+        }
+    }, [location])
 
     return (
         <div className="flex w-full h-full bg-[#100E12] overflow-hidden p-1.5 md:p-[8px]">
@@ -362,6 +373,57 @@ export const DocsPage: React.FC<DocsPageProps> = ({ onBack }) => {
                                             </p>
                                         </div>
                                     </div>
+                                </div>
+                            </div>
+                        ) : activeTab === 'custom-design' ? (
+                            <div className="flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-1 duration-200">
+                                <div className="flex flex-col gap-2">
+                                    <h1 className="text-[28px] font-semibold text-white tracking-tight">
+                                        Custom Design Instructions
+                                    </h1>
+                                    <p className="text-[14.5px] text-[#A3A299] leading-relaxed">
+                                        December lets you define global layout instructions, custom
+                                        components, and preferred patterns that December will always
+                                        adhere to during component generation.
+                                    </p>
+                                </div>
+
+                                <div className="flex flex-col gap-3">
+                                    <h2 className="text-[18px] font-medium text-white tracking-tight">
+                                        What is design.md?
+                                    </h2>
+                                    <p className="text-[13.5px] text-[#A3A299] leading-relaxed">
+                                        A <code>design.md</code> file acts as a persistent template
+                                        guidelines rulebook. When you create visual changes or
+                                        prompt the workspace, the AI references your custom
+                                        instructions to ensure compliance with your design system.
+                                    </p>
+                                </div>
+
+                                <div className="flex flex-col gap-3">
+                                    <h2 className="text-[18px] font-medium text-white tracking-tight">
+                                        Sample design.md
+                                    </h2>
+                                    <p className="text-[13.5px] text-[#A3A299] leading-relaxed">
+                                        Below is a sample design configuration template. You can
+                                        copy and adapt this into the Custom Design editor:
+                                    </p>
+                                    <CodeBlock
+                                        language="markdown"
+                                        code={`---
+name: custom-design
+description: Custom layout structure templates and system instructions.
+---
+
+# Custom Design System
+
+## Instructions
+
+1. Use custom container elements for all pages (e.g., maximum width 1200px, padded margins).
+2. Keep the color palette strict to the predefined Slate (#64748b) and Amber (#f59e0b) values.
+3. Keep buttons rounded-lg with custom border shadows.
+4. Ensure components are responsive, utilizing flexbox layouts rather than absolute positioning.`}
+                                    />
                                 </div>
                             </div>
                         ) : activeTab === 'architecture' ? (
