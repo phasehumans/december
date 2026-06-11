@@ -2,6 +2,12 @@
 
 ### Bug Fixes
 
+- _(view)_ Fix template preview and add email onboarding #86
+
+## [0.2.0] - 2026-06-10
+
+### Bug Fixes
+
 - Followup edits and add user onboarding #85
 
 ### Miscellaneous Tasks
@@ -10,6 +16,7 @@
 - Add ai skills and prompts to .december workspace
 - Add more ai skills and prompts to .december
 - Rename and refine ai skills and prompts
+- _(release)_ V0.2.0
 
 ## [0.1.1] - 2026-06-07
 
