@@ -32,15 +32,32 @@ export const TemplateCard: React.FC<TemplateCardProps> = ({
         <div className="group flex flex-col gap-3.5 cursor-pointer w-full">
             {/* Image Container */}
             <div className="relative aspect-[16/10] bg-[#111] overflow-hidden rounded-xl border border-[#242323] transition-all duration-300">
-                <div className="absolute w-[300%] h-[300%] origin-top-left scale-[0.333333] transition-transform duration-700 ease-[0.25,1,0.5,1] group-hover:scale-[0.34]">
-                    <iframe
-                        src={`${API_BASE_URL}/template/${template.id}/preview.html`}
-                        title={template.title}
-                        className="w-full h-full border-0 pointer-events-none select-none bg-white"
+                {template.previewImageKey ? (
+                    <img
+                        src={`${API_BASE_URL}/template/${template.id}/preview.png`}
+                        alt={template.title}
+                        className="w-full h-full object-cover transition-transform duration-700 ease-[0.25,1,0.5,1] group-hover:scale-[1.04]"
                         loading="lazy"
-                        sandbox="allow-scripts allow-same-origin"
                     />
-                </div>
+                ) : (
+                    <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-[#FAF9F6] to-[#F3F2EE] select-none p-4 text-center">
+                        <svg
+                            className="w-7 h-7 mb-2 text-[#8C8B86] opacity-90 stroke-[1.5]"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                        >
+                            <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
+                            <circle cx="9" cy="9" r="2" />
+                            <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
+                        </svg>
+                        <span className="text-[12px] font-medium text-[#6B6964] tracking-tight">
+                            No preview available
+                        </span>
+                    </div>
+                )}
 
                 {/* Soft bottom gradient for depth */}
                 <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/60 to-transparent pointer-events-none opacity-60"></div>

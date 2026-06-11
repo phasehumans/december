@@ -4,7 +4,8 @@ import {
     publishStoredPreviewManifest,
     type PreviewManifestRef,
 } from '../project/preview-manifest'
-import { getBinaryFile } from '../project/project-storage'
+import { getBinaryFile, putBinaryFile } from '../project/project-storage'
+import { chromium } from 'playwright'
 
 export type RuntimePreviewError = {
     class:
@@ -63,6 +64,100 @@ type ProjectVersionRecord = NonNullable<Awaited<ReturnType<typeof prisma.project
 const previewStatusStore = new Map<string, RuntimePreviewStatus>()
 const runtimeBaseUrl = (process.env.RUNTIME_BASE_URL ?? 'http://127.0.0.1:5050').replace(/\/+$/, '')
 const runtimeSharedSecret = process.env.RUNTIME_SHARED_SECRET
+
+const pendingDeletions = new Map<string, NodeJS.Timeout>()
+
+export function cancelPendingDeletion(projectId: string) {
+    const timer = pendingDeletions.get(projectId)
+    if (timer) {
+        clearTimeout(timer)
+        pendingDeletions.delete(projectId)
+        console.log(`[runtime] Cancelled pending 5-minute deletion for project ${projectId}`)
+    }
+}
+
+export function scheduleDeletion(projectId: string, delayMs: number) {
+    cancelPendingDeletion(projectId)
+    const timer = setTimeout(async () => {
+        try {
+            console.log(`[runtime] Deleting preview container for project ${projectId} after 5 min delay`)
+            await runtimeRequest<{ deleted: boolean }>(`/previews/${encodeURIComponent(projectId)}`, {
+                method: 'DELETE',
+            }).catch(() => null)
+            previewStatusStore.delete(projectId)
+            pendingDeletions.delete(projectId)
+        } catch (err) {
+            console.error(`Failed to delete preview container after delay for project ${projectId}:`, err)
+            pendingDeletions.delete(projectId)
+        }
+    }, delayMs)
+    pendingDeletions.set(projectId, timer)
+}
+
+async function takePreviewScreenshot(projectId: string, previewUrl: string) {
+    console.log(`[Screenshot] Starting screenshot capture workflow for project ${projectId}`)
+    console.log(`[Screenshot] Target URL: ${previewUrl}`)
+    let browser;
+    try {
+        console.log(`[Screenshot] Launching Playwright Chromium browser...`)
+        browser = await chromium.launch({
+            headless: true,
+            args: ['--no-sandbox', '--disable-setuid-sandbox']
+        })
+        console.log(`[Screenshot] Browser launched successfully.`)
+
+        console.log(`[Screenshot] Creating new browser context (Viewport: 1280x800)...`)
+        const context = await browser.newContext({
+            viewport: { width: 1280, height: 800 }
+        })
+        console.log(`[Screenshot] Browser context created.`)
+
+        console.log(`[Screenshot] Opening new browser page...`)
+        const page = await context.newPage()
+        console.log(`[Screenshot] New browser page opened.`)
+        
+        console.log(`[Screenshot] Navigating to ${previewUrl}...`)
+        await page.goto(previewUrl, { waitUntil: 'networkidle', timeout: 30000 })
+        console.log(`[Screenshot] Navigation complete. Page loaded with networkidle.`)
+        
+        console.log(`[Screenshot] Waiting 2000ms for animations and client-side rendering to settle...`)
+        await page.waitForTimeout(2000)
+        console.log(`[Screenshot] Wait complete. Capturing page screenshot as PNG...`)
+        
+        const screenshotBuffer = await page.screenshot({ type: 'png' })
+        console.log(`[Screenshot] Screenshot buffer captured. Buffer size: ${screenshotBuffer.byteLength} bytes.`)
+        
+        const key = `projects/${projectId}/preview.png`
+        console.log(`[Screenshot] Uploading screenshot to object storage (MinIO) at key: ${key}...`)
+        await putBinaryFile({
+            key,
+            content: screenshotBuffer,
+            contentType: 'image/png'
+        })
+        console.log(`[Screenshot] Screenshot uploaded to object storage successfully.`)
+        
+        console.log(`[Screenshot] Updating database for project ${projectId} with previewImageKey...`)
+        await prisma.project.update({
+            where: { id: projectId },
+            data: {
+                previewImageKey: key
+            }
+        })
+        console.log(`[Screenshot] Database updated successfully.`)
+        
+        console.log(`[Screenshot] Screenshot capture workflow completed successfully for project ${projectId}.`)
+    } catch (error) {
+        console.error(`[Screenshot] Capture workflow failed for project ${projectId}:`, error)
+    } finally {
+        if (browser) {
+            console.log(`[Screenshot] Closing browser...`)
+            await browser.close()
+            console.log(`[Screenshot] Browser closed.`)
+        }
+        console.log(`[Screenshot] Scheduling container cleanup for project ${projectId} in 5 minutes...`)
+        scheduleDeletion(projectId, 5 * 60 * 1000)
+    }
+}
 
 const parseStoredProjectFiles = (value: unknown): StoredProjectFile[] => {
     if (!Array.isArray(value)) {
@@ -218,6 +313,7 @@ const recordRuntimeStatus = (previewId: string, status: RuntimeStatusCallbackInp
 }
 
 const startPreview = async ({ userId, projectId, versionId }: StartPreviewInput) => {
+    cancelPendingDeletion(projectId)
     const { project, version } = await loadProjectVersion({ userId, projectId, versionId })
 
     if (version.status !== 'READY') {
@@ -344,11 +440,32 @@ const deletePreview = async ({ userId, previewId }: PreviewIdentifierInput) => {
         throw new Error('project not found')
     }
 
-    await runtimeRequest<{ deleted: boolean }>(`/previews/${encodeURIComponent(previewId)}`, {
-        method: 'DELETE',
-    })
+    let status: RuntimePreviewStatus | undefined
+    try {
+        status = await getPreviewStatus({ userId, previewId })
+    } catch (err) {
+        console.error('Failed to get preview status before delete:', err)
+    }
 
-    previewStatusStore.delete(previewId)
+    const hasValidPreview =
+        status &&
+        status.state === 'Healthy' &&
+        status.backendStatus === 'ready' &&
+        !status.lastError &&
+        status.previewUrl
+
+    if (hasValidPreview && status.previewUrl) {
+        // Capture screenshot in the background (which will schedule container deletion in 5 min)
+        takePreviewScreenshot(project.id, status.previewUrl).catch((err) => {
+            console.error('Unhandled error in takePreviewScreenshot:', err)
+        })
+    } else {
+        // Delete container immediately
+        await runtimeRequest<{ deleted: boolean }>(`/previews/${encodeURIComponent(previewId)}`, {
+            method: 'DELETE',
+        }).catch(() => null)
+        previewStatusStore.delete(previewId)
+    }
 
     return {
         deleted: true,

@@ -16,6 +16,7 @@ export type BackendTemplate = {
     authorUsername: string
     likeCount: number
     isLiked: boolean
+    previewImageKey?: string | null
 }
 
 type ToggleLikeResult = {

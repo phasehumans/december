@@ -229,6 +229,27 @@ const getTemplatePreviewHtml = async (req: Request, res: Response) => {
     }
 }
 
+const getTemplatePreviewImage = async (req: Request, res: Response) => {
+    const templateId = req.params.templateId as string | undefined
+
+    if (!templateId) {
+        return res.status(400).send('templateId is required')
+    }
+
+    try {
+        const imageBuffer = await templateService.getTemplatePreviewImage(templateId)
+        if (!imageBuffer) {
+            return res.status(404).send('preview image not found')
+        }
+        res.setHeader('Content-Type', 'image/png')
+        return res.status(200).send(imageBuffer)
+    } catch (error: any) {
+        return res
+            .status(error instanceof AppError ? error.statusCode : 500)
+            .send('failed to load preview image')
+    }
+}
+
 export const templateController = {
     getAllTemplates,
     getTemplateById,
@@ -236,4 +257,5 @@ export const templateController = {
     remixTemplate,
     toggleLike,
     getTemplatePreviewHtml,
+    getTemplatePreviewImage,
 }
