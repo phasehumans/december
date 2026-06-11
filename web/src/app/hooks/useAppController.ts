@@ -1579,7 +1579,12 @@ export const useAppController = () => {
             const url = window.URL.createObjectURL(result.blob)
             const anchor = document.createElement('a')
             anchor.href = url
-            anchor.download = result.fileName
+            const username = (profile?.username || 'user').toLowerCase().replace(/[^a-z0-9_-]/g, '')
+            const projectName = (activeProjectName || 'project')
+                .toLowerCase()
+                .replace(/\s+/g, '-')
+                .replace(/[^a-z0-9_-]/g, '')
+            anchor.download = `december-${username}-${projectName}.zip`
             document.body.appendChild(anchor)
             anchor.click()
             anchor.remove()
@@ -1589,7 +1594,7 @@ export const useAppController = () => {
                 error instanceof Error ? error.message : 'Failed to download project'
             )
         }
-    }, [activeProjectId])
+    }, [activeProjectId, profile?.username, activeProjectName])
 
     const handleNewThread = () => {
         outputOriginViewRef.current = 'chat'

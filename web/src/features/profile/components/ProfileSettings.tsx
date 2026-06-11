@@ -205,8 +205,10 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                         <div className="px-3 py-2 text-[12px] font-medium text-[#7B7A79] mt-4 mb-1">
                             Resources
                         </div>
-                        <button
-                            onClick={onDocs}
+                        <a
+                            href="https://github.com/phasehumans/december/tree/main/docs"
+                            target="_blank"
+                            rel="noopener noreferrer"
                             className="flex items-center justify-between px-3 py-1.5 rounded-xl text-[#D6D5C9] hover:bg-[#1E1D1B] text-[13px] font-medium transition-colors group"
                         >
                             <div className="flex items-center gap-3">
@@ -217,9 +219,11 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                                 className="w-[14px] h-[14px] text-[#D6D5C9]"
                                 strokeWidth={1.5}
                             />
-                        </button>
-                        <button
-                            onClick={onDocs}
+                        </a>
+                        <a
+                            href="https://github.com/phasehumans/december/blob/main/CHANGELOG.md"
+                            target="_blank"
+                            rel="noopener noreferrer"
                             className="flex items-center justify-between px-3 py-1.5 rounded-xl text-[#D6D5C9] hover:bg-[#1E1D1B] text-[13px] font-medium transition-colors group"
                         >
                             <div className="flex items-center gap-3">
@@ -230,7 +234,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                                 className="w-[14px] h-[14px] text-[#D6D5C9]"
                                 strokeWidth={1.5}
                             />
-                        </button>
+                        </a>
                     </div>
                 </div>
 
