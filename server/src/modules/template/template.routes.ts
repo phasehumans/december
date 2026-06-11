@@ -6,6 +6,7 @@ import { templateController } from './template.controller'
 const templateRouter = Router()
 
 templateRouter.get('/:templateId/preview.html', templateController.getTemplatePreviewHtml)
+templateRouter.get('/:templateId/preview.png', templateController.getTemplatePreviewImage)
 templateRouter.use(authMiddleware)
 templateRouter.get('/', templateController.getAllTemplates)
 templateRouter.get('/featured', templateController.getFeaturedTemplates)
