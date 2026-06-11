@@ -85,7 +85,7 @@ export const OutputScreenMainContent: React.FC<OutputScreenMainContentProps> = (
     onRefresh,
 }) => {
     return (
-        <div className="flex-1 flex flex-col h-full bg-[#171615] relative overflow-hidden transition-all duration-300 min-h-0">
+        <div className="flex-1 flex flex-col h-full bg-[#171615] relative overflow-hidden min-h-0">
             <OutputHeader
                 activeTab={activeTab}
                 setActiveTab={setActiveTab}
