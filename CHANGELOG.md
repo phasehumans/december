@@ -1,3 +1,9 @@
+## [unreleased]
+
+### Miscellaneous Tasks
+
+- _(release)_ V0.2.1
+
 ## [0.2.1] - 2026-06-11
 
 ### Bug Fixes
