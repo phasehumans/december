@@ -125,6 +125,7 @@ model Project {
   projectStatus      ProjectStatus   @default(DRAFT)
   currentVersionId   String?
   versionCount       Int             @default(0)
+  previewImageKey    String?
 
   currentVersion ProjectVersion?  @relation("ProjectCurrentVersion", fields: [currentVersionId], references: [id])
   user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)

@@ -20,6 +20,7 @@ export type Template = {
     createdAt: string
     updatedAt: string
     isFeatured: boolean
+    previewImageKey?: string | null
 }
 
 const mapProjectCategory = (projectCategory: string): TemplateCategory => {
@@ -50,4 +51,5 @@ export const mapBackendTemplateToTemplate = (template: BackendTemplate): Templat
     createdAt: template.createdAt,
     updatedAt: template.updatedAt,
     isFeatured: template.isFeatured,
+    previewImageKey: template.previewImageKey,
 })
