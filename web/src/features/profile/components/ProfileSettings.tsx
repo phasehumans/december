@@ -81,8 +81,8 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
         isGithubConnected,
         isVercelConnected,
         isSupabaseConnected,
+        isNeonConnected,
         isNotionConnected,
-        isFigmaConnected,
         emailNotifications,
         productUpdates,
         securityAlerts,
@@ -99,8 +99,8 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
         connectGithub,
         connectVercel,
         connectSupabase,
+        connectNeon,
         connectNotion,
-        connectFigma,
     } = useProfileSettingsController()
 
     const profileErrorMessage =
@@ -297,13 +297,13 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                                 isGithubConnected={isGithubConnected}
                                 isVercelConnected={isVercelConnected}
                                 isSupabaseConnected={isSupabaseConnected}
+                                isNeonConnected={isNeonConnected}
                                 isNotionConnected={isNotionConnected}
-                                isFigmaConnected={isFigmaConnected}
                                 onConnectGithub={connectGithub}
                                 onConnectVercel={connectVercel}
                                 onConnectSupabase={connectSupabase}
+                                onConnectNeon={connectNeon}
                                 onConnectNotion={connectNotion}
-                                onConnectFigma={connectFigma}
                             />
                         ) : (
                             <div className="flex flex-col gap-6">

@@ -19,11 +19,12 @@ import React, { useState, useEffect } from 'react'
 
 import { GeneralTab } from './GeneralTab'
 import { PublishTab } from './PublishTab'
-import { BigModalOverlay, PremiumToggle } from './SettingsFormControls'
+import { BigModalOverlay, PremiumToggle, PremiumInput } from './SettingsFormControls'
 import { ShareTab } from './ShareTab'
 
 import { projectAPI } from '@/features/projects/api/project'
 import { profileAPI, type Profile } from '@/features/profile/api/profile'
+import { API_BASE_URL } from '@/shared/api/client'
 import { ProjectDeleteModal } from '@/features/projects/components/ProjectDeleteModal'
 import { ProjectDuplicateModal } from '@/features/projects/components/ProjectDuplicateModal'
 import { ProjectShareModal } from '@/features/projects/components/ProjectShareModal'
@@ -67,13 +68,12 @@ export const SettingsBigModal: React.FC<SettingsModalProps> = ({
     const [inviteRole, setInviteRole] = useState('edit')
 
     // Publish states
-    const [env, setEnv] = useState('production')
-    const [subDomain, setSubDomain] = useState('my-awesome-app')
-    const [customDomain, setCustomDomain] = useState('')
-    const [pwdProtection, setPwdProtection] = useState(false)
-    const [noIndex, setNoIndex] = useState(false)
     const [deploying, setDeploying] = useState(false)
     const [deployed, setDeployed] = useState(false)
+    const [buildLogs, setBuildLogs] = useState<string[]>([])
+    const [deployError, setDeployError] = useState<string | null>(null)
+    const [vercelDeploymentUrl, setVercelDeploymentUrl] = useState<string | null>(null)
+    const [vercelLastDeployedAt, setVercelLastDeployedAt] = useState<string | null>(null)
 
     // Modals state
     const [isShareModalOpen, setIsShareModalOpen] = useState(false)
@@ -88,7 +88,7 @@ export const SettingsBigModal: React.FC<SettingsModalProps> = ({
     const [githubIsPrivate, setGithubIsPrivate] = useState(true)
     const [isCreatingRepo, setIsCreatingRepo] = useState(false)
     const [isSyncingRepo, setIsSyncingRepo] = useState(false)
-    const [githubCommitMsg, setGithubCommitMsg] = useState('Update project files')
+    const [githubCommitMsg, setGithubCommitMsg] = useState('feat: sync project changes')
     const [githubSyncError, setGithubSyncError] = useState<string | null>(null)
     const [githubSyncSuccess, setGithubSyncSuccess] = useState(false)
 
@@ -103,6 +103,11 @@ export const SettingsBigModal: React.FC<SettingsModalProps> = ({
     const handleConnectGithub = () => {
         if (!profile) return
         window.location.href = profileAPI.getGithubConnectUrl(profile.id)
+    }
+
+    const handleConnectVercel = () => {
+        if (!profile) return
+        window.location.href = profileAPI.getVercelConnectUrl(profile.id)
     }
 
     const handleCreateGithubRepo = async (e: React.FormEvent) => {
@@ -144,13 +149,88 @@ export const SettingsBigModal: React.FC<SettingsModalProps> = ({
         }
     }
 
-    const handleDeploy = () => {
+    const handleDeploy = async () => {
+        if (!projectId) return
         setDeploying(true)
-        setTimeout(() => {
+        setDeployed(false)
+        setDeployError(null)
+        setBuildLogs([])
+
+        try {
+            setBuildLogs((prev) => [
+                ...prev,
+                '[system] Preparing repository and auto-deployment...',
+            ])
+
+            const result = await projectAPI.deployToVercel(projectId)
+            const { deploymentId, url } = result
+
+            setBuildLogs((prev) => [
+                ...prev,
+                `[system] Auto-deployment triggered (ID: ${deploymentId})...`,
+            ])
+
+            // Establish Server-Sent Events connection for logs
+            const logsUrl = `${API_BASE_URL}/integrations/deployments/${deploymentId}/logs`
+            const eventSource = new EventSource(logsUrl, { withCredentials: true })
+
+            eventSource.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data)
+                    if (data.type === 'stdout' || data.type === 'stderr') {
+                        const line = data.payload.text
+                        setBuildLogs((prev) => [...prev, line.trim()])
+                    } else if (data.type === 'error') {
+                        setBuildLogs((prev) => [...prev, `❌ Error: ${data.payload.text}`])
+                        setDeployError(data.payload.text)
+                    }
+                } catch (e) {
+                    setBuildLogs((prev) => [...prev, event.data])
+                }
+            }
+
+            eventSource.onerror = (err) => {
+                console.error('Logs EventSource error:', err)
+                eventSource.close()
+            }
+
+            // Poll deployment status
+            const pollInterval = setInterval(async () => {
+                try {
+                    const statusRes = await projectAPI.getVercelDeploymentStatus(deploymentId)
+                    const { readyState, url: deploymentUrl } = statusRes
+
+                    if (readyState === 'READY') {
+                        clearInterval(pollInterval)
+                        eventSource.close()
+                        setDeploying(false)
+                        setDeployed(true)
+                        setVercelDeploymentUrl(deploymentUrl)
+                        setVercelLastDeployedAt(new Date().toISOString())
+                        setBuildLogs((prev) => [
+                            ...prev,
+                            `🎉 Deployment ready! Live at: https://${deploymentUrl}`,
+                        ])
+                    } else if (readyState === 'ERROR' || readyState === 'CANCELED') {
+                        clearInterval(pollInterval)
+                        eventSource.close()
+                        setDeploying(false)
+                        setDeployError(`Deployment failed with status: ${readyState}`)
+                        setBuildLogs((prev) => [...prev, `❌ Vercel build failed (${readyState}).`])
+                    }
+                } catch (err: any) {
+                    console.error('Error polling status:', err)
+                    clearInterval(pollInterval)
+                    eventSource.close()
+                    setDeploying(false)
+                    setDeployError(err.message || 'Error tracking deployment')
+                }
+            }, 3000)
+        } catch (err: any) {
             setDeploying(false)
-            setDeployed(true)
-            setTimeout(() => setDeployed(false), 3000)
-        }, 1800)
+            setDeployError(err.message || 'Failed to trigger Vercel deployment')
+            setBuildLogs((prev) => [...prev, `❌ Error: ${err.message || 'Failed to deploy'}`])
+        }
     }
 
     // Fetch and Save states
@@ -183,6 +263,8 @@ export const SettingsBigModal: React.FC<SettingsModalProps> = ({
                     setCategory((res.project as any).projectCategory ?? 'NONE')
                     setGithubRepoName(slugifyRepoName(res.project.name))
                     setGithubIsPrivate(true)
+                    setVercelDeploymentUrl(res.project.vercelDeploymentUrl ?? null)
+                    setVercelLastDeployedAt(res.project.vercelLastDeployedAt ?? null)
                 }
             })
             .catch((err) => console.error('Failed to load project details:', err))
@@ -276,8 +358,8 @@ export const SettingsBigModal: React.FC<SettingsModalProps> = ({
         { id: 'share', label: 'Share', icon: <Share size={15} /> },
         {
             id: 'integrations',
-            label: 'Integrations',
-            icon: <Plug size={15} className="rotate-45" />,
+            label: 'Github',
+            icon: <Github size={15} />,
         },
         { id: 'publish', label: 'Publish', icon: <Cloud size={15} /> },
         { id: 'variables', label: 'Env Variables', icon: <Terminal size={15} /> },
@@ -367,19 +449,19 @@ export const SettingsBigModal: React.FC<SettingsModalProps> = ({
 
                             {activeTab === 'publish' && (
                                 <PublishTab
-                                    env={env}
-                                    setEnv={setEnv}
-                                    subDomain={subDomain}
-                                    setSubDomain={setSubDomain}
-                                    customDomain={customDomain}
-                                    setCustomDomain={setCustomDomain}
-                                    pwdProtection={pwdProtection}
-                                    setPwdProtection={setPwdProtection}
-                                    noIndex={noIndex}
-                                    setNoIndex={setNoIndex}
                                     deploying={deploying}
                                     deployed={deployed}
                                     handleDeploy={handleDeploy}
+                                    buildLogs={buildLogs}
+                                    deployError={deployError}
+                                    vercelDeploymentUrl={vercelDeploymentUrl}
+                                    vercelLastDeployedAt={vercelLastDeployedAt}
+                                    githubRepoName={project?.githubRepoName || null}
+                                    isVercelConnected={profile?.vercelConnected || false}
+                                    isGithubConnected={profile?.githubConnected || false}
+                                    handleConnectGithub={handleConnectGithub}
+                                    handleConnectVercel={handleConnectVercel}
+                                    onSwitchToGithubTab={() => setActiveTab('integrations')}
                                 />
                             )}
 
@@ -396,56 +478,67 @@ export const SettingsBigModal: React.FC<SettingsModalProps> = ({
 
                             {activeTab === 'integrations' && (
                                 <div className="flex flex-col w-full max-w-[680px] text-[#D6D5C9] animate-in fade-in duration-200">
-                                    <h1 className="text-[16px] font-medium mb-3">Integrations</h1>
-                                    <div className="flex flex-col gap-6 border-t border-[#242323] pt-6">
-                                        <div className="flex flex-col gap-4">
-                                            <div className="flex items-center gap-4">
-                                                <div className="w-10 h-10 rounded-lg bg-[#1E1D1B] border border-[#383736] flex items-center justify-center shrink-0">
-                                                    <Github className="w-5 h-5 text-[#D6D5C9]" />
+                                    <h1 className="text-[16px] font-medium mb-3">
+                                        GitHub Integration
+                                    </h1>
+                                    <div className="flex flex-col border-t border-[#242323] pt-6 w-full">
+                                        {/* GitHub Connection States */}
+                                        {!profile ? (
+                                            <div className="text-[13px] text-[#7B7A79] text-left">
+                                                Loading integration details...
+                                            </div>
+                                        ) : !profile.githubConnected ? (
+                                            <div className="border border-dashed border-[#383736] rounded-xl py-14 flex flex-col items-center justify-center gap-4 bg-[#100E12]/30 hover:border-[#4A4948] transition-colors w-full">
+                                                <div className="w-14 h-14 rounded-2xl bg-[#1E1D1B] border border-[#383736] flex items-center justify-center shadow-md">
+                                                    <Github className="w-7 h-7 text-[#D6D5C9]" />
                                                 </div>
-                                                <div className="flex flex-col gap-0.5">
-                                                    <span className="text-[14px] font-medium text-[#D6D5C9]">
-                                                        GitHub
+                                                <div className="flex flex-col items-center gap-1.5 text-center px-4">
+                                                    <span className="text-[15px] font-semibold text-[#D6D5C9]">
+                                                        Connect GitHub to link repository
                                                     </span>
-                                                    <span className="text-[13px] text-[#7B7A79] max-w-[380px]">
+                                                    <span className="text-[13px] text-[#7B7A79] max-w-[360px]">
                                                         Link a GitHub repository to this project to
                                                         export and sync your generated code
                                                         automatically.
                                                     </span>
                                                 </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={handleConnectGithub}
+                                                    className="flex items-center gap-2 px-5 py-2 rounded-lg border border-[#383736] bg-[#171615] hover:bg-[#1E1D1B] text-[13px] font-medium text-[#D6D5C9] hover:text-white transition-all cursor-pointer mt-1"
+                                                >
+                                                    <Github className="w-4 h-4" />
+                                                    Connect GitHub
+                                                </button>
                                             </div>
+                                        ) : project && !project.githubRepoName ? (
+                                            <div className="flex flex-col w-full animate-in fade-in duration-200">
+                                                <div className="flex items-center gap-4 mb-6 text-left">
+                                                    <div className="w-10 h-10 rounded-lg bg-[#1E1D1B] border border-[#383736] flex items-center justify-center shrink-0">
+                                                        <Github className="w-5 h-5 text-[#D6D5C9]" />
+                                                    </div>
+                                                    <div className="flex flex-col gap-0.5">
+                                                        <span className="text-[14px] font-medium text-[#D6D5C9]">
+                                                            GitHub
+                                                        </span>
+                                                        <span className="text-[13px] text-[#7B7A79]">
+                                                            Link a GitHub repository to this project
+                                                            to export and sync your generated code
+                                                            automatically.
+                                                        </span>
+                                                    </div>
+                                                </div>
 
-                                            {/* GitHub Connection States */}
-                                            {!profile ? (
-                                                <div className="text-[13px] text-[#7B7A79] mt-2">
-                                                    Loading integration details...
-                                                </div>
-                                            ) : !profile.githubConnected ? (
-                                                <div className="mt-2 bg-[#1B1212]/50 border border-red-900/30 rounded-xl p-4 flex flex-col gap-3 max-w-[500px]">
-                                                    <span className="text-[13px] text-[#A6A5A4]">
-                                                        You need to connect your GitHub account in
-                                                        your settings before linking a repository.
-                                                    </span>
-                                                    <button
-                                                        type="button"
-                                                        onClick={handleConnectGithub}
-                                                        className="w-fit flex items-center gap-2 px-4 py-1.5 rounded-lg border border-[#383736] text-[13px] font-medium text-[#D6D5C9] hover:bg-[#1E1D1B] transition-colors"
-                                                    >
-                                                        <Github className="w-4 h-4" />
-                                                        Connect GitHub Account
-                                                    </button>
-                                                </div>
-                                            ) : project && !project.githubRepoName ? (
                                                 <form
                                                     onSubmit={handleCreateGithubRepo}
-                                                    className="mt-2 flex flex-col gap-4 max-w-[480px]"
+                                                    className="flex flex-col gap-5 w-full"
                                                 >
-                                                    <div className="flex flex-col gap-1.5">
-                                                        <label className="text-[12px] font-medium text-[#7B7A79]">
+                                                    <div className="flex flex-col gap-1.5 text-left">
+                                                        <label className="text-[13px] font-medium text-[#7B7A79]">
                                                             Repository Name
                                                         </label>
-                                                        <div className="flex items-center bg-[#100E12]/50 border border-[#383736] rounded-xl px-3 py-1.5 focus-within:border-[#4A4948] transition-colors">
-                                                            <span className="text-[13px] text-[#5A5958] mr-0.5 select-none">
+                                                        <div className="flex items-center bg-[#1A1918] border border-[#2B2A29] rounded-xl px-3.5 py-2.5 focus-within:border-[#4A4948] transition-colors w-full">
+                                                            <span className="text-[13px] text-[#7B7A79] mr-1 select-none font-medium">
                                                                 {profile.githubUsername}/
                                                             </span>
                                                             <input
@@ -459,30 +552,37 @@ export const SettingsBigModal: React.FC<SettingsModalProps> = ({
                                                                     )
                                                                 }
                                                                 placeholder="my-awesome-project"
-                                                                className="flex-1 bg-transparent text-[13px] text-[#D6D5C9] outline-none border-none p-0"
+                                                                className="flex-1 bg-transparent text-[13px] text-[#D6D5C9] outline-none border-none p-0 placeholder-[#555453]"
                                                                 required
                                                             />
                                                         </div>
                                                     </div>
 
-                                                    <div className="flex items-center gap-3 bg-[#171615] border border-[#242323] p-3.5 rounded-xl">
+                                                    <div
+                                                        onClick={() =>
+                                                            setGithubIsPrivate(!githubIsPrivate)
+                                                        }
+                                                        className="flex items-start gap-3 bg-[#1A1918] border border-[#2B2A29] p-4 rounded-xl hover:border-[#383736] transition-colors cursor-pointer select-none w-full"
+                                                    >
                                                         <input
                                                             type="checkbox"
                                                             id="private-repo"
                                                             checked={githubIsPrivate}
-                                                            onChange={(e) =>
+                                                            onChange={(e) => {
+                                                                e.stopPropagation()
                                                                 setGithubIsPrivate(e.target.checked)
-                                                            }
-                                                            className="w-4 h-4 rounded border-[#383736] bg-[#100E12] text-[#3ECF8E] focus:ring-0 cursor-pointer"
+                                                            }}
+                                                            className="w-4 h-4 rounded border-[#383736] bg-[#100E12] text-[#D6D5C9] focus:ring-0 focus:ring-offset-0 cursor-pointer mt-0.5 accent-[#D6D5C9]"
                                                         />
-                                                        <div className="flex flex-col">
+                                                        <div className="flex flex-col text-left">
                                                             <label
                                                                 htmlFor="private-repo"
-                                                                className="text-[13px] font-medium text-[#D6D5C9] cursor-pointer"
+                                                                className="text-[13px] font-semibold text-[#D6D5C9] cursor-pointer"
+                                                                onClick={(e) => e.stopPropagation()}
                                                             >
                                                                 Private Repository
                                                             </label>
-                                                            <span className="text-[12px] text-[#5A5958]">
+                                                            <span className="text-[12.5px] text-[#7B7A79] mt-0.5">
                                                                 Only you and invited collaborators
                                                                 can view this repository.
                                                             </span>
@@ -490,7 +590,7 @@ export const SettingsBigModal: React.FC<SettingsModalProps> = ({
                                                     </div>
 
                                                     {githubSyncError && (
-                                                        <div className="text-[12.5px] text-red-400 bg-red-950/20 border border-red-900/30 px-3.5 py-2.5 rounded-xl">
+                                                        <div className="text-[12.5px] text-red-400 bg-red-950/20 border border-red-900/30 px-3.5 py-2.5 rounded-xl text-left w-full">
                                                             {githubSyncError}
                                                         </div>
                                                     )}
@@ -500,89 +600,109 @@ export const SettingsBigModal: React.FC<SettingsModalProps> = ({
                                                         disabled={
                                                             isCreatingRepo || !githubRepoName.trim()
                                                         }
-                                                        className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-[#1E1D1B] border border-[#363534] hover:bg-[#2B2A29] disabled:opacity-50 disabled:cursor-not-allowed text-[13px] font-medium text-white transition-all"
+                                                        className="w-fit flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#E8E7E4] text-[#171615] hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed text-[13px] font-semibold transition-colors cursor-pointer"
                                                     >
                                                         {isCreatingRepo ? (
                                                             <>
-                                                                <Loader2 className="w-4 h-4 animate-spin text-[#7B7A79]" />
-                                                                Creating Repository...
+                                                                <Loader2 className="w-4 h-4 animate-spin text-[#171615]" />
+                                                                Creating...
                                                             </>
                                                         ) : (
-                                                            'Create & Sync Repository'
+                                                            'Create & Sync'
                                                         )}
                                                     </button>
                                                 </form>
-                                            ) : project ? (
-                                                <div className="mt-2 flex flex-col gap-5 max-w-[480px]">
-                                                    <div className="bg-[#171615] border border-[#242323] p-4 rounded-xl flex flex-col gap-3">
-                                                        <div className="flex items-center justify-between">
-                                                            <span className="text-[12px] text-[#7B7A79] font-medium">
-                                                                Linked Repository
-                                                            </span>
-                                                            <span className="flex items-center gap-1 text-[11px] text-[#5A5958]">
-                                                                {githubIsPrivate ? (
-                                                                    <span className="flex items-center gap-1 px-1.5 py-0.5 rounded border border-[#2B2A29] bg-[#1E1D1B]">
-                                                                        <Lock className="w-2.5 h-2.5" />
-                                                                        Private
-                                                                    </span>
-                                                                ) : (
-                                                                    <span className="flex items-center gap-1 px-1.5 py-0.5 rounded border border-[#2B2A29] bg-[#1E1D1B]">
-                                                                        <Globe className="w-2.5 h-2.5" />
-                                                                        Public
-                                                                    </span>
-                                                                )}
-                                                            </span>
+                                            </div>
+                                        ) : project ? (
+                                            <div className="flex flex-col w-full animate-in fade-in duration-200">
+                                                <div className="flex items-center justify-between mb-6 w-full">
+                                                    <div className="flex items-center gap-4 text-left font-medium">
+                                                        <div className="w-10 h-10 rounded-lg bg-[#1E1D1B] border border-[#383736] flex items-center justify-center shrink-0">
+                                                            <Github className="w-5 h-5 text-[#D6D5C9]" />
                                                         </div>
-                                                        <a
-                                                            href={
-                                                                project.githubRepoUrl ??
-                                                                `https://github.com/${project.githubRepoOwner}/${project.githubRepoName}`
-                                                            }
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                            className="flex items-center gap-2 text-[14px] font-semibold text-[#3ECF8E] hover:underline hover:text-[#52e09f] w-fit transition-all"
-                                                        >
-                                                            <Github className="w-4 h-4 text-[#D6D5C9]" />
-                                                            {project.githubRepoOwner}/
-                                                            {project.githubRepoName}
-                                                            <ExternalLink className="w-3.5 h-3.5 opacity-60" />
-                                                        </a>
-                                                        <div className="text-[11.5px] text-[#7B7A79] border-t border-[#242323] pt-2.5 flex justify-between items-center mt-1">
-                                                            <span>Last Synced</span>
-                                                            <span className="font-medium text-[#D6D5C9]">
-                                                                {project.githubLastSyncedAt
-                                                                    ? new Date(
-                                                                          project.githubLastSyncedAt
-                                                                      ).toLocaleString()
-                                                                    : 'Never'}
+                                                        <div className="flex flex-col gap-0.5">
+                                                            <span className="text-[14px] font-medium text-[#D6D5C9]">
+                                                                GitHub
+                                                            </span>
+                                                            <span className="text-[13px] text-[#7B7A79]">
+                                                                Export and sync your generated code
+                                                                automatically.
                                                             </span>
                                                         </div>
                                                     </div>
+                                                    <span className="text-[11px] font-medium px-2 py-0.5 rounded border border-[#2B2A29] bg-[#1E1D1B] text-[#D6D5C9]">
+                                                        Active
+                                                    </span>
+                                                </div>
 
-                                                    <div className="flex flex-col gap-1.5">
-                                                        <label className="text-[12px] font-medium text-[#7B7A79]">
+                                                <div className="bg-[#1A1918] border border-[#2B2A29] p-5 rounded-xl flex flex-col gap-4 text-left mb-6 w-full">
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="text-[12px] text-[#7B7A79] font-medium uppercase tracking-[0.05em]">
+                                                            Linked Repository
+                                                        </span>
+                                                        {githubIsPrivate ? (
+                                                            <span className="flex items-center gap-1 px-2 py-0.5 rounded border border-[#2B2A29] bg-[#1E1D1B] text-[11px] text-[#7B7A79]">
+                                                                <Lock className="w-3 h-3" />
+                                                                Private
+                                                            </span>
+                                                        ) : (
+                                                            <span className="flex items-center gap-1 px-2 py-0.5 rounded border border-[#2B2A29] bg-[#1E1D1B] text-[11px] text-[#7B7A79]">
+                                                                <Globe className="w-3 h-3" />
+                                                                Public
+                                                            </span>
+                                                        )}
+                                                    </div>
+
+                                                    <a
+                                                        href={
+                                                            project.githubRepoUrl ??
+                                                            `https://github.com/${project.githubRepoOwner}/${project.githubRepoName}`
+                                                        }
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="flex items-center gap-2 text-[15px] font-semibold text-[#D6D5C9] hover:text-white hover:underline w-fit transition-colors"
+                                                    >
+                                                        <Github className="w-4 h-4 text-[#7B7A79]" />
+                                                        {project.githubRepoOwner}/
+                                                        {project.githubRepoName}
+                                                        <ExternalLink className="w-3.5 h-3.5 opacity-60" />
+                                                    </a>
+
+                                                    <div className="text-[12px] text-[#7B7A79] border-t border-[#242323] pt-3 flex justify-between items-center mt-1">
+                                                        <span>Last Synced</span>
+                                                        <span className="font-medium text-[#D6D5C9]">
+                                                            {project.githubLastSyncedAt
+                                                                ? new Date(
+                                                                      project.githubLastSyncedAt
+                                                                  ).toLocaleString()
+                                                                : 'Never'}
+                                                        </span>
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex flex-col gap-4 w-full">
+                                                    <div className="flex flex-col gap-1.5 text-left w-full">
+                                                        <label className="text-[13px] font-medium text-[#7B7A79]">
                                                             Commit Message
                                                         </label>
-                                                        <input
-                                                            type="text"
+                                                        <PremiumInput
                                                             value={githubCommitMsg}
                                                             onChange={(e) =>
                                                                 setGithubCommitMsg(e.target.value)
                                                             }
-                                                            placeholder="Update project files"
-                                                            className="w-full bg-[#100E12]/50 border border-[#383736] rounded-xl px-3.5 py-1.5 text-[13px] text-[#D6D5C9] outline-none focus:border-[#4A4948] transition-colors"
+                                                            placeholder="feat: sync project changes"
                                                         />
                                                     </div>
 
                                                     {githubSyncError && (
-                                                        <div className="text-[12.5px] text-red-400 bg-red-950/20 border border-red-900/30 px-3.5 py-2.5 rounded-xl">
+                                                        <div className="text-[12.5px] text-red-400 bg-red-950/20 border border-red-900/30 px-3.5 py-2.5 rounded-xl text-left w-full">
                                                             {githubSyncError}
                                                         </div>
                                                     )}
 
                                                     {githubSyncSuccess && (
-                                                        <div className="text-[12.5px] text-[#3ECF8E] bg-[#101F18] border border-[#1b3e2b] px-3.5 py-2.5 rounded-xl flex items-center gap-2">
-                                                            <CheckCircle className="w-4 h-4 shrink-0" />
+                                                        <div className="text-[12.5px] text-[#D6D5C9] bg-[#1E1D1B] border border-[#383736] px-3.5 py-2.5 rounded-xl flex items-center gap-2 text-left w-full">
+                                                            <CheckCircle className="w-4 h-4 shrink-0 text-[#7B7A79]" />
                                                             Latest changes pushed successfully!
                                                         </div>
                                                     )}
@@ -591,24 +711,27 @@ export const SettingsBigModal: React.FC<SettingsModalProps> = ({
                                                         type="button"
                                                         onClick={handleSyncGithubRepo}
                                                         disabled={isSyncingRepo}
-                                                        className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-[#1E1D1B] border border-[#363534] hover:bg-[#2B2A29] disabled:opacity-50 disabled:cursor-not-allowed text-[13px] font-medium text-white transition-all"
+                                                        className="w-fit flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#E8E7E4] text-[#171615] hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed text-[13px] font-semibold transition-colors cursor-pointer"
                                                     >
                                                         {isSyncingRepo ? (
                                                             <>
-                                                                <Loader2 className="w-4 h-4 animate-spin text-[#7B7A79]" />
-                                                                Pushing to GitHub...
+                                                                <Loader2 className="w-4 h-4 animate-spin text-[#171615]" />
+                                                                Pushing...
                                                             </>
                                                         ) : (
-                                                            'Push Latest Changes'
+                                                            <>
+                                                                <Github className="w-4 h-4 text-[#171615]" />
+                                                                Push Changes
+                                                            </>
                                                         )}
                                                     </button>
                                                 </div>
-                                            ) : (
-                                                <div className="text-[13px] text-[#7B7A79] mt-2">
-                                                    Loading integration details...
-                                                </div>
-                                            )}
-                                        </div>
+                                            </div>
+                                        ) : (
+                                            <div className="text-[13px] text-[#7B7A79] text-left">
+                                                Loading integration details...
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             )}

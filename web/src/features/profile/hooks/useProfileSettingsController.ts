@@ -46,8 +46,8 @@ export const useProfileSettingsController = () => {
     const isGithubConnected = profile?.githubConnected ?? false
     const isVercelConnected = profile?.vercelConnected ?? false
     const isSupabaseConnected = profile?.supabaseConnected ?? false
+    const isNeonConnected = profile?.neonConnected ?? false
     const isNotionConnected = Boolean(profile?.notionWorkspaceId)
-    const isFigmaConnected = profile?.figmaConnected ?? false
     const emailNotifications = profile?.notifyProjectActivity ?? true
     const productUpdates = profile?.notifyProductUpdates ?? true
     const securityAlerts = profile?.notifySecurityAlerts ?? true
@@ -140,12 +140,12 @@ export const useProfileSettingsController = () => {
         redirectToIntegration(profileAPI.getSupabaseConnectUrl)
     }
 
-    const connectNotion = () => {
-        redirectToIntegration(profileAPI.getNotionConnectUrl)
+    const connectNeon = () => {
+        redirectToIntegration(profileAPI.getNeonConnectUrl)
     }
 
-    const connectFigma = () => {
-        redirectToIntegration(profileAPI.getFigmaConnectUrl)
+    const connectNotion = () => {
+        redirectToIntegration(profileAPI.getNotionConnectUrl)
     }
 
     return {
@@ -180,8 +180,8 @@ export const useProfileSettingsController = () => {
         isGithubConnected,
         isVercelConnected,
         isSupabaseConnected,
+        isNeonConnected,
         isNotionConnected,
-        isFigmaConnected,
         emailNotifications,
         productUpdates,
         securityAlerts,
@@ -198,7 +198,7 @@ export const useProfileSettingsController = () => {
         connectGithub,
         connectVercel,
         connectSupabase,
+        connectNeon,
         connectNotion,
-        connectFigma,
     }
 }
