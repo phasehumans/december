@@ -13,7 +13,6 @@ integrationsRouter.get('/supabase/connect', integrationsController.connectSupaba
 integrationsRouter.get('/notion/connect', integrationsController.connectNotion)
 
 integrationsRouter.use(authMiddleware)
-integrationsRouter.post('/neon/connect', integrationsController.connectNeon)
 integrationsRouter.get('/github/repos', integrationsController.getUserGithubRepos)
 
 integrationsRouter.post('/projects/:projectId/github/repository', integrationsController.createRepo)

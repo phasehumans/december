@@ -81,7 +81,6 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
         isGithubConnected,
         isVercelConnected,
         isSupabaseConnected,
-        isNeonConnected,
         isNotionConnected,
         emailNotifications,
         productUpdates,
@@ -99,7 +98,6 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
         connectGithub,
         connectVercel,
         connectSupabase,
-        connectNeon,
         connectNotion,
     } = useProfileSettingsController()
 
@@ -297,12 +295,10 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                                 isGithubConnected={isGithubConnected}
                                 isVercelConnected={isVercelConnected}
                                 isSupabaseConnected={isSupabaseConnected}
-                                isNeonConnected={isNeonConnected}
                                 isNotionConnected={isNotionConnected}
                                 onConnectGithub={connectGithub}
                                 onConnectVercel={connectVercel}
                                 onConnectSupabase={connectSupabase}
-                                onConnectNeon={connectNeon}
                                 onConnectNotion={connectNotion}
                             />
                         ) : (
