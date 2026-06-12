@@ -45,12 +45,6 @@ model User {
   notionWorkspaceId   String?
   notionWorkspaceName String?
 
-  figmaConnected      Boolean   @default(false)
-  figmaAccessToken    String?   @db.Text
-  figmaRefreshToken   String?   @db.Text
-  figmaTokenExpiresAt DateTime?
-  figmaConnectedAt    DateTime?
-
   notifyProjectActivity Boolean @default(true)
   notifyProductUpdates  Boolean @default(false)
   notifySecurityAlerts  Boolean @default(true)
@@ -58,7 +52,7 @@ model User {
   chatSuggestions Boolean         @default(false)
   generationSound GenerationSound @default(FIRST_GENERATION)
 
-  design String?
+  design                 String?
   hasCompletedOnboarding Boolean @default(false)
 
   stripeCustomerId   String?            @unique
@@ -135,6 +129,11 @@ model Project {
   githubRepoOwner    String?
   githubRepoUrl      String?
   githubLastSyncedAt DateTime?
+
+  vercelProjectId      String?
+  vercelProjectName    String?
+  vercelDeploymentUrl  String?
+  vercelLastDeployedAt DateTime?
 
   currentVersion ProjectVersion?  @relation("ProjectCurrentVersion", fields: [currentVersionId], references: [id])
   user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -292,6 +291,32 @@ model UsageEvent {
   @@index([createdAt])
 }
 
+model RedeemCode {
+  id              String            @id @default(uuid())
+  codeHash        String            @unique // SHA-256 hash of normalized code
+  creditAmount    Int // amount to grant in cents
+  maxRedemptions  Int? // null means unlimited
+  redemptionCount Int               @default(0)
+  expiresAt       DateTime?
+  metadata        Json?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  claims          RedeemCodeClaim[]
+}
+
+model RedeemCodeClaim {
+  id           String   @id @default(uuid())
+  redeemCodeId String
+  userId       String
+  redeemedAt   DateTime @default(now())
+
+  redeemCode RedeemCode @relation(fields: [redeemCodeId], references: [id], onDelete: Cascade)
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([redeemCodeId, userId])
+  @@index([userId])
+}
+
 enum NotificationType {
   INFO
   WARNING
@@ -368,30 +393,4 @@ enum ProviderSubscriptionStatus {
   PAST_DUE
   TRIALING
   UNPAID
-}
-
-model RedeemCode {
-  id              String            @id @default(uuid())
-  codeHash        String            @unique // SHA-256 hash of normalized code
-  creditAmount    Int // amount to grant in cents
-  maxRedemptions  Int? // null means unlimited
-  redemptionCount Int               @default(0)
-  expiresAt       DateTime?
-  metadata        Json?
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
-  claims          RedeemCodeClaim[]
-}
-
-model RedeemCodeClaim {
-  id           String   @id @default(uuid())
-  redeemCodeId String
-  userId       String
-  redeemedAt   DateTime @default(now())
-
-  redeemCode RedeemCode @relation(fields: [redeemCodeId], references: [id], onDelete: Cascade)
-  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([redeemCodeId, userId])
-  @@index([userId])
 }

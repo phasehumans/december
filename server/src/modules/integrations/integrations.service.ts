@@ -47,12 +47,12 @@ interface ConnectSupaBase {
     code: string
 }
 
-interface ConnectNotionParams {
+interface ConnectNeon {
     userId: string
-    code: string
+    apiKey: string
 }
 
-interface ConnectFigmaParams {
+interface ConnectNotionParams {
     userId: string
     code: string
 }
@@ -233,6 +233,49 @@ const connectSupabase = async ({ userId, code }: ConnectSupaBase) => {
     return updatedUser
 }
 
+const connectNeon = async ({ userId, apiKey }: ConnectNeon) => {
+    // Validate API Key by fetching user details from Neon API
+    try {
+        await axios.get('https://console.neon.tech/api/v2/users/me', {
+            headers: {
+                Accept: 'application/json',
+                Authorization: `Bearer ${apiKey}`,
+            },
+        })
+    } catch (error: any) {
+        const status = error.response?.status ?? 500
+        const message = error.response?.data?.message ?? 'Invalid Neon API Key'
+        throw new AppError(`Neon validation failed: ${message}`, status)
+    }
+
+    const updatedUser = await prisma.user.update({
+        where: {
+            id: userId,
+        },
+
+        data: {
+            neonConnected: true,
+            neonAccessToken: apiKey,
+            neonRefreshToken: null,
+            neonTokenExpiresAt: null,
+            neonConnectedAt: new Date(),
+        },
+    })
+
+    try {
+        await sendNotificationToUser({
+            userId,
+            title: 'Neon DB Connected',
+            message: 'Successfully connected with Neon DB integration!',
+            type: 'SUCCESS',
+        })
+    } catch (error) {
+        console.error('Failed to send neon connection notification:', error)
+    }
+
+    return updatedUser
+}
+
 const connectNotion = async ({ userId, code }: ConnectNotionParams) => {
     const response = await axios.post(
         'https://api.notion.com/v1/oauth/token',
@@ -323,65 +366,6 @@ const connectGithub = async (data: ConnectGithub) => {
         })
     } catch (error) {
         console.error('Failed to send github connection notification:', error)
-    }
-
-    return updatedUser
-}
-
-const connectFigma = async ({ userId, code }: ConnectFigmaParams) => {
-    const existingUser = await prisma.user.findUnique({
-        where: {
-            id: userId,
-        },
-        select: {
-            id: true,
-            isDeleted: true,
-        },
-    })
-
-    if (!existingUser || existingUser.isDeleted) {
-        throw new AppError('user not found', 404)
-    }
-
-    const params = new URLSearchParams({
-        grant_type: 'authorization_code',
-        code,
-        client_id: process.env.FIGMA_CLIENT_ID!,
-        client_secret: process.env.FIGMA_CLIENT_SECRET!,
-        redirect_uri: process.env.FIGMA_REDIRECT_URI!,
-    })
-
-    const response = await axios.post('https://www.figma.com/api/v1/oauth/token', params, {
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-        },
-    })
-
-    const tokenData = response.data
-    const expiresAt = new Date(Date.now() + tokenData.expires_in * 1000)
-
-    const updatedUser = await prisma.user.update({
-        where: {
-            id: userId,
-        },
-        data: {
-            figmaConnected: true,
-            figmaAccessToken: tokenData.access_token,
-            figmaRefreshToken: tokenData.refresh_token,
-            figmaTokenExpiresAt: expiresAt,
-            figmaConnectedAt: new Date(),
-        },
-    })
-
-    try {
-        await sendNotificationToUser({
-            userId,
-            title: 'Figma Connected',
-            message: 'Successfully connected with Figma integration!',
-            type: 'SUCCESS',
-        })
-    } catch (error) {
-        console.error('Failed to send figma connection notification:', error)
     }
 
     return updatedUser
@@ -687,16 +671,19 @@ const updateRepo = async (userId: string, projectId: string, data: { commitMessa
         },
     })
 
-    return updatedProject
+    return {
+        project: updatedProject,
+        commitSha: newCommitSha,
+    }
 }
 
 export const integrationsService = {
     listGithubRepos,
     connectVercel,
     connectSupabase,
+    connectNeon,
     connectNotion,
     connectGithub,
-    connectFigma,
     createRepo,
     updateRepo,
 }
