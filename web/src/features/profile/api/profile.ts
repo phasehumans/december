@@ -19,8 +19,6 @@ export type Profile = {
     supabaseConnected?: boolean
     supabaseUserId?: string | null
     supabaseConnectedAt?: string | null
-    neonConnected?: boolean
-    neonConnectedAt?: string | null
     notionWorkspaceId?: string | null
     notionWorkspaceName?: string | null
     notifyProjectActivity?: boolean
@@ -122,20 +120,6 @@ const getSupabaseRedirectUri = () =>
     getClientEnv('SUPABASE_REDIRECT_URI') ??
     getClientEnv('PUBLIC_SUPABASE_REDIRECT_URI') ??
     'http://localhost:4000/api/v1/integrations/supabase/connect'
-
-const getNeonClientId = () =>
-    (typeof process !== 'undefined' ? process.env.NEON_CLIENT_ID : undefined) ??
-    (typeof process !== 'undefined' ? process.env.PUBLIC_NEON_CLIENT_ID : undefined) ??
-    getClientEnv('NEON_CLIENT_ID') ??
-    getClientEnv('PUBLIC_NEON_CLIENT_ID') ??
-    'placeholder_client_id'
-
-const getNeonRedirectUri = () =>
-    (typeof process !== 'undefined' ? process.env.NEON_REDIRECT_URI : undefined) ??
-    (typeof process !== 'undefined' ? process.env.PUBLIC_NEON_REDIRECT_URI : undefined) ??
-    getClientEnv('NEON_REDIRECT_URI') ??
-    getClientEnv('PUBLIC_NEON_REDIRECT_URI') ??
-    'http://localhost:4000/api/v1/integrations/neon/connect'
 
 const getNotionClientId = () =>
     (typeof process !== 'undefined' ? process.env.NOTION_CLIENT_ID : undefined) ??
@@ -341,15 +325,6 @@ const getSupabaseConnectUrl = (userId: string) => {
     })
 }
 
-const getNeonConnectUrl = (userId: string) => {
-    return buildUrl('https://oauth2.neon.tech/oauth2/auth', {
-        client_id: getNeonClientId(),
-        redirect_uri: getNeonRedirectUri(),
-        response_type: 'code',
-        state: userId,
-    })
-}
-
 const getNotionConnectUrl = (userId: string) => {
     return buildUrl('https://api.notion.com/v1/oauth/authorize', {
         client_id: getNotionClientId(),
@@ -413,7 +388,6 @@ export const profileAPI = {
     getGithubConnectUrl,
     getVercelConnectUrl,
     getSupabaseConnectUrl,
-    getNeonConnectUrl,
     getNotionConnectUrl,
     submitFeedback,
     completeOnboarding,

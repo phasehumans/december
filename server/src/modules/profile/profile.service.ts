@@ -22,8 +22,6 @@ export const profileSelect = {
     supabaseConnected: true,
     supabaseUserId: true,
     supabaseConnectedAt: true,
-    neonConnected: true,
-    neonConnectedAt: true,
     notionWorkspaceId: true,
     notionWorkspaceName: true,
     notifyProjectActivity: true,
