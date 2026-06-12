@@ -18,6 +18,8 @@ export interface Profile {
     supabaseConnected?: boolean
     supabaseUserId?: string | null
     supabaseConnectedAt?: string | null
+    neonConnected?: boolean
+    neonConnectedAt?: string | null
     notionWorkspaceId?: string | null
     notionWorkspaceName?: string | null
 }

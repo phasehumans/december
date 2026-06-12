@@ -18,6 +18,14 @@ export type BackendProject = {
     user?: {
         username: string
     }
+    githubRepoName?: string | null
+    githubRepoOwner?: string | null
+    githubRepoUrl?: string | null
+    githubLastSyncedAt?: string | null
+    vercelProjectId?: string | null
+    vercelProjectName?: string | null
+    vercelDeploymentUrl?: string | null
+    vercelLastDeployedAt?: string | null
 }
 
 export type BackendProjectVersionSummary = {
@@ -173,6 +181,24 @@ const downloadProject = async (projectId: string, versionId?: string | null) => 
     }
 }
 
+const deployToVercel = (projectId: string) => {
+    return apiRequest<{
+        deploymentId: string
+        url: string
+        readyState: string
+    }>(`/integrations/projects/${projectId}/vercel/deploy`, {
+        method: 'POST',
+    })
+}
+
+const getVercelDeploymentStatus = (deploymentId: string) => {
+    return apiRequest<{
+        id: string
+        url: string
+        readyState: string
+    }>(`/integrations/deployments/${deploymentId}/status`)
+}
+
 export const projectAPI = {
     getProjects,
     getProject,
@@ -184,4 +210,6 @@ export const projectAPI = {
     shareProjectAsTemplate,
     toggleStarProject,
     downloadProject,
+    deployToVercel,
+    getVercelDeploymentStatus,
 }
