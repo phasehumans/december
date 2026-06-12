@@ -193,6 +193,14 @@ const getProjectById = async (data: GetProject) => {
             createdAt: true,
             updatedAt: true,
             userId: true,
+            githubRepoName: true,
+            githubRepoOwner: true,
+            githubRepoUrl: true,
+            githubLastSyncedAt: true,
+            vercelProjectId: true,
+            vercelProjectName: true,
+            vercelDeploymentUrl: true,
+            vercelLastDeployedAt: true,
             user: {
                 select: {
                     username: true,
