@@ -1,6 +1,7 @@
 import { AppError } from '../../shared/appError'
 
 import { integrationsService } from './integrations.service'
+import { createGithubRepoSchema, syncGithubRepoSchema } from './integrations.schema'
 
 import type { Request, Response } from 'express'
 
@@ -254,6 +255,108 @@ const connectFigma = async (req: Request, res: Response) => {
     }
 }
 
+const createRepo = async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
+    const projectId = req.params.projectId as string | undefined
+    const parseData = createGithubRepoSchema.safeParse(req.body)
+
+    if (!userId) {
+        return res.status(400).json({
+            success: false,
+            message: 'unauthorized',
+        })
+    }
+
+    if (!projectId) {
+        return res.status(400).json({
+            success: false,
+            message: 'project id is required',
+        })
+    }
+
+    if (!parseData.success) {
+        return res.status(400).json({
+            success: false,
+            message: 'validation failed',
+            errors: parseData.error.flatten().fieldErrors,
+        })
+    }
+
+    try {
+        const result = await integrationsService.createRepo(userId, projectId, parseData.data)
+        return res.status(200).json({
+            success: true,
+            message: 'repository created and linked successfully',
+            data: result,
+        })
+    } catch (error) {
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({
+                success: false,
+                message: 'failed to create repository',
+                errors: error.message,
+            })
+        }
+
+        return res.status(500).json({
+            success: false,
+            message: 'failed to create repository',
+            errors: error instanceof Error ? error.message : 'unknown error',
+        })
+    }
+}
+
+const updateRepo = async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
+    const projectId = req.params.projectId as string | undefined
+    const parseData = syncGithubRepoSchema.safeParse(req.body)
+
+    if (!userId) {
+        return res.status(400).json({
+            success: false,
+            message: 'unauthorized',
+        })
+    }
+
+    if (!projectId) {
+        return res.status(400).json({
+            success: false,
+            message: 'project id is required',
+        })
+    }
+
+    if (!parseData.success) {
+        return res.status(400).json({
+            success: false,
+            message: 'validation failed',
+            errors: parseData.error.flatten().fieldErrors,
+        })
+    }
+
+    try {
+        const result = await integrationsService.updateRepo(userId, projectId, parseData.data)
+        return res.status(200).json({
+            success: true,
+            message: 'repository synced successfully',
+            data: result,
+        })
+    } catch (error) {
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({
+                success: false,
+                message: 'failed to sync repository',
+                errors: error.message,
+            })
+        }
+
+        return res.status(500).json({
+            success: false,
+            message: 'failed to sync repository',
+            errors: error instanceof Error ? error.message : 'unknown error',
+        })
+    }
+}
+
 export const integrationsController = {
     getUserGithubRepos,
     connectVercel,
@@ -261,4 +364,6 @@ export const integrationsController = {
     connectNotion,
     connectGithub,
     connectFigma,
+    createRepo,
+    updateRepo,
 }

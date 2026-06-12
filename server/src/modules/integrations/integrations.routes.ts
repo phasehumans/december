@@ -15,4 +15,7 @@ integrationsRouter.get('/supabase/connect', integrationsController.connectSupaba
 integrationsRouter.get('/notion/connect', integrationsController.connectNotion)
 integrationsRouter.get('/figma/connect', integrationsController.connectFigma)
 
+integrationsRouter.post('/projects/:projectId/github/repository', integrationsController.createRepo)
+integrationsRouter.post('/projects/:projectId/github/sync', integrationsController.updateRepo)
+
 export default integrationsRouter

@@ -10,6 +10,10 @@ import {
     X,
     Settings,
     Github,
+    Lock,
+    ExternalLink,
+    CheckCircle,
+    Loader2,
 } from 'lucide-react'
 import React, { useState, useEffect } from 'react'
 
@@ -19,6 +23,7 @@ import { BigModalOverlay, PremiumToggle } from './SettingsFormControls'
 import { ShareTab } from './ShareTab'
 
 import { projectAPI } from '@/features/projects/api/project'
+import { profileAPI, type Profile } from '@/features/profile/api/profile'
 import { ProjectDeleteModal } from '@/features/projects/components/ProjectDeleteModal'
 import { ProjectDuplicateModal } from '@/features/projects/components/ProjectDuplicateModal'
 import { ProjectShareModal } from '@/features/projects/components/ProjectShareModal'
@@ -76,6 +81,69 @@ export const SettingsBigModal: React.FC<SettingsModalProps> = ({
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
     const [hasSavedChanges, setHasSavedChanges] = useState(false)
 
+    // GitHub Integration states
+    const [project, setProject] = useState<any>(null)
+    const [profile, setProfile] = useState<Profile | null>(null)
+    const [githubRepoName, setGithubRepoName] = useState('')
+    const [githubIsPrivate, setGithubIsPrivate] = useState(true)
+    const [isCreatingRepo, setIsCreatingRepo] = useState(false)
+    const [isSyncingRepo, setIsSyncingRepo] = useState(false)
+    const [githubCommitMsg, setGithubCommitMsg] = useState('Update project files')
+    const [githubSyncError, setGithubSyncError] = useState<string | null>(null)
+    const [githubSyncSuccess, setGithubSyncSuccess] = useState(false)
+
+    const slugifyRepoName = (name: string) => {
+        return name
+            .toLowerCase()
+            .replace(/[^a-z0-9_.-]/g, '-')
+            .replace(/-+/g, '-')
+            .replace(/^-|-$/g, '')
+    }
+
+    const handleConnectGithub = () => {
+        if (!profile) return
+        window.location.href = profileAPI.getGithubConnectUrl(profile.id)
+    }
+
+    const handleCreateGithubRepo = async (e: React.FormEvent) => {
+        e.preventDefault()
+        if (!projectId || !githubRepoName.trim()) return
+        setIsCreatingRepo(true)
+        setGithubSyncError(null)
+        try {
+            const updatedProject = await profileAPI.createGithubRepo(projectId, {
+                name: githubRepoName.trim(),
+                private: githubIsPrivate,
+                description: `December project - ${projName}`,
+            })
+            setProject(updatedProject)
+            setGithubSyncSuccess(true)
+            setTimeout(() => setGithubSyncSuccess(false), 3000)
+        } catch (err: any) {
+            setGithubSyncError(err.message || 'Failed to create GitHub repository')
+        } finally {
+            setIsCreatingRepo(false)
+        }
+    }
+
+    const handleSyncGithubRepo = async () => {
+        if (!projectId) return
+        setIsSyncingRepo(true)
+        setGithubSyncError(null)
+        try {
+            const updatedProject = await profileAPI.syncGithubRepo(projectId, {
+                commitMessage: githubCommitMsg,
+            })
+            setProject(updatedProject)
+            setGithubSyncSuccess(true)
+            setTimeout(() => setGithubSyncSuccess(false), 3000)
+        } catch (err: any) {
+            setGithubSyncError(err.message || 'Failed to sync with GitHub')
+        } finally {
+            setIsSyncingRepo(false)
+        }
+    }
+
     const handleDeploy = () => {
         setDeploying(true)
         setTimeout(() => {
@@ -90,7 +158,16 @@ export const SettingsBigModal: React.FC<SettingsModalProps> = ({
     const [isSaving, setIsSaving] = useState(false)
     const [isDuplicating, setIsDuplicating] = useState(false)
 
-    // Fetch project details on mount to populate General tab fields
+    // Fetch profile and project details
+    useEffect(() => {
+        profileAPI
+            .getProfile()
+            .then((res) => {
+                setProfile(res)
+            })
+            .catch((err) => console.error('Failed to load profile:', err))
+    }, [])
+
     useEffect(() => {
         if (!projectId) return
         setIsLoading(true)
@@ -98,11 +175,14 @@ export const SettingsBigModal: React.FC<SettingsModalProps> = ({
             .getProject(projectId)
             .then((res) => {
                 if (res?.project) {
+                    setProject(res.project)
                     setProjName(res.project.name)
                     setProjDesc(res.project.description ?? '')
                     setIsFavorite(res.project.isStarred)
                     setIsTemplate(res.project.isSharedAsTemplate)
                     setCategory((res.project as any).projectCategory ?? 'NONE')
+                    setGithubRepoName(slugifyRepoName(res.project.name))
+                    setGithubIsPrivate(true)
                 }
             })
             .catch((err) => console.error('Failed to load project details:', err))
@@ -317,8 +397,8 @@ export const SettingsBigModal: React.FC<SettingsModalProps> = ({
                             {activeTab === 'integrations' && (
                                 <div className="flex flex-col w-full max-w-[680px] text-[#D6D5C9] animate-in fade-in duration-200">
                                     <h1 className="text-[16px] font-medium mb-3">Integrations</h1>
-                                    <div className="flex flex-col gap-5 border-t border-[#242323] pt-6">
-                                        <div className="flex items-center justify-between">
+                                    <div className="flex flex-col gap-6 border-t border-[#242323] pt-6">
+                                        <div className="flex flex-col gap-4">
                                             <div className="flex items-center gap-4">
                                                 <div className="w-10 h-10 rounded-lg bg-[#1E1D1B] border border-[#383736] flex items-center justify-center shrink-0">
                                                     <Github className="w-5 h-5 text-[#D6D5C9]" />
@@ -328,14 +408,206 @@ export const SettingsBigModal: React.FC<SettingsModalProps> = ({
                                                         GitHub
                                                     </span>
                                                     <span className="text-[13px] text-[#7B7A79] max-w-[380px]">
-                                                        Link a GitHub repository to this project for
-                                                        automatic deployments.
+                                                        Link a GitHub repository to this project to
+                                                        export and sync your generated code
+                                                        automatically.
                                                     </span>
                                                 </div>
                                             </div>
-                                            <button className="px-4 py-1.5 rounded-lg border border-[#2B2A29] text-[#4A4948] text-[13px] font-medium cursor-not-allowed">
-                                                Soon
-                                            </button>
+
+                                            {/* GitHub Connection States */}
+                                            {!profile ? (
+                                                <div className="text-[13px] text-[#7B7A79] mt-2">
+                                                    Loading integration details...
+                                                </div>
+                                            ) : !profile.githubConnected ? (
+                                                <div className="mt-2 bg-[#1B1212]/50 border border-red-900/30 rounded-xl p-4 flex flex-col gap-3 max-w-[500px]">
+                                                    <span className="text-[13px] text-[#A6A5A4]">
+                                                        You need to connect your GitHub account in
+                                                        your settings before linking a repository.
+                                                    </span>
+                                                    <button
+                                                        type="button"
+                                                        onClick={handleConnectGithub}
+                                                        className="w-fit flex items-center gap-2 px-4 py-1.5 rounded-lg border border-[#383736] text-[13px] font-medium text-[#D6D5C9] hover:bg-[#1E1D1B] transition-colors"
+                                                    >
+                                                        <Github className="w-4 h-4" />
+                                                        Connect GitHub Account
+                                                    </button>
+                                                </div>
+                                            ) : project && !project.githubRepoName ? (
+                                                <form
+                                                    onSubmit={handleCreateGithubRepo}
+                                                    className="mt-2 flex flex-col gap-4 max-w-[480px]"
+                                                >
+                                                    <div className="flex flex-col gap-1.5">
+                                                        <label className="text-[12px] font-medium text-[#7B7A79]">
+                                                            Repository Name
+                                                        </label>
+                                                        <div className="flex items-center bg-[#100E12]/50 border border-[#383736] rounded-xl px-3 py-1.5 focus-within:border-[#4A4948] transition-colors">
+                                                            <span className="text-[13px] text-[#5A5958] mr-0.5 select-none">
+                                                                {profile.githubUsername}/
+                                                            </span>
+                                                            <input
+                                                                type="text"
+                                                                value={githubRepoName}
+                                                                onChange={(e) =>
+                                                                    setGithubRepoName(
+                                                                        slugifyRepoName(
+                                                                            e.target.value
+                                                                        )
+                                                                    )
+                                                                }
+                                                                placeholder="my-awesome-project"
+                                                                className="flex-1 bg-transparent text-[13px] text-[#D6D5C9] outline-none border-none p-0"
+                                                                required
+                                                            />
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="flex items-center gap-3 bg-[#171615] border border-[#242323] p-3.5 rounded-xl">
+                                                        <input
+                                                            type="checkbox"
+                                                            id="private-repo"
+                                                            checked={githubIsPrivate}
+                                                            onChange={(e) =>
+                                                                setGithubIsPrivate(e.target.checked)
+                                                            }
+                                                            className="w-4 h-4 rounded border-[#383736] bg-[#100E12] text-[#3ECF8E] focus:ring-0 cursor-pointer"
+                                                        />
+                                                        <div className="flex flex-col">
+                                                            <label
+                                                                htmlFor="private-repo"
+                                                                className="text-[13px] font-medium text-[#D6D5C9] cursor-pointer"
+                                                            >
+                                                                Private Repository
+                                                            </label>
+                                                            <span className="text-[12px] text-[#5A5958]">
+                                                                Only you and invited collaborators
+                                                                can view this repository.
+                                                            </span>
+                                                        </div>
+                                                    </div>
+
+                                                    {githubSyncError && (
+                                                        <div className="text-[12.5px] text-red-400 bg-red-950/20 border border-red-900/30 px-3.5 py-2.5 rounded-xl">
+                                                            {githubSyncError}
+                                                        </div>
+                                                    )}
+
+                                                    <button
+                                                        type="submit"
+                                                        disabled={
+                                                            isCreatingRepo || !githubRepoName.trim()
+                                                        }
+                                                        className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-[#1E1D1B] border border-[#363534] hover:bg-[#2B2A29] disabled:opacity-50 disabled:cursor-not-allowed text-[13px] font-medium text-white transition-all"
+                                                    >
+                                                        {isCreatingRepo ? (
+                                                            <>
+                                                                <Loader2 className="w-4 h-4 animate-spin text-[#7B7A79]" />
+                                                                Creating Repository...
+                                                            </>
+                                                        ) : (
+                                                            'Create & Sync Repository'
+                                                        )}
+                                                    </button>
+                                                </form>
+                                            ) : project ? (
+                                                <div className="mt-2 flex flex-col gap-5 max-w-[480px]">
+                                                    <div className="bg-[#171615] border border-[#242323] p-4 rounded-xl flex flex-col gap-3">
+                                                        <div className="flex items-center justify-between">
+                                                            <span className="text-[12px] text-[#7B7A79] font-medium">
+                                                                Linked Repository
+                                                            </span>
+                                                            <span className="flex items-center gap-1 text-[11px] text-[#5A5958]">
+                                                                {githubIsPrivate ? (
+                                                                    <span className="flex items-center gap-1 px-1.5 py-0.5 rounded border border-[#2B2A29] bg-[#1E1D1B]">
+                                                                        <Lock className="w-2.5 h-2.5" />
+                                                                        Private
+                                                                    </span>
+                                                                ) : (
+                                                                    <span className="flex items-center gap-1 px-1.5 py-0.5 rounded border border-[#2B2A29] bg-[#1E1D1B]">
+                                                                        <Globe className="w-2.5 h-2.5" />
+                                                                        Public
+                                                                    </span>
+                                                                )}
+                                                            </span>
+                                                        </div>
+                                                        <a
+                                                            href={
+                                                                project.githubRepoUrl ??
+                                                                `https://github.com/${project.githubRepoOwner}/${project.githubRepoName}`
+                                                            }
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="flex items-center gap-2 text-[14px] font-semibold text-[#3ECF8E] hover:underline hover:text-[#52e09f] w-fit transition-all"
+                                                        >
+                                                            <Github className="w-4 h-4 text-[#D6D5C9]" />
+                                                            {project.githubRepoOwner}/
+                                                            {project.githubRepoName}
+                                                            <ExternalLink className="w-3.5 h-3.5 opacity-60" />
+                                                        </a>
+                                                        <div className="text-[11.5px] text-[#7B7A79] border-t border-[#242323] pt-2.5 flex justify-between items-center mt-1">
+                                                            <span>Last Synced</span>
+                                                            <span className="font-medium text-[#D6D5C9]">
+                                                                {project.githubLastSyncedAt
+                                                                    ? new Date(
+                                                                          project.githubLastSyncedAt
+                                                                      ).toLocaleString()
+                                                                    : 'Never'}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="flex flex-col gap-1.5">
+                                                        <label className="text-[12px] font-medium text-[#7B7A79]">
+                                                            Commit Message
+                                                        </label>
+                                                        <input
+                                                            type="text"
+                                                            value={githubCommitMsg}
+                                                            onChange={(e) =>
+                                                                setGithubCommitMsg(e.target.value)
+                                                            }
+                                                            placeholder="Update project files"
+                                                            className="w-full bg-[#100E12]/50 border border-[#383736] rounded-xl px-3.5 py-1.5 text-[13px] text-[#D6D5C9] outline-none focus:border-[#4A4948] transition-colors"
+                                                        />
+                                                    </div>
+
+                                                    {githubSyncError && (
+                                                        <div className="text-[12.5px] text-red-400 bg-red-950/20 border border-red-900/30 px-3.5 py-2.5 rounded-xl">
+                                                            {githubSyncError}
+                                                        </div>
+                                                    )}
+
+                                                    {githubSyncSuccess && (
+                                                        <div className="text-[12.5px] text-[#3ECF8E] bg-[#101F18] border border-[#1b3e2b] px-3.5 py-2.5 rounded-xl flex items-center gap-2">
+                                                            <CheckCircle className="w-4 h-4 shrink-0" />
+                                                            Latest changes pushed successfully!
+                                                        </div>
+                                                    )}
+
+                                                    <button
+                                                        type="button"
+                                                        onClick={handleSyncGithubRepo}
+                                                        disabled={isSyncingRepo}
+                                                        className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-[#1E1D1B] border border-[#363534] hover:bg-[#2B2A29] disabled:opacity-50 disabled:cursor-not-allowed text-[13px] font-medium text-white transition-all"
+                                                    >
+                                                        {isSyncingRepo ? (
+                                                            <>
+                                                                <Loader2 className="w-4 h-4 animate-spin text-[#7B7A79]" />
+                                                                Pushing to GitHub...
+                                                            </>
+                                                        ) : (
+                                                            'Push Latest Changes'
+                                                        )}
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <div className="text-[13px] text-[#7B7A79] mt-2">
+                                                    Loading integration details...
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
