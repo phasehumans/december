@@ -104,6 +104,36 @@ const getVercelIntegrationSlug = () =>
     getClientEnv('PUBLIC_VERCEL_INTEGRATION_SLUG') ??
     'december'
 
+const getSupabaseClientId = () =>
+    getClientEnv('SUPABASE_CLIENT_ID') ??
+    getClientEnv('PUBLIC_SUPABASE_CLIENT_ID') ??
+    '4a0473bb-3c69-4d28-8896-d1d8b6e18347'
+
+const getSupabaseRedirectUri = () =>
+    getClientEnv('SUPABASE_REDIRECT_URI') ??
+    getClientEnv('PUBLIC_SUPABASE_REDIRECT_URI') ??
+    'http://localhost:4000/api/v1/integrations/supabase/connect'
+
+const getNotionClientId = () =>
+    getClientEnv('NOTION_CLIENT_ID') ??
+    getClientEnv('PUBLIC_NOTION_CLIENT_ID') ??
+    '36ad872b-594c-8101-9e7c-00378ba2e5f6'
+
+const getNotionRedirectUri = () =>
+    getClientEnv('NOTION_REDIRECT_URI') ??
+    getClientEnv('PUBLIC_NOTION_REDIRECT_URI') ??
+    'http://localhost:4000/api/v1/integrations/notion/connect'
+
+const getFigmaClientId = () =>
+    getClientEnv('FIGMA_CLIENT_ID') ??
+    getClientEnv('PUBLIC_FIGMA_CLIENT_ID') ??
+    'YOUR_FIGMA_CLIENT_ID'
+
+const getFigmaRedirectUri = () =>
+    getClientEnv('FIGMA_REDIRECT_URI') ??
+    getClientEnv('PUBLIC_FIGMA_REDIRECT_URI') ??
+    'http://localhost:4000/api/v1/integrations/figma/connect'
+
 const buildUrl = (baseUrl: string, params: Record<string, string>) => {
     const url = new URL(baseUrl)
 
@@ -275,16 +305,33 @@ const getVercelConnectUrl = (userId: string) => {
     })
 }
 
-const getSupabaseConnectUrl = () => {
-    return `${API_BASE_URL}/integrations/supabase/connect`
+const getSupabaseConnectUrl = (userId: string) => {
+    return buildUrl('https://api.supabase.com/v1/oauth/authorize', {
+        client_id: getSupabaseClientId(),
+        redirect_uri: getSupabaseRedirectUri(),
+        response_type: 'code',
+        state: userId,
+    })
 }
 
-const getNotionConnectUrl = () => {
-    return `${API_BASE_URL}/integrations/notion/connect`
+const getNotionConnectUrl = (userId: string) => {
+    return buildUrl('https://api.notion.com/v1/oauth/authorize', {
+        client_id: getNotionClientId(),
+        redirect_uri: getNotionRedirectUri(),
+        response_type: 'code',
+        owner: 'user',
+        state: userId,
+    })
 }
 
-const getFigmaConnectUrl = () => {
-    return `${API_BASE_URL}/integrations/figma/connect`
+const getFigmaConnectUrl = (userId: string) => {
+    return buildUrl('https://www.figma.com/oauth', {
+        client_id: getFigmaClientId(),
+        redirect_uri: getFigmaRedirectUri(),
+        scope: 'file_read',
+        state: userId,
+        response_type: 'code',
+    })
 }
 
 const submitFeedback = (data: { rating: 'sad' | 'neutral' | 'happy' | null; feedback: string }) => {

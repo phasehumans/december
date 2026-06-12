@@ -137,15 +137,15 @@ export const useProfileSettingsController = () => {
     }
 
     const connectSupabase = () => {
-        window.location.href = profileAPI.getSupabaseConnectUrl()
+        redirectToIntegration(profileAPI.getSupabaseConnectUrl)
     }
 
     const connectNotion = () => {
-        window.location.href = profileAPI.getNotionConnectUrl()
+        redirectToIntegration(profileAPI.getNotionConnectUrl)
     }
 
     const connectFigma = () => {
-        window.location.href = profileAPI.getFigmaConnectUrl()
+        redirectToIntegration(profileAPI.getFigmaConnectUrl)
     }
 
     return {
