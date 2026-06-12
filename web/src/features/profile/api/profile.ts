@@ -1,4 +1,5 @@
 import { API_BASE_URL, apiRequest } from '@/shared/api/client'
+import { type BackendProject } from '@/features/projects/api/project'
 
 export type Profile = {
     id: string
@@ -299,6 +300,23 @@ const completeOnboarding = () => {
     })
 }
 
+const createGithubRepo = (
+    projectId: string,
+    data: { name: string; private: boolean; description?: string }
+) => {
+    return apiRequest<BackendProject>(`/integrations/projects/${projectId}/github/repository`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+    })
+}
+
+const syncGithubRepo = (projectId: string, data: { commitMessage?: string }) => {
+    return apiRequest<BackendProject>(`/integrations/projects/${projectId}/github/sync`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+    })
+}
+
 export const profileAPI = {
     getProfile,
     updateName,
@@ -326,4 +344,6 @@ export const profileAPI = {
     getFigmaConnectUrl,
     submitFeedback,
     completeOnboarding,
+    createGithubRepo,
+    syncGithubRepo,
 }

@@ -127,6 +127,11 @@ model Project {
   versionCount       Int             @default(0)
   previewImageKey    String?
 
+  githubRepoName     String?
+  githubRepoOwner    String?
+  githubRepoUrl      String?
+  githubLastSyncedAt DateTime?
+
   currentVersion ProjectVersion?  @relation("ProjectCurrentVersion", fields: [currentVersionId], references: [id])
   user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   messages       ProjectMessage[]

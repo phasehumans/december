@@ -18,6 +18,10 @@ export type BackendProject = {
     user?: {
         username: string
     }
+    githubRepoName?: string | null
+    githubRepoOwner?: string | null
+    githubRepoUrl?: string | null
+    githubLastSyncedAt?: string | null
 }
 
 export type BackendProjectVersionSummary = {
