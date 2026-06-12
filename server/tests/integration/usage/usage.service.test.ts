@@ -52,8 +52,8 @@ describe('usage.service.integration', () => {
         expect(result.plan).toBe('FREE')
         expect(result.usage.costInCents).toBe(0)
         expect(result.usage.eventCount).toBe(0)
-        expect(result.credits.limitInCents).toBe(500)
-        expect(result.credits.remainingInCents).toBe(500)
+        expect(result.credits.limitInCents).toBe(100)
+        expect(result.credits.remainingInCents).toBe(100)
     })
 
     it('should record usage against the current period and project relation', async () => {
@@ -65,7 +65,6 @@ describe('usage.service.integration', () => {
             inputTokens: 100,
             outputTokens: 50,
             totalTokens: 150,
-            costInCents: 12,
             projectId: project.id,
             externalRequestId: `req-${crypto.randomUUID()}`,
         })
@@ -79,7 +78,9 @@ describe('usage.service.integration', () => {
         expect(usage.usage.inputTokens).toBe(100)
         expect(usage.usage.outputTokens).toBe(50)
         expect(usage.usage.totalTokens).toBe(150)
-        expect(usage.usage.costInCents).toBe(12)
+        // Fallback pricing: input = 2.00/1M ($0.0002/token), output = 8.00/1M ($0.0008/token)
+        // Cost = (100 * 0.0002) + (50 * 0.0008) = 0.02 + 0.04 = 0.06 cents => ceiling is 1 cent
+        expect(usage.usage.costInCents).toBe(1)
         expect(usage.usage.eventCount).toBe(1)
     })
 
@@ -92,7 +93,6 @@ describe('usage.service.integration', () => {
             inputTokens: 1,
             outputTokens: 1,
             totalTokens: 2,
-            costInCents: 1,
             externalRequestId,
         })
 
@@ -102,7 +102,6 @@ describe('usage.service.integration', () => {
             inputTokens: 100,
             outputTokens: 100,
             totalTokens: 200,
-            costInCents: 100,
             externalRequestId,
         })
 
@@ -124,20 +123,19 @@ describe('usage.service.integration', () => {
                 inputTokens: 1,
                 outputTokens: 1,
                 totalTokens: 2,
-                costInCents: 1,
                 projectId: otherProject.id,
             })
         ).rejects.toThrow('project not found')
     })
 
     it('should report insufficient credits when the current period is exhausted', async () => {
-        await usageService.recordUsageEvent({
-            userId,
-            model: 'gpt-5',
-            inputTokens: 1,
-            outputTokens: 1,
-            totalTokens: 2,
-            costInCents: 500,
+        // Manually exhaust user's credit balance to 0
+        await prisma.user.update({
+            where: { id: userId },
+            data: {
+                creditBalance: 0,
+                giftedCredits: 0,
+            },
         })
 
         const result = await usageService.checkEnoughCredits({

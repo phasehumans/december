@@ -8,6 +8,5 @@ const usageRouter = Router()
 usageRouter.use(authMiddleware)
 usageRouter.get('/', usageController.getCurrentUsage)
 usageRouter.get('/check', usageController.checkEnoughCredits)
-usageRouter.post('/', usageController.recordUsageEvent)
 
 export default usageRouter
