@@ -1,230 +1,269 @@
-import { Rocket, RefreshCw, CheckCircle2 } from 'lucide-react'
+import { Rocket, RefreshCw, CheckCircle2, Github, ExternalLink } from 'lucide-react'
 import React from 'react'
 
-import { PremiumInput, PremiumToggle } from './SettingsFormControls'
-
 interface PublishTabProps {
-    env: string
-    setEnv: (val: string) => void
-    subDomain: string
-    setSubDomain: (val: string) => void
-    customDomain: string
-    setCustomDomain: (val: string) => void
-    pwdProtection: boolean
-    setPwdProtection: (val: boolean) => void
-    noIndex: boolean
-    setNoIndex: (val: boolean) => void
     deploying: boolean
     deployed: boolean
     handleDeploy: () => void
+    buildLogs: string[]
+    deployError: string | null
+    vercelDeploymentUrl: string | null
+    vercelLastDeployedAt: string | null
+    githubRepoName: string | null
+    isVercelConnected: boolean
+    isGithubConnected: boolean
+    handleConnectGithub: () => void
+    handleConnectVercel: () => void
+    onSwitchToGithubTab: () => void
 }
 
 export const PublishTab: React.FC<PublishTabProps> = ({
-    env,
-    setEnv,
-    subDomain,
-    setSubDomain,
-    customDomain,
-    setCustomDomain,
-    pwdProtection,
-    setPwdProtection,
-    noIndex,
-    setNoIndex,
     deploying,
     deployed,
     handleDeploy,
+    buildLogs,
+    deployError,
+    vercelDeploymentUrl,
+    vercelLastDeployedAt,
+    githubRepoName,
+    isVercelConnected,
+    isGithubConnected,
+    handleConnectGithub,
+    handleConnectVercel,
+    onSwitchToGithubTab,
 }) => {
+    // Determine connection states
+    const showBothNotConnected = !isGithubConnected && !isVercelConnected
+    const showGithubNotConnected = !isGithubConnected && isVercelConnected
+    const showVercelNotConnected = isGithubConnected && !isVercelConnected
+
     return (
         <div className="flex flex-col w-full max-w-[680px] text-[#D6D5C9] animate-in fade-in duration-200">
             <h1 className="text-[16px] font-medium mb-3">Publish Application</h1>
-            <div className="flex flex-col gap-6 border-t border-[#242323] pt-6">
-                {/* Environment Branch Select */}
-                <div className="flex flex-col gap-3 text-left">
-                    <span className="text-[14px] font-medium text-[#D6D5C9]">
-                        Target Environment
-                    </span>
-                    <span className="text-[13px] text-[#7B7A79]">
-                        Select the deployment target environment branch.
-                    </span>
-                    <div className="grid grid-cols-3 gap-3">
-                        {[
-                            {
-                                id: 'preview',
-                                label: 'Preview',
-                                desc: 'Temporary developer test branch',
-                            },
-                            {
-                                id: 'staging',
-                                label: 'Staging',
-                                desc: 'Pre-production QA sandbox',
-                            },
-                            {
-                                id: 'production',
-                                label: 'Production',
-                                desc: 'Live public application',
-                            },
-                        ].map((item) => (
+            <div className="flex flex-col gap-6 border-t border-[#242323] pt-6 w-full">
+                {/* Connection/Deployment status UI */}
+                {showBothNotConnected ? (
+                    <div className="border border-dashed border-[#383736] rounded-xl py-14 flex flex-col items-center justify-center gap-4 bg-[#100E12]/30 hover:border-[#4A4948] transition-colors w-full">
+                        <div className="flex items-center gap-3">
+                            <div className="w-12 h-12 rounded-2xl bg-[#1E1D1B] border border-[#383736] flex items-center justify-center shadow-md">
+                                <Github className="w-6 h-6 text-[#D6D5C9]" />
+                            </div>
+                            <div className="w-12 h-12 rounded-2xl bg-[#1E1D1B] border border-[#383736] flex items-center justify-center shadow-md">
+                                <Rocket className="w-6 h-6 text-[#D6D5C9]" />
+                            </div>
+                        </div>
+                        <div className="flex flex-col items-center gap-1.5 text-center px-4">
+                            <span className="text-[15px] font-semibold text-[#D6D5C9]">
+                                Connect services to publish
+                            </span>
+                            <span className="text-[13px] text-[#7B7A79] max-w-[380px]">
+                                Connect your GitHub and Vercel accounts to compile and deploy your
+                                application live.
+                            </span>
+                        </div>
+                        <div className="flex items-center gap-3 mt-1">
                             <button
                                 type="button"
-                                key={item.id}
-                                onClick={() => setEnv(item.id)}
-                                className={`p-3 rounded-xl border text-left flex flex-col gap-1.5 transition-colors outline-none cursor-pointer ${
-                                    env === item.id
-                                        ? 'bg-[#242323] border-[#383736] text-[#D6D5C9]'
-                                        : 'bg-[#1A1918] border-[#2B2A29] text-[#7B7A79] hover:text-[#D6D5C9] hover:bg-[#1E1D1B]'
-                                }`}
+                                onClick={handleConnectGithub}
+                                className="flex items-center gap-2 px-5 py-2 rounded-lg border border-[#383736] bg-[#171615] hover:bg-[#1E1D1B] text-[13px] font-medium text-[#D6D5C9] hover:text-white transition-all cursor-pointer"
                             >
-                                <span className="font-semibold text-[13px] capitalize">
-                                    {item.label}
-                                </span>
-                                <span className="text-[11px] opacity-75">{item.desc}</span>
+                                <Github className="w-4 h-4" />
+                                Connect GitHub
                             </button>
-                        ))}
+                            <button
+                                type="button"
+                                onClick={handleConnectVercel}
+                                className="flex items-center gap-2 px-5 py-2 rounded-lg border border-[#383736] bg-[#171615] hover:bg-[#1E1D1B] text-[13px] font-medium text-[#D6D5C9] hover:text-white transition-all cursor-pointer"
+                            >
+                                <Rocket className="w-4 h-4" />
+                                Connect Vercel
+                            </button>
+                        </div>
                     </div>
-                </div>
-
-                {/* Deployment Controls */}
-                <div className="flex flex-col gap-3 border-t border-[#242323] pt-6 text-left">
-                    <span className="text-[14px] font-medium text-[#D6D5C9]">
-                        Production Deployment
-                    </span>
-                    <span className="text-[13px] text-[#7B7A79]">
-                        Deploy the active visual workspace to the live global edge sandbox.
-                    </span>
-                    <div className="p-6 rounded-xl border border-[#242323] bg-[#1A1918]/20 flex flex-col items-center justify-center text-center space-y-4">
-                        <Rocket className="w-12 h-12 text-[#7B7A79]" strokeWidth={1.5} />
-                        <div className="space-y-1">
-                            <span className="block text-[14px] font-semibold text-white">
-                                Deploy Live Application
+                ) : showGithubNotConnected ? (
+                    <div className="border border-dashed border-[#383736] rounded-xl py-14 flex flex-col items-center justify-center gap-4 bg-[#100E12]/30 hover:border-[#4A4948] transition-colors w-full">
+                        <div className="w-12 h-12 rounded-2xl bg-[#1E1D1B] border border-[#383736] flex items-center justify-center shadow-md">
+                            <Github className="w-6 h-6 text-[#D6D5C9]" />
+                        </div>
+                        <div className="flex flex-col items-center gap-1.5 text-center px-4">
+                            <span className="text-[15px] font-semibold text-[#D6D5C9]">
+                                Connect GitHub to deploy
                             </span>
-                            <span className="block text-xs text-[#7B7A79] max-w-[400px]">
-                                Compile the active visual workspace, bundle files, and push them
-                                globally.
+                            <span className="text-[13px] text-[#7B7A79] max-w-[380px]">
+                                Connect your GitHub account to sync your repository files and
+                                activate deployment.
                             </span>
                         </div>
                         <button
                             type="button"
-                            onClick={handleDeploy}
-                            disabled={deploying || deployed}
-                            className={`rounded-lg px-5 py-2 text-[13px] font-semibold transition-colors outline-none cursor-pointer ${
-                                deployed
-                                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                                    : deploying
-                                      ? 'bg-[#242323] border border-[#383736] text-[#7B7A79] cursor-not-allowed'
-                                      : 'bg-[#E8E7E4] text-[#171615] hover:bg-white'
-                            }`}
+                            onClick={handleConnectGithub}
+                            className="flex items-center gap-2 px-5 py-2 rounded-lg border border-[#383736] bg-[#171615] hover:bg-[#1E1D1B] text-[13px] font-medium text-[#D6D5C9] hover:text-white transition-all cursor-pointer mt-1"
                         >
-                            {deploying ? (
-                                <span className="flex items-center gap-1.5 justify-center">
-                                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                                    <span>Bundling Assets...</span>
-                                </span>
-                            ) : deployed ? (
-                                <span className="flex items-center gap-1.5 justify-center">
-                                    <CheckCircle2 className="w-3.5 h-3.5" />
-                                    <span>Deployed Successfully!</span>
-                                </span>
-                            ) : (
-                                'Deploy to Production'
-                            )}
+                            <Github className="w-4 h-4" />
+                            Connect GitHub
                         </button>
                     </div>
-                </div>
+                ) : showVercelNotConnected ? (
+                    <div className="border border-dashed border-[#383736] rounded-xl py-14 flex flex-col items-center justify-center gap-4 bg-[#100E12]/30 hover:border-[#4A4948] transition-colors w-full">
+                        <div className="w-12 h-12 rounded-2xl bg-[#1E1D1B] border border-[#383736] flex items-center justify-center shadow-md">
+                            <Rocket className="w-6 h-6 text-[#D6D5C9]" />
+                        </div>
+                        <div className="flex flex-col items-center gap-1.5 text-center px-4">
+                            <span className="text-[15px] font-semibold text-[#D6D5C9]">
+                                Connect Vercel to deploy
+                            </span>
+                            <span className="text-[13px] text-[#7B7A79] max-w-[380px]">
+                                Connect your Vercel account to compile, build, and deploy your
+                                application live.
+                            </span>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={handleConnectVercel}
+                            className="flex items-center gap-2 px-5 py-2 rounded-lg border border-[#383736] bg-[#171615] hover:bg-[#1E1D1B] text-[13px] font-medium text-[#D6D5C9] hover:text-white transition-all cursor-pointer mt-1"
+                        >
+                            <Rocket className="w-4 h-4" />
+                            Connect Vercel
+                        </button>
+                    </div>
+                ) : (
+                    <div className="flex flex-col w-full animate-in fade-in duration-200">
+                        {/* Connected Header */}
+                        <div className="flex items-center justify-between mb-6 w-full">
+                            <div className="flex items-center gap-4 text-left">
+                                <div className="w-10 h-10 rounded-lg bg-[#1E1D1B] border border-[#383736] flex items-center justify-center shrink-0">
+                                    <Rocket className="w-5 h-5 text-[#D6D5C9]" />
+                                </div>
+                                <div className="flex flex-col gap-0.5">
+                                    <span className="text-[14px] font-medium text-[#D6D5C9]">
+                                        Vercel
+                                    </span>
+                                    <span className="text-[13px] text-[#7B7A79]">
+                                        Deploy the active visual workspace to the live global edge
+                                        sandbox.
+                                    </span>
+                                </div>
+                            </div>
+                            <span className="text-[11px] font-medium px-2 py-0.5 rounded border border-[#2B2A29] bg-[#1E1D1B] text-[#D6D5C9]">
+                                Connected
+                            </span>
+                        </div>
 
-                {/* Domain Settings */}
-                <div className="flex flex-col gap-4 border-t border-[#242323] pt-6 text-left">
-                    <span className="text-[14px] font-medium text-[#D6D5C9]">
-                        Domain Configuration
-                    </span>
-                    <div className="flex flex-col gap-1.5">
-                        <span className="text-[13px] text-[#7B7A79]">
-                            Your free default system subdomain.
-                        </span>
-                        <div className="flex gap-2 items-center">
-                            <PremiumInput
-                                value={subDomain}
-                                onChange={(e) => setSubDomain(e.target.value)}
-                                className="flex-1"
-                            />
-                            <span className="text-[13px] text-[#7B7A79] font-mono">
-                                .december.dev
-                            </span>
-                        </div>
-                    </div>
-                    <div className="flex flex-col gap-1.5">
-                        <span className="text-[13px] text-[#7B7A79]">
-                            Point your own branded domain name to this build.
-                        </span>
-                        <PremiumInput
-                            value={customDomain}
-                            onChange={(e) => setCustomDomain(e.target.value)}
-                            placeholder="www.my-awesome-app.com"
-                        />
-                    </div>
-                </div>
+                        {/* Deployment Info Card */}
+                        <div className="bg-[#1A1918] border border-[#2B2A29] p-5 rounded-xl flex flex-col gap-4 text-left mb-6 w-full">
+                            <div className="flex items-center justify-between">
+                                <span className="text-[12px] text-[#7B7A79] font-medium uppercase tracking-[0.05em]">
+                                    Production URL
+                                </span>
+                                {vercelDeploymentUrl ? (
+                                    <span className="text-[10px] font-bold uppercase bg-[#1E1D1B] border border-[#383736] text-[#D6D5C9] rounded-xl px-2.5 py-0.5 select-none flex items-center gap-1">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-[#D6D5C9]" />
+                                        Success
+                                    </span>
+                                ) : (
+                                    <span className="text-[10px] font-bold uppercase bg-[#1E1D1B] border border-[#383736] text-[#7B7A79] rounded-xl px-2.5 py-0.5 select-none">
+                                        No Deployment
+                                    </span>
+                                )}
+                            </div>
 
-                {/* Protection Settings */}
-                <div className="flex flex-col gap-4 border-t border-[#242323] pt-6 text-left">
-                    <span className="text-[14px] font-medium text-[#D6D5C9]">
-                        Access Protection
-                    </span>
-                    <div className="flex items-center justify-between">
-                        <div className="flex flex-col gap-0.5">
-                            <span className="text-[13px] text-[#D6D5C9]">Password Protection</span>
-                            <span className="text-[12px] text-[#7B7A79]">
-                                Require visitors to input a password to view this staging/preview
-                                deploy.
-                            </span>
-                        </div>
-                        <PremiumToggle
-                            active={pwdProtection}
-                            onChange={() => setPwdProtection(!pwdProtection)}
-                        />
-                    </div>
-                    <div className="flex items-center justify-between">
-                        <div className="flex flex-col gap-0.5">
-                            <span className="text-[13px] text-[#D6D5C9]">
-                                Block Search Indexing
-                            </span>
-                            <span className="text-[12px] text-[#7B7A79]">
-                                Instruct crawlers and search engines to ignore this deployment.
-                            </span>
-                        </div>
-                        <PremiumToggle active={noIndex} onChange={() => setNoIndex(!noIndex)} />
-                    </div>
-                </div>
+                            {vercelDeploymentUrl ? (
+                                <a
+                                    href={`https://${vercelDeploymentUrl}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center gap-2 text-[15px] font-semibold text-[#D6D5C9] hover:text-white hover:underline w-fit transition-colors"
+                                >
+                                    {vercelDeploymentUrl}
+                                    <ExternalLink className="w-3.5 h-3.5 opacity-60" />
+                                </a>
+                            ) : (
+                                <span className="text-[13px] text-[#7B7A79]">
+                                    No deployments active yet. Click "Deploy to Production" to
+                                    launch your app.
+                                </span>
+                            )}
 
-                {/* Build Logs Console & History */}
-                <div className="flex flex-col gap-4 border-t border-[#242323] pt-6 text-left">
-                    <span className="text-[14px] font-medium text-[#D6D5C9]">
-                        Terminal Build Logs & History
-                    </span>
-                    <div className="h-44 bg-[#100E12] rounded-xl border border-[#2B2A29] p-4 font-mono text-[11px] text-green-400 overflow-y-auto space-y-1 [&::-webkit-scrollbar]:w-[4px] [&::-webkit-scrollbar-thumb]:bg-[#383736]/60 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent">
-                        <div className="text-neutral-500">[12:02:11] $ bun run build.ts</div>
-                        <div>[12:02:12] 🚀 Starting compile loops...</div>
-                        <div>[12:02:13] 🗑️ Cleaning dist cache folder...</div>
-                        <div>[12:02:15] 📄 Processing components index mappings...</div>
-                        <div>[12:02:18] 📦 Bundling 4 JSX modules (vite v5.2)...</div>
-                        <div>[12:02:22] ✅ Assets generated: chunk-xbhnt5se.js (1.30 MB)</div>
-                        <div className="text-emerald-400 animate-pulse font-bold">
-                            [12:02:24] ✅ Deploying to edge... Ready!
+                            {vercelLastDeployedAt && (
+                                <div className="text-[12px] text-[#7B7A79] border-t border-[#242323] pt-3 flex justify-between items-center mt-1">
+                                    <span>Last Deployed</span>
+                                    <span className="font-medium text-[#D6D5C9]">
+                                        {new Date(vercelLastDeployedAt).toLocaleString()}
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Deploy Action and Helper Banner */}
+                        <div className="flex flex-col gap-4 w-full">
+                            <div className="flex flex-col gap-1.5 text-left w-full">
+                                <button
+                                    type="button"
+                                    onClick={handleDeploy}
+                                    disabled={deploying || !githubRepoName}
+                                    className={`w-fit flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-[13px] font-semibold transition-colors cursor-pointer ${
+                                        deploying
+                                            ? 'bg-[#242323] border border-[#383736] text-[#7B7A79] cursor-not-allowed'
+                                            : !githubRepoName
+                                              ? 'bg-[#242323] border border-[#383736] text-[#7B7A79] cursor-not-allowed'
+                                              : 'bg-[#E8E7E4] text-[#171615] hover:bg-white'
+                                    }`}
+                                >
+                                    {deploying ? (
+                                        <>
+                                            <RefreshCw className="w-4 h-4 animate-spin text-[#7B7A79]" />
+                                            Deploying Build...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Rocket className="w-4 h-4 text-[#171615]" />
+                                            Deploy to Production
+                                        </>
+                                    )}
+                                </button>
+
+                                {!githubRepoName && (
+                                    <div className="text-[12.5px] text-[#7B7A79] bg-[#1A1918] border border-[#2B2A29] px-3.5 py-2.5 rounded-xl flex items-center justify-between text-left w-full mt-2">
+                                        <span>
+                                            Please link a GitHub repository first to activate
+                                            deployment.
+                                        </span>
+                                        <button
+                                            type="button"
+                                            onClick={onSwitchToGithubTab}
+                                            className="text-[12.5px] font-semibold text-[#D6D5C9] hover:text-white underline cursor-pointer"
+                                        >
+                                            Configure GitHub
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+
+                            {deployError && (
+                                <div className="text-[12.5px] text-red-400 bg-red-950/20 border border-red-900/30 px-3.5 py-2.5 rounded-xl text-left w-full">
+                                    {deployError}
+                                </div>
+                            )}
+
+                            {/* Build Logs Console */}
+                            <div className="flex flex-col gap-2 border-t border-[#242323] pt-6 text-left w-full">
+                                <span className="text-[13px] font-medium text-[#7B7A79]">
+                                    Terminal Build Logs & History
+                                </span>
+                                <div className="h-44 bg-[#100E12] rounded-xl border border-[#2B2A29] p-4 font-mono text-[11px] text-[#D6D5C9] overflow-y-auto space-y-1 [&::-webkit-scrollbar]:w-[4px] [&::-webkit-scrollbar-thumb]:bg-[#383736]/60 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent">
+                                    {buildLogs.length > 0 ? (
+                                        buildLogs.map((log, index) => <div key={index}>{log}</div>)
+                                    ) : (
+                                        <div className="text-neutral-500">
+                                            [system] Ready to deploy. Click the deploy button above
+                                            to trigger a build.
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    <div className="p-4 rounded-xl border border-[#2B2A29] bg-[#1A1918]/20 flex items-center justify-between text-[12.5px]">
-                        <div className="space-y-0.5">
-                            <span className="block text-[#D6D5C9] font-semibold">
-                                Last Active Deployment
-                            </span>
-                            <span className="block text-xs text-[#7B7A79] font-mono">
-                                Build ID: dep_xbh726e • 5 minutes ago
-                            </span>
-                        </div>
-                        <span className="text-[10px] font-bold uppercase bg-green-950/40 border border-green-900/30 text-green-400 rounded-xl px-2.5 py-0.5 select-none flex items-center gap-1">
-                            <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-                            Success
-                        </span>
-                    </div>
-                </div>
+                )}
             </div>
         </div>
     )
