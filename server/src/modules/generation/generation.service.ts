@@ -442,7 +442,6 @@ export const generateWebsite = async (data: GenerateWebsiteInput) => {
                     inputTokens: totalInputTokens,
                     outputTokens: totalOutputTokens,
                     totalTokens: totalInputTokens + totalOutputTokens,
-                    costInCents: 1, // flat rate tracking
                     projectId: project?.id,
                 })
                 .catch((e) => console.error('Failed to record usage event:', e))
@@ -747,7 +746,6 @@ const applyProjectChange = async (
                     inputTokens: totalInputTokens,
                     outputTokens: totalOutputTokens,
                     totalTokens: totalInputTokens + totalOutputTokens,
-                    costInCents: 1, // flat rate tracking
                     projectId: base.project.id,
                 })
                 .catch((e) => console.error('Failed to record usage event:', e))

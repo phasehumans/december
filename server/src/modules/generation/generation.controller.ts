@@ -5,6 +5,7 @@ import {
     generateWebsiteSchema,
 } from './generation.schema'
 import { generateService } from './generation.service'
+import { usageService } from '../usage/usage.service'
 
 import type { Request, Response } from 'express'
 
@@ -35,6 +36,15 @@ const generateWebsite = async (req: Request, res: Response) => {
         return res.status(400).json({
             success: false,
             message: 'unauthorized',
+        })
+    }
+
+    const hasCredits = await usageService.hasMinimumBalance(userId)
+    if (!hasCredits) {
+        return res.status(402).json({
+            success: false,
+            message: 'insufficient_credits',
+            errors: 'You have run out of credits. Please purchase more credits or upgrade to Pro to continue.',
         })
     }
 
@@ -109,6 +119,15 @@ const applyProjectEdit = async (req: Request, res: Response) => {
         })
     }
 
+    const hasCredits = await usageService.hasMinimumBalance(userId)
+    if (!hasCredits) {
+        return res.status(402).json({
+            success: false,
+            message: 'insufficient_credits',
+            errors: 'You have run out of credits. Please purchase more credits or upgrade to Pro to continue.',
+        })
+    }
+
     try {
         prepareStream(res)
 
@@ -157,6 +176,15 @@ const applyProjectFix = async (req: Request, res: Response) => {
         return res.status(400).json({
             success: false,
             message: 'unauthorized',
+        })
+    }
+
+    const hasCredits = await usageService.hasMinimumBalance(userId)
+    if (!hasCredits) {
+        return res.status(402).json({
+            success: false,
+            message: 'insufficient_credits',
+            errors: 'You have run out of credits. Please purchase more credits or upgrade to Pro to continue.',
         })
     }
 
