@@ -45,7 +45,11 @@ model User {
   notionWorkspaceId   String?
   notionWorkspaceName String?
 
-  figmaConnected Boolean @default(false)
+  figmaConnected      Boolean   @default(false)
+  figmaAccessToken    String?   @db.Text
+  figmaRefreshToken   String?   @db.Text
+  figmaTokenExpiresAt DateTime?
+  figmaConnectedAt    DateTime?
 
   notifyProjectActivity Boolean @default(true)
   notifyProductUpdates  Boolean @default(false)

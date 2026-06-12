@@ -81,28 +81,21 @@ const connectVercel = async (req: Request, res: Response) => {
 
 const connectSupabase = async (req: Request, res: Response) => {
     try {
-        const code = typeof req.query.code === 'string' ? req.query.code : undefined
+        const code = req.query.code as string
+        const userId = req.query.state as string
 
-        const userId = req.user?.userId as string | undefined
-
-        console.log('USER:', userId)
-        console.log('CODE:', code)
-
-        if (!userId) {
-            return res.status(401).json({
-                success: false,
-                message: 'unauthorized',
-            })
+        if (!code) {
+            throw new AppError('no code provided', 400)
         }
 
-        const result = await integrationsService.connectSupabase({
+        if (!userId) {
+            throw new AppError('no user id provided', 400)
+        }
+
+        await integrationsService.connectSupabase({
             userId,
             code,
         })
-
-        if (result.type === 'redirect') {
-            return res.redirect(result.url)
-        }
 
         return res.redirect('http://localhost:3000/profile/integrations')
     } catch (error) {
@@ -124,26 +117,21 @@ const connectSupabase = async (req: Request, res: Response) => {
 
 const connectNotion = async (req: Request, res: Response) => {
     try {
-        const { code } = req.query
+        const code = req.query.code as string
+        const userId = req.query.state as string
 
-        const userId = req.user?.userId as string | undefined
+        if (!code) {
+            throw new AppError('no code provided', 400)
+        }
 
         if (!userId) {
-            return res.status(401).json({
-                success: false,
-                message: 'unauthorized',
-            })
+            throw new AppError('no user id provided', 400)
         }
 
-        const result = await integrationsService.connectNotion({
+        await integrationsService.connectNotion({
             userId,
-
-            code: typeof code === 'string' ? code : undefined,
+            code,
         })
-
-        if (result.type === 'redirect') {
-            return res.redirect(result.url)
-        }
 
         return res.redirect('http://localhost:3000/profile/integrations')
     } catch (error) {
@@ -227,16 +215,21 @@ const connectGithub = async (req: Request, res: Response) => {
 
 const connectFigma = async (req: Request, res: Response) => {
     try {
-        const userId = req.user?.userId as string | undefined
+        const code = req.query.code as string
+        const userId = req.query.state as string
 
-        if (!userId) {
-            return res.status(401).json({
-                success: false,
-                message: 'unauthorized',
-            })
+        if (!code) {
+            throw new AppError('no code provided', 400)
         }
 
-        await integrationsService.connectFigma(userId)
+        if (!userId) {
+            throw new AppError('no user id provided', 400)
+        }
+
+        await integrationsService.connectFigma({
+            userId,
+            code,
+        })
         return res.redirect('http://localhost:3000/profile/integrations')
     } catch (error) {
         if (error instanceof AppError) {

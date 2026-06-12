@@ -9,11 +9,12 @@ const integrationsRouter = Router()
 integrationsRouter.get('/vercel/connect', integrationsController.connectVercel)
 integrationsRouter.get('/github/connect', integrationsController.connectGithub)
 
-integrationsRouter.use(authMiddleware)
-integrationsRouter.get('/github/repos', integrationsController.getUserGithubRepos)
 integrationsRouter.get('/supabase/connect', integrationsController.connectSupabase)
 integrationsRouter.get('/notion/connect', integrationsController.connectNotion)
 integrationsRouter.get('/figma/connect', integrationsController.connectFigma)
+
+integrationsRouter.use(authMiddleware)
+integrationsRouter.get('/github/repos', integrationsController.getUserGithubRepos)
 
 integrationsRouter.post('/projects/:projectId/github/repository', integrationsController.createRepo)
 integrationsRouter.post('/projects/:projectId/github/sync', integrationsController.updateRepo)

@@ -44,32 +44,18 @@ type VercelTokenResponse = {
 
 interface ConnectSupaBase {
     userId: string
-    code?: string
+    code: string
 }
-
-type SupabaseConnectedResponse =
-    | {
-          type: 'redirect'
-          url: string
-      }
-    | {
-          type: 'connected'
-      }
 
 interface ConnectNotionParams {
     userId: string
-    code?: string
+    code: string
 }
 
-type NotionConnectedResponse =
-    | {
-          type: 'redirect'
-          url: string
-      }
-    | {
-          type: 'success'
-          workspaceName: string
-      }
+interface ConnectFigmaParams {
+    userId: string
+    code: string
+}
 
 const listGithubRepos = async (userId: string): Promise<GithubRepo[]> => {
     const user = await prisma.user.findUnique({
@@ -197,24 +183,7 @@ const connectVercel = async (data: ConnectVercel) => {
     return updatedUser
 }
 
-const connectSupabase = async ({
-    userId,
-    code,
-}: ConnectSupaBase): Promise<SupabaseConnectedResponse> => {
-    if (!code) {
-        const params = new URLSearchParams({
-            client_id: process.env.SUPABASE_CLIENT_ID!,
-            redirect_uri: process.env.SUPABASE_REDIRECT_URI!,
-            response_type: 'code',
-        })
-
-        return {
-            type: 'redirect',
-
-            url: `https://api.supabase.com/v1/oauth/authorize?${params.toString()}`,
-        }
-    }
-
+const connectSupabase = async ({ userId, code }: ConnectSupaBase) => {
     const params = new URLSearchParams({
         grant_type: 'authorization_code',
         code,
@@ -235,7 +204,7 @@ const connectSupabase = async ({
 
     const expiresAt = new Date(Date.now() + tokenData.expires_in * 1000)
 
-    await prisma.user.update({
+    const updatedUser = await prisma.user.update({
         where: {
             id: userId,
         },
@@ -261,29 +230,10 @@ const connectSupabase = async ({
         console.error('Failed to send supabase connection notification:', error)
     }
 
-    return {
-        type: 'connected',
-    }
+    return updatedUser
 }
 
-const connectNotion = async ({
-    userId,
-    code,
-}: ConnectNotionParams): Promise<NotionConnectedResponse> => {
-    if (!code) {
-        const params = new URLSearchParams({
-            client_id: process.env.NOTION_CLIENT_ID!,
-            response_type: 'code',
-            owner: 'user',
-            redirect_uri: process.env.NOTION_REDIRECT_URI!,
-        })
-
-        return {
-            type: 'redirect',
-            url: `https://api.notion.com/v1/oauth/authorize?${params.toString()}`,
-        }
-    }
-
+const connectNotion = async ({ userId, code }: ConnectNotionParams) => {
     const response = await axios.post(
         'https://api.notion.com/v1/oauth/token',
         {
@@ -305,7 +255,7 @@ const connectNotion = async ({
 
     const data = response.data
 
-    await prisma.user.update({
+    const updatedUser = await prisma.user.update({
         where: {
             id: userId,
         },
@@ -328,10 +278,7 @@ const connectNotion = async ({
         console.error('Failed to send notion connection notification:', error)
     }
 
-    return {
-        type: 'success',
-        workspaceName: data.workspace_name,
-    }
+    return updatedUser
 }
 
 const connectGithub = async (data: ConnectGithub) => {
@@ -381,7 +328,7 @@ const connectGithub = async (data: ConnectGithub) => {
     return updatedUser
 }
 
-const connectFigma = async (userId: string) => {
+const connectFigma = async ({ userId, code }: ConnectFigmaParams) => {
     const existingUser = await prisma.user.findUnique({
         where: {
             id: userId,
@@ -396,12 +343,33 @@ const connectFigma = async (userId: string) => {
         throw new AppError('user not found', 404)
     }
 
+    const params = new URLSearchParams({
+        grant_type: 'authorization_code',
+        code,
+        client_id: process.env.FIGMA_CLIENT_ID!,
+        client_secret: process.env.FIGMA_CLIENT_SECRET!,
+        redirect_uri: process.env.FIGMA_REDIRECT_URI!,
+    })
+
+    const response = await axios.post('https://www.figma.com/api/v1/oauth/token', params, {
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+    })
+
+    const tokenData = response.data
+    const expiresAt = new Date(Date.now() + tokenData.expires_in * 1000)
+
     const updatedUser = await prisma.user.update({
         where: {
             id: userId,
         },
         data: {
             figmaConnected: true,
+            figmaAccessToken: tokenData.access_token,
+            figmaRefreshToken: tokenData.refresh_token,
+            figmaTokenExpiresAt: expiresAt,
+            figmaConnectedAt: new Date(),
         },
     })
 
