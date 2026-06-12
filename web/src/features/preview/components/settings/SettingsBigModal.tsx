@@ -7,7 +7,6 @@ import {
     Globe,
     Activity,
     ChevronLeft,
-    X,
     Settings,
     Github,
     Lock,
@@ -356,11 +355,7 @@ export const SettingsBigModal: React.FC<SettingsModalProps> = ({
     const tabs = [
         { id: 'general', label: 'General', icon: <Sliders size={15} /> },
         { id: 'share', label: 'Share', icon: <Share size={15} /> },
-        {
-            id: 'integrations',
-            label: 'Github',
-            icon: <Github size={15} />,
-        },
+        { id: 'integrations', label: 'GitHub', icon: <Github size={15} /> },
         { id: 'publish', label: 'Publish', icon: <Cloud size={15} /> },
         { id: 'variables', label: 'Env Variables', icon: <Terminal size={15} /> },
     ]
@@ -372,7 +367,7 @@ export const SettingsBigModal: React.FC<SettingsModalProps> = ({
             onClose={handleClose}
         >
             {/* Sidebar */}
-            <div className="w-[220px] shrink-0 border-r border-[#242323] flex flex-col py-4">
+            <div className="w-[220px] shrink-0 border-r border-[#242323] flex flex-col py-4 bg-[#171615]">
                 <div className="px-4 mb-6">
                     <button
                         type="button"
@@ -399,7 +394,7 @@ export const SettingsBigModal: React.FC<SettingsModalProps> = ({
                                     : 'text-[#D6D5C9] hover:bg-[#1E1D1B]'
                             }`}
                         >
-                            <span className="text-[#7B7A79] flex items-center justify-center">
+                            <span className="flex items-center justify-center">
                                 {React.cloneElement(t.icon, {
                                     strokeWidth: 1.5,
                                     className: `w-[18px] h-[18px] ${t.icon.props.className || ''}`,
@@ -412,19 +407,9 @@ export const SettingsBigModal: React.FC<SettingsModalProps> = ({
             </div>
 
             {/* Right Pane */}
-            <div className="flex-1 flex flex-col min-w-0 h-full bg-[#171615]">
-                {/* Header Actions */}
-                <div className="h-10 flex items-center justify-end px-5 shrink-0">
-                    <button
-                        type="button"
-                        onClick={handleClose}
-                        className="p-1.5 rounded-lg text-[#7B7A79] hover:text-[#D6D5D4] hover:bg-white/5 transition-colors outline-none cursor-pointer"
-                    >
-                        <X size={15} />
-                    </button>
-                </div>
+            <div className="flex-1 flex flex-col min-w-0 h-full bg-[#171615] relative">
                 {/* Content Area */}
-                <div className="flex-1 overflow-y-auto [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/10 hover:[&::-webkit-scrollbar-thumb]:bg-white/20 p-5">
+                <div className="flex-1 overflow-y-auto [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/10 hover:[&::-webkit-scrollbar-thumb]:bg-white/20 p-8 pr-16">
                     {isLoading ? (
                         <div className="flex items-center justify-center py-20 text-[#7B7A79] text-[13px]">
                             Loading settings...
