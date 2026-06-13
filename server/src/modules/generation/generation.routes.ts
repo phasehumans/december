@@ -1,4 +1,4 @@
-﻿import { Router } from 'express'
+import { Router } from 'express'
 
 import { authMiddleware } from '../../middleware/auth.middleware'
 
@@ -10,5 +10,6 @@ generateRouter.use(authMiddleware)
 generateRouter.post('/', generateContoller.generateWebsite)
 generateRouter.post('/edit', generateContoller.applyProjectEdit)
 generateRouter.post('/fix', generateContoller.applyProjectFix)
+generateRouter.post('/projects/:id/validate', generateContoller.validateProject)
 
 export default generateRouter

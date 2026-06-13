@@ -12,10 +12,18 @@ start() {
   cd "$BASE_DIR/infra/postgres"
   docker compose -p december-postgres up -d
 
+  echo "Starting Nginx deployments container..."
+  cd "$BASE_DIR/infra/nginx"
+  docker compose -p december-nginx up -d
+
   echo "All containers started successfully"
 }
 
 stop() {
+  echo "Stopping Nginx deployments container..."
+  cd "$BASE_DIR/infra/nginx"
+  docker compose -p december-nginx down
+
   echo "Stopping Postgres containers..."
   cd "$BASE_DIR/infra/postgres"
   docker compose -p december-postgres down

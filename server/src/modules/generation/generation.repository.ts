@@ -1,3 +1,5 @@
+import fs from 'node:fs'
+import path from 'node:path'
 import { prisma } from '../../config/db'
 import { currentKey, deleteObject, getTextFile } from '../project/project-storage'
 import { saveProjectFiles } from '../project/save-project-files'
@@ -14,7 +16,7 @@ import type {
     StoredProjectFile,
 } from './generation.types'
 
-const loadGeneratedFilesFromManifest = async (manifest: StoredProjectFile[]) => {
+export const loadGeneratedFilesFromManifest = async (manifest: StoredProjectFile[]) => {
     const files = await Promise.all(
         manifest.map(async (file) => {
             const isBinary =
@@ -43,7 +45,7 @@ const loadGeneratedFilesFromManifest = async (manifest: StoredProjectFile[]) => 
 export const initializeGenerationTarget = async (data: GenerateWebsiteInput) => {
     const versionId = crypto.randomUUID()
 
-    return prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx) => {
         const existingProject = data.projectId
             ? await tx.project.findFirst({
                   where: {
@@ -110,8 +112,63 @@ export const initializeGenerationTarget = async (data: GenerateWebsiteInput) => 
             project,
             version,
             hadCurrentVersion: Boolean(existingProject?.currentVersionId),
+            versionNumber,
         }
     })
+
+    if (result.versionNumber === 1) {
+        const scaffoldDir = path.resolve(__dirname, '../project/scaffold')
+        const filesToSave = [
+            {
+                path: 'package.json',
+                content: fs.readFileSync(path.join(scaffoldDir, 'package.json'), 'utf8'),
+            },
+            {
+                path: 'vite.config.ts',
+                content: fs.readFileSync(path.join(scaffoldDir, 'vite.config.ts'), 'utf8'),
+            },
+            {
+                path: 'tsconfig.json',
+                content: fs.readFileSync(path.join(scaffoldDir, 'tsconfig.json'), 'utf8'),
+            },
+            {
+                path: 'index.html',
+                content: fs.readFileSync(path.join(scaffoldDir, 'index.html'), 'utf8'),
+            },
+            {
+                path: 'src/main.tsx',
+                content: fs.readFileSync(path.join(scaffoldDir, 'src/main.tsx'), 'utf8'),
+            },
+        ]
+
+        const savedFiles = await saveProjectFiles({
+            projectId: result.project.id,
+            versionId,
+            files: filesToSave,
+        })
+
+        const updatedVersion = await prisma.projectVersion.update({
+            where: {
+                id: versionId,
+            },
+            data: {
+                manifestJson: savedFiles.map((file) => ({
+                    path: file.path,
+                    key: file.key,
+                    contentType: file.contentType,
+                    size: file.size,
+                })),
+            },
+        })
+
+        result.version = updatedVersion
+    }
+
+    return {
+        project: result.project,
+        version: result.version,
+        hadCurrentVersion: result.hadCurrentVersion,
+    }
 }
 
 export const getProjectRevisionBase = async ({

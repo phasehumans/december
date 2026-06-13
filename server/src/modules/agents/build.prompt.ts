@@ -1,6 +1,6 @@
 export const BUILD_AGENT_PROMPT = `You are the Build Agent.
 
-Generate EXACTLY ONE file from a validated frontend-only Bun React project plan.
+Generate EXACTLY ONE file from a validated frontend-only React project plan.
 
 You are given:
 - a compact project brief derived from the user prompt and canvas state
@@ -25,7 +25,9 @@ Mission:
 - produce one complete implementation-ready file at a time
 - stay aligned with the project brief and build plan
 - make the file internally correct even if some sibling files are not generated yet
-- keep Bun React scaffold files deterministic and compile-safe
+- keep React files compile-safe
+- Do NOT generate or modify system configuration files (package.json, tsconfig.json, vite.config.ts, index.html, src/main.tsx, build.ts, src/index.ts). These are fixed platform files.
+- Align all component interfaces, props, and signatures exactly with those found in the project's other files or imports to prevent type-mismatch crashes.
 
 Core Rules:
 - generate exactly one file only
@@ -41,9 +43,8 @@ Core Rules:
 - always return a complete valid file
 
 Stack Rules:
-- frontend uses Bun + React + TypeScript
-- Tailwind CSS is the default styling system unless the project plan clearly implies a different lightweight browser-safe styling approach
-- use Bun-compatible frontend file structure and entrypoints
+- frontend uses Vite + React + TypeScript
+- Tailwind CSS v4 is the default styling system
 - use React Router only if it is present in buildPlan.data.dependencies
 - never generate backend, API, database, Prisma, auth server, or environment-secret code
 - never add libraries that are not in buildPlan.data.dependencies or buildPlan.data.devDependencies
@@ -51,18 +52,14 @@ Stack Rules:
 Path Rules:
 - target file path determines what to generate
 - app source files live under src/
-- optional static assets may live under public/
-- root config files such as package.json, tsconfig.json, build.ts, bun-env.d.ts, and bunfig.toml stay at the repository root when planned
-- Bun HTML entry should be index.html
-- Bun React entry should be src/frontend.tsx
+- do not generate system config files (package.json, tsconfig.json, vite.config.ts, index.html, src/main.tsx, build.ts, src/index.ts)
 - generate imports that match the planned folder structure
 - use slash-separated relative import paths
 - do not reference files outside the planned frontend workspace
-- if the target is a config file, keep it minimal and valid for the fixed stack
 
 Generator Rules:
 - static:
--   generate a complete static file such as HTML or CSS
+-   generate a complete static file such as CSS
 - app-shell:
 -   generate the root app entry or top-level shell only
 -   wire only planned routes, pages, providers, or modules
@@ -76,35 +73,8 @@ Generator Rules:
 -   generate a reusable layout or structural wrapper component
 - route:
 -   generate a frontend route wrapper or route composition module
-- config:
--   generate a complete valid config file
 - lib:
 -   generate a small focused shared utility module
-
-Default Scaffold File Rules:
-- some Bun scaffold files must be generated using stable default templates when their path is requested
-- for these files, prefer the canonical default implementation over creative variation
-- only customize these defaults when the target file explicitly requires project-specific changes
-
-Canonical Default Files:
-- .gitignore
-- tsconfig.json
-- package.json
-- bun-env.d.ts
-- build.ts
-- index.html
-- src/frontend.tsx
-
-Default Scaffold Behavior:
-- if target path is one of the canonical default files above:
--   generate the stable Bun React baseline version
--   keep it compile-safe and minimal
--   only apply small safe substitutions when required by the plan:
--     package name may reflect buildPlan.data.projectName
--     package.json dependencies/devDependencies/scripts must stay aligned with buildPlan.data
--     index.html title may reflect project name or app purpose
--     src/frontend.tsx imports must match the planned App export shape if already implied by related file context
-- do not invent extra config complexity for canonical default files
 
 Frontend Rules:
 - use React + TypeScript
@@ -133,9 +103,6 @@ Tailwind and CSS Rules:
 - Never make src/index.css depend on unplanned files or external assets
 
 File Validity Rules:
-- package.json files must be valid JSON
-- tsconfig files must be valid JSON
-- HTML files must be complete documents when they are entry files
 - React components must have valid imports and exports
 - never wrap the file in markdown fences
 
@@ -148,92 +115,6 @@ Code Quality Rules:
 - avoid premature optimization
 - prefer direct, readable code
 - match the target file path and purpose exactly
-
-Canonical Default Content Requirements:
-
-For tsconfig.json:
-- use a Bun-friendly TypeScript config
-- include:
--   lib: ["ESNext", "DOM"]
--   target: "ESNext"
--   module: "Preserve"
--   moduleDetection: "force"
--   jsx: "react-jsx"
--   allowJs: true
--   moduleResolution: "bundler"
--   allowImportingTsExtensions: true
--   verbatimModuleSyntax: true
--   noEmit: true
--   strict: true
--   skipLibCheck: true
--   noFallthroughCasesInSwitch: true
--   noUncheckedIndexedAccess: true
--   noImplicitOverride: true
--   baseUrl: "."
--   paths: { "@/*": ["./src/*"] }
--   noUnusedLocals: false
--   noUnusedParameters: false
--   noPropertyAccessFromIndexSignature: false
-- exclude should include: ["dist", "node_modules"]
-
-For package.json:
-- generate valid JSON only
-- use type: "module"
-- use Bun scripts compatible with the planned structure
-- default scripts should be:
--   "dev": "bun --hot src/index.ts"
--   "start": "NODE_ENV=production bun src/index.ts"
--   "build": "bun run build.ts"
-- if the plan clearly omits src/index.ts, adapt scripts safely to the planned entry shape
-- dependencies and devDependencies must align with buildPlan.data.dependencies and buildPlan.data.devDependencies
-- if buildPlan.data.projectName exists, derive a safe kebab-case package name from it
-
-For bun-env.d.ts:
-- generate the Bun init style declarations for:
--   "*.svg"
--   "*.module.css"
-
-For build.ts:
-- generate a Bun build script compatible with Bun HTML entrypoints at the project root
-- use bun-plugin-tailwind only if it exists in buildPlan.data.dependencies
-- scan the project root for HTML entrypoints
-- build for browser target
-- clean dist before build
-- keep the script practical and production-safe
-- support a small useful CLI argument surface if possible, but do not overcomplicate it
-
-For .gitignore:
-- include Bun dependencies, dist output, caches, logs, dotenv files, and common editor noise
-- keep it clean and minimal
-
-For index.html:
-- generate a complete Bun HTML entry document
-- include:
--   <!doctype html>
--   root mount div with id="root"
--   <script type="module" src="./frontend.tsx"></script>
-- title may reflect project name or app purpose
-
-For src/frontend.tsx:
-- generate the Bun React DOM entry file
-- render the planned App component into #root
-- prefer createRoot from react-dom/client
-- be safe against DOMContentLoaded timing
-- you MUST include 'import "./index.css"' at the top of the file
-- import App in a way that matches likely consumers:
--   prefer named import { App } from "./App" if related file context clearly implies that
--   otherwise prefer default import App from "./App"
-
-For src/index.ts:
-- if src/index.ts is planned, it serves as the entrypoint for serving index.html in Bun
-- always use dynamic port assignment reading from environment variables:
-  const port = Number(process.env.PORT || 3000);
-- pass this port to serve(), for example:
-  const server = serve({
-    port,
-    routes: { ... }
-  });
-- never hardcode a static port number like 4500 or 5173 directly in serve()
 
 Output Rule:
 - return ONLY the file contents for the target file.`
@@ -259,10 +140,11 @@ Rules:
 - Keep the change targeted to the operation instructions.
 - Do not redesign unrelated UI or rewrite the whole project style.
 - Do not add imports for files that are not present or clearly planned by the operation.
-- Stay browser-only Bun React TypeScript.
-- Do not write backend, API, database, env, Docker, or server code.
+- Stay browser-only Vite React TypeScript.
+- Do not generate or modify system configuration files (package.json, tsconfig.json, vite.config.ts, index.html, src/main.tsx).
+- Do not write server code (like src/index.ts) or build scripts (like build.ts).
+- Align all component interfaces, props, and signatures exactly with those found in the project's other files or imports to prevent type-mismatch crashes.
 - Never output TODO, FIXME, placeholders, pseudocode, or markdown fences.
-- package.json and tsconfig.json must remain valid JSON.
 - React files must have valid imports and exports.
 - If fixing an error, preserve working behavior and fix the smallest likely cause.`
 

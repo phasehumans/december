@@ -18,12 +18,14 @@ import {
     mergeProjectFiles,
     toRecentMessages,
     parsePartialArray,
+    parseStoredProjectFiles,
 } from './generation.utils'
 import {
     getProjectRevisionBase,
     initializeGenerationTarget,
     markGenerationFailed,
     persistProjectRevision,
+    loadGeneratedFilesFromManifest,
 } from './generation.repository'
 import {
     publishFinalPreviewSnapshot,
@@ -31,7 +33,13 @@ import {
 } from './generation.runtime'
 import { planAgentResponseSchema } from './generation.schema'
 import { emitAssistantMessage, emitFileStream, emitPatchFileStream } from './generation.stream'
+import { runtimeService } from '../runtime/runtime.service'
 import { usageService } from '../usage/usage.service'
+import {
+    extractStyleGuidelines,
+    upsertStyleGuidelines,
+    getErrorSignature,
+} from '../memory/memory.service'
 
 import type { GenerateWebsiteInput, ProjectPlan, ProjectRecord } from './generation.types'
 
@@ -47,6 +55,7 @@ type ApplyProjectEditInput = {
     canvasState?: GenerateWebsiteInput['canvasState']
     model?: string
     onEvent?: GenerateWebsiteInput['onEvent']
+    isSelfHealing?: boolean
 }
 
 type ApplyProjectFixInput = {
@@ -57,6 +66,7 @@ type ApplyProjectFixInput = {
     stack?: string
     model?: string
     onEvent?: GenerateWebsiteInput['onEvent']
+    isSelfHealing?: boolean
 }
 
 const fileTreeForPlanning = (files: Record<string, string>) =>
@@ -81,6 +91,138 @@ const resolveModel = async (userId: string, requestedModel?: string): Promise<st
     return process.env.AUTO_MODEL || 'openai/gpt-oss-20b:free'
 }
 
+const executeSelfCorrection = async (
+    projectId: string,
+    initialVersionId: string,
+    userId: string,
+    model?: string,
+    onEvent?: GenerateWebsiteInput['onEvent'],
+    initialResult?: any,
+    lastHealthyVersionId?: string
+): Promise<any> => {
+    let currentVersionId = initialVersionId
+    let currentResult = initialResult
+    const maxAttempts = 3
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        console.log(
+            `[self-healing] Attempt ${attempt} of ${maxAttempts} for project ${projectId}, version ${currentVersionId}`
+        )
+
+        // Abort self-healing if user credit balance falls below required threshold
+        const canRun = await usageService.canRunSelfCorrection(userId)
+        if (!canRun) {
+            console.warn(
+                `[self-healing] Aborting self-healing loop: user credit balance is below the required threshold.`
+            )
+            if (lastHealthyVersionId) {
+                console.log(
+                    `[self-healing] Rolling back project ${projectId} currentVersionId pointer to ${lastHealthyVersionId}`
+                )
+                await prisma.project.update({
+                    where: { id: projectId },
+                    data: { currentVersionId: lastHealthyVersionId },
+                })
+            }
+            return currentResult
+        }
+
+        await onEvent?.({
+            type: 'phase',
+            data: {
+                phase: 'building',
+            },
+        })
+
+        const checkResult = await runtimeService.checkSandboxCompilation(projectId)
+
+        if (checkResult.success) {
+            console.log(`[self-healing] Compilation check passed on attempt ${attempt}!`)
+            return currentResult
+        }
+
+        const compileErrors = checkResult.errors || 'Unknown compilation error'
+        console.warn(
+            `[self-healing] Compilation check failed on attempt ${attempt}:\n${compileErrors}`
+        )
+
+        const errorSignature = getErrorSignature(compileErrors)
+
+        // Check if we've already seen this exact error in this session (scoped to initialVersionId)
+        const existingMemory = await prisma.agentSessionMemory.findFirst({
+            where: {
+                projectId,
+                versionId: initialVersionId,
+                errorSignature,
+            },
+        })
+
+        if (existingMemory) {
+            console.warn(
+                `[self-healing] Loop detected: exact error signature already seen in this session. Aborting self-healing loop.`
+            )
+            if (lastHealthyVersionId) {
+                console.log(
+                    `[self-healing] Rolling back project ${projectId} currentVersionId pointer to ${lastHealthyVersionId}`
+                )
+                await prisma.project.update({
+                    where: { id: projectId },
+                    data: { currentVersionId: lastHealthyVersionId },
+                })
+            }
+            return currentResult
+        }
+
+        // Log the error signature to prevent repeating it
+        await prisma.agentSessionMemory.create({
+            data: {
+                projectId,
+                versionId: initialVersionId,
+                errorSignature,
+            },
+        })
+
+        if (attempt === maxAttempts) {
+            console.error(
+                `[self-healing] Reached maximum attempts (${maxAttempts}). Returning last generated version.`
+            )
+            if (lastHealthyVersionId) {
+                console.log(
+                    `[self-healing] Rolling back project ${projectId} currentVersionId pointer to ${lastHealthyVersionId}`
+                )
+                await prisma.project.update({
+                    where: { id: projectId },
+                    data: { currentVersionId: lastHealthyVersionId },
+                })
+            }
+            return currentResult
+        }
+
+        // Apply automated fix
+        await onEvent?.({
+            type: 'phase',
+            data: {
+                phase: 'thinking',
+            },
+        })
+
+        // Call applyProjectFix inside the loop with isSelfHealing: true
+        currentResult = await applyProjectChange('fix', {
+            userId,
+            projectId,
+            versionId: currentVersionId,
+            errorMessage: compileErrors,
+            model,
+            onEvent,
+            isSelfHealing: true,
+        })
+
+        currentVersionId = currentResult.version.id
+    }
+
+    return currentResult
+}
+
 export const generateWebsite = async (data: GenerateWebsiteInput) => {
     const { prompt, onEvent } = data
     const userPrompt = cleanPrompt(prompt)
@@ -103,6 +245,11 @@ export const generateWebsite = async (data: GenerateWebsiteInput) => {
 
         project = initializedTarget.project
         versionId = initializedTarget.version.id
+
+        // Extract and save style guidelines from the prompt
+        const extractedGuidelines = extractStyleGuidelines(prompt)
+        await upsertStyleGuidelines(project.id, extractedGuidelines)
+
         versionNumber = initializedTarget.version.versionNumber
         versionLabel = initializedTarget.version.label ?? `v${versionNumber}`
         hadCurrentVersion = initializedTarget.hadCurrentVersion
@@ -155,6 +302,8 @@ export const generateWebsite = async (data: GenerateWebsiteInput) => {
             userPrompt,
             canvasState: persistedCanvas.canvasStateJson as any,
             model: resolvedModel,
+            projectId: project.id,
+            userId: data.userId,
             onStream: async (fullContent: string) => {
                 const thoughts = parsePartialArray(fullContent, 'thoughts')
                 if (thoughts.length > lastThoughtsLength) {
@@ -208,7 +357,10 @@ export const generateWebsite = async (data: GenerateWebsiteInput) => {
         const planData = plan.data as NonNullable<ProjectPlan['data']>
         assertFrontendOnlyPlan(plan)
         const orderedFiles = getFilesInGenerationOrder(plan)
-        const generatedFiles: Record<string, string> = {}
+        const initialFiles = await loadGeneratedFilesFromManifest(
+            parseStoredProjectFiles(initializedTarget.version.manifestJson)
+        )
+        const generatedFiles: Record<string, string> = { ...initialFiles }
         let previewManifestSequence = 0
         const thoughtsMessage = toVisibleMessage(parsePlan.data.thoughts)
         const planOfActionMessage = toVisibleMessage(parsePlan.data.plan_of_action)
@@ -256,6 +408,8 @@ export const generateWebsite = async (data: GenerateWebsiteInput) => {
                     targetFile: file,
                     generatedFiles,
                     model: resolvedModel,
+                    projectId: project.id,
+                    userId: data.userId,
                 })
                 totalInputTokens += buildRes.usage.inputTokens
                 totalOutputTokens += buildRes.usage.outputTokens
@@ -413,12 +567,23 @@ export const generateWebsite = async (data: GenerateWebsiteInput) => {
             generatedFiles,
         }
 
+        // Run self-healing compilation loop
+        const finalResult = await executeSelfCorrection(
+            project.id,
+            persisted.version.id,
+            data.userId,
+            resolvedModelName,
+            onEvent,
+            result,
+            initializedTarget.project.currentVersionId || undefined
+        )
+
         await onEvent?.({
             type: 'result',
-            data: result,
+            data: finalResult,
         })
 
-        return result
+        return finalResult
     } catch (error) {
         if (project && versionId) {
             await markGenerationFailed({
@@ -461,6 +626,12 @@ const applyProjectChange = async (
     const isEdit = mode === 'edit'
     const editData = data as ApplyProjectEditInput
     const fixData = data as ApplyProjectFixInput
+
+    if (isEdit && editData.prompt) {
+        const extractedGuidelines = extractStyleGuidelines(editData.prompt)
+        await upsertStyleGuidelines(base.project.id, extractedGuidelines)
+    }
+
     const sourcePrompt = isEdit ? editData.prompt : `Fix preview error: ${fixData.errorMessage}`
     let assistantMessageContent = ''
 
@@ -488,6 +659,7 @@ const applyProjectChange = async (
 
         const rawPlanResponse = await extractProjectChangePlan({
             mode,
+            userId: data.userId,
             ...(isEdit ? { prompt: editData.prompt } : {}),
             ...(isEdit && editData.selectedElement
                 ? { selectedElement: editData.selectedElement }
@@ -641,6 +813,8 @@ const applyProjectChange = async (
                             : {}),
                     },
                     model: resolvedModel,
+                    projectId: base.project.id,
+                    userId: data.userId,
                 })
                 totalInputTokens += patchRes.usage.inputTokens
                 totalOutputTokens += patchRes.usage.outputTokens
@@ -731,12 +905,31 @@ const applyProjectChange = async (
             assistantMessage: persisted.assistantMessage,
         }
 
+        if (data.isSelfHealing) {
+            await data.onEvent?.({
+                type: 'result',
+                data: result,
+            })
+            return result
+        }
+
+        // Run self-healing compilation loop
+        const finalResult = await executeSelfCorrection(
+            base.project.id,
+            persisted.version.id,
+            data.userId,
+            resolvedModelName,
+            data.onEvent,
+            result,
+            base.baseVersion.id
+        )
+
         await data.onEvent?.({
             type: 'result',
-            data: result,
+            data: finalResult,
         })
 
-        return result
+        return finalResult
     } finally {
         if (totalInputTokens > 0 || totalOutputTokens > 0) {
             usageService

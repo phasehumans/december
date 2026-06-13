@@ -8,7 +8,7 @@ use tokio::{
 use tracing::{error, info, warn};
 
 use crate::{
-    actors::preview::ActorCommand::{ApplyManifest, Stop},
+    actors::preview::ActorCommand::{ApplyManifest, RunCompileCheck, Stop},
     app::{
         config::AppConfig,
         state::{PreviewLifecycleState, PreviewStatusSnapshot, backend_status_for},
@@ -17,7 +17,7 @@ use crate::{
         error::RuntimeServiceError,
         manifest::{ManifestDiff, ManifestRef, PreviewManifest, ReconcileMode, is_newer_manifest},
     },
-    sandboxes::{Sandbox, docker::DockerSandbox},
+    sandboxes::{CompileCheckResult, Sandbox, docker::DockerSandbox},
     services::{
         backend::BackendCallbackClient,
         storage::ObjectStorage,
@@ -33,6 +33,7 @@ pub struct PreviewActorHandle {
 
 enum ActorCommand {
     ApplyManifest(ManifestRef),
+    RunCompileCheck(tokio::sync::oneshot::Sender<Result<CompileCheckResult, RuntimeServiceError>>),
     Stop,
 }
 
@@ -114,6 +115,10 @@ impl PreviewActor {
                                 error!(preview_id = %self.preview_id, error = %error, "preview reconcile failed");
                                 self.fail(error).await;
                             }
+                        }
+                        RunCompileCheck(reply_tx) => {
+                            let result = self.sandbox.run_compile_check().await;
+                            let _ = reply_tx.send(result);
                         }
                         Stop => {
                             self.transition(PreviewLifecycleState::Stopped, None).await;
@@ -437,5 +442,24 @@ impl PreviewActorHandle {
 
     pub fn snapshot(&self) -> PreviewStatusSnapshot {
         self.status_rx.borrow().clone()
+    }
+
+    pub async fn run_compile_check(&self) -> Result<CompileCheckResult, RuntimeServiceError> {
+        let (tx, rx) = tokio::sync::oneshot::channel();
+        self.command_tx
+            .send(RunCompileCheck(tx))
+            .await
+            .map_err(|error| {
+                RuntimeServiceError::infra_runtime(
+                    "preview actor is unavailable for compile check",
+                    Some(error.to_string()),
+                )
+            })?;
+        rx.await.map_err(|_| {
+            RuntimeServiceError::infra_runtime(
+                "preview actor compile check channel closed",
+                None,
+            )
+        })?
     }
 }
