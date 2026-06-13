@@ -7,6 +7,7 @@ import { projectController } from './project.controller'
 const projectRouter = Router()
 
 projectRouter.use(authMiddleware)
+
 projectRouter.get('/', projectController.getAllProjects)
 projectRouter.get('/:projectId', projectController.getProjectById)
 projectRouter.post('/', projectController.createProject)
@@ -17,6 +18,5 @@ projectRouter.post('/:projectId/duplicate', projectController.duplicateProject)
 projectRouter.get('/:projectId/download', projectController.downloadProjectVersion)
 projectRouter.post('/:projectId/share', projectController.shareProjectAsTemplate)
 projectRouter.post('/:projectId/star', projectController.toggleStarProject)
-projectRouter.post('/:projectId/deploy/december', projectController.deployDecemberProject)
 
 export default projectRouter

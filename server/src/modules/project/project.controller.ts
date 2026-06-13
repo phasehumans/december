@@ -7,7 +7,7 @@ import {
     renameProjectSchema,
     updateGeneralSettingsSchema,
     shareProjectAsTemplateSchema,
-    toogleStarProjectSchema,
+    toggleStarProjectSchema,
 } from './project.schema'
 import { projectService } from './project.service'
 
@@ -24,7 +24,7 @@ const getAllProjects = async (req: Request, res: Response) => {
     }
 
     try {
-        const result = await projectService.getAllProjects(userId)
+        const result = await projectService.getAllProjects({ userId })
         return res.status(200).json({
             success: true,
             message: 'projects fetched successfully',
@@ -466,7 +466,7 @@ const shareProjectAsTemplate = async (req: Request, res: Response) => {
 const toggleStarProject = async (req: Request, res: Response) => {
     const userId = req.user?.userId as string | undefined
     const projectId = req.params.projectId as string | undefined
-    const parseData = toogleStarProjectSchema.safeParse(req.body)
+    const parseData = toggleStarProjectSchema.safeParse(req.body)
 
     if (!userId) {
         return res.status(400).json({
@@ -516,48 +516,6 @@ const toggleStarProject = async (req: Request, res: Response) => {
     }
 }
 
-const deployDecemberProject = async (req: Request, res: Response) => {
-    const userId = req.user?.userId as string | undefined
-    const projectId = req.params.projectId as string | undefined
-
-    if (!userId) {
-        return res.status(400).json({
-            success: false,
-            message: 'unauthorized',
-        })
-    }
-
-    if (!projectId) {
-        return res.status(400).json({
-            success: false,
-            message: 'project id is required',
-        })
-    }
-
-    try {
-        const result = await projectService.deployDecemberProject(projectId, userId)
-        return res.status(200).json({
-            success: true,
-            message: result.message,
-            data: result,
-        })
-    } catch (error: any) {
-        if (error instanceof AppError) {
-            return res.status(error.statusCode).json({
-                success: false,
-                message: 'failed to deploy project to December',
-                errors: error.message,
-            })
-        }
-
-        return res.status(500).json({
-            success: false,
-            message: 'failed to deploy project to December',
-            errors: error instanceof Error ? error.message : 'unknown error',
-        })
-    }
-}
-
 export const projectController = {
     getAllProjects,
     getProjectById,
@@ -569,5 +527,4 @@ export const projectController = {
     downloadProjectVersion,
     shareProjectAsTemplate,
     toggleStarProject,
-    deployDecemberProject,
 }

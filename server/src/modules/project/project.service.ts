@@ -24,70 +24,17 @@ import {
     isVersionSchemaMissing,
 } from '../project/project.utils'
 
-type GetProject = {
-    userId: string
-    projectId: string
-    versionId?: string
-}
-
-type CreateProject = {
-    name: string
-    description: string | undefined
-    prompt: string
-    userId: string
-}
-
-type RenameProject = {
-    projectId: string
-    userId: string
-    rename: string
-}
-
-type UpdateGeneralSettings = {
-    projectId: string
-    userId: string
-    name?: string
-    description?: string | null
-    isStarred?: boolean
-    isSharedAsTemplate?: boolean
-    projectCategory?:
-        | 'LANDING_PAGE'
-        | 'DASHBOARD'
-        | 'PORTFOLIO_BLOG'
-        | 'SAAS_APP'
-        | 'ECOMMERCE'
-        | 'NONE'
-}
-
-type DeleteProject = {
-    userId: string
-    projectId: string
-}
-
-type DuplicateProject = {
-    userId: string
-    projectId: string
-    name?: string
-}
-
-type ShareProject = {
-    userId: string
-    projectId: string
-    isSharedAsTemplate: boolean
-    projectCategory?:
-        | 'LANDING_PAGE'
-        | 'DASHBOARD'
-        | 'PORTFOLIO_BLOG'
-        | 'SAAS_APP'
-        | 'ECOMMERCE'
-        | 'NONE'
-}
-
-type ToogleStarProject = {
-    userId: string
-    projectId: string
-    isStarred: boolean
-}
+import type {
+    GetAllProjects,
+    GetProject,
+    CreateProject,
+    RenameProject,
+    UpdateGeneralSettings,
+    DeleteProject,
+    DuplicateProject,
+    ShareProject,
+    ToggleStarProject,
+} from './project.types'
 
 export type StoredProjectFile = {
     path: string
@@ -122,7 +69,8 @@ export const loadGeneratedFilesFromManifest = async (manifest: StoredProjectFile
     return Object.fromEntries(files)
 }
 
-const getAllProjects = async (userId: string) => {
+const getAllProjects = async (data: GetAllProjects) => {
+    const { userId } = data
     const user = await prisma.user.findUnique({
         where: {
             id: userId,
@@ -580,7 +528,7 @@ export const copyProjectVersionsAndMessages = async (
     }
 
     const newCurrentVersionId = sourceCurrentVersionId
-        ? versionIdMap.get(sourceCurrentVersionId)
+        ? (versionIdMap.get(sourceCurrentVersionId) ?? null)
         : null
 
     try {
@@ -748,7 +696,7 @@ const shareProjectAsTemplate = async (data: ShareProject) => {
     }
 }
 
-const toggleStarProject = async (data: ToogleStarProject) => {
+const toggleStarProject = async (data: ToggleStarProject) => {
     const { userId, projectId, isStarred } = data
 
     const project = await prisma.project.updateMany({
@@ -771,96 +719,6 @@ const toggleStarProject = async (data: ToogleStarProject) => {
     return { message: 'project isStarred state updated' }
 }
 
-function copyDirRecursive(src: string, dest: string) {
-    fs.mkdirSync(dest, { recursive: true })
-    const entries = fs.readdirSync(src, { withFileTypes: true })
-
-    for (const entry of entries) {
-        const srcPath = path.join(src, entry.name)
-        const destPath = path.join(dest, entry.name)
-
-        if (entry.isDirectory()) {
-            copyDirRecursive(srcPath, destPath)
-        } else {
-            fs.copyFileSync(srcPath, destPath)
-        }
-    }
-}
-
-const deployDecemberProject = async (projectId: string, userId: string) => {
-    const project = await prisma.project.findFirst({
-        where: {
-            id: projectId,
-            userId,
-            isDeleted: false,
-            user: { isDeleted: false },
-        },
-        include: {
-            currentVersion: true,
-        },
-    })
-
-    if (!project) {
-        throw new AppError('project not found', 404)
-    }
-
-    if (!project.currentVersionId) {
-        throw new AppError('project has no compiled version to deploy', 400)
-    }
-
-    let compilationFailed = false
-    let compilationError = ''
-    try {
-        const checkResult = await runtimeService.checkSandboxCompilation(projectId)
-        if (!checkResult.success) {
-            compilationFailed = true
-            compilationError = checkResult.errors || 'Unknown compilation error'
-        }
-    } catch (err: any) {
-        console.error('[deploy] failed to run checkSandboxCompilation:', err)
-    }
-
-    const workspacesRoot =
-        process.env.RUNTIME_WORKSPACE_ROOT ||
-        path.resolve(__dirname, '../../../../runtime/workspaces')
-    const distPath = path.join(workspacesRoot, projectId, 'dist')
-
-    if (compilationFailed) {
-        throw new AppError(`Compilation check failed: ${compilationError}`, 400)
-    }
-
-    if (!fs.existsSync(distPath)) {
-        throw new AppError(
-            'Built production assets not found. Please trigger a preview first to compile the project.',
-            400
-        )
-    }
-
-    const deploymentsRoot = path.resolve(__dirname, '../../../../infra/nginx/deployments')
-    const projectDeployPath = path.join(deploymentsRoot, projectId)
-
-    if (fs.existsSync(projectDeployPath)) {
-        fs.rmSync(projectDeployPath, { recursive: true, force: true })
-    }
-
-    copyDirRecursive(distPath, projectDeployPath)
-
-    const deployUrl = `http://${projectId}.december.localhost:8085`
-    const updated = await prisma.project.update({
-        where: { id: projectId },
-        data: {
-            decemberDeploymentUrl: deployUrl,
-            decemberLastDeployedAt: new Date(),
-        },
-    })
-
-    return {
-        message: 'Project deployed successfully to December local hosting',
-        deploymentUrl: deployUrl,
-        lastDeployedAt: updated.decemberLastDeployedAt,
-    }
-}
-
 export const projectService = {
     getAllProjects,
     getProjectById,
@@ -872,5 +730,4 @@ export const projectService = {
     downloadProjectVersion,
     shareProjectAsTemplate,
     toggleStarProject,
-    deployDecemberProject,
 }

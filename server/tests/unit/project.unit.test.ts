@@ -5,7 +5,7 @@ import {
     renameProjectSchema,
     getProjectByIdSchema,
     downloadProjectVersionSchema,
-    toogleStarProjectSchema,
+    toggleStarProjectSchema,
 } from '../../src/modules/project/project.schema'
 import {
     isVersionSchemaMissing,
@@ -204,29 +204,29 @@ describe('project.schema', () => {
         })
     })
 
-    describe('toogleStarProjectSchema', () => {
+    describe('toggleStarProjectSchema', () => {
         test('should pass with isStarred true', () => {
-            expect(toogleStarProjectSchema.safeParse({ isStarred: true }).success).toBe(true)
+            expect(toggleStarProjectSchema.safeParse({ isStarred: true }).success).toBe(true)
         })
 
         test('should pass with isStarred false', () => {
-            expect(toogleStarProjectSchema.safeParse({ isStarred: false }).success).toBe(true)
+            expect(toggleStarProjectSchema.safeParse({ isStarred: false }).success).toBe(true)
         })
 
         test('should fail if isStarred is missing', () => {
-            expect(toogleStarProjectSchema.safeParse({}).success).toBe(false)
+            expect(toggleStarProjectSchema.safeParse({}).success).toBe(false)
         })
 
         test('should fail if isStarred is a string "true"', () => {
-            expect(toogleStarProjectSchema.safeParse({ isStarred: 'true' }).success).toBe(false)
+            expect(toggleStarProjectSchema.safeParse({ isStarred: 'true' }).success).toBe(false)
         })
 
         test('should fail if isStarred is a number 1', () => {
-            expect(toogleStarProjectSchema.safeParse({ isStarred: 1 }).success).toBe(false)
+            expect(toggleStarProjectSchema.safeParse({ isStarred: 1 }).success).toBe(false)
         })
 
         test('should fail if isStarred is null', () => {
-            expect(toogleStarProjectSchema.safeParse({ isStarred: null }).success).toBe(false)
+            expect(toggleStarProjectSchema.safeParse({ isStarred: null }).success).toBe(false)
         })
     })
 })

@@ -75,7 +75,7 @@ describe('project.service.integration', () => {
         it('should return all projects for a valid user', async () => {
             await createProject(userId, { name: 'Second Project' })
 
-            const result = await projectService.getAllProjects(userId)
+            const result = await projectService.getAllProjects({ userId })
 
             expect(Array.isArray(result)).toBe(true)
             expect(result.length).toBe(2)
@@ -87,7 +87,7 @@ describe('project.service.integration', () => {
         it('should return an empty array when user has no projects', async () => {
             await prisma.project.deleteMany({ where: { userId } })
 
-            const result = await projectService.getAllProjects(userId)
+            const result = await projectService.getAllProjects({ userId })
 
             expect(result).toEqual([])
         })
@@ -95,7 +95,7 @@ describe('project.service.integration', () => {
         it('should throw "user not found" for a non-existent userId', async () => {
             let threw = false
             try {
-                await projectService.getAllProjects('non-existent-user-id')
+                await projectService.getAllProjects({ userId: 'non-existent-user-id' })
             } catch (err: any) {
                 threw = true
                 expect(err.message).toBe('user not found')
@@ -108,7 +108,7 @@ describe('project.service.integration', () => {
 
             let threw = false
             try {
-                await projectService.getAllProjects(deletedUser.id)
+                await projectService.getAllProjects({ userId: deletedUser.id })
             } catch (err: any) {
                 threw = true
                 expect(err.message).toBe('user not found')
@@ -120,7 +120,7 @@ describe('project.service.integration', () => {
             const otherUser = await createUser()
             await createProject(otherUser.id, { name: 'Other User Project' })
 
-            const result = await projectService.getAllProjects(userId)
+            const result = await projectService.getAllProjects({ userId })
 
             const names = result.map((p) => p.name)
             expect(names).not.toContain('Other User Project')
