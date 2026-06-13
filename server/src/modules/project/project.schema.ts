@@ -23,18 +23,16 @@ export const renameProjectSchema = z.object({
 })
 
 export const updateGeneralSettingsSchema = z.object({
-    name: z.string({ invalid_type_error: 'Project name must be a string' }).optional(),
+    name: z.string({ message: 'Project name must be a string' }).optional(),
     description: z
-        .string({ invalid_type_error: 'Project description must be a string' })
+        .string({ message: 'Project description must be a string' })
         .nullable()
         .optional(),
-    isStarred: z.boolean({ invalid_type_error: 'isStarred must be a boolean' }).optional(),
-    isSharedAsTemplate: z
-        .boolean({ invalid_type_error: 'isSharedAsTemplate must be a boolean' })
-        .optional(),
+    isStarred: z.boolean({ message: 'isStarred must be a boolean' }).optional(),
+    isSharedAsTemplate: z.boolean({ message: 'isSharedAsTemplate must be a boolean' }).optional(),
     projectCategory: z
         .enum(['LANDING_PAGE', 'DASHBOARD', 'PORTFOLIO_BLOG', 'SAAS_APP', 'ECOMMERCE', 'NONE'], {
-            invalid_type_error: 'Invalid project category',
+            message: 'Invalid project category',
         })
         .optional(),
 })
@@ -53,7 +51,7 @@ export const downloadProjectVersionSchema = z.object({
         .optional(),
 })
 
-export const toogleStarProjectSchema = z.object({
+export const toggleStarProjectSchema = z.object({
     isStarred: z.boolean({ message: 'isStarred must be a boolean' }),
 })
 

@@ -60,8 +60,8 @@ afterAll(() => {
     fs.copyFileSync = originalCopyFileSync
 })
 
-// Import projectService
-import { projectService } from '../../src/modules/project/project.service'
+// Import platformService
+import { platformService } from '../../src/modules/platform/platform.service'
 
 describe('December Local Deployment Service', () => {
     beforeEach(() => {
@@ -78,20 +78,23 @@ describe('December Local Deployment Service', () => {
 
     test('should throw 404 if project is not found', async () => {
         mockProject = null
-        expect(projectService.deployDecemberProject('proj-123', 'user-123')).rejects.toThrow(
-            'project not found'
-        )
+        expect(
+            platformService.deployDecemberProject({ projectId: 'proj-123', userId: 'user-123' })
+        ).rejects.toThrow('project not found')
     })
 
     test('should throw 400 if project has no compiled version', async () => {
         mockProject.currentVersionId = null
-        expect(projectService.deployDecemberProject('proj-123', 'user-123')).rejects.toThrow(
-            'project has no compiled version to deploy'
-        )
+        expect(
+            platformService.deployDecemberProject({ projectId: 'proj-123', userId: 'user-123' })
+        ).rejects.toThrow('project has no compiled version to deploy')
     })
 
     test('should invoke checkSandboxCompilation and build files', async () => {
-        const result = await projectService.deployDecemberProject('proj-123', 'user-123')
+        const result = await platformService.deployDecemberProject({
+            projectId: 'proj-123',
+            userId: 'user-123',
+        })
         expect(mockCheckCalled).toBe(true)
         expect(result.deploymentUrl).toBe('http://proj-123.december.localhost:8085')
     })
@@ -99,15 +102,15 @@ describe('December Local Deployment Service', () => {
     test('should throw 400 if compilation fails', async () => {
         mockCheckSuccess = false
         mockCheckErrors = 'Vite Build error in App.tsx'
-        expect(projectService.deployDecemberProject('proj-123', 'user-123')).rejects.toThrow(
-            'Compilation check failed: Vite Build error in App.tsx'
-        )
+        expect(
+            platformService.deployDecemberProject({ projectId: 'proj-123', userId: 'user-123' })
+        ).rejects.toThrow('Compilation check failed: Vite Build error in App.tsx')
     })
 
     test('should throw 400 if dist directory does not exist after build', async () => {
         fsExistsMock = false // Make existSync('dist') return false
-        expect(projectService.deployDecemberProject('proj-123', 'user-123')).rejects.toThrow(
-            'Built production assets not found'
-        )
+        expect(
+            platformService.deployDecemberProject({ projectId: 'proj-123', userId: 'user-123' })
+        ).rejects.toThrow('Built production assets not found')
     })
 })

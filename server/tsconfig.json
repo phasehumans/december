@@ -29,5 +29,5 @@
         "noUnusedParameters": false,
         "noPropertyAccessFromIndexSignature": false
     },
-    "exclude": ["node_modules", "dist", "src/modules/project/scaffold"]
+    "exclude": ["node_modules", "dist", "src/scaffold"]
 }
