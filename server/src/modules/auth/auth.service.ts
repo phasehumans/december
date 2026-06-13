@@ -5,14 +5,11 @@ import bcrypt from 'bcrypt'
 import { prisma } from '../../config/db'
 import { AppError } from '../../shared/appError'
 
-// import { authSession, deleteSessionById, isSessionExpired } from './auth.session'
-// import { authToken } from './auth.token'
 import { sendNotificationToUser } from '../notification/notification.service'
 
 import {
     sendOTP,
     sendWelcomeEmail,
-    sendInternalWelcomeNotification,
     getNameFromEmail,
     getUsername,
     generateAccessToken,
@@ -79,7 +76,28 @@ const signup = async (data: Signup) => {
         if (!existingUser.password) {
             throw new AppError('google_account_exists', 400)
         }
-        throw new AppError('email already exists', 409)
+        if (existingUser.emailVerified) {
+            throw new AppError('email already exists', 409)
+        }
+
+        const hashPassword = await bcrypt.hash(password, 10)
+        const otp = crypto.randomInt(100000, 1000000).toString()
+        const otpHash = await bcrypt.hash(otp, 10)
+
+        await prisma.user.update({
+            where: {
+                id: existingUser.id,
+            },
+            data: {
+                password: hashPassword,
+                otpHash,
+                otpExpiresAt: new Date(Date.now() + 10 * 60 * 1000),
+            },
+        })
+
+        await sendOTP(existingUser.email, otp)
+
+        return { message: 'otp sent successfully' }
     }
 
     let name = getNameFromEmail(email)
@@ -105,7 +123,7 @@ const signup = async (data: Signup) => {
         },
     })
 
-    console.log(otp)
+    // console.log(otp)
 
     await sendOTP(newUser.email, otp)
 
@@ -210,12 +228,6 @@ const verifyOtp = async (data: VerifyOtp) => {
         await sendWelcomeEmail(user.email, user.name || '')
     } catch (error) {
         console.error('failed to send welcome email:', error)
-    }
-
-    try {
-        await sendInternalWelcomeNotification(user.email, user.name || '', 'Email/OTP')
-    } catch (error) {
-        console.error('failed to send internal welcome notification:', error)
     }
 
     return {
@@ -469,12 +481,6 @@ const google = async (data: Google) => {
             await sendWelcomeEmail(user.email, user.name || '')
         } catch (error) {
             console.error('failed to send welcome email:', error)
-        }
-
-        try {
-            await sendInternalWelcomeNotification(user.email, user.name || '', 'Google')
-        } catch (error) {
-            console.error('failed to send internal welcome notification:', error)
         }
     } else if (user.deletedAt || user.isDeleted) {
         throw new AppError('account has been deleted', 403)

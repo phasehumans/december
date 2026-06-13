@@ -35,3 +35,8 @@ server/.december-imports/
 codes.md
 agentguide.md
 deploy.md
+
+# Deployments
+/deployments/
+infra/nginx/deployments/*
+!infra/nginx/deployments/.gitkeep
