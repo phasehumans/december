@@ -149,9 +149,14 @@ describe('profile.service.integration', () => {
         it('should fail if same username', async () => {
             const user = await prisma.user.findUnique({ where: { id: userId } })
 
-            await expect(
-                profileService.updateUsername({ userId, username: user!.username })
-            ).rejects.toThrow('new username must be different')
+            let thrown = false
+            try {
+                await profileService.updateUsername({ userId, username: user!.username })
+            } catch (error: any) {
+                thrown = true
+                expect(error.message).toContain('new username must be different')
+            }
+            expect(thrown).toBe(true)
         })
 
         it('should fail if username taken', async () => {

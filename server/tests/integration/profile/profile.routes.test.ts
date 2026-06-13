@@ -1,13 +1,13 @@
 import '../../../tests/env'
 
 import bcrypt from 'bcrypt'
-import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'bun:test'
+import { describe, it, expect, beforeAll, beforeEach, afterAll, mock } from 'bun:test'
+import path from 'path'
 import express from 'express'
 import { Router } from 'express'
 import request from 'supertest'
 
 import { prisma } from '../../../src/config/db'
-import profileRouter from '../../../src/modules/profile/profile.routes'
 import { GenerationSound } from '../../../src/modules/profile/profile.schema'
 
 const TEST_USER_ID = 'test-user-id'
@@ -49,13 +49,22 @@ const createTestSession = async (overrides: Record<string, unknown> = {}) => {
 describe('profile.routes.integration', () => {
     let app: express.Application
 
-    beforeAll(() => {
+    beforeAll(async () => {
+        const authMiddlewarePath = path.resolve(
+            import.meta.dir,
+            '../../../src/middleware/auth.middleware'
+        )
+        mock.module(authMiddlewarePath, () => ({
+            authMiddleware: (req: any, _res: any, next: any) => {
+                req.user = { userId: TEST_USER_ID, sessionId: TEST_SESSION_ID }
+                next()
+            },
+        }))
+
+        const profileRouter = (await import('../../../src/modules/profile/profile.routes')).default
+
         app = express()
         app.use(express.json())
-        app.use((req, _res, next) => {
-            req.user = { userId: TEST_USER_ID, sessionId: TEST_SESSION_ID }
-            next()
-        })
         app.use('/api/v1/profile', profileRouter)
     })
 
