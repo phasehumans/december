@@ -15,38 +15,16 @@ import {
     verifyRazorpayWebhookSignature,
 } from './billing.utils'
 
-type CreateSubscriptionInput = {
-    userId: string
-    plan: 'PRO'
-    quantity: number
-    totalCount: number
-}
-
-type VerifySubscriptionInput = {
-    userId: string
-    razorpay_subscription_id: string
-    razorpay_payment_id: string
-    razorpay_signature: string
-}
-
-type CancelSubscriptionInput = {
-    userId: string
-    cancelAtPeriodEnd: boolean
-}
-
-type CreditsHistoryInput = {
-    userId: string
-    limit: number
-    offset: number
-    periodStart?: string
-    periodEnd?: string
-}
-
-type RazorpayWebhookInput = {
-    body: Record<string, any>
-    rawBody?: Buffer
-    signature?: string
-}
+import type {
+    GetOverview,
+    CreateSubscription,
+    VerifySubscription,
+    CancelSubscription,
+    CreditsHistory,
+    CreatePortalSession,
+    RazorpayWebhook,
+    RedeemCode,
+} from './billing.types'
 
 type RazorpaySubscriptionLike = {
     id: string
@@ -102,7 +80,8 @@ const buildSubscriptionSummary = (user: BillingUser) => {
     }
 }
 
-const getOverview = async (userId: string) => {
+const getOverview = async (data: GetOverview) => {
+    const { userId } = data
     const user = await prisma.user.findUnique({
         where: {
             id: userId,
@@ -115,14 +94,13 @@ const getOverview = async (userId: string) => {
             subscriptionStatus: true,
             currentPeriodEnd: true,
             subscription: true,
-            isDeleted: true,
             createdAt: true,
             creditBalance: true,
             giftedCredits: true,
         },
     })
 
-    if (!user || user.isDeleted == true) {
+    if (!user) {
         throw new AppError('user not found', 404)
     }
 
@@ -234,7 +212,7 @@ const getPlans = async () => {
     }
 }
 
-const createSubscription = async (data: CreateSubscriptionInput) => {
+const createSubscription = async (data: CreateSubscription) => {
     const user = await prisma.user.findUnique({
         where: {
             id: data.userId,
@@ -247,11 +225,10 @@ const createSubscription = async (data: CreateSubscriptionInput) => {
             subscriptionStatus: true,
             currentPeriodEnd: true,
             subscription: true,
-            isDeleted: true,
         },
     })
 
-    if (!user || user.isDeleted == true) {
+    if (!user) {
         throw new AppError('user not found', 404)
     }
 
@@ -410,7 +387,7 @@ const persistProviderSubscription = async (data: {
     }
 }
 
-const verifySubscription = async (data: VerifySubscriptionInput) => {
+const verifySubscription = async (data: VerifySubscription) => {
     const isValid = verifyRazorpaySubscriptionPayment({
         subscriptionId: data.razorpay_subscription_id,
         paymentId: data.razorpay_payment_id,
@@ -434,11 +411,10 @@ const verifySubscription = async (data: VerifySubscriptionInput) => {
             subscriptionStatus: true,
             currentPeriodEnd: true,
             subscription: true,
-            isDeleted: true,
         },
     })
 
-    if (!user || user.isDeleted == true) {
+    if (!user) {
         throw new AppError('user not found', 404)
     }
 
@@ -472,7 +448,7 @@ const verifySubscription = async (data: VerifySubscriptionInput) => {
     }
 }
 
-const cancelSubscription = async (data: CancelSubscriptionInput) => {
+const cancelSubscription = async (data: CancelSubscription) => {
     const user = await prisma.user.findUnique({
         where: {
             id: data.userId,
@@ -485,11 +461,10 @@ const cancelSubscription = async (data: CancelSubscriptionInput) => {
             subscriptionStatus: true,
             currentPeriodEnd: true,
             subscription: true,
-            isDeleted: true,
         },
     })
 
-    if (!user || user.isDeleted == true) {
+    if (!user) {
         throw new AppError('user not found', 404)
     }
 
@@ -549,7 +524,7 @@ const cancelSubscription = async (data: CancelSubscriptionInput) => {
     }
 }
 
-const getCreditsHistory = async (data: CreditsHistoryInput) => {
+const getCreditsHistory = async (data: CreditsHistory) => {
     const user = await prisma.user.findUnique({
         where: {
             id: data.userId,
@@ -562,11 +537,10 @@ const getCreditsHistory = async (data: CreditsHistoryInput) => {
             subscriptionStatus: true,
             currentPeriodEnd: true,
             subscription: true,
-            isDeleted: true,
         },
     })
 
-    if (!user || user.isDeleted == true) {
+    if (!user) {
         throw new AppError('user not found', 404)
     }
 
@@ -633,7 +607,8 @@ const getCreditsHistory = async (data: CreditsHistoryInput) => {
     }
 }
 
-const createPortalSession = async (userId: string) => {
+const createPortalSession = async (data: CreatePortalSession) => {
+    const { userId } = data
     const user = await prisma.user.findUnique({
         where: {
             id: userId,
@@ -646,11 +621,10 @@ const createPortalSession = async (userId: string) => {
             subscriptionStatus: true,
             currentPeriodEnd: true,
             subscription: true,
-            isDeleted: true,
         },
     })
 
-    if (!user || user.isDeleted == true) {
+    if (!user) {
         throw new AppError('user not found', 404)
     }
 
@@ -661,7 +635,7 @@ const createPortalSession = async (userId: string) => {
     }
 }
 
-const handleRazorpayWebhook = async (data: RazorpayWebhookInput) => {
+const handleRazorpayWebhook = async (data: RazorpayWebhook) => {
     const rawBody = data.rawBody ?? Buffer.from(JSON.stringify(data.body))
     const isValid = verifyRazorpayWebhookSignature({
         body: rawBody,
@@ -735,7 +709,7 @@ const handleRazorpayWebhook = async (data: RazorpayWebhookInput) => {
     }
 }
 
-const redeemCode = async (data: { userId: string; code: string }) => {
+const redeemCode = async (data: RedeemCode) => {
     const { userId, code } = data
 
     const normalizedCode = code.trim().toUpperCase()

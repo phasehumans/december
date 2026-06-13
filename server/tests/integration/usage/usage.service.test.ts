@@ -47,7 +47,7 @@ describe('usage.service.integration', () => {
     })
 
     it('should return empty current-period usage for a new free user', async () => {
-        const result = await usageService.getCurrentUsage(userId)
+        const result = await usageService.getCurrentUsage({ userId })
 
         expect(result.plan).toBe('FREE')
         expect(result.usage.costInCents).toBe(0)
@@ -74,7 +74,7 @@ describe('usage.service.integration', () => {
         expect(result.event.periodStart).toBeInstanceOf(Date)
         expect(result.event.periodEnd).toBeInstanceOf(Date)
 
-        const usage = await usageService.getCurrentUsage(userId)
+        const usage = await usageService.getCurrentUsage({ userId })
         expect(usage.usage.inputTokens).toBe(100)
         expect(usage.usage.outputTokens).toBe(50)
         expect(usage.usage.totalTokens).toBe(150)

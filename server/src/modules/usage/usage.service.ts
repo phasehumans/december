@@ -15,23 +15,14 @@ type UsageUser = {
     giftedCredits: number
 }
 
-type RecordUsageEventInput = {
-    userId: string
-    model: string
-    inputTokens: number
-    outputTokens: number
-    totalTokens: number
-    costInCents?: number
-    projectId?: string
-    chatId?: string
-    externalRequestId?: string
-    metadata?: Record<string, unknown>
-}
-
-type CheckEnoughCreditsInput = {
-    userId: string
-    estimatedCostInCents?: number
-}
+import type {
+    GetCurrentUsage,
+    CheckEnoughCredits,
+    HasMinimumBalance,
+    RecordUsageEvent,
+    CalculateGenerationCost,
+    CanRunSelfCorrection,
+} from './usage.types'
 
 type ModelRate = {
     name: string
@@ -56,11 +47,8 @@ const getModelRatesFromEnv = (): ModelRate[] => {
     return rates
 }
 
-const calculateGenerationCost = (
-    modelName: string,
-    inputTokens: number,
-    outputTokens: number
-): number => {
+const calculateGenerationCost = (data: CalculateGenerationCost): number => {
+    const { modelName, inputTokens, outputTokens } = data
     if (inputTokens === 0 && outputTokens === 0) {
         return 0
     }
@@ -130,11 +118,9 @@ const getUsageUser = async (userId: string): Promise<UsageUser> => {
     const user = await prisma.user.findUnique({
         where: {
             id: userId,
-            isDeleted: false,
         },
         select: {
             id: true,
-            isDeleted: true,
             subscriptionPlan: true,
             subscriptionStatus: true,
             createdAt: true,
@@ -149,11 +135,11 @@ const getUsageUser = async (userId: string): Promise<UsageUser> => {
         },
     })
 
-    if (!user || user.isDeleted) {
+    if (!user) {
         throw new AppError('user not found', 404)
     }
 
-    return user as UsageUser
+    return user as unknown as UsageUser
 }
 
 const getPeriodAggregate = async (
@@ -197,7 +183,8 @@ const getPeriodAggregate = async (
     }
 }
 
-const getCurrentUsage = async (userId: string) => {
+const getCurrentUsage = async (data: GetCurrentUsage) => {
+    const { userId } = data
     const user = await getUsageUser(userId)
     const { periodStart, periodEnd } = resolveCurrentPeriod(user)
     const isPro = user.subscriptionPlan === 'PRO' && user.subscriptionStatus === 'ACTIVE'
@@ -221,8 +208,8 @@ const getCurrentUsage = async (userId: string) => {
     }
 }
 
-const checkEnoughCredits = async (data: CheckEnoughCreditsInput) => {
-    const current = await getCurrentUsage(data.userId)
+const checkEnoughCredits = async (data: CheckEnoughCredits) => {
+    const current = await getCurrentUsage({ userId: data.userId })
     const estimatedCostInCents = data.estimatedCostInCents ?? 0
     const enoughCredits =
         current.credits.unlimited || (current.credits.remainingInCents ?? 0) >= estimatedCostInCents
@@ -236,7 +223,8 @@ const checkEnoughCredits = async (data: CheckEnoughCreditsInput) => {
     }
 }
 
-const hasMinimumBalance = async (userId: string): Promise<boolean> => {
+const hasMinimumBalance = async (data: HasMinimumBalance): Promise<boolean> => {
+    const { userId } = data
     const user = await getUsageUser(userId)
     return user.creditBalance + user.giftedCredits >= 1
 }
@@ -269,7 +257,7 @@ const findExternalUsageEvent = (externalRequestId: string) => {
     })
 }
 
-const recordUsageEvent = async (data: RecordUsageEventInput) => {
+const recordUsageEvent = async (data: RecordUsageEvent) => {
     const user = await getUsageUser(data.userId)
     await assertProjectOwnership(user.id, data.projectId)
 
@@ -289,7 +277,11 @@ const recordUsageEvent = async (data: RecordUsageEventInput) => {
     }
 
     const { periodStart, periodEnd } = resolveCurrentPeriod(user)
-    const calculatedCost = calculateGenerationCost(data.model, data.inputTokens, data.outputTokens)
+    const calculatedCost = calculateGenerationCost({
+        modelName: data.model,
+        inputTokens: data.inputTokens,
+        outputTokens: data.outputTokens,
+    })
 
     try {
         const result = await prisma.$transaction(async (tx) => {
@@ -340,7 +332,7 @@ const recordUsageEvent = async (data: RecordUsageEventInput) => {
                     externalRequestId: data.externalRequestId,
                     periodStart,
                     periodEnd,
-                    metadata: data.metadata,
+                    metadata: data.metadata as any,
                 },
             })
 
@@ -367,10 +359,11 @@ const recordUsageEvent = async (data: RecordUsageEventInput) => {
     }
 }
 
-const canRunSelfCorrection = async (userId: string): Promise<boolean> => {
+const canRunSelfCorrection = async (data: CanRunSelfCorrection): Promise<boolean> => {
     try {
+        const { userId } = data
         const user = await prisma.user.findUnique({
-            where: { id: userId, isDeleted: false },
+            where: { id: userId },
             select: { creditBalance: true, giftedCredits: true },
         })
         if (!user) return false

@@ -16,6 +16,8 @@ export const generateProjectFile = (input: {
     targetFile: PlannedProjectFile
     generatedFiles: Record<string, string>
     model?: string
+    projectId?: string
+    userId?: string
 }) => generateProjectFileAgent(input)
 
 export const generateProjectPatchFile = (input: {
@@ -39,6 +41,8 @@ export const generateProjectPatchFile = (input: {
         }
     }
     model?: string
+    projectId?: string
+    userId?: string
 }) => generateProjectPatchFileAgent(input)
 
 export { generateWorkDoneSummary } from './build.agent'

@@ -18,7 +18,7 @@ const getUserGithubRepos = async (req: Request, res: Response) => {
     }
 
     try {
-        const result = await integrationsService.listGithubRepos(userId)
+        const result = await integrationsService.listGithubRepos({ userId })
         return res.status(200).json({
             success: true,
             message: 'repos fetched successfully',
@@ -51,7 +51,7 @@ const connectVercel = async (req: Request, res: Response) => {
     let redirectPath = '/profile/integrations'
     if (state && state.includes(':')) {
         const parts = state.split(':')
-        userId = parts[0]
+        userId = parts[0] as string
         redirectPath = parts.slice(1).join(':')
     }
 
@@ -176,7 +176,7 @@ const connectGithub = async (req: Request, res: Response) => {
     let redirectPath = '/profile/integrations'
     if (state && state.includes(':')) {
         const parts = state.split(':')
-        userId = parts[0]
+        userId = parts[0] as string
         redirectPath = parts.slice(1).join(':')
     }
 
@@ -259,7 +259,11 @@ const createRepo = async (req: Request, res: Response) => {
     }
 
     try {
-        const result = await integrationsService.createRepo(userId, projectId, parseData.data)
+        const result = await integrationsService.createRepo({
+            userId,
+            projectId,
+            ...parseData.data,
+        })
         return res.status(200).json({
             success: true,
             message: 'repository created and linked successfully',
@@ -310,7 +314,11 @@ const updateRepo = async (req: Request, res: Response) => {
     }
 
     try {
-        const result = await integrationsService.updateRepo(userId, projectId, parseData.data)
+        const result = await integrationsService.updateRepo({
+            userId,
+            projectId,
+            ...parseData.data,
+        })
         return res.status(200).json({
             success: true,
             message: 'repository synced successfully',
@@ -366,12 +374,12 @@ const deployVercelProject = async (req: Request, res: Response) => {
                 .replace(/-+/g, '-')
                 .replace(/^-|-$/g, '')
 
-            const vercelProject = await vercelService.createProject(
+            const vercelProject = await vercelService.createProject({
                 userId,
-                sanitizedName,
-                project.githubRepoOwner,
-                project.githubRepoName
-            )
+                name: sanitizedName,
+                repoOwner: project.githubRepoOwner,
+                repoName: project.githubRepoName,
+            })
             vercelProjectId = vercelProject.id
             vercelProjectName = vercelProject.name
 
@@ -384,15 +392,17 @@ const deployVercelProject = async (req: Request, res: Response) => {
             })
         }
 
-        const { commitSha } = await integrationsService.updateRepo(userId, projectId, {
+        const { commitSha } = await integrationsService.updateRepo({
+            userId,
+            projectId,
             commitMessage: 'Auto-deploy triggered from December settings',
         })
 
-        const deployment = await vercelService.getDeploymentByCommit(
+        const deployment = await vercelService.getDeploymentByCommit({
             userId,
-            vercelProjectId!,
-            commitSha
-        )
+            vercelProjectId: vercelProjectId!,
+            commitSha,
+        })
 
         await prisma.project.update({
             where: { id: projectId },
@@ -440,7 +450,7 @@ const getVercelDeploymentStatus = async (req: Request, res: Response) => {
     }
 
     try {
-        const result = await vercelService.getDeploymentStatus(userId, deploymentId)
+        const result = await vercelService.getDeploymentStatus({ userId, deploymentId })
         return res.status(200).json({
             success: true,
             message: 'Deployment status fetched successfully',
@@ -475,7 +485,7 @@ const streamVercelBuildLogs = async (req: Request, res: Response) => {
     }
 
     try {
-        await vercelService.streamBuildLogs(userId, deploymentId, res)
+        await vercelService.streamBuildLogs({ userId, deploymentId, res })
     } catch (error) {
         console.error('Failed to stream build logs:', error)
         if (!res.headersSent) {

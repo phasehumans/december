@@ -174,3 +174,29 @@ export type PersistedProjectRevision = {
     generatedFiles: Record<string, string>
     assistantMessage: string
 }
+
+export type ApplyProjectEdit = {
+    userId: string
+    projectId: string
+    versionId?: string
+    prompt: string
+    selectedElement?: {
+        tagName: string
+        textContent: string
+    }
+    canvasState?: GenerateWebsiteInput['canvasState']
+    model?: string
+    onEvent?: GenerateWebsiteInput['onEvent']
+    isSelfHealing?: boolean
+}
+
+export type ApplyProjectFix = {
+    userId: string
+    projectId: string
+    versionId?: string
+    errorMessage: string
+    stack?: string
+    model?: string
+    onEvent?: GenerateWebsiteInput['onEvent']
+    isSelfHealing?: boolean
+}

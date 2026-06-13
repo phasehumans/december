@@ -13,7 +13,8 @@ import {
     versionKey,
     versionPrefix,
 } from '../project/project-storage'
-import { runtimeService, type RuntimePreviewStatus } from '../runtime/runtime.service'
+import { runtimeService } from '../runtime/runtime.service'
+import type { RuntimePreviewStatus } from '../runtime/runtime.types'
 
 import { downloadGitHubRepoArchive } from './downloadzip'
 import { extractUploadedZipArchive } from './extractzip'
@@ -26,10 +27,13 @@ import {
 import { parseGitHubRepoUrl, verifyGitHubRepoAccess } from './upload.utils'
 import { AppError } from '../../shared/appError'
 
-type UploadRepo = {
-    userId: string
-    repoURL: string
-}
+import type {
+    UploadRepo,
+    ImportFromZip,
+    UploadedZipFile,
+    GetImportStatus,
+    RetryImport,
+} from './upload.types'
 
 type GithubRepo = {
     id: number
@@ -44,17 +48,6 @@ type GithubRepo = {
         login: string
         avatarUrl: string
     }
-}
-
-type UploadedZipFile = {
-    originalname: string
-    mimetype: string
-    buffer: Buffer
-}
-
-type ImportFromZip = {
-    userId: string
-    zipFile: UploadedZipFile
 }
 
 type ImportSource = 'GITHUB' | 'ZIP'
@@ -708,12 +701,11 @@ const importFromGithub = async (data: UploadRepo) => {
         select: {
             id: true,
             githubToken: true,
-            isDeleted: true,
             subscriptionPlan: true,
         },
     })
 
-    if (!user || user.isDeleted == true) {
+    if (!user) {
         throw new AppError('user not found', 404)
     }
 
@@ -836,7 +828,8 @@ const importFromZip = async (data: ImportFromZip) => {
     return importRecord
 }
 
-const getImportStatus = async ({ userId, importId }: { userId: string; importId: string }) => {
+const getImportStatus = async (data: GetImportStatus) => {
+    const { userId, importId } = data
     const importRecord = await prisma.projectImport.findFirst({
         where: {
             id: importId,
@@ -896,7 +889,8 @@ const getImportStatus = async ({ userId, importId }: { userId: string; importId:
     }
 }
 
-const retryImport = async ({ userId, importId }: { userId: string; importId: string }) => {
+const retryImport = async (data: RetryImport) => {
+    const { userId, importId } = data
     const importRecord = await prisma.projectImport.findFirst({
         where: {
             id: importId,
@@ -943,9 +937,15 @@ const retryImport = async ({ userId, importId }: { userId: string; importId: str
         },
     })
 
+    if (!importRecord.projectId || !importRecord.projectVersionId) {
+        throw new Error('Project or version relation missing on import')
+    }
+
     void processGithubImport({
         importId,
         userId,
+        projectId: importRecord.projectId,
+        versionId: importRecord.projectVersionId,
         owner: parseData.owner,
         repo: parseData.repo,
         token: user.githubToken,

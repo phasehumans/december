@@ -1,3 +1,4 @@
+import { AppError } from '../../shared/appError'
 import { normalizeGenerationError } from './generation.error'
 import {
     applyProjectEditSchema,
@@ -41,7 +42,7 @@ const generateWebsite = async (req: Request, res: Response) => {
         })
     }
 
-    const hasCredits = await usageService.hasMinimumBalance(userId)
+    const hasCredits = await usageService.hasMinimumBalance({ userId })
     if (!hasCredits) {
         return res.status(402).json({
             success: false,
@@ -71,7 +72,7 @@ const generateWebsite = async (req: Request, res: Response) => {
         })
 
         return res.end()
-    } catch (error: unknown) {
+    } catch (error) {
         const normalizedError = normalizeGenerationError(error)
         console.error('[generation]', normalizedError.internalMessage)
 
@@ -121,7 +122,7 @@ const applyProjectEdit = async (req: Request, res: Response) => {
         })
     }
 
-    const hasCredits = await usageService.hasMinimumBalance(userId)
+    const hasCredits = await usageService.hasMinimumBalance({ userId })
     if (!hasCredits) {
         return res.status(402).json({
             success: false,
@@ -142,7 +143,7 @@ const applyProjectEdit = async (req: Request, res: Response) => {
         })
 
         return res.end()
-    } catch (error: unknown) {
+    } catch (error) {
         const normalizedError = normalizeGenerationError(error)
         console.error('[generation/edit]', normalizedError.internalMessage)
 
@@ -181,7 +182,7 @@ const applyProjectFix = async (req: Request, res: Response) => {
         })
     }
 
-    const hasCredits = await usageService.hasMinimumBalance(userId)
+    const hasCredits = await usageService.hasMinimumBalance({ userId })
     if (!hasCredits) {
         return res.status(402).json({
             success: false,
@@ -202,7 +203,7 @@ const applyProjectFix = async (req: Request, res: Response) => {
         })
 
         return res.end()
-    } catch (error: unknown) {
+    } catch (error) {
         const normalizedError = normalizeGenerationError(error)
         console.error('[generation/fix]', normalizedError.internalMessage)
 
@@ -222,7 +223,7 @@ const applyProjectFix = async (req: Request, res: Response) => {
 }
 
 const validateProject = async (req: Request, res: Response) => {
-    const { id } = req.params
+    const id = req.params.id as string
     const userId = req.user?.userId as string | undefined
 
     if (!userId) {
@@ -247,17 +248,26 @@ const validateProject = async (req: Request, res: Response) => {
             })
         }
 
-        const result = await runtimeService.checkSandboxCompilation(id)
+        const result = await runtimeService.checkSandboxCompilation({ projectId: id })
         return res.status(200).json({
             success: true,
             data: result,
         })
-    } catch (error: unknown) {
+    } catch (error) {
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({
+                success: false,
+                message: 'failed to validate project',
+                errors: error.message,
+            })
+        }
+
         const normalizedError = normalizeGenerationError(error)
         console.error('[generation/validate]', normalizedError.internalMessage)
         return res.status(500).json({
             success: false,
             message: normalizedError.publicMessage,
+            errors: error instanceof Error ? error.message : 'unknown error',
         })
     }
 }

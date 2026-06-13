@@ -53,7 +53,10 @@ describe('memory service unit tests', () => {
     })
 
     test('loadMemoryPromptInstructions loads formatted instructions', async () => {
-        const instructions = await loadMemoryPromptInstructions('project-id', 'user-id')
+        const instructions = await loadMemoryPromptInstructions({
+            projectId: 'project-id',
+            userId: 'user-id',
+        })
         expect(instructions).toContain('=== CUSTOM DESIGN SYSTEM AND STYLE INSTRUCTIONS ===')
         expect(instructions).toContain('General Design Preferences')
         expect(instructions).toContain('General layout spacing is 24px.')

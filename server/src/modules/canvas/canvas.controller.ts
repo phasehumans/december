@@ -1,3 +1,4 @@
+import { AppError } from '../../shared/appError'
 import { saveCanvasSchema, webClipRequestSchema } from './canvas.schema'
 import { canvasService } from './canvas.service'
 
@@ -31,10 +32,19 @@ const createWebClips = async (req: Request, res: Response) => {
             message: 'web clips created successfully',
             data: result,
         })
-    } catch (error: any) {
+    } catch (error) {
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({
+                success: false,
+                message: 'failed to create web clips',
+                errors: error.message,
+            })
+        }
+
         return res.status(500).json({
             success: false,
-            errors: error.message,
+            message: 'failed to create web clips',
+            errors: error instanceof Error ? error.message : 'unknown error',
         })
     }
 }
@@ -68,10 +78,19 @@ const saveCanvas = async (req: Request, res: Response) => {
             message: 'canvas saved successfully',
             data: result,
         })
-    } catch (error: any) {
+    } catch (error) {
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({
+                success: false,
+                message: 'failed to save canvas',
+                errors: error.message,
+            })
+        }
+
         return res.status(500).json({
             success: false,
-            errors: error.message,
+            message: 'failed to save canvas',
+            errors: error instanceof Error ? error.message : 'unknown error',
         })
     }
 }

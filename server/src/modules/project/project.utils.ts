@@ -1,16 +1,5 @@
 import type { StoredProjectFile } from './project.service'
 
-export const isVersionSchemaMissing = (error: unknown) => {
-    const message = error instanceof Error ? error.message.toLowerCase() : ''
-
-    return (
-        message.includes('projectversion') ||
-        message.includes('projectmessage') ||
-        message.includes('currentversionid') ||
-        message.includes('versioncount')
-    )
-}
-
 export const parseStoredProjectFiles = (value: unknown): StoredProjectFile[] => {
     if (!Array.isArray(value)) {
         return []

@@ -4,11 +4,11 @@ export const createProjectSchema = z.object({
     name: z
         .string({ message: 'name is required' })
         .min(3, 'name must be at least 3 characters')
-        .max(20, 'name must be at most 20 characters'),
+        .max(50, 'name must be at most 50 characters'),
     description: z
         .string({ message: 'description must be a string' })
         .min(10, 'description must be at least 10 characters')
-        .max(30, 'description must be at most 30 characters')
+        .max(500, 'description must be at most 500 characters')
         .optional(),
     prompt: z
         .string({ message: 'prompt is required' })
@@ -19,13 +19,19 @@ export const renameProjectSchema = z.object({
     rename: z
         .string({ message: 'rename is required' })
         .min(3, 'rename must be at least 3 characters')
-        .max(20, 'rename must be at most 20 characters'),
+        .max(50, 'rename must be at most 50 characters'),
 })
 
 export const updateGeneralSettingsSchema = z.object({
-    name: z.string({ message: 'Project name must be a string' }).optional(),
+    name: z
+        .string({ message: 'Project name must be a string' })
+        .min(3, 'Project name must be at least 3 characters')
+        .max(50, 'Project name must be at most 50 characters')
+        .optional(),
     description: z
         .string({ message: 'Project description must be a string' })
+        .min(10, 'Project description must be at least 10 characters')
+        .max(500, 'Project description must be at most 500 characters')
         .nullable()
         .optional(),
     isStarred: z.boolean({ message: 'isStarred must be a boolean' }).optional(),
@@ -44,10 +50,11 @@ export const getProjectByIdSchema = z.object({
         .optional(),
 })
 
-export const downloadProjectVersionSchema = z.object({
-    versionId: z
-        .string({ message: 'version ID must be a string' })
-        .uuid('version ID must be a valid UUID')
+export const duplicateProjectSchema = z.object({
+    name: z
+        .string({ message: 'Project name must be a string' })
+        .min(3, 'Project name must be at least 3 characters')
+        .max(50, 'Project name must be at most 50 characters')
         .optional(),
 })
 

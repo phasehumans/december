@@ -4,7 +4,9 @@ import path from 'path'
 import { prisma } from '../../config/db'
 import { AppError } from '../../shared/appError'
 import { runtimeService } from '../runtime/runtime.service'
-import type { DeployProject } from './platform.types'
+import { projectService } from '../project/project.service'
+import { buildProjectZip } from './build-project-zip'
+import type { DeployProject, GetProject } from './platform.types'
 
 function copyDirRecursive(src: string, dest: string) {
     fs.mkdirSync(dest, { recursive: true })
@@ -30,7 +32,6 @@ const deployDecemberProject = async (data: DeployProject) => {
             id: projectId,
             userId,
             isDeleted: false,
-            user: { isDeleted: false },
         },
         include: {
             currentVersion: true,
@@ -48,7 +49,7 @@ const deployDecemberProject = async (data: DeployProject) => {
     let compilationFailed = false
     let compilationError = ''
     try {
-        const checkResult = await runtimeService.checkSandboxCompilation(projectId)
+        const checkResult = await runtimeService.checkSandboxCompilation({ projectId })
         if (!checkResult.success) {
             compilationFailed = true
             compilationError = checkResult.errors || 'Unknown compilation error'
@@ -98,6 +99,34 @@ const deployDecemberProject = async (data: DeployProject) => {
     }
 }
 
+const downloadProjectVersion = async (data: GetProject) => {
+    const detail = await projectService.getProjectById(data)
+
+    if (!detail.activeVersion) {
+        throw new AppError('project version not found', 404)
+    }
+
+    const zip = buildProjectZip(
+        Object.entries(detail.generatedFiles).map(([path, content]) => ({
+            path,
+            content,
+        }))
+    )
+
+    const safeProjectName =
+        detail.project.name
+            .trim()
+            .replace(/[^a-z0-9-_]+/gi, '-')
+            .replace(/^-+|-+$/g, '') || 'project'
+    const fileName = `${safeProjectName}.zip`
+
+    return {
+        fileName,
+        zip,
+    }
+}
+
 export const platformService = {
     deployDecemberProject,
+    downloadProjectVersion,
 }

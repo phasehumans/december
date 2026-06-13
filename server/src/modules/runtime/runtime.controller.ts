@@ -1,4 +1,5 @@
-﻿import type { Request, Response } from 'express'
+import { AppError } from '../../shared/appError'
+import type { Request, Response } from 'express'
 
 import {
     previewIdParamSchema,
@@ -41,10 +42,18 @@ const startPreview = async (req: Request, res: Response) => {
             message: 'preview started',
             data: result,
         })
-    } catch (error: any) {
-        return res.status(getErrorStatus(error.message)).json({
+    } catch (error) {
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({
+                success: false,
+                errors: error.message,
+            })
+        }
+
+        const message = error instanceof Error ? error.message : 'unknown error'
+        return res.status(getErrorStatus(message)).json({
             success: false,
-            errors: error.message,
+            errors: message,
         })
     }
 }
@@ -79,10 +88,18 @@ const getPreviewStatus = async (req: Request, res: Response) => {
             message: 'preview status fetched',
             data: result,
         })
-    } catch (error: any) {
-        return res.status(getErrorStatus(error.message)).json({
+    } catch (error) {
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({
+                success: false,
+                errors: error.message,
+            })
+        }
+
+        const message = error instanceof Error ? error.message : 'unknown error'
+        return res.status(getErrorStatus(message)).json({
             success: false,
-            errors: error.message,
+            errors: message,
         })
     }
 }
@@ -117,10 +134,18 @@ const deletePreview = async (req: Request, res: Response) => {
             message: 'preview deleted',
             data: result,
         })
-    } catch (error: any) {
-        return res.status(getErrorStatus(error.message)).json({
+    } catch (error) {
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({
+                success: false,
+                errors: error.message,
+            })
+        }
+
+        const message = error instanceof Error ? error.message : 'unknown error'
+        return res.status(getErrorStatus(message)).json({
             success: false,
-            errors: error.message,
+            errors: message,
         })
     }
 }
@@ -149,24 +174,27 @@ const receiveRuntimeStatus = async (req: Request, res: Response) => {
         })
     }
 
-    const result = runtimeService.recordRuntimeStatus(parseParams.data.id, {
-        previewId: parseBody.data.previewId,
-        projectId: parseBody.data.projectId,
-        state: parseBody.data.state,
-        backendStatus: parseBody.data.status,
-        currentVersion: parseBody.data.currentVersion ?? null,
-        healthyVersion: parseBody.data.healthyVersion ?? null,
-        previewUrl: parseBody.data.previewUrl ?? null,
-        lastError: parseBody.data.error
-            ? {
-                  class: parseBody.data.error.class,
-                  code: parseBody.data.error.code,
-                  message: parseBody.data.error.message,
-                  detail: parseBody.data.error.detail ?? null,
-                  retryable: parseBody.data.error.retryable,
-              }
-            : null,
-        updatedAt: parseBody.data.updatedAt,
+    const result = runtimeService.recordRuntimeStatus({
+        previewId: parseParams.data.id,
+        status: {
+            previewId: parseBody.data.previewId,
+            projectId: parseBody.data.projectId,
+            state: parseBody.data.state,
+            backendStatus: parseBody.data.status,
+            currentVersion: parseBody.data.currentVersion ?? null,
+            healthyVersion: parseBody.data.healthyVersion ?? null,
+            previewUrl: parseBody.data.previewUrl ?? null,
+            lastError: parseBody.data.error
+                ? {
+                      class: parseBody.data.error.class,
+                      code: parseBody.data.error.code,
+                      message: parseBody.data.error.message,
+                      detail: parseBody.data.error.detail ?? null,
+                      retryable: parseBody.data.error.retryable,
+                  }
+                : null,
+            updatedAt: parseBody.data.updatedAt,
+        },
     })
 
     return res.status(200).json({

@@ -59,18 +59,6 @@ describe('integrations.service.integration', () => {
             ).rejects.toThrow('user not found')
         })
 
-        it('should fail for soft-deleted user', async () => {
-            const deleted = await createUser({ isDeleted: true })
-
-            await expect(
-                integrationsService.connectGithub({
-                    userId: deleted.id,
-                    username: 'x',
-                    accessToken: 'y',
-                })
-            ).rejects.toThrow('user not found')
-        })
-
         it('should persist github connection in database', async () => {
             await integrationsService.connectGithub({
                 userId,

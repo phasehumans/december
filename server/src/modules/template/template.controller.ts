@@ -16,13 +16,13 @@ const getAllTemplates = async (req: Request, res: Response) => {
     }
 
     try {
-        const result = await templateService.getAllTemplates(userId)
+        const result = await templateService.getAllTemplates({ userId })
         return res.status(200).json({
             success: true,
             message: 'templates fetched successfully',
             data: result,
         })
-    } catch (error: any) {
+    } catch (error) {
         if (error instanceof AppError) {
             return res.status(error.statusCode).json({
                 success: false,
@@ -64,7 +64,7 @@ const getTemplateById = async (req: Request, res: Response) => {
             message: 'template fetched successfully',
             data: result,
         })
-    } catch (error: any) {
+    } catch (error) {
         if (error instanceof AppError) {
             return res.status(error.statusCode).json({
                 success: false,
@@ -92,13 +92,13 @@ const getFeaturedTemplates = async (req: Request, res: Response) => {
     }
 
     try {
-        const result = await templateService.getFeaturedTemplates(userId)
+        const result = await templateService.getFeaturedTemplates({ userId })
         return res.status(200).json({
             success: true,
             message: 'featured templates fetched successfully',
             data: result,
         })
-    } catch (error: any) {
+    } catch (error) {
         if (error instanceof AppError) {
             return res.status(error.statusCode).json({
                 success: false,
@@ -141,7 +141,7 @@ const remixTemplate = async (req: Request, res: Response) => {
             message: 'remix template successfully',
             data: result,
         })
-    } catch (error: any) {
+    } catch (error) {
         if (error instanceof AppError) {
             return res.status(error.statusCode).json({
                 success: false,
@@ -194,7 +194,7 @@ const toggleLike = async (req: Request, res: Response) => {
             message: 'updated like state successfully',
             data: result,
         })
-    } catch (error: any) {
+    } catch (error) {
         if (error instanceof AppError) {
             return res.status(error.statusCode).json({
                 success: false,
@@ -219,10 +219,10 @@ const getTemplatePreviewHtml = async (req: Request, res: Response) => {
     }
 
     try {
-        const html = await templateService.getTemplatePreviewHtml(templateId)
+        const html = await templateService.getTemplatePreviewHtml({ templateId })
         res.setHeader('Content-Type', 'text/html')
         return res.status(200).send(html)
-    } catch (error: any) {
+    } catch (error) {
         return res
             .status(error instanceof AppError ? error.statusCode : 500)
             .send('failed to load preview')
@@ -237,13 +237,13 @@ const getTemplatePreviewImage = async (req: Request, res: Response) => {
     }
 
     try {
-        const imageBuffer = await templateService.getTemplatePreviewImage(templateId)
+        const imageBuffer = await templateService.getTemplatePreviewImage({ templateId })
         if (!imageBuffer) {
             return res.status(404).send('preview image not found')
         }
         res.setHeader('Content-Type', 'image/png')
         return res.status(200).send(imageBuffer)
-    } catch (error: any) {
+    } catch (error) {
         return res
             .status(error instanceof AppError ? error.statusCode : 500)
             .send('failed to load preview image')

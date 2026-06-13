@@ -320,7 +320,7 @@ const google = async (req: Request, res: Response) => {
             success: true,
             message: 'login successful',
         })
-    } catch (error: any) {
+    } catch (error) {
         if (error instanceof AppError) {
             return res.status(error.statusCode).json({
                 success: false,
@@ -333,7 +333,7 @@ const google = async (req: Request, res: Response) => {
             success: false,
             message: 'google login failed',
             errors:
-                error?.response?.data?.error_description ||
+                (error as any)?.response?.data?.error_description ||
                 (error instanceof Error ? error.message : 'unknown error'),
         })
     }

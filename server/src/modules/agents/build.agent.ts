@@ -150,7 +150,10 @@ export const generateProjectFile = async (
                 `[build agent] starting file generation for ${data.targetFile.path}, attempt: ${attempt}`
             )
             const memoryInstructions = data.projectId
-                ? await loadMemoryPromptInstructions(data.projectId, data.userId)
+                ? await loadMemoryPromptInstructions({
+                      projectId: data.projectId,
+                      userId: data.userId,
+                  })
                 : ''
             const systemPrompt = BUILD_AGENT_PROMPT + memoryInstructions
             const completion = await openai.chat.completions.create({
@@ -255,7 +258,10 @@ export const generateProjectPatchFile = async (
                 `[build agent patch] starting patch generation for ${data.operation.path}, attempt: ${attempt}`
             )
             const memoryInstructions = data.projectId
-                ? await loadMemoryPromptInstructions(data.projectId, data.userId)
+                ? await loadMemoryPromptInstructions({
+                      projectId: data.projectId,
+                      userId: data.userId,
+                  })
                 : ''
             const systemPrompt = BUILD_PATCH_AGENT_PROMPT + memoryInstructions
             const completion = await openai.chat.completions.create({

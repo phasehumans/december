@@ -7,50 +7,15 @@ import {
 import { getBinaryFile, putBinaryFile } from '../project/project-storage'
 import { chromium } from 'playwright'
 
-export type RuntimePreviewError = {
-    class:
-        | 'temporary_partial_generation'
-        | 'stable_compile_runtime'
-        | 'dependency_install'
-        | 'infra_runtime'
-    code: string
-    message: string
-    detail?: string | null
-    retryable: boolean
-}
-
-export type RuntimePreviewStatus = {
-    previewId: string
-    projectId: string
-    state:
-        | 'WaitingForRunnableVersion'
-        | 'Bootstrapping'
-        | 'Installing'
-        | 'Starting'
-        | 'Healthy'
-        | 'Rebuilding'
-        | 'Failed'
-        | 'Stopped'
-    backendStatus: 'ready' | 'rebuilding' | 'failed'
-    currentVersion?: string | null
-    healthyVersion?: string | null
-    previewUrl?: string | null
-    lastError?: RuntimePreviewError | null
-    updatedAt: string
-}
-
-type StartPreviewInput = {
-    userId: string
-    projectId: string
-    versionId?: string
-}
-
-type PreviewIdentifierInput = {
-    userId: string
-    previewId: string
-}
-
-type RuntimeStatusCallbackInput = RuntimePreviewStatus
+import type {
+    RuntimePreviewError,
+    RuntimePreviewStatus,
+    StartPreview,
+    PreviewIdentifier,
+    NotifyManifestPublished,
+    RecordRuntimeStatus,
+    CheckSandboxCompilation,
+} from './runtime.types'
 
 type StoredProjectFile = {
     path: string
@@ -221,7 +186,7 @@ const runtimeRequest = async <T>(path: string, init?: RequestInit) => {
     return payload.data
 }
 
-const loadProjectVersion = async ({ userId, projectId, versionId }: StartPreviewInput) => {
+const loadProjectVersion = async ({ userId, projectId, versionId }: StartPreview) => {
     const project = await prisma.project.findFirst({
         where: {
             id: projectId,
@@ -307,12 +272,13 @@ const validateProjectStructure = async (
     return { isValid: true }
 }
 
-const recordRuntimeStatus = (previewId: string, status: RuntimeStatusCallbackInput) => {
+const recordRuntimeStatus = (data: RecordRuntimeStatus) => {
+    const { previewId, status } = data
     previewStatusStore.set(previewId, status)
     return status
 }
 
-const startPreview = async ({ userId, projectId, versionId }: StartPreviewInput) => {
+const startPreview = async ({ userId, projectId, versionId }: StartPreview) => {
     cancelPendingDeletion(projectId)
     const { project, version } = await loadProjectVersion({ userId, projectId, versionId })
 
@@ -347,13 +313,8 @@ const startPreview = async ({ userId, projectId, versionId }: StartPreviewInput)
     })
 }
 
-const notifyManifestPublished = async ({
-    projectId,
-    manifest,
-}: {
-    projectId: string
-    manifest: PreviewManifestRef
-}) => {
+const notifyManifestPublished = async (data: NotifyManifestPublished) => {
+    const { projectId, manifest } = data
     return runtimeRequest<RuntimePreviewStatus>(
         `/previews/${encodeURIComponent(previewIdForProject(projectId))}/manifest-published`,
         {
@@ -366,7 +327,7 @@ const notifyManifestPublished = async ({
     )
 }
 
-const getPreviewStatus = async ({ userId, previewId }: PreviewIdentifierInput) => {
+const getPreviewStatus = async ({ userId, previewId }: PreviewIdentifier) => {
     const project = await prisma.project.findFirst({
         where: {
             id: previewId,
@@ -425,7 +386,7 @@ const getPreviewStatus = async ({ userId, previewId }: PreviewIdentifierInput) =
     }
 }
 
-const deletePreview = async ({ userId, previewId }: PreviewIdentifierInput) => {
+const deletePreview = async ({ userId, previewId }: PreviewIdentifier) => {
     const project = await prisma.project.findFirst({
         where: {
             id: previewId,
@@ -454,7 +415,7 @@ const deletePreview = async ({ userId, previewId }: PreviewIdentifierInput) => {
         !status.lastError &&
         status.previewUrl
 
-    if (hasValidPreview && status.previewUrl) {
+    if (hasValidPreview && status && status.previewUrl) {
         // Capture screenshot in the background (which will schedule container deletion in 5 min)
         takePreviewScreenshot(project.id, status.previewUrl).catch((err) => {
             console.error('Unhandled error in takePreviewScreenshot:', err)
@@ -477,7 +438,8 @@ export type CompileCheckResult = {
     errors?: string | null
 }
 
-const checkSandboxCompilation = async (projectId: string): Promise<CompileCheckResult> => {
+const checkSandboxCompilation = async (data: CheckSandboxCompilation): Promise<CompileCheckResult> => {
+    const { projectId } = data
     return runtimeRequest<CompileCheckResult>(
         `/previews/${encodeURIComponent(previewIdForProject(projectId))}/validate`,
         {

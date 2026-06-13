@@ -10,6 +10,8 @@ export const extractProjectPlan = (input: {
     canvasState?: GenerateWebsiteInput['canvasState']
     model?: string
     onStream?: (fullContent: string) => Promise<void>
+    projectId?: string
+    userId?: string
 }) => extractProjectPlanAgent(input)
 
 export const extractProjectChangePlan = extractProjectChangePlanAgent

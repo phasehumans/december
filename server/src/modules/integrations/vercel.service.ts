@@ -2,6 +2,13 @@ import axios from 'axios'
 import { prisma } from '../../config/db'
 import { AppError } from '../../shared/appError'
 import type { Response } from 'express'
+import type {
+    CreateVercelProject,
+    GetDeploymentByCommit,
+    GetLatestDeployment,
+    GetDeploymentStatus,
+    StreamBuildLogs,
+} from './integrations.types'
 
 interface VercelCredentials {
     accessToken: string
@@ -39,7 +46,8 @@ function buildVercelUrl(path: string, credentials: VercelCredentials): string {
 /**
  * Creates a project on Vercel and links it to a GitHub repository.
  */
-async function createProject(userId: string, name: string, repoOwner: string, repoName: string) {
+async function createProject(data: CreateVercelProject) {
+    const { userId, name, repoOwner, repoName } = data
     const creds = await getVercelCredentials(userId)
     const url = buildVercelUrl('/v9/projects', creds)
 
@@ -83,7 +91,8 @@ async function createProject(userId: string, name: string, repoOwner: string, re
  * Queries Vercel deployments to find the one associated with a specific git commit SHA.
  * Retries with backoff since Vercel webhooks take a brief moment to trigger after a push.
  */
-async function getDeploymentByCommit(userId: string, vercelProjectId: string, commitSha: string) {
+async function getDeploymentByCommit(data: GetDeploymentByCommit) {
+    const { userId, vercelProjectId, commitSha } = data
     const creds = await getVercelCredentials(userId)
     const baseUrl = buildVercelUrl('/v6/deployments', creds)
     const url = new URL(baseUrl)
@@ -121,7 +130,8 @@ async function getDeploymentByCommit(userId: string, vercelProjectId: string, co
 /**
  * Retrieves the status of a specific Vercel deployment.
  */
-async function getDeploymentStatus(userId: string, deploymentId: string) {
+async function getDeploymentStatus(data: GetDeploymentStatus) {
+    const { userId, deploymentId } = data
     const creds = await getVercelCredentials(userId)
     const url = buildVercelUrl(`/v13/deployments/${deploymentId}`, creds)
 
@@ -147,7 +157,8 @@ async function getDeploymentStatus(userId: string, deploymentId: string) {
 /**
  * Pipes build events stream from Vercel's real-time events API directly to Express response.
  */
-async function streamBuildLogs(userId: string, deploymentId: string, res: Response) {
+async function streamBuildLogs(data: StreamBuildLogs) {
+    const { userId, deploymentId, res } = data
     const creds = await getVercelCredentials(userId)
     const url = buildVercelUrl(`/v2/deployments/${deploymentId}/events`, creds)
 
@@ -193,7 +204,8 @@ async function streamBuildLogs(userId: string, deploymentId: string, res: Respon
  * Retrieves the latest deployment created for a specific Vercel project.
  * Retries since Vercel might take a moment to register the GitHub commit webhook.
  */
-async function getLatestDeployment(userId: string, vercelProjectId: string) {
+async function getLatestDeployment(data: GetLatestDeployment) {
+    const { userId, vercelProjectId } = data
     const creds = await getVercelCredentials(userId)
     const baseUrl = buildVercelUrl('/v6/deployments', creds)
     const url = new URL(baseUrl)

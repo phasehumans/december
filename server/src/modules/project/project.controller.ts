@@ -2,12 +2,12 @@ import { AppError } from '../../shared/appError'
 
 import {
     createProjectSchema,
-    downloadProjectVersionSchema,
     getProjectByIdSchema,
     renameProjectSchema,
     updateGeneralSettingsSchema,
     shareProjectAsTemplateSchema,
     toggleStarProjectSchema,
+    duplicateProjectSchema,
 } from './project.schema'
 import { projectService } from './project.service'
 
@@ -87,7 +87,7 @@ const getProjectById = async (req: Request, res: Response) => {
             message: 'project fetched successfully',
             data: result,
         })
-    } catch (error: any) {
+    } catch (error) {
         if (error instanceof AppError) {
             return res.status(error.statusCode).json({
                 success: false,
@@ -132,7 +132,7 @@ const createProject = async (req: Request, res: Response) => {
             message: 'project created successfully',
             data: result,
         })
-    } catch (error: any) {
+    } catch (error) {
         if (error instanceof AppError) {
             return res.status(error.statusCode).json({
                 success: false,
@@ -189,7 +189,7 @@ const renameProject = async (req: Request, res: Response) => {
             message: 'project updated successfully',
             data: result,
         })
-    } catch (error: any) {
+    } catch (error) {
         if (error instanceof AppError) {
             return res.status(error.statusCode).json({
                 success: false,
@@ -250,7 +250,7 @@ const updateGeneralSettings = async (req: Request, res: Response) => {
             message: 'project general settings updated successfully',
             data: result,
         })
-    } catch (error: any) {
+    } catch (error) {
         if (error instanceof AppError) {
             return res.status(error.statusCode).json({
                 success: false,
@@ -292,7 +292,7 @@ const deleteProject = async (req: Request, res: Response) => {
             message: 'project deleted successfully',
             data: result,
         })
-    } catch (error: any) {
+    } catch (error) {
         if (error instanceof AppError) {
             return res.status(error.statusCode).json({
                 success: false,
@@ -310,9 +310,18 @@ const deleteProject = async (req: Request, res: Response) => {
 }
 
 const duplicateProject = async (req: Request, res: Response) => {
+    const parseData = duplicateProjectSchema.safeParse(req.body || {})
+
+    if (!parseData.success) {
+        return res.status(400).json({
+            success: false,
+            message: 'validation failed',
+            errors: parseData.error.flatten().fieldErrors,
+        })
+    }
+
     const userId = req.user?.userId as string | undefined
     const projectId = req.params.projectId as string | undefined
-    const { name } = req.body || {}
 
     if (!userId) {
         return res.status(400).json({
@@ -329,13 +338,14 @@ const duplicateProject = async (req: Request, res: Response) => {
     }
 
     try {
+        const { name } = parseData.data
         const result = await projectService.duplicateProject({ userId, projectId, name })
         return res.status(200).json({
             success: true,
             message: 'project duplicated',
             data: result,
         })
-    } catch (error: any) {
+    } catch (error) {
         if (error instanceof AppError) {
             return res.status(error.statusCode).json({
                 success: false,
@@ -347,57 +357,6 @@ const duplicateProject = async (req: Request, res: Response) => {
         return res.status(500).json({
             success: false,
             message: 'failed to duplicate project',
-            errors: error instanceof Error ? error.message : 'unknown error',
-        })
-    }
-}
-
-const downloadProjectVersion = async (req: Request, res: Response) => {
-    const userId = req.user?.userId as string | undefined
-    const projectId = req.params.projectId as string | undefined
-    const parseData = downloadProjectVersionSchema.safeParse(req.query)
-
-    if (!userId) {
-        return res.status(400).json({
-            success: false,
-            message: 'unauthorized',
-        })
-    }
-
-    if (!projectId) {
-        return res.status(400).json({
-            success: false,
-            message: 'project id is required',
-        })
-    }
-
-    if (!parseData.success) {
-        return res.status(400).json({
-            success: false,
-            message: 'validation failed',
-            errors: parseData.error.flatten().fieldErrors,
-        })
-    }
-
-    const { versionId } = parseData.data
-
-    try {
-        const result = await projectService.downloadProjectVersion({ userId, projectId, versionId })
-        res.setHeader('Content-Type', 'application/zip')
-        res.setHeader('Content-Disposition', `attachment; filename="${result.fileName}"`)
-        return res.status(200).send(Buffer.from(result.zip))
-    } catch (error: any) {
-        if (error instanceof AppError) {
-            return res.status(error.statusCode).json({
-                success: false,
-                message: 'failed to download project',
-                errors: error.message,
-            })
-        }
-
-        return res.status(500).json({
-            success: false,
-            message: 'failed to download project',
             errors: error instanceof Error ? error.message : 'unknown error',
         })
     }
@@ -446,7 +405,7 @@ const shareProjectAsTemplate = async (req: Request, res: Response) => {
                 : 'project unshared as template',
             data: result,
         })
-    } catch (error: any) {
+    } catch (error) {
         if (error instanceof AppError) {
             return res.status(error.statusCode).json({
                 success: false,
@@ -499,7 +458,7 @@ const toggleStarProject = async (req: Request, res: Response) => {
             message: 'project isStarred state updated successfully',
             data: result,
         })
-    } catch (error: any) {
+    } catch (error) {
         if (error instanceof AppError) {
             return res.status(error.statusCode).json({
                 success: false,
@@ -524,7 +483,6 @@ export const projectController = {
     updateGeneralSettings,
     deleteProject,
     duplicateProject,
-    downloadProjectVersion,
     shareProjectAsTemplate,
     toggleStarProject,
 }
