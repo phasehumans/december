@@ -17,5 +17,6 @@ projectRouter.post('/:projectId/duplicate', projectController.duplicateProject)
 projectRouter.get('/:projectId/download', projectController.downloadProjectVersion)
 projectRouter.post('/:projectId/share', projectController.shareProjectAsTemplate)
 projectRouter.post('/:projectId/star', projectController.toggleStarProject)
+projectRouter.post('/:projectId/deploy/december', projectController.deployDecemberProject)
 
 export default projectRouter

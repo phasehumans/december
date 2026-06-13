@@ -6,6 +6,8 @@ import {
 } from './generation.schema'
 import { generateService } from './generation.service'
 import { usageService } from '../usage/usage.service'
+import { runtimeService } from '../runtime/runtime.service'
+import { prisma } from '../../config/db'
 
 import type { Request, Response } from 'express'
 
@@ -219,8 +221,50 @@ const applyProjectFix = async (req: Request, res: Response) => {
     }
 }
 
+const validateProject = async (req: Request, res: Response) => {
+    const { id } = req.params
+    const userId = req.user?.userId as string | undefined
+
+    if (!userId) {
+        return res.status(400).json({
+            success: false,
+            message: 'unauthorized',
+        })
+    }
+
+    try {
+        const project = await prisma.project.findFirst({
+            where: {
+                id,
+                userId,
+            },
+        })
+
+        if (!project) {
+            return res.status(404).json({
+                success: false,
+                message: 'project not found',
+            })
+        }
+
+        const result = await runtimeService.checkSandboxCompilation(id)
+        return res.status(200).json({
+            success: true,
+            data: result,
+        })
+    } catch (error: unknown) {
+        const normalizedError = normalizeGenerationError(error)
+        console.error('[generation/validate]', normalizedError.internalMessage)
+        return res.status(500).json({
+            success: false,
+            message: normalizedError.publicMessage,
+        })
+    }
+}
+
 export const generateContoller = {
     applyProjectEdit,
     applyProjectFix,
     generateWebsite,
+    validateProject,
 }

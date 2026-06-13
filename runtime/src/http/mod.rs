@@ -14,6 +14,7 @@ use crate::{
     actors::registry::ActorRegistry,
     app::{config::AppConfig, state::PreviewStatusSnapshot},
     domain::{error::RuntimeServiceError, manifest::ManifestRef},
+    sandboxes::CompileCheckResult,
 };
 
 #[derive(Clone)]
@@ -53,6 +54,7 @@ pub fn build_router(app_state: AppState) -> Router {
             post(manifest_published),
         )
         .route("/previews/{id}/status", get(get_preview_status))
+        .route("/previews/{id}/validate", post(validate_preview))
         .route("/previews/{id}/display", get(display_preview))
         .route("/previews/{id}", delete(delete_preview))
         .with_state(app_state)
@@ -151,6 +153,21 @@ async fn delete_preview(
     Ok(Json(ApiEnvelope {
         success: true,
         data: serde_json::json!({ "deleted": true }),
+    }))
+}
+
+async fn validate_preview(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+) -> Result<Json<ApiEnvelope<CompileCheckResult>>, RuntimeServiceError> {
+    ensure_internal_auth(&state.config, &headers)?;
+    let actor = state.registry.get_actor_handle(&id).await?;
+    let result = actor.run_compile_check().await?;
+
+    Ok(Json(ApiEnvelope {
+        success: true,
+        data: result,
     }))
 }
 

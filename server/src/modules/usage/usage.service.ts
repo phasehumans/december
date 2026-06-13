@@ -367,10 +367,26 @@ const recordUsageEvent = async (data: RecordUsageEventInput) => {
     }
 }
 
+const canRunSelfCorrection = async (userId: string): Promise<boolean> => {
+    try {
+        const user = await prisma.user.findUnique({
+            where: { id: userId, isDeleted: false },
+            select: { creditBalance: true, giftedCredits: true },
+        })
+        if (!user) return false
+
+        const threshold = parseInt(process.env.SELF_CORRECTION_CREDIT_THRESHOLD || '5', 10) // default 5 cents
+        return user.creditBalance + user.giftedCredits >= threshold
+    } catch {
+        return false
+    }
+}
+
 export const usageService = {
     getCurrentUsage,
     checkEnoughCredits,
     hasMinimumBalance,
     recordUsageEvent,
     calculateGenerationCost,
+    canRunSelfCorrection,
 }

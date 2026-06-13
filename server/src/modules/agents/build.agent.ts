@@ -17,6 +17,8 @@ import {
     BUILD_PATCH_AGENT_PROMPT,
     BUILD_SUMMARY_AGENT_PROMPT,
 } from './build.prompt'
+import { buildDeclarationMap } from '../generation/context-indexer'
+import { loadMemoryPromptInstructions } from '../memory/memory.service'
 
 type ProjectIntent = z.infer<typeof projectIntentSchema>
 type ProjectPlan = z.infer<typeof projectPlanSchema>
@@ -131,7 +133,13 @@ const selectRelatedFiles = (targetPath: string, generatedFiles: Record<string, s
     }))
 }
 
-export const generateProjectFile = async (data: GenerateProjectFileInput & { model?: string }) => {
+export const generateProjectFile = async (
+    data: GenerateProjectFileInput & {
+        model?: string
+        projectId?: string
+        userId?: string
+    }
+) => {
     assertFrontendWorkspacePath(data.targetFile.path, 'target frontend file')
 
     return retryAsync({
@@ -141,13 +149,17 @@ export const generateProjectFile = async (data: GenerateProjectFileInput & { mod
             console.log(
                 `[build agent] starting file generation for ${data.targetFile.path}, attempt: ${attempt}`
             )
+            const memoryInstructions = data.projectId
+                ? await loadMemoryPromptInstructions(data.projectId, data.userId)
+                : ''
+            const systemPrompt = BUILD_AGENT_PROMPT + memoryInstructions
             const completion = await openai.chat.completions.create({
                 model: data.model || process.env.AUTO_MODEL || BUILD_AGENT_MODEL,
                 temperature: 0,
                 messages: [
                     {
                         role: 'system',
-                        content: BUILD_AGENT_PROMPT,
+                        content: systemPrompt,
                     },
                     {
                         role: 'user',
@@ -162,6 +174,7 @@ export const generateProjectFile = async (data: GenerateProjectFileInput & { mod
                                 data.targetFile.path,
                                 data.generatedFiles
                             ),
+                            workspaceDeclarations: buildDeclarationMap(data.generatedFiles),
                         }),
                     },
                     ...(attempt > 1
@@ -219,7 +232,11 @@ const selectPatchContext = (targetPath: string, currentFiles: Record<string, str
 }
 
 export const generateProjectPatchFile = async (
-    data: GenerateProjectPatchInput & { model?: string }
+    data: GenerateProjectPatchInput & {
+        model?: string
+        projectId?: string
+        userId?: string
+    }
 ) => {
     assertFrontendWorkspacePath(data.operation.path, 'target frontend patch file')
 
@@ -237,13 +254,17 @@ export const generateProjectPatchFile = async (
             console.log(
                 `[build agent patch] starting patch generation for ${data.operation.path}, attempt: ${attempt}`
             )
+            const memoryInstructions = data.projectId
+                ? await loadMemoryPromptInstructions(data.projectId, data.userId)
+                : ''
+            const systemPrompt = BUILD_PATCH_AGENT_PROMPT + memoryInstructions
             const completion = await openai.chat.completions.create({
                 model: data.model || process.env.AUTO_MODEL || BUILD_AGENT_MODEL,
                 temperature: 0,
                 messages: [
                     {
                         role: 'system',
-                        content: BUILD_PATCH_AGENT_PROMPT,
+                        content: systemPrompt,
                     },
                     {
                         role: 'user',
@@ -260,6 +281,7 @@ export const generateProjectPatchFile = async (
                                 data.currentFiles
                             ),
                             fileTree: Object.keys(data.currentFiles).sort(),
+                            workspaceDeclarations: buildDeclarationMap(data.currentFiles),
                         }),
                     },
                     ...(attempt > 1

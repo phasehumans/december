@@ -472,10 +472,25 @@ const deletePreview = async ({ userId, previewId }: PreviewIdentifierInput) => {
     }
 }
 
+export type CompileCheckResult = {
+    success: boolean
+    errors?: string | null
+}
+
+const checkSandboxCompilation = async (projectId: string): Promise<CompileCheckResult> => {
+    return runtimeRequest<CompileCheckResult>(
+        `/previews/${encodeURIComponent(previewIdForProject(projectId))}/validate`,
+        {
+            method: 'POST',
+        }
+    )
+}
+
 export const runtimeService = {
     startPreview,
     notifyManifestPublished,
     getPreviewStatus,
     deletePreview,
     recordRuntimeStatus,
+    checkSandboxCompilation,
 }

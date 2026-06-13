@@ -12,6 +12,7 @@ import {
 } from '../generation/generation.self-healing'
 import { parseModelJson, readChatCompletionText, retryAsync } from './agents.utils'
 import { CHANGE_PLAN_AGENT_PROMPT, PLAN_AGENT_PROMPT } from './plan.prompt'
+import { loadMemoryPromptInstructions } from '../memory/memory.service'
 
 type ExtractProjectPlan = z.infer<typeof extractProjectPlanSchema>
 type ExtractProjectPlanResponse = z.infer<typeof planAgentResponseSchema>
@@ -129,7 +130,12 @@ const parsePlanAgentPayload = (
 }
 
 export const extractProjectPlan = async (
-    data: ExtractProjectPlan & { model?: string; onStream?: (fullContent: string) => Promise<void> }
+    data: ExtractProjectPlan & {
+        model?: string
+        onStream?: (fullContent: string) => Promise<void>
+        projectId?: string
+        userId?: string
+    }
 ) => {
     const compactData = {
         userPrompt: data.userPrompt,
@@ -141,6 +147,10 @@ export const extractProjectPlan = async (
         maxAttempts: PLAN_AGENT_MAX_ATTEMPTS,
         task: async (attempt, lastError) => {
             console.log(`[generation] plan agent starting, attempt: ${attempt}`)
+            const memoryInstructions = data.projectId
+                ? await loadMemoryPromptInstructions(data.projectId, data.userId)
+                : ''
+            const systemPrompt = PLAN_AGENT_PROMPT + memoryInstructions
             const completion = await openai.chat.completions.create({
                 model: data.model || process.env.AUTO_MODEL || PLAN_AGENT_MODEL,
                 max_tokens: PLAN_AGENT_MAX_TOKENS,
@@ -148,7 +158,7 @@ export const extractProjectPlan = async (
                 messages: [
                     {
                         role: 'system',
-                        content: PLAN_AGENT_PROMPT,
+                        content: systemPrompt,
                     },
                     {
                         role: 'user',
@@ -212,6 +222,7 @@ export const extractProjectChangePlan = async (
     data: ExtractProjectChangePlan & {
         model?: string
         onStream?: (fullContent: string) => Promise<void>
+        userId?: string
     }
 ) => {
     return retryAsync({
@@ -221,6 +232,11 @@ export const extractProjectChangePlan = async (
             console.log(
                 `[generation change] plan agent starting, mode: ${data.mode}, attempt: ${attempt}`
             )
+            const memoryInstructions = await loadMemoryPromptInstructions(
+                data.project.id,
+                data.userId
+            )
+            const systemPrompt = CHANGE_PLAN_AGENT_PROMPT + memoryInstructions
             const completion = await openai.chat.completions.create({
                 model: data.model || process.env.AUTO_MODEL || PLAN_AGENT_MODEL,
                 max_tokens: PLAN_AGENT_CHANGE_MAX_TOKENS,
@@ -228,7 +244,7 @@ export const extractProjectChangePlan = async (
                 messages: [
                     {
                         role: 'system',
-                        content: CHANGE_PLAN_AGENT_PROMPT,
+                        content: systemPrompt,
                     },
                     {
                         role: 'user',

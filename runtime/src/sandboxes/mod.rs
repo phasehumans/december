@@ -13,6 +13,12 @@ pub struct HealthCheckResult {
     pub body_excerpt: Option<String>,
 }
 
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct CompileCheckResult {
+    pub success: bool,
+    pub errors: Option<String>,
+}
+
 #[async_trait]
 pub trait Sandbox: Send + Sync {
     async fn ensure_started(&self, workspace_host_path: &Path) -> Result<(), RuntimeServiceError>;
@@ -21,4 +27,5 @@ pub trait Sandbox: Send + Sync {
     async fn stop(&self) -> Result<(), RuntimeServiceError>;
     async fn health_check(&self) -> Result<HealthCheckResult, RuntimeServiceError>;
     async fn preview_target_url(&self) -> Option<String>;
+    async fn run_compile_check(&self) -> Result<CompileCheckResult, RuntimeServiceError>;
 }

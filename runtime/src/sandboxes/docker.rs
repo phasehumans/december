@@ -24,7 +24,7 @@ use tokio::sync::Mutex;
 use crate::{
     app::config::DockerConfig,
     domain::error::RuntimeServiceError,
-    sandboxes::{HealthCheckResult, Sandbox},
+    sandboxes::{CompileCheckResult, HealthCheckResult, Sandbox},
 };
 
 #[derive(Clone)]
@@ -599,6 +599,58 @@ impl Sandbox for DockerSandbox {
         state
             .host_port
             .map(|port| format!("http://127.0.0.1:{port}"))
+    }
+
+    async fn run_compile_check(&self) -> Result<CompileCheckResult, RuntimeServiceError> {
+        let container_name = {
+            let state = self.state.lock().await;
+            state.container_name.clone().ok_or_else(|| {
+                RuntimeServiceError::infra_runtime("preview container is not started", None)
+            })?
+        };
+
+        info!(preview_id = %self.preview_id, name = %container_name, "running compilation checks inside container...");
+
+        // 1. Run typescript compiler check
+        let (tsc_exit, tsc_output) = self
+            .run_shell(&container_name, "bunx tsc --noEmit")
+            .await?;
+
+        // 2. Run bundler build check
+        let (build_exit, build_output) = self
+            .run_shell(&container_name, "bun run build")
+            .await?;
+
+        // 3. Check if dev server is healthy
+        let health = self.health_check().await?;
+
+        if tsc_exit == 0 && build_exit == 0 && health.healthy {
+            return Ok(CompileCheckResult {
+                success: true,
+                errors: None,
+            });
+        }
+
+        let mut errors = String::new();
+        if tsc_exit != 0 {
+            errors.push_str(&format!("--- TypeScript Type Errors ---\n{}\n", tsc_output));
+        }
+        if build_exit != 0 {
+            errors.push_str(&format!("--- Vite Build Errors ---\n{}\n", build_output));
+        }
+        if !health.healthy {
+            // Read dev server logs if dev server is not healthy
+            let (_log_exit, log_output) = self
+                .run_shell(&container_name, "cat /workspace/.december/dev-server.log")
+                .await
+                .unwrap_or((1, "Failed to read dev server logs".to_string()));
+            errors.push_str(&format!("--- Dev Server Logs ---\n{}\n", log_output));
+        }
+
+        Ok(CompileCheckResult {
+            success: false,
+            errors: Some(errors),
+        })
     }
 }
 
