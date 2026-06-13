@@ -104,17 +104,6 @@ export const GitHubRepoForm: React.FC<GitHubRepoFormProps> = ({
         onSubmitRepo?.(url)
     }
 
-    // Auto-reset error messages back to the default message after 5 seconds
-    React.useEffect(() => {
-        if (importError || validationError) {
-            const timer = setTimeout(() => {
-                setValidationError(null)
-                onResetImportState?.()
-            }, 5000)
-            return () => clearTimeout(timer)
-        }
-    }, [importError, validationError, onResetImportState])
-
     return (
         <motion.div
             initial={{ opacity: 0, y: -8, scale: 0.98 }}
@@ -210,9 +199,11 @@ export const GitHubRepoForm: React.FC<GitHubRepoFormProps> = ({
                                     importMessage ||
                                     'Enter the URL of your repository or any public GitHub repository.'}
                             </p>
-                            <p className="text-[11px] text-[#4A4A4A] italic">
-                                Note: We currently only support frontend React projects.
-                            </p>
+                            {!(validationError || importError) && (
+                                <p className="text-[11px] text-[#4A4A4A] italic">
+                                    Note: We currently only support frontend React projects.
+                                </p>
+                            )}
                         </div>
                     </div>
                 )}

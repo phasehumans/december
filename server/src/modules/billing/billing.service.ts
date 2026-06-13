@@ -150,29 +150,37 @@ const getOverview = async (userId: string) => {
             : new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1))
     }
 
-    const aggregate = await prisma.usageEvent.aggregate({
-        where: {
-            userId,
-            ...(isPro ? { periodStart } : {}),
-            createdAt: {
-                gte: periodStart,
-                lt: periodEnd,
+    const [aggregate, claims] = await Promise.all([
+        prisma.usageEvent.aggregate({
+            where: {
+                userId,
+                ...(isPro ? { periodStart } : {}),
+                createdAt: {
+                    gte: periodStart,
+                    lt: periodEnd,
+                },
             },
-        },
-        _sum: {
-            costInCents: true,
-            inputTokens: true,
-            outputTokens: true,
-            totalTokens: true,
-        },
-    })
+            _sum: {
+                costInCents: true,
+                inputTokens: true,
+                outputTokens: true,
+                totalTokens: true,
+            },
+        }),
+        prisma.redeemCodeClaim.findMany({
+            where: { userId },
+            include: {
+                redeemCode: true,
+            },
+        }),
+    ])
 
     const usedInCents = aggregate._sum.costInCents ?? 0
-    const creditLimitInCents = (isPro ? 500 : 100) + user.creditBalance
+    const creditLimitInCents = isPro ? 500 : 100
+    const totalGiftedCredits = claims.reduce((sum, c) => sum + c.redeemCode.creditAmount, 0)
 
-    const remainingPlanCreditsInCents = Math.max(creditLimitInCents - usedInCents, 0)
-    const usedGiftedInCents = Math.max(usedInCents - creditLimitInCents, 0)
-    const remainingGiftedCreditsInCents = Math.max(user.giftedCredits - usedGiftedInCents, 0)
+    const remainingPlanCreditsInCents = user.creditBalance
+    const remainingGiftedCreditsInCents = user.giftedCredits
     const remainingInCents = remainingPlanCreditsInCents + remainingGiftedCreditsInCents
 
     return {
@@ -187,12 +195,12 @@ const getOverview = async (userId: string) => {
         },
         credits: {
             limitInCents: creditLimitInCents,
-            giftedCreditsInCents: user.giftedCredits,
+            giftedCreditsInCents: totalGiftedCredits,
             usedInCents,
             remainingPlanCreditsInCents,
             remainingGiftedCreditsInCents,
             remainingInCents,
-            unlimited: creditLimitInCents === null,
+            unlimited: false,
         },
     }
 }
@@ -309,6 +317,37 @@ const persistProviderSubscription = async (data: {
         },
     })
 
+    const existingSubscription = await prisma.subscription.findUnique({
+        where: {
+            userId: data.userId,
+        },
+        select: {
+            currentPeriodStart: true,
+            plan: true,
+        },
+    })
+
+    let nextCreditBalance: number | undefined = undefined
+
+    // 1. Initial Upgrade: plan changes from FREE to PRO
+    const isInitialUpgrade = previousUser?.subscriptionPlan !== 'PRO' && userPlan === 'PRO'
+
+    // 2. Renewal: Pro subscription renewed for a new billing cycle (different start date)
+    const isRenewal =
+        userPlan === 'PRO' &&
+        existingSubscription &&
+        existingSubscription.plan === 'PRO' &&
+        existingSubscription.currentPeriodStart.getTime() !== periodStart.getTime()
+
+    // 3. Downgrade: plan changes from PRO to FREE
+    const isDowngrade = previousUser?.subscriptionPlan === 'PRO' && userPlan === 'FREE'
+
+    if (isInitialUpgrade || isRenewal) {
+        nextCreditBalance = 500 // Reset/expire and set to exactly $5.00
+    } else if (isDowngrade) {
+        nextCreditBalance = 0 // Clear to 0
+    }
+
     const [subscription, user] = await prisma.$transaction([
         prisma.subscription.upsert({
             where: {
@@ -346,6 +385,7 @@ const persistProviderSubscription = async (data: {
                 subscriptionPlan: userPlan,
                 subscriptionStatus: userStatus,
                 currentPeriodEnd: periodEnd,
+                ...(nextCreditBalance !== undefined ? { creditBalance: nextCreditBalance } : {}),
             },
         }),
     ])

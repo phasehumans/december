@@ -63,57 +63,60 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
                     />
                 </div>
 
-                {/* Star / Favourite Row */}
-                <div className="flex items-center justify-between border-t border-[#242323] pt-6">
-                    <div className="flex flex-col gap-0.5 text-left">
-                        <span className="text-[14px] text-[#D6D5C9]">Add to Favourites</span>
-                        <span className="text-[13px] text-[#7B7A79]">
-                            Star this project to make it easily accessible from home.
-                        </span>
+                {/* Grouped Rows with gap-2 */}
+                <div className="flex flex-col gap-2">
+                    {/* Star / Favourite Row */}
+                    <div className="flex items-center justify-between">
+                        <div className="flex flex-col gap-0.5 text-left">
+                            <span className="text-[14px] text-[#D6D5C9]">Add to Favourites</span>
+                            <span className="text-[13px] text-[#7B7A79]">
+                                Star this project to make it easily accessible from home.
+                            </span>
+                        </div>
+                        <PremiumToggle
+                            active={isFavorite}
+                            onChange={() => setIsFavorite(!isFavorite)}
+                        />
                     </div>
-                    <PremiumToggle
-                        active={isFavorite}
-                        onChange={() => setIsFavorite(!isFavorite)}
-                    />
+
+                    {/* Share as Template Row */}
+                    <div className="flex items-center justify-between">
+                        <div className="flex flex-col gap-0.5 text-left">
+                            <span className="text-[14px] text-[#D6D5C9]">
+                                {isTemplate ? 'Unshare as Template' : 'Share as Template'}
+                            </span>
+                            <span className="text-[13px] text-[#7B7A79]">
+                                Allow others to duplicate this project as a community layout.
+                            </span>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={onOpenShareModal}
+                            className="px-4 py-1.5 rounded-lg border border-[#383736] text-[13px] text-[#D6D5C9] hover:bg-[#242323] transition-colors font-medium cursor-pointer"
+                        >
+                            {isTemplate ? 'Unshare' : 'Share'}
+                        </button>
+                    </div>
+
+                    {/* Delete Project Row */}
+                    <div className="flex items-center justify-between">
+                        <div className="flex flex-col gap-0.5 text-left">
+                            <span className="text-[14px] text-[#D6D5C9]">Delete Project</span>
+                            <span className="text-[13px] text-[#7B7A79]">
+                                Permanently delete this project from your workspace.
+                            </span>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={onOpenDeleteModal}
+                            className="px-4 py-1.5 rounded-lg border border-[#383736] text-[13px] text-[#D6D5C9] hover:bg-[#242323] transition-colors font-medium cursor-pointer"
+                        >
+                            Delete
+                        </button>
+                    </div>
                 </div>
 
-                {/* Share as Template Row */}
-                <div className="flex items-center justify-between border-t border-[#242323] pt-6">
-                    <div className="flex flex-col gap-0.5 text-left">
-                        <span className="text-[14px] text-[#D6D5C9]">
-                            {isTemplate ? 'Unshare as Template' : 'Share as Template'}
-                        </span>
-                        <span className="text-[13px] text-[#7B7A79]">
-                            Allow others to duplicate this project as a community layout.
-                        </span>
-                    </div>
-                    <button
-                        type="button"
-                        onClick={onOpenShareModal}
-                        className="px-4 py-1.5 rounded-lg border border-[#383736] text-[13px] text-[#D6D5C9] hover:bg-[#242323] transition-colors font-medium cursor-pointer"
-                    >
-                        {isTemplate ? 'Unshare' : 'Share'}
-                    </button>
-                </div>
-
-                {/* Delete Project Row */}
-                <div className="flex items-center justify-between border-t border-[#242323] pt-6">
-                    <div className="flex flex-col gap-0.5 text-left">
-                        <span className="text-[14px] text-[#D6D5C9]">Delete Project</span>
-                        <span className="text-[13px] text-[#7B7A79]">
-                            Permanently delete this project from your workspace.
-                        </span>
-                    </div>
-                    <button
-                        type="button"
-                        onClick={onOpenDeleteModal}
-                        className="px-4 py-1.5 rounded-lg border border-[#383736] text-[13px] text-[#D6D5C9] hover:bg-[#242323] transition-colors font-medium cursor-pointer"
-                    >
-                        Delete
-                    </button>
-                </div>
-
-                <div className="pt-4 border-t border-[#242323] flex justify-start">
+                <div className="flex justify-start">
                     <button
                         type="button"
                         onClick={handleSaveChanges}

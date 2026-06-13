@@ -7,335 +7,6 @@ import { profileAPI } from '@/features/profile/api/profile'
 import { ErrorAlert } from '@/shared/components/ui/ErrorAlert'
 import { Skeleton } from '@/shared/components/ui/Skeleton'
 
-// Mock data so the table is never empty
-const MOCK_USAGE_EVENTS = [
-    // --- Within 1 Day ---
-    {
-        id: 'mock-1',
-        createdAt: new Date(Date.now() - 1000 * 60 * 12).toISOString(), // 12 mins ago
-        model: 'claude-sonnet-4-20250514',
-        costInCents: 8,
-        inputTokens: 1240,
-        outputTokens: 860,
-        totalTokens: 2100,
-        project: { name: 'December Portfolio' },
-    },
-    {
-        id: 'mock-2',
-        createdAt: new Date(Date.now() - 1000 * 60 * 45).toISOString(), // 45 mins ago
-        model: 'gpt-4o',
-        costInCents: 12,
-        inputTokens: 2100,
-        outputTokens: 1400,
-        totalTokens: 3500,
-        project: { name: 'Landing Page' },
-    },
-    {
-        id: 'mock-3',
-        createdAt: new Date(Date.now() - 1000 * 60 * 120).toISOString(), // 2 hours ago
-        model: 'claude-sonnet-4-20250514',
-        costInCents: 5,
-        inputTokens: 800,
-        outputTokens: 420,
-        totalTokens: 1220,
-        project: { name: 'December Portfolio' },
-    },
-    {
-        id: 'mock-4',
-        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString(), // 5 hours ago
-        model: 'dall-e-3',
-        costInCents: 20,
-        inputTokens: 0,
-        outputTokens: 0,
-        totalTokens: 0,
-        project: { name: 'Marketing Asset Gen' },
-    },
-    {
-        id: 'mock-5',
-        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 12).toISOString(), // 12 hours ago
-        model: 'gemini-2.5-flash',
-        costInCents: 3,
-        inputTokens: 640,
-        outputTokens: 310,
-        totalTokens: 950,
-        project: { name: 'Dashboard Widget' },
-    },
-    {
-        id: 'mock-6',
-        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 18).toISOString(), // 18 hours ago
-        model: 'gpt-4o',
-        costInCents: 14,
-        inputTokens: 2300,
-        outputTokens: 1200,
-        totalTokens: 3500,
-        project: { name: 'AI Chatbot UI' },
-    },
-    // --- Within 2-7 Days (7d) ---
-    {
-        id: 'mock-7',
-        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 28).toISOString(), // 1.1 days ago
-        model: 'claude-sonnet-4-20250514',
-        costInCents: 15,
-        inputTokens: 3200,
-        outputTokens: 1800,
-        totalTokens: 5000,
-        project: { name: 'December Portfolio' },
-    },
-    {
-        id: 'mock-8',
-        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString(), // 2 days ago
-        model: 'gpt-4o',
-        costInCents: 9,
-        inputTokens: 1800,
-        outputTokens: 920,
-        totalTokens: 2720,
-        project: { name: 'AI Chatbot UI' },
-    },
-    {
-        id: 'mock-9',
-        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 72).toISOString(), // 3 days ago
-        model: 'gemini-2.5-flash',
-        costInCents: 4,
-        inputTokens: 520,
-        outputTokens: 280,
-        totalTokens: 800,
-        project: { name: 'E-commerce API' },
-    },
-    {
-        id: 'mock-10',
-        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 96).toISOString(), // 4 days ago
-        model: 'claude-sonnet-4-20250514',
-        costInCents: 11,
-        inputTokens: 2400,
-        outputTokens: 1100,
-        totalTokens: 3500,
-        project: { name: 'Dashboard Widget' },
-    },
-    {
-        id: 'mock-11',
-        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 120).toISOString(), // 5 days ago
-        model: 'dall-e-3',
-        costInCents: 20,
-        inputTokens: 0,
-        outputTokens: 0,
-        totalTokens: 0,
-        project: { name: 'Marketing Asset Gen' },
-    },
-    {
-        id: 'mock-12',
-        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 144).toISOString(), // 6 days ago
-        model: 'gpt-4o',
-        costInCents: 18,
-        inputTokens: 3100,
-        outputTokens: 1900,
-        totalTokens: 5000,
-        project: { name: 'Landing Page' },
-    },
-    // --- Within 8-30 Days (30d) ---
-    {
-        id: 'mock-13',
-        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 9).toISOString(), // 9 days ago
-        model: 'claude-sonnet-4-20250514',
-        costInCents: 22,
-        inputTokens: 4200,
-        outputTokens: 2500,
-        totalTokens: 6700,
-        project: { name: 'December Portfolio' },
-    },
-    {
-        id: 'mock-14',
-        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 12).toISOString(), // 12 days ago
-        model: 'gemini-2.5-pro',
-        costInCents: 10,
-        inputTokens: 1500,
-        outputTokens: 1100,
-        totalTokens: 2600,
-        project: { name: 'E-commerce API' },
-    },
-    {
-        id: 'mock-15',
-        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 15).toISOString(), // 15 days ago
-        model: 'gpt-4o',
-        costInCents: 6,
-        inputTokens: 1100,
-        outputTokens: 500,
-        totalTokens: 1600,
-        project: { name: 'AI Chatbot UI' },
-    },
-    {
-        id: 'mock-16',
-        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 18).toISOString(), // 18 days ago
-        model: 'claude-sonnet-4-20250514',
-        costInCents: 12,
-        inputTokens: 2500,
-        outputTokens: 1300,
-        totalTokens: 3800,
-        project: { name: 'Dashboard Widget' },
-    },
-    {
-        id: 'mock-17',
-        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 22).toISOString(), // 22 days ago
-        model: 'dall-e-3',
-        costInCents: 20,
-        inputTokens: 0,
-        outputTokens: 0,
-        totalTokens: 0,
-        project: { name: 'Marketing Asset Gen' },
-    },
-    {
-        id: 'mock-18',
-        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 25).toISOString(), // 25 days ago
-        model: 'gemini-2.5-flash',
-        costInCents: 2,
-        inputTokens: 500,
-        outputTokens: 250,
-        totalTokens: 750,
-        project: { name: 'Dashboard Widget' },
-    },
-    {
-        id: 'mock-19',
-        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 28).toISOString(), // 28 days ago
-        model: 'gpt-4o',
-        costInCents: 15,
-        inputTokens: 2800,
-        outputTokens: 1700,
-        totalTokens: 4500,
-        project: { name: 'Landing Page' },
-    },
-    // --- Within 31-90 Days (90d) ---
-    {
-        id: 'mock-20',
-        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 35).toISOString(), // 35 days ago
-        model: 'claude-sonnet-4-20250514',
-        costInCents: 17,
-        inputTokens: 3000,
-        outputTokens: 2100,
-        totalTokens: 5100,
-        project: { name: 'December Portfolio' },
-    },
-    {
-        id: 'mock-21',
-        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 42).toISOString(), // 42 days ago
-        model: 'gpt-4o',
-        costInCents: 13,
-        inputTokens: 2200,
-        outputTokens: 1400,
-        totalTokens: 3600,
-        project: { name: 'AI Chatbot UI' },
-    },
-    {
-        id: 'mock-22',
-        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 48).toISOString(), // 48 days ago
-        model: 'gemini-2.5-pro',
-        costInCents: 9,
-        inputTokens: 1400,
-        outputTokens: 900,
-        totalTokens: 2300,
-        project: { name: 'E-commerce API' },
-    },
-    {
-        id: 'mock-23',
-        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 55).toISOString(), // 55 days ago
-        model: 'claude-sonnet-4-20250514',
-        costInCents: 8,
-        inputTokens: 1500,
-        outputTokens: 900,
-        totalTokens: 2400,
-        project: { name: 'December Portfolio' },
-    },
-    {
-        id: 'mock-24',
-        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 62).toISOString(), // 62 days ago
-        model: 'dall-e-3',
-        costInCents: 20,
-        inputTokens: 0,
-        outputTokens: 0,
-        totalTokens: 0,
-        project: { name: 'Marketing Asset Gen' },
-    },
-    {
-        id: 'mock-25',
-        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 68).toISOString(), // 68 days ago
-        model: 'gpt-4o',
-        costInCents: 11,
-        inputTokens: 1900,
-        outputTokens: 1100,
-        totalTokens: 3000,
-        project: { name: 'Landing Page' },
-    },
-    {
-        id: 'mock-26',
-        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 75).toISOString(), // 75 days ago
-        model: 'gemini-2.5-flash',
-        costInCents: 4,
-        inputTokens: 700,
-        outputTokens: 350,
-        totalTokens: 1050,
-        project: { name: 'Dashboard Widget' },
-    },
-    {
-        id: 'mock-27',
-        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 82).toISOString(), // 82 days ago
-        model: 'claude-sonnet-4-20250514',
-        costInCents: 19,
-        inputTokens: 3500,
-        outputTokens: 2200,
-        totalTokens: 5700,
-        project: { name: 'December Portfolio' },
-    },
-    {
-        id: 'mock-28',
-        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 88).toISOString(), // 88 days ago
-        model: 'gpt-4o',
-        costInCents: 16,
-        inputTokens: 2700,
-        outputTokens: 1600,
-        totalTokens: 4300,
-        project: { name: 'AI Chatbot UI' },
-    },
-    // --- Older than 90 Days (Should be hidden by range filters) ---
-    {
-        id: 'mock-29',
-        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 95).toISOString(), // 95 days ago
-        model: 'gemini-2.5-pro',
-        costInCents: 10,
-        inputTokens: 1600,
-        outputTokens: 1000,
-        totalTokens: 2600,
-        project: { name: 'E-commerce API' },
-    },
-    {
-        id: 'mock-30',
-        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 105).toISOString(), // 105 days ago
-        model: 'claude-sonnet-4-20250514',
-        costInCents: 14,
-        inputTokens: 2800,
-        outputTokens: 1500,
-        totalTokens: 4300,
-        project: { name: 'Dashboard Widget' },
-    },
-    {
-        id: 'mock-31',
-        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 120).toISOString(), // 120 days ago
-        model: 'gpt-4o',
-        costInCents: 22,
-        inputTokens: 4000,
-        outputTokens: 2400,
-        totalTokens: 6400,
-        project: { name: 'Landing Page' },
-    },
-    {
-        id: 'mock-32',
-        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 150).toISOString(), // 150 days ago
-        model: 'dall-e-3',
-        costInCents: 20,
-        inputTokens: 0,
-        outputTokens: 0,
-        totalTokens: 0,
-        project: { name: 'Marketing Asset Gen' },
-    },
-]
-
 export const ProfileUsageSettings: React.FC = () => {
     const { data: profile } = useQuery({
         queryKey: ['profile'],
@@ -436,12 +107,9 @@ export const ProfileUsageSettings: React.FC = () => {
         setOffset(0)
     }, [activeDateRange.start, activeDateRange.end, limit])
 
-    // Use real data if available, otherwise mock. Apply date filtering on frontend.
+    // Use real data. Apply date filtering on frontend.
     const displayEvents = React.useMemo(() => {
-        const events =
-            history && history.events && history.events.length > 0
-                ? history.events
-                : MOCK_USAGE_EVENTS
+        const events = history?.events ?? []
 
         const startTime = new Date(activeDateRange.start).getTime()
         const endTime = new Date(activeDateRange.end).getTime()
@@ -613,39 +281,45 @@ export const ProfileUsageSettings: React.FC = () => {
 
                             {/* Rows */}
                             <div className="flex flex-col divide-y divide-[#242323]/50 min-h-[420px]">
-                                {paginatedEvents.map((row) => (
-                                    <div
-                                        key={row.id}
-                                        className="grid grid-cols-[130px_200px_1fr_100px_70px] items-center py-5 px-5 text-[13px] hover:bg-[#1A1918] transition-colors"
-                                    >
-                                        {/* Date */}
-                                        <div className="text-[#D6D5C9]">
-                                            {formatRowDate(row.createdAt)}
-                                        </div>
-
-                                        {/* Project */}
-                                        <div className="text-[#D6D5C9] truncate pr-2 font-medium">
-                                            {row.project?.name || '-'}
-                                        </div>
-
-                                        {/* Model */}
-                                        <div className="text-[#7B7A79] truncate pr-2">
-                                            {formatModelName(row.model)}
-                                        </div>
-
-                                        {/* Token Usage */}
-                                        <div className="text-[#D6D5C9] font-mono text-[12px]">
-                                            {row.totalTokens.toLocaleString()}
-                                        </div>
-
-                                        {/* Cost */}
-                                        <div className="text-right">
-                                            <span className="text-[#D6D5C9]">
-                                                ${(row.costInCents / 100).toFixed(2)}
-                                            </span>
-                                        </div>
+                                {paginatedEvents.length === 0 ? (
+                                    <div className="flex flex-col items-center justify-center flex-1 h-[420px] text-[#7B7A79] text-[13px]">
+                                        No usage events found for this period.
                                     </div>
-                                ))}
+                                ) : (
+                                    paginatedEvents.map((row) => (
+                                        <div
+                                            key={row.id}
+                                            className="grid grid-cols-[130px_200px_1fr_100px_70px] items-center py-5 px-5 text-[13px] hover:bg-[#1A1918] transition-colors"
+                                        >
+                                            {/* Date */}
+                                            <div className="text-[#D6D5C9]">
+                                                {formatRowDate(row.createdAt)}
+                                            </div>
+
+                                            {/* Project */}
+                                            <div className="text-[#D6D5C9] truncate pr-2 font-medium">
+                                                {row.project?.name || '-'}
+                                            </div>
+
+                                            {/* Model */}
+                                            <div className="text-[#7B7A79] truncate pr-2">
+                                                {formatModelName(row.model)}
+                                            </div>
+
+                                            {/* Token Usage */}
+                                            <div className="text-[#D6D5C9] font-mono text-[12px]">
+                                                {row.totalTokens.toLocaleString()}
+                                            </div>
+
+                                            {/* Cost */}
+                                            <div className="text-right">
+                                                <span className="text-[#D6D5C9]">
+                                                    ${(row.costInCents / 100).toFixed(2)}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
                             </div>
                         </div>
                     )}

@@ -39,7 +39,6 @@ describe('usage.routes.integration', () => {
         const testRouter = Router()
         testRouter.get('/', usageController.getCurrentUsage)
         testRouter.get('/check', usageController.checkEnoughCredits)
-        testRouter.post('/', usageController.recordUsageEvent)
 
         app.use('/api/v1/usage', testRouter)
     })
@@ -64,61 +63,8 @@ describe('usage.routes.integration', () => {
         expect(res.status).toBe(200)
         expect(res.body.success).toBe(true)
         expect(res.body.data.usage.costInCents).toBe(0)
-        expect(res.body.data.credits.limitInCents).toBe(500)
-    })
-
-    it('should record a usage event', async () => {
-        const res = await request(app)
-            .post('/api/v1/usage')
-            .send({
-                model: 'gpt-5',
-                inputTokens: 25,
-                outputTokens: 10,
-                costInCents: 4,
-                externalRequestId: `req-${crypto.randomUUID()}`,
-            })
-
-        expect(res.status).toBe(201)
-        expect(res.body.success).toBe(true)
-        expect(res.body.data.idempotent).toBe(false)
-        expect(res.body.data.event.totalTokens).toBe(35)
-    })
-
-    it('should return 200 for idempotent usage replays', async () => {
-        const externalRequestId = `req-${crypto.randomUUID()}`
-
-        await request(app).post('/api/v1/usage').send({
-            model: 'gpt-5',
-            inputTokens: 25,
-            outputTokens: 10,
-            costInCents: 4,
-            externalRequestId,
-        })
-
-        const res = await request(app).post('/api/v1/usage').send({
-            model: 'gpt-5',
-            inputTokens: 100,
-            outputTokens: 100,
-            costInCents: 100,
-            externalRequestId,
-        })
-
-        expect(res.status).toBe(200)
-        expect(res.body.success).toBe(true)
-        expect(res.body.data.idempotent).toBe(true)
-
-        const count = await prisma.usageEvent.count({ where: { externalRequestId } })
-        expect(count).toBe(1)
-    })
-
-    it('should validate usage event body', async () => {
-        const res = await request(app).post('/api/v1/usage').send({
-            model: '',
-            costInCents: -1,
-        })
-
-        expect(res.status).toBe(400)
-        expect(res.body.success).toBe(false)
+        expect(res.body.data.credits.limitInCents).toBe(100)
+        expect(res.body.data.credits.remainingInCents).toBe(100)
     })
 
     it('should check estimated credit availability', async () => {

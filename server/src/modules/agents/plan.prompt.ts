@@ -76,8 +76,10 @@ Plan rules:
 - always include react, react-dom, bun-plugin-tailwind, tailwindcss
 - always include dev dependencies @types/react, @types/react-dom, @types/bun
 - add react-router-dom only when multiple routes are genuinely useful
-- files should include only files needed for a runnable app
-- every valid plan must generate package.json, index.html, src/frontend.tsx, src/index.css, and src/App.tsx
+- files should include only application files under src/components/, src/pages/, src/index.css, and src/App.tsx.
+- Do NOT plan system configuration files. Files such as package.json, tsconfig.json, vite.config.ts, index.html, and src/main.tsx are provided as immutable scaffolds by the platform infrastructure.
+- Explicitly forbid creating server (src/index.ts) or build script (build.ts) plans.
+- every valid plan must generate src/index.css and src/App.tsx
 - every file should have a path, purpose, generate flag, and generator type
 - buildOrder should list each generated file exactly once in a sensible dependency-safe order
 - builderNotes should contain short, practical guidance that helps the builder preserve the intended experience
@@ -89,19 +91,15 @@ Allowed generator values:
 - component
 - layout
 - route
-- config
 - lib
 
 File guidance:
-- root config files may include .gitignore, build.ts, bun-env.d.ts, README.md, tsconfig.json, package.json
-- use index.html as the Bun HTML shell
-- use src/frontend.tsx as the React entry point
 - use src/App.tsx as the app shell
 - keep app code under src/
 - use src/pages/ only when routing is useful
 - use src/components/ for reusable UI
 - use src/lib/ for small helpers or mock data when genuinely useful
-- do not include backend, API, database, Prisma, env, Docker, or server files
+- do not include backend, API, database, Prisma, env, Docker, server files (like src/index.ts), or build scripts (like build.ts)
 - do not include duplicate paths
 
 Validation expectations:
@@ -149,24 +147,6 @@ Return exactly this JSON shape:
       "devDependencies": ["@types/react", "@types/react-dom", "@types/bun"],
       "files": [
         {
-          "path": "package.json",
-          "purpose": "Declare scripts and dependencies for the Bun React app",
-          "generate": true,
-          "generator": "config"
-        },
-        {
-          "path": "index.html",
-          "purpose": "Mount the React app in the browser",
-          "generate": true,
-          "generator": "static"
-        },
-        {
-          "path": "src/frontend.tsx",
-          "purpose": "Mount React into the root element",
-          "generate": true,
-          "generator": "app-shell"
-        },
-        {
           "path": "src/index.css",
           "purpose": "Provide global Tailwind and base styles",
           "generate": true,
@@ -179,7 +159,7 @@ Return exactly this JSON shape:
           "generator": "app-shell"
         }
       ],
-      "buildOrder": ["package.json", "index.html", "src/index.css", "src/frontend.tsx", "src/App.tsx"],
+      "buildOrder": ["src/index.css", "src/App.tsx"],
       "builderNotes": ["Keep the first pass browser-only and coherent."]
     },
     "errors": []
@@ -243,9 +223,9 @@ Plan of Action rules:
 - DO NOT use "STEP X -" or "Step X:" in headings. Just write the natural heading name.
 - use bullet points and numbered lists extensively
 
-Patch plan rules:
-- stay inside approved frontend files only: root config files, src/, and public/
-- do not plan backend, API, database, Prisma, env, Docker, or server files
+- stay inside approved frontend application files under src/components/, src/pages/, src/index.css, and src/App.tsx
+- Do NOT plan or modify system configuration files (package.json, tsconfig.json, vite.config.ts, index.html, src/main.tsx).
+- Explicitly forbid planning server (src/index.ts) or build script (build.ts) plans.
 - operations should be small and useful
 - each operation path must be unique
 - action must be create, update, or delete

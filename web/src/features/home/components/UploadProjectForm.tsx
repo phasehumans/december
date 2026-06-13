@@ -84,17 +84,6 @@ export const UploadProjectForm: React.FC<UploadProjectFormProps> = ({
         return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
     }
 
-    // Auto-reset error messages after 5 seconds
-    React.useEffect(() => {
-        if (importError || validationError) {
-            const timer = setTimeout(() => {
-                setValidationError(null)
-                onResetImportState?.()
-            }, 5000)
-            return () => clearTimeout(timer)
-        }
-    }, [importError, validationError, onResetImportState])
-
     return (
         <motion.div
             initial={{ opacity: 0, y: -8, scale: 0.98 }}
@@ -154,6 +143,11 @@ export const UploadProjectForm: React.FC<UploadProjectFormProps> = ({
                                     browse files
                                 </span>
                             </p>
+                            {!(validationError || importError) && (
+                                <p className="text-[11px] text-[#4A4A4A] italic mt-1.5">
+                                    Note: We currently only support frontend React projects.
+                                </p>
+                            )}
                         </div>
                         <input
                             ref={fileInputRef}
@@ -198,7 +192,7 @@ export const UploadProjectForm: React.FC<UploadProjectFormProps> = ({
                             </div>
                             {(validationError || importError || importMessage) && (
                                 <p
-                                    className={`text-[12px] mt-1 max-w-[420px] truncate ${validationError || importError ? 'text-red-400 font-medium' : 'text-[#656565]'}`}
+                                    className={`text-[12px] mt-2 max-w-[420px] ${validationError || importError ? 'text-red-400 font-medium' : 'text-[#656565]'}`}
                                 >
                                     {validationError || importError || importMessage}
                                 </p>

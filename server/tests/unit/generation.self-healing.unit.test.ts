@@ -139,8 +139,8 @@ describe('generation self-healing layers', () => {
 
         expect(parsed.success).toBe(true)
 
-        if (parsed.success) {
-            const data = parsed.data.plan.data!
+        if (parsed.success && parsed.data && parsed.data.plan.data) {
+            const data = parsed.data.plan.data
 
             // Check that operations list has been deduplicated and secured
             expect(data.operations.length).toBe(1)

@@ -69,6 +69,18 @@ impl ActorRegistry {
         Ok(handle.snapshot())
     }
 
+    pub async fn get_actor_handle(
+        &self,
+        preview_id: &str,
+    ) -> Result<PreviewActorHandle, RuntimeServiceError> {
+        let guard = self.inner.read().await;
+        let handle = guard
+            .get(preview_id)
+            .ok_or_else(|| RuntimeServiceError::NotFound("preview not found".to_string()))?;
+
+        Ok(handle.clone())
+    }
+
     pub async fn delete(&self, preview_id: &str) -> Result<(), RuntimeServiceError> {
         let handle = {
             let mut guard = self.inner.write().await;

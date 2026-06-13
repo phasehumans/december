@@ -1,4 +1,4 @@
-﻿const getErrorMessage = (error: unknown) => {
+const getErrorMessage = (error: unknown) => {
     if (error instanceof Error) {
         return error.message
     }
@@ -64,6 +64,18 @@ export const normalizeGenerationError = (error: unknown, options?: { path?: stri
             internalMessage,
             publicMessage:
                 'The generation connection was interrupted. Please check your network and try again.',
+        }
+    }
+
+    if (
+        normalizedMessage.includes('compilation checks failed') ||
+        normalizedMessage.includes('typescript type errors') ||
+        normalizedMessage.includes('vite build errors')
+    ) {
+        return {
+            internalMessage,
+            publicMessage:
+                'The preview build failed compilation checks. Check details for type errors or bundler issues.',
         }
     }
 

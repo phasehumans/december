@@ -5,18 +5,16 @@ import React, { useState } from 'react'
 import { profileAPI, type GithubRepo } from '@/features/profile/api/profile'
 import { Skeleton } from '@/shared/components/ui/Skeleton'
 
-type IntegrationId = 'github' | 'vercel' | 'supabase' | 'neon' | 'notion'
+type IntegrationId = 'github' | 'vercel' | 'supabase' | 'notion'
 
 interface ProfileIntegrationsSettingsProps {
     isGithubConnected: boolean
     isVercelConnected: boolean
     isSupabaseConnected: boolean
-    isNeonConnected: boolean
     isNotionConnected: boolean
     onConnectGithub: () => void
     onConnectVercel: () => void
     onConnectSupabase: () => void
-    onConnectNeon: () => void
     onConnectNotion: () => void
 }
 
@@ -42,22 +40,6 @@ const NotionIcon = () => (
 const SupabaseIcon = () => (
     <svg viewBox="0 0 24 24" fill="#3ECF8E" className="w-5 h-5">
         <path d="M11.9 1.036c-.015-.986-1.26-1.41-1.874-.637L.764 12.05C-.33 13.427.65 15.455 2.409 15.455h9.579l.113 7.51c.014.985 1.259 1.408 1.873.636l9.262-11.653c1.093-1.375.113-3.403-1.645-3.403h-9.642z" />
-    </svg>
-)
-
-const NeonIcon = () => (
-    <svg
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="#00E676"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        className="w-5 h-5"
-    >
-        <ellipse cx="12" cy="5" rx="9" ry="3" fill="#00E676" fillOpacity="0.2" />
-        <path d="M3 5V19C3 20.66 7.03 22 12 22C16.97 22 21 20.66 21 19V5" />
-        <path d="M3 12C3 13.66 7.03 15 12 15C16.97 15 21 13.66 21 12" />
     </svg>
 )
 
@@ -108,14 +90,6 @@ const integrations = [
         iconColor: '#D6D5C9',
     },
     {
-        id: 'neon' as const,
-        name: 'Neon',
-        description:
-            'Connect your Neon project to manage serverless PostgreSQL database schemas and branches.',
-        Icon: NeonIcon,
-        iconColor: '#D6D5C9',
-    },
-    {
         id: 'notion' as const,
         name: 'Notion',
         description: 'Pull in pages and databases from Notion as project context.',
@@ -146,11 +120,9 @@ export const ProfileIntegrationsSettings: React.FC<ProfileIntegrationsSettingsPr
     onConnectGithub,
     isVercelConnected,
     isSupabaseConnected,
-    isNeonConnected,
     isNotionConnected,
     onConnectVercel,
     onConnectSupabase,
-    onConnectNeon,
     onConnectNotion,
 }) => {
     const [showAllRepos, setShowAllRepos] = useState(false)
@@ -173,10 +145,6 @@ export const ProfileIntegrationsSettings: React.FC<ProfileIntegrationsSettingsPr
 
         if (id === 'supabase') {
             return { isConnected: isSupabaseConnected, onConnect: onConnectSupabase }
-        }
-
-        if (id === 'neon') {
-            return { isConnected: isNeonConnected, onConnect: onConnectNeon }
         }
 
         if (id === 'notion') {
