@@ -32,17 +32,18 @@ export type Profile = {
     subscriptionPlan?: 'FREE' | 'PRO'
     subscriptionStatus?: 'FREE' | 'ACTIVE' | 'PAST_DUE' | 'CANCELED'
     hasCompletedOnboarding?: boolean
+    hasPassword?: boolean
 }
 
 type BackendProfile = Profile
 
 export type QuickInfo = {
-    firstName: string
+    fullName: string
     githubConnected: boolean
 }
 
 type BackendQuickInfo = {
-    firstName: string
+    fullName: string
     isGithubConnected: boolean
 }
 
@@ -59,7 +60,7 @@ type UpdateAvatarUrlInput = {
 }
 
 type ChangePasswordInput = {
-    currentPassword: string
+    currentPassword?: string
     newPassword: string
 }
 
@@ -200,7 +201,7 @@ const updateGenerationSound = (data: UpdateGenerationSoundInput) => {
 
 const getQuickInfo = () => {
     return apiRequest<BackendQuickInfo>('/profile/info').then((info) => ({
-        firstName: info.firstName,
+        fullName: info.fullName,
         githubConnected: info.isGithubConnected,
     }))
 }

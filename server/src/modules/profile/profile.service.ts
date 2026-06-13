@@ -3,8 +3,6 @@ import bcrypt from 'bcrypt'
 import { prisma } from '../../config/db'
 import { AppError } from '../../shared/appError'
 
-import type { GenerationSound } from './profile.schema'
-
 export const profileSelect = {
     id: true,
     name: true,
@@ -37,88 +35,53 @@ export const profileSelect = {
     hasCompletedOnboarding: true,
 }
 
-type UpdateName = {
-    userId: string
-    name: string
-}
+import type {
+    GetInfo,
+    GetProfileCard,
+    GetProfile,
+    UpdateName,
+    UpdateUsername,
+    UpdateAvatarUrl,
+    ChangePassword,
+    UpdateNotifications,
+    Signout,
+    SignoutAll,
+    DeleteAccount,
+    ChatSuggestions,
+    GenerationSound,
+    Getdesign,
+    Updatedesign,
+    Deletedesign,
+    CompleteOnboarding,
+} from './profile.types'
 
-type UpdateUsername = {
-    userId: string
-    username: string
-}
-
-type UpdateAvatarUrl = {
-    userId: string
-    avatarUrl: string
-}
-
-type ChangePassword = {
-    userId: string
-    currentPassword: string
-    newPassword: string
-}
-
-type UpdateNotification = {
-    userId: string
-    notifyProjectActivity?: boolean
-    notifyProductUpdates?: boolean
-    notifySecurityAlerts?: boolean
-}
-
-type Signout = {
-    userId: string
-    sessionId: string
-}
-
-type SignoutAll = {
-    userId: string
-}
-
-type DeleteAccount = {
-    userId: string
-}
-
-type ChatSuggestions = {
-    userId: string
-    chatSuggestions: boolean
-}
-
-type GenerationSoundType = {
-    userId: string
-    generationSound: GenerationSound
-}
-
-type Updatedesign = {
-    userId: string
-    design: string
-}
-
-const getInfo = async (data: string) => {
+const getInfo = async (data: GetInfo) => {
+    const { userId } = data
     const profile = await prisma.user.findUnique({
         where: {
-            id: data,
+            id: userId,
         },
         select: {
             name: true,
             githubConnected: true,
-            isDeleted: true,
         },
     })
 
-    if (!profile || profile.isDeleted === true) {
+    if (!profile) {
         throw new AppError('user not found', 404)
     }
 
-    const firstName = profile.name || 'Profile'
+    const fullName = profile.name || 'Profile'
     const isGithubConnected = profile.githubConnected
 
-    return { firstName, isGithubConnected }
+    return { fullName, isGithubConnected }
 }
 
-const getProfileCard = async (data: string) => {
+const getProfileCard = async (data: GetProfileCard) => {
+    const { userId } = data
     const profile = await prisma.user.findUnique({
         where: {
-            id: data,
+            id: userId,
         },
         select: {
             id: true,
@@ -127,31 +90,37 @@ const getProfileCard = async (data: string) => {
             email: true,
             avatarUrl: true,
             createdAt: true,
-            isDeleted: true,
         },
     })
 
-    if (!profile || profile.isDeleted === true) {
-        throw new AppError('user not found', 404)
-    }
-
-    const { isDeleted, ...rest } = profile
-    return rest
-}
-
-const getProfile = async (data: string) => {
-    const profile = await prisma.user.findUnique({
-        where: {
-            id: data,
-        },
-        select: profileSelect,
-    })
-
-    if (!profile || profile.isDeleted === true) {
+    if (!profile) {
         throw new AppError('user not found', 404)
     }
 
     return profile
+}
+
+const getProfile = async (data: GetProfile) => {
+    const { userId } = data
+    const profile = await prisma.user.findUnique({
+        where: {
+            id: userId,
+        },
+        select: {
+            ...profileSelect,
+            password: true,
+        },
+    })
+
+    if (!profile) {
+        throw new AppError('user not found', 404)
+    }
+
+    const { password, ...rest } = profile
+    return {
+        ...rest,
+        hasPassword: password !== null,
+    }
 }
 
 const updateName = async (data: UpdateName) => {
@@ -163,11 +132,10 @@ const updateName = async (data: UpdateName) => {
         },
         select: {
             id: true,
-            isDeleted: true,
         },
     })
 
-    if (!existingUser || existingUser.isDeleted === true) {
+    if (!existingUser) {
         throw new AppError('user not found', 404)
     }
 
@@ -196,11 +164,10 @@ const updateUsername = async (data: UpdateUsername) => {
         select: {
             id: true,
             username: true,
-            isDeleted: true,
         },
     })
 
-    if (!existingUser || existingUser.isDeleted === true) {
+    if (!existingUser) {
         throw new AppError('user not found', 404)
     }
 
@@ -254,11 +221,10 @@ const updateAvatarUrl = async (data: UpdateAvatarUrl) => {
         },
         select: {
             id: true,
-            isDeleted: true,
         },
     })
 
-    if (!existingUser || existingUser.isDeleted === true) {
+    if (!existingUser) {
         throw new AppError('user not found', 404)
     }
 
@@ -287,16 +253,34 @@ const changePassword = async (data: ChangePassword) => {
         select: {
             id: true,
             password: true,
-            isDeleted: true,
         },
     })
 
-    if (!existingUser || existingUser.isDeleted === true) {
+    if (!existingUser) {
         throw new AppError('user not found', 404)
     }
 
     if (!existingUser.password) {
-        throw new AppError('password is not set for this account', 400)
+        // OAuth only user setting password for the first time
+        const hashPassword = await bcrypt.hash(newPassword, 10)
+
+        await prisma.user.update({
+            where: {
+                id: userId,
+            },
+            data: {
+                password: hashPassword,
+            },
+            select: {
+                id: true,
+            },
+        })
+
+        return { success: true }
+    }
+
+    if (!currentPassword) {
+        throw new AppError('current password is required', 400)
     }
 
     const isCurrentPasswordValid = await bcrypt.compare(currentPassword, existingUser.password)
@@ -328,7 +312,7 @@ const changePassword = async (data: ChangePassword) => {
     return { success: true }
 }
 
-const updateNotifications = async (data: UpdateNotification) => {
+const updateNotifications = async (data: UpdateNotifications) => {
     const { userId, notifyProductUpdates, notifyProjectActivity, notifySecurityAlerts } = data
 
     const existingUser = await prisma.user.findUnique({
@@ -337,11 +321,10 @@ const updateNotifications = async (data: UpdateNotification) => {
         },
         select: {
             id: true,
-            isDeleted: true,
         },
     })
 
-    if (!existingUser || existingUser.isDeleted === true) {
+    if (!existingUser) {
         throw new AppError('user not found', 404)
     }
 
@@ -464,6 +447,23 @@ const deleteAccount = async (data: DeleteAccount) => {
             data: {
                 isDeleted: true,
                 deletedAt: new Date(),
+                githubToken: null,
+                githubConnected: false,
+                githubUsername: null,
+                vercelAccessToken: null,
+                vercelConnected: false,
+                vercelTeamId: null,
+                vercelConfigurationId: null,
+                supabaseConnected: false,
+                supabaseAccessToken: null,
+                supabaseRefreshToken: null,
+                supabaseTokenExpiresAt: null,
+                supabaseTokenScope: null,
+                supabaseUserId: null,
+                supabaseConnectedAt: null,
+                notionAccessToken: null,
+                notionWorkspaceId: null,
+                notionWorkspaceName: null,
             },
             select: {
                 id: true,
@@ -482,11 +482,10 @@ const chatSuggestions = async (data: ChatSuggestions) => {
         select: {
             id: true,
             chatSuggestions: true,
-            isDeleted: true,
         },
     })
 
-    if (!existingUser || existingUser.isDeleted === true) {
+    if (!existingUser) {
         throw new AppError('user not found', 404)
     }
 
@@ -512,7 +511,7 @@ const chatSuggestions = async (data: ChatSuggestions) => {
     return updatedUser
 }
 
-const generationSound = async (data: GenerationSoundType) => {
+const generationSound = async (data: GenerationSound) => {
     const { userId, generationSound } = data
 
     const existingUser = await prisma.user.findUnique({
@@ -522,11 +521,10 @@ const generationSound = async (data: GenerationSoundType) => {
         select: {
             id: true,
             generationSound: true,
-            isDeleted: true,
         },
     })
 
-    if (!existingUser || existingUser.isDeleted === true) {
+    if (!existingUser) {
         throw new AppError('user not found', 404)
     }
 
@@ -552,18 +550,18 @@ const generationSound = async (data: GenerationSoundType) => {
     return updatedUser
 }
 
-const getdesign = async (userId: string) => {
+const getdesign = async (data: Getdesign) => {
+    const { userId } = data
     const user = await prisma.user.findUnique({
         where: {
             id: userId,
         },
         select: {
             design: true,
-            isDeleted: true,
         },
     })
 
-    if (!user || user.isDeleted === true) {
+    if (!user) {
         throw new AppError('user not found', 404)
     }
 
@@ -579,11 +577,10 @@ const updatedesign = async (data: Updatedesign) => {
         },
         select: {
             id: true,
-            isDeleted: true,
         },
     })
 
-    if (!existingUser || existingUser.isDeleted === true) {
+    if (!existingUser) {
         throw new AppError('user not found', 404)
     }
 
@@ -602,18 +599,18 @@ const updatedesign = async (data: Updatedesign) => {
     return { design: updatedUser.design }
 }
 
-const deletedesign = async (userId: string) => {
+const deletedesign = async (data: Deletedesign) => {
+    const { userId } = data
     const existingUser = await prisma.user.findUnique({
         where: {
             id: userId,
         },
         select: {
             id: true,
-            isDeleted: true,
         },
     })
 
-    if (!existingUser || existingUser.isDeleted === true) {
+    if (!existingUser) {
         throw new AppError('user not found', 404)
     }
 
@@ -630,18 +627,18 @@ const deletedesign = async (userId: string) => {
     })
 }
 
-const completeOnboarding = async (userId: string) => {
+const completeOnboarding = async (data: CompleteOnboarding) => {
+    const { userId } = data
     const existingUser = await prisma.user.findUnique({
         where: {
             id: userId,
         },
         select: {
             id: true,
-            isDeleted: true,
         },
     })
 
-    if (!existingUser || existingUser.isDeleted === true) {
+    if (!existingUser) {
         throw new AppError('user not found', 404)
     }
 

@@ -21,6 +21,7 @@ export const ProfilePasswordModal: React.FC<ProfilePasswordModalProps> = ({
     onConfirmPasswordChange,
     onToggleShowCurrentPass,
     onToggleShowNewPass,
+    hasPassword = true,
 }) => {
     const handleFormSubmit = (e: React.FormEvent) => {
         e.preventDefault()
@@ -31,37 +32,43 @@ export const ProfilePasswordModal: React.FC<ProfilePasswordModalProps> = ({
         <Modal
             isOpen={isOpen}
             onClose={onClose}
-            title="Change password"
-            description="Update your account password for security."
+            title={hasPassword ? 'Change password' : 'Set Password'}
+            description={
+                hasPassword
+                    ? 'Update your account password for security.'
+                    : 'Set a password for your account to enable password-based login alongside OAuth.'
+            }
             variant="premium"
         >
             <form onSubmit={handleFormSubmit} className="flex flex-col gap-3.5">
-                <div>
-                    <label
-                        htmlFor="current-password-input"
-                        className="text-[11px] font-semibold text-[#8F8E8D] uppercase tracking-wider mb-1.5 block"
-                    >
-                        Current password
-                    </label>
-                    <div className="relative">
-                        <input
-                            id="current-password-input"
-                            type={showCurrentPass ? 'text' : 'password'}
-                            value={currentPassword}
-                            onChange={(e) => onCurrentPasswordChange(e.target.value)}
-                            className="w-full bg-[#181817] border border-[#2B2A27] rounded-lg px-3.5 py-2.5 text-white text-[13px] focus:outline-none focus:border-[#4E4D49] focus:ring-1 focus:ring-[#4E4D49] transition-[border-color,box-shadow] duration-200 pr-10"
-                            placeholder="••••••••"
-                            disabled={isPending}
-                        />
-                        <button
-                            type="button"
-                            onClick={onToggleShowCurrentPass}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-[#7B7A79] hover:text-white transition-colors"
+                {hasPassword && (
+                    <div>
+                        <label
+                            htmlFor="current-password-input"
+                            className="text-[11px] font-semibold text-[#8F8E8D] uppercase tracking-wider mb-1.5 block"
                         >
-                            {showCurrentPass ? <EyeOff size={14} /> : <Eye size={14} />}
-                        </button>
+                            Current password
+                        </label>
+                        <div className="relative">
+                            <input
+                                id="current-password-input"
+                                type={showCurrentPass ? 'text' : 'password'}
+                                value={currentPassword}
+                                onChange={(e) => onCurrentPasswordChange(e.target.value)}
+                                className="w-full bg-[#181817] border border-[#2B2A27] rounded-lg px-3.5 py-2.5 text-white text-[13px] focus:outline-none focus:border-[#4E4D49] focus:ring-1 focus:ring-[#4E4D49] transition-[border-color,box-shadow] duration-200 pr-10"
+                                placeholder="••••••••"
+                                disabled={isPending}
+                            />
+                            <button
+                                type="button"
+                                onClick={onToggleShowCurrentPass}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#7B7A79] hover:text-white transition-colors"
+                            >
+                                {showCurrentPass ? <EyeOff size={14} /> : <Eye size={14} />}
+                            </button>
+                        </div>
                     </div>
-                </div>
+                )}
 
                 <div>
                     <label
@@ -129,10 +136,12 @@ export const ProfilePasswordModal: React.FC<ProfilePasswordModalProps> = ({
                         {isPending ? (
                             <div className="flex items-center gap-1.5 justify-center">
                                 <span className="w-3.5 h-3.5 border-2 border-black border-t-transparent rounded-full animate-spin" />
-                                <span>Updating...</span>
+                                <span>{hasPassword ? 'Updating...' : 'Setting...'}</span>
                             </div>
-                        ) : (
+                        ) : hasPassword ? (
                             'Update Password'
+                        ) : (
+                            'Set Password'
                         )}
                     </button>
                 </div>

@@ -24,9 +24,10 @@ export const updateAvatarUrlSchema = z.object({
 
 export const changePasswordSchema = z.object({
     currentPassword: z
-        .string({ message: 'current password is required' })
-        .min(6, 'current password must be at least 6 characters')
-        .max(20, 'current password must be at most 20 characters'),
+        .string()
+        .max(20, 'current password must be at most 20 characters')
+        .optional()
+        .or(z.literal('')),
     newPassword: z
         .string({ message: 'new password is required' })
         .min(6, 'new password must be at least 6 characters')
@@ -63,4 +64,12 @@ export const designSchema = z.object({
     design: z
         .string({ message: 'design content is required' })
         .max(10000, 'design must be at most 10000 characters'),
+})
+
+export const submitFeedbackSchema = z.object({
+    rating: z.union([z.number(), z.string()]).optional(),
+    feedback: z
+        .string({ message: 'feedback content is required' })
+        .min(1, 'feedback cannot be empty')
+        .max(2000, 'feedback must be at most 2000 characters'),
 })

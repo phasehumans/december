@@ -14,6 +14,7 @@ import runtimeRouter from './modules/runtime/runtime.routes'
 import templateRouter from './modules/template/template.routes'
 import uploadRouter from './modules/upload/upload.routes'
 import usageRouter from './modules/usage/usage.routes'
+import platformRouter from './modules/platform/platform.routes'
 
 const app = express()
 
@@ -31,7 +32,7 @@ app.use(cookieParser())
 app.use(express.urlencoded({ extended: true, limit: '25mb' }))
 app.use(
     cors({
-        origin: 'http://localhost:3000',
+        origin: process.env.FRONTEND_URL,
         credentials: true,
     })
 )
@@ -48,5 +49,6 @@ app.use('/api/v1/template', templateRouter)
 app.use('/api/v1/integrations', integrationsRouter)
 app.use('/api/v1/notification', notificationRouter)
 app.use('/api/v1/billing', billingRouter)
+app.use('/api/v1/platform', platformRouter)
 
 export default app

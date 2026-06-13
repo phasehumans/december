@@ -145,7 +145,9 @@ async function main() {
         if (fs.existsSync(mdPath) && fs.statSync(mdPath).size > 0) {
             fileExists = true
         }
-    } catch (_) {}
+    } catch (_) {
+        console.log('******')
+    }
 
     let mdContent = ''
     if (!fileExists) {

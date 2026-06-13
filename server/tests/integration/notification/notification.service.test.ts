@@ -58,7 +58,7 @@ describe('notification.service.integration', () => {
                 message: 'Hello World 2',
             })
 
-            const notifications = await notificationService.getNotifications(userId)
+            const notifications = await notificationService.getNotifications({ userId })
             expect(notifications.length).toBe(2)
             expect(notifications[0]?.title).toBe('Second Notification')
             expect(notifications[1]?.title).toBe('First Notification')
@@ -72,13 +72,13 @@ describe('notification.service.integration', () => {
         })
 
         it('should return empty list if user does not exist or is soft-deleted', async () => {
-            const result1 = await notificationService.getNotifications(
-                '864e432c-687f-4424-aa61-a831518f8e12'
-            )
+            const result1 = await notificationService.getNotifications({
+                userId: '864e432c-687f-4424-aa61-a831518f8e12',
+            })
             expect(result1).toEqual([])
 
             const deleted = await createSoftDeletedUser()
-            const result2 = await notificationService.getNotifications(deleted.id)
+            const result2 = await notificationService.getNotifications({ userId: deleted.id })
             expect(result2).toEqual([])
         })
     })
@@ -91,25 +91,28 @@ describe('notification.service.integration', () => {
                 message: 'Test Message',
             })
 
-            const fetched = await notificationService.getNotificationById(userId, created.id)
+            const fetched = await notificationService.getNotificationById({
+                userId,
+                id: created.id,
+            })
             expect(fetched).not.toBeNull()
             expect(fetched!.title).toBe('Test Title')
             expect((fetched as any).userId).toBeUndefined()
         })
 
         it('should return null for non-existent notification', async () => {
-            const fetched = await notificationService.getNotificationById(
+            const fetched = await notificationService.getNotificationById({
                 userId,
-                '864e432c-687f-4424-aa61-a831518f8e12'
-            )
+                id: '864e432c-687f-4424-aa61-a831518f8e12',
+            })
             expect(fetched).toBeNull()
         })
 
         it('should return null if user does not exist', async () => {
-            const fetched = await notificationService.getNotificationById(
-                '864e432c-687f-4424-aa61-a831518f8e12',
-                '864e432c-687f-4424-aa61-a831518f8e12'
-            )
+            const fetched = await notificationService.getNotificationById({
+                userId: '864e432c-687f-4424-aa61-a831518f8e12',
+                id: '864e432c-687f-4424-aa61-a831518f8e12',
+            })
             expect(fetched).toBeNull()
         })
     })
@@ -122,14 +125,17 @@ describe('notification.service.integration', () => {
                 message: 'Some message',
             })
 
-            const updated = await notificationService.markAsRead(userId, created.id)
+            const updated = await notificationService.markAsRead({ userId, id: created.id })
             expect(updated.isRead).toBe(true)
             expect((updated as any).userId).toBeUndefined()
         })
 
         it('should throw notification not found for non-existent notification', async () => {
             try {
-                await notificationService.markAsRead(userId, '864e432c-687f-4424-aa61-a831518f8e12')
+                await notificationService.markAsRead({
+                    userId,
+                    id: '864e432c-687f-4424-aa61-a831518f8e12',
+                })
                 throw new Error('expected function to throw')
             } catch (error: any) {
                 expect(error.message).toBe('notification not found')
@@ -146,20 +152,23 @@ describe('notification.service.integration', () => {
                 message: 'Delete me',
             })
 
-            const deleted = await notificationService.deleteNotification(userId, created.id)
+            const deleted = await notificationService.deleteNotification({ userId, id: created.id })
             expect(deleted.id).toBe(created.id)
 
             // Double check it's gone
-            const fetched = await notificationService.getNotificationById(userId, created.id)
+            const fetched = await notificationService.getNotificationById({
+                userId,
+                id: created.id,
+            })
             expect(fetched).toBeNull()
         })
 
         it('should throw notification not found for non-existent notification', async () => {
             try {
-                await notificationService.deleteNotification(
+                await notificationService.deleteNotification({
                     userId,
-                    '864e432c-687f-4424-aa61-a831518f8e12'
-                )
+                    id: '864e432c-687f-4424-aa61-a831518f8e12',
+                })
                 throw new Error('expected function to throw')
             } catch (error: any) {
                 expect(error.message).toBe('notification not found')
@@ -175,7 +184,7 @@ describe('notification.service.integration', () => {
                 title: 'Read notification',
                 message: 'Hello',
             })
-            await notificationService.markAsRead(userId, readNotif.id)
+            await notificationService.markAsRead({ userId, id: readNotif.id })
 
             const unreadNotif = await notificationService.sendNotificationToUser({
                 userId,
@@ -183,22 +192,25 @@ describe('notification.service.integration', () => {
                 message: 'World',
             })
 
-            await notificationService.deleteAllReadNotification(userId)
+            await notificationService.deleteAllReadNotification({ userId })
 
-            const fetchedRead = await notificationService.getNotificationById(userId, readNotif.id)
+            const fetchedRead = await notificationService.getNotificationById({
+                userId,
+                id: readNotif.id,
+            })
             expect(fetchedRead).toBeNull()
 
-            const fetchedUnread = await notificationService.getNotificationById(
+            const fetchedUnread = await notificationService.getNotificationById({
                 userId,
-                unreadNotif.id
-            )
+                id: unreadNotif.id,
+            })
             expect(fetchedUnread).not.toBeNull()
         })
 
         it('should return 0 deleted count if user does not exist', async () => {
-            const res = await notificationService.deleteAllReadNotification(
-                '864e432c-687f-4424-aa61-a831518f8e12'
-            )
+            const res = await notificationService.deleteAllReadNotification({
+                userId: '864e432c-687f-4424-aa61-a831518f8e12',
+            })
             expect(res.count).toBe(0)
         })
     })
@@ -249,7 +261,7 @@ describe('notification.service.integration', () => {
 
             let error: any = null
             try {
-                await notificationService.markAsRead(userId, notif.id)
+                await notificationService.markAsRead({ userId, id: notif.id })
             } catch (e) {
                 error = e
             }
@@ -274,7 +286,7 @@ describe('notification.service.integration', () => {
 
             let error: any = null
             try {
-                await notificationService.deleteNotification(userId, notif.id)
+                await notificationService.deleteNotification({ userId, id: notif.id })
             } catch (e) {
                 error = e
             }
@@ -297,7 +309,7 @@ describe('notification.service.integration', () => {
                 },
             })
 
-            const fetched = await notificationService.getNotificationById(userId, notif.id)
+            const fetched = await notificationService.getNotificationById({ userId, id: notif.id })
             expect(fetched).toBeNull()
         })
     })

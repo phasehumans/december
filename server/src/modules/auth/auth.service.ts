@@ -19,49 +19,16 @@ import {
     isSessionExpired,
 } from './auth.utils'
 
-type Signup = {
-    email: string
-    password: string
-}
-
-type VerifyOtp = {
-    email: string
-    otp: string
-    userAgent?: string
-    ipAddress?: string
-}
-
-type Login = {
-    email: string
-    password: string
-    userAgent?: string
-    ipAddress?: string
-}
-
-type Google = {
-    name: string
-    email: string
-    sub: string
-    userAgent?: string
-    ipAddress?: string
-}
-
-type RefreshSession = {
-    refreshToken?: string
-}
-
-type RequestPasswordReset = {
-    email: string
-}
-
-type VerifyPasswordResetOtp = {
-    email: string
-    otp: string
-}
-
-type ResetPassword = VerifyPasswordResetOtp & {
-    newPassword: string
-}
+import type {
+    Signup,
+    VerifyOtp,
+    Login,
+    Google,
+    RefreshSession,
+    RequestPasswordReset,
+    VerifyPasswordResetOtp,
+    ResetPassword,
+} from './auth.types'
 
 const signup = async (data: Signup) => {
     const { email, password } = data

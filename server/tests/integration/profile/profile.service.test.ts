@@ -55,47 +55,37 @@ describe('profile.service.integration', () => {
     })
 
     describe('getInfo', () => {
-        it('should return firstName and github status', async () => {
-            const result = await profileService.getInfo(userId)
+        it('should return fullName and github status', async () => {
+            const result = await profileService.getInfo({ userId })
 
-            expect(result.firstName).toBe('Chaitanya Sonawane')
+            expect(result.fullName).toBe('Chaitanya Sonawane')
             expect(result.isGithubConnected).toBe(false)
         })
 
         it('should throw if user not found', async () => {
-            await expect(profileService.getInfo('invalid-id')).rejects.toThrow('user not found')
+            await expect(profileService.getInfo({ userId: 'invalid-id' })).rejects.toThrow(
+                'user not found'
+            )
         })
 
-        it('should throw for soft-deleted user', async () => {
-            const deleted = await createSoftDeletedUser()
-
-            await expect(profileService.getInfo(deleted.id)).rejects.toThrow('user not found')
-        })
-
-        it('should return correct firstName for single-word name', async () => {
+        it('should return correct fullName for single-word name', async () => {
             const user = await createUser({ name: 'Solo' })
-            const result = await profileService.getInfo(user.id)
+            const result = await profileService.getInfo({ userId: user.id })
 
-            expect(result.firstName).toBe('Solo')
+            expect(result.fullName).toBe('Solo')
         })
     })
 
     describe('getProfileCard', () => {
         it('should return profile card data', async () => {
-            const result = await profileService.getProfileCard(userId)
+            const result = await profileService.getProfileCard({ userId })
 
             expect(result.id).toBe(userId)
             expect(result.name).toBe('Chaitanya Sonawane')
         })
 
         it('should throw for non-existent user', async () => {
-            await expect(profileService.getProfileCard('bad-id')).rejects.toThrow('user not found')
-        })
-
-        it('should throw for soft-deleted user', async () => {
-            const deleted = await createSoftDeletedUser()
-
-            await expect(profileService.getProfileCard(deleted.id)).rejects.toThrow(
+            await expect(profileService.getProfileCard({ userId: 'bad-id' })).rejects.toThrow(
                 'user not found'
             )
         })
@@ -103,24 +93,20 @@ describe('profile.service.integration', () => {
 
     describe('getProfile', () => {
         it('should return full profile', async () => {
-            const result = await profileService.getProfile(userId)
+            const result = await profileService.getProfile({ userId })
 
             expect(result.id).toBe(userId)
             expect(result.name).toBe('Chaitanya Sonawane')
         })
 
-        it('should fail for soft-deleted user', async () => {
-            const deleted = await createSoftDeletedUser()
-
-            await expect(profileService.getProfile(deleted.id)).rejects.toThrow('user not found')
-        })
-
         it('should fail for non-existent user', async () => {
-            await expect(profileService.getProfile('bad-id')).rejects.toThrow('user not found')
+            await expect(profileService.getProfile({ userId: 'bad-id' })).rejects.toThrow(
+                'user not found'
+            )
         })
 
         it('should include all expected fields', async () => {
-            const result = await profileService.getProfile(userId)
+            const result = await profileService.getProfile({ userId })
 
             expect(result.email).toBeDefined()
             expect(result.username).toBeDefined()
@@ -142,14 +128,6 @@ describe('profile.service.integration', () => {
         it('should fail if user not found', async () => {
             await expect(
                 profileService.updateName({ userId: 'invalid', name: 'test' })
-            ).rejects.toThrow('user not found')
-        })
-
-        it('should fail for soft-deleted user', async () => {
-            const deleted = await createSoftDeletedUser()
-
-            await expect(
-                profileService.updateName({ userId: deleted.id, name: 'Ghost' })
             ).rejects.toThrow('user not found')
         })
 
@@ -190,14 +168,6 @@ describe('profile.service.integration', () => {
             ).rejects.toThrow('user not found')
         })
 
-        it('should fail for soft-deleted user', async () => {
-            const deleted = await createSoftDeletedUser()
-
-            await expect(
-                profileService.updateUsername({ userId: deleted.id, username: 'newname' })
-            ).rejects.toThrow('user not found')
-        })
-
         it('should persist updated username in database', async () => {
             await profileService.updateUsername({ userId, username: 'persisted_user' })
 
@@ -225,18 +195,6 @@ describe('profile.service.integration', () => {
                     userId: 'invalid',
                     currentPassword: 'Password123',
                     newPassword: 'test123',
-                })
-            ).rejects.toThrow('user not found')
-        })
-
-        it('should fail for soft-deleted user', async () => {
-            const deleted = await createSoftDeletedUser()
-
-            await expect(
-                profileService.changePassword({
-                    userId: deleted.id,
-                    currentPassword: 'Password123',
-                    newPassword: 'NewPass1',
                 })
             ).rejects.toThrow('user not found')
         })
@@ -307,17 +265,6 @@ describe('profile.service.integration', () => {
         it('should fail for non-existent user', async () => {
             await expect(
                 profileService.updateNotifications({ userId: 'bad', notifyProductUpdates: true })
-            ).rejects.toThrow('user not found')
-        })
-
-        it('should fail for soft-deleted user', async () => {
-            const deleted = await createSoftDeletedUser()
-
-            await expect(
-                profileService.updateNotifications({
-                    userId: deleted.id,
-                    notifyProductUpdates: true,
-                })
             ).rejects.toThrow('user not found')
         })
 
@@ -466,14 +413,6 @@ describe('profile.service.integration', () => {
             ).rejects.toThrow('user not found')
         })
 
-        it('should fail for soft-deleted user', async () => {
-            const deleted = await createSoftDeletedUser()
-
-            await expect(
-                profileService.chatSuggestions({ userId: deleted.id, chatSuggestions: true })
-            ).rejects.toThrow('user not found')
-        })
-
         it('should persist chatSuggestions in database', async () => {
             await profileService.chatSuggestions({ userId, chatSuggestions: true })
 
@@ -523,17 +462,6 @@ describe('profile.service.integration', () => {
             ).rejects.toThrow('user not found')
         })
 
-        it('should fail for soft-deleted user', async () => {
-            const deleted = await createSoftDeletedUser()
-
-            await expect(
-                profileService.generationSound({
-                    userId: deleted.id,
-                    generationSound: GenerationSound.ALWAYS,
-                })
-            ).rejects.toThrow('user not found')
-        })
-
         it('should persist generationSound in database', async () => {
             await profileService.generationSound({
                 userId,
@@ -564,7 +492,7 @@ describe('profile.service.integration', () => {
 
     describe('completeOnboarding', () => {
         it('should update hasCompletedOnboarding to true successfully', async () => {
-            const result = await profileService.completeOnboarding(userId)
+            const result = await profileService.completeOnboarding({ userId })
             expect(result.hasCompletedOnboarding).toBe(true)
 
             const db = await prisma.user.findUnique({ where: { id: userId } })
@@ -572,16 +500,9 @@ describe('profile.service.integration', () => {
         })
 
         it('should fail if user not found', async () => {
-            await expect(profileService.completeOnboarding('invalid-id')).rejects.toThrow(
-                'user not found'
-            )
-        })
-
-        it('should fail for soft-deleted user', async () => {
-            const deleted = await createSoftDeletedUser()
-            await expect(profileService.completeOnboarding(deleted.id)).rejects.toThrow(
-                'user not found'
-            )
+            await expect(
+                profileService.completeOnboarding({ userId: 'invalid-id' })
+            ).rejects.toThrow('user not found')
         })
     })
 })

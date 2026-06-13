@@ -79,7 +79,7 @@ export const useProfileSettingsController = () => {
             return
         }
 
-        if (!currentPassword.trim()) {
+        if (profile?.hasPassword && !currentPassword.trim()) {
             setProfileActionError('Please enter your current password')
             return
         }
@@ -91,7 +91,7 @@ export const useProfileSettingsController = () => {
 
         setProfileActionError(null)
         updatePasswordMutation.mutate({
-            currentPassword,
+            currentPassword: profile?.hasPassword ? currentPassword : '',
             newPassword,
         })
     }

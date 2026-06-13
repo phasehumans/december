@@ -16,7 +16,7 @@ const getNotifications = async (req: Request, res: Response) => {
     }
 
     try {
-        const result = await notificationService.getNotifications(userId)
+        const result = await notificationService.getNotifications({ userId })
         return res.status(200).json({
             success: true,
             message: 'notifications fetched successfully',
@@ -61,7 +61,7 @@ const getNotificationById = async (req: Request, res: Response) => {
     const { id } = parseData.data
 
     try {
-        const notification = await notificationService.getNotificationById(userId, id)
+        const notification = await notificationService.getNotificationById({ userId, id })
 
         if (!notification) {
             return res.status(404).json({
@@ -72,7 +72,7 @@ const getNotificationById = async (req: Request, res: Response) => {
 
         // Mark as read when fetched in detail
         if (!notification.isRead) {
-            await notificationService.markAsRead(userId, id)
+            await notificationService.markAsRead({ userId, id })
             notification.isRead = true
         }
 
@@ -120,7 +120,7 @@ const markAsRead = async (req: Request, res: Response) => {
     const { id } = parseData.data
 
     try {
-        const result = await notificationService.markAsRead(userId, id)
+        const result = await notificationService.markAsRead({ userId, id })
         return res.status(200).json({
             success: true,
             message: 'notification marked as read',
@@ -165,7 +165,7 @@ const deleteNotification = async (req: Request, res: Response) => {
     const { id } = parseData.data
 
     try {
-        await notificationService.deleteNotification(userId, id)
+        await notificationService.deleteNotification({ userId, id })
         return res.status(200).json({
             success: true,
             message: 'notification deleted successfully',
@@ -198,7 +198,7 @@ const deleteAllReadNotification = async (req: Request, res: Response) => {
     }
 
     try {
-        await notificationService.deleteAllReadNotification(userId)
+        await notificationService.deleteAllReadNotification({ userId })
         return res.status(200).json({
             success: true,
             message: 'read notifications successfully',

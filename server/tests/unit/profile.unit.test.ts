@@ -8,8 +8,8 @@ import {
     chatSuggestionsSchema,
     generationSoundSchema,
     GenerationSound,
+    submitFeedbackSchema,
 } from '../../src/modules/profile/profile.schema'
-import { extractFirstName } from '../../src/modules/profile/profile.utils'
 
 describe('profile.schema', () => {
     describe('updateNameSchema', () => {
@@ -318,36 +318,36 @@ describe('profile.schema', () => {
             expect(result.success).toBe(false)
         })
     })
-})
 
-describe('profile.utils', () => {
-    describe('extractFirstName', () => {
-        test('should return the first name from full name', () => {
-            expect(extractFirstName('Chaitanya Sonawane')).toBe('Chaitanya')
+    describe('submitFeedbackSchema', () => {
+        test('should accept valid feedback and rating', () => {
+            const result = submitFeedbackSchema.safeParse({ rating: 5, feedback: 'Great app!' })
+            expect(result.success).toBe(true)
         })
 
-        test('should return single name as-is', () => {
-            expect(extractFirstName('Chaitanya')).toBe('Chaitanya')
+        test('should accept rating as string', () => {
+            const result = submitFeedbackSchema.safeParse({ rating: '4', feedback: 'Nice UI' })
+            expect(result.success).toBe(true)
         })
 
-        test('should return "Profile" for empty string', () => {
-            expect(extractFirstName('')).toBe('Profile')
+        test('should accept feedback without rating', () => {
+            const result = submitFeedbackSchema.safeParse({ feedback: 'Loving the features' })
+            expect(result.success).toBe(true)
         })
 
-        test('should return "Profile" for whitespace-only string', () => {
-            expect(extractFirstName('   ')).toBe('Profile')
+        test('should reject when feedback is missing', () => {
+            const result = submitFeedbackSchema.safeParse({ rating: 3 })
+            expect(result.success).toBe(false)
         })
 
-        test('should trim leading/trailing whitespace', () => {
-            expect(extractFirstName('  John Doe  ')).toBe('John')
+        test('should reject empty feedback', () => {
+            const result = submitFeedbackSchema.safeParse({ feedback: '' })
+            expect(result.success).toBe(false)
         })
 
-        test('should handle multiple spaces between names', () => {
-            expect(extractFirstName('John    Doe')).toBe('John')
-        })
-
-        test('should handle three-part name', () => {
-            expect(extractFirstName('John Middle Last')).toBe('John')
+        test('should reject extremely long feedback (>2000 chars)', () => {
+            const result = submitFeedbackSchema.safeParse({ feedback: 'a'.repeat(2001) })
+            expect(result.success).toBe(false)
         })
     })
 })

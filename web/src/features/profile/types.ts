@@ -20,6 +20,7 @@ export interface Profile {
     supabaseConnectedAt?: string | null
     notionWorkspaceId?: string | null
     notionWorkspaceName?: string | null
+    hasPassword?: boolean
 }
 
 export interface UpdateNameInput {
@@ -27,7 +28,7 @@ export interface UpdateNameInput {
 }
 
 export interface ChangePasswordInput {
-    currentPassword: string
+    currentPassword?: string
     newPassword: string
 }
 
@@ -69,6 +70,7 @@ export interface ProfilePasswordModalProps {
     onConfirmPasswordChange: (value: string) => void
     onToggleShowCurrentPass: () => void
     onToggleShowNewPass: () => void
+    hasPassword?: boolean
 }
 
 export interface SettingsRowProps {

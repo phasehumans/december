@@ -4,8 +4,8 @@ dotenv.config()
 import app from './app'
 import { ensureStorageBucket } from './config/s3'
 
-const PORT = process.env.PORT || 4000
-const ENV = process.env.BUN_ENV
+const PORT = process.env.PORT
+const ENV = process.env.ENV
 
 await ensureStorageBucket()
 

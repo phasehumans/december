@@ -11,7 +11,17 @@ export const notificationSelect = {
     createdAt: true,
 }
 
-const getNotifications = async (userId: string) => {
+import type {
+    GetNotifications,
+    GetNotificationById,
+    MarkAsRead,
+    DeleteNotification,
+    SendNotificationToUser,
+    DeleteAllReadNotification,
+} from './notification.types'
+
+const getNotifications = async (data: GetNotifications) => {
+    const { userId } = data
     return prisma.notification.findMany({
         where: { userId },
         select: notificationSelect,
@@ -19,7 +29,8 @@ const getNotifications = async (userId: string) => {
     })
 }
 
-const getNotificationById = async (userId: string, id: string) => {
+const getNotificationById = async (data: GetNotificationById) => {
+    const { userId, id } = data
     return prisma.notification.findUnique({
         where: {
             id: id,
@@ -29,7 +40,8 @@ const getNotificationById = async (userId: string, id: string) => {
     })
 }
 
-const markAsRead = async (userId: string, id: string) => {
+const markAsRead = async (data: MarkAsRead) => {
+    const { userId, id } = data
     const existing = await prisma.notification.findFirst({
         where: {
             id: id,
@@ -56,7 +68,8 @@ const markAsRead = async (userId: string, id: string) => {
     })
 }
 
-const deleteNotification = async (userId: string, id: string) => {
+const deleteNotification = async (data: DeleteNotification) => {
+    const { userId, id } = data
     const existing = await prisma.notification.findFirst({
         where: {
             id: id,
@@ -80,13 +93,7 @@ const deleteNotification = async (userId: string, id: string) => {
     })
 }
 
-const sendNotificationToUser = async (data: {
-    userId: string
-    title: string
-    message: string
-    type?: 'INFO' | 'WARNING' | 'SUCCESS' | 'ERROR'
-    link?: string
-}) => {
+const sendNotificationToUser = async (data: SendNotificationToUser) => {
     return prisma.notification.create({
         data: {
             userId: data.userId,
@@ -99,10 +106,11 @@ const sendNotificationToUser = async (data: {
     })
 }
 
-const deleteAllReadNotification = async (data: string) => {
+const deleteAllReadNotification = async (data: DeleteAllReadNotification) => {
+    const { userId } = data
     return prisma.notification.deleteMany({
         where: {
-            userId: data,
+            userId,
             isRead: true,
         },
     })

@@ -370,6 +370,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                 onConfirmPasswordChange={setConfirmPassword}
                 onToggleShowCurrentPass={() => setShowCurrentPass((prev) => !prev)}
                 onToggleShowNewPass={() => setShowNewPass((prev) => !prev)}
+                hasPassword={profile?.hasPassword}
             />
 
             <ProfileDeleteAccountModal

@@ -88,7 +88,7 @@ export const SidebarFooter: React.FC<
                                 <span className="font-medium text-[13px] text-[#8F8E8D] group-hover:text-[#CBCACA] transition-colors truncate tracking-tight text-left">
                                     {user?.name ||
                                         profile?.name ||
-                                        quickInfo?.firstName ||
+                                        quickInfo?.fullName ||
                                         'Profile'}
                                 </span>
                             </button>
@@ -108,7 +108,7 @@ export const SidebarFooter: React.FC<
                             isOpen={isPopoverOpen}
                             anchorRef={anchorRef}
                             onClose={() => setIsPopoverOpen(false)}
-                            userName={profile?.name || quickInfo?.firstName || 'phasehuman'}
+                            userName={profile?.name || quickInfo?.fullName || 'phasehuman'}
                             userEmail={profile?.email || 'dev.chaitanyasonawane@gmail.com'}
                             onSettings={onProfile}
                             onProfileModal={() => setIsProfileModalOpen(true)}
@@ -127,7 +127,7 @@ export const SidebarFooter: React.FC<
                         <ProfileCardModal
                             isOpen={isProfileModalOpen}
                             onClose={() => setIsProfileModalOpen(false)}
-                            userName={profile?.name || quickInfo?.firstName || 'phasehuman'}
+                            userName={profile?.name || quickInfo?.fullName || 'phasehuman'}
                             userUsername={profile?.username || ''}
                             onSettings={onProfile}
                         />

@@ -13,23 +13,25 @@ import {
     updateNotificationSchema,
     updateUsernameSchema,
     updateAvatarUrlSchema,
+    submitFeedbackSchema,
 } from './profile.schema'
 import { profileService } from './profile.service'
 
 import type { Request, Response } from 'express'
+import { sanitizeMarkdown } from './profile.utils'
 
 const getInfo = async (req: Request, res: Response) => {
     const userId = req.user?.userId as string | undefined
 
     if (!userId) {
-        return res.status(400).json({
+        return res.status(401).json({
             success: false,
             message: 'unauthorized',
         })
     }
 
     try {
-        const result = await profileService.getInfo(userId)
+        const result = await profileService.getInfo({ userId })
         return res.status(200).json({
             success: true,
             message: 'info fetched successfully',
@@ -56,14 +58,14 @@ const getProfileCard = async (req: Request, res: Response) => {
     const userId = req.user?.userId as string | undefined
 
     if (!userId) {
-        return res.status(400).json({
+        return res.status(401).json({
             success: false,
             message: 'unauthorized',
         })
     }
 
     try {
-        const result = await profileService.getProfileCard(userId)
+        const result = await profileService.getProfileCard({ userId })
         return res.status(200).json({
             success: true,
             message: 'profile card fetched successfully',
@@ -90,14 +92,14 @@ const getProfile = async (req: Request, res: Response) => {
     const userId = req.user?.userId as string | undefined
 
     if (!userId) {
-        return res.status(400).json({
+        return res.status(401).json({
             success: false,
             message: 'unauthorized',
         })
     }
 
     try {
-        const result = await profileService.getProfile(userId)
+        const result = await profileService.getProfile({ userId })
         return res.status(200).json({
             success: true,
             message: 'profile fetched successfully',
@@ -133,7 +135,7 @@ const updateName = async (req: Request, res: Response) => {
     }
 
     if (!userId) {
-        return res.status(400).json({
+        return res.status(401).json({
             success: false,
             message: 'unauthorized',
         })
@@ -169,7 +171,7 @@ const updateUsername = async (req: Request, res: Response) => {
     const parseData = updateUsernameSchema.safeParse(req.body)
 
     if (!userId) {
-        return res.status(400).json({
+        return res.status(401).json({
             success: false,
             message: 'unauthorized',
         })
@@ -214,7 +216,7 @@ const updateAvatarUrl = async (req: Request, res: Response) => {
     const parseData = updateAvatarUrlSchema.safeParse(req.body)
 
     if (!userId) {
-        return res.status(400).json({
+        return res.status(401).json({
             success: false,
             message: 'unauthorized',
         })
@@ -267,7 +269,7 @@ const changePassword = async (req: Request, res: Response) => {
     }
 
     if (!userId) {
-        return res.status(400).json({
+        return res.status(401).json({
             success: false,
             message: 'unauthorized',
         })
@@ -316,7 +318,7 @@ const updateNotifications = async (req: Request, res: Response) => {
     }
 
     if (!userId) {
-        return res.status(400).json({
+        return res.status(401).json({
             success: false,
             message: 'unauthorized',
         })
@@ -464,7 +466,7 @@ const chatSuggestions = async (req: Request, res: Response) => {
     const parseData = chatSuggestionsSchema.safeParse(req.body)
 
     if (!userId) {
-        return res.status(400).json({
+        return res.status(401).json({
             success: false,
             message: 'unauthorized',
         })
@@ -509,7 +511,7 @@ const generationSound = async (req: Request, res: Response) => {
     const parseData = generationSoundSchema.safeParse(req.body)
 
     if (!userId) {
-        return res.status(400).json({
+        return res.status(401).json({
             success: false,
             message: 'unauthorized',
         })
@@ -553,14 +555,14 @@ const getdesign = async (req: Request, res: Response) => {
     const userId = req.user?.userId as string | undefined
 
     if (!userId) {
-        return res.status(400).json({
+        return res.status(401).json({
             success: false,
             message: 'unauthorized',
         })
     }
 
     try {
-        const result = await profileService.getdesign(userId)
+        const result = await profileService.getdesign({ userId })
         return res.status(200).json({
             success: true,
             message: 'design fetched successfully',
@@ -588,7 +590,7 @@ const updatedesign = async (req: Request, res: Response) => {
     const parseData = designSchema.safeParse(req.body)
 
     if (!userId) {
-        return res.status(400).json({
+        return res.status(401).json({
             success: false,
             message: 'unauthorized',
         })
@@ -632,14 +634,14 @@ const deletedesign = async (req: Request, res: Response) => {
     const userId = req.user?.userId as string | undefined
 
     if (!userId) {
-        return res.status(400).json({
+        return res.status(401).json({
             success: false,
             message: 'unauthorized',
         })
     }
 
     try {
-        await profileService.deletedesign(userId)
+        await profileService.deletedesign({ userId })
         return res.status(200).json({
             success: true,
             message: 'design deleted successfully',
@@ -663,32 +665,45 @@ const deletedesign = async (req: Request, res: Response) => {
 
 const submitFeedback = async (req: Request, res: Response) => {
     const userId = req.user?.userId as string | undefined
+    const parseData = submitFeedbackSchema.safeParse(req.body)
 
     if (!userId) {
-        return res.status(400).json({
+        return res.status(401).json({
             success: false,
             message: 'unauthorized',
         })
     }
 
-    const { rating, feedback } = req.body
+    if (!parseData.success) {
+        return res.status(400).json({
+            success: false,
+            message: 'validation failed',
+            errors: parseData.error.flatten().fieldErrors,
+        })
+    }
+
+    const { rating, feedback } = parseData.data
 
     try {
-        const profile = await profileService.getProfile(userId)
+        const profile = await profileService.getProfile({ userId })
         const username = profile.username || 'unknown_user'
-        const email = profile.email || 'no_email'
         const name = profile.name || 'Anonymous'
 
+        const cleanRating = rating !== undefined ? sanitizeMarkdown(String(rating)) : 'None'
+        const cleanFeedback = sanitizeMarkdown(feedback)
+
         const dateStr = new Date().toISOString()
-        const feedbackEntry = `\n### [${dateStr}] - @${username} (${name})\n- **Rating**: ${rating || 'None'}\n- **Feedback**: ${feedback || 'None'}\n`
+        const feedbackEntry = `\n### [${dateStr}] - @${username} (${name})\n- **Rating**: ${cleanRating}\n- **Feedback**: ${cleanFeedback}\n`
 
         const feedbackFilePath = path.resolve(__dirname, '../../../../feedback.md')
 
-        // Append to feedback.md (create it if it doesn't exist)
-        if (!fs.existsSync(feedbackFilePath)) {
-            fs.writeFileSync(feedbackFilePath, '# Product Feedback\n', 'utf8')
+        // asynchronously check and write/append to feedback.md
+        try {
+            await fs.promises.access(feedbackFilePath)
+        } catch {
+            await fs.promises.writeFile(feedbackFilePath, '# Product Feedback\n', 'utf8')
         }
-        fs.appendFileSync(feedbackFilePath, feedbackEntry, 'utf8')
+        await fs.promises.appendFile(feedbackFilePath, feedbackEntry, 'utf8')
 
         return res.status(200).json({
             success: true,
@@ -714,7 +729,7 @@ const completeOnboarding = async (req: Request, res: Response) => {
     }
 
     try {
-        const result = await profileService.completeOnboarding(userId)
+        const result = await profileService.completeOnboarding({ userId })
         return res.status(200).json({
             success: true,
             message: 'onboarding completed successfully',
