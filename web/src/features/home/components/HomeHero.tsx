@@ -64,15 +64,6 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
     }, [isAuthenticated, profile])
 
     useEffect(() => {
-        if (
-            importState?.status === 'failed' &&
-            importState.message?.includes('Import limit exceeded')
-        ) {
-            setShowUpgradeModal(true)
-        }
-    }, [importState])
-
-    useEffect(() => {
         const observer = new IntersectionObserver(
             ([entry]) => {
                 const event = new CustomEvent('hero-canvas-intersect', {

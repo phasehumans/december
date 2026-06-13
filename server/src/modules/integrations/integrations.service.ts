@@ -47,11 +47,6 @@ interface ConnectSupaBase {
     code: string
 }
 
-interface ConnectNeon {
-    userId: string
-    apiKey: string
-}
-
 interface ConnectNotionParams {
     userId: string
     code: string
@@ -228,49 +223,6 @@ const connectSupabase = async ({ userId, code }: ConnectSupaBase) => {
         })
     } catch (error) {
         console.error('Failed to send supabase connection notification:', error)
-    }
-
-    return updatedUser
-}
-
-const connectNeon = async ({ userId, apiKey }: ConnectNeon) => {
-    // Validate API Key by fetching user details from Neon API
-    try {
-        await axios.get('https://console.neon.tech/api/v2/users/me', {
-            headers: {
-                Accept: 'application/json',
-                Authorization: `Bearer ${apiKey}`,
-            },
-        })
-    } catch (error: any) {
-        const status = error.response?.status ?? 500
-        const message = error.response?.data?.message ?? 'Invalid Neon API Key'
-        throw new AppError(`Neon validation failed: ${message}`, status)
-    }
-
-    const updatedUser = await prisma.user.update({
-        where: {
-            id: userId,
-        },
-
-        data: {
-            neonConnected: true,
-            neonAccessToken: apiKey,
-            neonRefreshToken: null,
-            neonTokenExpiresAt: null,
-            neonConnectedAt: new Date(),
-        },
-    })
-
-    try {
-        await sendNotificationToUser({
-            userId,
-            title: 'Neon DB Connected',
-            message: 'Successfully connected with Neon DB integration!',
-            type: 'SUCCESS',
-        })
-    } catch (error) {
-        console.error('Failed to send neon connection notification:', error)
     }
 
     return updatedUser
@@ -681,7 +633,6 @@ export const integrationsService = {
     listGithubRepos,
     connectVercel,
     connectSupabase,
-    connectNeon,
     connectNotion,
     connectGithub,
     createRepo,

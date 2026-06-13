@@ -125,49 +125,6 @@ const connectSupabase = async (req: Request, res: Response) => {
     }
 }
 
-const connectNeon = async (req: Request, res: Response) => {
-    try {
-        const apiKey = req.body.apiKey as string
-        const userId = req.user?.id as string
-
-        if (!apiKey) {
-            throw new AppError('no api key provided', 400)
-        }
-
-        if (!userId) {
-            throw new AppError('no user id found', 401)
-        }
-
-        const updatedUser = await integrationsService.connectNeon({
-            userId,
-            apiKey,
-        })
-
-        return res.status(200).json({
-            success: true,
-            message: 'successfully connected neon',
-            data: {
-                neonConnected: updatedUser.neonConnected,
-                neonConnectedAt: updatedUser.neonConnectedAt,
-            },
-        })
-    } catch (error) {
-        if (error instanceof AppError) {
-            return res.status(error.statusCode).json({
-                success: false,
-                message: 'failed to connect neon',
-                errors: error.message,
-            })
-        }
-
-        return res.status(500).json({
-            success: false,
-            message: 'failed to connect neon',
-            errors: error instanceof Error ? error.message : 'unknown error',
-        })
-    }
-}
-
 const connectNotion = async (req: Request, res: Response) => {
     try {
         const code = req.query.code as string
@@ -535,7 +492,6 @@ export const integrationsController = {
     getUserGithubRepos,
     connectVercel,
     connectSupabase,
-    connectNeon,
     connectNotion,
     connectGithub,
     createRepo,

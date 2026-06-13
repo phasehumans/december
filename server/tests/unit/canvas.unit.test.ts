@@ -37,6 +37,12 @@ mock.module('../../src/modules/project/project-storage', () => ({
     deleteObject: deleteObjectMock,
     getBinaryFile: getBinaryFileMock,
     putBinaryFile: putBinaryFileMock,
+    getTextFile: mock(async () => ''),
+    putTextFile: mock(async () => {}),
+    currentKey: (projectId: string, path: string) => path,
+    versionKey: (projectId: string, versionId: string, path: string) => path,
+    projectPrefix: (projectId: string) => `projects/${projectId}/`,
+    deletePrefix: mock(async () => {}),
 }))
 
 const { webClipRequestSchema } = await import('../../src/modules/canvas/canvas.schema')

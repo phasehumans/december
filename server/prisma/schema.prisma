@@ -59,7 +59,7 @@ model User {
   subscriptionStatus SubscriptionStatus @default(FREE)
   subscriptionPlan   SubscriptionPlan   @default(FREE)
   currentPeriodEnd   DateTime?
-  creditBalance      Int                @default(0)
+  creditBalance      Int                @default(100)
   giftedCredits      Int                @default(0)
 
   sessions      Session[]
@@ -135,13 +135,18 @@ model Project {
   vercelDeploymentUrl  String?
   vercelLastDeployedAt DateTime?
 
-  currentVersion ProjectVersion?  @relation("ProjectCurrentVersion", fields: [currentVersionId], references: [id])
-  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  messages       ProjectMessage[]
-  versions       ProjectVersion[] @relation("ProjectVersions")
-  likes          ProjectLike[]
-  imports        ProjectImport[]
-  usageEvents    UsageEvent[]
+  decemberDeploymentUrl  String?
+  decemberLastDeployedAt DateTime?
+
+  currentVersion  ProjectVersion?      @relation("ProjectCurrentVersion", fields: [currentVersionId], references: [id])
+  user            User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages        ProjectMessage[]
+  versions        ProjectVersion[]     @relation("ProjectVersions")
+  likes           ProjectLike[]
+  imports         ProjectImport[]
+  usageEvents     UsageEvent[]
+  memories        ProjectMemory[]
+  sessionMemories AgentSessionMemory[]
 
   @@index([userId, updatedAt])
   @@index([isSharedAsTemplate, updatedAt])
@@ -174,6 +179,32 @@ model ProjectVersion {
 
   @@unique([projectId, versionNumber])
   @@index([projectId, createdAt])
+}
+
+model ProjectMemory {
+  id        String   @id @default(uuid())
+  projectId String
+  key       String
+  value     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, key])
+  @@index([projectId])
+}
+
+model AgentSessionMemory {
+  id             String   @id @default(uuid())
+  projectId      String
+  versionId      String
+  errorSignature String   @db.Text
+  createdAt      DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, versionId])
 }
 
 model ProjectMessage {

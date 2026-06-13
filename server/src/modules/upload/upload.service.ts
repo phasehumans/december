@@ -730,10 +730,7 @@ const importFromGithub = async (data: UploadRepo) => {
         })
 
         if (importCount >= 1) {
-            throw new AppError(
-                'Import limit exceeded. Upgrade to Pro to import more repositories.',
-                403
-            )
+            throw new AppError('Limit exceeded (1 free import). Upgrade to continue.', 403)
         }
     }
 
@@ -791,10 +788,7 @@ const importFromZip = async (data: ImportFromZip) => {
         })
 
         if (importCount >= 1) {
-            throw new AppError(
-                'Import limit exceeded. Upgrade to Pro to import more archives.',
-                403
-            )
+            throw new AppError('Limit exceeded (1 free import). Upgrade to continue.', 403)
         }
     }
 
