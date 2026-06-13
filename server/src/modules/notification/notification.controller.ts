@@ -1,11 +1,6 @@
-import { success } from 'zod'
 import { AppError } from '../../shared/appError'
 
-import {
-    NotificationParamsSchema,
-    SendNotificationSchema,
-    SendNotificationToAllSchema,
-} from './notification.schema'
+import { NotificationParamsSchema } from './notification.schema'
 import { notificationService } from './notification.service'
 
 import type { Request, Response } from 'express'
@@ -192,90 +187,11 @@ const deleteNotification = async (req: Request, res: Response) => {
     }
 }
 
-const sendNotificationToUser = async (req: Request, res: Response) => {
-    const parseData = SendNotificationSchema.safeParse(req.body)
-
-    if (!parseData.success) {
-        return res.status(400).json({
-            success: false,
-            message: 'validation failed',
-            errors: parseData.error.flatten().fieldErrors,
-        })
-    }
-
-    const { userId, title, message, type, link } = parseData.data
-
-    try {
-        const result = await notificationService.sendNotificationToUser({
-            userId,
-            title,
-            message,
-            type,
-            link,
-        })
-        return res.status(201).json({
-            success: true,
-            message: 'notification sent successfully',
-            data: result,
-        })
-    } catch (error) {
-        if (error instanceof AppError) {
-            return res.status(error.statusCode).json({
-                success: false,
-                message: 'failed to send notification',
-                errors: error.message,
-            })
-        }
-
-        return res.status(500).json({
-            success: false,
-            message: 'failed to send notification',
-            errors: error instanceof Error ? error.message : 'unknown error',
-        })
-    }
-}
-
-const sendNotificationToAll = async (req: Request, res: Response) => {
-    const parseData = SendNotificationToAllSchema.safeParse(req.body)
-
-    if (!parseData.success) {
-        return res.status(400).json({
-            success: false,
-            message: 'validation failed',
-            errors: parseData.error.flatten().fieldErrors,
-        })
-    }
-
-    const { title, message, type, link } = parseData.data
-
-    try {
-        await notificationService.sendNotificationToAll({ title, message, type, link })
-        return res.status(201).json({
-            success: true,
-            message: 'notifications sent to all users',
-        })
-    } catch (error) {
-        if (error instanceof AppError) {
-            return res.status(error.statusCode).json({
-                success: false,
-                message: 'failed to send notifications',
-                errors: error.message,
-            })
-        }
-
-        return res.status(500).json({
-            success: false,
-            message: 'failed to send notifications',
-            errors: error instanceof Error ? error.message : 'unknown error',
-        })
-    }
-}
-
 const deleteAllReadNotification = async (req: Request, res: Response) => {
     const userId = req.user?.userId as string | undefined
 
     if (!userId) {
-        return res.status(200).json({
+        return res.status(401).json({
             success: false,
             message: 'unauthorized',
         })
@@ -309,7 +225,5 @@ export const notificationController = {
     getNotificationById,
     markAsRead,
     deleteNotification,
-    sendNotificationToUser,
-    sendNotificationToAll,
     deleteAllReadNotification,
 }

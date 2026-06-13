@@ -249,7 +249,6 @@ const login = async (data: Login) => {
         throw new AppError('invalid email or password', 401)
     }
 
-    // add CTA to contact support @ for recover account
     if (existingUser.deletedAt || existingUser.isDeleted) {
         throw new AppError('account has been deleted', 401)
     }
@@ -333,8 +332,6 @@ const requestPasswordReset = async (data: RequestPasswordReset) => {
             otpExpiresAt: new Date(Date.now() + 10 * 60 * 1000),
         },
     })
-
-    console.log(otp)
 
     await sendOTP(user.email, otp)
 }

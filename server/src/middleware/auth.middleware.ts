@@ -56,6 +56,12 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
                 userId: true,
                 isRevoked: true,
                 expiresAt: true,
+                user: {
+                    select: {
+                        id: true,
+                        isDeleted: true,
+                    },
+                },
             },
         })
 
@@ -63,6 +69,13 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
             return res.status(401).json({
                 success: false,
                 message: 'Session not found',
+            })
+        }
+
+        if (!session.user || session.user.isDeleted) {
+            return res.status(401).json({
+                success: false,
+                message: 'Unauthorized',
             })
         }
 
@@ -116,30 +129,4 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
             errors: error.message,
         })
     }
-}
-
-export const requireVerifiedUser = async (req: Request, res: Response, next: NextFunction) => {
-    const userId = req.user?.userId
-
-    if (!userId) {
-        return res.status(401).json({
-            success: false,
-            message: 'Unauthorized',
-        })
-    }
-
-    const user = await prisma.user.findUnique({
-        where: {
-            id: userId,
-        },
-    })
-
-    if (!user?.emailVerified) {
-        return res.status(403).json({
-            success: false,
-            message: 'Email not verified',
-        })
-    }
-
-    next()
 }
