@@ -17,27 +17,4 @@ export const NotificationParamsSchema = z.object({
     id: z.string().uuid('notification ID must be a valid UUID'),
 })
 
-export const SendNotificationSchema = z.object({
-    userId: z.string().uuid('user ID must be a valid UUID'),
-    title: z.string().min(1, 'title is required'),
-    message: z.string().min(1, 'message is required'),
-    type: z
-        .enum(['INFO', 'WARNING', 'SUCCESS', 'ERROR'], {
-            message: "type must be one of 'INFO', 'WARNING', 'SUCCESS', 'ERROR'",
-        })
-        .optional(),
-    link: z.string().optional(),
-})
-
-export const SendNotificationToAllSchema = z.object({
-    title: z.string().min(1, 'title is required'),
-    message: z.string().min(1, 'message is required'),
-    type: z
-        .enum(['INFO', 'WARNING', 'SUCCESS', 'ERROR'], {
-            message: "type must be one of 'INFO', 'WARNING', 'SUCCESS', 'ERROR'",
-        })
-        .optional(),
-    link: z.string().optional(),
-})
-
 export type Notification = z.infer<typeof NotificationSchema>

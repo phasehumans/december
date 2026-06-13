@@ -8,6 +8,7 @@ import request from 'supertest'
 
 import { prisma } from '../../../src/config/db'
 import { notificationController } from '../../../src/modules/notification/notification.controller'
+import { notificationService } from '../../../src/modules/notification/notification.service'
 
 const TEST_USER_ID = '864e432c-687f-4424-aa61-a831518f8e12'
 const TEST_SESSION_ID = '864e432c-687f-4424-aa61-a831518f8e13'
@@ -46,18 +47,31 @@ const createTestSession = async (overrides: Record<string, unknown> = {}) => {
 
 describe('notification.routes.integration', () => {
     let app: express.Application
+    let mockAuth = true
 
     beforeAll(() => {
         app = express()
         app.use(express.json())
-        app.use((req, _res, next) => {
-            req.user = { userId: TEST_USER_ID, sessionId: TEST_SESSION_ID }
+        app.use(async (req, res, next) => {
+            if (mockAuth) {
+                const user = await prisma.user.findUnique({
+                    where: { id: TEST_USER_ID },
+                    select: { isDeleted: true },
+                })
+                if (!user || user.isDeleted) {
+                    return res.status(404).json({
+                        success: false,
+                        message: 'user not found',
+                    })
+                }
+                req.user = { userId: TEST_USER_ID, sessionId: TEST_SESSION_ID }
+            } else {
+                req.user = undefined
+            }
             next()
         })
         const testRouter = Router()
         testRouter.get('/', notificationController.getNotifications)
-        testRouter.post('/send', notificationController.sendNotificationToUser)
-        testRouter.post('/sendall', notificationController.sendNotificationToAll)
         testRouter.get('/:id', notificationController.getNotificationById)
         testRouter.patch('/:id/read', notificationController.markAsRead)
         testRouter.delete('/:id', notificationController.deleteNotification)
@@ -66,6 +80,7 @@ describe('notification.routes.integration', () => {
     })
 
     beforeEach(async () => {
+        mockAuth = true
         await prisma.notification.deleteMany()
         await prisma.session.deleteMany()
         await prisma.user.deleteMany()
@@ -227,61 +242,183 @@ describe('notification.routes.integration', () => {
         })
     })
 
-    describe('POST /send', () => {
-        it('should send notification and return 201', async () => {
-            const res = await request(app).post('/api/v1/notifications/send').send({
-                userId: TEST_USER_ID,
-                title: 'Custom title',
-                message: 'Custom message',
-                type: 'SUCCESS',
+    describe('GET /:id extra flows', () => {
+        it('should mark an unread notification as read when fetched', async () => {
+            const notif = await prisma.notification.create({
+                data: {
+                    userId: TEST_USER_ID,
+                    title: 'Unread to Read',
+                    message: 'Hello details',
+                    isRead: false,
+                },
             })
 
-            expect(res.status).toBe(201)
+            const res = await request(app).get(`/api/v1/notifications/${notif.id}`)
+            expect(res.status).toBe(200)
             expect(res.body.success).toBe(true)
-            expect(res.body.data.title).toBe('Custom title')
-            expect(res.body.data.userId).toBeUndefined()
+            expect(res.body.data.isRead).toBe(true)
+
+            // Verify db state
+            const dbNotif = await prisma.notification.findUnique({ where: { id: notif.id } })
+            expect(dbNotif!.isRead).toBe(true)
         })
 
-        it('should return 400 for validation failure', async () => {
-            const res = await request(app).post('/api/v1/notifications/send').send({
-                userId: 'invalid-uuid',
-                title: '',
-                message: '',
-                type: 'WRONG',
-            })
-
+        it('should return 400 when param id is not a valid UUID', async () => {
+            const res = await request(app).get('/api/v1/notifications/not-a-valid-uuid')
             expect(res.status).toBe(400)
             expect(res.body.success).toBe(false)
-            expect(res.body.errors.userId).toContain('user ID must be a valid UUID')
-            expect(res.body.errors.title).toContain('title is required')
-            expect(res.body.errors.message).toContain('message is required')
-            expect(res.body.errors.type).toContain(
-                "type must be one of 'INFO', 'WARNING', 'SUCCESS', 'ERROR'"
-            )
+            expect(res.body.errors.id).toContain('notification ID must be a valid UUID')
         })
     })
 
-    describe('POST /sendall', () => {
-        it('should send notifications to all and return 201', async () => {
-            const res = await request(app).post('/api/v1/notifications/sendall').send({
-                title: 'Global announcement',
-                message: 'Hello all!',
-            })
-
-            expect(res.status).toBe(201)
-            expect(res.body.success).toBe(true)
+    describe('Unauthorized flows', () => {
+        beforeEach(() => {
+            mockAuth = false // disable auth injection
         })
 
-        it('should return 400 for validation failure', async () => {
-            const res = await request(app).post('/api/v1/notifications/sendall').send({
-                title: '',
-                message: '',
-            })
-
+        it('should return 400 when fetching notifications list unauthorized', async () => {
+            const res = await request(app).get('/api/v1/notifications')
             expect(res.status).toBe(400)
             expect(res.body.success).toBe(false)
-            expect(res.body.errors.title).toContain('title is required')
-            expect(res.body.errors.message).toContain('message is required')
+            expect(res.body.message).toBe('unauthorized')
+        })
+
+        it('should return 400 when fetching notification details unauthorized', async () => {
+            const res = await request(app).get(
+                '/api/v1/notifications/864e432c-687f-4424-aa61-a831518f8e12'
+            )
+            expect(res.status).toBe(400)
+            expect(res.body.success).toBe(false)
+            expect(res.body.message).toBe('unauthorized')
+        })
+
+        it('should return 400 when marking notification read unauthorized', async () => {
+            const res = await request(app).patch(
+                '/api/v1/notifications/864e432c-687f-4424-aa61-a831518f8e12/read'
+            )
+            expect(res.status).toBe(400)
+            expect(res.body.success).toBe(false)
+            expect(res.body.message).toBe('unauthorized')
+        })
+
+        it('should return 400 when deleting notification unauthorized', async () => {
+            const res = await request(app).delete(
+                '/api/v1/notifications/864e432c-687f-4424-aa61-a831518f8e12'
+            )
+            expect(res.status).toBe(400)
+            expect(res.body.success).toBe(false)
+            expect(res.body.message).toBe('unauthorized')
+        })
+
+        it('should return 401 when deleting all read notifications unauthorized', async () => {
+            const res = await request(app).delete('/api/v1/notifications')
+            expect(res.status).toBe(401)
+            expect(res.body.success).toBe(false)
+            expect(res.body.message).toBe('unauthorized')
+        })
+    })
+
+    describe('Validation failure flows', () => {
+        it('should return 400 when marking read with invalid UUID', async () => {
+            const res = await request(app).patch('/api/v1/notifications/invalid-uuid/read')
+            expect(res.status).toBe(400)
+            expect(res.body.success).toBe(false)
+            expect(res.body.errors.id).toContain('notification ID must be a valid UUID')
+        })
+
+        it('should return 400 when deleting with invalid UUID', async () => {
+            const res = await request(app).delete('/api/v1/notifications/invalid-uuid')
+            expect(res.status).toBe(400)
+            expect(res.body.success).toBe(false)
+            expect(res.body.errors.id).toContain('notification ID must be a valid UUID')
+        })
+    })
+
+    describe('Internal Server Error 500 flows', () => {
+        it('should return 500 when GET / throws unexpected error', async () => {
+            const original = notificationService.getNotifications
+            notificationService.getNotifications = async () => {
+                throw new Error('Database crash')
+            }
+            try {
+                const res = await request(app).get('/api/v1/notifications')
+                expect(res.status).toBe(500)
+                expect(res.body.success).toBe(false)
+                expect(res.body.message).toBe('failed to fetch notifications')
+                expect(res.body.errors).toBe('Database crash')
+            } finally {
+                notificationService.getNotifications = original
+            }
+        })
+
+        it('should return 500 when GET /:id throws unexpected error', async () => {
+            const original = notificationService.getNotificationById
+            notificationService.getNotificationById = async () => {
+                throw new Error('Database crash')
+            }
+            try {
+                const res = await request(app).get(
+                    '/api/v1/notifications/864e432c-687f-4424-aa61-a831518f8e12'
+                )
+                expect(res.status).toBe(500)
+                expect(res.body.success).toBe(false)
+                expect(res.body.message).toBe('failed to fetch notification')
+                expect(res.body.errors).toBe('Database crash')
+            } finally {
+                notificationService.getNotificationById = original
+            }
+        })
+
+        it('should return 500 when PATCH /:id/read throws unexpected error', async () => {
+            const original = notificationService.markAsRead
+            notificationService.markAsRead = async () => {
+                throw new Error('Database crash')
+            }
+            try {
+                const res = await request(app).patch(
+                    '/api/v1/notifications/864e432c-687f-4424-aa61-a831518f8e12/read'
+                )
+                expect(res.status).toBe(500)
+                expect(res.body.success).toBe(false)
+                expect(res.body.message).toBe('failed to mark notification as read')
+                expect(res.body.errors).toBe('Database crash')
+            } finally {
+                notificationService.markAsRead = original
+            }
+        })
+
+        it('should return 500 when DELETE /:id throws unexpected error', async () => {
+            const original = notificationService.deleteNotification
+            notificationService.deleteNotification = async () => {
+                throw new Error('Database crash')
+            }
+            try {
+                const res = await request(app).delete(
+                    '/api/v1/notifications/864e432c-687f-4424-aa61-a831518f8e12'
+                )
+                expect(res.status).toBe(500)
+                expect(res.body.success).toBe(false)
+                expect(res.body.message).toBe('failed to delete notification')
+                expect(res.body.errors).toBe('Database crash')
+            } finally {
+                notificationService.deleteNotification = original
+            }
+        })
+
+        it('should return 500 when DELETE / throws unexpected error', async () => {
+            const original = notificationService.deleteAllReadNotification
+            notificationService.deleteAllReadNotification = async () => {
+                throw new Error('Database crash')
+            }
+            try {
+                const res = await request(app).delete('/api/v1/notifications')
+                expect(res.status).toBe(500)
+                expect(res.body.success).toBe(false)
+                expect(res.body.message).toBe('failed to delete read notifications')
+                expect(res.body.errors).toBe('Database crash')
+            } finally {
+                notificationService.deleteAllReadNotification = original
+            }
         })
     })
 })

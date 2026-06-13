@@ -71,25 +71,15 @@ describe('notification.service.integration', () => {
             expect(notifications[0]?.isRead).toBe(false)
         })
 
-        it('should throw user not found if user does not exist', async () => {
-            try {
-                await notificationService.getNotifications('864e432c-687f-4424-aa61-a831518f8e12')
-                throw new Error('expected function to throw')
-            } catch (error: any) {
-                expect(error.message).toBe('user not found')
-                expect(error.statusCode).toBe(404)
-            }
-        })
+        it('should return empty list if user does not exist or is soft-deleted', async () => {
+            const result1 = await notificationService.getNotifications(
+                '864e432c-687f-4424-aa61-a831518f8e12'
+            )
+            expect(result1).toEqual([])
 
-        it('should throw user not found for soft-deleted user', async () => {
             const deleted = await createSoftDeletedUser()
-            try {
-                await notificationService.getNotifications(deleted.id)
-                throw new Error('expected function to throw')
-            } catch (error: any) {
-                expect(error.message).toBe('user not found')
-                expect(error.statusCode).toBe(404)
-            }
+            const result2 = await notificationService.getNotifications(deleted.id)
+            expect(result2).toEqual([])
         })
     })
 
@@ -115,17 +105,12 @@ describe('notification.service.integration', () => {
             expect(fetched).toBeNull()
         })
 
-        it('should throw user not found if user does not exist', async () => {
-            try {
-                await notificationService.getNotificationById(
-                    '864e432c-687f-4424-aa61-a831518f8e12',
-                    '864e432c-687f-4424-aa61-a831518f8e12'
-                )
-                throw new Error('expected function to throw')
-            } catch (error: any) {
-                expect(error.message).toBe('user not found')
-                expect(error.statusCode).toBe(404)
-            }
+        it('should return null if user does not exist', async () => {
+            const fetched = await notificationService.getNotificationById(
+                '864e432c-687f-4424-aa61-a831518f8e12',
+                '864e432c-687f-4424-aa61-a831518f8e12'
+            )
+            expect(fetched).toBeNull()
         })
     })
 
@@ -210,16 +195,11 @@ describe('notification.service.integration', () => {
             expect(fetchedUnread).not.toBeNull()
         })
 
-        it('should throw user not found if user does not exist', async () => {
-            try {
-                await notificationService.deleteAllReadNotification(
-                    '864e432c-687f-4424-aa61-a831518f8e12'
-                )
-                throw new Error('expected function to throw')
-            } catch (error: any) {
-                expect(error.message).toBe('user not found')
-                expect(error.statusCode).toBe(404)
-            }
+        it('should return 0 deleted count if user does not exist', async () => {
+            const res = await notificationService.deleteAllReadNotification(
+                '864e432c-687f-4424-aa61-a831518f8e12'
+            )
+            expect(res.count).toBe(0)
         })
     })
 
@@ -238,50 +218,87 @@ describe('notification.service.integration', () => {
             expect((created as any).userId).toBeUndefined()
         })
 
-        it('should throw user not found if user does not exist', async () => {
+        it('should throw foreign key error if user does not exist', async () => {
+            let error: any = null
             try {
                 await notificationService.sendNotificationToUser({
                     userId: '864e432c-687f-4424-aa61-a831518f8e12',
                     title: 'Title',
                     message: 'Message',
                 })
-                throw new Error('expected function to throw')
-            } catch (error: any) {
-                expect(error.message).toBe('user not found')
-                expect(error.statusCode).toBe(404)
+            } catch (e) {
+                error = e
             }
+            expect(error).not.toBeNull()
         })
     })
 
-    describe('sendNotificationToAll', () => {
-        it('should send notifications to all non-deleted users', async () => {
-            // Create another active user and a soft-deleted user
-            const activeUser2 = await createUser()
-            const softDeletedUser = await createSoftDeletedUser()
-
-            const result = await notificationService.sendNotificationToAll({
-                title: 'Broadcast',
-                message: 'Hello everyone!',
-                type: 'WARNING',
+    describe('markAsRead and deleteNotification cross-user security', () => {
+        it("should throw AppError if user tries to mark another user's notification as read", async () => {
+            const otherUser = await createUser({
+                email: 'other@example.com',
+                username: 'other_user',
+            })
+            const notif = await prisma.notification.create({
+                data: {
+                    userId: otherUser.id,
+                    title: 'Other User Notification',
+                    message: 'Secret message',
+                },
             })
 
-            // Expected to send to 2 active users, not the deleted user
-            expect(result.count).toBe(2)
-
-            // Let's verify notifications are fetched for the active users but not soft-deleted
-            const list1 = await notificationService.getNotifications(userId)
-            expect(list1[0]?.title).toBe('Broadcast')
-
-            const list2 = await notificationService.getNotifications(activeUser2.id)
-            expect(list2[0]?.title).toBe('Broadcast')
-
-            // Retrieving from soft-deleted user should throw user not found
+            let error: any = null
             try {
-                await notificationService.getNotifications(softDeletedUser.id)
-                throw new Error('expected function to throw')
-            } catch (error: any) {
-                expect(error.message).toBe('user not found')
+                await notificationService.markAsRead(userId, notif.id)
+            } catch (e) {
+                error = e
             }
+
+            expect(error).not.toBeNull()
+            expect(error.message).toBe('notification not found')
+            expect(error.statusCode).toBe(404)
+        })
+
+        it("should throw AppError if user tries to delete another user's notification", async () => {
+            const otherUser = await createUser({
+                email: 'other2@example.com',
+                username: 'other_user2',
+            })
+            const notif = await prisma.notification.create({
+                data: {
+                    userId: otherUser.id,
+                    title: 'Other User Notification 2',
+                    message: 'Secret message 2',
+                },
+            })
+
+            let error: any = null
+            try {
+                await notificationService.deleteNotification(userId, notif.id)
+            } catch (e) {
+                error = e
+            }
+
+            expect(error).not.toBeNull()
+            expect(error.message).toBe('notification not found')
+            expect(error.statusCode).toBe(404)
+        })
+
+        it("should return null if user tries to get another user's notification", async () => {
+            const otherUser = await createUser({
+                email: 'other3@example.com',
+                username: 'other_user3',
+            })
+            const notif = await prisma.notification.create({
+                data: {
+                    userId: otherUser.id,
+                    title: 'Other User Notification 3',
+                    message: 'Secret message 3',
+                },
+            })
+
+            const fetched = await notificationService.getNotificationById(userId, notif.id)
+            expect(fetched).toBeNull()
         })
     })
 })
