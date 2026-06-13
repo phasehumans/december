@@ -1,7 +1,7 @@
+import { useQuery } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowRight, X, Plus } from 'lucide-react'
 import React, { useRef, useEffect, useCallback, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 
 import type { ChatPromptInputProps } from '@/features/chat/types'

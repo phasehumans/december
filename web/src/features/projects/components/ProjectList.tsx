@@ -4,7 +4,6 @@ import { useProjectListMutations } from '../hooks/useProjectListMutations'
 
 import { ProjectListModals } from './ProjectListModals'
 import { ProjectListView } from './ProjectListView'
-import { SettingsBigModal } from '@/features/preview/components/settings/SettingsBigModal'
 
 import type {
     DeleteModalState,
@@ -16,6 +15,7 @@ import type {
 } from '@/features/projects/types'
 
 import { toProjectSlug } from '@/app/types'
+import { SettingsBigModal } from '@/features/preview/components/settings/SettingsBigModal'
 
 export type SortOption = 'newest' | 'oldest'
 export type StatusFilter = 'any' | 'Draft' | 'Generating' | 'Generated' | 'Deployed' | 'Failed'

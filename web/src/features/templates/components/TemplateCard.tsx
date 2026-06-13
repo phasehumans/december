@@ -2,9 +2,9 @@ import React from 'react'
 
 import type { Template } from '@/features/templates/types'
 
+import { API_BASE_URL } from '@/shared/api/client'
 import { Icons } from '@/shared/components/ui/Icons'
 import { cn } from '@/shared/lib/utils'
-import { API_BASE_URL } from '@/shared/api/client'
 
 interface TemplateCardProps {
     template: Template

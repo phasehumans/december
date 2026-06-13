@@ -1,13 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion'
-import {
-    ThumbsUp,
-    ThumbsDown,
-    RotateCcw,
-    ChevronDown,
-    CheckCircle2,
-    Pen,
-    Loader2,
-} from 'lucide-react'
+import { ThumbsUp, ThumbsDown, ChevronDown, CheckCircle2, Loader2 } from 'lucide-react'
 import React from 'react'
 
 import type { ChatMessageProps } from '@/features/chat/types'
@@ -184,7 +176,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
             setIsThoughtsOpen(false)
             hasAutoCollapsedRef.current = true
         }
-        if (status === 'thinking' && !Boolean(plan)) {
+        if (status === 'thinking' && !plan) {
             setIsThoughtsOpen(true)
             hasAutoCollapsedRef.current = false
         }

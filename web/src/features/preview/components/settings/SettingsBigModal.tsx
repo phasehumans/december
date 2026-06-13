@@ -1,11 +1,9 @@
 import {
     Sliders,
     Share,
-    Plug,
     Cloud,
     Terminal,
     Globe,
-    Activity,
     ChevronLeft,
     Settings,
     Github,
@@ -18,16 +16,16 @@ import React, { useState, useEffect } from 'react'
 
 import { GeneralTab } from './GeneralTab'
 import { PublishTab } from './PublishTab'
-import { BigModalOverlay, PremiumToggle, PremiumInput } from './SettingsFormControls'
+import { BigModalOverlay, PremiumInput } from './SettingsFormControls'
 import { ShareTab } from './ShareTab'
 
-import { projectAPI } from '@/features/projects/api/project'
+import { toProjectSlug } from '@/app/types'
 import { profileAPI, type Profile } from '@/features/profile/api/profile'
-import { API_BASE_URL } from '@/shared/api/client'
+import { projectAPI } from '@/features/projects/api/project'
 import { ProjectDeleteModal } from '@/features/projects/components/ProjectDeleteModal'
 import { ProjectDuplicateModal } from '@/features/projects/components/ProjectDuplicateModal'
 import { ProjectShareModal } from '@/features/projects/components/ProjectShareModal'
-import { toProjectSlug } from '@/app/types'
+import { API_BASE_URL } from '@/shared/api/client'
 
 interface SettingsModalProps {
     onClose: () => void

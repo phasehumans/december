@@ -1,6 +1,5 @@
 import React from 'react'
 import { createPortal } from 'react-dom'
-import { Icons } from '@/shared/components/ui/Icons'
 
 interface OnboardingModalProps {
     isOpen: boolean

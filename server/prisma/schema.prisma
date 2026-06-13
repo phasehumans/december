@@ -8,59 +8,51 @@ datasource db {
 }
 
 model User {
-  id            String    @id @default(uuid())
-  name          String
-  username      String    @unique
-  email         String    @unique
-  password      String?
-  avatarUrl     String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  emailVerified Boolean   @default(false)
-  googleId      String?
-  otpExpiresAt  DateTime?
-  otpHash       String?
-
-  isDeleted Boolean   @default(false)
-  deletedAt DateTime?
-
-  githubToken     String?
-  githubUsername  String?
-  githubConnected Boolean @default(false)
-
-  vercelConnected       Boolean @default(false)
-  vercelAccessToken     String?
-  vercelTeamId          String?
-  vercelConfigurationId String?
-
-  supabaseConnected      Boolean   @default(false)
-  supabaseAccessToken    String?   @db.Text
-  supabaseRefreshToken   String?   @db.Text
+  id                     String             @id @default(uuid())
+  name                   String
+  username               String             @unique
+  email                  String             @unique
+  password               String?
+  avatarUrl              String?
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
+  emailVerified          Boolean            @default(false)
+  googleId               String?
+  otpExpiresAt           DateTime?
+  otpHash                String?
+  isDeleted              Boolean            @default(false)
+  deletedAt              DateTime?
+  githubToken            String?
+  githubUsername         String?
+  githubConnected        Boolean            @default(false)
+  vercelConnected        Boolean            @default(false)
+  vercelAccessToken      String?
+  vercelTeamId           String?
+  vercelConfigurationId  String?
+  supabaseConnected      Boolean            @default(false)
+  supabaseAccessToken    String?            @db.Text
+  supabaseRefreshToken   String?            @db.Text
   supabaseTokenExpiresAt DateTime?
   supabaseTokenScope     String?
   supabaseUserId         String?
   supabaseConnectedAt    DateTime?
-
-  notionAccessToken   String?
-  notionWorkspaceId   String?
-  notionWorkspaceName String?
-
-  notifyProjectActivity Boolean @default(true)
-  notifyProductUpdates  Boolean @default(false)
-  notifySecurityAlerts  Boolean @default(true)
-
-  chatSuggestions Boolean         @default(false)
-  generationSound GenerationSound @default(FIRST_GENERATION)
-
+  notionAccessToken      String?
+  notionWorkspaceId      String?
+  notionWorkspaceName    String?
+  notifyProjectActivity  Boolean            @default(true)
+  notifyProductUpdates   Boolean            @default(false)
+  notifySecurityAlerts   Boolean            @default(true)
+  chatSuggestions        Boolean            @default(false)
+  generationSound        GenerationSound    @default(FIRST_GENERATION)
   design                 String?
-  hasCompletedOnboarding Boolean @default(false)
-
-  stripeCustomerId   String?            @unique
-  subscriptionStatus SubscriptionStatus @default(FREE)
-  subscriptionPlan   SubscriptionPlan   @default(FREE)
-  currentPeriodEnd   DateTime?
-  creditBalance      Int                @default(100)
-  giftedCredits      Int                @default(0)
+  skills                 String?
+  hasCompletedOnboarding Boolean            @default(false)
+  stripeCustomerId       String?            @unique
+  subscriptionStatus     SubscriptionStatus @default(FREE)
+  subscriptionPlan       SubscriptionPlan   @default(FREE)
+  currentPeriodEnd       DateTime?
+  creditBalance          Int                @default(100)
+  giftedCredits          Int                @default(0)
 
   sessions      Session[]
   projects      Project[]
@@ -109,32 +101,29 @@ model Session {
 }
 
 model Project {
-  id                 String          @id @default(uuid())
-  name               String
-  prompt             String
-  createdAt          DateTime        @default(now())
-  updatedAt          DateTime        @updatedAt
-  userId             String
-  description        String?
-  isStarred          Boolean         @default(false)
-  isSharedAsTemplate Boolean         @default(false)
-  isFeatured         Boolean         @default(false)
-  projectCategory    ProjectCategory @default(NONE)
-  projectStatus      ProjectStatus   @default(DRAFT)
-  currentVersionId   String?
-  versionCount       Int             @default(0)
-  previewImageKey    String?
-
-  githubRepoName     String?
-  githubRepoOwner    String?
-  githubRepoUrl      String?
-  githubLastSyncedAt DateTime?
-
-  vercelProjectId      String?
-  vercelProjectName    String?
-  vercelDeploymentUrl  String?
-  vercelLastDeployedAt DateTime?
-
+  id                     String          @id @default(uuid())
+  name                   String
+  prompt                 String
+  createdAt              DateTime        @default(now())
+  updatedAt              DateTime        @updatedAt
+  userId                 String
+  description            String?
+  isStarred              Boolean         @default(false)
+  isSharedAsTemplate     Boolean         @default(false)
+  isFeatured             Boolean         @default(false)
+  projectCategory        ProjectCategory @default(NONE)
+  projectStatus          ProjectStatus   @default(DRAFT)
+  currentVersionId       String?
+  versionCount           Int             @default(0)
+  previewImageKey        String?
+  githubRepoName         String?
+  githubRepoOwner        String?
+  githubRepoUrl          String?
+  githubLastSyncedAt     DateTime?
+  vercelProjectId        String?
+  vercelProjectName      String?
+  vercelDeploymentUrl    String?
+  vercelLastDeployedAt   DateTime?
   decemberDeploymentUrl  String?
   decemberLastDeployedAt DateTime?
 
@@ -271,43 +260,33 @@ model ProjectLike {
 }
 
 model Subscription {
-  id     String @id @default(uuid())
-  userId String @unique
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
+  id                     String                     @id @default(uuid())
+  userId                 String                     @unique
+  user                   User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
   provider               String
-  providerSubscriptionId String  @unique
+  providerSubscriptionId String                     @unique
   providerCustomerId     String?
   providerPlanId         String
-
-  status ProviderSubscriptionStatus
-  plan   SubscriptionPlan
-
-  cancelAtPeriodEnd Boolean @default(false)
-
-  currentPeriodStart DateTime
-  currentPeriodEnd   DateTime
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  status                 ProviderSubscriptionStatus
+  plan                   SubscriptionPlan
+  cancelAtPeriodEnd      Boolean                    @default(false)
+  currentPeriodStart     DateTime
+  currentPeriodEnd       DateTime
+  createdAt              DateTime                   @default(now())
+  updatedAt              DateTime                   @updatedAt
 }
 
 model UsageEvent {
-  id     String @id @default(uuid())
-  userId String
-  user   User   @relation(fields: [userId], references: [id])
-
-  model String
-
-  inputTokens  Int @default(0)
-  outputTokens Int @default(0)
-  totalTokens  Int @default(0)
-
-  costInCents Int @default(0)
-
-  projectId String?
-  chatId    String?
-
+  id                String   @id @default(uuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id])
+  model             String
+  inputTokens       Int      @default(0)
+  outputTokens      Int      @default(0)
+  totalTokens       Int      @default(0)
+  costInCents       Int      @default(0)
+  projectId         String?
+  chatId            String?
   externalRequestId String?  @unique
   periodStart       DateTime
   periodEnd         DateTime

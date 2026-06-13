@@ -1,19 +1,19 @@
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { AnimatePresence } from 'framer-motion'
 import React, { useRef, useEffect, useState } from 'react'
 
 import { GitHubRepoForm } from './GitHubRepoForm'
 import { HomeHeader } from './HomeHeader'
+import { OnboardingModal } from './OnboardingModal'
 import PromptInput from './PromptInput'
 import { UploadProjectForm } from './UploadProjectForm'
 
-import { ProUpgradeModal } from '@/features/billing/components/ProUpgradeModal'
 import type { HomeHeroProps } from '@/features/home/types'
 
+import { ProUpgradeModal } from '@/features/billing/components/ProUpgradeModal'
 import Canvas, { type CanvasRef } from '@/features/canvas/components/Canvas'
-import { Icons } from '@/shared/components/ui/Icons'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { profileAPI } from '@/features/profile/api/profile'
-import { OnboardingModal } from './OnboardingModal'
+import { Icons } from '@/shared/components/ui/Icons'
 
 export const HomeHero: React.FC<HomeHeroProps> = ({
     onPromptSubmit,

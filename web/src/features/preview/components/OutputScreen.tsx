@@ -1,25 +1,24 @@
+import { useQuery } from '@tanstack/react-query'
+import { Check } from 'lucide-react'
 import React from 'react'
+import { useNavigate } from 'react-router-dom'
 
+import { ExitConfirmModal } from './ExitConfirmModal'
 import { OutputScreenMainContent } from './OutputScreenMainContent'
 import { PreviewArea } from './PreviewArea'
-import { ExitConfirmModal } from './ExitConfirmModal'
-import { Modal } from '@/shared/components/ui/Modal'
 
 import type { Message } from '@/features/chat/types'
-import type { OutputScreenProps } from '@/features/preview/types'
 import type {
     GeneratedProjectFile,
     PreviewSessionStatus,
     OutputOperation,
 } from '@/features/preview/types'
-
-import { useQuery } from '@tanstack/react-query'
-import { Check } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import type { OutputScreenProps } from '@/features/preview/types'
 
 import { billingAPI } from '@/features/billing/api/billing'
 import { ChatThread as ChatSidebar } from '@/features/chat/components/ChatThread'
 import { useOutputScreenController } from '@/features/preview/hooks/useOutputScreenController'
+import { Modal } from '@/shared/components/ui/Modal'
 
 type MobileOutputTab = 'chat' | 'preview'
 
