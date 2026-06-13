@@ -1,8 +1,23 @@
 ## [unreleased]
 
+### Features
+
+- _(template)_ Add preview via image for templates
+- _(template)_ Add preview image feat in template page; #87
+- Create and update repo via gh-api
+- _(interation)_ Impl vercel auto deploy integration
+- _(integrations)_ Add vercel auto deploy and github auto repo and push integration #88
+
+### Bug Fixes
+
+- _(credits/memory)_ Fix usage and model based credit tracking, impl memory session based and project based #89
+
+## [0.2.2] - 2026-06-11
+
 ### Miscellaneous Tasks
 
 - _(release)_ V0.2.1
+- _(release)_ V0.2.2
 
 ## [0.2.1] - 2026-06-11
 
