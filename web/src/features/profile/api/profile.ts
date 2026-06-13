@@ -1,5 +1,5 @@
-import { API_BASE_URL, apiRequest } from '@/shared/api/client'
 import { type BackendProject } from '@/features/projects/api/project'
+import { apiRequest } from '@/shared/api/client'
 
 export type Profile = {
     id: string

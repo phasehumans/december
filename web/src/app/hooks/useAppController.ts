@@ -14,6 +14,7 @@ import type {
 
 import { mapBackendProjectToUIProject } from '@/app/mapProject'
 import { getPathForView, getViewForPath, toProjectSlug } from '@/app/types'
+import { canvasAPI } from '@/features/canvas/api'
 import { createEmptyCanvasDocument, type CanvasDocument } from '@/features/canvas/types'
 import {
     generationAPI,
@@ -23,7 +24,6 @@ import {
 import { importsAPI, type ProjectImportStatus } from '@/features/home/api'
 import { previewAPI } from '@/features/preview/api'
 import { profileAPI } from '@/features/profile/api/profile'
-import { canvasAPI } from '@/features/canvas/api'
 import {
     projectAPI,
     type BackendProjectDetail,

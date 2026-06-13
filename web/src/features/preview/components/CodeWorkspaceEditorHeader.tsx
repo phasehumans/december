@@ -1,4 +1,4 @@
-import { X, Copy, Check } from 'lucide-react'
+import { X } from 'lucide-react'
 import React from 'react'
 
 import type { CodeFile, CodeFilePath } from '@/features/preview/types'
