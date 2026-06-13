@@ -74,7 +74,6 @@ describe('project.routes.integration', () => {
         testRouter.patch('/:projectId', projectController.renameProject)
         testRouter.delete('/:projectId', projectController.deleteProject)
         testRouter.post('/:projectId/duplicate', projectController.duplicateProject)
-        testRouter.get('/:projectId/download', projectController.downloadProjectVersion)
         testRouter.post('/:projectId/share', projectController.shareProjectAsTemplate)
         testRouter.post('/:projectId/star', projectController.toggleStarProject)
 
@@ -113,24 +112,6 @@ describe('project.routes.integration', () => {
             expect(res.status).toBe(200)
             expect(res.body.success).toBe(true)
             expect(res.body.data.length).toBe(2)
-        })
-
-        it('should return 404 when user does not exist', async () => {
-            // Create app with a non-existent user id injected
-            const ghostApp = express()
-            ghostApp.use(express.json())
-            ghostApp.use((req, _res, next) => {
-                req.user = { userId: 'ghost-user-id', sessionId: 'ghost-session' }
-                next()
-            })
-            const ghostRouter = Router()
-            ghostRouter.get('/', projectController.getAllProjects)
-            ghostApp.use('/api/v1/projects', ghostRouter)
-
-            const res = await request(ghostApp).get('/api/v1/projects')
-
-            expect(res.status).toBe(404)
-            expect(res.body.success).toBe(false)
         })
 
         it('should not return projects belonging to another user', async () => {
@@ -271,11 +252,11 @@ describe('project.routes.integration', () => {
             expect(res.body.errors).toBeDefined()
         })
 
-        it('should return 400 when name is too long (> 20 chars)', async () => {
+        it('should return 400 when name is too long (> 50 chars)', async () => {
             const res = await request(app)
                 .post('/api/v1/projects')
                 .send({
-                    name: 'A'.repeat(21),
+                    name: 'A'.repeat(51),
                     prompt: 'Build app',
                 })
 
@@ -311,12 +292,14 @@ describe('project.routes.integration', () => {
             expect(res.status).toBe(400)
         })
 
-        it('should return 400 when description is too long (> 30 chars)', async () => {
-            const res = await request(app).post('/api/v1/projects').send({
-                name: 'My Project',
-                prompt: 'Build app',
-                description: 'This description is way too long to be valid in schema',
-            })
+        it('should return 400 when description is too long (> 500 chars)', async () => {
+            const res = await request(app)
+                .post('/api/v1/projects')
+                .send({
+                    name: 'My Project',
+                    prompt: 'Build app',
+                    description: 'A'.repeat(501),
+                })
 
             expect(res.status).toBe(400)
         })
@@ -511,32 +494,39 @@ describe('project.routes.integration', () => {
             expect(original).not.toBeNull()
             expect(original!.name).toBe('Test Project')
         })
-    })
 
-    describe('GET /:projectId/download', () => {
-        it('should return 404 when no version exists for the project', async () => {
+        it('should return 200 and duplicated project with a custom valid name', async () => {
             const project = await createTestProject()
 
-            const res = await request(app).get(`/api/v1/projects/${project.id}/download`)
+            const res = await request(app)
+                .post(`/api/v1/projects/${project.id}/duplicate`)
+                .send({ name: 'My Custom Copy' })
 
-            expect(res.status).toBe(404)
+            expect(res.status).toBe(200)
+            expect(res.body.success).toBe(true)
+            expect(res.body.data.name).toBe('My Custom Copy')
+        })
+
+        it('should return 400 when custom name is too short (< 3 chars)', async () => {
+            const project = await createTestProject()
+
+            const res = await request(app)
+                .post(`/api/v1/projects/${project.id}/duplicate`)
+                .send({ name: 'Co' })
+
+            expect(res.status).toBe(400)
             expect(res.body.success).toBe(false)
         })
 
-        it('should return 404 for non-existent project', async () => {
-            const res = await request(app).get('/api/v1/projects/non-existent-project/download')
-
-            expect(res.status).toBe(404)
-        })
-
-        it('should return 400 for invalid versionId query param', async () => {
+        it('should return 400 when custom name is too long (> 50 chars)', async () => {
             const project = await createTestProject()
 
-            const res = await request(app).get(
-                `/api/v1/projects/${project.id}/download?versionId=not-a-uuid`
-            )
+            const res = await request(app)
+                .post(`/api/v1/projects/${project.id}/duplicate`)
+                .send({ name: 'A'.repeat(51) })
 
             expect(res.status).toBe(400)
+            expect(res.body.success).toBe(false)
         })
     })
 

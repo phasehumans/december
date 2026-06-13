@@ -41,33 +41,13 @@ import {
     getErrorSignature,
 } from '../memory/memory.service'
 
-import type { GenerateWebsiteInput, ProjectPlan, ProjectRecord } from './generation.types'
-
-type ApplyProjectEditInput = {
-    userId: string
-    projectId: string
-    versionId?: string
-    prompt: string
-    selectedElement?: {
-        tagName: string
-        textContent: string
-    }
-    canvasState?: GenerateWebsiteInput['canvasState']
-    model?: string
-    onEvent?: GenerateWebsiteInput['onEvent']
-    isSelfHealing?: boolean
-}
-
-type ApplyProjectFixInput = {
-    userId: string
-    projectId: string
-    versionId?: string
-    errorMessage: string
-    stack?: string
-    model?: string
-    onEvent?: GenerateWebsiteInput['onEvent']
-    isSelfHealing?: boolean
-}
+import type {
+    GenerateWebsiteInput,
+    ProjectPlan,
+    ProjectRecord,
+    ApplyProjectEdit,
+    ApplyProjectFix,
+} from './generation.types'
 
 const fileTreeForPlanning = (files: Record<string, string>) =>
     Object.entries(files)
@@ -110,7 +90,7 @@ const executeSelfCorrection = async (
         )
 
         // Abort self-healing if user credit balance falls below required threshold
-        const canRun = await usageService.canRunSelfCorrection(userId)
+        const canRun = await usageService.canRunSelfCorrection({ userId })
         if (!canRun) {
             console.warn(
                 `[self-healing] Aborting self-healing loop: user credit balance is below the required threshold.`
@@ -134,7 +114,7 @@ const executeSelfCorrection = async (
             },
         })
 
-        const checkResult = await runtimeService.checkSandboxCompilation(projectId)
+        const checkResult = await runtimeService.checkSandboxCompilation({ projectId })
 
         if (checkResult.success) {
             console.log(`[self-healing] Compilation check passed on attempt ${attempt}!`)
@@ -248,7 +228,7 @@ export const generateWebsite = async (data: GenerateWebsiteInput) => {
 
         // Extract and save style guidelines from the prompt
         const extractedGuidelines = extractStyleGuidelines(prompt)
-        await upsertStyleGuidelines(project.id, extractedGuidelines)
+        await upsertStyleGuidelines({ projectId: project.id, guidelines: extractedGuidelines })
 
         versionNumber = initializedTarget.version.versionNumber
         versionLabel = initializedTarget.version.label ?? `v${versionNumber}`
@@ -616,7 +596,7 @@ export const generateWebsite = async (data: GenerateWebsiteInput) => {
 
 const applyProjectChange = async (
     mode: 'edit' | 'fix',
-    data: ApplyProjectEditInput | ApplyProjectFixInput
+    data: ApplyProjectEdit | ApplyProjectFix
 ) => {
     const base = await getProjectRevisionBase({
         userId: data.userId,
@@ -624,12 +604,12 @@ const applyProjectChange = async (
         versionId: data.versionId,
     })
     const isEdit = mode === 'edit'
-    const editData = data as ApplyProjectEditInput
-    const fixData = data as ApplyProjectFixInput
+    const editData = data as ApplyProjectEdit
+    const fixData = data as ApplyProjectFix
 
     if (isEdit && editData.prompt) {
         const extractedGuidelines = extractStyleGuidelines(editData.prompt)
-        await upsertStyleGuidelines(base.project.id, extractedGuidelines)
+        await upsertStyleGuidelines({ projectId: base.project.id, guidelines: extractedGuidelines })
     }
 
     const sourcePrompt = isEdit ? editData.prompt : `Fix preview error: ${fixData.errorMessage}`
@@ -946,8 +926,8 @@ const applyProjectChange = async (
     }
 }
 
-export const applyProjectEdit = (data: ApplyProjectEditInput) => applyProjectChange('edit', data)
+export const applyProjectEdit = (data: ApplyProjectEdit) => applyProjectChange('edit', data)
 
-export const applyProjectFix = (data: ApplyProjectFixInput) => applyProjectChange('fix', data)
+export const applyProjectFix = (data: ApplyProjectFix) => applyProjectChange('fix', data)
 
 export const generateService = { applyProjectEdit, applyProjectFix, generateWebsite }

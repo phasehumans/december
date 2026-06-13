@@ -4,14 +4,10 @@ import {
     createProjectSchema,
     renameProjectSchema,
     getProjectByIdSchema,
-    downloadProjectVersionSchema,
     toggleStarProjectSchema,
+    duplicateProjectSchema,
 } from '../../src/modules/project/project.schema'
-import {
-    isVersionSchemaMissing,
-    parseStoredProjectFiles,
-    mapVersionSummary,
-} from '../../src/modules/project/project.utils'
+import { parseStoredProjectFiles, mapVersionSummary } from '../../src/modules/project/project.utils'
 
 describe('project.schema', () => {
     describe('createProjectSchema', () => {
@@ -34,8 +30,8 @@ describe('project.schema', () => {
             expect(createProjectSchema.safeParse(data).success).toBe(true)
         })
 
-        test('should pass with name of exactly 20 chars', () => {
-            const data = { name: 'A'.repeat(20), prompt: 'Build it' }
+        test('should pass with name of exactly 50 chars', () => {
+            const data = { name: 'A'.repeat(50), prompt: 'Build it' }
             expect(createProjectSchema.safeParse(data).success).toBe(true)
         })
 
@@ -50,13 +46,13 @@ describe('project.schema', () => {
             }
         })
 
-        test('should fail if name is too long (21 chars)', () => {
-            const data = { name: 'A'.repeat(21), prompt: 'Build app' }
+        test('should fail if name is too long (51 chars)', () => {
+            const data = { name: 'A'.repeat(51), prompt: 'Build app' }
             const result = createProjectSchema.safeParse(data)
             expect(result.success).toBe(false)
             if (!result.success) {
                 expect(result.error.flatten().fieldErrors.name).toContain(
-                    'name must be at most 20 characters'
+                    'name must be at most 50 characters'
                 )
             }
         })
@@ -99,10 +95,10 @@ describe('project.schema', () => {
             expect(createProjectSchema.safeParse(data).success).toBe(false)
         })
 
-        test('should fail if description is too long (> 30 chars)', () => {
+        test('should fail if description is too long (> 500 chars)', () => {
             const data = {
                 name: 'My Project',
-                description: 'This description is definitely too long for the schema',
+                description: 'A'.repeat(501),
                 prompt: 'Build app',
             }
             expect(createProjectSchema.safeParse(data).success).toBe(false)
@@ -117,10 +113,10 @@ describe('project.schema', () => {
             expect(createProjectSchema.safeParse(data).success).toBe(true)
         })
 
-        test('should pass if description is exactly 30 chars', () => {
+        test('should pass if description is exactly 500 chars', () => {
             const data = {
                 name: 'My Project',
-                description: 'A'.repeat(30),
+                description: 'A'.repeat(500),
                 prompt: 'Build app',
             }
             expect(createProjectSchema.safeParse(data).success).toBe(true)
@@ -188,22 +184,6 @@ describe('project.schema', () => {
         })
     })
 
-    describe('downloadProjectVersionSchema', () => {
-        test('should pass without versionId', () => {
-            expect(downloadProjectVersionSchema.safeParse({}).success).toBe(true)
-        })
-
-        test('should pass with valid UUID versionId', () => {
-            const data = { versionId: '550e8400-e29b-41d4-a716-446655440000' }
-            expect(downloadProjectVersionSchema.safeParse(data).success).toBe(true)
-        })
-
-        test('should fail with an invalid UUID versionId', () => {
-            const data = { versionId: 'bad-id' }
-            expect(downloadProjectVersionSchema.safeParse(data).success).toBe(false)
-        })
-    })
-
     describe('toggleStarProjectSchema', () => {
         test('should pass with isStarred true', () => {
             expect(toggleStarProjectSchema.safeParse({ isStarred: true }).success).toBe(true)
@@ -229,75 +209,30 @@ describe('project.schema', () => {
             expect(toggleStarProjectSchema.safeParse({ isStarred: null }).success).toBe(false)
         })
     })
+
+    describe('duplicateProjectSchema', () => {
+        test('should pass with all valid fields', () => {
+            const data = { name: 'My Copy Project' }
+            expect(duplicateProjectSchema.safeParse(data).success).toBe(true)
+        })
+
+        test('should pass if name is missing (it is optional)', () => {
+            expect(duplicateProjectSchema.safeParse({}).success).toBe(true)
+        })
+
+        test('should fail if name is too short (2 chars)', () => {
+            const data = { name: 'Hi' }
+            expect(duplicateProjectSchema.safeParse(data).success).toBe(false)
+        })
+
+        test('should fail if name is too long (51 chars)', () => {
+            const data = { name: 'A'.repeat(51) }
+            expect(duplicateProjectSchema.safeParse(data).success).toBe(false)
+        })
+    })
 })
 
 describe('project.utils', () => {
-    describe('isVersionSchemaMissing', () => {
-        test('should return true when message includes "ProjectVersion"', () => {
-            expect(
-                isVersionSchemaMissing(new Error('Relation ProjectVersion does not exist'))
-            ).toBe(true)
-        })
-
-        test('should return true when message includes "projectversion" (case-insensitive)', () => {
-            expect(isVersionSchemaMissing(new Error('table projectversion missing'))).toBe(true)
-        })
-
-        test('should return true when message includes "ProjectMessage"', () => {
-            expect(isVersionSchemaMissing(new Error('Table projectMessage missing'))).toBe(true)
-        })
-
-        test('should return true when message includes "projectmessage" (case-insensitive)', () => {
-            expect(isVersionSchemaMissing(new Error('unknown column projectmessage.id'))).toBe(true)
-        })
-
-        test('should return true when message includes "currentVersionId"', () => {
-            expect(isVersionSchemaMissing(new Error('Column currentVersionId not found'))).toBe(
-                true
-            )
-        })
-
-        test('should return true when message includes "currentversionid" (case-insensitive)', () => {
-            expect(isVersionSchemaMissing(new Error('unknown field currentversionid'))).toBe(true)
-        })
-
-        test('should return true when message includes "versionCount"', () => {
-            expect(isVersionSchemaMissing(new Error('Unknown field versionCount'))).toBe(true)
-        })
-
-        test('should return true when message includes "versioncount" (case-insensitive)', () => {
-            expect(isVersionSchemaMissing(new Error('invalid column versioncount'))).toBe(true)
-        })
-
-        test('should return false for completely unrelated error messages', () => {
-            expect(isVersionSchemaMissing(new Error('Something else failed'))).toBe(false)
-        })
-
-        test('should return false for a network error message', () => {
-            expect(isVersionSchemaMissing(new Error('ECONNREFUSED 127.0.0.1:5432'))).toBe(false)
-        })
-
-        test('should return false when input is not an Error object (string)', () => {
-            expect(isVersionSchemaMissing('some error string')).toBe(false)
-        })
-
-        test('should return false when input is a plain object', () => {
-            expect(isVersionSchemaMissing({ message: 'projectVersion' })).toBe(false)
-        })
-
-        test('should return false when input is null', () => {
-            expect(isVersionSchemaMissing(null)).toBe(false)
-        })
-
-        test('should return false when input is undefined', () => {
-            expect(isVersionSchemaMissing(undefined)).toBe(false)
-        })
-
-        test('should return false when input is a number', () => {
-            expect(isVersionSchemaMissing(42)).toBe(false)
-        })
-    })
-
     describe('parseStoredProjectFiles', () => {
         test('should return empty array when input is not an array (string)', () => {
             expect(parseStoredProjectFiles('not-an-array')).toEqual([])

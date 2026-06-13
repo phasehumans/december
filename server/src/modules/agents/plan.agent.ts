@@ -148,7 +148,10 @@ export const extractProjectPlan = async (
         task: async (attempt, lastError) => {
             console.log(`[generation] plan agent starting, attempt: ${attempt}`)
             const memoryInstructions = data.projectId
-                ? await loadMemoryPromptInstructions(data.projectId, data.userId)
+                ? await loadMemoryPromptInstructions({
+                      projectId: data.projectId,
+                      userId: data.userId,
+                  })
                 : ''
             const systemPrompt = PLAN_AGENT_PROMPT + memoryInstructions
             const completion = await openai.chat.completions.create({
@@ -232,10 +235,10 @@ export const extractProjectChangePlan = async (
             console.log(
                 `[generation change] plan agent starting, mode: ${data.mode}, attempt: ${attempt}`
             )
-            const memoryInstructions = await loadMemoryPromptInstructions(
-                data.project.id,
-                data.userId
-            )
+            const memoryInstructions = await loadMemoryPromptInstructions({
+                projectId: data.project.id,
+                userId: data.userId,
+            })
             const systemPrompt = CHANGE_PLAN_AGENT_PROMPT + memoryInstructions
             const completion = await openai.chat.completions.create({
                 model: data.model || process.env.AUTO_MODEL || PLAN_AGENT_MODEL,

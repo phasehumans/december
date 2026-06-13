@@ -92,30 +92,6 @@ describe('project.service.integration', () => {
             expect(result).toEqual([])
         })
 
-        it('should throw "user not found" for a non-existent userId', async () => {
-            let threw = false
-            try {
-                await projectService.getAllProjects({ userId: 'non-existent-user-id' })
-            } catch (err: any) {
-                threw = true
-                expect(err.message).toBe('user not found')
-            }
-            expect(threw).toBe(true)
-        })
-
-        it('should throw "user not found" for a soft-deleted user', async () => {
-            const deletedUser = await createSoftDeletedUser()
-
-            let threw = false
-            try {
-                await projectService.getAllProjects({ userId: deletedUser.id })
-            } catch (err: any) {
-                threw = true
-                expect(err.message).toBe('user not found')
-            }
-            expect(threw).toBe(true)
-        })
-
         it('should only return projects belonging to the requesting user', async () => {
             const otherUser = await createUser()
             await createProject(otherUser.id, { name: 'Other User Project' })
@@ -139,34 +115,6 @@ describe('project.service.integration', () => {
             expect(result.activeVersion).toBeNull()
             expect(result.chatMessages).toEqual([])
             expect(result.generatedFiles).toEqual({})
-        })
-
-        it('should throw "user not found" for non-existent user', async () => {
-            let threw = false
-            try {
-                await projectService.getProjectById({ userId: 'bad-user', projectId })
-            } catch (err: any) {
-                threw = true
-                expect(err.message).toBe('user not found')
-            }
-            expect(threw).toBe(true)
-        })
-
-        it('should throw "user not found" for soft-deleted user', async () => {
-            const deletedUser = await createSoftDeletedUser()
-            const deletedUserProject = await createProject(deletedUser.id)
-
-            let threw = false
-            try {
-                await projectService.getProjectById({
-                    userId: deletedUser.id,
-                    projectId: deletedUserProject.id,
-                })
-            } catch (err: any) {
-                threw = true
-                expect(err.message).toBe('user not found')
-            }
-            expect(threw).toBe(true)
         })
 
         it('should throw "project not found" for non-existent projectId', async () => {
@@ -253,40 +201,6 @@ describe('project.service.integration', () => {
             expect(result.description).toBeNull()
         })
 
-        it('should throw "user not found" for non-existent user', async () => {
-            let threw = false
-            try {
-                await projectService.createProject({
-                    name: 'Ghost Project',
-                    description: undefined,
-                    prompt: 'Something',
-                    userId: 'non-existent',
-                })
-            } catch (err: any) {
-                threw = true
-                expect(err.message).toBe('user not found')
-            }
-            expect(threw).toBe(true)
-        })
-
-        it('should throw "user not found" when user is soft-deleted', async () => {
-            const deletedUser = await createSoftDeletedUser()
-
-            let threw = false
-            try {
-                await projectService.createProject({
-                    name: 'Deleted User Project',
-                    description: undefined,
-                    prompt: 'Build it',
-                    userId: deletedUser.id,
-                })
-            } catch (err: any) {
-                threw = true
-                expect(err.message).toBe('user not found')
-            }
-            expect(threw).toBe(true)
-        })
-
         it('should persist project to database', async () => {
             const result = await projectService.createProject({
                 name: 'Persist Test',
@@ -324,39 +238,6 @@ describe('project.service.integration', () => {
 
             const db = await prisma.project.findUnique({ where: { id: projectId } })
             expect(db!.name).toBe('Renamed Project')
-        })
-
-        it('should throw "user not found" when user does not exist', async () => {
-            let threw = false
-            try {
-                await projectService.renameProject({
-                    projectId,
-                    userId: 'bad-user',
-                    rename: 'New Name',
-                })
-            } catch (err: any) {
-                threw = true
-                expect(err.message).toBe('user not found')
-            }
-            expect(threw).toBe(true)
-        })
-
-        it('should throw "user not found" when user is soft-deleted', async () => {
-            const deletedUser = await createSoftDeletedUser()
-            const deletedUserProject = await createProject(deletedUser.id)
-
-            let threw = false
-            try {
-                await projectService.renameProject({
-                    projectId: deletedUserProject.id,
-                    userId: deletedUser.id,
-                    rename: 'New Name',
-                })
-            } catch (err: any) {
-                threw = true
-                expect(err.message).toBe('user not found')
-            }
-            expect(threw).toBe(true)
         })
 
         it('should throw "project not found" when projectId does not exist', async () => {
@@ -408,34 +289,6 @@ describe('project.service.integration', () => {
 
             const db = await prisma.project.findUnique({ where: { id: projectId } })
             expect(db).toBeNull()
-        })
-
-        it('should throw "user not found" for non-existent user', async () => {
-            let threw = false
-            try {
-                await projectService.deleteProject({ userId: 'bad-user', projectId })
-            } catch (err: any) {
-                threw = true
-                expect(err.message).toBe('user not found')
-            }
-            expect(threw).toBe(true)
-        })
-
-        it('should throw "user not found" for soft-deleted user', async () => {
-            const deletedUser = await createSoftDeletedUser()
-            const deletedUserProject = await createProject(deletedUser.id)
-
-            let threw = false
-            try {
-                await projectService.deleteProject({
-                    userId: deletedUser.id,
-                    projectId: deletedUserProject.id,
-                })
-            } catch (err: any) {
-                threw = true
-                expect(err.message).toBe('user not found')
-            }
-            expect(threw).toBe(true)
         })
 
         it('should throw "project not found" for non-existent project', async () => {
@@ -606,24 +459,6 @@ describe('project.service.integration', () => {
             expect(threw).toBe(true)
         })
 
-        it('should throw "project not found" when user is soft-deleted', async () => {
-            const deletedUser = await createSoftDeletedUser()
-            const deletedUserProject = await createProject(deletedUser.id)
-
-            let threw = false
-            try {
-                await projectService.shareProjectAsTemplate({
-                    userId: deletedUser.id,
-                    projectId: deletedUserProject.id,
-                    isSharedAsTemplate: true,
-                })
-            } catch (err: any) {
-                threw = true
-                expect(err.message).toBe('project not found')
-            }
-            expect(threw).toBe(true)
-        })
-
         it('should persist isSharedAsTemplate flag in database', async () => {
             await projectService.shareProjectAsTemplate({
                 userId,
@@ -698,24 +533,6 @@ describe('project.service.integration', () => {
             expect(threw).toBe(true)
         })
 
-        it('should throw "project not found" when user is soft-deleted', async () => {
-            const deletedUser = await createSoftDeletedUser()
-            const deletedUserProject = await createProject(deletedUser.id)
-
-            let threw = false
-            try {
-                await projectService.toggleStarProject({
-                    userId: deletedUser.id,
-                    projectId: deletedUserProject.id,
-                    isStarred: true,
-                })
-            } catch (err: any) {
-                threw = true
-                expect(err.message).toBe('project not found')
-            }
-            expect(threw).toBe(true)
-        })
-
         it('should persist isStarred=true in the database', async () => {
             await projectService.toggleStarProject({ userId, projectId, isStarred: true })
 
@@ -729,41 +546,6 @@ describe('project.service.integration', () => {
 
             const db = await prisma.project.findUnique({ where: { id: projectId } })
             expect(db!.isStarred).toBe(false)
-        })
-    })
-
-    describe('downloadProjectVersion', () => {
-        it('should throw "project version not found" when project has no versions', async () => {
-            let threw = false
-            try {
-                await projectService.downloadProjectVersion({ userId, projectId })
-            } catch (err: any) {
-                threw = true
-                expect(err.message).toBe('project version not found')
-            }
-            expect(threw).toBe(true)
-        })
-
-        it('should throw "user not found" for non-existent user', async () => {
-            let threw = false
-            try {
-                await projectService.downloadProjectVersion({ userId: 'bad-user', projectId })
-            } catch (err: any) {
-                threw = true
-                expect(err.message).toBe('user not found')
-            }
-            expect(threw).toBe(true)
-        })
-
-        it('should throw "project not found" for non-existent project', async () => {
-            let threw = false
-            try {
-                await projectService.downloadProjectVersion({ userId, projectId: 'bad-project' })
-            } catch (err: any) {
-                threw = true
-                expect(err.message).toBe('project not found')
-            }
-            expect(threw).toBe(true)
         })
     })
 })

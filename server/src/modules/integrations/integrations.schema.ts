@@ -9,13 +9,13 @@ export const createGithubRepoSchema = z.object({
             /^[a-zA-Z0-9_.-]+$/,
             'Repository name can only contain letters, numbers, dots, hyphens, and underscores'
         ),
-    private: z.boolean({ invalid_type_error: 'private must be a boolean' }).default(true),
-    description: z.string({ invalid_type_error: 'description must be a string' }).optional(),
+    private: z.boolean({ message: 'private must be a boolean' }).default(true),
+    description: z.string({ message: 'description must be a string' }).optional(),
 })
 
 export const syncGithubRepoSchema = z.object({
     commitMessage: z
-        .string({ invalid_type_error: 'commitMessage must be a string' })
+        .string({ message: 'commitMessage must be a string' })
         .min(1, 'Commit message must be at least 1 character')
         .optional(),
 })

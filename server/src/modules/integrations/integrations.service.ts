@@ -23,36 +23,18 @@ type GithubRepo = {
     }
 }
 
-type ConnectVercel = {
-    code: string
-    userId: string
-    teamId?: string
-    configurationId?: string
-}
+import type {
+    ListGithubRepos,
+    ConnectVercel,
+    ConnectSupabase,
+    ConnectNotion,
+    ConnectGithub,
+    CreateRepo,
+    UpdateRepo,
+} from './integrations.types'
 
-type ConnectGithub = {
-    userId: string
-    accessToken: string
-    username: string
-}
-
-type VercelTokenResponse = {
-    access_token: string
-    user_id: string
-    team_id: string | null
-}
-
-interface ConnectSupaBase {
-    userId: string
-    code: string
-}
-
-interface ConnectNotionParams {
-    userId: string
-    code: string
-}
-
-const listGithubRepos = async (userId: string): Promise<GithubRepo[]> => {
+const listGithubRepos = async (data: ListGithubRepos): Promise<GithubRepo[]> => {
+    const { userId } = data
     const user = await prisma.user.findUnique({
         where: {
             id: userId,
@@ -144,7 +126,7 @@ const connectVercel = async (data: ConnectVercel) => {
         throw new AppError(rawResponse, 400)
     }
 
-    const tokenData = JSON.parse(rawResponse) as VercelTokenResponse
+    const tokenData = JSON.parse(rawResponse) as { access_token?: string }
 
     const accessToken = tokenData.access_token
 
@@ -178,7 +160,8 @@ const connectVercel = async (data: ConnectVercel) => {
     return updatedUser
 }
 
-const connectSupabase = async ({ userId, code }: ConnectSupaBase) => {
+const connectSupabase = async (data: ConnectSupabase) => {
+    const { userId, code } = data
     const params = new URLSearchParams({
         grant_type: 'authorization_code',
         code,
@@ -228,7 +211,8 @@ const connectSupabase = async ({ userId, code }: ConnectSupaBase) => {
     return updatedUser
 }
 
-const connectNotion = async ({ userId, code }: ConnectNotionParams) => {
+const connectNotion = async (data: ConnectNotion) => {
+    const { userId, code } = data
     const response = await axios.post(
         'https://api.notion.com/v1/oauth/token',
         {
@@ -248,7 +232,7 @@ const connectNotion = async ({ userId, code }: ConnectNotionParams) => {
         }
     )
 
-    const data = response.data
+    const notionData = response.data
 
     const updatedUser = await prisma.user.update({
         where: {
@@ -256,9 +240,9 @@ const connectNotion = async ({ userId, code }: ConnectNotionParams) => {
         },
 
         data: {
-            notionAccessToken: data.access_token,
-            notionWorkspaceId: data.workspace_id,
-            notionWorkspaceName: data.workspace_name,
+            notionAccessToken: notionData.access_token,
+            notionWorkspaceId: notionData.workspace_id,
+            notionWorkspaceName: notionData.workspace_name,
         },
     })
 
@@ -266,7 +250,7 @@ const connectNotion = async ({ userId, code }: ConnectNotionParams) => {
         await sendNotificationToUser({
             userId,
             title: 'Notion Connected',
-            message: `Successfully connected with Notion integration (${data.workspace_name})!`,
+            message: `Successfully connected with Notion integration (${notionData.workspace_name})!`,
             type: 'SUCCESS',
         })
     } catch (error) {
@@ -279,55 +263,45 @@ const connectNotion = async ({ userId, code }: ConnectNotionParams) => {
 const connectGithub = async (data: ConnectGithub) => {
     const { username, accessToken, userId } = data
 
-    const existingUser = await prisma.user.findUnique({
-        where: {
-            id: userId,
-        },
-        select: {
-            id: true,
-            isDeleted: true,
-        },
-    })
-
-    if (!existingUser || existingUser.isDeleted) {
-        throw new AppError('user not found', 404)
-    }
-
-    const updatedUser = await prisma.user.update({
-        where: {
-            id: userId,
-        },
-        data: {
-            githubUsername: username,
-            githubToken: accessToken,
-            githubConnected: true,
-        },
-        select: {
-            id: true,
-            githubConnected: true,
-            githubUsername: true,
-        },
-    })
-
     try {
-        await sendNotificationToUser({
-            userId,
-            title: 'GitHub Connected',
-            message: `Successfully connected with GitHub integration as @${username}!`,
-            type: 'SUCCESS',
+        const updatedUser = await prisma.user.update({
+            where: {
+                id: userId,
+            },
+            data: {
+                githubUsername: username,
+                githubToken: accessToken,
+                githubConnected: true,
+            },
+            select: {
+                id: true,
+                githubConnected: true,
+                githubUsername: true,
+            },
         })
-    } catch (error) {
-        console.error('Failed to send github connection notification:', error)
-    }
 
-    return updatedUser
+        try {
+            await sendNotificationToUser({
+                userId,
+                title: 'GitHub Connected',
+                message: `Successfully connected with GitHub integration as @${username}!`,
+                type: 'SUCCESS',
+            })
+        } catch (error) {
+            console.error('Failed to send github connection notification:', error)
+        }
+
+        return updatedUser
+    } catch (error: any) {
+        if (error.code === 'P2025') {
+            throw new AppError('user not found', 404)
+        }
+        throw error
+    }
 }
 
-const createRepo = async (
-    userId: string,
-    projectId: string,
-    data: { name: string; private: boolean; description?: string }
-) => {
+const createRepo = async (data: CreateRepo) => {
+    const { userId, projectId } = data
     const user = await prisma.user.findUnique({
         where: { id: userId },
         select: {
@@ -384,7 +358,7 @@ const createRepo = async (
     })
 
     try {
-        await updateRepo(userId, projectId, { commitMessage: 'Initial sync from December' })
+        await updateRepo({ userId, projectId, commitMessage: 'Initial sync from December' })
     } catch (syncError) {
         console.error('Initial sync failed:', syncError)
     }
@@ -392,7 +366,8 @@ const createRepo = async (
     return updatedProject
 }
 
-const updateRepo = async (userId: string, projectId: string, data: { commitMessage?: string }) => {
+const updateRepo = async (data: UpdateRepo) => {
+    const { userId, projectId } = data
     const user = await prisma.user.findUnique({
         where: { id: userId },
         select: {

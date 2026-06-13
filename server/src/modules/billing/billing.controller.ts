@@ -22,7 +22,7 @@ const getOverview = async (req: Request, res: Response) => {
     }
 
     try {
-        const result = await billingService.getOverview(userId)
+        const result = await billingService.getOverview({ userId })
         return res.status(200).json({
             success: true,
             message: 'billing overview fetched successfully',
@@ -270,7 +270,7 @@ const createPortalSession = async (req: Request, res: Response) => {
     }
 
     try {
-        const result = await billingService.createPortalSession(userId)
+        const result = await billingService.createPortalSession({ userId })
         return res.status(200).json({
             success: true,
             message: 'billing portal created successfully',

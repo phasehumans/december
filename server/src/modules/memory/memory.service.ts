@@ -1,4 +1,5 @@
 import { prisma } from '../../config/db'
+import type { UpsertStyleGuidelines, LoadMemoryPromptInstructions } from './memory.types'
 
 export function extractStyleGuidelines(prompt: string): Record<string, string> {
     const guidelines: Record<string, string> = {}
@@ -6,19 +7,17 @@ export function extractStyleGuidelines(prompt: string): Record<string, string> {
         /\b(theme|color|palette|font|style|layout|spacing|border|radius|shadow|background)\s*:\s*([^;\n,.]+)/gi
     let match
     while ((match = regex.exec(prompt)) !== null) {
-        const key = match[1].toLowerCase().trim()
-        const value = match[2].trim()
-        if (value && !value.startsWith('//') && !value.startsWith('http')) {
+        const key = match[1]?.toLowerCase().trim()
+        const value = match[2]?.trim()
+        if (key && value && !value.startsWith('//') && !value.startsWith('http')) {
             guidelines[key] = value
         }
     }
     return guidelines
 }
 
-export async function upsertStyleGuidelines(
-    projectId: string,
-    guidelines: Record<string, string>
-): Promise<void> {
+export async function upsertStyleGuidelines(data: UpsertStyleGuidelines): Promise<void> {
+    const { projectId, guidelines } = data
     const entries = Object.entries(guidelines)
     if (entries.length === 0) return
 
@@ -45,9 +44,9 @@ export async function upsertStyleGuidelines(
 }
 
 export async function loadMemoryPromptInstructions(
-    projectId: string,
-    userId?: string
+    data: LoadMemoryPromptInstructions
 ): Promise<string> {
+    const { projectId, userId } = data
     let instructions = ''
 
     // 1. Load general design preference (design.md)

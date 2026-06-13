@@ -144,7 +144,7 @@ describe('generation self-healing layers', () => {
 
             // Check that operations list has been deduplicated and secured
             expect(data.operations.length).toBe(1)
-            expect(data.operations[0].path).toBe('src/App.tsx')
+            expect(data.operations[0]?.path).toBe('src/App.tsx')
         }
     })
 })

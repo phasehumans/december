@@ -15,7 +15,6 @@ projectRouter.patch('/:projectId', projectController.renameProject)
 projectRouter.patch('/:projectId/general-settings', projectController.updateGeneralSettings)
 projectRouter.delete('/:projectId', projectController.deleteProject)
 projectRouter.post('/:projectId/duplicate', projectController.duplicateProject)
-projectRouter.get('/:projectId/download', projectController.downloadProjectVersion)
 projectRouter.post('/:projectId/share', projectController.shareProjectAsTemplate)
 projectRouter.post('/:projectId/star', projectController.toggleStarProject)
 

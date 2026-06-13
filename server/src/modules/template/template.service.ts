@@ -230,16 +230,6 @@ const getFeaturedTemplates = async (userId?: string) => {
 const remixTemplate = async (data: RemixTemplate) => {
     const { userId, templateId, name } = data
 
-    const user = await prisma.user.findUnique({
-        where: {
-            id: userId,
-        },
-    })
-
-    if (!user || user.isDeleted == true) {
-        throw new AppError('user not found', 404)
-    }
-
     const template = await prisma.project.findUnique({
         where: {
             id: templateId,
@@ -272,45 +262,52 @@ const remixTemplate = async (data: RemixTemplate) => {
         },
     })
 
-    const newProject = await prisma.project.create({
-        data: {
-            name: name || `Remix of ${template.name}`,
-            description: template.description,
-            prompt: latestVersion?.sourcePrompt ?? template.prompt,
-            projectStatus: latestVersion ? 'READY' : template.projectStatus,
-            userId: userId,
-        },
-        select: {
-            id: true,
-            name: true,
-            description: true,
-            prompt: true,
-            isStarred: true,
-            isSharedAsTemplate: true,
-            projectStatus: true,
-            versionCount: true,
-            currentVersionId: true,
-            createdAt: true,
-            updatedAt: true,
-            userId: true,
-        },
-    })
+    try {
+        const newProject = await prisma.project.create({
+            data: {
+                name: name || `Remix of ${template.name}`,
+                description: template.description,
+                prompt: latestVersion?.sourcePrompt ?? template.prompt,
+                projectStatus: latestVersion ? 'READY' : template.projectStatus,
+                userId: userId,
+            },
+            select: {
+                id: true,
+                name: true,
+                description: true,
+                prompt: true,
+                isStarred: true,
+                isSharedAsTemplate: true,
+                projectStatus: true,
+                versionCount: true,
+                currentVersionId: true,
+                createdAt: true,
+                updatedAt: true,
+                userId: true,
+            },
+        })
 
-    if (!latestVersion) {
+        if (!latestVersion) {
+            return newProject
+        }
+
+        const copyResult = await copyProjectVersionsAndMessages(
+            template.id,
+            newProject.id,
+            userId,
+            template.currentVersionId
+        )
+
+        newProject.currentVersionId = copyResult.newCurrentVersionId
+        newProject.versionCount = copyResult.versionCount
+
         return newProject
+    } catch (error: any) {
+        if (error.code === 'P2003') {
+            throw new AppError('user not found', 404)
+        }
+        throw error
     }
-
-    const copyResult = await copyProjectVersionsAndMessages(
-        template.id,
-        newProject.id,
-        userId,
-        template.currentVersionId
-    )
-
-    newProject.currentVersionId = copyResult.newCurrentVersionId
-    newProject.versionCount = copyResult.versionCount
-
-    return newProject
 }
 
 const toggleLike = async (data: ToggleLike) => {
@@ -320,9 +317,12 @@ const toggleLike = async (data: ToggleLike) => {
         where: {
             id: userId,
         },
+        select: {
+            name: true,
+        },
     })
 
-    if (!user || user.isDeleted == true) {
+    if (!user) {
         throw new AppError('user not found', 404)
     }
 

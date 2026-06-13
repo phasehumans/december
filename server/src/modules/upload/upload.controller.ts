@@ -124,7 +124,7 @@ const getImportStatus = async (req: Request, res: Response) => {
             message: 'import status fetched',
             data: result,
         })
-    } catch (error: any) {
+    } catch (error) {
         if (error instanceof AppError) {
             return res.status(error.statusCode).json({
                 success: false,
@@ -171,7 +171,7 @@ const retryImport = async (req: Request, res: Response) => {
             message: 'import retry queued',
             data: result,
         })
-    } catch (error: any) {
+    } catch (error) {
         if (error instanceof AppError) {
             return res.status(error.statusCode).json({
                 success: false,

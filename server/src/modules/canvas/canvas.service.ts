@@ -10,11 +10,7 @@ import { assetKey, putBinaryFile, temporaryCanvasAssetKey } from '../project/pro
 
 import { persistCanvasDocument } from './canvas.persistence'
 
-type CreateWebClipsInput = {
-    url: string
-    userId: string
-    projectId?: string
-}
+import type { CreateWebClips, SaveCanvas } from './canvas.types'
 
 type ClipperWorkerSection = {
     path: string
@@ -192,7 +188,7 @@ const assertProjectAccess = async (projectId: string, userId: string) => {
     }
 }
 
-const createWebClips = async ({ url, userId, projectId }: CreateWebClipsInput) => {
+const createWebClips = async ({ url, userId, projectId }: CreateWebClips) => {
     if (projectId) {
         await assertProjectAccess(projectId, userId)
     }
@@ -241,14 +237,7 @@ const createWebClips = async ({ url, userId, projectId }: CreateWebClipsInput) =
     }
 }
 
-type SaveCanvasInput = {
-    projectId: string
-    userId: string
-    versionId?: string
-    canvasState: any
-}
-
-const saveCanvas = async ({ projectId, userId, versionId, canvasState }: SaveCanvasInput) => {
+const saveCanvas = async ({ projectId, userId, versionId, canvasState }: SaveCanvas) => {
     await assertProjectAccess(projectId, userId)
 
     const project = await prisma.project.findUnique({
