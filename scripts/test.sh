@@ -28,9 +28,9 @@ bun test tests/unit/notification.unit.test.ts
 bun test tests/integration/notification/notification.routes.test.ts
 bun test tests/integration/notification/notification.service.test.ts
 
-# bun test tests/unit/profile.unit.test.ts
-# bun test tests/integration/profile/profile.routes.test.ts
-# bun test tests/integration/profile/profile.service.test.ts
+bun test tests/unit/profile.unit.test.ts
+bun test tests/integration/profile/profile.routes.test.ts
+bun test tests/integration/profile/profile.service.test.ts
 
 # bun test tests/unit/project.unit.test.ts
 # bun test tests/integration/project/project.routes.test.ts

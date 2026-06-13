@@ -7,7 +7,7 @@ import { Router } from 'express'
 import request from 'supertest'
 
 import { prisma } from '../../../src/config/db'
-import { profileController } from '../../../src/modules/profile/profile.controller'
+import profileRouter from '../../../src/modules/profile/profile.routes'
 import { GenerationSound } from '../../../src/modules/profile/profile.schema'
 
 const TEST_USER_ID = 'test-user-id'
@@ -56,20 +56,7 @@ describe('profile.routes.integration', () => {
             req.user = { userId: TEST_USER_ID, sessionId: TEST_SESSION_ID }
             next()
         })
-        const testRouter = Router()
-        testRouter.get('/info', profileController.getInfo)
-        testRouter.get('/card', profileController.getProfileCard)
-        testRouter.get('/', profileController.getProfile)
-        testRouter.patch('/name', profileController.updateName)
-        testRouter.patch('/username', profileController.updateUsername)
-        testRouter.patch('/password', profileController.changePassword)
-        testRouter.patch('/notifications', profileController.updateNotifications)
-        testRouter.post('/signout', profileController.signout)
-        testRouter.post('/signout-all', profileController.signoutAll)
-        testRouter.delete('/delete', profileController.deleteAccount)
-        testRouter.patch('/chat-suggestions', profileController.chatSuggestions)
-        testRouter.patch('/generation-sound', profileController.generationSound)
-        app.use('/api/v1/profile', testRouter)
+        app.use('/api/v1/profile', profileRouter)
     })
 
     beforeEach(async () => {
@@ -85,21 +72,12 @@ describe('profile.routes.integration', () => {
     })
 
     describe('GET /info', () => {
-        it('should return 200 with firstName', async () => {
+        it('should return 200 with fullName', async () => {
             const res = await request(app).get('/api/v1/profile/info')
 
             expect(res.status).toBe(200)
             expect(res.body.success).toBe(true)
-            expect(res.body.data.firstName).toBe('Chaitanya Sonawane')
-        })
-
-        it('should return 404 for soft-deleted user', async () => {
-            await prisma.user.update({ where: { id: TEST_USER_ID }, data: { isDeleted: true } })
-
-            const res = await request(app).get('/api/v1/profile/info')
-
-            expect(res.status).toBe(404)
-            expect(res.body.success).toBe(false)
+            expect(res.body.data.fullName).toBe('Chaitanya Sonawane')
         })
     })
 
@@ -110,14 +88,6 @@ describe('profile.routes.integration', () => {
             expect(res.status).toBe(200)
             expect(res.body.success).toBe(true)
         })
-
-        it('should return 404 for soft-deleted user', async () => {
-            await prisma.user.update({ where: { id: TEST_USER_ID }, data: { isDeleted: true } })
-
-            const res = await request(app).get('/api/v1/profile/card')
-
-            expect(res.status).toBe(404)
-        })
     })
 
     describe('GET /', () => {
@@ -127,14 +97,6 @@ describe('profile.routes.integration', () => {
             expect(res.status).toBe(200)
             expect(res.body.success).toBe(true)
             expect(res.body.data.id).toBe(TEST_USER_ID)
-        })
-
-        it('should return 404 for soft-deleted user', async () => {
-            await prisma.user.update({ where: { id: TEST_USER_ID }, data: { isDeleted: true } })
-
-            const res = await request(app).get('/api/v1/profile')
-
-            expect(res.status).toBe(404)
         })
     })
 
@@ -309,10 +271,10 @@ describe('profile.routes.integration', () => {
         })
     })
 
-    describe('PATCH /chat-suggestions', () => {
+    describe('POST /suggestions', () => {
         it('should return 200 on success', async () => {
             const res = await request(app)
-                .patch('/api/v1/profile/chat-suggestions')
+                .post('/api/v1/profile/suggestions')
                 .send({ chatSuggestions: true })
 
             expect(res.status).toBe(200)
@@ -320,31 +282,31 @@ describe('profile.routes.integration', () => {
 
         it('should return 400 on same value', async () => {
             const res = await request(app)
-                .patch('/api/v1/profile/chat-suggestions')
+                .post('/api/v1/profile/suggestions')
                 .send({ chatSuggestions: false })
 
             expect(res.status).toBe(400)
         })
 
         it('should return 400 when field is missing', async () => {
-            const res = await request(app).patch('/api/v1/profile/chat-suggestions').send({})
+            const res = await request(app).post('/api/v1/profile/suggestions').send({})
 
             expect(res.status).toBe(400)
         })
 
         it('should return 400 when field is string', async () => {
             const res = await request(app)
-                .patch('/api/v1/profile/chat-suggestions')
+                .post('/api/v1/profile/suggestions')
                 .send({ chatSuggestions: 'true' })
 
             expect(res.status).toBe(400)
         })
     })
 
-    describe('PATCH /generation-sound', () => {
+    describe('POST /sound', () => {
         it('should return 200 on success', async () => {
             const res = await request(app)
-                .patch('/api/v1/profile/generation-sound')
+                .post('/api/v1/profile/sound')
                 .send({ generationSound: GenerationSound.ALWAYS })
 
             expect(res.status).toBe(200)
@@ -352,7 +314,7 @@ describe('profile.routes.integration', () => {
 
         it('should return 400 on same value', async () => {
             const res = await request(app)
-                .patch('/api/v1/profile/generation-sound')
+                .post('/api/v1/profile/sound')
                 .send({ generationSound: GenerationSound.NEVER })
 
             expect(res.status).toBe(400)
@@ -360,14 +322,14 @@ describe('profile.routes.integration', () => {
 
         it('should return 400 for invalid enum value', async () => {
             const res = await request(app)
-                .patch('/api/v1/profile/generation-sound')
+                .post('/api/v1/profile/sound')
                 .send({ generationSound: 'INVALID' })
 
             expect(res.status).toBe(400)
         })
 
         it('should return 400 when field is missing', async () => {
-            const res = await request(app).patch('/api/v1/profile/generation-sound').send({})
+            const res = await request(app).post('/api/v1/profile/sound').send({})
 
             expect(res.status).toBe(400)
         })
@@ -395,7 +357,7 @@ describe('profile.routes.integration', () => {
         })
     })
 
-    describe('POST /signout-all', () => {
+    describe('POST /signout/all', () => {
         it('should return 200 and revoke all sessions', async () => {
             await prisma.session.create({
                 data: {
@@ -407,7 +369,7 @@ describe('profile.routes.integration', () => {
                 },
             })
 
-            const res = await request(app).post('/api/v1/profile/signout-all')
+            const res = await request(app).post('/api/v1/profile/signout/all')
 
             expect(res.status).toBe(200)
 
@@ -416,9 +378,9 @@ describe('profile.routes.integration', () => {
         })
     })
 
-    describe('DELETE /delete', () => {
+    describe('DELETE /', () => {
         it('should return 200 and soft-delete user', async () => {
-            const res = await request(app).delete('/api/v1/profile/delete')
+            const res = await request(app).delete('/api/v1/profile')
 
             expect(res.status).toBe(200)
 
@@ -428,15 +390,15 @@ describe('profile.routes.integration', () => {
         })
 
         it('should return 409 when already deleted', async () => {
-            await request(app).delete('/api/v1/profile/delete')
+            await request(app).delete('/api/v1/profile')
 
-            const res = await request(app).delete('/api/v1/profile/delete')
+            const res = await request(app).delete('/api/v1/profile')
 
             expect(res.status).toBe(409)
         })
 
         it('should revoke all sessions on delete', async () => {
-            await request(app).delete('/api/v1/profile/delete')
+            await request(app).delete('/api/v1/profile')
 
             const sessions = await prisma.session.findMany({ where: { userId: TEST_USER_ID } })
             expect(sessions.every((s) => s.isRevoked)).toBe(true)

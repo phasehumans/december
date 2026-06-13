@@ -39,4 +39,3 @@ deploy.md
 # Deployments
 /deployments/
 infra/nginx/deployments/*
-!infra/nginx/deployments/.gitkeep

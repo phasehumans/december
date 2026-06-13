@@ -5,7 +5,9 @@ import { authMiddleware } from '../../middleware/auth.middleware'
 import { profileController } from './profile.controller'
 
 const profileRouter = Router()
+
 profileRouter.use(authMiddleware)
+
 profileRouter.get('/info', profileController.getInfo)
 profileRouter.get('/card', profileController.getProfileCard)
 profileRouter.get('/', profileController.getProfile)
@@ -21,11 +23,10 @@ profileRouter.delete('/', profileController.deleteAccount)
 
 profileRouter.post('/suggestions', profileController.chatSuggestions)
 profileRouter.post('/sound', profileController.generationSound)
-
-profileRouter.post('/feedback', profileController.submitFeedback)
-
 profileRouter.get('/design', profileController.getdesign)
 profileRouter.post('/design', profileController.updatedesign)
 profileRouter.delete('/design', profileController.deletedesign)
+
+profileRouter.post('/feedback', profileController.submitFeedback)
 
 export default profileRouter

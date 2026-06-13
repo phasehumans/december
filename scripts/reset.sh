@@ -16,7 +16,7 @@ echo "Resetting development database..."
 cd "$BASE_DIR/server"
 bunx prisma migrate reset --force
 
-# Reset integration test database
+# Reset test database
 echo "Resetting test database..."
 bunx dotenv -e .env.test -- bunx prisma migrate reset --force
 
