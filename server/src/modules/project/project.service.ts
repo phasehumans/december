@@ -836,7 +836,7 @@ const deployDecemberProject = async (projectId: string, userId: string) => {
         )
     }
 
-    const deploymentsRoot = path.resolve(__dirname, '../../../../deployments')
+    const deploymentsRoot = path.resolve(__dirname, '../../../../infra/nginx/deployments')
     const projectDeployPath = path.join(deploymentsRoot, projectId)
 
     if (fs.existsSync(projectDeployPath)) {

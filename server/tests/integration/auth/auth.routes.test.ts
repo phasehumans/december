@@ -173,6 +173,24 @@ describe('auth.routes.integration', () => {
             expect(res.body.success).toBe(false)
         })
 
+        it('should allow signup and resend OTP if email already exists but is unverified', async () => {
+            await createUser({
+                email: 're-signup@example.com',
+                username: 're_signup',
+                emailVerified: false,
+            })
+
+            const res = await request(app).post('/auth/signup').send({
+                email: 're-signup@example.com',
+                password: 'NewPassword123',
+            })
+
+            expect(res.status).toBe(201)
+            expect(res.body.success).toBe(true)
+            expect(res.body.message).toBe('otp sent to email')
+            expect(sendOTPMock).toHaveBeenCalled()
+        })
+
         it('should fail on password longer than 20 chars', async () => {
             const res = await request(app)
                 .post('/auth/signup')
@@ -411,6 +429,89 @@ describe('auth.routes.integration', () => {
             })
 
             expect(res.status).toBe(400)
+        })
+
+        it('should return 200 but not send otp if requesting for non-existent email', async () => {
+            const res = await request(app).post('/auth/forgot-password/request').send({
+                email: 'nonexistent@example.com',
+            })
+
+            expect(res.status).toBe(200)
+            expect(sendOTPMock).not.toHaveBeenCalled()
+        })
+
+        it('should fail to verify reset otp with wrong otp', async () => {
+            await createUser({
+                email: 'verifyforgotwrong@example.com',
+                username: 'verifyforgotwrong',
+                otpHash: await bcrypt.hash('123456', 10),
+                otpExpiresAt: new Date(Date.now() + 10000),
+            })
+
+            const res = await request(app).post('/auth/forgot-password/verify').send({
+                email: 'verifyforgotwrong@example.com',
+                otp: '999999',
+            })
+
+            expect(res.status).toBe(401)
+            expect(res.body.message).toBe('otp verification failed')
+            expect(res.body.errors).toBe('invalid or expired reset code')
+        })
+
+        it('should fail to verify reset otp with expired otp', async () => {
+            await createUser({
+                email: 'verifyforgotexpired@example.com',
+                username: 'verifyforgotexpired',
+                otpHash: await bcrypt.hash('123456', 10),
+                otpExpiresAt: new Date(Date.now() - 1000),
+            })
+
+            const res = await request(app).post('/auth/forgot-password/verify').send({
+                email: 'verifyforgotexpired@example.com',
+                otp: '123456',
+            })
+
+            expect(res.status).toBe(401)
+            expect(res.body.message).toBe('otp verification failed')
+            expect(res.body.errors).toBe('invalid or expired reset code')
+        })
+
+        it('should fail to reset password with wrong otp', async () => {
+            await createUser({
+                email: 'resetforgotwrong@example.com',
+                username: 'resetforgotwrong',
+                otpHash: await bcrypt.hash('123456', 10),
+                otpExpiresAt: new Date(Date.now() + 10000),
+            })
+
+            const res = await request(app).post('/auth/forgot-password/reset').send({
+                email: 'resetforgotwrong@example.com',
+                otp: '999999',
+                newPassword: 'NewPassword123',
+            })
+
+            expect(res.status).toBe(401)
+            expect(res.body.message).toBe('password reset failed')
+            expect(res.body.errors).toBe('invalid or expired reset code')
+        })
+
+        it('should fail to reset password with expired otp', async () => {
+            await createUser({
+                email: 'resetforgotexpired@example.com',
+                username: 'resetforgotexpired',
+                otpHash: await bcrypt.hash('123456', 10),
+                otpExpiresAt: new Date(Date.now() - 1000),
+            })
+
+            const res = await request(app).post('/auth/forgot-password/reset').send({
+                email: 'resetforgotexpired@example.com',
+                otp: '123456',
+                newPassword: 'NewPassword123',
+            })
+
+            expect(res.status).toBe(401)
+            expect(res.body.message).toBe('password reset failed')
+            expect(res.body.errors).toBe('invalid or expired reset code')
         })
     })
 

@@ -92,6 +92,27 @@ describe('auth.service.integration', () => {
             expect(error.message).toBe('email already exists')
         })
 
+        it('should allow signup and resend OTP if email already exists but is unverified', async () => {
+            const email = 're-signup@example.com'
+            await createUser({ email, username: 're-signup', emailVerified: false })
+
+            sendOTPMock.mockClear()
+            const result = await authService.signup({ email, password: 'NewPassword123' })
+
+            expect(result).toEqual({ message: 'otp sent successfully' })
+
+            const user = await prisma.user.findUnique({ where: { email } })
+            expect(user).not.toBeNull()
+            expect(user!.emailVerified).toBe(false)
+            expect(user!.otpHash).toBeTruthy()
+            expect(user!.otpExpiresAt).toBeTruthy()
+
+            const isNewPasswordValid = await bcrypt.compare('NewPassword123', user!.password!)
+            expect(isNewPasswordValid).toBe(true)
+
+            expect(sendOTPMock).toHaveBeenCalledTimes(1)
+        })
+
         it('should set isDeleted to false on new user', async () => {
             await authService.signup({ email: 'new@example.com', password: 'Password123' })
 
@@ -407,6 +428,88 @@ describe('auth.service.integration', () => {
 
             expect(error).not.toBeNull()
             expect(error.message).toBe('invalid or expired reset code')
+        })
+
+        it('should do nothing on requestPasswordReset if email does not exist', async () => {
+            await authService.requestPasswordReset({ email: 'nonexistent@example.com' })
+            expect(sendOTPMock).not.toHaveBeenCalled()
+        })
+
+        it('should reject an expired reset otp', async () => {
+            const user = await createUser({
+                email: 'expiredreset@example.com',
+                username: 'expiredreset',
+                otpHash: await bcrypt.hash('123456', 10),
+                otpExpiresAt: new Date(Date.now() - 1000), // expired 1s ago
+            })
+
+            let error: any = null
+            try {
+                await authService.verifyPasswordResetOtp({
+                    email: user.email,
+                    otp: '123456',
+                })
+            } catch (e) {
+                error = e
+            }
+
+            expect(error).not.toBeNull()
+            expect(error.message).toBe('invalid or expired reset code')
+
+            // Verify db was updated to clean up expired otp
+            const updatedUser = await prisma.user.findUnique({ where: { id: user.id } })
+            expect(updatedUser!.otpHash).toBeNull()
+            expect(updatedUser!.otpExpiresAt).toBeNull()
+        })
+
+        it('should throw error on resetPassword with incorrect otp', async () => {
+            const user = await createUser({
+                email: 'resetbadotp@example.com',
+                username: 'resetbadotp',
+                otpHash: await bcrypt.hash('123456', 10),
+                otpExpiresAt: new Date(Date.now() + 10000),
+            })
+
+            let error: any = null
+            try {
+                await authService.resetPassword({
+                    email: user.email,
+                    otp: 'wrongotp',
+                    newPassword: 'NewPassword123',
+                })
+            } catch (e) {
+                error = e
+            }
+
+            expect(error).not.toBeNull()
+            expect(error.message).toBe('invalid or expired reset code')
+        })
+
+        it('should throw error on resetPassword with expired otp', async () => {
+            const user = await createUser({
+                email: 'resetexpiredotp@example.com',
+                username: 'resetexpiredotp',
+                otpHash: await bcrypt.hash('123456', 10),
+                otpExpiresAt: new Date(Date.now() - 1000),
+            })
+
+            let error: any = null
+            try {
+                await authService.resetPassword({
+                    email: user.email,
+                    otp: '123456',
+                    newPassword: 'NewPassword123',
+                })
+            } catch (e) {
+                error = e
+            }
+
+            expect(error).not.toBeNull()
+            expect(error.message).toBe('invalid or expired reset code')
+
+            const updatedUser = await prisma.user.findUnique({ where: { id: user.id } })
+            expect(updatedUser!.otpHash).toBeNull()
+            expect(updatedUser!.otpExpiresAt).toBeNull()
         })
     })
 
