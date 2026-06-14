@@ -1,6 +1,3 @@
-import fs from 'fs'
-import path from 'path'
-
 import { AppError } from '../../shared/appError'
 import { authCookie } from '../auth/auth.cookie'
 
@@ -18,7 +15,6 @@ import {
 import { profileService } from './profile.service'
 
 import type { Request, Response } from 'express'
-import { sanitizeMarkdown } from './profile.utils'
 
 const getInfo = async (req: Request, res: Response) => {
     const userId = req.user?.userId as string | undefined
@@ -685,34 +681,30 @@ const submitFeedback = async (req: Request, res: Response) => {
     const { rating, feedback } = parseData.data
 
     try {
-        const profile = await profileService.getProfile({ userId })
-        const username = profile.username || 'unknown_user'
-        const name = profile.name || 'Anonymous'
+        const ratingStr = rating !== undefined ? String(rating) : null
 
-        const cleanRating = rating !== undefined ? sanitizeMarkdown(String(rating)) : 'None'
-        const cleanFeedback = sanitizeMarkdown(feedback)
-
-        const dateStr = new Date().toISOString()
-        const feedbackEntry = `\n### [${dateStr}] - @${username} (${name})\n- **Rating**: ${cleanRating}\n- **Feedback**: ${cleanFeedback}\n`
-
-        const feedbackFilePath = path.resolve(__dirname, '../../../../feedback.md')
-
-        // asynchronously check and write/append to feedback.md
-        try {
-            await fs.promises.access(feedbackFilePath)
-        } catch {
-            await fs.promises.writeFile(feedbackFilePath, '# Product Feedback\n', 'utf8')
-        }
-        await fs.promises.appendFile(feedbackFilePath, feedbackEntry, 'utf8')
+        await profileService.createFeedback({
+            userId,
+            rating: ratingStr,
+            feedback,
+        })
 
         return res.status(200).json({
             success: true,
             message: 'Feedback submitted successfully',
         })
     } catch (error) {
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({
+                success: false,
+                message: 'failed to submit feedback',
+                errors: error.message,
+            })
+        }
+
         return res.status(500).json({
             success: false,
-            message: 'Failed to submit feedback',
+            message: 'failed to submit feedback',
             errors: error instanceof Error ? error.message : 'unknown error',
         })
     }

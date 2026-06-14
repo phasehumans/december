@@ -291,12 +291,12 @@ const remixTemplate = async (data: RemixTemplate) => {
             return newProject
         }
 
-        const copyResult = await copyProjectVersionsAndMessages(
-            template.id,
-            newProject.id,
-            userId,
-            template.currentVersionId
-        )
+        const copyResult = await copyProjectVersionsAndMessages({
+            sourceProjectId: template.id,
+            newProjectId: newProject.id,
+            newUserId: userId,
+            sourceCurrentVersionId: template.currentVersionId,
+        })
 
         newProject.currentVersionId = copyResult.newCurrentVersionId
         newProject.versionCount = copyResult.versionCount

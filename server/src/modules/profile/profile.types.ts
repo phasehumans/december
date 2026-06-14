@@ -76,6 +76,12 @@ export type Deletedesign = {
     userId: string
 }
 
+export type CreateFeedback = {
+    userId: string
+    rating?: string | null
+    feedback: string
+}
+
 export type CompleteOnboarding = {
     userId: string
 }

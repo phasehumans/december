@@ -66,3 +66,17 @@ export type ToggleStarProject = {
     projectId: string
     isStarred: boolean
 }
+
+export type StoredProjectFile = {
+    path: string
+    key: string
+    contentType?: string
+    size: number
+}
+
+export type CopyProjectVersionsAndMessages = {
+    sourceProjectId: string
+    newProjectId: string
+    newUserId: string
+    sourceCurrentVersionId: string | null
+}

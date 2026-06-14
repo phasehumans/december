@@ -413,4 +413,34 @@ describe('profile.routes.integration', () => {
             expect(sessions.every((s) => s.isRevoked)).toBe(true)
         })
     })
+
+    describe('POST /feedback', () => {
+        it('should return 200 on successful feedback submission', async () => {
+            const res = await request(app)
+                .post('/api/v1/profile/feedback')
+                .send({ rating: 'happy', feedback: 'Great job!' })
+
+            expect(res.status).toBe(200)
+            expect(res.body.success).toBe(true)
+            expect(res.body.message).toBe('Feedback submitted successfully')
+
+            // Verify db has the feedback
+            const dbFeedback = await prisma.feedback.findFirst({
+                where: { userId: TEST_USER_ID },
+            })
+            expect(dbFeedback).not.toBeNull()
+            expect(dbFeedback?.feedback).toBe('Great job!')
+            expect(dbFeedback?.rating).toBe('happy')
+        })
+
+        it('should return 400 when feedback content is missing', async () => {
+            const res = await request(app)
+                .post('/api/v1/profile/feedback')
+                .send({ rating: 'happy' })
+
+            expect(res.status).toBe(400)
+            expect(res.body.success).toBe(false)
+            expect(res.body.errors.feedback).toBeDefined()
+        })
+    })
 })
