@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
 
 import { prisma } from '../../config/db'
-import { publishPreviewManifest, type PreviewManifestFile } from '../project/preview-manifest'
+import { publishPreviewManifest, type PreviewManifestFile } from '../../shared/preview-manifest'
 import {
     deletePrefix,
     currentKey,
@@ -12,7 +12,7 @@ import {
     storageBucket,
     versionKey,
     versionPrefix,
-} from '../project/project-storage'
+} from '../../shared/project-storage'
 import { runtimeService } from '../runtime/runtime.service'
 import type { RuntimePreviewStatus } from '../runtime/runtime.types'
 

@@ -510,4 +510,67 @@ describe('profile.service.integration', () => {
             ).rejects.toThrow('user not found')
         })
     })
+
+    describe('createFeedback', () => {
+        it('should successfully store feedback in the database', async () => {
+            const feedbackText = 'Amazing platform, love the UI!'
+            const ratingValue = 'happy'
+
+            const feedback = await profileService.createFeedback({
+                userId,
+                rating: ratingValue,
+                feedback: feedbackText,
+            })
+
+            expect(feedback).toBeDefined()
+            expect(feedback.id).toBeDefined()
+            expect(feedback.userId).toBe(userId)
+            expect(feedback.rating).toBe(ratingValue)
+            expect(feedback.feedback).toBe(feedbackText)
+
+            // Verify database direct query
+            const dbFeedback = await prisma.feedback.findUnique({
+                where: { id: feedback.id },
+            })
+            expect(dbFeedback).not.toBeNull()
+            expect(dbFeedback?.feedback).toBe(feedbackText)
+            expect(dbFeedback?.rating).toBe(ratingValue)
+        })
+
+        it('should successfully store feedback without rating', async () => {
+            const feedbackText = 'Feedback without rating'
+
+            const feedback = await profileService.createFeedback({
+                userId,
+                feedback: feedbackText,
+            })
+
+            expect(feedback.rating).toBeNull()
+            expect(feedback.feedback).toBe(feedbackText)
+        })
+
+        it('should cascade delete feedback when the user is deleted', async () => {
+            const feedback = await profileService.createFeedback({
+                userId,
+                feedback: 'Temporary feedback',
+            })
+
+            // Verify feedback exists
+            let dbFeedback = await prisma.feedback.findUnique({
+                where: { id: feedback.id },
+            })
+            expect(dbFeedback).not.toBeNull()
+
+            // Delete user
+            await prisma.user.delete({
+                where: { id: userId },
+            })
+
+            // Verify feedback is cascade deleted
+            dbFeedback = await prisma.feedback.findUnique({
+                where: { id: feedback.id },
+            })
+            expect(dbFeedback).toBeNull()
+        })
+    })
 })

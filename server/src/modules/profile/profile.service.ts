@@ -52,6 +52,7 @@ import type {
     Getdesign,
     Updatedesign,
     Deletedesign,
+    CreateFeedback,
     CompleteOnboarding,
 } from './profile.types'
 
@@ -658,6 +659,17 @@ const completeOnboarding = async (data: CompleteOnboarding) => {
     return updatedUser
 }
 
+const createFeedback = async (data: CreateFeedback) => {
+    const { userId, rating, feedback } = data
+    return prisma.feedback.create({
+        data: {
+            userId: userId,
+            rating: rating ?? null,
+            feedback: feedback,
+        },
+    })
+}
+
 export const profileService = {
     getInfo,
     getProfileCard,
@@ -676,4 +688,5 @@ export const profileService = {
     updatedesign,
     deletedesign,
     completeOnboarding,
+    createFeedback,
 }

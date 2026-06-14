@@ -2,6 +2,8 @@ import { describe, it, expect, beforeEach, afterAll } from 'bun:test'
 
 import { prisma } from '../../../src/config/db'
 import { projectService } from '../../../src/modules/project/project.service'
+import { putTextFile } from '../../../src/shared/project-storage'
+import { parseStoredProjectFiles } from '../../../src/modules/project/project.utils'
 
 const createUser = async (overrides: Record<string, unknown> = {}) => {
     return prisma.user.create({
@@ -391,6 +393,42 @@ describe('project.service.integration', () => {
             const result = await projectService.duplicateProject({ userId, projectId })
             expect(result.projectStatus).toBe('DRAFT')
         })
+
+        it('should duplicate a project with a version and copy files', async () => {
+            const version = await createProjectVersion(projectId)
+            // Update original project's currentVersionId
+            await prisma.project.update({
+                where: { id: projectId },
+                data: { currentVersionId: version.id },
+            })
+
+            // Write mock files in S3/MinIO
+            await putTextFile({ key: 'file-1', content: 'console.log("hello")' })
+            await putTextFile({ key: 'file-2', content: 'console.log("world")' })
+
+            const result = await projectService.duplicateProject({ userId, projectId })
+
+            expect(result.id).toBeTruthy()
+            expect(result.id).not.toBe(projectId)
+            expect(result.name).toBe('Copy of Test Project')
+            expect(result.projectStatus).toBe('READY') // since latest version exists
+            expect(result.currentVersionId).not.toBeNull()
+            expect(result.currentVersionId).not.toBe(version.id)
+            expect(result.versionCount).toBe(1)
+
+            // Verify version is duplicated in database
+            const newVersion = await prisma.projectVersion.findFirst({
+                where: { projectId: result.id },
+            })
+            expect(newVersion).not.toBeNull()
+            expect(newVersion!.versionNumber).toBe(1)
+            expect(newVersion!.sourcePrompt).toBe('Build a landing page')
+
+            const newManifest = parseStoredProjectFiles(newVersion!.manifestJson)
+            expect(newManifest.length).toBe(2)
+            expect(newManifest[0].path).toBe('src/index.ts')
+            expect(newManifest[0].key).not.toBe('file-1')
+        })
     })
 
     describe('shareProjectAsTemplate', () => {
@@ -546,6 +584,77 @@ describe('project.service.integration', () => {
 
             const db = await prisma.project.findUnique({ where: { id: projectId } })
             expect(db!.isStarred).toBe(false)
+        })
+    })
+
+    describe('updateGeneralSettings', () => {
+        it('should update name, description, and status successfully', async () => {
+            const result = await projectService.updateGeneralSettings({
+                projectId,
+                userId,
+                name: 'Completely New Name',
+                description: 'Completely new description of project',
+                isStarred: true,
+                isSharedAsTemplate: true,
+                projectCategory: 'PORTFOLIO_BLOG',
+            })
+
+            expect(result.message).toBe('project general settings updated')
+
+            const db = await prisma.project.findUnique({ where: { id: projectId } })
+            expect(db!.name).toBe('Completely New Name')
+            expect(db!.description).toBe('Completely new description of project')
+            expect(db!.isStarred).toBe(true)
+            expect(db!.isSharedAsTemplate).toBe(true)
+            expect(db!.projectCategory).toBe('PORTFOLIO_BLOG')
+        })
+
+        it('should partial update name only and leave description intact', async () => {
+            const originalProject = await prisma.project.findUnique({ where: { id: projectId } })
+            const originalDesc = originalProject!.description
+
+            await projectService.updateGeneralSettings({
+                projectId,
+                userId,
+                name: 'Partial Rename',
+            })
+
+            const db = await prisma.project.findUnique({ where: { id: projectId } })
+            expect(db!.name).toBe('Partial Rename')
+            expect(db!.description).toBe(originalDesc)
+        })
+
+        it('should throw "project not found" for non-existent project', async () => {
+            let threw = false
+            try {
+                await projectService.updateGeneralSettings({
+                    projectId: 'non-existent-id',
+                    userId,
+                    name: 'Attempt',
+                })
+            } catch (err: any) {
+                threw = true
+                expect(err.message).toBe('project not found')
+            }
+            expect(threw).toBe(true)
+        })
+
+        it("should throw 'project not found' when project belongs to another user", async () => {
+            const otherUser = await createUser()
+            const otherProject = await createProject(otherUser.id)
+
+            let threw = false
+            try {
+                await projectService.updateGeneralSettings({
+                    projectId: otherProject.id,
+                    userId,
+                    name: 'Attempt Hijack',
+                })
+            } catch (err: any) {
+                threw = true
+                expect(err.message).toBe('project not found')
+            }
+            expect(threw).toBe(true)
         })
     })
 })

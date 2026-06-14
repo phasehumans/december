@@ -66,3 +66,43 @@ export type ToggleStarProject = {
     projectId: string
     isStarred: boolean
 }
+
+export type StoredProjectFile = {
+    path: string
+    key: string
+    contentType?: string
+    size: number
+}
+
+export type CopyProjectVersionsAndMessages = {
+    sourceProjectId: string
+    newProjectId: string
+    newUserId: string
+    sourceCurrentVersionId: string | null
+}
+
+export type ProjectVersionSummaryInput = {
+    id: string
+    versionNumber: number
+    label: string | null
+    sourcePrompt: string
+    summary: string | null
+    status: string
+    objectStoragePrefix: string
+    manifestJson: unknown
+    createdAt: Date
+    updatedAt: Date
+}
+
+export type ProjectVersionSummary = {
+    id: string
+    versionNumber: number
+    label: string
+    sourcePrompt: string
+    summary: string | null
+    status: string
+    objectStoragePrefix: string
+    fileCount: number
+    createdAt: Date
+    updatedAt: Date
+}

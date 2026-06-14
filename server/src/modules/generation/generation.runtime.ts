@@ -2,7 +2,7 @@ import {
     publishGeneratedPreviewManifest,
     publishStoredPreviewManifest,
     putPreviewSourceFile,
-} from '../project/preview-manifest'
+} from '../../shared/preview-manifest'
 import { runtimeService } from '../runtime/runtime.service'
 
 export const notifyRuntimeOfManifest = async ({

@@ -1,4 +1,8 @@
-import type { StoredProjectFile } from './project.service'
+import type {
+    StoredProjectFile,
+    ProjectVersionSummaryInput,
+    ProjectVersionSummary,
+} from './project.types'
 
 export const parseStoredProjectFiles = (value: unknown): StoredProjectFile[] => {
     if (!Array.isArray(value)) {
@@ -29,18 +33,7 @@ export const parseStoredProjectFiles = (value: unknown): StoredProjectFile[] => 
     }, [])
 }
 
-export const mapVersionSummary = (version: {
-    id: string
-    versionNumber: number
-    label: string | null
-    sourcePrompt: string
-    summary: string | null
-    status: string
-    objectStoragePrefix: string
-    manifestJson: unknown
-    createdAt: Date
-    updatedAt: Date
-}) => ({
+export const mapVersionSummary = (version: ProjectVersionSummaryInput): ProjectVersionSummary => ({
     id: version.id,
     versionNumber: version.versionNumber,
     label: version.label ?? `v${version.versionNumber}`,

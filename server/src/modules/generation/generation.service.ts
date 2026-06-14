@@ -6,7 +6,7 @@ import {
     generateProjectPatchFile,
     generateWorkDoneSummary,
 } from '../agents'
-import { saveProjectFiles } from '../project/save-project-files'
+import { saveProjectFiles } from '../../shared/save-project-files'
 import { persistCanvasDocument } from '../canvas/canvas.persistence'
 import { cleanPrompt } from '../generation/generation.utils'
 

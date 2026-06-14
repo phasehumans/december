@@ -1,8 +1,8 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { prisma } from '../../config/db'
-import { currentKey, deleteObject, getTextFile } from '../project/project-storage'
-import { saveProjectFiles } from '../project/save-project-files'
+import { currentKey, deleteObject, getTextFile } from '../../shared/project-storage'
+import { saveProjectFiles } from '../../shared/save-project-files'
 import { persistCanvasDocument } from '../canvas/canvas.persistence'
 
 import { createProjectName, mapVersionSummary, parseStoredProjectFiles } from './generation.utils'
