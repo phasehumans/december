@@ -43,9 +43,9 @@ bun test tests/integration/project/project.service.test.ts
 # # bun test tests/integration/runtime/runtime.routes.test.ts
 # # bun test tests/integration/runtime/runtime.service.test.ts
 
-# bun test tests/unit/template.unit.test.ts
-# bun test tests/integration/template/template.routes.test.ts
-# bun test tests/integration/template/template.service.test.ts
+bun test tests/unit/template.unit.test.ts
+bun test tests/integration/template/template.routes.test.ts
+bun test tests/integration/template/template.service.test.ts
 
 # # bun test tests/unit/upload.unit.test.ts
 # # bun test tests/integration/upload/upload.routes.test.ts

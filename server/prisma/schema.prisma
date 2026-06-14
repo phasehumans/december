@@ -7,6 +7,84 @@ datasource db {
   provider = "postgresql"
 }
 
+enum NotificationType {
+  INFO
+  WARNING
+  SUCCESS
+  ERROR
+}
+
+enum GenerationSound {
+  FIRST_GENERATION
+  ALWAYS
+  NEVER
+}
+
+enum ProjectStatus {
+  DRAFT
+  GENERATING
+  READY
+  DEPLOYED
+  FAILED
+}
+
+enum ProjectVersionStatus {
+  GENERATING
+  READY
+  FAILED
+}
+
+enum ProjectMessageRole {
+  USER
+  ASSISTANT
+  SYSTEM
+}
+
+enum ProjectImportSource {
+  GITHUB
+  ZIP
+}
+
+enum ProjectImportStatus {
+  PENDING
+  VALIDATING
+  UPLOADING
+  STARTING_RUNTIME
+  READY
+  FAILED
+}
+
+enum ProjectCategory {
+  LANDING_PAGE
+  DASHBOARD
+  PORTFOLIO_BLOG
+  SAAS_APP
+  ECOMMERCE
+  NONE
+}
+
+enum SubscriptionPlan {
+  FREE
+  PRO
+}
+
+enum SubscriptionStatus {
+  FREE
+  ACTIVE
+  PAST_DUE
+  CANCELED
+}
+
+enum ProviderSubscriptionStatus {
+  ACTIVE
+  CANCELED
+  INCOMPLETE
+  INCOMPLETE_EXPIRED
+  PAST_DUE
+  TRIALING
+  UNPAID
+}
+
 model User {
   id                     String             @id @default(uuid())
   name                   String
@@ -328,84 +406,6 @@ model RedeemCodeClaim {
   @@index([userId])
 }
 
-enum NotificationType {
-  INFO
-  WARNING
-  SUCCESS
-  ERROR
-}
-
-enum GenerationSound {
-  FIRST_GENERATION
-  ALWAYS
-  NEVER
-}
-
-enum ProjectStatus {
-  DRAFT
-  GENERATING
-  READY
-  DEPLOYED
-  FAILED
-}
-
-enum ProjectVersionStatus {
-  GENERATING
-  READY
-  FAILED
-}
-
-enum ProjectMessageRole {
-  USER
-  ASSISTANT
-  SYSTEM
-}
-
-enum ProjectImportSource {
-  GITHUB
-  ZIP
-}
-
-enum ProjectImportStatus {
-  PENDING
-  VALIDATING
-  UPLOADING
-  STARTING_RUNTIME
-  READY
-  FAILED
-}
-
-enum ProjectCategory {
-  LANDING_PAGE
-  DASHBOARD
-  PORTFOLIO_BLOG
-  SAAS_APP
-  ECOMMERCE
-  NONE
-}
-
-enum SubscriptionPlan {
-  FREE
-  PRO
-}
-
-enum SubscriptionStatus {
-  FREE
-  ACTIVE
-  PAST_DUE
-  CANCELED
-}
-
-enum ProviderSubscriptionStatus {
-  ACTIVE
-  CANCELED
-  INCOMPLETE
-  INCOMPLETE_EXPIRED
-  PAST_DUE
-  TRIALING
-  UNPAID
-}
-
 model Feedback {
   id        String   @id @default(uuid())
   userId    String
@@ -418,4 +418,3 @@ model Feedback {
 
   @@index([userId])
 }
-
