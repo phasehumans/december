@@ -2,6 +2,28 @@
 
 ### Features
 
+- Add feedback persist in db
+
+### Refactor
+
+- Impl softdelete check on middleware
+- Move deploy routes into platform module
+- _(sever)_ Extract types and redundant soft delet check
+- Moved aws storage interface files to shared
+
+### Testing
+
+- _(auth)_ Add more test in auth module
+- _(profile)_ Add tests in profile module
+- _(project)_ Add unit and integration tests
+- _(project)_ Tested project module and add feedback persist
+- _(template)_ Add tests and lint fix
+- _(template)_ Add tests unit and integration; removed previewHTML from template card #91
+
+## [0.3.0] - 2026-06-13
+
+### Features
+
 - _(template)_ Add preview via image for templates
 - _(template)_ Add preview image feat in template page; #87
 - Create and update repo via gh-api
@@ -11,6 +33,10 @@
 ### Bug Fixes
 
 - _(credits/memory)_ Fix usage and model based credit tracking, impl memory session based and project based #89
+
+### Miscellaneous Tasks
+
+- _(release)_ V0.3.0
 
 ## [0.2.2] - 2026-06-11
 
