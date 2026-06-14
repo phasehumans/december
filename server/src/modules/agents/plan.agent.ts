@@ -10,9 +10,10 @@ import {
     autoHealPlanAgentResponse,
     autoHealChangePlanResponse,
 } from '../generation/generation.self-healing'
-import { parseModelJson, readChatCompletionText, retryAsync } from './agents.utils'
-import { CHANGE_PLAN_AGENT_PROMPT, PLAN_AGENT_PROMPT } from './plan.prompt'
 import { loadMemoryPromptInstructions } from '../memory/memory.service'
+
+import { parseModelJson, retryAsync } from './agents.utils'
+import { CHANGE_PLAN_AGENT_PROMPT, PLAN_AGENT_PROMPT } from './plan.prompt'
 
 type ExtractProjectPlan = z.infer<typeof extractProjectPlanSchema>
 type ExtractProjectPlanResponse = z.infer<typeof planAgentResponseSchema>

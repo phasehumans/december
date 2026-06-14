@@ -3,9 +3,11 @@ import path from 'path'
 
 import { prisma } from '../../config/db'
 import { AppError } from '../../shared/appError'
-import { runtimeService } from '../runtime/runtime.service'
 import { projectService } from '../project/project.service'
+import { runtimeService } from '../runtime/runtime.service'
+
 import { buildProjectZip } from './build-project-zip'
+
 import type { DeployProject, GetProject } from './platform.types'
 
 function copyDirRecursive(src: string, dest: string) {

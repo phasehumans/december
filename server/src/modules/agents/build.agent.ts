@@ -1,6 +1,7 @@
 import { z } from 'zod'
 
 import { openai } from '../../config/oai'
+import { buildDeclarationMap } from '../generation/context-indexer'
 import {
     plannedProjectFileSchema,
     projectPatchOperationSchema,
@@ -11,14 +12,14 @@ import {
     assertFrontendWorkspacePath,
     isFrontendWorkspacePath,
 } from '../generation/generation.utils'
+import { loadMemoryPromptInstructions } from '../memory/memory.service'
+
 import { readChatCompletionText, retryAsync } from './agents.utils'
 import {
     BUILD_AGENT_PROMPT,
     BUILD_PATCH_AGENT_PROMPT,
     BUILD_SUMMARY_AGENT_PROMPT,
 } from './build.prompt'
-import { buildDeclarationMap } from '../generation/context-indexer'
-import { loadMemoryPromptInstructions } from '../memory/memory.service'
 
 type ProjectIntent = z.infer<typeof projectIntentSchema>
 type ProjectPlan = z.infer<typeof projectPlanSchema>

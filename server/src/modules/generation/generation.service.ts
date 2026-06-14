@@ -1,4 +1,5 @@
 import { prisma } from '../../config/db'
+import { saveProjectFiles } from '../../shared/save-project-files'
 import {
     extractProjectChangePlan,
     extractProjectPlan,
@@ -6,20 +7,16 @@ import {
     generateProjectPatchFile,
     generateWorkDoneSummary,
 } from '../agents'
-import { saveProjectFiles } from '../../shared/save-project-files'
 import { persistCanvasDocument } from '../canvas/canvas.persistence'
 import { cleanPrompt } from '../generation/generation.utils'
-
 import {
-    appendAssistantMessageContent,
-    assertFrontendOnlyChangePlan,
-    assertFrontendOnlyPlan,
-    getFilesInGenerationOrder,
-    mergeProjectFiles,
-    toRecentMessages,
-    parsePartialArray,
-    parseStoredProjectFiles,
-} from './generation.utils'
+    extractStyleGuidelines,
+    upsertStyleGuidelines,
+    getErrorSignature,
+} from '../memory/memory.service'
+import { runtimeService } from '../runtime/runtime.service'
+import { usageService } from '../usage/usage.service'
+
 import {
     getProjectRevisionBase,
     initializeGenerationTarget,
@@ -33,13 +30,16 @@ import {
 } from './generation.runtime'
 import { planAgentResponseSchema } from './generation.schema'
 import { emitAssistantMessage, emitFileStream, emitPatchFileStream } from './generation.stream'
-import { runtimeService } from '../runtime/runtime.service'
-import { usageService } from '../usage/usage.service'
 import {
-    extractStyleGuidelines,
-    upsertStyleGuidelines,
-    getErrorSignature,
-} from '../memory/memory.service'
+    appendAssistantMessageContent,
+    assertFrontendOnlyChangePlan,
+    assertFrontendOnlyPlan,
+    getFilesInGenerationOrder,
+    mergeProjectFiles,
+    toRecentMessages,
+    parsePartialArray,
+    parseStoredProjectFiles,
+} from './generation.utils'
 
 import type {
     GenerateWebsiteInput,

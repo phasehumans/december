@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 
+import { parseModelJson } from '../../src/modules/agents/agents.utils'
 import {
     applyProjectEditSchema,
     applyProjectFixSchema,
@@ -8,7 +9,6 @@ import {
     projectChangePlanResponseSchema,
 } from '../../src/modules/generation/generation.schema'
 import { isFrontendWorkspacePath } from '../../src/modules/generation/generation.utils'
-import { parseModelJson } from '../../src/modules/agents/agents.utils'
 
 describe('generation schemas', () => {
     test('accepts a unified plan response with thoughts, plan_of_action, intent, and build handoff', () => {

@@ -1,5 +1,7 @@
-import { describe, expect, test, mock, beforeEach, afterAll } from 'bun:test'
 import fs from 'fs'
+
+import { describe, expect, test, mock, beforeEach, afterAll } from 'bun:test'
+
 import { downloadProjectVersionSchema } from '../../src/modules/platform/platform.schema'
 
 let mockProject: any = null

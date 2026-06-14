@@ -1,10 +1,10 @@
 import '../../../tests/env'
 
+import path from 'path'
+
 import bcrypt from 'bcrypt'
 import { describe, it, expect, beforeAll, beforeEach, afterAll, mock } from 'bun:test'
-import path from 'path'
 import express from 'express'
-import { Router } from 'express'
 import request from 'supertest'
 
 import { prisma } from '../../../src/config/db'

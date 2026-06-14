@@ -1,4 +1,5 @@
 import { describe, expect, test, mock } from 'bun:test'
+
 import { usageService } from '../../src/modules/usage/usage.service'
 
 let mockUserBalance = 10
