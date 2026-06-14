@@ -5,10 +5,9 @@ import {
     deletePrefix,
     projectPrefix,
     getTextFile,
-    getBinaryFile,
-    putBinaryFile,
     versionKey,
     currentKey,
+    copyObject,
 } from '../../shared/project-storage'
 import { AppError } from '../../shared/appError'
 import { hydrateCanvasDocument, persistCanvasDocument } from '../canvas/canvas.persistence'
@@ -82,29 +81,18 @@ export const copyProjectVersionsAndMessages = async (data: CopyProjectVersionsAn
     const newManifest: any[] = []
 
     for (const file of manifest) {
-        const fileData = await getBinaryFile(file.key)
-        if (fileData) {
-            const newVersionFileKey = versionKey(newProjectId, newVersionId, file.path)
-            await putBinaryFile({
-                key: newVersionFileKey,
-                content: Buffer.from(fileData.body),
-                contentType: fileData.contentType,
-            })
+        const newVersionFileKey = versionKey(newProjectId, newVersionId, file.path)
+        await copyObject({ sourceKey: file.key, destinationKey: newVersionFileKey })
 
-            const newCurrentFileKey = currentKey(newProjectId, file.path)
-            await putBinaryFile({
-                key: newCurrentFileKey,
-                content: Buffer.from(fileData.body),
-                contentType: fileData.contentType,
-            })
+        const newCurrentFileKey = currentKey(newProjectId, file.path)
+        await copyObject({ sourceKey: file.key, destinationKey: newCurrentFileKey })
 
-            newManifest.push({
-                path: file.path,
-                key: newVersionFileKey,
-                size: fileData.body.byteLength,
-                ...(fileData.contentType ? { contentType: fileData.contentType } : {}),
-            })
-        }
+        newManifest.push({
+            path: file.path,
+            key: newVersionFileKey,
+            size: file.size,
+            ...(file.contentType ? { contentType: file.contentType } : {}),
+        })
     }
 
     const hydratedCanvasState = await hydrateCanvasDocument({
@@ -462,17 +450,33 @@ const duplicateProject = async (data: DuplicateProject) => {
         return newProject
     }
 
-    const copyResult = await copyProjectVersionsAndMessages({
-        sourceProjectId: sourceProject.id,
-        newProjectId: newProject.id,
-        newUserId: userId,
-        sourceCurrentVersionId: sourceProject.currentVersionId,
-    })
+    try {
+        const copyResult = await copyProjectVersionsAndMessages({
+            sourceProjectId: sourceProject.id,
+            newProjectId: newProject.id,
+            newUserId: userId,
+            sourceCurrentVersionId: sourceProject.currentVersionId,
+        })
 
-    newProject.currentVersionId = copyResult.newCurrentVersionId
-    newProject.versionCount = copyResult.versionCount
+        newProject.currentVersionId = copyResult.newCurrentVersionId
+        newProject.versionCount = copyResult.versionCount
 
-    return newProject
+        return newProject
+    } catch (error) {
+        try {
+            await prisma.project.delete({
+                where: { id: newProject.id },
+            })
+        } catch (dbError) {
+            console.error('Failed to rollback project creation in database:', dbError)
+        }
+        try {
+            await deletePrefix(projectPrefix(newProject.id))
+        } catch (s3Error) {
+            console.error('Failed to rollback project files in S3:', s3Error)
+        }
+        throw error
+    }
 }
 
 const shareProjectAsTemplate = async (data: ShareProject) => {

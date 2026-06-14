@@ -2,6 +2,9 @@
 
 set -e
 
+# Ensure bun is in PATH
+export PATH="$PATH:/home/chaitanya/.bun/bin"
+
 cd server
 
 bun test tests/unit/auth.unit.test.ts
