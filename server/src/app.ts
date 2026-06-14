@@ -8,13 +8,13 @@ import canvasRouter from './modules/canvas/canvas.routes'
 import generateRouter from './modules/generation/generation.routes'
 import integrationsRouter from './modules/integrations/integrations.routes'
 import notificationRouter from './modules/notification/notification.routes'
+import platformRouter from './modules/platform/platform.routes'
 import profileRouter from './modules/profile/profile.routes'
 import projectRouter from './modules/project/project.routes'
 import runtimeRouter from './modules/runtime/runtime.routes'
 import templateRouter from './modules/template/template.routes'
 import uploadRouter from './modules/upload/upload.routes'
 import usageRouter from './modules/usage/usage.routes'
-import platformRouter from './modules/platform/platform.routes'
 
 const app = express()
 

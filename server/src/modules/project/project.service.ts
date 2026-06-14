@@ -1,6 +1,7 @@
 import crypto from 'crypto'
 
 import { prisma } from '../../config/db'
+import { AppError } from '../../shared/appError'
 import {
     deletePrefix,
     projectPrefix,
@@ -9,7 +10,6 @@ import {
     currentKey,
     copyObject,
 } from '../../shared/project-storage'
-import { AppError } from '../../shared/appError'
 import { hydrateCanvasDocument, persistCanvasDocument } from '../canvas/canvas.persistence'
 import { parseStoredProjectFiles, mapVersionSummary } from '../project/project.utils'
 

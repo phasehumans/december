@@ -1,4 +1,5 @@
 import { prisma } from '../../config/db'
+
 import type { UpsertStyleGuidelines, LoadMemoryPromptInstructions } from './memory.types'
 
 export function extractStyleGuidelines(prompt: string): Record<string, string> {

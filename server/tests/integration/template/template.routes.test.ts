@@ -43,12 +43,17 @@ const createTemplate = async (userId: string, overrides: Record<string, unknown>
 describe('template.routes.integration', () => {
     let app: express.Application
     let templateId: string
+    let mockAuth = true
 
     beforeAll(() => {
         app = express()
         app.use(express.json())
         app.use((req, _res, next) => {
-            req.user = { userId: TEST_USER_ID, sessionId: TEST_SESSION_ID }
+            if (mockAuth) {
+                req.user = { userId: TEST_USER_ID, sessionId: TEST_SESSION_ID }
+            } else {
+                req.user = undefined
+            }
             next()
         })
         const testRouter = Router()
@@ -68,6 +73,7 @@ describe('template.routes.integration', () => {
     })
 
     beforeEach(async () => {
+        mockAuth = true
         await prisma.projectLike.deleteMany()
         await prisma.projectVersion.deleteMany()
         await prisma.project.deleteMany()
@@ -246,6 +252,16 @@ describe('template.routes.integration', () => {
             expect(res.status).toBe(200)
             expect(res.body.data.isSharedAsTemplate).toBe(false)
         })
+
+        it('should return 400 when custom name is not a string', async () => {
+            const res = await request(app)
+                .post(`/api/v1/templates/${templateId}/remix`)
+                .send({ name: 123 })
+
+            expect(res.status).toBe(400)
+            expect(res.body.success).toBe(false)
+            expect(res.body.message).toBe('validation failed')
+        })
     })
 
     describe('POST /templates/:templateId/like', () => {
@@ -342,6 +358,49 @@ describe('template.routes.integration', () => {
 
             expect(db).not.toBeNull()
             expect(db!.isLiked).toBe(true)
+        })
+    })
+
+    describe('Unauthorized access checks', () => {
+        beforeEach(() => {
+            mockAuth = false
+        })
+
+        it('should return 401 for GET /templates', async () => {
+            const res = await request(app).get('/api/v1/templates')
+            expect(res.status).toBe(401)
+            expect(res.body.success).toBe(false)
+            expect(res.body.message).toBe('unauthorized')
+        })
+
+        it('should return 401 for GET /templates/featured', async () => {
+            const res = await request(app).get('/api/v1/templates/featured')
+            expect(res.status).toBe(401)
+            expect(res.body.success).toBe(false)
+            expect(res.body.message).toBe('unauthorized')
+        })
+
+        it('should return 401 for GET /templates/:templateId', async () => {
+            const res = await request(app).get(`/api/v1/templates/${templateId}`)
+            expect(res.status).toBe(401)
+            expect(res.body.success).toBe(false)
+            expect(res.body.message).toBe('unauthorized')
+        })
+
+        it('should return 401 for POST /templates/:templateId/remix', async () => {
+            const res = await request(app).post(`/api/v1/templates/${templateId}/remix`)
+            expect(res.status).toBe(401)
+            expect(res.body.success).toBe(false)
+            expect(res.body.message).toBe('unauthorized')
+        })
+
+        it('should return 401 for POST /templates/:templateId/like', async () => {
+            const res = await request(app)
+                .post(`/api/v1/templates/${templateId}/like`)
+                .send({ isLiked: true })
+            expect(res.status).toBe(401)
+            expect(res.body.success).toBe(false)
+            expect(res.body.message).toBe('unauthorized')
         })
     })
 })
