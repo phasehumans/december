@@ -23,10 +23,46 @@ export type ToggleLike = {
     isLiked: boolean
 }
 
-export type GetTemplatePreviewHtml = {
+export type GetTemplatePreviewImage = {
     templateId: string
 }
 
-export type GetTemplatePreviewImage = {
-    templateId: string
+export type TemplateWithLikeMeta = {
+    id: string
+    name: string
+    description: string | null
+    prompt: string
+    isFeatured: boolean
+    isSharedAsTemplate: boolean
+    projectCategory: string
+    createdAt: Date
+    updatedAt: Date
+    userId: string
+    authorName: string
+    authorUsername: string
+    likeCount: number
+    isLiked: boolean
+    previewImageKey?: string | null
+}
+
+export type DbTemplateWithLikes = {
+    id: string
+    name: string
+    description: string | null
+    prompt: string
+    isFeatured: boolean
+    isSharedAsTemplate: boolean
+    projectCategory: any
+    createdAt: Date
+    updatedAt: Date
+    userId: string
+    previewImageKey: string | null
+    user: {
+        name: string
+        username: string
+    }
+    likes: Array<{
+        userId: string
+        isLiked: boolean
+    }>
 }
