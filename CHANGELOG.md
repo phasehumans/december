@@ -1,74 +1,4 @@
-## [0.3.1] - 2026-06-14
-
-### Features
-
-- Add feedback persist in db
-
-### Refactor
-
-- Impl softdelete check on middleware
-- Move deploy routes into platform module
-- _(sever)_ Extract types and redundant soft delet check
-- Moved aws storage interface files to shared
-
-### Testing
-
-- _(auth)_ Add more test in auth module
-- _(profile)_ Add tests in profile module
-- _(project)_ Add unit and integration tests
-- _(project)_ Tested project module and add feedback persist
-- _(template)_ Add tests and lint fix
-- _(template)_ Add tests unit and integration; removed previewHTML from template card #91
-
-### Miscellaneous Tasks
-
-- _(release)_ V0.3.1
-
-## [0.3.0] - 2026-06-13
-
-### Features
-
-- _(template)_ Add preview via image for templates
-- _(template)_ Add preview image feat in template page; #87
-- Create and update repo via gh-api
-- _(interation)_ Impl vercel auto deploy integration
-- _(integrations)_ Add vercel auto deploy and github auto repo and push integration #88
-
-### Bug Fixes
-
-- _(credits/memory)_ Fix usage and model based credit tracking, impl memory session based and project based #89
-
-### Miscellaneous Tasks
-
-- _(release)_ V0.3.0
-
-## [0.2.2] - 2026-06-11
-
-### Bug Fixes
-
-- Followup edits and add user onboarding #85
-- _(view)_ Fix template preview and add email onboarding #86
-
-### Miscellaneous Tasks
-
-- Configure .devcontainer and project workspace settings
-- Add ai skills and prompts to .december workspace
-- Add more ai skills and prompts to .december
-- Rename and refine ai skills and prompts
-- _(release)_ V0.2.0
-- _(release)_ V0.2.0
-- _(release)_ V0.2.1
-- _(release)_ V0.2.1
-- _(release)_ V0.2.2
-
-## [0.1.1] - 2026-06-07
-
-### Miscellaneous Tasks
-
-- Add release automation
-- _(release)_ V0.1.1
-
-## [0.1.0] - 2026-06-07
+## [unreleased]
 
 ### Features
 
@@ -146,6 +76,12 @@
 - _(billing)_ Add razorpay integration and fix billing and usage ui #77
 - _(outputscreen)_ Add COT (chain of thoughts) and runtime logs #80
 - _(usage)_ Token usage extraction and add model selector in chatbar promptbxo
+- _(template)_ Add preview via image for templates
+- _(template)_ Add preview image feat in template page; #87
+- Create and update repo via gh-api
+- _(interation)_ Impl vercel auto deploy integration
+- _(integrations)_ Add vercel auto deploy and github auto repo and push integration #88
+- Add feedback persist in db
 
 ### Bug Fixes
 
@@ -244,6 +180,9 @@
 - _(outputscreen)_ Add settings modal and fix code editor #79
 - _(ui)_ Split into sub components and minor ui fix
 - _(plan agent)_ Plan agent cot and plan of action, update cot and poa display in chatbar #83
+- Followup edits and add user onboarding #85
+- _(view)_ Fix template preview and add email onboarding #86
+- _(credits/memory)_ Fix usage and model based credit tracking, impl memory session based and project based #89
 
 ### Other
 
@@ -271,6 +210,10 @@
 - Integration test and removed route tests
 - _(agents)_ Generation flow and agent contracts #60
 - Split into sub components
+- Impl softdelete check on middleware
+- Move deploy routes into platform module
+- _(sever)_ Extract types and redundant soft delet check
+- Moved aws storage interface files to shared
 
 ### Documentation
 
@@ -286,6 +229,12 @@
 - _(project/canvas)_ Add unit and integration test for project and canvas #49
 - _(auth)_ Service and route integration test #66
 - _(auth/profile)_ Add soft delete and tested auth and profile module; unit & integration tests #68
+- _(auth)_ Add more test in auth module
+- _(profile)_ Add tests in profile module
+- _(project)_ Add unit and integration tests
+- _(project)_ Tested project module and add feedback persist
+- _(template)_ Add tests and lint fix
+- _(template)_ Add tests unit and integration; removed previewHTML from template card #91
 
 ### Miscellaneous Tasks
 
@@ -294,3 +243,17 @@
 - Remove changesets
 - Configure git-cliff
 - Add changeset
+- Add release automation
+- _(release)_ V0.1.1
+- Configure .devcontainer and project workspace settings
+- Add ai skills and prompts to .december workspace
+- Add more ai skills and prompts to .december
+- Rename and refine ai skills and prompts
+- _(release)_ V0.2.0
+- _(release)_ V0.2.0
+- _(release)_ V0.2.1
+- _(release)_ V0.2.1
+- _(release)_ V0.2.2
+- _(release)_ V0.3.0
+- _(release)_ V0.3.1
+- _(release)_ V0.1.0
