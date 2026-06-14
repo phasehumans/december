@@ -1,6 +1,6 @@
 import { describe, test, expect } from 'bun:test'
 
-import { toggleLikeSchema } from '../../src/modules/template/template.schema'
+import { toggleLikeSchema, remixTemplateSchema } from '../../src/modules/template/template.schema'
 
 describe('template.schema', () => {
     describe('toggleLikeSchema', () => {
@@ -94,6 +94,31 @@ describe('template.schema', () => {
 
         test('should reject object as value', () => {
             const result = toggleLikeSchema.safeParse({ isLiked: { value: true } })
+            expect(result.success).toBe(false)
+        })
+    })
+
+    describe('remixTemplateSchema', () => {
+        test('should accept empty object', () => {
+            const result = remixTemplateSchema.safeParse({})
+            expect(result.success).toBe(true)
+        })
+
+        test('should accept valid name', () => {
+            const result = remixTemplateSchema.safeParse({ name: 'Custom Name' })
+            expect(result.success).toBe(true)
+            if (result.success) {
+                expect(result.data.name).toBe('Custom Name')
+            }
+        })
+
+        test('should reject name as number', () => {
+            const result = remixTemplateSchema.safeParse({ name: 123 })
+            expect(result.success).toBe(false)
+        })
+
+        test('should reject name as boolean', () => {
+            const result = remixTemplateSchema.safeParse({ name: true })
             expect(result.success).toBe(false)
         })
     })

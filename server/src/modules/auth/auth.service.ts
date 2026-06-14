@@ -4,7 +4,6 @@ import bcrypt from 'bcrypt'
 
 import { prisma } from '../../config/db'
 import { AppError } from '../../shared/appError'
-
 import { sendNotificationToUser } from '../notification/notification.service'
 
 import {

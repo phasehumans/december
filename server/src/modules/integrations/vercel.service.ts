@@ -1,7 +1,8 @@
 import axios from 'axios'
+
 import { prisma } from '../../config/db'
 import { AppError } from '../../shared/appError'
-import type { Response } from 'express'
+
 import type {
     CreateVercelProject,
     GetDeploymentByCommit,

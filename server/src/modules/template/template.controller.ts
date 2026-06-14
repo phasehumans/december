@@ -1,6 +1,6 @@
 import { AppError } from '../../shared/appError'
 
-import { toggleLikeSchema } from './template.schema'
+import { toggleLikeSchema, remixTemplateSchema } from './template.schema'
 import { templateService } from './template.service'
 
 import type { Request, Response } from 'express'
@@ -9,14 +9,14 @@ const getAllTemplates = async (req: Request, res: Response) => {
     const userId = req.user?.userId as string | undefined
 
     if (!userId) {
-        return res.status(400).json({
+        return res.status(401).json({
             success: false,
             message: 'unauthorized',
         })
     }
 
     try {
-        const result = await templateService.getAllTemplates(userId)
+        const result = await templateService.getAllTemplates({ userId })
         return res.status(200).json({
             success: true,
             message: 'templates fetched successfully',
@@ -44,15 +44,15 @@ const getTemplateById = async (req: Request, res: Response) => {
     const templateId = req.params.templateId as string | undefined
 
     if (!userId) {
-        return res.status(400).json({
-            success: true,
+        return res.status(401).json({
+            success: false,
             message: 'unauthorized',
         })
     }
 
     if (!templateId) {
         return res.status(400).json({
-            success: true,
+            success: false,
             message: 'templateId is required',
         })
     }
@@ -85,14 +85,14 @@ const getFeaturedTemplates = async (req: Request, res: Response) => {
     const userId = req.user?.userId as string | undefined
 
     if (!userId) {
-        return res.status(400).json({
+        return res.status(401).json({
             success: false,
             message: 'unauthorized',
         })
     }
 
     try {
-        const result = await templateService.getFeaturedTemplates(userId)
+        const result = await templateService.getFeaturedTemplates({ userId })
         return res.status(200).json({
             success: true,
             message: 'featured templates fetched successfully',
@@ -118,10 +118,10 @@ const getFeaturedTemplates = async (req: Request, res: Response) => {
 const remixTemplate = async (req: Request, res: Response) => {
     const userId = req.user?.userId as string | undefined
     const templateId = req.params.templateId as string | undefined
-    const { name } = req.body || {}
+    const parseResult = remixTemplateSchema.safeParse(req.body || {})
 
     if (!userId) {
-        return res.status(400).json({
+        return res.status(401).json({
             success: false,
             message: 'unauthorized',
         })
@@ -133,6 +133,16 @@ const remixTemplate = async (req: Request, res: Response) => {
             message: 'templateId is required',
         })
     }
+
+    if (!parseResult.success) {
+        return res.status(400).json({
+            success: false,
+            message: 'validation failed',
+            errors: parseResult.error.flatten().fieldErrors,
+        })
+    }
+
+    const { name } = parseResult.data
 
     try {
         const result = await templateService.remixTemplate({ userId, templateId, name })
@@ -164,7 +174,7 @@ const toggleLike = async (req: Request, res: Response) => {
     const parseData = toggleLikeSchema.safeParse(req.body)
 
     if (!userId) {
-        return res.status(400).json({
+        return res.status(401).json({
             success: false,
             message: 'unauthorized',
         })
@@ -211,24 +221,6 @@ const toggleLike = async (req: Request, res: Response) => {
     }
 }
 
-const getTemplatePreviewHtml = async (req: Request, res: Response) => {
-    const templateId = req.params.templateId as string | undefined
-
-    if (!templateId) {
-        return res.status(400).send('templateId is required')
-    }
-
-    try {
-        const html = await templateService.getTemplatePreviewHtml(templateId)
-        res.setHeader('Content-Type', 'text/html')
-        return res.status(200).send(html)
-    } catch (error) {
-        return res
-            .status(error instanceof AppError ? error.statusCode : 500)
-            .send('failed to load preview')
-    }
-}
-
 const getTemplatePreviewImage = async (req: Request, res: Response) => {
     const templateId = req.params.templateId as string | undefined
 
@@ -237,7 +229,7 @@ const getTemplatePreviewImage = async (req: Request, res: Response) => {
     }
 
     try {
-        const imageBuffer = await templateService.getTemplatePreviewImage(templateId)
+        const imageBuffer = await templateService.getTemplatePreviewImage({ templateId })
         if (!imageBuffer) {
             return res.status(404).send('preview image not found')
         }
@@ -256,6 +248,5 @@ export const templateController = {
     getFeaturedTemplates,
     remixTemplate,
     toggleLike,
-    getTemplatePreviewHtml,
     getTemplatePreviewImage,
 }

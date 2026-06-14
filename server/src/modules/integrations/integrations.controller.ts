@@ -1,9 +1,9 @@
-import { AppError } from '../../shared/appError'
 import { prisma } from '../../config/db'
-import { vercelService } from './vercel.service'
+import { AppError } from '../../shared/appError'
 
-import { integrationsService } from './integrations.service'
 import { createGithubRepoSchema, syncGithubRepoSchema } from './integrations.schema'
+import { integrationsService } from './integrations.service'
+import { vercelService } from './vercel.service'
 
 import type { Request, Response } from 'express'
 
