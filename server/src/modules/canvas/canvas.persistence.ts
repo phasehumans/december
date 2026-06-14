@@ -8,7 +8,7 @@ import {
     deleteObject,
     getBinaryFile,
     putBinaryFile,
-} from '../project/project-storage'
+} from '../../shared/project-storage'
 
 const canvasItemTypeSchema = z.enum([
     'note',

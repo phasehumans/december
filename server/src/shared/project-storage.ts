@@ -1,16 +1,20 @@
 import {
     DeleteObjectCommand,
+    DeleteObjectsCommand,
     GetObjectCommand,
     ListObjectsV2Command,
     PutObjectCommand,
+    CopyObjectCommand,
 } from '@aws-sdk/client-s3'
 
-import { s3 } from '../../config/s3'
+import { s3 } from '../config/s3'
 
 const BUCKET = process.env.S3_BUCKET || 'december-storage'
 
-function normalizePath(path: string) {
-    return path.replace(/^\/+/, '')
+function normalizePath(filePath: string) {
+    let normalized = filePath.replace(/\\/g, '/')
+    normalized = normalized.replace(/\.\.+\//g, '').replace(/\.\.+$/g, '')
+    return normalized.replace(/^\/+/, '').replace(/\/+$/, '')
 }
 
 export function currentKey(projectId: string, path: string) {
@@ -82,14 +86,24 @@ export async function putTextFile({
 }
 
 export async function getTextFile(key: string) {
-    const result = await s3.send(
-        new GetObjectCommand({
-            Bucket: BUCKET,
-            Key: key,
-        })
-    )
+    try {
+        const result = await s3.send(
+            new GetObjectCommand({
+                Bucket: BUCKET,
+                Key: key,
+            })
+        )
 
-    return await result.Body?.transformToString()
+        return await result.Body?.transformToString()
+    } catch (error) {
+        const message = error instanceof Error ? error.message.toLowerCase() : ''
+
+        if (message.includes('nosuchkey') || message.includes('not found')) {
+            return null
+        }
+
+        throw error
+    }
 }
 
 export async function putBinaryFile({
@@ -151,24 +165,64 @@ export async function deleteObject(key: string) {
     )
 }
 
-export async function deletePrefix(prefix: string) {
-    const objects = await listPrefix(prefix)
+export async function listPrefix(prefix: string) {
+    const objects: any[] = []
+    let continuationToken: string | undefined
 
-    await Promise.all(
-        objects
-            .map((object) => object.Key)
-            .filter((key): key is string => Boolean(key))
-            .map((key) => deleteObject(key))
-    )
+    do {
+        const result = await s3.send(
+            new ListObjectsV2Command({
+                Bucket: BUCKET,
+                Prefix: prefix,
+                ContinuationToken: continuationToken,
+            })
+        )
+
+        if (result.Contents) {
+            objects.push(...result.Contents)
+        }
+
+        continuationToken = result.NextContinuationToken
+    } while (continuationToken)
+
+    return objects
 }
 
-export async function listPrefix(prefix: string) {
-    const result = await s3.send(
-        new ListObjectsV2Command({
+export async function deletePrefix(prefix: string) {
+    const objects = await listPrefix(prefix)
+    const keys = objects.map((object) => object.Key).filter((key): key is string => Boolean(key))
+
+    if (keys.length === 0) {
+        return
+    }
+
+    const chunkSize = 1000
+    for (let i = 0; i < keys.length; i += chunkSize) {
+        const chunk = keys.slice(i, i + chunkSize)
+        await s3.send(
+            new DeleteObjectsCommand({
+                Bucket: BUCKET,
+                Delete: {
+                    Objects: chunk.map((key) => ({ Key: key })),
+                    Quiet: true,
+                },
+            })
+        )
+    }
+}
+
+export async function copyObject({
+    sourceKey,
+    destinationKey,
+}: {
+    sourceKey: string
+    destinationKey: string
+}) {
+    await s3.send(
+        new CopyObjectCommand({
             Bucket: BUCKET,
-            Prefix: prefix,
+            CopySource: `${BUCKET}/${sourceKey}`,
+            Key: destinationKey,
         })
     )
-
-    return result.Contents ?? []
 }
