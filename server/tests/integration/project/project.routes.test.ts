@@ -72,6 +72,7 @@ describe('project.routes.integration', () => {
         testRouter.get('/:projectId', projectController.getProjectById)
         testRouter.post('/', projectController.createProject)
         testRouter.patch('/:projectId', projectController.renameProject)
+        testRouter.patch('/:projectId/general-settings', projectController.updateGeneralSettings)
         testRouter.delete('/:projectId', projectController.deleteProject)
         testRouter.post('/:projectId/duplicate', projectController.duplicateProject)
         testRouter.post('/:projectId/share', projectController.shareProjectAsTemplate)
@@ -716,6 +717,71 @@ describe('project.routes.integration', () => {
 
             const db = await prisma.project.findUnique({ where: { id: project.id } })
             expect(db!.isStarred).toBe(false)
+        })
+    })
+
+    describe('PATCH /:projectId/general-settings', () => {
+        it('should return 200 and update settings successfully', async () => {
+            const project = await createTestProject()
+
+            const res = await request(app)
+                .patch(`/api/v1/projects/${project.id}/general-settings`)
+                .send({
+                    name: 'New General Name',
+                    description: 'Updated general settings description',
+                    isStarred: true,
+                    isSharedAsTemplate: true,
+                    projectCategory: 'SAAS_APP',
+                })
+
+            expect(res.status).toBe(200)
+            expect(res.body.success).toBe(true)
+            expect(res.body.data.message).toBe('project general settings updated')
+
+            const db = await prisma.project.findUnique({ where: { id: project.id } })
+            expect(db!.name).toBe('New General Name')
+            expect(db!.description).toBe('Updated general settings description')
+            expect(db!.isStarred).toBe(true)
+            expect(db!.isSharedAsTemplate).toBe(true)
+            expect(db!.projectCategory).toBe('SAAS_APP')
+        })
+
+        it('should return 400 for validation failure (name too short)', async () => {
+            const project = await createTestProject()
+
+            const res = await request(app)
+                .patch(`/api/v1/projects/${project.id}/general-settings`)
+                .send({ name: 'Ab' })
+
+            expect(res.status).toBe(400)
+            expect(res.body.success).toBe(false)
+        })
+
+        it('should return 404 for non-existent project', async () => {
+            const res = await request(app)
+                .patch('/api/v1/projects/non-existent-project-id/general-settings')
+                .send({ name: 'Valid Name' })
+
+            expect(res.status).toBe(404)
+            expect(res.body.success).toBe(false)
+        })
+
+        it("should return 404 when updating another user's project settings", async () => {
+            const otherUser = await prisma.user.create({
+                data: {
+                    name: 'Other User',
+                    email: `other-settings-${crypto.randomUUID()}@example.com`,
+                    username: `other-user-settings-${crypto.randomUUID()}`,
+                    password: 'pw',
+                },
+            })
+            const otherProject = await createTestProject(otherUser.id)
+
+            const res = await request(app)
+                .patch(`/api/v1/projects/${otherProject.id}/general-settings`)
+                .send({ name: 'Attempts settings' })
+
+            expect(res.status).toBe(404)
         })
     })
 })

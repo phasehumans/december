@@ -6,6 +6,8 @@ import {
     getProjectByIdSchema,
     toggleStarProjectSchema,
     duplicateProjectSchema,
+    updateGeneralSettingsSchema,
+    shareProjectAsTemplateSchema,
 } from '../../src/modules/project/project.schema'
 import { parseStoredProjectFiles, mapVersionSummary } from '../../src/modules/project/project.utils'
 
@@ -228,6 +230,83 @@ describe('project.schema', () => {
         test('should fail if name is too long (51 chars)', () => {
             const data = { name: 'A'.repeat(51) }
             expect(duplicateProjectSchema.safeParse(data).success).toBe(false)
+        })
+    })
+
+    describe('updateGeneralSettingsSchema', () => {
+        test('should pass with all valid fields', () => {
+            const data = {
+                name: 'Updated Name',
+                description: 'Updated description of project',
+                isStarred: true,
+                isSharedAsTemplate: true,
+                projectCategory: 'DASHBOARD',
+            }
+            expect(updateGeneralSettingsSchema.safeParse(data).success).toBe(true)
+        })
+
+        test('should pass with empty object', () => {
+            expect(updateGeneralSettingsSchema.safeParse({}).success).toBe(true)
+        })
+
+        test('should pass with null description', () => {
+            expect(updateGeneralSettingsSchema.safeParse({ description: null }).success).toBe(true)
+        })
+
+        test('should fail with description under 10 chars', () => {
+            expect(updateGeneralSettingsSchema.safeParse({ description: 'short' }).success).toBe(
+                false
+            )
+        })
+
+        test('should fail if name is under 3 chars', () => {
+            expect(updateGeneralSettingsSchema.safeParse({ name: 'Hi' }).success).toBe(false)
+        })
+
+        test('should fail if projectCategory is invalid enum value', () => {
+            expect(
+                updateGeneralSettingsSchema.safeParse({ projectCategory: 'INVALID' }).success
+            ).toBe(false)
+        })
+
+        test('should fail if isStarred is not boolean', () => {
+            expect(updateGeneralSettingsSchema.safeParse({ isStarred: 'true' }).success).toBe(false)
+        })
+    })
+
+    describe('shareProjectAsTemplateSchema', () => {
+        test('should pass with isSharedAsTemplate true', () => {
+            expect(
+                shareProjectAsTemplateSchema.safeParse({ isSharedAsTemplate: true }).success
+            ).toBe(true)
+        })
+
+        test('should pass with category', () => {
+            expect(
+                shareProjectAsTemplateSchema.safeParse({
+                    isSharedAsTemplate: false,
+                    projectCategory: 'PORTFOLIO_BLOG',
+                }).success
+            ).toBe(true)
+        })
+
+        test('should fail if isSharedAsTemplate is missing', () => {
+            expect(shareProjectAsTemplateSchema.safeParse({}).success).toBe(false)
+        })
+
+        test('should fail if isSharedAsTemplate is not boolean', () => {
+            expect(shareProjectAsTemplateSchema.safeParse({ isSharedAsTemplate: 1 }).success).toBe(
+                false
+            )
+        })
+
+        test('should fail if projectCategory is invalid', () => {
+            expect(
+                shareProjectAsTemplateSchema.safeParse({
+                    isSharedAsTemplate: true,
+                    projectCategory: 'WRONG_CAT',
+                }).success
+            ).toBe(false)
         })
     })
 })

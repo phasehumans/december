@@ -1,7 +1,7 @@
 import crypto from 'crypto'
 
 import { prisma } from '../../config/db'
-import { getBinaryFile } from '../../shared/project-storage'
+import { getBinaryFile, deletePrefix, projectPrefix } from '../../shared/project-storage'
 import { saveProjectFiles } from '../../shared/save-project-files'
 import { AppError } from '../../shared/appError'
 import { hydrateCanvasDocument, persistCanvasDocument } from '../canvas/canvas.persistence'
@@ -134,7 +134,7 @@ const getAllTemplates = async (userId?: string) => {
     }
 }
 
-const getTemplateById = async (data: string | { userId: string; templateId: string }) => {
+const getTemplateById = async (data: string | { userId?: string; templateId: string }) => {
     const userId = typeof data === 'string' ? undefined : data.userId
     const templateId = typeof data === 'string' ? data : data.templateId
     const template = await prisma.project.findFirst({
@@ -291,17 +291,33 @@ const remixTemplate = async (data: RemixTemplate) => {
             return newProject
         }
 
-        const copyResult = await copyProjectVersionsAndMessages({
-            sourceProjectId: template.id,
-            newProjectId: newProject.id,
-            newUserId: userId,
-            sourceCurrentVersionId: template.currentVersionId,
-        })
+        try {
+            const copyResult = await copyProjectVersionsAndMessages({
+                sourceProjectId: template.id,
+                newProjectId: newProject.id,
+                newUserId: userId,
+                sourceCurrentVersionId: template.currentVersionId,
+            })
 
-        newProject.currentVersionId = copyResult.newCurrentVersionId
-        newProject.versionCount = copyResult.versionCount
+            newProject.currentVersionId = copyResult.newCurrentVersionId
+            newProject.versionCount = copyResult.versionCount
 
-        return newProject
+            return newProject
+        } catch (copyError) {
+            try {
+                await prisma.project.delete({
+                    where: { id: newProject.id },
+                })
+            } catch (dbError) {
+                console.error('Failed to rollback project creation in database:', dbError)
+            }
+            try {
+                await deletePrefix(projectPrefix(newProject.id))
+            } catch (s3Error) {
+                console.error('Failed to rollback project files in S3:', s3Error)
+            }
+            throw copyError
+        }
     } catch (error: any) {
         if (error.code === 'P2003') {
             throw new AppError('user not found', 404)

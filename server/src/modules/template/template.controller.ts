@@ -16,7 +16,7 @@ const getAllTemplates = async (req: Request, res: Response) => {
     }
 
     try {
-        const result = await templateService.getAllTemplates({ userId })
+        const result = await templateService.getAllTemplates(userId)
         return res.status(200).json({
             success: true,
             message: 'templates fetched successfully',
@@ -92,7 +92,7 @@ const getFeaturedTemplates = async (req: Request, res: Response) => {
     }
 
     try {
-        const result = await templateService.getFeaturedTemplates({ userId })
+        const result = await templateService.getFeaturedTemplates(userId)
         return res.status(200).json({
             success: true,
             message: 'featured templates fetched successfully',
@@ -219,7 +219,7 @@ const getTemplatePreviewHtml = async (req: Request, res: Response) => {
     }
 
     try {
-        const html = await templateService.getTemplatePreviewHtml({ templateId })
+        const html = await templateService.getTemplatePreviewHtml(templateId)
         res.setHeader('Content-Type', 'text/html')
         return res.status(200).send(html)
     } catch (error) {
@@ -237,7 +237,7 @@ const getTemplatePreviewImage = async (req: Request, res: Response) => {
     }
 
     try {
-        const imageBuffer = await templateService.getTemplatePreviewImage({ templateId })
+        const imageBuffer = await templateService.getTemplatePreviewImage(templateId)
         if (!imageBuffer) {
             return res.status(404).send('preview image not found')
         }

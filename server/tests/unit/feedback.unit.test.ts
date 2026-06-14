@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'bun:test'
-import { submitFeedbackSchema } from '../../src/modules/project/feedback.schema'
+import { submitFeedbackSchema } from '../../src/modules/profile/profile.schema'
 
 describe('feedback.schema', () => {
     describe('submitFeedbackSchema', () => {
