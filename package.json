@@ -4,7 +4,8 @@
     "private": true,
     "workspaces": [
         "web",
-        "server"
+        "server",
+        "cli"
     ],
     "scripts": {
         "prepare": "husky",
