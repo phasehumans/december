@@ -1,69 +1,22 @@
-import crypto from 'crypto'
-
 import { prisma } from '../../config/db'
-import { getBinaryFile, deletePrefix, projectPrefix } from '../../shared/project-storage'
-import { saveProjectFiles } from '../../shared/save-project-files'
 import { AppError } from '../../shared/appError'
-import { hydrateCanvasDocument, persistCanvasDocument } from '../canvas/canvas.persistence'
+import { getBinaryFile, deletePrefix, projectPrefix } from '../../shared/project-storage'
 import { sendNotificationToUser } from '../notification/notification.service'
-import {
-    loadGeneratedFilesFromManifest,
-    copyProjectVersionsAndMessages,
-} from '../project/project.service'
-import { parseStoredProjectFiles } from '../project/project.utils'
+import { copyProjectVersionsAndMessages } from '../project/project.service'
 
-type ToggleLike = {
-    userId: string
-    templateId: string
-    isLiked: boolean
-}
-
-type RemixTemplate = {
-    userId: string
-    templateId: string
-    name?: string
-}
-
-type TemplateWithLikeMeta = {
-    id: string
-    name: string
-    description: string | null
-    prompt: string
-    isFeatured: boolean
-    isSharedAsTemplate: boolean
-    projectCategory: string
-    createdAt: Date
-    updatedAt: Date
-    userId: string
-    authorName: string
-    authorUsername: string
-    likeCount: number
-    isLiked: boolean
-    previewImageKey?: string | null
-}
+import type {
+    ToggleLike,
+    RemixTemplate,
+    TemplateWithLikeMeta,
+    GetAllTemplates,
+    GetTemplateById,
+    GetFeaturedTemplates,
+    GetTemplatePreviewImage,
+    DbTemplateWithLikes,
+} from './template.types'
 
 const mapTemplateWithLikeMeta = (
-    template: {
-        id: string
-        name: string
-        description: string | null
-        prompt: string
-        isFeatured: boolean
-        isSharedAsTemplate: boolean
-        projectCategory: any
-        createdAt: Date
-        updatedAt: Date
-        userId: string
-        previewImageKey: string | null
-        user: {
-            name: string
-            username: string
-        }
-        likes: Array<{
-            userId: string
-            isLiked: boolean
-        }>
-    },
+    template: DbTemplateWithLikes,
     viewerUserId: string
 ): TemplateWithLikeMeta => {
     const likeCount = template.likes.filter((like) => like.isLiked).length
@@ -88,55 +41,51 @@ const mapTemplateWithLikeMeta = (
     }
 }
 
-const getAllTemplates = async (userId?: string) => {
-    try {
-        const templates = await prisma.project.findMany({
-            where: {
-                isSharedAsTemplate: true,
-            },
-            orderBy: {
-                updatedAt: 'desc',
-            },
-            select: {
-                id: true,
-                name: true,
-                description: true,
-                prompt: true,
-                isFeatured: true,
-                isSharedAsTemplate: true,
-                projectCategory: true,
-                createdAt: true,
-                updatedAt: true,
-                userId: true,
-                previewImageKey: true,
-                user: {
-                    select: {
-                        name: true,
-                        username: true,
-                    },
-                },
-                likes: {
-                    select: {
-                        userId: true,
-                        isLiked: true,
-                    },
+const getAllTemplates = async (data: GetAllTemplates = {}) => {
+    const { userId } = data
+    const templates = await prisma.project.findMany({
+        where: {
+            isSharedAsTemplate: true,
+        },
+        orderBy: {
+            updatedAt: 'desc',
+        },
+        select: {
+            id: true,
+            name: true,
+            description: true,
+            prompt: true,
+            isFeatured: true,
+            isSharedAsTemplate: true,
+            projectCategory: true,
+            createdAt: true,
+            updatedAt: true,
+            userId: true,
+            previewImageKey: true,
+            user: {
+                select: {
+                    name: true,
+                    username: true,
                 },
             },
-        })
+            likes: {
+                select: {
+                    userId: true,
+                    isLiked: true,
+                },
+            },
+        },
+    })
 
-        if (!userId) {
-            return templates
-        }
-
-        return templates.map((template) => mapTemplateWithLikeMeta(template, userId))
-    } catch (error) {
-        throw new AppError('database error while fetching templates', 500)
+    if (!userId) {
+        return templates
     }
+
+    return templates.map((template) => mapTemplateWithLikeMeta(template, userId))
 }
 
-const getTemplateById = async (data: string | { userId?: string; templateId: string }) => {
-    const userId = typeof data === 'string' ? undefined : data.userId
-    const templateId = typeof data === 'string' ? data : data.templateId
+const getTemplateById = async (data: GetTemplateById) => {
+    const { templateId, userId } = data
     const template = await prisma.project.findFirst({
         where: {
             id: templateId,
@@ -180,51 +129,48 @@ const getTemplateById = async (data: string | { userId?: string; templateId: str
     return mapTemplateWithLikeMeta(template, userId)
 }
 
-const getFeaturedTemplates = async (userId?: string) => {
-    try {
-        const templates = await prisma.project.findMany({
-            where: {
-                isSharedAsTemplate: true,
-                isFeatured: true,
-            },
-            orderBy: {
-                updatedAt: 'desc',
-            },
-            select: {
-                id: true,
-                name: true,
-                description: true,
-                prompt: true,
-                isFeatured: true,
-                isSharedAsTemplate: true,
-                projectCategory: true,
-                createdAt: true,
-                updatedAt: true,
-                userId: true,
-                previewImageKey: true,
-                user: {
-                    select: {
-                        name: true,
-                        username: true,
-                    },
-                },
-                likes: {
-                    select: {
-                        userId: true,
-                        isLiked: true,
-                    },
+const getFeaturedTemplates = async (data: GetFeaturedTemplates = {}) => {
+    const { userId } = data
+    const templates = await prisma.project.findMany({
+        where: {
+            isSharedAsTemplate: true,
+            isFeatured: true,
+        },
+        orderBy: {
+            updatedAt: 'desc',
+        },
+        select: {
+            id: true,
+            name: true,
+            description: true,
+            prompt: true,
+            isFeatured: true,
+            isSharedAsTemplate: true,
+            projectCategory: true,
+            createdAt: true,
+            updatedAt: true,
+            userId: true,
+            previewImageKey: true,
+            user: {
+                select: {
+                    name: true,
+                    username: true,
                 },
             },
-        })
+            likes: {
+                select: {
+                    userId: true,
+                    isLiked: true,
+                },
+            },
+        },
+    })
 
-        if (!userId) {
-            return templates
-        }
-
-        return templates.map((template) => mapTemplateWithLikeMeta(template, userId))
-    } catch (error) {
-        throw new AppError('database error while fetching featured templates', 500)
+    if (!userId) {
+        return templates
     }
+
+    return templates.map((template) => mapTemplateWithLikeMeta(template, userId))
 }
 
 const remixTemplate = async (data: RemixTemplate) => {
@@ -419,65 +365,17 @@ const toggleLike = async (data: ToggleLike) => {
     return created
 }
 
-const getTemplatePreviewHtml = async (templateId: string) => {
+const getTemplatePreviewImage = async (data: GetTemplatePreviewImage) => {
+    const { templateId } = data
     const template = await prisma.project.findFirst({
-        where: { id: templateId, isSharedAsTemplate: true },
-        select: { id: true },
-    })
-
-    if (!template) {
-        throw new AppError('template not found', 404)
-    }
-
-    const currentVersion = await prisma.projectVersion.findFirst({
-        where: { projectId: templateId },
-        orderBy: { versionNumber: 'desc' },
-    })
-
-    if (!currentVersion) {
-        return ''
-    }
-
-    const manifest = parseStoredProjectFiles(currentVersion.manifestJson)
-    const generatedFiles = await loadGeneratedFilesFromManifest(manifest)
-
-    let html =
-        generatedFiles['index.html'] ||
-        generatedFiles['public/index.html'] ||
-        generatedFiles['web/index.html'] ||
-        ''
-
-    const cssContents = Object.entries(generatedFiles)
-        .filter(([path, content]) => path.endsWith('.css') && content)
-        .map(([_, content]) => content)
-
-    if (cssContents.length > 0 && html) {
-        const styleTag = `\n<style>\n${cssContents.join('\n')}\n</style>\n`
-        if (/<\/head>/i.test(html)) {
-            html = html.replace(/<\/head>/i, () => `${styleTag}</head>`)
-        } else {
-            html += styleTag
-        }
-    }
-
-    let documentHtml = html.trim()
-    if (documentHtml && !/<html[\s>]/i.test(documentHtml)) {
-        documentHtml = `<!DOCTYPE html><html><head></head><body>${documentHtml}</body></html>`
-    }
-    if (documentHtml && !/<head[\s>]/i.test(documentHtml)) {
-        documentHtml = documentHtml.replace(/<html([^>]*)>/i, '<html$1><head></head>')
-    }
-    if (documentHtml && !/<body[\s>]/i.test(documentHtml)) {
-        documentHtml = documentHtml.replace(/<\/head>/i, '</head><body></body>')
-    }
-
-    return documentHtml
-}
-
-const getTemplatePreviewImage = async (templateId: string) => {
-    const template = await prisma.project.findFirst({
-        where: { id: templateId, isSharedAsTemplate: true },
-        select: { id: true, previewImageKey: true },
+        where: {
+            id: templateId,
+            isSharedAsTemplate: true,
+        },
+        select: {
+            id: true,
+            previewImageKey: true,
+        },
     })
 
     if (!template) {
@@ -502,6 +400,5 @@ export const templateService = {
     getFeaturedTemplates,
     remixTemplate,
     toggleLike,
-    getTemplatePreviewHtml,
     getTemplatePreviewImage,
 }

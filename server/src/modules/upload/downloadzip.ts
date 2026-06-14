@@ -1,7 +1,7 @@
+import { exec } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
 import { mkdir, rm } from 'node:fs/promises'
 import { join } from 'node:path'
-import { exec } from 'node:child_process'
 import { promisify } from 'node:util'
 
 import { importStagingRootDir } from './import-project.utils'

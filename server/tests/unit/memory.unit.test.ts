@@ -1,4 +1,5 @@
 import { describe, expect, test, mock } from 'bun:test'
+
 import {
     extractStyleGuidelines,
     getErrorSignature,

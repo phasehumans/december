@@ -1,12 +1,13 @@
 import { describe, expect, test } from 'bun:test'
-import {
-    autoHealPlanAgentResponse,
-    autoHealChangePlanResponse,
-} from '../../src/modules/generation/generation.self-healing'
+
 import {
     planAgentResponseSchema,
     projectChangePlanResponseSchema,
 } from '../../src/modules/generation/generation.schema'
+import {
+    autoHealPlanAgentResponse,
+    autoHealChangePlanResponse,
+} from '../../src/modules/generation/generation.self-healing'
 
 describe('generation self-healing layers', () => {
     test('heals missing required files and invalid file generators', () => {

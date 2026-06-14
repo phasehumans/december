@@ -2,8 +2,8 @@ import axios from 'axios'
 
 import { prisma } from '../../config/db'
 import { AppError } from '../../shared/appError'
-import { sendNotificationToUser } from '../notification/notification.service'
 import { getBinaryFile, getTextFile } from '../../shared/project-storage'
+import { sendNotificationToUser } from '../notification/notification.service'
 import { parseStoredProjectFiles } from '../project/project.utils'
 
 type GithubRepo = {
