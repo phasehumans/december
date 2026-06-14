@@ -1,4 +1,4 @@
-import type { PreviewManifestRef } from '../project/preview-manifest'
+import type { PreviewManifestRef } from '../../shared/preview-manifest'
 
 export type RuntimePreviewError = {
     class:

@@ -6,7 +6,7 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 
 import { prisma } from '../../config/db'
-import { assetKey, putBinaryFile, temporaryCanvasAssetKey } from '../project/project-storage'
+import { assetKey, putBinaryFile, temporaryCanvasAssetKey } from '../../shared/project-storage'
 
 import { persistCanvasDocument } from './canvas.persistence'
 

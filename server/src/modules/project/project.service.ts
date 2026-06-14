@@ -9,7 +9,7 @@ import {
     putBinaryFile,
     versionKey,
     currentKey,
-} from './project-storage'
+} from '../../shared/project-storage'
 import { AppError } from '../../shared/appError'
 import { hydrateCanvasDocument, persistCanvasDocument } from '../canvas/canvas.persistence'
 import { parseStoredProjectFiles, mapVersionSummary } from '../project/project.utils'
@@ -28,6 +28,7 @@ import type {
     CopyProjectVersionsAndMessages,
 } from './project.types'
 
+// loads code files from objstore to memeory
 export const loadGeneratedFilesFromManifest = async (manifest: StoredProjectFile[]) => {
     const files = await Promise.all(
         manifest.map(async (file) => {
@@ -52,6 +53,108 @@ export const loadGeneratedFilesFromManifest = async (manifest: StoredProjectFile
     )
 
     return Object.fromEntries(files)
+}
+
+// remix and duplicate used same copy fn
+export const copyProjectVersionsAndMessages = async (data: CopyProjectVersionsAndMessages) => {
+    const { sourceProjectId, newProjectId, newUserId, sourceCurrentVersionId } = data
+
+    // find the current version (or latest version if currentVersionId is not set)
+    const version = await prisma.projectVersion.findFirst({
+        where: {
+            projectId: sourceProjectId,
+            ...(sourceCurrentVersionId ? { id: sourceCurrentVersionId } : {}),
+        },
+        orderBy: {
+            versionNumber: 'desc',
+        },
+    })
+
+    if (!version) {
+        return {
+            newCurrentVersionId: null,
+            versionCount: 0,
+        }
+    }
+
+    const newVersionId = crypto.randomUUID()
+    const manifest = parseStoredProjectFiles(version.manifestJson)
+    const newManifest: any[] = []
+
+    for (const file of manifest) {
+        const fileData = await getBinaryFile(file.key)
+        if (fileData) {
+            const newVersionFileKey = versionKey(newProjectId, newVersionId, file.path)
+            await putBinaryFile({
+                key: newVersionFileKey,
+                content: Buffer.from(fileData.body),
+                contentType: fileData.contentType,
+            })
+
+            const newCurrentFileKey = currentKey(newProjectId, file.path)
+            await putBinaryFile({
+                key: newCurrentFileKey,
+                content: Buffer.from(fileData.body),
+                contentType: fileData.contentType,
+            })
+
+            newManifest.push({
+                path: file.path,
+                key: newVersionFileKey,
+                size: fileData.body.byteLength,
+                ...(fileData.contentType ? { contentType: fileData.contentType } : {}),
+            })
+        }
+    }
+
+    const hydratedCanvasState = await hydrateCanvasDocument({
+        canvasState: version.canvasStateJson,
+        canvasAssetManifest: version.canvasAssetManifestJson,
+    })
+    const persistedCanvas = await persistCanvasDocument({
+        projectId: newProjectId,
+        userId: newUserId,
+        versionId: newVersionId,
+        canvasState: hydratedCanvasState,
+    })
+
+    await prisma.projectVersion.create({
+        data: {
+            id: newVersionId,
+            projectId: newProjectId,
+            versionNumber: 1,
+            label: 'v1',
+            sourcePrompt: version.sourcePrompt,
+            summary: version.summary ?? undefined,
+            status: version.status,
+            objectStoragePrefix: `projects/${newProjectId}/previous-version/${newVersionId}`,
+            manifestJson: newManifest,
+            canvasStateJson: persistedCanvas.canvasStateJson as any,
+            canvasAssetManifestJson: persistedCanvas.canvasAssetManifestJson as any,
+            isDatabaseEnabled: version.isDatabaseEnabled,
+            databaseUrl: version.databaseUrl,
+            ...(version.intentJson !== null ? { intentJson: version.intentJson as any } : {}),
+            ...(version.planJson !== null ? { planJson: version.planJson as any } : {}),
+        },
+    })
+
+    await prisma.project.update({
+        where: {
+            id: newProjectId,
+        },
+        data: {
+            currentVersionId: newVersionId,
+            versionCount: 1,
+        },
+        select: {
+            id: true,
+        },
+    })
+
+    return {
+        newCurrentVersionId: newVersionId,
+        versionCount: 1,
+    }
 }
 
 const getAllProjects = async (data: GetAllProjects) => {
@@ -135,6 +238,7 @@ const getProjectById = async (data: GetProject) => {
         },
     })
 
+    // provided version on newest version [0]
     const selectedVersionId = versionId ?? versions[0]?.id ?? null
 
     const activeVersion = selectedVersionId
@@ -160,6 +264,8 @@ const getProjectById = async (data: GetProject) => {
     const generatedFiles = activeVersion
         ? await loadGeneratedFilesFromManifest(parseStoredProjectFiles(activeVersion.manifestJson))
         : {}
+
+    // reconstrcut visual builder
     const canvasState = activeVersion
         ? await hydrateCanvasDocument({
               canvasState: activeVersion.canvasStateJson,
@@ -292,128 +398,6 @@ const deleteProject = async (data: DeleteProject) => {
     return { message: 'project deleted' }
 }
 
-export const copyProjectVersionsAndMessages = async (data: CopyProjectVersionsAndMessages) => {
-    const { sourceProjectId, newProjectId, newUserId, sourceCurrentVersionId } = data
-    const versions = await prisma.projectVersion.findMany({
-        where: {
-            projectId: sourceProjectId,
-        },
-        orderBy: {
-            versionNumber: 'asc',
-        },
-        include: {
-            messages: {
-                orderBy: {
-                    sequence: 'asc',
-                },
-            },
-        },
-    })
-
-    const versionIdMap = new Map<string, string>()
-
-    for (const version of versions) {
-        const newVersionId = crypto.randomUUID()
-        versionIdMap.set(version.id, newVersionId)
-
-        const manifest = parseStoredProjectFiles(version.manifestJson)
-
-        const newManifest: any[] = []
-        for (const file of manifest) {
-            const fileData = await getBinaryFile(file.key)
-            if (fileData) {
-                const newVersionFileKey = versionKey(newProjectId, newVersionId, file.path)
-                await putBinaryFile({
-                    key: newVersionFileKey,
-                    content: Buffer.from(fileData.body),
-                    contentType: fileData.contentType,
-                })
-
-                const isLatestVersion =
-                    sourceCurrentVersionId === version.id ||
-                    version.id === versions[versions.length - 1]?.id
-                if (isLatestVersion) {
-                    const newCurrentFileKey = currentKey(newProjectId, file.path)
-                    await putBinaryFile({
-                        key: newCurrentFileKey,
-                        content: Buffer.from(fileData.body),
-                        contentType: fileData.contentType,
-                    })
-                }
-
-                newManifest.push({
-                    path: file.path,
-                    key: newVersionFileKey,
-                    size: fileData.body.byteLength,
-                    ...(fileData.contentType ? { contentType: fileData.contentType } : {}),
-                })
-            }
-        }
-
-        const hydratedCanvasState = await hydrateCanvasDocument({
-            canvasState: version.canvasStateJson,
-            canvasAssetManifest: version.canvasAssetManifestJson,
-        })
-        const persistedCanvas = await persistCanvasDocument({
-            projectId: newProjectId,
-            userId: newUserId,
-            versionId: newVersionId,
-            canvasState: hydratedCanvasState,
-        })
-
-        await prisma.projectVersion.create({
-            data: {
-                id: newVersionId,
-                projectId: newProjectId,
-                versionNumber: version.versionNumber,
-                label: version.label,
-                sourcePrompt: version.sourcePrompt,
-                summary: version.summary ?? undefined,
-                status: version.status,
-                objectStoragePrefix: `projects/${newProjectId}/previous-version/${newVersionId}`,
-                manifestJson: newManifest,
-                canvasStateJson: persistedCanvas.canvasStateJson as any,
-                canvasAssetManifestJson: persistedCanvas.canvasAssetManifestJson as any,
-                isDatabaseEnabled: version.isDatabaseEnabled,
-                databaseUrl: version.databaseUrl,
-                ...(version.intentJson !== null ? { intentJson: version.intentJson as any } : {}),
-                ...(version.planJson !== null ? { planJson: version.planJson as any } : {}),
-                messages: {
-                    create: version.messages.map((message: any) => ({
-                        projectId: newProjectId,
-                        role: message.role,
-                        content: message.content,
-                        ...(message.status ? { status: message.status } : {}),
-                        sequence: message.sequence,
-                    })),
-                },
-            },
-        })
-    }
-
-    const newCurrentVersionId = sourceCurrentVersionId
-        ? (versionIdMap.get(sourceCurrentVersionId) ?? null)
-        : null
-
-    await prisma.project.update({
-        where: {
-            id: newProjectId,
-        },
-        data: {
-            currentVersionId: newCurrentVersionId,
-            versionCount: versions.length,
-        },
-        select: {
-            id: true,
-        },
-    })
-
-    return {
-        newCurrentVersionId,
-        versionCount: versions.length,
-    }
-}
-
 const duplicateProject = async (data: DuplicateProject) => {
     const { projectId, userId, name } = data
 
@@ -473,6 +457,7 @@ const duplicateProject = async (data: DuplicateProject) => {
         },
     })
 
+    // if source project has no version (empty project); return new project
     if (!latestVersion) {
         return newProject
     }
