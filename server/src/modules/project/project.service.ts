@@ -1,7 +1,6 @@
 import crypto from 'crypto'
 
 import { prisma } from '../../config/db'
-import { Prisma } from '../../generated/prisma/client'
 import {
     deletePrefix,
     projectPrefix,
@@ -25,14 +24,9 @@ import type {
     DuplicateProject,
     ShareProject,
     ToggleStarProject,
+    StoredProjectFile,
+    CopyProjectVersionsAndMessages,
 } from './project.types'
-
-export type StoredProjectFile = {
-    path: string
-    key: string
-    contentType?: string
-    size: number
-}
 
 export const loadGeneratedFilesFromManifest = async (manifest: StoredProjectFile[]) => {
     const files = await Promise.all(
@@ -63,36 +57,32 @@ export const loadGeneratedFilesFromManifest = async (manifest: StoredProjectFile
 const getAllProjects = async (data: GetAllProjects) => {
     const { userId } = data
 
-    try {
-        const projects = await prisma.project.findMany({
-            where: {
-                userId: userId,
-            },
-            select: {
-                id: true,
-                name: true,
-                description: true,
-                prompt: true,
-                isStarred: true,
-                isSharedAsTemplate: true,
-                projectStatus: true,
-                versionCount: true,
-                currentVersionId: true,
-                createdAt: true,
-                updatedAt: true,
-                userId: true,
-                user: {
-                    select: {
-                        username: true,
-                    },
+    const projects = await prisma.project.findMany({
+        where: {
+            userId: userId,
+        },
+        select: {
+            id: true,
+            name: true,
+            description: true,
+            prompt: true,
+            isStarred: true,
+            isSharedAsTemplate: true,
+            projectStatus: true,
+            versionCount: true,
+            currentVersionId: true,
+            createdAt: true,
+            updatedAt: true,
+            userId: true,
+            user: {
+                select: {
+                    username: true,
                 },
             },
-        })
+        },
+    })
 
-        return projects
-    } catch (error) {
-        throw new AppError('error while fetching projects', 500)
-    }
+    return projects
 }
 
 const getProjectById = async (data: GetProject) => {
@@ -206,127 +196,91 @@ const getProjectById = async (data: GetProject) => {
 const createProject = async (data: CreateProject) => {
     const { name, description, prompt, userId } = data
 
-    try {
-        const project = await prisma.project.create({
-            data: {
-                name,
-                description,
-                prompt,
-                isStarred: false,
-                userId,
-            },
-            select: {
-                id: true,
-                name: true,
-                description: true,
-                prompt: true,
-                isStarred: true,
-                isSharedAsTemplate: true,
-                projectStatus: true,
-                versionCount: true,
-                currentVersionId: true,
-                createdAt: true,
-                updatedAt: true,
-                userId: true,
-            },
-        })
+    const project = await prisma.project.create({
+        data: {
+            name,
+            description,
+            prompt,
+            isStarred: false,
+            userId,
+        },
+        select: {
+            id: true,
+            name: true,
+            description: true,
+            prompt: true,
+            isStarred: true,
+            isSharedAsTemplate: true,
+            projectStatus: true,
+            versionCount: true,
+            currentVersionId: true,
+            createdAt: true,
+            updatedAt: true,
+            userId: true,
+        },
+    })
 
-        return project
-    } catch (error) {
-        throw new AppError('failed to create project', 500)
-    }
+    return project
 }
 
 const renameProject = async (data: RenameProject) => {
     const { projectId, userId, rename } = data
 
-    try {
-        await prisma.project.update({
-            where: {
-                id: projectId,
-                userId,
-            },
-            data: {
-                name: rename,
-            },
-        })
+    const result = await prisma.project.updateMany({
+        where: {
+            id: projectId,
+            userId,
+        },
+        data: {
+            name: rename,
+        },
+    })
 
-        return { message: 'project updated' }
-    } catch (error) {
-        if (error instanceof Prisma.PrismaClientKnownRequestError) {
-            if (error.code === 'P2025') {
-                throw new AppError('project not found', 404)
-            }
-
-            if (error.code === 'P2002') {
-                throw new AppError('duplicate field value', 400)
-            }
-        }
-        throw new AppError('failed to rename project', 500)
+    if (result.count === 0) {
+        throw new AppError('project not found', 404)
     }
+
+    return { message: 'project updated' }
 }
 
 const updateGeneralSettings = async (data: UpdateGeneralSettings) => {
     const { projectId, userId, name, description, isStarred, isSharedAsTemplate, projectCategory } =
         data
 
-    try {
-        const updateData: any = {}
-        if (name !== undefined) updateData.name = name
-        if (description !== undefined) updateData.description = description
-        if (isStarred !== undefined) updateData.isStarred = isStarred
-        if (isSharedAsTemplate !== undefined) updateData.isSharedAsTemplate = isSharedAsTemplate
-        if (projectCategory !== undefined) updateData.projectCategory = projectCategory
+    const updateData: any = {}
+    if (name !== undefined) updateData.name = name
+    if (description !== undefined) updateData.description = description
+    if (isStarred !== undefined) updateData.isStarred = isStarred
+    if (isSharedAsTemplate !== undefined) updateData.isSharedAsTemplate = isSharedAsTemplate
+    if (projectCategory !== undefined) updateData.projectCategory = projectCategory
 
-        await prisma.project.update({
-            where: {
-                id: projectId,
-                userId,
-            },
-            data: updateData,
-        })
+    const result = await prisma.project.updateMany({
+        where: {
+            id: projectId,
+            userId,
+        },
+        data: updateData,
+    })
 
-        return { message: 'project general settings updated' }
-    } catch (error) {
-        if (error instanceof Prisma.PrismaClientKnownRequestError) {
-            if (error.code === 'P2025') {
-                throw new AppError('project not found', 404)
-            }
-
-            if (error.code === 'P2002') {
-                throw new AppError('duplicate field value', 400)
-            }
-        }
-        throw new AppError('failed to update general settings', 500)
+    if (result.count === 0) {
+        throw new AppError('project not found', 404)
     }
+
+    return { message: 'project general settings updated' }
 }
 
 const deleteProject = async (data: DeleteProject) => {
     const { userId, projectId } = data
 
-    const project = await prisma.project.findFirst({
+    const result = await prisma.project.deleteMany({
         where: {
             id: projectId,
-            userId: userId,
-        },
-        select: {
-            id: true,
+            userId,
         },
     })
 
-    if (!project) {
+    if (result.count === 0) {
         throw new AppError('project not found', 404)
-    }
-
-    try {
-        await prisma.project.delete({
-            where: {
-                id: projectId,
-                userId,
-            },
-        })
-    } catch (error) {
-        throw new AppError('failed to delete project', 500)
     }
 
     try {
@@ -338,12 +292,8 @@ const deleteProject = async (data: DeleteProject) => {
     return { message: 'project deleted' }
 }
 
-export const copyProjectVersionsAndMessages = async (
-    sourceProjectId: string,
-    newProjectId: string,
-    newUserId: string,
-    sourceCurrentVersionId: string | null
-) => {
+export const copyProjectVersionsAndMessages = async (data: CopyProjectVersionsAndMessages) => {
+    const { sourceProjectId, newProjectId, newUserId, sourceCurrentVersionId } = data
     const versions = await prisma.projectVersion.findMany({
         where: {
             projectId: sourceProjectId,
@@ -527,12 +477,12 @@ const duplicateProject = async (data: DuplicateProject) => {
         return newProject
     }
 
-    const copyResult = await copyProjectVersionsAndMessages(
-        sourceProject.id,
-        newProject.id,
-        userId,
-        sourceProject.currentVersionId
-    )
+    const copyResult = await copyProjectVersionsAndMessages({
+        sourceProjectId: sourceProject.id,
+        newProjectId: newProject.id,
+        newUserId: userId,
+        sourceCurrentVersionId: sourceProject.currentVersionId,
+    })
 
     newProject.currentVersionId = copyResult.newCurrentVersionId
     newProject.versionCount = copyResult.versionCount
@@ -543,7 +493,6 @@ const duplicateProject = async (data: DuplicateProject) => {
 const shareProjectAsTemplate = async (data: ShareProject) => {
     const { userId, projectId, isSharedAsTemplate, projectCategory } = data
 
-    // updateMany w/ single query >> atomic | check user and then project and then update project >> not atomic
     const project = await prisma.project.updateMany({
         where: {
             id: projectId,
@@ -581,7 +530,9 @@ const toggleStarProject = async (data: ToggleStarProject) => {
         throw new AppError('project not found', 404)
     }
 
-    return { message: 'project isStarred state updated' }
+    return {
+        message: 'project isStarred state updated',
+    }
 }
 
 export const projectService = {

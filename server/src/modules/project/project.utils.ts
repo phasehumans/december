@@ -1,4 +1,4 @@
-import type { StoredProjectFile } from './project.service'
+import type { StoredProjectFile } from './project.types'
 
 export const parseStoredProjectFiles = (value: unknown): StoredProjectFile[] => {
     if (!Array.isArray(value)) {
