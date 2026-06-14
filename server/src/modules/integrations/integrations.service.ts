@@ -3,7 +3,7 @@ import axios from 'axios'
 import { prisma } from '../../config/db'
 import { AppError } from '../../shared/appError'
 import { sendNotificationToUser } from '../notification/notification.service'
-import { getBinaryFile, getTextFile } from '../project/project-storage'
+import { getBinaryFile, getTextFile } from '../../shared/project-storage'
 import { parseStoredProjectFiles } from '../project/project.utils'
 
 type GithubRepo = {

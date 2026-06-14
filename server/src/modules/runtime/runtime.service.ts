@@ -3,8 +3,8 @@ import {
     getLatestPreviewManifestRef,
     publishStoredPreviewManifest,
     type PreviewManifestRef,
-} from '../project/preview-manifest'
-import { getBinaryFile, putBinaryFile } from '../project/project-storage'
+} from '../../shared/preview-manifest'
+import { getBinaryFile, putBinaryFile } from '../../shared/project-storage'
 import { chromium } from 'playwright'
 
 import type {
