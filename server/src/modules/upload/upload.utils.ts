@@ -1,17 +1,8 @@
-import type { ParsedGitHubRepo, VerifiedGitHubRepoAccess } from './upload.types'
-
-type GitHubRepoApiResponse = {
-    name?: string
-    html_url?: string
-    clone_url?: string
-    default_branch?: string
-    private?: boolean
-    archived?: boolean
-    disabled?: boolean
-    owner?: {
-        login?: string
-    }
-}
+import type {
+    GitHubRepoApiResponse,
+    ParsedGitHubRepo,
+    VerifiedGitHubRepoAccess,
+} from './upload.types'
 
 export function parseGitHubRepoUrl(repoUrl: string): ParsedGitHubRepo {
     const raw = repoUrl.trim()
