@@ -1,4 +1,4 @@
-import '../../../tests/env'
+import '../../env'
 
 import path from 'path'
 

@@ -31,7 +31,7 @@ import type {
     ConnectGithub,
     CreateRepo,
     UpdateRepo,
-} from './integrations.types'
+} from './integration.types'
 
 const listGithubRepos = async (data: ListGithubRepos): Promise<GithubRepo[]> => {
     const { userId } = data

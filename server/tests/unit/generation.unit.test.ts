@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 
-import { parseModelJson } from '../../src/modules/agents/agents.utils'
+import { parseModelJson } from '../../src/modules/agent/agents.utils'
 import {
     applyProjectEditSchema,
     applyProjectFixSchema,
