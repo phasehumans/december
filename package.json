@@ -6,7 +6,6 @@
         "apps/*",
         "packages/*"
     ],
-    "version": "0.1.1",
     "scripts": {
         "build": "turbo build",
         "dev": "turbo dev",
