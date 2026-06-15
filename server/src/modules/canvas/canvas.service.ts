@@ -6,25 +6,17 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 
 import { prisma } from '../../config/db'
+import { AppError } from '../../shared/appError'
 import { assetKey, putBinaryFile, temporaryCanvasAssetKey } from '../../shared/project-storage'
 
 import { persistCanvasDocument } from './canvas.persistence'
 
-import type { CreateWebClips, SaveCanvas } from './canvas.types'
-
-type ClipperWorkerSection = {
-    path: string
-    width: number
-    height: number
-}
-
-type ClipperWorkerResult = {
-    directory: string
-    full: string
-    width: number
-    height: number
-    sections: ClipperWorkerSection[]
-}
+import type {
+    ClipperWorkerResult,
+    ClipperWorkerSection,
+    CreateWebClips,
+    SaveCanvas,
+} from './canvas.types'
 
 const IMAGE_CONTENT_TYPE = 'image/png'
 const CLIPPER_WORKER_TIMEOUT_MS = 120000
@@ -68,7 +60,7 @@ const parseClipperWorkerOutput = (stdout: string): ClipperWorkerResult => {
     const jsonLine = lines.at(-1)
 
     if (!jsonLine) {
-        throw new Error('clipper worker returned no output')
+        throw new AppError('clipper worker returned no output')
     }
 
     let parsed: unknown
@@ -76,17 +68,17 @@ const parseClipperWorkerOutput = (stdout: string): ClipperWorkerResult => {
     try {
         parsed = JSON.parse(jsonLine)
     } catch {
-        throw new Error('clipper worker returned invalid JSON output')
+        throw new AppError('clipper worker returned invalid JSON output')
     }
 
     if (!parsed || typeof parsed !== 'object') {
-        throw new Error('clipper worker returned an invalid payload')
+        throw new AppError('clipper worker returned an invalid payload')
     }
 
     const result = parsed as Partial<ClipperWorkerResult>
 
     if (typeof result.directory !== 'string' || !Array.isArray(result.sections)) {
-        throw new Error('clipper worker response is missing required fields')
+        throw new AppError('clipper worker response is missing required fields')
     }
 
     const sections = result.sections.filter(
@@ -98,7 +90,7 @@ const parseClipperWorkerOutput = (stdout: string): ClipperWorkerResult => {
     )
 
     if (sections.length === 0) {
-        throw new Error('clipper worker did not produce any image sections')
+        throw new AppError('clipper worker did not produce any image sections')
     }
 
     return {
@@ -136,7 +128,7 @@ const runClipperWorker = async (url: string) => {
 
         const timeout = setTimeout(() => {
             child.kill()
-            settle(() => reject(new Error('clipper worker timed out')))
+            settle(() => reject(new AppError('clipper worker timed out')))
         }, CLIPPER_WORKER_TIMEOUT_MS)
 
         child.stdout.setEncoding('utf8')
@@ -158,14 +150,16 @@ const runClipperWorker = async (url: string) => {
             settle(() => {
                 if (code !== 0) {
                     const message = stderr.trim() || `clipper worker exited with code ${code}`
-                    reject(new Error(message))
+                    reject(new AppError(message))
                     return
                 }
 
                 try {
                     resolve(parseClipperWorkerOutput(stdout))
                 } catch (error) {
-                    reject(error instanceof Error ? error : new Error('clipper worker failed'))
+                    reject(
+                        error instanceof AppError ? error : new AppError('clipper worker failed')
+                    )
                 }
             })
         })
@@ -184,7 +178,7 @@ const assertProjectAccess = async (projectId: string, userId: string) => {
     })
 
     if (!project) {
-        throw new Error('project not found')
+        throw new AppError('project not found')
     }
 }
 
@@ -248,12 +242,12 @@ const saveCanvas = async (data: SaveCanvas) => {
     })
 
     if (!project) {
-        throw new Error('project not found')
+        throw new AppError('project not found')
     }
 
     const targetVersionId = versionId || project.currentVersionId
     if (!targetVersionId) {
-        throw new Error('no project version found to save canvas state')
+        throw new AppError('no project version found to save canvas state')
     }
 
     const persistedCanvas = await persistCanvasDocument({

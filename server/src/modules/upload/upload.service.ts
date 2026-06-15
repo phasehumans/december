@@ -22,8 +22,9 @@ import {
     cleanupImportDir,
     persistImportSourceLocally,
     validateImportProject,
-} from './import-project.utils'
-import { parseGitHubRepoUrl, verifyGitHubRepoAccess } from './upload.utils'
+    parseGitHubRepoUrl,
+    verifyGitHubRepoAccess,
+} from './upload.utils'
 
 import type {
     ImportFromGithub,

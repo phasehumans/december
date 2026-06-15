@@ -2,7 +2,6 @@ import { z } from 'zod'
 
 import { openai } from '../../config/oai'
 import {
-    extractProjectPlanSchema,
     projectChangePlanResponseSchema,
     planAgentResponseSchema,
 } from '../generation/generation.schema'

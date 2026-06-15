@@ -235,3 +235,16 @@ export type PersistImportSourceLocally = {
     importId: string
     sourceDir: string
 }
+
+export type GitHubRepoApiResponse = {
+    name?: string
+    html_url?: string
+    clone_url?: string
+    default_branch?: string
+    private?: boolean
+    archived?: boolean
+    disabled?: boolean
+    owner?: {
+        login?: string
+    }
+}
