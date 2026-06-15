@@ -1,23 +1,47 @@
 import { $ } from 'bun'
 
-const version = process.argv[2]
+const releaseType = process.argv[2]
 
-if (!version) {
-    console.error('Usage: bun run release <version>')
+const validReleaseTypes = ['patch', 'minor', 'major']
+
+if (!validReleaseTypes.includes(releaseType!)) {
+    console.error('Usage: bun run release <patch|minor|major>')
     process.exit(1)
 }
 
-console.log(`Releasing v${version}...`)
+console.log(`Creating ${releaseType} release...`)
 
+// Ensure working tree is clean
+const gitStatus = await $`git status --porcelain`.text()
+
+if (gitStatus.trim()) {
+    console.error('Working tree is not clean. Commit or stash your changes first.')
+    process.exit(1)
+}
+
+// Bump version
+await $`bun version ${releaseType}`
+
+// Read updated version
+const packageJson = await Bun.file('package.json').json()
+
+const version = packageJson.version
+const tag = `v${version}`
+
+console.log(`Version bumped to ${version}`)
+
+// Generate changelog
 await $`git-cliff -o CHANGELOG.md`
 
-// await $`git add CHANGELOG.md`
-await $`git add .`
-await $`git commit -m ${`chore(release): v${version}`}`
+// Commit release
+await $`git add package.json bun.lock CHANGELOG.md`
+await $`git commit -m ${`chore(release): ${tag}`}`
 
-await $`git tag -a ${`v${version}`} -m ${`December v${version}`}`
+// Create tag
+await $`git tag -a ${tag} -m ${`December ${tag}`}`
 
+// Push
 await $`git push origin main`
-await $`git push origin ${`v${version}`}`
+await $`git push origin ${tag}`
 
-console.log(`Released v${version}`)
+console.log(`Released ${tag}`)
