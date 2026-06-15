@@ -3,28 +3,7 @@ import { cp, mkdir, readdir, readFile, rm, stat, writeFile } from 'node:fs/promi
 import { basename, dirname, join, relative, resolve, sep } from 'node:path'
 
 import AdmZip from 'adm-zip'
-
-export type ImportValidationFile = {
-    absolutePath: string
-    path: string
-    size: number
-    contentType: string
-    sha256: string
-}
-
-export type ProjectDetection = {
-    framework: string
-    packageJson: Record<string, any>
-}
-
-export type ValidatedImportProject = {
-    rootDir: string
-    files: ImportValidationFile[]
-    totalBytes: number
-    detection: ProjectDetection
-    isValid: boolean
-    validationError?: string | null
-}
+import type { ImportValidationFile, ProjectDetection, ValidatedImportProject } from './upload.types'
 
 const MAX_ZIP_BYTES = 50 * 1024 * 1024
 const MAX_UNCOMPRESSED_BYTES = 150 * 1024 * 1024

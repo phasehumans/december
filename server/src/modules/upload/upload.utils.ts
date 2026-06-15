@@ -1,34 +1,4 @@
-type ParsedGitHubRepo =
-    | {
-          ok: true
-          owner: string
-          repo: string
-          normalizedUrl: string
-      }
-    | {
-          ok: false
-          error: string
-          code: 'EMPTY_INPUT' | 'INVALID_URL' | 'NOT_GITHUB' | 'NOT_REPO_URL'
-      }
-
-export type VerifiedGitHubRepoAccess =
-    | {
-          ok: true
-          owner: string
-          repo: string
-          normalizedUrl: string
-          cloneUrl: string
-          defaultBranch: string | null
-          archived: boolean
-          disabled: boolean
-          visibility: 'public' | 'private'
-          canAccess: true
-      }
-    | {
-          ok: false
-          error: string
-          code: 'NOT_FOUND_OR_NO_ACCESS' | 'RATE_LIMITED' | 'GITHUB_API_ERROR' | 'NETWORK_ERROR'
-      }
+import type { ParsedGitHubRepo, VerifiedGitHubRepoAccess } from './upload.types'
 
 type GitHubRepoApiResponse = {
     name?: string

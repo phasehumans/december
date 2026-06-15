@@ -426,8 +426,8 @@ describe('project.service.integration', () => {
 
             const newManifest = parseStoredProjectFiles(newVersion!.manifestJson)
             expect(newManifest.length).toBe(2)
-            expect(newManifest[0].path).toBe('src/index.ts')
-            expect(newManifest[0].key).not.toBe('file-1')
+            expect(newManifest[0]!.path).toBe('src/index.ts')
+            expect(newManifest[0]!.key).not.toBe('file-1')
         })
     })
 
