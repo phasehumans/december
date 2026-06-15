@@ -7,7 +7,7 @@ export PATH="$PATH:/home/chaitanya/.bun/bin"
 
 cd server
 
-# write updated tests for module; integration, canvas, 
+# write updated tests for module; integration, canvas, upload
 
 bun test tests/unit/auth.unit.test.ts
 bun test tests/integration/auth/auth.routes.test.ts
@@ -49,9 +49,9 @@ bun test tests/unit/template.unit.test.ts
 bun test tests/integration/template/template.routes.test.ts
 bun test tests/integration/template/template.service.test.ts
 
-# bun test tests/unit/upload.unit.test.ts
-# bun test tests/integration/upload/upload.routes.test.ts
-# bun test tests/integration/upload/upload.service.test.ts
+bun test tests/unit/upload.unit.test.ts
+bun test tests/integration/upload/upload.routes.test.ts
+bun test tests/integration/upload/upload.service.test.ts
 
 # bun test tests/unit/usage.unit.test.ts
 # bun test tests/integration/usage/usage.routes.test.ts
