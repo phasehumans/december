@@ -1,6 +1,10 @@
 import { z } from 'zod'
 
 import { prisma } from '../../config/db'
+import {
+    publishGeneratedPreviewManifest,
+    publishStoredPreviewManifest,
+} from '../../shared/preview-manifest'
 
 import {
     plannedProjectFileSchema,
@@ -199,4 +203,108 @@ export type ApplyProjectFix = {
     model?: string
     onEvent?: GenerateWebsiteInput['onEvent']
     isSelfHealing?: boolean
+}
+
+export type MergeProjectFiles = {
+    currentFiles: Record<string, string>
+    updatedFiles: Array<{ path: string; content: string }>
+    deletedFiles: string[]
+}
+
+export type MapVersionSummary = {
+    id: string
+    versionNumber: number
+    label: string | null
+    sourcePrompt: string
+    summary: string | null
+    status: 'GENERATING' | 'READY' | 'FAILED'
+    objectStoragePrefix: string
+    manifestJson: unknown
+    createdAt: Date
+    updatedAt: Date
+}
+
+export type NormalizeGenerationError = {
+    error: unknown
+    path?: string
+}
+
+export type EmitAssistantMessage = {
+    onEvent: GenerateWebsiteInput['onEvent']
+    messageId: string
+    status: 'thinking'
+    content: string
+}
+
+export type EmitFileStream = {
+    onEvent: GenerateWebsiteInput['onEvent']
+    file: PlannedProjectFile
+    content: string
+    index: number
+    total: number
+}
+
+export type EmitPatchFileStream = {
+    onEvent: GenerateWebsiteInput['onEvent']
+    file: ProjectPatchOperation
+    content: string
+    index: number
+    total: number
+}
+
+export type GetProjectRevisionBase = {
+    userId: string
+    projectId: string
+    versionId?: string
+}
+
+export type PersistProjectRevision = {
+    project: RevisionBase['project']
+    userId: string
+    baseVersion: RevisionBase['baseVersion']
+    nextVersionNumber: number
+    mergedFiles: Record<string, string>
+    removedFiles: string[]
+    sourcePrompt: string
+    assistantMessage: string
+    summary: string
+    nextProjectPrompt?: string
+    canvasState?: unknown
+}
+
+export type MarkGenerationFailed = {
+    project: ProjectRecord
+    versionId: string
+    prompt: string
+    assistantMessageContent: string
+    hadCurrentVersion: boolean
+    messagesPersisted: boolean
+    error: unknown
+}
+
+export type NotifyRuntimeOfManifest = {
+    projectId: string
+    manifest:
+        | Awaited<ReturnType<typeof publishGeneratedPreviewManifest>>
+        | Awaited<ReturnType<typeof publishStoredPreviewManifest>>
+}
+
+export type PublishIncrementalPreviewSnapshot = {
+    projectId: string
+    versionId: string
+    path: string
+    content: string
+    generatedFiles: Record<string, string>
+    sequence: number
+}
+
+export type PublishFinalPreviewSnapshot = {
+    projectId: string
+    versionId: string
+    files: Array<{
+        path: string
+        key: string
+        contentType?: string
+        size: number
+    }>
 }

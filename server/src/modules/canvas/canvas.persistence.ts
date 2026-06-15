@@ -10,6 +10,12 @@ import {
     putBinaryFile,
 } from '../../shared/project-storage'
 
+import type {
+    PersistImageAsset,
+    PersistCanvasDocument,
+    HydrateCanvasDocument,
+} from './canvas.types'
+
 const canvasItemTypeSchema = z.enum([
     'note',
     'image',
@@ -127,17 +133,8 @@ const normalizeCanvasDocument = (canvasState?: CanvasDocument | null): CanvasDoc
     return parsed.success ? parsed.data : EMPTY_CANVAS_DOCUMENT
 }
 
-const persistImageAsset = async ({
-    projectId,
-    userId,
-    versionId,
-    item,
-}: {
-    projectId: string
-    userId: string
-    versionId: string
-    item: CanvasDocument['items'][number]
-}) => {
+const persistImageAsset = async (data: PersistImageAsset) => {
+    const { projectId, userId, versionId, item } = data
     const projectAssetPrefix = assetPrefix(projectId)
     const preferredKind = item.assetKind ?? 'upload'
 
@@ -212,17 +209,8 @@ const persistImageAsset = async ({
     return null
 }
 
-export const persistCanvasDocument = async ({
-    projectId,
-    userId,
-    versionId,
-    canvasState,
-}: {
-    projectId: string
-    userId: string
-    versionId: string
-    canvasState?: CanvasDocument | null
-}) => {
+export const persistCanvasDocument = async (data: PersistCanvasDocument) => {
+    const { projectId, userId, versionId, canvasState } = data
     const normalizedCanvas = normalizeCanvasDocument(canvasState)
     const assetManifest: CanvasAssetManifestEntry[] = []
 
@@ -278,13 +266,8 @@ export const persistCanvasDocument = async ({
     }
 }
 
-export const hydrateCanvasDocument = async ({
-    canvasState,
-    canvasAssetManifest,
-}: {
-    canvasState?: unknown
-    canvasAssetManifest?: unknown
-}) => {
+export const hydrateCanvasDocument = async (data: HydrateCanvasDocument) => {
+    const { canvasState, canvasAssetManifest } = data
     const normalizedCanvas = normalizeCanvasDocument(
         canvasState as CanvasDocument | null | undefined
     )

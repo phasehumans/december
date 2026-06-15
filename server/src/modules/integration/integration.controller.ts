@@ -3,7 +3,6 @@ import { AppError } from '../../shared/appError'
 
 import { createGithubRepoSchema, syncGithubRepoSchema } from './integration.schema'
 import { integrationsService } from './integration.service'
-import { vercelService } from './vercel.service'
 
 import type { Request, Response } from 'express'
 
@@ -340,164 +339,6 @@ const updateRepo = async (req: Request, res: Response) => {
         })
     }
 }
-const deployVercelProject = async (req: Request, res: Response) => {
-    const userId = req.user?.userId as string | undefined
-    const projectId = req.params.projectId as string | undefined
-
-    if (!userId || !projectId) {
-        return res.status(400).json({
-            success: false,
-            message: 'User ID and Project ID are required',
-        })
-    }
-
-    try {
-        const project = await prisma.project.findUnique({
-            where: { id: projectId },
-        })
-
-        if (!project || project.userId !== userId) {
-            throw new AppError('Project not found', 404)
-        }
-
-        if (!project.githubRepoOwner || !project.githubRepoName) {
-            throw new AppError('Project is not linked to any GitHub repository', 400)
-        }
-
-        let vercelProjectId = project.vercelProjectId
-        let vercelProjectName = project.vercelProjectName
-
-        if (!vercelProjectId) {
-            const sanitizedName = project.name
-                .toLowerCase()
-                .replace(/[^a-z0-9-]/g, '-')
-                .replace(/-+/g, '-')
-                .replace(/^-|-$/g, '')
-
-            const vercelProject = await vercelService.createProject({
-                userId,
-                name: sanitizedName,
-                repoOwner: project.githubRepoOwner,
-                repoName: project.githubRepoName,
-            })
-            vercelProjectId = vercelProject.id
-            vercelProjectName = vercelProject.name
-
-            await prisma.project.update({
-                where: { id: projectId },
-                data: {
-                    vercelProjectId,
-                    vercelProjectName,
-                },
-            })
-        }
-
-        const { commitSha } = await integrationsService.updateRepo({
-            userId,
-            projectId,
-            commitMessage: 'Auto-deploy triggered from December settings',
-        })
-
-        const deployment = await vercelService.getDeploymentByCommit({
-            userId,
-            vercelProjectId: vercelProjectId!,
-            commitSha,
-        })
-
-        await prisma.project.update({
-            where: { id: projectId },
-            data: {
-                vercelDeploymentUrl: deployment.url,
-                vercelLastDeployedAt: new Date(),
-            },
-        })
-
-        return res.status(200).json({
-            success: true,
-            message: 'Auto-deployment triggered on Vercel successfully',
-            data: {
-                deploymentId: deployment.id,
-                url: deployment.url,
-                readyState: deployment.readyState,
-            },
-        })
-    } catch (error) {
-        if (error instanceof AppError) {
-            return res.status(error.statusCode).json({
-                success: false,
-                message: 'failed to deploy to vercel',
-                errors: error.message,
-            })
-        }
-
-        return res.status(500).json({
-            success: false,
-            message: 'failed to deploy to vercel',
-            errors: error instanceof Error ? error.message : 'unknown error',
-        })
-    }
-}
-
-const getVercelDeploymentStatus = async (req: Request, res: Response) => {
-    const userId = req.user?.userId as string | undefined
-    const deploymentId = req.params.deploymentId as string | undefined
-
-    if (!userId || !deploymentId) {
-        return res.status(400).json({
-            success: false,
-            message: 'User ID and Deployment ID are required',
-        })
-    }
-
-    try {
-        const result = await vercelService.getDeploymentStatus({ userId, deploymentId })
-        return res.status(200).json({
-            success: true,
-            message: 'Deployment status fetched successfully',
-            data: result,
-        })
-    } catch (error) {
-        if (error instanceof AppError) {
-            return res.status(error.statusCode).json({
-                success: false,
-                message: 'failed to fetch deployment status',
-                errors: error.message,
-            })
-        }
-
-        return res.status(500).json({
-            success: false,
-            message: 'failed to fetch deployment status',
-            errors: error instanceof Error ? error.message : 'unknown error',
-        })
-    }
-}
-
-const streamVercelBuildLogs = async (req: Request, res: Response) => {
-    const userId = req.user?.userId as string | undefined
-    const deploymentId = req.params.deploymentId as string | undefined
-
-    if (!userId || !deploymentId) {
-        return res.status(400).json({
-            success: false,
-            message: 'User ID and Deployment ID are required',
-        })
-    }
-
-    try {
-        await vercelService.streamBuildLogs({ userId, deploymentId, res })
-    } catch (error) {
-        console.error('Failed to stream build logs:', error)
-        if (!res.headersSent) {
-            return res.status(500).json({
-                success: false,
-                message: 'failed to stream build logs',
-                errors: error instanceof Error ? error.message : 'unknown error',
-            })
-        }
-    }
-}
-
 export const integrationsController = {
     getUserGithubRepos,
     connectVercel,
@@ -506,7 +347,4 @@ export const integrationsController = {
     connectGithub,
     createRepo,
     updateRepo,
-    deployVercelProject,
-    getVercelDeploymentStatus,
-    streamVercelBuildLogs,
 }

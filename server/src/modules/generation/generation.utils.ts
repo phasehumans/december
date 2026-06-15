@@ -97,6 +97,8 @@ import type {
     RevisionBase,
     StoredProjectFile,
     VersionSummary,
+    MergeProjectFiles,
+    MapVersionSummary,
 } from './generation.types'
 
 export const createProjectName = (prompt: string) => {
@@ -201,15 +203,8 @@ export const parseStoredProjectFiles = (value: unknown): StoredProjectFile[] => 
     }, [])
 }
 
-export const mergeProjectFiles = ({
-    currentFiles,
-    updatedFiles,
-    deletedFiles,
-}: {
-    currentFiles: Record<string, string>
-    updatedFiles: Array<{ path: string; content: string }>
-    deletedFiles: string[]
-}) => {
+export const mergeProjectFiles = (data: MergeProjectFiles) => {
+    const { currentFiles, updatedFiles, deletedFiles } = data
     const mergedFiles = { ...currentFiles }
 
     for (const file of updatedFiles) {
@@ -232,29 +227,32 @@ export const mergeProjectFiles = ({
     }
 }
 
-export const mapVersionSummary = (version: {
-    id: string
-    versionNumber: number
-    label: string | null
-    sourcePrompt: string
-    summary: string | null
-    status: 'GENERATING' | 'READY' | 'FAILED'
-    objectStoragePrefix: string
-    manifestJson: unknown
-    createdAt: Date
-    updatedAt: Date
-}): VersionSummary => ({
-    id: version.id,
-    versionNumber: version.versionNumber,
-    label: version.label ?? `v${version.versionNumber}`,
-    sourcePrompt: version.sourcePrompt,
-    summary: version.summary,
-    status: version.status,
-    objectStoragePrefix: version.objectStoragePrefix,
-    fileCount: parseStoredProjectFiles(version.manifestJson).length,
-    createdAt: version.createdAt,
-    updatedAt: version.updatedAt,
-})
+export const mapVersionSummary = (data: MapVersionSummary): VersionSummary => {
+    const {
+        id,
+        versionNumber,
+        label,
+        sourcePrompt,
+        summary,
+        status,
+        objectStoragePrefix,
+        manifestJson,
+        createdAt,
+        updatedAt,
+    } = data
+    return {
+        id,
+        versionNumber,
+        label: label ?? `v${versionNumber}`,
+        sourcePrompt,
+        summary,
+        status,
+        objectStoragePrefix,
+        fileCount: parseStoredProjectFiles(manifestJson).length,
+        createdAt,
+        updatedAt,
+    }
+}
 
 export const toRecentMessages = (base: RevisionBase['baseVersion']) =>
     base.messages.slice(-8).map((message: any) => ({

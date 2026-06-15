@@ -5,15 +5,14 @@ import {
 } from '../../shared/preview-manifest'
 import { runtimeService } from '../runtime/runtime.service'
 
-export const notifyRuntimeOfManifest = async ({
-    projectId,
-    manifest,
-}: {
-    projectId: string
-    manifest:
-        | Awaited<ReturnType<typeof publishGeneratedPreviewManifest>>
-        | Awaited<ReturnType<typeof publishStoredPreviewManifest>>
-}) => {
+import type {
+    NotifyRuntimeOfManifest,
+    PublishIncrementalPreviewSnapshot,
+    PublishFinalPreviewSnapshot,
+} from './generation.types'
+
+export const notifyRuntimeOfManifest = async (data: NotifyRuntimeOfManifest) => {
+    const { projectId, manifest } = data
     if (!manifest) {
         return
     }
@@ -28,21 +27,10 @@ export const notifyRuntimeOfManifest = async ({
     }
 }
 
-export const publishIncrementalPreviewSnapshot = async ({
-    projectId,
-    versionId,
-    path,
-    content,
-    generatedFiles,
-    sequence,
-}: {
-    projectId: string
-    versionId: string
-    path: string
-    content: string
-    generatedFiles: Record<string, string>
-    sequence: number
-}) => {
+export const publishIncrementalPreviewSnapshot = async (
+    data: PublishIncrementalPreviewSnapshot
+) => {
+    const { projectId, versionId, path, content, generatedFiles, sequence } = data
     await putPreviewSourceFile({
         projectId,
         versionId,
@@ -63,20 +51,8 @@ export const publishIncrementalPreviewSnapshot = async ({
     })
 }
 
-export const publishFinalPreviewSnapshot = async ({
-    projectId,
-    versionId,
-    files,
-}: {
-    projectId: string
-    versionId: string
-    files: Array<{
-        path: string
-        key: string
-        contentType?: string
-        size: number
-    }>
-}) => {
+export const publishFinalPreviewSnapshot = async (data: PublishFinalPreviewSnapshot) => {
+    const { projectId, versionId, files } = data
     const manifest = await publishStoredPreviewManifest({
         projectId,
         versionId,

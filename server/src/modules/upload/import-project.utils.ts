@@ -3,7 +3,13 @@ import { cp, mkdir, readdir, readFile, rm, stat, writeFile } from 'node:fs/promi
 import { basename, dirname, join, relative, resolve, sep } from 'node:path'
 
 import AdmZip from 'adm-zip'
-import type { ImportValidationFile, ProjectDetection, ValidatedImportProject } from './upload.types'
+import type {
+    ImportValidationFile,
+    ProjectDetection,
+    ValidatedImportProject,
+    PersistentImportSourceDir,
+    PersistImportSourceLocally,
+} from './upload.types'
 
 const MAX_ZIP_BYTES = 50 * 1024 * 1024
 const MAX_UNCOMPRESSED_BYTES = 150 * 1024 * 1024
@@ -38,23 +44,13 @@ export const cleanupImportDir = async (path?: string | null) => {
     await rm(path, { recursive: true, force: true }).catch(() => undefined)
 }
 
-export const persistentImportSourceDir = ({
-    userId,
-    importId,
-}: {
-    userId: string
-    importId: string
-}) => join(importStagingRootDir(), userId, importId, 'source')
+export const persistentImportSourceDir = (data: PersistentImportSourceDir) => {
+    const { userId, importId } = data
+    return join(importStagingRootDir(), userId, importId, 'source')
+}
 
-export const persistImportSourceLocally = async ({
-    userId,
-    importId,
-    sourceDir,
-}: {
-    userId: string
-    importId: string
-    sourceDir: string
-}) => {
+export const persistImportSourceLocally = async (data: PersistImportSourceLocally) => {
+    const { userId, importId, sourceDir } = data
     const targetDir = persistentImportSourceDir({ userId, importId })
 
     await rm(targetDir, { recursive: true, force: true })

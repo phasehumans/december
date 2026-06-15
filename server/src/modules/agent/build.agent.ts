@@ -15,6 +15,7 @@ import {
 import { loadMemoryPromptInstructions } from '../memory/memory.service'
 
 import { readChatCompletionText, retryAsync } from './agents.utils'
+import type { GenerateProjectFile, GenerateProjectPatchFile } from './agent.types'
 import {
     BUILD_AGENT_PROMPT,
     BUILD_PATCH_AGENT_PROMPT,
@@ -25,35 +26,6 @@ type ProjectIntent = z.infer<typeof projectIntentSchema>
 type ProjectPlan = z.infer<typeof projectPlanSchema>
 type PlannedProjectFile = z.infer<typeof plannedProjectFileSchema>
 type ProjectPatchOperation = z.infer<typeof projectPatchOperationSchema>
-
-type GenerateProjectFileInput = {
-    brief: ProjectIntent
-    plan: ProjectPlan
-    targetFile: PlannedProjectFile
-    generatedFiles: Record<string, string>
-}
-
-type GenerateProjectPatchInput = {
-    operation: ProjectPatchOperation
-    currentFiles: Record<string, string>
-    projectContext: {
-        projectName: string
-        sourcePrompt: string
-        summary?: string | null
-    }
-    request: {
-        mode: 'edit' | 'fix'
-        prompt?: string
-        runtimeError?: {
-            message: string
-            stack?: string
-        }
-        selectedElement?: {
-            tagName: string
-            textContent: string
-        }
-    }
-}
 
 const BUILD_AGENT_MAX_ATTEMPTS = 3
 const BUILD_CONTEXT_LIMIT = 6
@@ -134,31 +106,26 @@ const selectRelatedFiles = (targetPath: string, generatedFiles: Record<string, s
     }))
 }
 
-export const generateProjectFile = async (
-    data: GenerateProjectFileInput & {
-        model?: string
-        projectId?: string
-        userId?: string
-    }
-) => {
-    assertFrontendWorkspacePath(data.targetFile.path, 'target frontend file')
+export const generateProjectFile = async (data: GenerateProjectFile) => {
+    const { brief, plan, targetFile, generatedFiles, model, projectId, userId } = data
+    assertFrontendWorkspacePath(targetFile.path, 'target frontend file')
 
     return retryAsync({
-        label: `build agent (${data.targetFile.path})`,
+        label: `build agent (${targetFile.path})`,
         maxAttempts: BUILD_AGENT_MAX_ATTEMPTS,
         task: async (attempt, lastError) => {
             console.log(
-                `[build agent] starting file generation for ${data.targetFile.path}, attempt: ${attempt}`
+                `[build agent] starting file generation for ${targetFile.path}, attempt: ${attempt}`
             )
-            const memoryInstructions = data.projectId
+            const memoryInstructions = projectId
                 ? await loadMemoryPromptInstructions({
-                      projectId: data.projectId,
-                      userId: data.userId,
+                      projectId,
+                      userId,
                   })
                 : ''
             const systemPrompt = BUILD_AGENT_PROMPT + memoryInstructions
             const completion = await openai.chat.completions.create({
-                model: data.model || process.env.AUTO_MODEL || BUILD_AGENT_MODEL,
+                model: model || process.env.AUTO_MODEL || BUILD_AGENT_MODEL,
                 temperature: 0,
                 messages: [
                     {
@@ -168,24 +135,21 @@ export const generateProjectFile = async (
                     {
                         role: 'user',
                         content: JSON.stringify({
-                            projectBrief: data.brief,
-                            buildPlan: data.plan,
-                            targetFile: data.targetFile,
-                            plannedFiles: data.plan.data?.files ?? [],
-                            buildOrder: data.plan.data?.buildOrder ?? [],
-                            builderNotes: data.plan.data?.builderNotes ?? [],
-                            relatedFiles: selectRelatedFiles(
-                                data.targetFile.path,
-                                data.generatedFiles
-                            ),
-                            workspaceDeclarations: buildDeclarationMap(data.generatedFiles),
+                            projectBrief: brief,
+                            buildPlan: plan,
+                            targetFile: targetFile,
+                            plannedFiles: plan.data?.files ?? [],
+                            buildOrder: plan.data?.buildOrder ?? [],
+                            builderNotes: plan.data?.builderNotes ?? [],
+                            relatedFiles: selectRelatedFiles(targetFile.path, generatedFiles),
+                            workspaceDeclarations: buildDeclarationMap(generatedFiles),
                         }),
                     },
                     ...(attempt > 1
                         ? [
                               {
                                   role: 'system' as const,
-                                  content: `Retry attempt ${attempt}. The previous file response could not be used: ${lastError?.message ?? 'unknown error'}. Regenerate only ${data.targetFile.path} as raw file content with no markdown fences or commentary. Keep the output inside the repo-root frontend workspace, using src/, public/, and allowed root config files only.`,
+                                  content: `Retry attempt ${attempt}. The previous file response could not be used: ${lastError?.message ?? 'unknown error'}. Regenerate only ${targetFile.path} as raw file content with no markdown fences or commentary. Keep the output inside the repo-root frontend workspace, using src/, public/, and allowed root config files only.`,
                               },
                           ]
                         : []),
@@ -196,15 +160,15 @@ export const generateProjectFile = async (
 
             if (!content) {
                 console.log(
-                    `[build agent] file generation failed for ${data.targetFile.path}: no response`
+                    `[build agent] file generation failed for ${targetFile.path}: no response`
                 )
-                throw new Error(`no response from build agent for ${data.targetFile.path}`)
+                throw new Error(`no response from build agent for ${targetFile.path}`)
             }
 
             console.log(
-                `[build agent] file generation completed successfully for ${data.targetFile.path}. Full response:\n${content}`
+                `[build agent] file generation completed successfully for ${targetFile.path}. Full response:\n${content}`
             )
-            const validatedContent = validateGeneratedFileContent(data.targetFile.path, content)
+            const validatedContent = validateGeneratedFileContent(targetFile.path, content)
             return {
                 content: validatedContent,
                 usage: {
@@ -235,16 +199,11 @@ const selectPatchContext = (targetPath: string, currentFiles: Record<string, str
         }))
 }
 
-export const generateProjectPatchFile = async (
-    data: GenerateProjectPatchInput & {
-        model?: string
-        projectId?: string
-        userId?: string
-    }
-) => {
-    assertFrontendWorkspacePath(data.operation.path, 'target frontend patch file')
+export const generateProjectPatchFile = async (data: GenerateProjectPatchFile) => {
+    const { operation, currentFiles, projectContext, request, model, projectId, userId } = data
+    assertFrontendWorkspacePath(operation.path, 'target frontend patch file')
 
-    if (data.operation.action === 'delete') {
+    if (operation.action === 'delete') {
         return {
             content: '',
             usage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 },
@@ -252,21 +211,21 @@ export const generateProjectPatchFile = async (
     }
 
     return retryAsync({
-        label: `build agent patch (${data.operation.path})`,
+        label: `build agent patch (${operation.path})`,
         maxAttempts: BUILD_AGENT_MAX_ATTEMPTS,
         task: async (attempt, lastError) => {
             console.log(
-                `[build agent patch] starting patch generation for ${data.operation.path}, attempt: ${attempt}`
+                `[build agent patch] starting patch generation for ${operation.path}, attempt: ${attempt}`
             )
-            const memoryInstructions = data.projectId
+            const memoryInstructions = projectId
                 ? await loadMemoryPromptInstructions({
-                      projectId: data.projectId,
-                      userId: data.userId,
+                      projectId,
+                      userId,
                   })
                 : ''
             const systemPrompt = BUILD_PATCH_AGENT_PROMPT + memoryInstructions
             const completion = await openai.chat.completions.create({
-                model: data.model || process.env.AUTO_MODEL || BUILD_AGENT_MODEL,
+                model: model || process.env.AUTO_MODEL || BUILD_AGENT_MODEL,
                 temperature: 0,
                 messages: [
                     {
@@ -276,26 +235,23 @@ export const generateProjectPatchFile = async (
                     {
                         role: 'user',
                         content: JSON.stringify({
-                            request: data.request,
-                            projectContext: data.projectContext,
-                            operation: data.operation,
+                            request: request,
+                            projectContext: projectContext,
+                            operation: operation,
                             currentFile: {
-                                path: data.operation.path,
-                                content: data.currentFiles[data.operation.path] ?? '',
+                                path: operation.path,
+                                content: currentFiles[operation.path] ?? '',
                             },
-                            relatedFiles: selectPatchContext(
-                                data.operation.path,
-                                data.currentFiles
-                            ),
-                            fileTree: Object.keys(data.currentFiles).sort(),
-                            workspaceDeclarations: buildDeclarationMap(data.currentFiles),
+                            relatedFiles: selectPatchContext(operation.path, currentFiles),
+                            fileTree: Object.keys(currentFiles).sort(),
+                            workspaceDeclarations: buildDeclarationMap(currentFiles),
                         }),
                     },
                     ...(attempt > 1
                         ? [
                               {
                                   role: 'system' as const,
-                                  content: `Retry attempt ${attempt}. The previous patch file response could not be used: ${lastError?.message ?? 'unknown error'}. Regenerate only ${data.operation.path} as raw complete file content with no markdown fences or commentary.`,
+                                  content: `Retry attempt ${attempt}. The previous patch file response could not be used: ${lastError?.message ?? 'unknown error'}. Regenerate only ${operation.path} as raw complete file content with no markdown fences or commentary.`,
                               },
                           ]
                         : []),
@@ -306,15 +262,15 @@ export const generateProjectPatchFile = async (
 
             if (!content) {
                 console.log(
-                    `[build agent patch] patch generation failed for ${data.operation.path}: no response`
+                    `[build agent patch] patch generation failed for ${operation.path}: no response`
                 )
-                throw new Error(`no response from build agent for ${data.operation.path}`)
+                throw new Error(`no response from build agent for ${operation.path}`)
             }
 
             console.log(
-                `[build agent patch] patch generation completed successfully for ${data.operation.path}. Full response:\n${content}`
+                `[build agent patch] patch generation completed successfully for ${operation.path}. Full response:\n${content}`
             )
-            const validatedContent = validateGeneratedFileContent(data.operation.path, content)
+            const validatedContent = validateGeneratedFileContent(operation.path, content)
             return {
                 content: validatedContent,
                 usage: {
