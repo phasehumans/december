@@ -168,7 +168,7 @@ export const SettingsBigModal: React.FC<SettingsModalProps> = ({
             ])
 
             // Establish Server-Sent Events connection for logs
-            const logsUrl = `${API_BASE_URL}/integrations/deployments/${deploymentId}/logs`
+            const logsUrl = `${API_BASE_URL}/platform/deployments/${deploymentId}/logs`
             const eventSource = new EventSource(logsUrl, { withCredentials: true })
 
             eventSource.onmessage = (event) => {

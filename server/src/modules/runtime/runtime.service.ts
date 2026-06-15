@@ -15,6 +15,8 @@ import type {
     NotifyManifestPublished,
     RecordRuntimeStatus,
     CheckSandboxCompilation,
+    EnsureManifestRef,
+    ProjectVersionRecord,
 } from './runtime.types'
 
 type StoredProjectFile = {
@@ -23,8 +25,6 @@ type StoredProjectFile = {
     contentType?: string
     size: number
 }
-
-type ProjectVersionRecord = NonNullable<Awaited<ReturnType<typeof prisma.projectVersion.findFirst>>>
 
 const previewStatusStore = new Map<string, RuntimePreviewStatus>()
 const runtimeBaseUrl = (process.env.RUNTIME_BASE_URL ?? 'http://127.0.0.1:5050').replace(/\/+$/, '')
@@ -186,7 +186,8 @@ const runtimeRequest = async <T>(path: string, init?: RequestInit) => {
     return payload.data
 }
 
-const loadProjectVersion = async ({ userId, projectId, versionId }: StartPreview) => {
+const loadProjectVersion = async (data: StartPreview) => {
+    const { userId, projectId, versionId } = data
     const project = await prisma.project.findFirst({
         where: {
             id: projectId,
@@ -224,13 +225,8 @@ const loadProjectVersion = async ({ userId, projectId, versionId }: StartPreview
     }
 }
 
-const ensureManifestRef = async ({
-    projectId,
-    version,
-}: {
-    projectId: string
-    version: ProjectVersionRecord
-}) => {
+const ensureManifestRef = async (data: EnsureManifestRef) => {
+    const { projectId, version } = data
     const latestRef = await getLatestPreviewManifestRef(projectId, version.id)
 
     if (latestRef) {
@@ -278,9 +274,10 @@ const recordRuntimeStatus = (data: RecordRuntimeStatus) => {
     return status
 }
 
-const startPreview = async ({ userId, projectId, versionId }: StartPreview) => {
+const startPreview = async (data: StartPreview) => {
+    const { userId, projectId, versionId } = data
     cancelPendingDeletion(projectId)
-    const { project, version } = await loadProjectVersion({ userId, projectId, versionId })
+    const { project, version } = await loadProjectVersion(data)
 
     if (version.status !== 'READY') {
         return {
@@ -327,7 +324,8 @@ const notifyManifestPublished = async (data: NotifyManifestPublished) => {
     )
 }
 
-const getPreviewStatus = async ({ userId, previewId }: PreviewIdentifier) => {
+const getPreviewStatus = async (data: PreviewIdentifier) => {
+    const { userId, previewId } = data
     const project = await prisma.project.findFirst({
         where: {
             id: previewId,
@@ -386,7 +384,8 @@ const getPreviewStatus = async ({ userId, previewId }: PreviewIdentifier) => {
     }
 }
 
-const deletePreview = async ({ userId, previewId }: PreviewIdentifier) => {
+const deletePreview = async (data: PreviewIdentifier) => {
+    const { userId, previewId } = data
     const project = await prisma.project.findFirst({
         where: {
             id: previewId,
@@ -403,7 +402,7 @@ const deletePreview = async ({ userId, previewId }: PreviewIdentifier) => {
 
     let status: RuntimePreviewStatus | undefined
     try {
-        status = await getPreviewStatus({ userId, previewId })
+        status = await getPreviewStatus(data)
     } catch (err) {
         console.error('Failed to get preview status before delete:', err)
     }

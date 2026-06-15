@@ -289,7 +289,8 @@ export const generateWebsite = async (data: GenerateWebsiteInput) => {
                 if (thoughts.length > lastThoughtsLength) {
                     const chunk = thoughts.slice(lastThoughtsLength)
                     lastThoughtsLength = thoughts.length
-                    await emitAssistantMessage(onEvent, {
+                    await emitAssistantMessage({
+                        onEvent,
                         messageId: `${project!.id}:plan-agent:thoughts`,
                         status: 'thinking',
                         content: chunk,
@@ -306,7 +307,8 @@ export const generateWebsite = async (data: GenerateWebsiteInput) => {
                     if (planOfAction.length > lastPlanLength) {
                         const chunk = planOfAction.slice(lastPlanLength)
                         lastPlanLength = planOfAction.length
-                        await emitAssistantMessage(onEvent, {
+                        await emitAssistantMessage({
+                            onEvent,
                             messageId: `${project!.id}:plan-agent:plan_of_action`,
                             status: 'thinking',
                             content: chunk,
@@ -397,7 +399,8 @@ export const generateWebsite = async (data: GenerateWebsiteInput) => {
 
                 generatedFiles[file.path] = content
 
-                await emitFileStream(onEvent, {
+                await emitFileStream({
+                    onEvent,
                     file,
                     content,
                     index: fileIndex + 1,
@@ -680,7 +683,8 @@ const applyProjectChange = async (
                 if (thoughts.length > lastThoughtsLength) {
                     const chunk = thoughts.slice(lastThoughtsLength)
                     lastThoughtsLength = thoughts.length
-                    await emitAssistantMessage(data.onEvent, {
+                    await emitAssistantMessage({
+                        onEvent: data.onEvent,
                         messageId: `${base.project.id}:plan-agent:${mode}:thoughts`,
                         status: 'thinking',
                         content: chunk,
@@ -697,7 +701,8 @@ const applyProjectChange = async (
                     if (planOfAction.length > lastPlanLength) {
                         const chunk = planOfAction.slice(lastPlanLength)
                         lastPlanLength = planOfAction.length
-                        await emitAssistantMessage(data.onEvent, {
+                        await emitAssistantMessage({
+                            onEvent: data.onEvent,
                             messageId: `${base.project.id}:plan-agent:${mode}:plan_of_action`,
                             status: 'thinking',
                             content: chunk,
@@ -760,7 +765,8 @@ const applyProjectChange = async (
                 if (operation.action === 'delete') {
                     deletedFiles.push(operation.path)
                     delete workingFiles[operation.path]
-                    await emitPatchFileStream(data.onEvent, {
+                    await emitPatchFileStream({
+                        onEvent: data.onEvent,
                         file: operation,
                         content: '',
                         index: operationIndex + 1,
@@ -806,7 +812,8 @@ const applyProjectChange = async (
                     content,
                 })
 
-                await emitPatchFileStream(data.onEvent, {
+                await emitPatchFileStream({
+                    onEvent: data.onEvent,
                     file: operation,
                     content,
                     index: operationIndex + 1,

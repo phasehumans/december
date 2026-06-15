@@ -188,7 +188,8 @@ const assertProjectAccess = async (projectId: string, userId: string) => {
     }
 }
 
-const createWebClips = async ({ url, userId, projectId }: CreateWebClips) => {
+const createWebClips = async (data: CreateWebClips) => {
+    const { url, userId, projectId } = data
     if (projectId) {
         await assertProjectAccess(projectId, userId)
     }
@@ -237,7 +238,8 @@ const createWebClips = async ({ url, userId, projectId }: CreateWebClips) => {
     }
 }
 
-const saveCanvas = async ({ projectId, userId, versionId, canvasState }: SaveCanvas) => {
+const saveCanvas = async (data: SaveCanvas) => {
+    const { projectId, userId, versionId, canvasState } = data
     await assertProjectAccess(projectId, userId)
 
     const project = await prisma.project.findUnique({

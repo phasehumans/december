@@ -9,7 +9,7 @@ import type {
     GetLatestDeployment,
     GetDeploymentStatus,
     StreamBuildLogs,
-} from './integration.types'
+} from './platform.types'
 
 interface VercelCredentials {
     accessToken: string

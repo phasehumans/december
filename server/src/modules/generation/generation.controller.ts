@@ -74,7 +74,7 @@ const generateWebsite = async (req: Request, res: Response) => {
 
         return res.end()
     } catch (error) {
-        const normalizedError = normalizeGenerationError(error)
+        const normalizedError = normalizeGenerationError({ error })
         console.error('[generation]', normalizedError.internalMessage)
 
         if (!res.headersSent) {
@@ -145,7 +145,7 @@ const applyProjectEdit = async (req: Request, res: Response) => {
 
         return res.end()
     } catch (error) {
-        const normalizedError = normalizeGenerationError(error)
+        const normalizedError = normalizeGenerationError({ error })
         console.error('[generation/edit]', normalizedError.internalMessage)
 
         if (!res.headersSent) {
@@ -205,7 +205,7 @@ const applyProjectFix = async (req: Request, res: Response) => {
 
         return res.end()
     } catch (error) {
-        const normalizedError = normalizeGenerationError(error)
+        const normalizedError = normalizeGenerationError({ error })
         console.error('[generation/fix]', normalizedError.internalMessage)
 
         if (!res.headersSent) {
@@ -263,7 +263,7 @@ const validateProject = async (req: Request, res: Response) => {
             })
         }
 
-        const normalizedError = normalizeGenerationError(error)
+        const normalizedError = normalizeGenerationError({ error })
         console.error('[generation/validate]', normalizedError.internalMessage)
         return res.status(500).json({
             success: false,

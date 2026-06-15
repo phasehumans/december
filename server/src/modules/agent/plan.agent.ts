@@ -15,45 +15,10 @@ import { loadMemoryPromptInstructions } from '../memory/memory.service'
 import { parseModelJson, retryAsync } from './agents.utils'
 import { CHANGE_PLAN_AGENT_PROMPT, PLAN_AGENT_PROMPT } from './plan.prompt'
 
-type ExtractProjectPlan = z.infer<typeof extractProjectPlanSchema>
+import type { ExtractProjectPlan, ExtractProjectChangePlan } from './agent.types'
+
 type ExtractProjectPlanResponse = z.infer<typeof planAgentResponseSchema>
 type ExtractProjectChangePlanResponse = z.infer<typeof projectChangePlanResponseSchema>
-
-type ExtractProjectChangePlan = {
-    mode: 'edit' | 'fix'
-    prompt?: string
-    selectedElement?: {
-        tagName: string
-        textContent: string
-    }
-    runtimeError?: {
-        message: string
-        stack?: string
-    }
-    project: {
-        id: string
-        name: string
-        description?: string | null
-        prompt: string
-    }
-    baseVersion: {
-        id: string
-        versionNumber: number
-        summary?: string | null
-        sourcePrompt: string
-        intentJson?: unknown
-        planJson?: unknown
-    }
-    canvasState?: unknown
-    fileTree: Array<{
-        path: string
-        excerpt: string
-    }>
-    recentMessages: Array<{
-        role: string
-        content: string
-    }>
-}
 
 type ChatCompletionWithFinishReason = {
     choices?: Array<{
@@ -130,17 +95,11 @@ const parsePlanAgentPayload = (
     }
 }
 
-export const extractProjectPlan = async (
-    data: ExtractProjectPlan & {
-        model?: string
-        onStream?: (fullContent: string) => Promise<void>
-        projectId?: string
-        userId?: string
-    }
-) => {
+export const extractProjectPlan = async (data: ExtractProjectPlan) => {
+    const { userPrompt, canvasState, model, onStream, projectId, userId } = data
     const compactData = {
-        userPrompt: data.userPrompt,
-        canvasState: cleanCanvasState(data.canvasState),
+        userPrompt,
+        canvasState: cleanCanvasState(canvasState),
     }
 
     return retryAsync({
@@ -148,15 +107,15 @@ export const extractProjectPlan = async (
         maxAttempts: PLAN_AGENT_MAX_ATTEMPTS,
         task: async (attempt, lastError) => {
             console.log(`[generation] plan agent starting, attempt: ${attempt}`)
-            const memoryInstructions = data.projectId
+            const memoryInstructions = projectId
                 ? await loadMemoryPromptInstructions({
-                      projectId: data.projectId,
-                      userId: data.userId,
+                      projectId,
+                      userId,
                   })
                 : ''
             const systemPrompt = PLAN_AGENT_PROMPT + memoryInstructions
             const completion = await openai.chat.completions.create({
-                model: data.model || process.env.AUTO_MODEL || PLAN_AGENT_MODEL,
+                model: model || process.env.AUTO_MODEL || PLAN_AGENT_MODEL,
                 max_tokens: PLAN_AGENT_MAX_TOKENS,
                 temperature: 0,
                 messages: [
@@ -184,8 +143,8 @@ export const extractProjectPlan = async (
             for await (const chunk of completion) {
                 const delta = chunk.choices[0]?.delta?.content || ''
                 content += delta
-                if (data.onStream) {
-                    await data.onStream(content)
+                if (onStream) {
+                    await onStream(content)
                 }
             }
 
@@ -210,39 +169,60 @@ export const extractProjectPlan = async (
     })
 }
 
-const toCompactChangePlanInput = (data: ExtractProjectChangePlan) => ({
-    mode: data.mode,
-    prompt: data.prompt,
-    selectedElement: data.selectedElement,
-    runtimeError: data.runtimeError,
-    project: data.project,
-    baseVersion: data.baseVersion,
-    canvasState: cleanCanvasState(data.canvasState),
-    fileTree: data.fileTree,
-    recentMessages: data.recentMessages,
-})
-
-export const extractProjectChangePlan = async (
-    data: ExtractProjectChangePlan & {
-        model?: string
-        onStream?: (fullContent: string) => Promise<void>
-        userId?: string
+const toCompactChangePlanInput = (data: ExtractProjectChangePlan) => {
+    const {
+        mode,
+        prompt,
+        selectedElement,
+        runtimeError,
+        project,
+        baseVersion,
+        canvasState,
+        fileTree,
+        recentMessages,
+    } = data
+    return {
+        mode,
+        prompt,
+        selectedElement,
+        runtimeError,
+        project,
+        baseVersion,
+        canvasState: cleanCanvasState(canvasState),
+        fileTree,
+        recentMessages,
     }
-) => {
+}
+
+export const extractProjectChangePlan = async (data: ExtractProjectChangePlan) => {
+    const {
+        mode,
+        prompt,
+        selectedElement,
+        runtimeError,
+        project,
+        baseVersion,
+        canvasState,
+        fileTree,
+        recentMessages,
+        model,
+        onStream,
+        userId,
+    } = data
     return retryAsync({
-        label: `plan agent ${data.mode}`,
+        label: `plan agent ${mode}`,
         maxAttempts: PLAN_AGENT_MAX_ATTEMPTS,
         task: async (attempt, lastError) => {
             console.log(
-                `[generation change] plan agent starting, mode: ${data.mode}, attempt: ${attempt}`
+                `[generation change] plan agent starting, mode: ${mode}, attempt: ${attempt}`
             )
             const memoryInstructions = await loadMemoryPromptInstructions({
-                projectId: data.project.id,
-                userId: data.userId,
+                projectId: project.id,
+                userId,
             })
             const systemPrompt = CHANGE_PLAN_AGENT_PROMPT + memoryInstructions
             const completion = await openai.chat.completions.create({
-                model: data.model || process.env.AUTO_MODEL || PLAN_AGENT_MODEL,
+                model: model || process.env.AUTO_MODEL || PLAN_AGENT_MODEL,
                 max_tokens: PLAN_AGENT_CHANGE_MAX_TOKENS,
                 temperature: 0,
                 messages: [
@@ -270,14 +250,14 @@ export const extractProjectChangePlan = async (
             for await (const chunk of completion) {
                 const delta = chunk.choices[0]?.delta?.content || ''
                 content += delta
-                if (data.onStream) {
-                    await data.onStream(content)
+                if (onStream) {
+                    await onStream(content)
                 }
             }
 
             if (!content) {
                 console.log(`[generation change] plan agent failed: no response`)
-                throw new Error(`no response from plan agent ${data.mode}`)
+                throw new Error(`no response from plan agent ${mode}`)
             }
 
             console.log(
