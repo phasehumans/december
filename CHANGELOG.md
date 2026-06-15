@@ -1,5 +1,21 @@
 ## [unreleased]
 
+### Refactor
+
+- _(december)_ Adapt monorepo for december-cli
+- _(december)_ Adapt turbo and monrepo based architecture
+
+### Testing
+
+- _(canvas)_ Fix and tested canvas module
+- _(canvas/integration/upload)_ Fix and tested modules #93
+
+### Miscellaneous Tasks
+
+- Prepare release
+
+## [0.1.1] - 2026-06-15
+
 ### Features
 
 - Init december cli
@@ -7,6 +23,10 @@
 ### Refactor
 
 - _(module)_ Fix types and inline destructure and types files
+
+### Miscellaneous Tasks
+
+- _(release)_ V0.1.1
 
 ## [0.1.0] - 2026-06-14
 
