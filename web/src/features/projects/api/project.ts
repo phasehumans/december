@@ -186,7 +186,7 @@ const deployToVercel = (projectId: string) => {
         deploymentId: string
         url: string
         readyState: string
-    }>(`/integrations/projects/${projectId}/vercel/deploy`, {
+    }>(`/platform/projects/${projectId}/vercel/deploy`, {
         method: 'POST',
     })
 }
@@ -196,7 +196,7 @@ const getVercelDeploymentStatus = (deploymentId: string) => {
         id: string
         url: string
         readyState: string
-    }>(`/integrations/deployments/${deploymentId}/status`)
+    }>(`/platform/deployments/${deploymentId}/status`)
 }
 
 export const projectAPI = {

@@ -1,7 +1,10 @@
-﻿import type {
+import type {
     GenerateWebsiteInput,
     PlannedProjectFile,
     ProjectPatchOperation,
+    EmitAssistantMessage,
+    EmitFileStream,
+    EmitPatchFileStream,
 } from './generation.types'
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
@@ -72,14 +75,8 @@ const splitFileContentIntoChunks = (content: string, targetChunkLength = 72) => 
     return chunks
 }
 
-export const emitAssistantMessage = async (
-    onEvent: GenerateWebsiteInput['onEvent'],
-    data: {
-        messageId: string
-        status: 'thinking'
-        content: string
-    }
-) => {
+export const emitAssistantMessage = async (data: EmitAssistantMessage) => {
+    const { onEvent, messageId, status, content } = data
     if (!onEvent) {
         return
     }
@@ -89,18 +86,18 @@ export const emitAssistantMessage = async (
     await onEvent({
         type: 'message-start',
         data: {
-            messageId: data.messageId,
-            status: data.status,
+            messageId,
+            status,
         },
     })
 
     await sleep(120)
 
-    for (const chunk of splitIntoChunks(data.content, chunkRange.minLength, chunkRange.maxLength)) {
+    for (const chunk of splitIntoChunks(content, chunkRange.minLength, chunkRange.maxLength)) {
         await onEvent({
             type: 'message-chunk',
             data: {
-                messageId: data.messageId,
+                messageId,
                 chunk,
             },
         })
@@ -117,21 +114,14 @@ export const emitAssistantMessage = async (
     await onEvent({
         type: 'message-complete',
         data: {
-            messageId: data.messageId,
+            messageId,
             status: 'done',
         },
     })
 }
 
-export const emitFileStream = async (
-    onEvent: GenerateWebsiteInput['onEvent'],
-    data: {
-        file: PlannedProjectFile
-        content: string
-        index: number
-        total: number
-    }
-) => {
+export const emitFileStream = async (data: EmitFileStream) => {
+    const { onEvent, file, content, index, total } = data
     if (!onEvent) {
         return
     }
@@ -139,21 +129,21 @@ export const emitFileStream = async (
     await onEvent({
         type: 'file-start',
         data: {
-            path: data.file.path,
-            purpose: data.file.purpose,
-            generator: data.file.generator,
-            index: data.index,
-            total: data.total,
+            path: file.path,
+            purpose: file.purpose,
+            generator: file.generator,
+            index,
+            total,
         },
     })
 
     await sleep(32)
 
-    for (const chunk of splitFileContentIntoChunks(data.content)) {
+    for (const chunk of splitFileContentIntoChunks(content)) {
         await onEvent({
             type: 'file-chunk',
             data: {
-                path: data.file.path,
+                path: file.path,
                 chunk,
             },
         })
@@ -166,22 +156,15 @@ export const emitFileStream = async (
     await onEvent({
         type: 'file-complete',
         data: {
-            path: data.file.path,
-            index: data.index,
-            total: data.total,
+            path: file.path,
+            index,
+            total,
         },
     })
 }
 
-export const emitPatchFileStream = async (
-    onEvent: GenerateWebsiteInput['onEvent'],
-    data: {
-        file: ProjectPatchOperation
-        content: string
-        index: number
-        total: number
-    }
-) => {
+export const emitPatchFileStream = async (data: EmitPatchFileStream) => {
+    const { onEvent, file, content, index, total } = data
     if (!onEvent) {
         return
     }
@@ -189,21 +172,21 @@ export const emitPatchFileStream = async (
     await onEvent({
         type: 'file-start',
         data: {
-            path: data.file.path,
-            purpose: data.file.purpose,
+            path: file.path,
+            purpose: file.purpose,
             generator: 'component',
-            index: data.index,
-            total: data.total,
+            index,
+            total,
         },
     })
 
     await sleep(32)
 
-    for (const chunk of splitFileContentIntoChunks(data.content)) {
+    for (const chunk of splitFileContentIntoChunks(content)) {
         await onEvent({
             type: 'file-chunk',
             data: {
-                path: data.file.path,
+                path: file.path,
                 chunk,
             },
         })
@@ -216,9 +199,9 @@ export const emitPatchFileStream = async (
     await onEvent({
         type: 'file-complete',
         data: {
-            path: data.file.path,
-            index: data.index,
-            total: data.total,
+            path: file.path,
+            index,
+            total,
         },
     })
 }

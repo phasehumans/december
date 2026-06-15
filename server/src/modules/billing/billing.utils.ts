@@ -5,31 +5,14 @@ import {
     validateWebhookSignature,
 } from 'razorpay/dist/utils/razorpay-utils'
 
+import type {
+    RazorpaySubscriptionLike,
+    VerifyRazorpaySubscriptionPayment,
+    VerifyRazorpayWebhookSignature,
+} from './billing.types'
+
 const FREE_MONTHLY_CREDIT_CENTS = 100
 const PRO_MONTHLY_CREDIT_CENTS = 500
-
-type RazorpaySubscriptionStatus =
-    | 'created'
-    | 'authenticated'
-    | 'active'
-    | 'pending'
-    | 'halted'
-    | 'cancelled'
-    | 'completed'
-    | 'expired'
-
-type RazorpaySubscriptionLike = {
-    id: string
-    status?: RazorpaySubscriptionStatus | string
-    current_start?: number | null
-    current_end?: number | null
-    start_at?: number | null
-    end_at?: number | null
-    ended_at?: number | null
-    customer_id?: string | null
-    plan_id?: string
-    notes?: Record<string, string | number | undefined>
-}
 
 export const centsToRupees = (cents: number) => cents / 100
 
@@ -149,37 +132,32 @@ export const resolveSubscriptionPeriods = (subscription: RazorpaySubscriptionLik
     }
 }
 
-export const verifyRazorpaySubscriptionPayment = (data: {
-    subscriptionId: string
-    paymentId: string
-    signature: string
-}) => {
+export const verifyRazorpaySubscriptionPayment = (data: VerifyRazorpaySubscriptionPayment) => {
+    const { subscriptionId, paymentId, signature } = data
     return validatePaymentVerification(
         {
-            subscription_id: data.subscriptionId,
-            payment_id: data.paymentId,
+            subscription_id: subscriptionId,
+            payment_id: paymentId,
         },
-        data.signature,
+        signature,
         getRazorpayKeySecret()
     )
 }
 
-export const verifyRazorpayWebhookSignature = (data: {
-    body: Buffer | string
-    signature?: string
-}) => {
+export const verifyRazorpayWebhookSignature = (data: VerifyRazorpayWebhookSignature) => {
+    const { body, signature } = data
     const secret = process.env.RAZORPAY_WEBHOOK_SECRET
 
     if (!secret) {
         throw new Error('RAZORPAY_WEBHOOK_SECRET is not configured')
     }
 
-    if (!data.signature) {
+    if (!signature) {
         return false
     }
 
-    const body = Buffer.isBuffer(data.body) ? data.body.toString('utf8') : data.body
-    return validateWebhookSignature(body, data.signature, secret)
+    const bodyStr = Buffer.isBuffer(body) ? body.toString('utf8') : body
+    return validateWebhookSignature(bodyStr, signature, secret)
 }
 
 export const createHmacSignature = (payload: string, secret: string) => {

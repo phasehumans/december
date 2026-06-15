@@ -25,21 +25,9 @@ import type {
     CreatePortalSession,
     RazorpayWebhook,
     RedeemCode,
+    PersistProviderSubscription,
+    RazorpaySubscriptionLike,
 } from './billing.types'
-
-type RazorpaySubscriptionLike = {
-    id: string
-    status?: string
-    current_start?: number | null
-    current_end?: number | null
-    start_at?: number | null
-    end_at?: number | null
-    ended_at?: number | null
-    customer_id?: string | null
-    plan_id?: string
-    notes?: Record<string, string | number | undefined>
-    short_url?: string
-}
 
 // const getUserForBilling = async (userId: string) => {
 //     const user = await prisma.user.findUnique({
@@ -214,9 +202,10 @@ const getPlans = async () => {
 }
 
 const createSubscription = async (data: CreateSubscription) => {
+    const { userId, plan, totalCount, quantity } = data
     const user = await prisma.user.findUnique({
         where: {
-            id: data.userId,
+            id: userId,
         },
         select: {
             id: true,
@@ -233,22 +222,22 @@ const createSubscription = async (data: CreateSubscription) => {
         throw new AppError('user not found', 404)
     }
 
-    if (user.subscriptionStatus === 'ACTIVE' && user.subscriptionPlan === data.plan) {
+    if (user.subscriptionStatus === 'ACTIVE' && user.subscriptionPlan === plan) {
         throw new AppError('subscription already active', 409)
     }
 
     const planId = getRazorpayProPlanId()
     const subscription = (await razorpay.subscriptions.create({
         plan_id: planId,
-        total_count: data.totalCount,
-        quantity: data.quantity,
+        total_count: totalCount,
+        quantity: quantity,
         customer_notify: 1,
         notify_info: {
             notify_email: user.email,
         },
         notes: {
             userId: user.id,
-            plan: data.plan,
+            plan: plan,
         },
     })) as RazorpaySubscriptionLike
 
@@ -256,39 +245,36 @@ const createSubscription = async (data: CreateSubscription) => {
         keyId: getRazorpayKeyId(),
         subscriptionId: subscription.id,
         provider: 'razorpay',
-        plan: data.plan,
+        plan: plan,
         razorpayPlanId: planId,
         shortUrl: subscription.short_url ?? null,
         subscription,
     }
 }
 
-const persistProviderSubscription = async (data: {
-    userId: string
-    subscription: RazorpaySubscriptionLike
-    cancelAtPeriodEnd?: boolean
-}) => {
-    const { periodStart, periodEnd } = resolveSubscriptionPeriods(data.subscription)
-    const providerStatus = mapRazorpayProviderStatus(data.subscription.status)
-    const userStatus = mapUserSubscriptionStatus(data.subscription.status)
+const persistProviderSubscription = async (data: PersistProviderSubscription) => {
+    const { userId, subscription: provSubscription, cancelAtPeriodEnd } = data
+    const { periodStart, periodEnd } = resolveSubscriptionPeriods(provSubscription)
+    const providerStatus = mapRazorpayProviderStatus(provSubscription.status)
+    const userStatus = mapUserSubscriptionStatus(provSubscription.status)
     const userPlan = userStatus === 'ACTIVE' || userStatus === 'PAST_DUE' ? 'PRO' : 'FREE'
 
     const existingForProvider = await prisma.subscription.findUnique({
         where: {
-            providerSubscriptionId: data.subscription.id,
+            providerSubscriptionId: provSubscription.id,
         },
         select: {
             userId: true,
         },
     })
 
-    if (existingForProvider && existingForProvider.userId !== data.userId) {
+    if (existingForProvider && existingForProvider.userId !== userId) {
         throw new AppError('subscription belongs to another user', 409)
     }
 
     const previousUser = await prisma.user.findUnique({
         where: {
-            id: data.userId,
+            id: userId,
         },
         select: {
             subscriptionPlan: true,
@@ -297,7 +283,7 @@ const persistProviderSubscription = async (data: {
 
     const existingSubscription = await prisma.subscription.findUnique({
         where: {
-            userId: data.userId,
+            userId: userId,
         },
         select: {
             currentPeriodStart: true,
@@ -329,35 +315,35 @@ const persistProviderSubscription = async (data: {
     const [subscription, user] = await prisma.$transaction([
         prisma.subscription.upsert({
             where: {
-                userId: data.userId,
+                userId: userId,
             },
             create: {
-                userId: data.userId,
+                userId: userId,
                 provider: 'razorpay',
-                providerSubscriptionId: data.subscription.id,
-                providerCustomerId: data.subscription.customer_id ?? null,
-                providerPlanId: data.subscription.plan_id ?? getRazorpayProPlanId(),
+                providerSubscriptionId: provSubscription.id,
+                providerCustomerId: provSubscription.customer_id ?? null,
+                providerPlanId: provSubscription.plan_id ?? getRazorpayProPlanId(),
                 status: providerStatus,
                 plan: 'PRO',
-                cancelAtPeriodEnd: data.cancelAtPeriodEnd ?? false,
+                cancelAtPeriodEnd: cancelAtPeriodEnd ?? false,
                 currentPeriodStart: periodStart,
                 currentPeriodEnd: periodEnd,
             },
             update: {
                 provider: 'razorpay',
-                providerSubscriptionId: data.subscription.id,
-                providerCustomerId: data.subscription.customer_id ?? null,
-                providerPlanId: data.subscription.plan_id ?? getRazorpayProPlanId(),
+                providerSubscriptionId: provSubscription.id,
+                providerCustomerId: provSubscription.customer_id ?? null,
+                providerPlanId: provSubscription.plan_id ?? getRazorpayProPlanId(),
                 status: providerStatus,
                 plan: 'PRO',
-                cancelAtPeriodEnd: data.cancelAtPeriodEnd ?? false,
+                cancelAtPeriodEnd: cancelAtPeriodEnd ?? false,
                 currentPeriodStart: periodStart,
                 currentPeriodEnd: periodEnd,
             },
         }),
         prisma.user.update({
             where: {
-                id: data.userId,
+                id: userId,
             },
             data: {
                 subscriptionPlan: userPlan,
@@ -371,7 +357,7 @@ const persistProviderSubscription = async (data: {
     if (userPlan === 'PRO' && previousUser?.subscriptionPlan !== 'PRO') {
         try {
             await sendNotificationToUser({
-                userId: data.userId,
+                userId: userId,
                 title: 'Upgraded to PRO Plan',
                 message:
                     'Thank you for upgrading to Pro! You now have unlimited generation credits and access to premium features.',
@@ -389,20 +375,21 @@ const persistProviderSubscription = async (data: {
 }
 
 const verifySubscription = async (data: VerifySubscription) => {
+    const { userId, razorpay_subscription_id, razorpay_payment_id, razorpay_signature } = data
     const isValid = verifyRazorpaySubscriptionPayment({
-        subscriptionId: data.razorpay_subscription_id,
-        paymentId: data.razorpay_payment_id,
-        signature: data.razorpay_signature,
+        subscriptionId: razorpay_subscription_id,
+        paymentId: razorpay_payment_id,
+        signature: razorpay_signature,
     })
 
     if (!isValid) {
         throw new AppError('invalid razorpay signature', 400)
     }
 
-    // await getUserForBilling(data.userId)
+    // await getUserForBilling(userId)
     const user = await prisma.user.findUnique({
         where: {
-            id: data.userId,
+            id: userId,
         },
         select: {
             id: true,
@@ -420,7 +407,7 @@ const verifySubscription = async (data: VerifySubscription) => {
     }
 
     const subscription = (await razorpay.subscriptions.fetch(
-        data.razorpay_subscription_id
+        razorpay_subscription_id
     )) as RazorpaySubscriptionLike
 
     // Force active status if payment signature is valid to ensure immediate upgrade
@@ -433,13 +420,13 @@ const verifySubscription = async (data: VerifySubscription) => {
     }
 
     const result = await persistProviderSubscription({
-        userId: data.userId,
+        userId,
         subscription,
     })
 
     return {
         verified: true,
-        paymentId: data.razorpay_payment_id,
+        paymentId: razorpay_payment_id,
         subscription: result.subscription,
         user: {
             subscriptionPlan: result.user.subscriptionPlan,
@@ -450,9 +437,10 @@ const verifySubscription = async (data: VerifySubscription) => {
 }
 
 const cancelSubscription = async (data: CancelSubscription) => {
+    const { userId, cancelAtPeriodEnd } = data
     const user = await prisma.user.findUnique({
         where: {
-            id: data.userId,
+            id: userId,
         },
         select: {
             id: true,
@@ -479,10 +467,10 @@ const cancelSubscription = async (data: CancelSubscription) => {
 
     const canceledSubscription = (await razorpay.subscriptions.cancel(
         user.subscription.providerSubscriptionId,
-        data.cancelAtPeriodEnd
+        cancelAtPeriodEnd
     )) as RazorpaySubscriptionLike
 
-    const shouldRemainActive = data.cancelAtPeriodEnd && canceledSubscription.status !== 'cancelled'
+    const shouldRemainActive = cancelAtPeriodEnd && canceledSubscription.status !== 'cancelled'
     const nextUserStatus = shouldRemainActive
         ? 'ACTIVE'
         : mapUserSubscriptionStatus(canceledSubscription.status)
@@ -494,18 +482,18 @@ const cancelSubscription = async (data: CancelSubscription) => {
     const [subscription, updatedUser] = await prisma.$transaction([
         prisma.subscription.update({
             where: {
-                userId: data.userId,
+                userId: userId,
             },
             data: {
                 status: providerStatus,
-                cancelAtPeriodEnd: data.cancelAtPeriodEnd,
+                cancelAtPeriodEnd: cancelAtPeriodEnd,
                 currentPeriodStart: periodStart,
                 currentPeriodEnd: periodEnd,
             },
         }),
         prisma.user.update({
             where: {
-                id: data.userId,
+                id: userId,
             },
             data: {
                 subscriptionPlan: nextUserPlan,
@@ -526,9 +514,10 @@ const cancelSubscription = async (data: CancelSubscription) => {
 }
 
 const getCreditsHistory = async (data: CreditsHistory) => {
+    const { userId, limit, offset, periodStart, periodEnd } = data
     const user = await prisma.user.findUnique({
         where: {
-            id: data.userId,
+            id: userId,
         },
         select: {
             id: true,
@@ -546,21 +535,21 @@ const getCreditsHistory = async (data: CreditsHistory) => {
     }
 
     const where: any = {
-        userId: data.userId,
+        userId,
     }
 
-    if (data.periodStart && data.periodEnd) {
+    if (periodStart && periodEnd) {
         where.createdAt = {
-            gte: new Date(data.periodStart),
-            lte: new Date(data.periodEnd),
+            gte: new Date(periodStart),
+            lte: new Date(periodEnd),
         }
-    } else if (data.periodStart) {
+    } else if (periodStart) {
         where.createdAt = {
-            gte: new Date(data.periodStart),
+            gte: new Date(periodStart),
         }
-    } else if (data.periodEnd) {
+    } else if (periodEnd) {
         where.createdAt = {
-            lte: new Date(data.periodEnd),
+            lte: new Date(periodEnd),
         }
     }
 
@@ -577,8 +566,8 @@ const getCreditsHistory = async (data: CreditsHistory) => {
                     },
                 },
             },
-            skip: data.offset,
-            take: data.limit,
+            skip: offset,
+            take: limit,
         }),
         prisma.usageEvent.count({
             where,
@@ -602,8 +591,8 @@ const getCreditsHistory = async (data: CreditsHistory) => {
     return {
         events,
         total,
-        limit: data.limit,
-        offset: data.offset,
+        limit,
+        offset,
         periods: Array.from(periods.values()),
     }
 }
@@ -637,20 +626,19 @@ const createPortalSession = async (data: CreatePortalSession) => {
 }
 
 const handleRazorpayWebhook = async (data: RazorpayWebhook) => {
-    const rawBody = data.rawBody ?? Buffer.from(JSON.stringify(data.body))
+    const { body, rawBody, signature } = data
+    const webhookRawBody = rawBody ?? Buffer.from(JSON.stringify(body))
     const isValid = verifyRazorpayWebhookSignature({
-        body: rawBody,
-        signature: data.signature,
+        body: webhookRawBody,
+        signature,
     })
 
     if (!isValid) {
         throw new AppError('invalid webhook signature', 400)
     }
 
-    const event = data.body.event as string | undefined
-    const subscription = data.body.payload?.subscription?.entity as
-        | RazorpaySubscriptionLike
-        | undefined
+    const event = body.event as string | undefined
+    const subscription = body.payload?.subscription?.entity as RazorpaySubscriptionLike | undefined
 
     if (!event || !subscription?.id) {
         return {

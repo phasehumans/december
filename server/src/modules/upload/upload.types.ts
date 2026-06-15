@@ -224,3 +224,14 @@ export type FailImportParams = {
     importId: string
     error: unknown
 }
+
+export type PersistentImportSourceDir = {
+    userId: string
+    importId: string
+}
+
+export type PersistImportSourceLocally = {
+    userId: string
+    importId: string
+    sourceDir: string
+}

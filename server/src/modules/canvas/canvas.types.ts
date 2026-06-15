@@ -1,3 +1,5 @@
+import type { CanvasDocument } from './canvas.persistence'
+
 export type CreateWebClips = {
     url: string
     userId: string
@@ -9,4 +11,23 @@ export type SaveCanvas = {
     userId: string
     versionId?: string
     canvasState: any
+}
+
+export type PersistImageAsset = {
+    projectId: string
+    userId: string
+    versionId: string
+    item: CanvasDocument['items'][number]
+}
+
+export type PersistCanvasDocument = {
+    projectId: string
+    userId: string
+    versionId: string
+    canvasState?: CanvasDocument | null
+}
+
+export type HydrateCanvasDocument = {
+    canvasState?: unknown
+    canvasAssetManifest?: unknown
 }
