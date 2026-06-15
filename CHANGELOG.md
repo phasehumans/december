@@ -2,6 +2,16 @@
 
 ### Features
 
+- Init december cli
+
+### Refactor
+
+- _(module)_ Fix types and inline destructure and types files
+
+## [0.1.0] - 2026-06-14
+
+### Features
+
 - _(auth)_ Add user authentication(#8)
 - Auth middleware
 - GetProfile endpoint
@@ -256,4 +266,5 @@
 - _(release)_ V0.2.2
 - _(release)_ V0.3.0
 - _(release)_ V0.3.1
+- _(release)_ V0.1.0
 - _(release)_ V0.1.0
