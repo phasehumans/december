@@ -18,6 +18,5 @@ uploadRouter.use(authMiddleware)
 uploadRouter.post('/github', uploadController.importFromGithub)
 uploadRouter.post('/zip', upload.single('file'), uploadController.importFromZip)
 uploadRouter.get('/:id', uploadController.getImportStatus)
-uploadRouter.post('/:id/retry', uploadController.retryImport)
 
 export default uploadRouter

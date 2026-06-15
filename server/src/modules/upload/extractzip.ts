@@ -3,30 +3,7 @@ import { mkdir, readdir } from 'node:fs/promises'
 import { join } from 'node:path'
 
 import { extractZipSafely, importStagingRootDir } from './import-project.utils'
-
-type UploadedZipFile = {
-    originalname: string
-    mimetype: string
-    buffer: Buffer
-}
-
-export type ExtractedUploadedZipArchive =
-    | {
-          ok: true
-          owner: string
-          repo: string
-          ref: string | null
-          zipUrl: null
-          tempRootDir: string
-          zipFilePath: string
-          extractDir: string
-          repoRootDir: string
-      }
-    | {
-          ok: false
-          error: string
-          code: 'INVALID_FILE' | 'SAVE_FAILED' | 'EXTRACT_FAILED' | 'EMPTY_ARCHIVE'
-      }
+import type { UploadedZipFile, ExtractedUploadedZipArchive } from './upload.types'
 
 export async function extractUploadedZipArchive(
     zipFile: UploadedZipFile

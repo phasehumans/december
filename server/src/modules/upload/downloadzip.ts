@@ -5,32 +5,9 @@ import { join } from 'node:path'
 import { promisify } from 'node:util'
 
 import { importStagingRootDir } from './import-project.utils'
+import type { DownloadedGitHubRepoArchive } from './upload.types'
 
 const execAsync = promisify(exec)
-
-export type DownloadedGitHubRepoArchive =
-    | {
-          ok: true
-          owner: string
-          repo: string
-          ref: string | null
-          zipUrl: string
-          tempRootDir: string
-          zipFilePath: string
-          extractDir: string
-          repoRootDir: string
-      }
-    | {
-          ok: false
-          error: string
-          code:
-              | 'DOWNLOAD_FAILED'
-              | 'UNAUTHORIZED'
-              | 'RATE_LIMITED'
-              | 'NETWORK_ERROR'
-              | 'EXTRACT_FAILED'
-              | 'EMPTY_ARCHIVE'
-      }
 
 export async function downloadGitHubRepoArchive(
     owner: string,

@@ -22,36 +22,26 @@ import {
     cleanupImportDir,
     persistImportSourceLocally,
     validateImportProject,
-    type ValidatedImportProject,
 } from './import-project.utils'
 import { parseGitHubRepoUrl, verifyGitHubRepoAccess } from './upload.utils'
 
 import type {
-    UploadRepo,
+    ImportFromGithub,
     ImportFromZip,
-    UploadedZipFile,
     GetImportStatus,
-    RetryImport,
+    UpdateImportStatusParams,
+    CreateImportRecordParams,
+    UploadValidatedProjectParams,
+    UploadImportSourceFilesParams,
+    CreatePlaceholderProjectParams,
+    UpdateImportedProjectVersionParams,
+    StartRuntimeForImportParams,
+    FinalizeImportProjectParams,
+    ProcessGithubImportParams,
+    ProcessZipImportParams,
+    FailImportParams,
 } from './upload.types'
 import type { RuntimePreviewStatus } from '../runtime/runtime.types'
-
-type GithubRepo = {
-    id: number
-    name: string
-    fullName: string
-    private: boolean
-    defaultBranch: string
-    updatedAt: string
-    htmlUrl: string
-    cloneUrl: string
-    owner: {
-        login: string
-        avatarUrl: string
-    }
-}
-
-type ImportSource = 'GITHUB' | 'ZIP'
-type ImportStatus = 'PENDING' | 'VALIDATING' | 'UPLOADING' | 'STARTING_RUNTIME' | 'READY' | 'FAILED'
 
 const MAX_UPLOAD_ZIP_BYTES = 50 * 1024 * 1024
 
@@ -78,40 +68,20 @@ const toErrorPayload = (error: unknown) => ({
     message: error instanceof Error ? error.message : 'Import failed',
 })
 
-const updateImportStatus = async ({
-    importId,
-    status,
-    data,
-}: {
-    importId: string
-    status: ImportStatus
-    data?: Record<string, any>
-}) => {
+const updateImportStatus = async (data: UpdateImportStatusParams) => {
+    const { importId, status, data: updateData } = data
     return prisma.projectImport.update({
         where: { id: importId },
         data: {
             status,
-            ...(data ?? {}),
+            ...(updateData ?? {}),
         },
         select: publicImportSelect,
     })
 }
 
-const createImportRecord = async ({
-    userId,
-    sourceType,
-    sourceUrl,
-    sourceFileName,
-    projectId,
-    projectVersionId,
-}: {
-    userId: string
-    sourceType: ImportSource
-    sourceUrl?: string | null
-    sourceFileName?: string | null
-    projectId?: string | null
-    projectVersionId?: string | null
-}) => {
+const createImportRecord = async (data: CreateImportRecordParams) => {
+    const { userId, sourceType, sourceUrl, sourceFileName, projectId, projectVersionId } = data
     return prisma.projectImport.create({
         data: {
             userId,
@@ -125,15 +95,8 @@ const createImportRecord = async ({
     })
 }
 
-const uploadValidatedProject = async ({
-    projectId,
-    versionId,
-    project,
-}: {
-    projectId: string
-    versionId: string
-    project: ValidatedImportProject
-}) => {
+const uploadValidatedProject = async (data: UploadValidatedProjectParams) => {
+    const { projectId, versionId, project } = data
     const files: PreviewManifestFile[] = []
 
     for (const file of project.files) {
@@ -165,15 +128,8 @@ const uploadValidatedProject = async ({
     return files
 }
 
-const uploadImportSourceFiles = async ({
-    userId,
-    importId,
-    project,
-}: {
-    userId: string
-    importId: string
-    project: ValidatedImportProject
-}) => {
+const uploadImportSourceFiles = async (data: UploadImportSourceFilesParams) => {
+    const { userId, importId, project } = data
     await Promise.all(
         project.files.map(async (file) => {
             const content = await readFile(file.absolutePath)
@@ -187,19 +143,8 @@ const uploadImportSourceFiles = async ({
     )
 }
 
-const createPlaceholderProject = async ({
-    projectId,
-    versionId,
-    userId,
-    name,
-    prompt,
-}: {
-    projectId: string
-    versionId: string
-    userId: string
-    name: string
-    prompt: string
-}) => {
+const createPlaceholderProject = async (data: CreatePlaceholderProjectParams) => {
+    const { projectId, versionId, userId, name, prompt } = data
     const displayName =
         name
             .trim()
@@ -244,21 +189,8 @@ const createPlaceholderProject = async ({
     return createdProject
 }
 
-const updateImportedProjectVersion = async ({
-    projectId,
-    versionId,
-    project,
-    manifestFiles,
-    sourceType,
-    sourceLabel,
-}: {
-    projectId: string
-    versionId: string
-    project: ValidatedImportProject
-    manifestFiles: PreviewManifestFile[]
-    sourceType: 'github' | 'zip'
-    sourceLabel?: string
-}) => {
+const updateImportedProjectVersion = async (data: UpdateImportedProjectVersionParams) => {
+    const { projectId, versionId, project, manifestFiles, sourceType, sourceLabel } = data
     await prisma.project.update({
         where: { id: projectId },
         data: {
@@ -310,15 +242,8 @@ const updateImportedProjectVersion = async ({
     }
 }
 
-const startRuntimeForImport = async ({
-    userId,
-    projectId,
-    versionId,
-}: {
-    userId: string
-    projectId: string
-    versionId: string
-}) => {
+const startRuntimeForImport = async (data: StartRuntimeForImportParams) => {
+    const { userId, projectId, versionId } = data
     const timeout = new Promise<never>((_, reject) => {
         setTimeout(() => reject(new Error('Runtime start timed out')), 60_000)
     })
@@ -333,23 +258,9 @@ const startRuntimeForImport = async ({
     ])
 }
 
-const finalizeImportProject = async ({
-    importId,
-    userId,
-    projectId,
-    versionId,
-    validatedProject,
-    sourceType,
-    sourceLabel,
-}: {
-    importId: string
-    userId: string
-    projectId: string
-    versionId: string
-    validatedProject: ValidatedImportProject
-    sourceType: 'github' | 'zip'
-    sourceLabel?: string
-}) => {
+const finalizeImportProject = async (data: FinalizeImportProjectParams) => {
+    const { importId, userId, projectId, versionId, validatedProject, sourceType, sourceLabel } =
+        data
     console.log(`[import:${importId}] finalizeImportProject: starting upload for ${sourceLabel}`)
     console.log(
         `[import:${importId}] files to upload: ${validatedProject.files.length}, totalBytes: ${validatedProject.totalBytes}`
@@ -464,7 +375,8 @@ const finalizeImportProject = async ({
     })
 }
 
-const failImport = async (importId: string, error: unknown) => {
+const failImport = async (data: FailImportParams) => {
+    const { importId, error } = data
     console.error(`[import:${importId}] IMPORT FAILED:`, error)
 
     const importRecord = await prisma.projectImport
@@ -498,23 +410,8 @@ const failImport = async (importId: string, error: unknown) => {
     })
 }
 
-const processGithubImport = async ({
-    importId,
-    userId,
-    projectId,
-    versionId,
-    owner,
-    repo,
-    token,
-}: {
-    importId: string
-    userId: string
-    projectId: string
-    versionId: string
-    owner: string
-    repo: string
-    token: string
-}) => {
+const processGithubImport = async (data: ProcessGithubImportParams) => {
+    const { importId, userId, projectId, versionId, owner, repo, token } = data
     let tempRootDir: string | null = null
 
     try {
@@ -599,25 +496,14 @@ const processGithubImport = async ({
         console.log(`[import:${importId}] processGithubImport: completed successfully`)
     } catch (error) {
         console.error(`[import:${importId}] processGithubImport FAILED:`, error)
-        await failImport(importId, error)
+        await failImport({ importId, error })
     } finally {
         await cleanupImportDir(tempRootDir)
     }
 }
 
-const processZipImport = async ({
-    importId,
-    userId,
-    projectId,
-    versionId,
-    zipFile,
-}: {
-    importId: string
-    userId: string
-    projectId: string
-    versionId: string
-    zipFile: UploadedZipFile
-}) => {
+const processZipImport = async (data: ProcessZipImportParams) => {
+    const { importId, userId, projectId, versionId, zipFile } = data
     let tempRootDir: string | null = null
 
     try {
@@ -680,13 +566,13 @@ const processZipImport = async ({
         console.log(`[import:${importId}] processZipImport: completed successfully`)
     } catch (error) {
         console.error(`[import:${importId}] processZipImport FAILED:`, error)
-        await failImport(importId, error)
+        await failImport({ importId, error })
     } finally {
         await cleanupImportDir(tempRootDir)
     }
 }
 
-const importFromGithub = async (data: UploadRepo) => {
+const importFromGithub = async (data: ImportFromGithub) => {
     const { userId, repoURL } = data
     const parseData = parseGitHubRepoUrl(repoURL)
 
@@ -889,74 +775,8 @@ const getImportStatus = async (data: GetImportStatus) => {
     }
 }
 
-const retryImport = async (data: RetryImport) => {
-    const { userId, importId } = data
-    const importRecord = await prisma.projectImport.findFirst({
-        where: {
-            id: importId,
-            userId,
-        },
-        select: publicImportSelect,
-    })
-
-    if (!importRecord) {
-        throw new Error('import not found')
-    }
-
-    if (importRecord.status !== 'FAILED') {
-        throw new Error('Only failed imports can be retried')
-    }
-
-    if (importRecord.sourceType !== 'GITHUB' || !importRecord.sourceUrl) {
-        throw new Error('Uploaded zip imports cannot be retried after cleanup')
-    }
-
-    const parseData = parseGitHubRepoUrl(importRecord.sourceUrl)
-
-    if (!parseData.ok) {
-        throw new Error(parseData.error)
-    }
-
-    const user = await prisma.user.findUnique({
-        where: { id: userId },
-        select: {
-            githubToken: true,
-        },
-    })
-
-    if (!user?.githubToken) {
-        throw new Error('GitHub access token not found')
-    }
-
-    const retryRecord = await updateImportStatus({
-        importId,
-        status: 'PENDING',
-        data: {
-            errorMessage: null,
-            errorsJson: undefined,
-        },
-    })
-
-    if (!importRecord.projectId || !importRecord.projectVersionId) {
-        throw new Error('Project or version relation missing on import')
-    }
-
-    void processGithubImport({
-        importId,
-        userId,
-        projectId: importRecord.projectId,
-        versionId: importRecord.projectVersionId,
-        owner: parseData.owner,
-        repo: parseData.repo,
-        token: user.githubToken,
-    })
-
-    return retryRecord
-}
-
 export const uploadService = {
     importFromGithub,
     importFromZip,
     getImportStatus,
-    retryImport,
 }
