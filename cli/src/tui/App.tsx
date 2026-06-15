@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react'
 import { render, Text, Box, useInput, useApp, useStdout } from 'ink'
+import React, { useState, useEffect } from 'react'
 
 interface AppProps {
     model: string

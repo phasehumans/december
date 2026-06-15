@@ -3,9 +3,9 @@ import { cp, mkdir, readdir, readFile, rm, stat, writeFile } from 'node:fs/promi
 import { basename, dirname, join, relative, resolve, sep } from 'node:path'
 
 import AdmZip from 'adm-zip'
+
 import type {
     ImportValidationFile,
-    ProjectDetection,
     ValidatedImportProject,
     PersistentImportSourceDir,
     PersistImportSourceLocally,
