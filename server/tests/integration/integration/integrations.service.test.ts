@@ -1,10 +1,10 @@
-import '../../../tests/env'
+import '../../env'
 
 import bcrypt from 'bcrypt'
 import { describe, it, expect, beforeEach, afterAll } from 'bun:test'
 
 import { prisma } from '../../../src/config/db'
-import { integrationsService } from '../../../src/modules/integrations/integrations.service'
+import { integrationsService } from '../../../src/modules/integration/integration.service'
 
 const HASHED_PASSWORD = await bcrypt.hash('Password123', 10)
 

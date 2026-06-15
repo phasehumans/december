@@ -1,4 +1,5 @@
 import { Command } from 'commander'
+
 import { renderTUI } from './tui/App'
 
 const program = new Command()

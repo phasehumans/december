@@ -1,4 +1,4 @@
-import '../../../tests/env'
+import '../../env'
 
 import bcrypt from 'bcrypt'
 import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'bun:test'

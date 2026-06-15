@@ -2,7 +2,7 @@ import { Router } from 'express'
 
 import { authMiddleware } from '../../middleware/auth.middleware'
 
-import { integrationsController } from './integrations.controller'
+import { integrationsController } from './integration.controller'
 
 const integrationsRouter = Router()
 

@@ -1,4 +1,4 @@
-import '../../../tests/env'
+import '../../env'
 
 import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'bun:test'
 import express, { Router } from 'express'
