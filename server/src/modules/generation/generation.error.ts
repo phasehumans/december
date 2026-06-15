@@ -1,3 +1,5 @@
+import type { NormalizeGenerationError } from './generation.types'
+
 const getErrorMessage = (error: unknown) => {
     if (error instanceof Error) {
         return error.message
@@ -14,7 +16,8 @@ const getFileLabel = (path?: string) => {
     return path.split('/').pop() ?? path
 }
 
-export const normalizeGenerationError = (error: unknown, options?: { path?: string }) => {
+export const normalizeGenerationError = (data: NormalizeGenerationError) => {
+    const { error, path } = data
     const internalMessage = getErrorMessage(error)
     const normalizedMessage = internalMessage.toLowerCase()
 
@@ -49,8 +52,8 @@ export const normalizeGenerationError = (error: unknown, options?: { path?: stri
     ) {
         return {
             internalMessage,
-            publicMessage: options?.path
-                ? `I hit an issue while generating ${getFileLabel(options.path)}. Please retry the build.`
+            publicMessage: path
+                ? `I hit an issue while generating ${getFileLabel(path)}. Please retry the build.`
                 : 'I started the build but hit an issue while generating the project files. Please retry the build.',
         }
     }

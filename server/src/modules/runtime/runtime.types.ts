@@ -1,4 +1,12 @@
+import { prisma } from '../../config/db'
 import type { PreviewManifestRef } from '../../shared/preview-manifest'
+
+export type ProjectVersionRecord = NonNullable<Awaited<ReturnType<typeof prisma.projectVersion.findFirst>>>
+
+export type EnsureManifestRef = {
+    projectId: string
+    version: ProjectVersionRecord
+}
 
 export type RuntimePreviewError = {
     class:

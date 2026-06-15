@@ -15,6 +15,9 @@ import type {
     ProjectRecord,
     RevisionBase,
     StoredProjectFile,
+    GetProjectRevisionBase,
+    PersistProjectRevision,
+    MarkGenerationFailed,
 } from './generation.types'
 
 export const loadGeneratedFilesFromManifest = async (manifest: StoredProjectFile[]) => {
@@ -44,19 +47,20 @@ export const loadGeneratedFilesFromManifest = async (manifest: StoredProjectFile
 }
 
 export const initializeGenerationTarget = async (data: GenerateWebsiteInput) => {
+    const { userId, projectId, prompt } = data
     const versionId = crypto.randomUUID()
 
     const result = await prisma.$transaction(async (tx) => {
-        const existingProject = data.projectId
+        const existingProject = projectId
             ? await tx.project.findFirst({
                   where: {
-                      id: data.projectId,
-                      userId: data.userId,
+                      id: projectId,
+                      userId,
                   },
               })
             : null
 
-        if (data.projectId && !existingProject) {
+        if (projectId && !existingProject) {
             throw new Error('project not found')
         }
 
@@ -66,20 +70,20 @@ export const initializeGenerationTarget = async (data: GenerateWebsiteInput) => 
                       id: existingProject.id,
                   },
                   data: {
-                      prompt: data.prompt,
+                      prompt,
                       projectStatus: 'GENERATING',
                   },
               })
             : await tx.project.create({
                   data: {
-                      name: createProjectName(data.prompt),
+                      name: createProjectName(prompt),
                       description:
-                          data.prompt.trim().length > 150
-                              ? data.prompt.trim().slice(0, 147) + '...'
-                              : data.prompt.trim(),
-                      prompt: data.prompt,
+                          prompt.trim().length > 150
+                              ? prompt.trim().slice(0, 147) + '...'
+                              : prompt.trim(),
+                      prompt,
                       projectStatus: 'GENERATING',
-                      userId: data.userId,
+                      userId,
                   },
               })
 
@@ -102,7 +106,7 @@ export const initializeGenerationTarget = async (data: GenerateWebsiteInput) => 
                 projectId: project.id,
                 versionNumber,
                 label: `v${versionNumber}`,
-                sourcePrompt: data.prompt,
+                sourcePrompt: prompt,
                 status: 'GENERATING',
                 objectStoragePrefix: `projects/${project.id}/previous-version/${versionId}`,
                 manifestJson: [],
@@ -172,15 +176,10 @@ export const initializeGenerationTarget = async (data: GenerateWebsiteInput) => 
     }
 }
 
-export const getProjectRevisionBase = async ({
-    userId,
-    projectId,
-    versionId,
-}: {
-    userId: string
-    projectId: string
-    versionId?: string
-}): Promise<RevisionBase> => {
+export const getProjectRevisionBase = async (
+    data: GetProjectRevisionBase
+): Promise<RevisionBase> => {
+    const { userId, projectId, versionId } = data
     const project = await prisma.project.findFirst({
         where: {
             id: projectId,
@@ -237,31 +236,22 @@ export const getProjectRevisionBase = async ({
     }
 }
 
-export const persistProjectRevision = async ({
-    project,
-    userId,
-    baseVersion,
-    nextVersionNumber,
-    mergedFiles,
-    removedFiles,
-    sourcePrompt,
-    assistantMessage,
-    summary,
-    nextProjectPrompt,
-    canvasState,
-}: {
-    project: RevisionBase['project']
-    userId: string
-    baseVersion: RevisionBase['baseVersion']
-    nextVersionNumber: number
-    mergedFiles: Record<string, string>
-    removedFiles: string[]
-    sourcePrompt: string
-    assistantMessage: string
-    summary: string
-    nextProjectPrompt?: string
-    canvasState?: unknown
-}): Promise<PersistedProjectRevision> => {
+export const persistProjectRevision = async (
+    data: PersistProjectRevision
+): Promise<PersistedProjectRevision> => {
+    const {
+        project,
+        userId,
+        baseVersion,
+        nextVersionNumber,
+        mergedFiles,
+        removedFiles,
+        sourcePrompt,
+        assistantMessage,
+        summary,
+        nextProjectPrompt,
+        canvasState,
+    } = data
     const versionId = crypto.randomUUID()
     const savedFiles = await saveProjectFiles({
         projectId: project.id,
@@ -404,23 +394,16 @@ export const persistProjectRevision = async ({
         assistantMessage,
     }
 }
-export const markGenerationFailed = async ({
-    project,
-    versionId,
-    prompt,
-    assistantMessageContent,
-    hadCurrentVersion,
-    messagesPersisted,
-    error,
-}: {
-    project: ProjectRecord
-    versionId: string
-    prompt: string
-    assistantMessageContent: string
-    hadCurrentVersion: boolean
-    messagesPersisted: boolean
-    error: unknown
-}) => {
+export const markGenerationFailed = async (data: MarkGenerationFailed) => {
+    const {
+        project,
+        versionId,
+        prompt,
+        assistantMessageContent,
+        hadCurrentVersion,
+        messagesPersisted,
+        error,
+    } = data
     const fallbackAssistantMessage =
         assistantMessageContent.trim() ||
         (error instanceof Error ? error.message : 'Generation failed unexpectedly.')
