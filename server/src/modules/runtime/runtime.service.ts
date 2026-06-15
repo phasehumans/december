@@ -17,14 +17,10 @@ import type {
     CheckSandboxCompilation,
     EnsureManifestRef,
     ProjectVersionRecord,
+    StoredProjectFile,
 } from './runtime.types'
 
-type StoredProjectFile = {
-    path: string
-    key: string
-    contentType?: string
-    size: number
-}
+
 
 const previewStatusStore = new Map<string, RuntimePreviewStatus>()
 const runtimeBaseUrl = (process.env.RUNTIME_BASE_URL ?? 'http://127.0.0.1:5050').replace(/\/+$/, '')

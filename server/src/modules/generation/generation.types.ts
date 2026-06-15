@@ -14,7 +14,7 @@ import {
     projectPlanSchema,
 } from './generation.schema'
 
-import type { CanvasDocument } from '../canvas/canvas.persistence'
+import type { CanvasDocument } from '../canvas/canvas.utils'
 
 export type GenerateWebsiteInput = {
     prompt: string

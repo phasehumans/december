@@ -1,4 +1,4 @@
-import type { CanvasDocument } from './canvas.persistence'
+import type { CanvasDocument } from './canvas.utils'
 
 export type CreateWebClips = {
     url: string

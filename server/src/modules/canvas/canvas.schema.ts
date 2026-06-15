@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-import { canvasDocumentSchema } from './canvas.persistence'
+import { canvasDocumentSchema } from './canvas.utils'
 
 export const webClipRequestSchema = z.object({
     url: z

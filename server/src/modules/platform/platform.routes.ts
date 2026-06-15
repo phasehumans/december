@@ -8,15 +8,10 @@ const platformRouter = Router()
 
 platformRouter.use(authMiddleware)
 
-platformRouter.post('/:projectId/deploy/december', platformController.deployDecemberProject)
 platformRouter.get('/:projectId/download', platformController.downloadProjectVersion)
-
-// Vercel Auto-Deployment Endpoints
-platformRouter.post('/projects/:projectId/vercel/deploy', platformController.deployVercelProject)
-platformRouter.get(
-    '/deployments/:deploymentId/status',
-    platformController.getVercelDeploymentStatus
-)
-platformRouter.get('/deployments/:deploymentId/logs', platformController.streamVercelBuildLogs)
+platformRouter.post('/:projectId/december/deploy', platformController.deployDecemberProject)
+platformRouter.post('/:projectId/vercel/deploy', platformController.deployVercelProject)
+platformRouter.get('/:deploymentId/status', platformController.getVercelDeploymentStatus)
+platformRouter.get('/:deploymentId/logs', platformController.streamVercelBuildLogs)
 
 export default platformRouter

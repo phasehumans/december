@@ -10,7 +10,7 @@ import {
     currentKey,
     copyObject,
 } from '../../shared/project-storage'
-import { hydrateCanvasDocument, persistCanvasDocument } from '../canvas/canvas.persistence'
+import { hydrateCanvasDocument, persistCanvasDocument } from '../canvas/canvas.utils'
 import { parseStoredProjectFiles, mapVersionSummary } from '../project/project.utils'
 
 import type {

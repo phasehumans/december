@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-import { canvasDocumentSchema } from '../canvas/canvas.persistence'
+import { canvasDocumentSchema } from '../canvas/canvas.utils'
 
 const fileGeneratorSchema = z.enum([
     'static',

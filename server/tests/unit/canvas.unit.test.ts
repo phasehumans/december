@@ -47,7 +47,7 @@ mock.module('../../src/shared/project-storage', () => ({
 
 const { webClipRequestSchema } = await import('../../src/modules/canvas/canvas.schema')
 const { hydrateCanvasDocument, persistCanvasDocument } =
-    await import('../../src/modules/canvas/canvas.persistence')
+    await import('../../src/modules/canvas/canvas.utils')
 
 describe('canvas.schema', () => {
     it('accepts a valid https URL with an optional project id', () => {
