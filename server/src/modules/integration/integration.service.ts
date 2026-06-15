@@ -6,23 +6,6 @@ import { getBinaryFile, getTextFile } from '../../shared/project-storage'
 import { sendNotificationToUser } from '../notification/notification.service'
 import { parseStoredProjectFiles } from '../project/project.utils'
 
-type GithubRepo = {
-    id: number
-    name: string
-    fullName: string
-    private: boolean
-    defaultBranch: string
-    updatedAt: string
-    htmlUrl: string
-    cloneUrl: string
-    language: string | null
-    description: string | null
-    owner: {
-        login: string
-        avatarUrl: string
-    }
-}
-
 import type {
     ListGithubRepos,
     ConnectVercel,
@@ -31,66 +14,8 @@ import type {
     ConnectGithub,
     CreateRepo,
     UpdateRepo,
+    GithubRepo,
 } from './integration.types'
-
-const listGithubRepos = async (data: ListGithubRepos): Promise<GithubRepo[]> => {
-    const { userId } = data
-    const user = await prisma.user.findUnique({
-        where: {
-            id: userId,
-        },
-        select: {
-            githubToken: true,
-            githubUsername: true,
-            githubConnected: true,
-        },
-    })
-
-    if (!user) {
-        throw new Error('user not found')
-    }
-
-    if (user.githubConnected === false) {
-        throw new Error('github is not connected')
-    }
-
-    if (user.githubToken === undefined) {
-        throw new Error('github access token not found')
-    }
-
-    const response = await fetch('https://api.github.com/user/repos?sort=updated&per_page=100', {
-        method: 'GET',
-        headers: {
-            Authorization: `Bearer ${user.githubToken}`,
-            Accept: 'application/vnd.github+json',
-            'X-GitHub-Api-Version': '2022-11-28',
-        },
-    })
-
-    if (!response.ok) {
-        const errorText = await response.text()
-        throw new Error(`Failed to fetch GitHub repos: ${errorText}`)
-    }
-
-    const repos = (await response.json()) as any[]
-
-    return repos.map((repo: any) => ({
-        id: repo.id,
-        name: repo.name,
-        fullName: repo.full_name,
-        private: repo.private,
-        defaultBranch: repo.default_branch,
-        updatedAt: repo.updated_at,
-        htmlUrl: repo.html_url,
-        cloneUrl: repo.clone_url,
-        language: repo.language ?? null,
-        description: repo.description ?? null,
-        owner: {
-            login: repo.owner?.login,
-            avatarUrl: repo.owner?.avatar_url,
-        },
-    }))
-}
 
 const connectVercel = async (data: ConnectVercel) => {
     const { code, userId, teamId, configurationId } = data
@@ -98,11 +23,10 @@ const connectVercel = async (data: ConnectVercel) => {
     const existingUser = await prisma.user.findFirst({
         where: {
             id: userId,
-            isDeleted: false,
         },
     })
 
-    if (!existingUser) {
+    if (!existingUser || existingUser.isDeleted == true) {
         throw new AppError('user not found', 404)
     }
 
@@ -162,6 +86,17 @@ const connectVercel = async (data: ConnectVercel) => {
 
 const connectSupabase = async (data: ConnectSupabase) => {
     const { userId, code } = data
+
+    const existingUser = await prisma.user.findFirst({
+        where: {
+            id: userId,
+        },
+    })
+
+    if (!existingUser || existingUser.isDeleted == true) {
+        throw new AppError('user not found', 404)
+    }
+
     const params = new URLSearchParams({
         grant_type: 'authorization_code',
         code,
@@ -177,8 +112,6 @@ const connectSupabase = async (data: ConnectSupabase) => {
     })
 
     const tokenData = response.data
-
-    console.log('TOKEN DATA:', tokenData)
 
     const expiresAt = new Date(Date.now() + tokenData.expires_in * 1000)
 
@@ -213,6 +146,17 @@ const connectSupabase = async (data: ConnectSupabase) => {
 
 const connectNotion = async (data: ConnectNotion) => {
     const { userId, code } = data
+
+    const existingUser = await prisma.user.findFirst({
+        where: {
+            id: userId,
+        },
+    })
+
+    if (!existingUser || existingUser.isDeleted == true) {
+        throw new AppError('user not found', 404)
+    }
+
     const response = await axios.post(
         'https://api.notion.com/v1/oauth/token',
         {
@@ -263,6 +207,16 @@ const connectNotion = async (data: ConnectNotion) => {
 const connectGithub = async (data: ConnectGithub) => {
     const { username, accessToken, userId } = data
 
+    const existingUser = await prisma.user.findFirst({
+        where: {
+            id: userId,
+        },
+    })
+
+    if (!existingUser || existingUser.isDeleted == true) {
+        throw new AppError('user not found', 404)
+    }
+
     try {
         const updatedUser = await prisma.user.update({
             where: {
@@ -300,10 +254,71 @@ const connectGithub = async (data: ConnectGithub) => {
     }
 }
 
+const getUserGithubRepos = async (data: ListGithubRepos): Promise<GithubRepo[]> => {
+    const { userId } = data
+    const user = await prisma.user.findUnique({
+        where: {
+            id: userId,
+        },
+        select: {
+            githubToken: true,
+            githubUsername: true,
+            githubConnected: true,
+        },
+    })
+
+    if (!user) {
+        throw new AppError('user not found', 404)
+    }
+
+    if (user.githubConnected === false) {
+        throw new AppError('github is not connected', 401)
+    }
+
+    if (user.githubToken === undefined) {
+        throw new AppError('github access token not found', 401)
+    }
+
+    const response = await fetch('https://api.github.com/user/repos?sort=updated&per_page=100', {
+        method: 'GET',
+        headers: {
+            Authorization: `Bearer ${user.githubToken}`,
+            Accept: 'application/vnd.github+json',
+            'X-GitHub-Api-Version': '2022-11-28',
+        },
+    })
+
+    if (!response.ok) {
+        const errorText = await response.text()
+        throw new AppError(`Failed to fetch GitHub repos: ${errorText}`, 401)
+    }
+
+    const repos = (await response.json()) as any[]
+
+    return repos.map((repo: any) => ({
+        id: repo.id,
+        name: repo.name,
+        fullName: repo.full_name,
+        private: repo.private,
+        defaultBranch: repo.default_branch,
+        updatedAt: repo.updated_at,
+        htmlUrl: repo.html_url,
+        cloneUrl: repo.clone_url,
+        language: repo.language ?? null,
+        description: repo.description ?? null,
+        owner: {
+            login: repo.owner?.login,
+            avatarUrl: repo.owner?.avatar_url,
+        },
+    }))
+}
+
 const createRepo = async (data: CreateRepo) => {
     const { userId, projectId } = data
     const user = await prisma.user.findUnique({
-        where: { id: userId },
+        where: {
+            id: userId,
+        },
         select: {
             githubToken: true,
             githubConnected: true,
@@ -605,7 +620,7 @@ const updateRepo = async (data: UpdateRepo) => {
 }
 
 export const integrationsService = {
-    listGithubRepos,
+    getUserGithubRepos,
     connectVercel,
     connectSupabase,
     connectNotion,

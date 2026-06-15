@@ -31,3 +31,17 @@ export type HydrateCanvasDocument = {
     canvasState?: unknown
     canvasAssetManifest?: unknown
 }
+
+export type ClipperWorkerSection = {
+    path: string
+    width: number
+    height: number
+}
+
+export type ClipperWorkerResult = {
+    directory: string
+    full: string
+    width: number
+    height: number
+    sections: ClipperWorkerSection[]
+}

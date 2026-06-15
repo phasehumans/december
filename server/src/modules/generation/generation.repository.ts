@@ -12,7 +12,6 @@ import { createProjectName, mapVersionSummary, parseStoredProjectFiles } from '.
 import type {
     GenerateWebsiteInput,
     PersistedProjectRevision,
-    ProjectRecord,
     RevisionBase,
     StoredProjectFile,
     GetProjectRevisionBase,
