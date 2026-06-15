@@ -4,7 +4,7 @@ import { mkdir, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
 
-import { importStagingRootDir } from './import-project.utils'
+import { importStagingRootDir } from './upload.utils'
 
 import type { DownloadedGitHubRepoArchive } from './upload.types'
 
