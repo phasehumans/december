@@ -3,21 +3,25 @@
     "type": "module",
     "private": true,
     "workspaces": [
-        "web",
-        "server",
-        "cli"
+        "apps/*",
+        "packages/*"
     ],
     "scripts": {
+        "build": "turbo build",
+        "dev": "turbo dev",
+        "lint": "turbo lint",
+        "test": "turbo test",
         "prepare": "husky",
         "format": "prettier --write .",
         "format:check": "prettier --check .",
-        "lint": "eslint .",
+        "linti": "eslint .",
         "lint:fix": "eslint . --fix",
         "docker:kill": "docker rm -f $(docker ps -aq --filter \"name=december-preview\")",
         "release": "bun scripts/release.ts",
         "tmuxlogs": "tmux capture-pane -p -S - > tmux.log"
     },
     "devDependencies": {
+        "@changesets/cli": "2.31.0",
         "@commitlint/cli": "^21.0.1",
         "@commitlint/config-conventional": "^21.0.1",
         "@eslint/js": "^10.0.1",
@@ -36,6 +40,7 @@
         "husky": "^9.1.7",
         "lint-staged": "^16.4.0",
         "prettier": "^3.8.4",
+        "turbo": "2.9.18",
         "typescript-eslint": "^8.59.3"
     },
     "peerDependencies": {

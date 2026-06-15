@@ -20,22 +20,15 @@ coverage/
 
 logs/
 *.log
-
-server/src/db/prisma/generated/
-
-docker-compose.override.yml
-
+target/
+.vscode/
+.idea/
+*.tsbuildinfo
+.DS_Store
 Thumbs.db
 
-infra/minio/data/
-infra/postgres/data/
-runtime/data
-.december-imports/
-server/.december-imports/
-codes.md
-agentguide.md
-deploy.md
-
-# Deployments
-/deployments/
-infra/nginx/deployments/*
+apps/runtime/data
+apps/server/.december-imports
+infra/minio/data
+infra/postgres/data
+infra/nginx/deployments
