@@ -32,7 +32,7 @@ app.use(cookieParser())
 app.use(express.urlencoded({ extended: true, limit: '25mb' }))
 app.use(
     cors({
-        origin: process.env.FRONTEND_URL,
+        origin: process.env.WEB_URL,
         credentials: true,
     })
 )

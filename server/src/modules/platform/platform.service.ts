@@ -6,7 +6,7 @@ import { AppError } from '../../shared/appError'
 import { projectService } from '../project/project.service'
 import { runtimeService } from '../runtime/runtime.service'
 
-import { buildProjectZip } from './build-project-zip'
+import { buildProjectZip } from './platform.utils'
 
 import type { DeployProject, GetProject } from './platform.types'
 

@@ -64,3 +64,10 @@ export type RecordRuntimeStatus = {
 export type CheckSandboxCompilation = {
     projectId: string
 }
+
+export type StoredProjectFile = {
+    path: string
+    key: string
+    contentType?: string
+    size: number
+}

@@ -7,7 +7,7 @@ import {
     generateProjectPatchFile,
     generateWorkDoneSummary,
 } from '../agent'
-import { persistCanvasDocument } from '../canvas/canvas.persistence'
+import { persistCanvasDocument } from '../canvas/canvas.utils'
 import { cleanPrompt } from '../generation/generation.utils'
 import {
     extractStyleGuidelines,

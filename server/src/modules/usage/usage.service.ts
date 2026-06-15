@@ -1,20 +1,6 @@
 import { prisma } from '../../config/db'
 import { AppError } from '../../shared/appError'
 
-type UsageUser = {
-    id: string
-    isDeleted: boolean
-    subscriptionPlan: 'FREE' | 'PRO'
-    subscriptionStatus: 'FREE' | 'ACTIVE' | 'PAST_DUE' | 'CANCELED'
-    subscription: {
-        currentPeriodStart: Date
-        currentPeriodEnd: Date
-    } | null
-    createdAt: Date
-    creditBalance: number
-    giftedCredits: number
-}
-
 import type {
     GetCurrentUsage,
     CheckEnoughCredits,
@@ -22,13 +8,9 @@ import type {
     RecordUsageEvent,
     CalculateGenerationCost,
     CanRunSelfCorrection,
+    UsageUser,
+    ModelRate,
 } from './usage.types'
-
-type ModelRate = {
-    name: string
-    inputRate: number // USD per 1M tokens
-    outputRate: number // USD per 1M tokens
-}
 
 const getModelRatesFromEnv = (): ModelRate[] => {
     const rates: ModelRate[] = []

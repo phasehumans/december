@@ -9,7 +9,7 @@ import { prisma } from '../../config/db'
 import { AppError } from '../../shared/appError'
 import { assetKey, putBinaryFile, temporaryCanvasAssetKey } from '../../shared/project-storage'
 
-import { persistCanvasDocument } from './canvas.persistence'
+import { persistCanvasDocument } from './canvas.utils'
 
 import type {
     ClipperWorkerResult,
