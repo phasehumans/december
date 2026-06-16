@@ -67,5 +67,3 @@ export type RecordRuntimeStatus = {
 export type CheckSandboxCompilation = {
     projectId: string
 }
-
-// StoredProjectFile is imported from project.types

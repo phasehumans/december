@@ -24,21 +24,21 @@ export const renameProjectSchema = z.object({
 
 export const updateGeneralSettingsSchema = z.object({
     name: z
-        .string({ message: 'Project name must be a string' })
-        .min(3, 'Project name must be at least 3 characters')
-        .max(50, 'Project name must be at most 50 characters')
+        .string({ message: 'project name must be a string' })
+        .min(3, 'project name must be at least 3 characters')
+        .max(50, 'project name must be at most 50 characters')
         .optional(),
     description: z
-        .string({ message: 'Project description must be a string' })
-        .min(10, 'Project description must be at least 10 characters')
-        .max(500, 'Project description must be at most 500 characters')
+        .string({ message: 'project description must be a string' })
+        .min(10, 'project description must be at least 10 characters')
+        .max(500, 'project description must be at most 500 characters')
         .nullable()
         .optional(),
     isStarred: z.boolean({ message: 'isStarred must be a boolean' }).optional(),
     isSharedAsTemplate: z.boolean({ message: 'isSharedAsTemplate must be a boolean' }).optional(),
     projectCategory: z
         .enum(['LANDING_PAGE', 'DASHBOARD', 'PORTFOLIO_BLOG', 'SAAS_APP', 'ECOMMERCE', 'NONE'], {
-            message: 'Invalid project category',
+            message: 'nvalid project category',
         })
         .optional(),
 })
@@ -52,9 +52,9 @@ export const getProjectByIdSchema = z.object({
 
 export const duplicateProjectSchema = z.object({
     name: z
-        .string({ message: 'Project name must be a string' })
-        .min(3, 'Project name must be at least 3 characters')
-        .max(50, 'Project name must be at most 50 characters')
+        .string({ message: 'project name must be a string' })
+        .min(3, 'project name must be at least 3 characters')
+        .max(50, 'project name must be at most 50 characters')
         .optional(),
 })
 

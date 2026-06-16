@@ -31,8 +31,6 @@ export type ImportStatus =
     | 'READY'
     | 'FAILED'
 
-// GithubRepo is imported from integration.types
-
 export type ImportValidationFile = {
     absolutePath: string
     path: string
