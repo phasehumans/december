@@ -1,7 +1,7 @@
+import { prisma } from '@december/database'
 import bcrypt from 'bcrypt'
 import { describe, it, expect, beforeEach, afterAll } from 'bun:test'
 
-import { prisma } from '@december/database'
 import { notificationService } from '../../../src/modules/notification/notification.service'
 
 const createUser = async (overrides: Record<string, unknown> = {}) => {

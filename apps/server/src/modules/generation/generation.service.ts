@@ -1,4 +1,6 @@
 import { prisma } from '@december/database'
+import { planAgentResponseSchema } from '@december/shared'
+
 import { saveProjectFiles } from '../../shared/save-project-files'
 import {
     extractProjectChangePlan,
@@ -8,7 +10,6 @@ import {
     generateWorkDoneSummary,
 } from '../agent'
 import { persistCanvasDocument } from '../canvas/canvas.utils'
-import { cleanPrompt } from './generation.utils'
 import {
     extractStyleGuidelines,
     upsertStyleGuidelines,
@@ -28,8 +29,8 @@ import {
     publishFinalPreviewSnapshot,
     publishIncrementalPreviewSnapshot,
 } from './generation.runtime'
-import { planAgentResponseSchema } from '@december/shared'
 import { emitAssistantMessage, emitFileStream, emitPatchFileStream } from './generation.stream'
+import { cleanPrompt } from './generation.utils'
 import {
     appendAssistantMessageContent,
     assertFrontendOnlyChangePlan,

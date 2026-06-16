@@ -1,6 +1,7 @@
+import { toggleLikeSchema, remixTemplateSchema } from '@december/shared'
+
 import { AppError } from '../../shared/appError'
 
-import { toggleLikeSchema, remixTemplateSchema } from '@december/shared'
 import { templateService } from './template.service'
 
 import type { Request, Response } from 'express'

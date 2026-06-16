@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'bun:test'
+
 import { webClipRequestSchema } from '../src'
 
 describe('canvas.schema', () => {

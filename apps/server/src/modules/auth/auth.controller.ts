@@ -1,9 +1,3 @@
-import axios from 'axios'
-import { OAuth2Client } from 'google-auth-library'
-
-import { AppError } from '../../shared/appError'
-
-import { authCookie } from './auth.cookie'
 import {
     forgotPasswordRequestSchema,
     forgotPasswordResetSchema,
@@ -11,6 +5,12 @@ import {
     loginSchema,
     signupSchema,
 } from '@december/shared'
+import axios from 'axios'
+import { OAuth2Client } from 'google-auth-library'
+
+import { AppError } from '../../shared/appError'
+
+import { authCookie } from './auth.cookie'
 import { authService } from './auth.service'
 import { clearAuthCookies, setAccessTokenCookie, setRefreshTokenCookie } from './auth.utils'
 

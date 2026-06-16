@@ -166,6 +166,12 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
     const shouldForceStream = isFirstImportView && justImported && !sessionStorage.getItem(cacheKey)
     const [isStreamFinished, setIsStreamFinished] = React.useState(!shouldForceStream)
 
+    // Calculate segments needed for useEffect BEFORE they are used in hooks
+    const isThinkingPhase = status === 'thinking'
+    const thinkingText = thoughts || (isThinkingPhase && !thoughts ? content : '')
+    const planText = plan || ''
+    const summaryText = summary || ''
+
     React.useEffect(() => {
         if (shouldForceStream) return
 
@@ -181,48 +187,6 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
             hasAutoCollapsedRef.current = false
         }
     }, [status, plan, shouldForceStream])
-
-    if (role === 'user') {
-        return (
-            <div className="flex flex-col gap-1 items-end w-full font-sans">
-                <div className="bg-[#1E1D1B] px-4 py-2.5 rounded-xl text-sm leading-relaxed text-[#EDEDED] selection:bg-blue-500/20 shadow-sm max-w-[95%] break-words whitespace-pre-wrap">
-                    {content}
-                </div>
-            </div>
-        )
-    }
-
-    const allFilesArray = generatedFiles ? Object.values(generatedFiles) : []
-    const filesArray =
-        appliedFiles && appliedFiles.length > 0
-            ? allFilesArray.filter((f: any) => appliedFiles.includes(f.path))
-            : allFilesArray
-    const totalFiles = filesArray.length
-    const isThinkingPhase = status === 'thinking'
-    const isBuildingPhase = status === 'building'
-    const isCompletedPhase = status === 'done'
-    const showActions = !isGenerating && isCompletedPhase && isStreamFinished
-
-    // Segment calculation
-    const showThinking = isThinkingPhase || Boolean(thoughts)
-    const thinkingText = thoughts || (isThinkingPhase && !thoughts ? content : '')
-
-    const showPlan = Boolean(plan)
-    const planText = plan || ''
-
-    const isPlanFinished = !planText || displayedPlan.length >= planText.length
-    const showFiles =
-        projectType === 'generated' &&
-        (isBuildingPhase || isCompletedPhase) &&
-        totalFiles > 0 &&
-        isPlanFinished
-
-    const showSummary = projectType === 'generated' && Boolean(summary)
-    const summaryText = summary || ''
-
-    // For normal messages, we don't animate thoughts because SSE handles it.
-    // But for forceStream messages, we simulate the thoughts streaming too.
-    const activeThoughtsText = shouldForceStream ? displayedThoughts : thinkingText
 
     React.useEffect(() => {
         if (!shouldForceStream) {
@@ -311,6 +275,44 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
             }
         }
     }, [thinkingText, planText, summaryText, shouldForceStream, cacheKey, projectType, projectId])
+
+    if (role === 'user') {
+        return (
+            <div className="flex flex-col gap-1 items-end w-full font-sans">
+                <div className="bg-[#1E1D1B] px-4 py-2.5 rounded-xl text-sm leading-relaxed text-[#EDEDED] selection:bg-blue-500/20 shadow-sm max-w-[95%] break-words whitespace-pre-wrap">
+                    {content}
+                </div>
+            </div>
+        )
+    }
+
+    const allFilesArray = generatedFiles ? Object.values(generatedFiles) : []
+    const filesArray =
+        appliedFiles && appliedFiles.length > 0
+            ? allFilesArray.filter((f: any) => appliedFiles.includes(f.path))
+            : allFilesArray
+    const totalFiles = filesArray.length
+    const isBuildingPhase = status === 'building'
+    const isCompletedPhase = status === 'done'
+    const showActions = !isGenerating && isCompletedPhase && isStreamFinished
+
+    // Segment calculation
+    const showThinking = isThinkingPhase || Boolean(thoughts)
+
+    const showPlan = Boolean(plan)
+
+    const isPlanFinished = !planText || displayedPlan.length >= planText.length
+    const showFiles =
+        projectType === 'generated' &&
+        (isBuildingPhase || isCompletedPhase) &&
+        totalFiles > 0 &&
+        isPlanFinished
+
+    const showSummary = projectType === 'generated' && Boolean(summary)
+
+    // For normal messages, we don't animate thoughts because SSE handles it.
+    // But for forceStream messages, we simulate the thoughts streaming too.
+    const activeThoughtsText = shouldForceStream ? displayedThoughts : thinkingText
 
     return (
         <div className="flex flex-col gap-2 animate-in fade-in duration-500 font-sans w-full">

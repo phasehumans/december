@@ -1,6 +1,7 @@
+import { createGithubRepoSchema, syncGithubRepoSchema } from '@december/shared'
+
 import { AppError } from '../../shared/appError'
 
-import { createGithubRepoSchema, syncGithubRepoSchema } from '@december/shared'
 import { integrationsService } from './integration.service'
 
 import type { Request, Response } from 'express'

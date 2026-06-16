@@ -1,5 +1,3 @@
-import { AppError } from '../../shared/appError'
-
 import {
     createProjectSchema,
     getProjectByIdSchema,
@@ -9,6 +7,9 @@ import {
     toggleStarProjectSchema,
     duplicateProjectSchema,
 } from '@december/shared'
+
+import { AppError } from '../../shared/appError'
+
 import { projectService } from './project.service'
 
 import type { Request, Response } from 'express'

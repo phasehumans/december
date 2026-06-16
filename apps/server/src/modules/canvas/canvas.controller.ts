@@ -1,6 +1,7 @@
+import { saveCanvasSchema, webClipRequestSchema } from '@december/shared'
+
 import { AppError } from '../../shared/appError'
 
-import { saveCanvasSchema, webClipRequestSchema } from '@december/shared'
 import { canvasService } from './canvas.service'
 
 import type { Request, Response } from 'express'

@@ -1,7 +1,6 @@
+import { prisma } from '@december/database'
 import bcrypt from 'bcrypt'
 import { describe, it, expect, beforeEach, afterAll, mock } from 'bun:test'
-
-import { prisma } from '@december/database'
 
 const sendOTPMock = mock(async () => {})
 const sendWelcomeEmailMock = mock(async () => {})

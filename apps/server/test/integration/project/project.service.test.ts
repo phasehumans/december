@@ -1,6 +1,6 @@
+import { prisma } from '@december/database'
 import { describe, it, expect, beforeEach, afterAll } from 'bun:test'
 
-import { prisma } from '@december/database'
 import { projectService } from '../../../src/modules/project/project.service'
 import { parseStoredProjectFiles } from '../../../src/modules/project/project.utils'
 import { putTextFile } from '../../../src/shared/project-storage'

@@ -1,6 +1,7 @@
+import { NotificationParamsSchema } from '@december/shared'
+
 import { AppError } from '../../shared/appError'
 
-import { NotificationParamsSchema } from '@december/shared'
 import { notificationService } from './notification.service'
 
 import type { Request, Response } from 'express'

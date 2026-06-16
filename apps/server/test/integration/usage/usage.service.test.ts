@@ -1,6 +1,6 @@
+import { prisma } from '@december/database'
 import { afterAll, beforeEach, describe, expect, it } from 'bun:test'
 
-import { prisma } from '@december/database'
 import { usageService } from '../../../src/modules/usage/usage.service'
 
 const createUser = async (overrides: Record<string, unknown> = {}) => {

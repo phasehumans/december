@@ -1,9 +1,9 @@
 import '../../env'
 
+import { prisma } from '@december/database'
 import bcrypt from 'bcrypt'
 import { describe, it, expect, beforeEach, afterAll } from 'bun:test'
 
-import { prisma } from '@december/database'
 import { integrationsService } from '../../../src/modules/integration/integration.service'
 
 const HASHED_PASSWORD = await bcrypt.hash('Password123', 10)

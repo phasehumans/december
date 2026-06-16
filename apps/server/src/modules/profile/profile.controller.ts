@@ -1,6 +1,3 @@
-import { AppError } from '../../shared/appError'
-import { authCookie } from '../auth/auth.cookie'
-
 import {
     changePasswordSchema,
     chatSuggestionsSchema,
@@ -12,6 +9,10 @@ import {
     updateAvatarUrlSchema,
     submitFeedbackSchema,
 } from '@december/shared'
+
+import { AppError } from '../../shared/appError'
+import { authCookie } from '../auth/auth.cookie'
+
 import { profileService } from './profile.service'
 
 import type { Request, Response } from 'express'

@@ -1,10 +1,10 @@
 import '../../env'
 
+import { prisma } from '@december/database'
 import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'bun:test'
 import express, { Router } from 'express'
 import request from 'supertest'
 
-import { prisma } from '@december/database'
 import { projectController } from '../../../src/modules/project/project.controller'
 
 const TEST_USER_ID = 'test-project-user-id'
