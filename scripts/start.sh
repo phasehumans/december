@@ -8,9 +8,9 @@ SESSION_NAME="december"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-RUNTIME_DIR="$PROJECT_ROOT/runtime"
-SERVER_DIR="$PROJECT_ROOT/server"
-WEB_DIR="$PROJECT_ROOT/web"
+RUNTIME_DIR="$PROJECT_ROOT/apps/runtime"
+SERVER_DIR="$PROJECT_ROOT/apps/server"
+WEB_DIR="$PROJECT_ROOT/apps/web"
 
 # Check required tools
 if ! command -v tmux >/dev/null 2>&1; then
