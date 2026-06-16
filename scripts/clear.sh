@@ -21,14 +21,14 @@ else
 fi
 
 # 3. Clean server imports data
-if [ -d "server/.december-imports" ]; then
-    echo "Clearing server/.december-imports/*"
-    rm -rf server/.december-imports/*
+if [ -d "apps/server/.december-imports" ]; then
+    echo "Clearing apps/server/.december-imports/*"
+    rm -rf apps/server/.december-imports/*
 elif [ -d ".december-imports" ]; then
     echo "Clearing .december-imports/*"
     rm -rf .december-imports/*
 else
-    echo "Directory server/.december-imports not found."
+    echo "Directory apps/server/.december-imports not found."
 fi
 
 echo "Cleanup completed successfully!"
