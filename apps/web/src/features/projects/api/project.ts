@@ -157,7 +157,7 @@ const downloadProject = async (projectId: string, versionId?: string | null) => 
     const res = await apiFetch(`/project/${projectId}/download${buildVersionQuery(versionId)}`, {})
 
     if (!res.ok) {
-        let payload: { message?: string; errors?: unknown } | null = null
+        let payload: { message?: string; errors?: unknown } | null
 
         try {
             payload = await res.json()

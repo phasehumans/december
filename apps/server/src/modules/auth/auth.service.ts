@@ -1,8 +1,8 @@
 import crypto from 'crypto'
 
+import { prisma } from '@december/database'
 import bcrypt from 'bcrypt'
 
-import { prisma } from '@december/database'
 import { AppError } from '../../shared/appError'
 import { sendNotificationToUser } from '../notification/notification.service'
 

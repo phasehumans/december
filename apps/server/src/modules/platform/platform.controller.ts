@@ -1,8 +1,9 @@
 import { prisma } from '@december/database'
+import { downloadProjectVersionSchema } from '@december/shared'
+
 import { AppError } from '../../shared/appError'
 import { integrationsService } from '../integration/integration.service'
 
-import { downloadProjectVersionSchema } from '@december/shared'
 import { platformService } from './platform.service'
 import { vercelService } from './vercel.service'
 

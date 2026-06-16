@@ -1,5 +1,3 @@
-import { AppError } from '../../shared/appError'
-
 import {
     cancelSubscriptionSchema,
     createSubscriptionSchema,
@@ -7,6 +5,9 @@ import {
     verifySubscriptionSchema,
     redeemCodeSchema,
 } from '@december/shared'
+
+import { AppError } from '../../shared/appError'
+
 import { billingService } from './billing.service'
 
 import type { Request, Response } from 'express'

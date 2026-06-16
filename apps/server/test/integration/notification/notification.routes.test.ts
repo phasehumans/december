@@ -1,12 +1,12 @@
 import '../../env'
 
+import { prisma } from '@december/database'
 import bcrypt from 'bcrypt'
 import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'bun:test'
 import express from 'express'
 import { Router } from 'express'
 import request from 'supertest'
 
-import { prisma } from '@december/database'
 import { notificationController } from '../../../src/modules/notification/notification.controller'
 import { notificationService } from '../../../src/modules/notification/notification.service'
 

@@ -1,6 +1,6 @@
+import { planAgentResponseSchema, projectChangePlanResponseSchema } from '@december/shared'
 import { describe, expect, test } from 'bun:test'
 
-import { planAgentResponseSchema, projectChangePlanResponseSchema } from '@december/shared'
 import {
     autoHealPlanAgentResponse,
     autoHealChangePlanResponse,

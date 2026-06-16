@@ -1,5 +1,13 @@
 import { randomUUID } from 'crypto'
 
+import {
+    canvasDocumentSchema,
+    canvasAssetKindSchema,
+    type CanvasDocument,
+    type PersistImageAsset,
+    type PersistCanvasDocument,
+    type HydrateCanvasDocument,
+} from '@december/shared'
 import { z } from 'zod'
 
 import {
@@ -9,17 +17,6 @@ import {
     getBinaryFile,
     putBinaryFile,
 } from '../../shared/project-storage'
-
-import {
-    canvasDocumentSchema,
-    canvasItemSchema,
-    canvasConnectionSchema,
-    canvasAssetKindSchema,
-    type CanvasDocument,
-    type PersistImageAsset,
-    type PersistCanvasDocument,
-    type HydrateCanvasDocument,
-} from '@december/shared'
 
 type CanvasAssetManifestEntry = {
     itemId: string

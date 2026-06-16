@@ -125,7 +125,7 @@ const Sidebar: React.FC<
                                                 className="flex items-center px-3 py-0.5 w-full text-left rounded-lg hover:bg-[#252422] transition-colors group"
                                             >
                                                 <span className="font-medium text-[12px] lowercase transition-colors tracking-tight text-[#8F8E8D] group-hover:text-[#CBCACA] truncate">
-                                                    {/* @ts-ignore */}
+                                                    {/* @ts-expect-error */}
                                                     {project.name || project.title}
                                                 </span>
                                             </button>

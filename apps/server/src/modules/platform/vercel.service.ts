@@ -1,6 +1,6 @@
+import { prisma } from '@december/database'
 import axios from 'axios'
 
-import { prisma } from '@december/database'
 import { AppError } from '../../shared/appError'
 
 import type {
