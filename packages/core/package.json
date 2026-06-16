@@ -1,0 +1,14 @@
+{
+    "name": "@december/core",
+    "module": "index.ts",
+    "main": "./index.ts",
+    "types": "./index.ts",
+    "type": "module",
+    "private": true,
+    "devDependencies": {
+        "@types/bun": "latest"
+    },
+    "peerDependencies": {
+        "typescript": "^5"
+    }
+}

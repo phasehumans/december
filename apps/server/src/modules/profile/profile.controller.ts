@@ -1,0 +1,766 @@
+import { AppError } from '../../shared/appError'
+import { authCookie } from '../auth/auth.cookie'
+
+import {
+    changePasswordSchema,
+    chatSuggestionsSchema,
+    generationSoundSchema,
+    designSchema,
+    updateNameSchema,
+    updateNotificationSchema,
+    updateUsernameSchema,
+    updateAvatarUrlSchema,
+    submitFeedbackSchema,
+} from '@december/shared'
+import { profileService } from './profile.service'
+
+import type { Request, Response } from 'express'
+
+const getInfo = async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
+
+    if (!userId) {
+        return res.status(401).json({
+            success: false,
+            message: 'unauthorized',
+        })
+    }
+
+    try {
+        const result = await profileService.getInfo({ userId })
+        return res.status(200).json({
+            success: true,
+            message: 'info fetched successfully',
+            data: result,
+        })
+    } catch (error) {
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({
+                success: false,
+                message: 'failed to fetch info',
+                errors: error.message,
+            })
+        }
+
+        return res.status(500).json({
+            success: false,
+            message: 'failes to fetch info',
+            errors: error instanceof Error ? error.message : 'unknown error',
+        })
+    }
+}
+
+const getProfileCard = async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
+
+    if (!userId) {
+        return res.status(401).json({
+            success: false,
+            message: 'unauthorized',
+        })
+    }
+
+    try {
+        const result = await profileService.getProfileCard({ userId })
+        return res.status(200).json({
+            success: true,
+            message: 'profile card fetched successfully',
+            data: result,
+        })
+    } catch (error) {
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({
+                success: false,
+                message: 'failed to fetch profile card',
+                errors: error.message,
+            })
+        }
+
+        return res.status(500).json({
+            success: false,
+            message: 'failed to fetch profile card',
+            errors: error instanceof Error ? error.message : 'unknown error',
+        })
+    }
+}
+
+const getProfile = async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
+
+    if (!userId) {
+        return res.status(401).json({
+            success: false,
+            message: 'unauthorized',
+        })
+    }
+
+    try {
+        const result = await profileService.getProfile({ userId })
+        return res.status(200).json({
+            success: true,
+            message: 'profile fetched successfully',
+            data: result,
+        })
+    } catch (error) {
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({
+                success: false,
+                message: 'failed to fetch profile',
+                errors: error.message,
+            })
+        }
+
+        return res.status(500).json({
+            success: false,
+            message: 'failed to fetch profile',
+            errors: error instanceof Error ? error.message : 'unknown error',
+        })
+    }
+}
+
+const updateName = async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
+    const parseData = updateNameSchema.safeParse(req.body)
+
+    if (!parseData.success) {
+        return res.status(400).json({
+            success: false,
+            message: 'validation failed',
+            errors: parseData.error.flatten().fieldErrors,
+        })
+    }
+
+    if (!userId) {
+        return res.status(401).json({
+            success: false,
+            message: 'unauthorized',
+        })
+    }
+
+    const { name } = parseData.data
+    try {
+        const result = await profileService.updateName({ userId, name })
+        return res.status(200).json({
+            success: true,
+            message: 'name updated successfully',
+            data: result,
+        })
+    } catch (error) {
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({
+                success: false,
+                message: 'failed to update name',
+                errors: error.message,
+            })
+        }
+
+        return res.status(500).json({
+            success: false,
+            message: 'failed to update name',
+            errors: error instanceof Error ? error.message : 'unknown error',
+        })
+    }
+}
+
+const updateUsername = async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
+    const parseData = updateUsernameSchema.safeParse(req.body)
+
+    if (!userId) {
+        return res.status(401).json({
+            success: false,
+            message: 'unauthorized',
+        })
+    }
+
+    if (!parseData.success) {
+        return res.status(400).json({
+            success: false,
+            message: 'validation failed',
+            errors: parseData.error.flatten().fieldErrors,
+        })
+    }
+
+    const { username } = parseData.data
+
+    try {
+        const result = await profileService.updateUsername({ userId, username })
+        return res.status(200).json({
+            success: true,
+            message: 'username updated successfully',
+            data: result,
+        })
+    } catch (error) {
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({
+                success: false,
+                message: 'failed to update username',
+                errors: error.message,
+            })
+        }
+
+        return res.status(500).json({
+            success: false,
+            message: 'failed to update username',
+            errors: error instanceof Error ? error.message : 'unknown error',
+        })
+    }
+}
+
+const updateAvatarUrl = async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
+    const parseData = updateAvatarUrlSchema.safeParse(req.body)
+
+    if (!userId) {
+        return res.status(401).json({
+            success: false,
+            message: 'unauthorized',
+        })
+    }
+
+    if (!parseData.success) {
+        return res.status(400).json({
+            success: false,
+            message: 'validation failed',
+            errors: parseData.error.flatten().fieldErrors,
+        })
+    }
+
+    const { avatarUrl } = parseData.data
+
+    try {
+        const result = await profileService.updateAvatarUrl({ userId, avatarUrl })
+        return res.status(200).json({
+            success: true,
+            message: 'avatar updated successfully',
+            data: result,
+        })
+    } catch (error) {
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({
+                success: false,
+                message: 'failed to update avatar',
+                errors: error.message,
+            })
+        }
+
+        return res.status(500).json({
+            success: false,
+            message: 'failed to update avatar',
+            errors: error instanceof Error ? error.message : 'unknown error',
+        })
+    }
+}
+
+const changePassword = async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
+    const parseData = changePasswordSchema.safeParse(req.body)
+
+    if (!parseData.success) {
+        return res.status(400).json({
+            success: false,
+            message: 'validation failed',
+            errors: parseData.error.flatten().fieldErrors,
+        })
+    }
+
+    if (!userId) {
+        return res.status(401).json({
+            success: false,
+            message: 'unauthorized',
+        })
+    }
+
+    const { currentPassword, newPassword } = parseData.data
+
+    try {
+        const result = await profileService.changePassword({
+            userId,
+            currentPassword,
+            newPassword,
+        })
+        return res.status(200).json({
+            success: true,
+            message: 'password changed successfully',
+            data: result,
+        })
+    } catch (error) {
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({
+                success: false,
+                message: 'failed to update password',
+                errors: error.message,
+            })
+        }
+
+        return res.status(500).json({
+            success: false,
+            message: 'failed to update password',
+            errors: error instanceof Error ? error.message : 'unknown error',
+        })
+    }
+}
+
+const updateNotifications = async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
+    const parseData = updateNotificationSchema.safeParse(req.body)
+
+    if (!parseData.success) {
+        return res.status(400).json({
+            success: false,
+            message: 'validation failed',
+            errors: parseData.error.flatten().fieldErrors,
+        })
+    }
+
+    if (!userId) {
+        return res.status(401).json({
+            success: false,
+            message: 'unauthorized',
+        })
+    }
+
+    const { notifyProjectActivity, notifyProductUpdates, notifySecurityAlerts } = parseData.data
+
+    try {
+        const result = await profileService.updateNotifications({
+            notifyProjectActivity,
+            notifyProductUpdates,
+            notifySecurityAlerts,
+            userId,
+        })
+        return res.status(200).json({
+            success: true,
+            message: 'notifications preferences updated',
+            data: result,
+        })
+    } catch (error) {
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({
+                success: false,
+                message: 'failed to update notifications preferences',
+                errors: error.message,
+            })
+        }
+
+        return res.status(500).json({
+            success: false,
+            message: 'failed to update notifications preferences',
+            errors: error instanceof Error ? error.message : 'unknown error',
+        })
+    }
+}
+
+const signout = async (req: Request, res: Response) => {
+    const userId = req.user?.userId
+    const sessionId = req.user?.sessionId
+
+    if (!userId || !sessionId) {
+        return res.status(401).json({
+            success: false,
+            message: 'unauthorized',
+        })
+    }
+
+    try {
+        await profileService.signout({ userId, sessionId })
+        authCookie.clearAuthCookies(res)
+
+        return res.status(200).json({
+            success: true,
+            message: 'signed out successfully',
+        })
+    } catch (error) {
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({
+                success: false,
+                message: 'failed to sign out',
+                errors: error.message,
+            })
+        }
+
+        return res.status(500).json({
+            success: false,
+            message: 'failed to sign out',
+            errors: error instanceof Error ? error.message : 'unknown error',
+        })
+    }
+}
+
+const signoutAll = async (req: Request, res: Response) => {
+    const userId = req.user?.userId
+
+    if (!userId) {
+        return res.status(401).json({
+            success: false,
+            message: 'unauthorized',
+        })
+    }
+
+    try {
+        await profileService.signoutAll({ userId })
+        authCookie.clearAuthCookies(res)
+
+        return res.status(200).json({
+            success: true,
+            message: 'signed out from all devices successfully',
+        })
+    } catch (error) {
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({
+                success: false,
+                message: 'failed to signed out from all devices',
+                errors: error.message,
+            })
+        }
+
+        return res.status(500).json({
+            success: false,
+            message: 'failed to signed out from all devices',
+            errors: error instanceof Error ? error.message : 'unknown error',
+        })
+    }
+}
+
+const deleteAccount = async (req: Request, res: Response) => {
+    const userId = req.user?.userId
+
+    if (!userId) {
+        return res.status(401).json({
+            success: false,
+            message: 'unauthorized',
+        })
+    }
+
+    try {
+        await profileService.deleteAccount({ userId })
+        authCookie.clearAuthCookies(res)
+
+        return res.status(200).json({
+            success: true,
+            message: 'account deleted successfully',
+        })
+    } catch (error) {
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({
+                success: false,
+                message: 'failed to delete account',
+                errors: error.message,
+            })
+        }
+
+        return res.status(500).json({
+            success: false,
+            message: 'failed to delete account',
+            errors: error instanceof Error ? error.message : 'unknown error',
+        })
+    }
+}
+
+const chatSuggestions = async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
+    const parseData = chatSuggestionsSchema.safeParse(req.body)
+
+    if (!userId) {
+        return res.status(401).json({
+            success: false,
+            message: 'unauthorized',
+        })
+    }
+
+    if (!parseData.success) {
+        return res.status(400).json({
+            success: false,
+            message: 'validation failed',
+            errors: parseData.error.flatten().fieldErrors,
+        })
+    }
+
+    const { chatSuggestions } = parseData.data
+
+    try {
+        const result = await profileService.chatSuggestions({ userId, chatSuggestions })
+        return res.status(200).json({
+            success: true,
+            message: 'chat suggestions updated successfully',
+            data: result,
+        })
+    } catch (error) {
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({
+                success: false,
+                message: 'failed to update chat suggestions',
+                errors: error.message,
+            })
+        }
+
+        return res.status(500).json({
+            success: false,
+            message: 'failed to update chat suggestions',
+            errors: error instanceof Error ? error.message : 'unknown error',
+        })
+    }
+}
+
+const generationSound = async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
+    const parseData = generationSoundSchema.safeParse(req.body)
+
+    if (!userId) {
+        return res.status(401).json({
+            success: false,
+            message: 'unauthorized',
+        })
+    }
+
+    if (!parseData.success) {
+        return res.status(400).json({
+            success: false,
+            message: 'validation failed',
+            errors: parseData.error.flatten().fieldErrors,
+        })
+    }
+
+    const { generationSound } = parseData.data
+
+    try {
+        const result = await profileService.generationSound({ userId, generationSound })
+        return res.status(200).json({
+            success: true,
+            message: 'generation sound preference updated successfully',
+            data: result,
+        })
+    } catch (error) {
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({
+                success: false,
+                message: 'failed to update generation sound preference',
+                errors: error.message,
+            })
+        }
+
+        return res.status(500).json({
+            success: false,
+            message: 'failed to update generation sound preference',
+            errors: error instanceof Error ? error.message : 'unknown error',
+        })
+    }
+}
+
+const getdesign = async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
+
+    if (!userId) {
+        return res.status(401).json({
+            success: false,
+            message: 'unauthorized',
+        })
+    }
+
+    try {
+        const result = await profileService.getdesign({ userId })
+        return res.status(200).json({
+            success: true,
+            message: 'design fetched successfully',
+            data: result,
+        })
+    } catch (error) {
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({
+                success: false,
+                message: 'failed to fetch design',
+                errors: error.message,
+            })
+        }
+
+        return res.status(500).json({
+            success: false,
+            message: 'failed to fetch design',
+            errors: error instanceof Error ? error.message : 'unknown error',
+        })
+    }
+}
+
+const updatedesign = async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
+    const parseData = designSchema.safeParse(req.body)
+
+    if (!userId) {
+        return res.status(401).json({
+            success: false,
+            message: 'unauthorized',
+        })
+    }
+
+    if (!parseData.success) {
+        return res.status(400).json({
+            success: false,
+            message: 'validation failed',
+            errors: parseData.error.flatten().fieldErrors,
+        })
+    }
+
+    const { design } = parseData.data
+
+    try {
+        const result = await profileService.updatedesign({ userId, design })
+        return res.status(200).json({
+            success: true,
+            message: 'design updated successfully',
+            data: result,
+        })
+    } catch (error) {
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({
+                success: false,
+                message: 'failed to update design',
+                errors: error.message,
+            })
+        }
+
+        return res.status(500).json({
+            success: false,
+            message: 'failed to update design',
+            errors: error instanceof Error ? error.message : 'unknown error',
+        })
+    }
+}
+
+const deletedesign = async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
+
+    if (!userId) {
+        return res.status(401).json({
+            success: false,
+            message: 'unauthorized',
+        })
+    }
+
+    try {
+        await profileService.deletedesign({ userId })
+        return res.status(200).json({
+            success: true,
+            message: 'design deleted successfully',
+        })
+    } catch (error) {
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({
+                success: false,
+                message: 'failed to delete design',
+                errors: error.message,
+            })
+        }
+
+        return res.status(500).json({
+            success: false,
+            message: 'failed to delete design',
+            errors: error instanceof Error ? error.message : 'unknown error',
+        })
+    }
+}
+
+const submitFeedback = async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
+    const parseData = submitFeedbackSchema.safeParse(req.body)
+
+    if (!userId) {
+        return res.status(401).json({
+            success: false,
+            message: 'unauthorized',
+        })
+    }
+
+    if (!parseData.success) {
+        return res.status(400).json({
+            success: false,
+            message: 'validation failed',
+            errors: parseData.error.flatten().fieldErrors,
+        })
+    }
+
+    const { rating, feedback } = parseData.data
+
+    try {
+        const ratingStr = rating !== undefined ? String(rating) : null
+
+        await profileService.createFeedback({
+            userId,
+            rating: ratingStr,
+            feedback,
+        })
+
+        return res.status(200).json({
+            success: true,
+            message: 'Feedback submitted successfully',
+        })
+    } catch (error) {
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({
+                success: false,
+                message: 'failed to submit feedback',
+                errors: error.message,
+            })
+        }
+
+        return res.status(500).json({
+            success: false,
+            message: 'failed to submit feedback',
+            errors: error instanceof Error ? error.message : 'unknown error',
+        })
+    }
+}
+
+const completeOnboarding = async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
+
+    if (!userId) {
+        return res.status(401).json({
+            success: false,
+            message: 'unauthorized',
+        })
+    }
+
+    try {
+        const result = await profileService.completeOnboarding({ userId })
+        return res.status(200).json({
+            success: true,
+            message: 'onboarding completed successfully',
+            data: result,
+        })
+    } catch (error) {
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({
+                success: false,
+                message: 'failed to complete onboarding',
+                errors: error.message,
+            })
+        }
+
+        return res.status(500).json({
+            success: false,
+            message: 'failed to complete onboarding',
+            errors: error instanceof Error ? error.message : 'unknown error',
+        })
+    }
+}
+
+export const profileController = {
+    getInfo,
+    getProfileCard,
+    getProfile,
+    updateName,
+    updateUsername,
+    updateAvatarUrl,
+    changePassword,
+    updateNotifications,
+    signout,
+    signoutAll,
+    deleteAccount,
+    chatSuggestions,
+    generationSound,
+    getdesign,
+    updatedesign,
+    deletedesign,
+    submitFeedback,
+    completeOnboarding,
+}

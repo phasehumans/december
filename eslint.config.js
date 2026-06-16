@@ -24,7 +24,7 @@ export default tseslint.config(
             '**/*.min.js',
             '**/runtime/**',
             '**/infra/**',
-            'server/.december-imports/**',
+            '**/.december-imports/**',
         ],
     },
 

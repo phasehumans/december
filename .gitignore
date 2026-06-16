@@ -1,41 +1,50 @@
-node_modules/
+# Dependency directories
+**/node_modules/
+
+# Lockfiles
 bun.lockb
 npm-debug.log*
 yarn.lock
 pnpm-lock.yaml
 
-dist/
-build/
-out/
-coverage/
-.tmp/
-.cache/
-.vite/
+# Build & compiled directories
+**/dist/
+**/build/
+**/out/
+**/coverage/
+**/.tmp/
+**/.cache/
+**/.vite/
+/runtime/target/
 
+# Environments & configs
 .env
 .env.local
 .env.development
 .env.production
 .env.test
+.env.example
 
+# Logs
 logs/
 *.log
 
-server/src/db/prisma/generated/
+# Generated database directories
+**/generated/prisma/
 
+# Local infrastructure & runtimes
 docker-compose.override.yml
-
-Thumbs.db
-
 infra/minio/data/
 infra/postgres/data/
 runtime/data
-.december-imports/
-server/.december-imports/
-codes.md
-agentguide.md
-deploy.md
 
+# Tool generated files
+**/.december-imports/
 # Deployments
 /deployments/
 infra/nginx/deployments/*
+.turbo
+
+# OS files
+Thumbs.db
+.DS_Store
