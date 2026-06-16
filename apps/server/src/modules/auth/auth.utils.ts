@@ -1,6 +1,10 @@
 import { Resend } from 'resend'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+const resendkey = process.env.RESEND_API_KEY
+if (!resendkey) {
+    console.log('resend key is missing')
+}
+const resend = new Resend(resendkey)
 import { randomUUID } from 'crypto'
 
 import jwt, { type SignOptions } from 'jsonwebtoken'

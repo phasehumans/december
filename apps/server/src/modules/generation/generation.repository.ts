@@ -122,7 +122,7 @@ export const initializeGenerationTarget = async (data: GenerateWebsiteInput) => 
     })
 
     if (result.versionNumber === 1) {
-        const scaffoldDir = path.resolve(__dirname, '../project/scaffold')
+        const scaffoldDir = path.resolve(__dirname, '../scaffold')
         const filesToSave = [
             {
                 path: 'package.json',
