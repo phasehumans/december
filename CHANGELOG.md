@@ -1,9 +1,25 @@
 ## [unreleased]
 
+### Features
+
+- _(tui)_ Add dropdwon and prompt box in tui
+- _(tui)_ Added screens and polish tui
+- _(tui)_ Add december tui and main screen mock up #96
+
+### Bug Fixes
+
+- _(db)_ Env load err
+
+## [0.1.3] - 2026-06-16
+
 ### Testing
 
 - _(canvas)_ Fix and tested canvas module
 - _(canvas/integration/upload)_ Fix and tested modules #93
+
+### Miscellaneous Tasks
+
+- _(release)_ V0.1.3
 
 ## [0.1.1] - 2026-06-15
 
