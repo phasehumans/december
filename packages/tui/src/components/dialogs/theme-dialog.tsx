@@ -44,8 +44,8 @@ export const ThemeDialogContent = () => {
             onSelect={handleSelect}
             onHighlight={handleHighlight}
             filterFn={(t, query) => t.name.toLowerCase().includes(query.toLowerCase())}
-            renderItem={(theme, isSelected) => (
-                <text selectable={false} fg={isSelected ? 'black' : 'white'}>
+            renderItem={(theme) => (
+                <text selectable={false} fg="white">
                     {theme.name === originalThemeRef.current.name
                         ? '\u0020\u2022\u0020'
                         : '\u0020\u0020\u0020'}

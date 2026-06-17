@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router'
 
 import { Header } from '../components/header'
 import { InputBar } from '../components/input-bar'
+import { Tips } from '../components/tips'
 
 export function Home() {
     const navigate = useNavigate()
@@ -16,16 +17,18 @@ export function Home() {
 
     return (
         <box
-            alignItems="center"
-            justifyContent="center"
+            flexDirection="column"
             flexGrow={1}
-            gap={2}
-            position="relative"
             width="100%"
             height="100%"
+            paddingY={1}
+            paddingX={2}
+            gap={1}
         >
             <Header />
-            <box width="100%" maxWidth={78} paddingX={2}>
+            <Tips />
+            <box flexGrow={1} />
+            <box flexShrink={0}>
                 <InputBar onSubmit={handleSubmit} />
             </box>
         </box>
