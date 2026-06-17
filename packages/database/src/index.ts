@@ -2,7 +2,10 @@ import { PrismaPg } from '@prisma/adapter-pg'
 import { PrismaClient } from '@prisma/client'
 
 const connectionString = process.env.DATABASE_URL
-console.log(connectionString)
+
+if (!connectionString) {
+    throw Error('Databse URL is not set')
+}
 
 const adapter = new PrismaPg({
     connectionString,
