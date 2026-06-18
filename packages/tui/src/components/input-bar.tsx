@@ -1,186 +1,163 @@
-import { useRenderer } from '@opentui/react'
-import { useRef, useCallback, useEffect } from 'react'
+import { Box, Text, useStdout } from 'ink'
+import TextInput from 'ink-text-input'
+import { useState, useCallback } from 'react'
 
 import { useDialog } from '../providers/dialog'
-import { useKeyboardLayer } from '../providers/keyboard-layer'
-import { useTheme } from '../providers/theme'
 import { useToast } from '../providers/toast'
 
-import { EmptyBorder } from './border'
 import { CommandMenu } from './command-menu'
 import { useCommandMenu } from './command-menu/use-command-menu'
-import { StatusBar } from './status-bar'
+import { ModelSelector } from './model-selector'
 
 import type { Command } from './command-menu/types'
-import type { TextareaRenderable } from '@opentui/core'
-import type { KeyBinding } from '@opentui/core'
 
 type Props = {
     onSubmit: (text: string) => void
     disabled?: boolean
+    placeholder?: string
 }
 
-export const TEXTAREA_KEY_BINDINGS: KeyBinding[] = [
-    { name: 'return', action: 'submit' },
-    { name: 'enter', action: 'submit' },
-    { name: 'return', shift: true, action: 'newline' },
-    { name: 'enter', shift: true, action: 'newline' },
-]
-
-export function InputBar({ onSubmit, disabled = false }: Props) {
-    const textareaRef = useRef<TextareaRenderable>(null)
-    const onSubmitRef = useRef<() => void>(() => {})
-    const renderer = useRenderer()
+export function InputBar({
+    onSubmit,
+    disabled = false,
+    placeholder = 'Ask December to build features, fix bugs, or work on your code...',
+}: Props) {
+    const [value, setValue] = useState('')
+    const { stdout } = useStdout()
+    const cols = stdout?.columns ?? 80
     const toast = useToast()
     const dialog = useDialog()
-    const { colors } = useTheme()
-    const { isTopLayer, setResponder } = useKeyboardLayer()
 
     const {
         showCommandMenu,
         commandQuery,
         selectedIndex,
-        scrollRef,
+        windowStart,
         handleContentChange,
         resolveCommand,
         setSelectedIndex,
     } = useCommandMenu()
 
-    const handleTextareaContentChange = useCallback(() => {
-        const textarea = textareaRef.current
-        if (!textarea) return
-
-        handleContentChange(textarea.plainText)
-    }, [])
-
-    const handleSubmit = useCallback(() => {
-        if (disabled) return
-
-        const textarea = textareaRef.current
-        if (!textarea) return
-
-        const text = textarea.plainText.trim()
-        if (text.length === 0) return
-
-        onSubmit(text)
-        textarea.setText('')
-    }, [disabled, onSubmit])
+    const handleChange = useCallback(
+        (newValue: string) => {
+            if (disabled) return
+            setValue(newValue)
+            handleContentChange(newValue)
+        },
+        [disabled, handleContentChange]
+    )
 
     const handleCommand = useCallback(
         (command: Command | undefined) => {
-            const textarea = textareaRef.current
-            if (!textarea || !command) return
-
-            textarea.setText('')
-
+            if (!command) return
+            setValue('')
+            handleContentChange('')
             if (command.action) {
                 command.action({
-                    exit: () => renderer.destroy(),
+                    exit: () => process.exit(0),
                     toast,
                     dialog,
                 })
-            } else {
-                textarea.insertText(command.value + ' ')
             }
         },
-        [renderer, toast, dialog]
+        [toast, dialog, handleContentChange]
     )
 
-    const handleCommandExecute = useCallback(
-        (index: number) => {
-            const command = resolveCommand(index)
-            handleCommand(command)
-        },
-        [resolveCommand, handleCommand]
-    )
-
-    // Wire up textarea submit handler once so it always reads the latest state.
-    useEffect(() => {
-        const textarea = textareaRef.current
-        if (!textarea) return
-
-        textarea.onSubmit = () => {
-            onSubmitRef.current()
-        }
-    }, [])
-
-    onSubmitRef.current = () => {
-        if (disabled) return
-
-        if (showCommandMenu) {
-            const command = resolveCommand(selectedIndex)
-            handleCommand(command)
-            return
-        }
-
-        handleSubmit()
-    }
-
-    // Register the base layer responder for ctrl+c dismissal
-    useEffect(() => {
-        setResponder('base', () => {
-            if (disabled) return false
-
-            const textarea = textareaRef.current
-            if (textarea && textarea.plainText.length > 0) {
-                textarea.setText('')
-                return true
+    const handleSubmit = useCallback(
+        (text: string) => {
+            if (disabled) return
+            if (showCommandMenu) {
+                const command = resolveCommand(selectedIndex)
+                handleCommand(command)
+                return
             }
-            return false
-        })
+            const trimmed = text.trim()
+            if (trimmed.length === 0) return
+            onSubmit(trimmed)
+            setValue('')
+            handleContentChange('')
+        },
+        [
+            disabled,
+            showCommandMenu,
+            resolveCommand,
+            selectedIndex,
+            handleCommand,
+            onSubmit,
+            handleContentChange,
+        ]
+    )
 
-        return () => setResponder('base', null)
-    }, [disabled, setResponder])
+    // Box fills available width with 2-char padding on each side
+    const innerWidth = Math.max(20, cols - 4)
+    // Border characters
+    const topBorder = '┌' + '─'.repeat(innerWidth) + '┐'
+    const bottomBorder = '└' + '─'.repeat(innerWidth) + '┘'
 
     return (
-        <box width="100%" alignItems="center">
-            <box
-                border={['left']}
-                borderColor={colors.primary}
-                customBorderChars={{
-                    ...EmptyBorder,
-                    vertical: '┃',
-                    bottomLeft: '╹',
-                }}
-                width="100%"
-            >
-                <box
-                    position="relative"
-                    justifyContent="center"
-                    paddingX={2}
-                    paddingY={1}
-                    backgroundColor={colors.surface}
-                    width="100%"
-                    gap={1}
-                >
-                    {showCommandMenu && (
-                        <box
-                            position="absolute"
-                            bottom="100%"
-                            left={0}
-                            width="100%"
-                            backgroundColor={colors.surface}
-                            zIndex={10}
-                        >
-                            <CommandMenu
-                                query={commandQuery}
-                                selectedIndex={selectedIndex}
-                                scrollRef={scrollRef}
-                                onSelect={setSelectedIndex}
-                                onExecute={handleCommandExecute}
-                            />
-                        </box>
-                    )}
-                    <textarea
-                        ref={textareaRef}
-                        focused={!disabled && (isTopLayer('base') || isTopLayer('command'))}
-                        keyBindings={TEXTAREA_KEY_BINDINGS}
-                        onContentChange={handleTextareaContentChange}
-                        placeholder={`Ask anything... "Fix a bug in the database"`}
+        <Box flexDirection="column" paddingX={2} paddingTop={1}>
+            {/* ── Top border ── */}
+            <Text color="gray">{topBorder}</Text>
+
+            {/* ── Empty padding row ── */}
+            <Box>
+                <Text color="gray">│</Text>
+                <Box width={innerWidth}>
+                    <Text> </Text>
+                </Box>
+                <Text color="gray">│</Text>
+            </Box>
+
+            {/* ── Prompt row ── */}
+            <Box>
+                <Text color="gray">│</Text>
+                <Text color={disabled ? 'gray' : 'white'}> {'>'} </Text>
+                <Box width={innerWidth - 3} flexGrow={1}>
+                    <TextInput
+                        value={value}
+                        onChange={handleChange}
+                        onSubmit={handleSubmit}
+                        placeholder={placeholder}
+                        focus={!disabled && !dialog.isOpen}
                     />
-                    <StatusBar />
-                </box>
-            </box>
-        </box>
+                </Box>
+                <Text color="gray">│</Text>
+            </Box>
+
+            {/* ── Empty padding row ── */}
+            <Box>
+                <Text color="gray">│</Text>
+                <Box width={innerWidth}>
+                    <Text> </Text>
+                </Box>
+                <Text color="gray">│</Text>
+            </Box>
+
+            {/* ── Bottom border ── */}
+            <Text color="gray">{bottomBorder}</Text>
+
+            {/* ── Status row: only shown when dropdown is NOT open ── */}
+            {!showCommandMenu && (
+                <Box width={cols - 4} justifyContent="space-between" marginTop={1}>
+                    <Text color="gray">Use /clear to start a fresh conversation</Text>
+                    <ModelSelector />
+                </Box>
+            )}
+
+            {/* ── Command dropdown (below box) ── */}
+            {showCommandMenu && (
+                <CommandMenu
+                    query={commandQuery}
+                    selectedIndex={selectedIndex}
+                    windowStart={windowStart}
+                    totalFiltered={0}
+                    onSelect={setSelectedIndex}
+                    onExecute={(index) => {
+                        const command = resolveCommand(index)
+                        handleCommand(command)
+                    }}
+                />
+            )}
+        </Box>
     )
 }

@@ -1,4 +1,4 @@
-import { TextAttributes } from '@opentui/core'
+import { Box, Text } from 'ink'
 
 import { useTheme } from '../providers/theme'
 
@@ -6,12 +6,9 @@ export function StatusBar() {
     const { colors } = useTheme()
 
     return (
-        <box flexDirection="row" gap={1}>
-            <text fg={colors.primary}>Build</text>
-            <text attributes={TextAttributes.DIM} fg={colors.dimSeparator}>
-                ›
-            </text>
-            <text>opus-4-6</text>
-        </box>
+        <Box paddingX={2} justifyContent="space-between">
+            <Text color={colors.primary}>opus-4-6</Text>
+            <Text dimColor>Type @ to mention files and add them as context</Text>
+        </Box>
     )
 }

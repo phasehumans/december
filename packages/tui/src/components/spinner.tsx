@@ -1,8 +1,10 @@
-import 'opentui-spinner/react'
-import { useTheme } from '../providers/theme'
+import InkSpinner from 'ink-spinner'
+import { Text } from 'ink'
 
 export function Spinner() {
-    const { colors } = useTheme()
-
-    return <spinner name="aesthetic" color={colors.primary} />
+    return (
+        <Text dimColor>
+            <InkSpinner type="dots" />
+        </Text>
+    )
 }

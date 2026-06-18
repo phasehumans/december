@@ -1,24 +1,22 @@
-import { Outlet } from 'react-router'
-
 import { DialogProvider } from '../providers/dialog'
 import { KeyboardLayerProvider } from '../providers/keyboard-layer'
 import { ThemeProvider } from '../providers/theme'
 import { ToastProvider } from '../providers/toast'
 
-import { ThemedRoot } from './themed-root'
+import type { ReactNode } from 'react'
 
-export function RootLayout() {
+type Props = {
+    children: ReactNode
+}
+
+export function RootLayout({ children }: Props) {
     return (
         <ThemeProvider>
-            <ToastProvider>
-                <KeyboardLayerProvider>
-                    <DialogProvider>
-                        <ThemedRoot>
-                            <Outlet />
-                        </ThemedRoot>
-                    </DialogProvider>
-                </KeyboardLayerProvider>
-            </ToastProvider>
+            <KeyboardLayerProvider>
+                <ToastProvider>
+                    <DialogProvider>{children}</DialogProvider>
+                </ToastProvider>
+            </KeyboardLayerProvider>
         </ThemeProvider>
     )
 }

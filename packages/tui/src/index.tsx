@@ -1,30 +1,31 @@
-import { createCliRenderer } from '@opentui/core'
-import { createRoot } from '@opentui/react'
-import { createMemoryRouter, RouterProvider } from 'react-router'
+import { render } from 'ink'
+import { useState, useCallback } from 'react'
 
 import { RootLayout } from './layouts/root-layout'
 import { Home } from './screens/home'
 import { NewSession } from './screens/new-session'
-import { Session } from './screens/session'
 
-const router = createMemoryRouter([
-    {
-        path: '/',
-        element: <RootLayout />,
-        children: [
-            { index: true, element: <Home /> },
-            { path: 'sessions/new', element: <NewSession /> },
-            { path: 'sessions/:id', element: <Session /> },
-        ],
-    },
-])
+type Screen = { name: 'home' } | { name: 'new-session'; message: string }
 
 function App() {
-    return <RouterProvider router={router} />
+    const [screen, setScreen] = useState<Screen>({ name: 'home' })
+
+    const handleHomeSubmit = useCallback((text: string) => {
+        setScreen({ name: 'new-session', message: text })
+    }, [])
+
+    const handleSessionSubmit = useCallback((_text: string) => {
+        // Handle follow-up messages in session
+    }, [])
+
+    return (
+        <RootLayout>
+            {screen.name === 'home' && <Home onSubmit={handleHomeSubmit} />}
+            {screen.name === 'new-session' && (
+                <NewSession initialMessage={screen.message} onSubmit={handleSessionSubmit} />
+            )}
+        </RootLayout>
+    )
 }
 
-const renderer = await createCliRenderer({
-    targetFps: 60,
-    exitOnCtrlC: false,
-})
-createRoot(renderer).render(<App />)
+render(<App />)

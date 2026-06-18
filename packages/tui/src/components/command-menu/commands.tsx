@@ -1,5 +1,3 @@
-import { ThemeDialogContent } from '../dialogs'
-
 import type { Command } from './types'
 
 export const COMMANDS: Command[] = [
@@ -12,25 +10,19 @@ export const COMMANDS: Command[] = [
         },
     },
     {
-        name: 'agents',
-        description: 'Switch agents',
-        value: '/agents',
+        name: 'clear',
+        description: 'Clear the current conversation',
+        value: '/clear',
         action: (ctx) => {
-            ctx.dialog.open({
-                title: 'Select Mode',
-                children: <text>Agent selection coming soon...</text>,
-            })
+            ctx.toast.show({ message: 'Conversation cleared.' })
         },
     },
     {
-        name: 'models',
-        description: 'Select AI model for generation',
-        value: '/models',
+        name: 'model',
+        description: 'Switch the active model',
+        value: '/model',
         action: (ctx) => {
-            ctx.dialog.open({
-                title: 'Select Model',
-                children: <text>Model selection coming soon...</text>,
-            })
+            ctx.toast.show({ message: 'Use arrow keys to select a model.' })
         },
     },
     {
@@ -39,17 +31,6 @@ export const COMMANDS: Command[] = [
         value: '/sessions',
         action: (ctx) => {
             ctx.toast.show({ message: 'Loading sessions...' })
-        },
-    },
-    {
-        name: 'theme',
-        description: 'Change color theme',
-        value: '/theme',
-        action: (ctx) => {
-            ctx.dialog.open({
-                title: 'Select Theme',
-                children: <ThemeDialogContent />,
-            })
         },
     },
     {
@@ -77,11 +58,11 @@ export const COMMANDS: Command[] = [
         },
     },
     {
-        name: 'usage',
-        description: 'Open billing portal in your browser',
-        value: '/usage',
+        name: 'help',
+        description: 'Show available commands',
+        value: '/help',
         action: (ctx) => {
-            ctx.toast.show({ message: 'Opening billing portal...' })
+            ctx.toast.show({ message: 'Type / to browse all commands.' })
         },
     },
     {
