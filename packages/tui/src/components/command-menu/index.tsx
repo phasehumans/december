@@ -1,75 +1,84 @@
-import { TextAttributes, type ScrollBoxRenderable } from '@opentui/core'
+import { Box, Text } from 'ink'
 
-import { useTheme } from '../../providers/theme'
-
-import { COMMANDS } from './commands'
 import { getFilteredCommands } from './filter-commands'
 
-import type { RefObject } from 'react'
-
-const MAX_VISIBLE_ITEMS = 8
-
-// Align all command names in a fixed-width column so their descriptions
-// start at the same horizontal position for a clean tabular look.
-// The width adjusts to accommodate the longest command name.
-const COMMAND_COL_WIDTH = Math.max(...COMMANDS.map((cmd) => cmd.name.length)) + 4
+const WINDOW_SIZE = 5
+const CMD_COL_WIDTH = 14
 
 type CommandMenuProps = {
     query: string
     selectedIndex: number
-    scrollRef: RefObject<ScrollBoxRenderable | null>
+    windowStart: number
+    totalFiltered: number
     onSelect: (index: number) => void
     onExecute: (index: number) => void
 }
 
-export function CommandMenu({
-    query,
-    selectedIndex,
-    scrollRef,
-    onSelect,
-    onExecute,
-}: CommandMenuProps) {
-    const { colors } = useTheme()
+export function CommandMenu({ query, selectedIndex, windowStart }: CommandMenuProps) {
     const filtered = getFilteredCommands(query)
-    const visibleHeight = Math.min(filtered.length, MAX_VISIBLE_ITEMS)
 
     if (filtered.length === 0) {
         return (
-            <box paddingX={1}>
-                <text attributes={TextAttributes.DIM}>No matching commands</text>
-            </box>
+            <Box paddingLeft={2} paddingY={1}>
+                <Text color="gray">No matching commands</Text>
+            </Box>
         )
     }
 
-    return (
-        <scrollbox ref={scrollRef} height={visibleHeight}>
-            {filtered.map((cmd, i) => {
-                const isSelected = i === selectedIndex
+    const windowEnd = Math.min(windowStart + WINDOW_SIZE, filtered.length)
+    const visibleItems = filtered.slice(windowStart, windowEnd)
+    const itemsAbove = windowStart
+    const itemsBelow = filtered.length - windowEnd
 
+    return (
+        <Box flexDirection="column">
+            {/* ↑ N more above */}
+            {itemsAbove > 0 && (
+                <Box paddingLeft={4}>
+                    <Text color="gray">↑ {itemsAbove} more</Text>
+                </Box>
+            )}
+
+            {/* Visible command rows */}
+            {visibleItems.map((cmd, relIdx) => {
+                const absIdx = windowStart + relIdx
+                const isSelected = absIdx === selectedIndex
                 return (
-                    <box
-                        key={cmd.value}
-                        flexDirection="row"
-                        paddingX={1}
-                        height={1}
-                        overflow="hidden"
-                        backgroundColor={isSelected ? colors.selection : undefined}
-                        onMouseMove={() => onSelect(i)}
-                        onMouseDown={() => onExecute(i)}
-                    >
-                        <box width={COMMAND_COL_WIDTH} flexShrink={0}>
-                            <text selectable={false} fg={isSelected ? 'black' : 'white'}>
+                    <Box key={cmd.value} paddingLeft={2}>
+                        <Text color={isSelected ? 'white' : 'gray'}>
+                            {isSelected ? '> ' : '  '}
+                        </Text>
+                        <Box width={CMD_COL_WIDTH}>
+                            <Text color={isSelected ? 'white' : 'gray'} bold={isSelected}>
                                 /{cmd.name}
-                            </text>
-                        </box>
-                        <box flexGrow={1} flexShrink={1} overflow="hidden">
-                            <text selectable={false} fg={isSelected ? 'black' : 'gray'}>
-                                {cmd.description}
-                            </text>
-                        </box>
-                    </box>
+                            </Text>
+                        </Box>
+                        <Text color="gray">{cmd.description}</Text>
+                    </Box>
                 )
             })}
-        </scrollbox>
+
+            {/* ↓ N more below */}
+            {itemsBelow > 0 && (
+                <Box paddingLeft={4}>
+                    <Text color="gray">↓ {itemsBelow} more</Text>
+                </Box>
+            )}
+
+            {/* Single-line footer: ↑↓ Navigate · enter Select · tab Complete · esc Cancel */}
+            <Box paddingLeft={2} paddingTop={1} paddingBottom={1} gap={1}>
+                <Text color="gray">↑↓</Text>
+                <Text color="white">Navigate</Text>
+                <Text color="gray">·</Text>
+                <Text color="gray">enter</Text>
+                <Text color="white">Select</Text>
+                <Text color="gray">·</Text>
+                <Text color="gray">tab</Text>
+                <Text color="white">Complete</Text>
+                <Text color="gray">·</Text>
+                <Text color="gray">esc</Text>
+                <Text color="white">Cancel</Text>
+            </Box>
+        </Box>
     )
 }

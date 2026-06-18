@@ -1,9 +1,7 @@
-import { TextAttributes, RGBA } from '@opentui/core'
-import { useKeyboard, useTerminalDimensions } from '@opentui/react'
+import { Box, Text, useInput } from 'ink'
 import { createContext, useContext, useState, useCallback } from 'react'
 
 import { useKeyboardLayer } from '../keyboard-layer'
-import { useTheme } from '../theme'
 
 import type { DialogConfig } from './types'
 import type { ReactNode } from 'react'
@@ -11,6 +9,7 @@ import type { ReactNode } from 'react'
 export type DialogContextValue = {
     open: (config: DialogConfig) => void
     close: () => void
+    isOpen: boolean
 }
 
 const DialogContext = createContext<DialogContextValue | null>(null)
@@ -50,76 +49,39 @@ export function DialogProvider({ children }: DialogProviderProps) {
     const value: DialogContextValue = {
         open,
         close,
+        isOpen: currentDialog !== null,
     }
 
     return (
         <DialogContext.Provider value={value}>
-            {children}
-            <Dialog currentDialog={currentDialog} close={close} />
+            {currentDialog ? <Dialog config={currentDialog} close={close} /> : children}
         </DialogContext.Provider>
     )
 }
 
 type DialogProps = {
-    currentDialog: DialogConfig | null
+    config: DialogConfig
     close: () => void
 }
 
-function Dialog({ currentDialog, close }: DialogProps) {
+function Dialog({ config, close }: DialogProps) {
     const { isTopLayer } = useKeyboardLayer()
-    const dimensions = useTerminalDimensions()
-    const { colors } = useTheme()
 
-    useKeyboard((key) => {
-        if (!currentDialog || !isTopLayer('dialog')) return
+    useInput((_input, key) => {
+        if (!isTopLayer('dialog')) return
 
-        if (key.name === 'escape') {
+        if (key.escape) {
             close()
         }
     })
 
-    if (!currentDialog) {
-        return null
-    }
-
-    const { title, children } = currentDialog
-
     return (
-        <box
-            position="absolute"
-            left={0}
-            top={0}
-            width={dimensions.width}
-            height={dimensions.height}
-            justifyContent="center"
-            alignItems="center"
-            backgroundColor={RGBA.fromInts(0, 0, 0, 150)}
-            zIndex={100}
-            onMouseDown={() => close()}
-        >
-            <box
-                width={Math.min(60, dimensions.width - 4)}
-                height="auto"
-                backgroundColor={colors.dialogSurface}
-                paddingX={4}
-                paddingY={1}
-                flexDirection="column"
-                gap={1}
-                onMouseDown={(e) => e.stopPropagation()}
-            >
-                <box
-                    paddingBottom={1}
-                    flexDirection="row"
-                    alignItems="center"
-                    justifyContent="space-between"
-                >
-                    <text attributes={TextAttributes.BOLD}>{title}</text>
-                    <text attributes={TextAttributes.DIM} onMouseDown={() => close()}>
-                        esc
-                    </text>
-                </box>
-                <box flexGrow={1}>{children}</box>
-            </box>
-        </box>
+        <Box flexDirection="column" paddingX={2} paddingY={1}>
+            <Box marginBottom={1} justifyContent="space-between">
+                <Text bold>{config.title}</Text>
+                <Text dimColor>esc to close</Text>
+            </Box>
+            {config.children}
+        </Box>
     )
 }

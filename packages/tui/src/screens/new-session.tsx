@@ -1,26 +1,15 @@
-import { useEffect } from 'react'
-import { useNavigate, useLocation } from 'react-router'
-
-import { ErrorMessage, UserMessage, BotMessage } from '../components/messages'
+import { UserMessage, BotMessage, ErrorMessage } from '../components/messages'
 import { SessionShell } from '../components/session-shell'
 
-export function NewSession() {
-    const navigate = useNavigate()
-    const location = useLocation()
+type Props = {
+    initialMessage: string
+    onSubmit: (text: string) => void
+}
 
-    const state = location.state as { message?: string } | null
-
-    useEffect(() => {
-        if (!state?.message) {
-            navigate('/', { replace: true })
-        }
-    }, [state, navigate])
-
-    if (!state?.message) return null
-
+export function NewSession({ initialMessage, onSubmit }: Props) {
     return (
-        <SessionShell onSubmit={() => {}} inputDisabled loading>
-            <UserMessage message={state.message} />
+        <SessionShell onSubmit={onSubmit} inputDisabled loading>
+            <UserMessage message={initialMessage} />
             <BotMessage
                 content="This is a sample bot response to demonstrate the message layout."
                 model="opus-4-6"

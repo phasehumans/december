@@ -1,13 +1,16 @@
-import { useTerminalDimensions } from '@opentui/react'
+import { Box, Text } from 'ink'
 import { createContext, useContext, useRef, useState, useCallback } from 'react'
-
-import { SplitBorderChars } from '../../components/border'
-import { useTheme } from '../theme'
 
 import { DEFAULT_DURATION } from './types'
 
 import type { ToastOptions, ToastVariant } from './types'
 import type { ReactNode } from 'react'
+
+const VARIANT_COLORS: Record<ToastVariant, string> = {
+    success: '#6EE7B7',
+    error: '#FCA5A5',
+    info: 'gray',
+}
 
 export type ToastContextValue = {
     show: (options: ToastOptions) => void
@@ -30,7 +33,7 @@ type ToastProviderProps = {
 
 export function ToastProvider({ children }: ToastProviderProps) {
     const [currentToast, setCurrentToast] = useState<ToastOptions | null>(null)
-    const timeoutHandleRef = useRef<NodeJS.Timeout | null>(null)
+    const timeoutHandleRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
     const clearCurrentTimeout = useCallback(() => {
         if (timeoutHandleRef.current) {
@@ -53,7 +56,7 @@ export function ToastProvider({ children }: ToastProviderProps) {
 
             timeoutHandleRef.current = setTimeout(() => {
                 setCurrentToast(null)
-            }, duration).unref()
+            }, duration)
         },
         [clearCurrentTimeout]
     )
@@ -64,56 +67,23 @@ export function ToastProvider({ children }: ToastProviderProps) {
 
     return (
         <ToastContext.Provider value={value}>
+            {currentToast && <Toast toast={currentToast} />}
             {children}
-            <Toast currentToast={currentToast} />
         </ToastContext.Provider>
     )
 }
 
 type ToastProps = {
-    currentToast: ToastOptions | null
+    toast: ToastOptions
 }
 
-function Toast({ currentToast }: ToastProps) {
-    const { width } = useTerminalDimensions()
-    const { colors } = useTheme()
-
-    if (!currentToast) {
-        return null
-    }
-
-    const variantColors: Record<ToastVariant, string> = {
-        success: colors.success,
-        error: colors.error,
-        info: colors.info,
-    }
-
-    const borderColor = currentToast.variant
-        ? variantColors[currentToast.variant]
-        : variantColors.info
+function Toast({ toast }: ToastProps) {
+    const color = toast.variant ? VARIANT_COLORS[toast.variant] : VARIANT_COLORS.info
 
     return (
-        <box
-            position="absolute"
-            justifyContent="center"
-            alignItems="flex-start"
-            top={2}
-            right={2}
-            width={Math.max(1, Math.min(60, width - 6))}
-            paddingLeft={2}
-            paddingRight={2}
-            paddingTop={1}
-            paddingBottom={1}
-            backgroundColor={colors.surface}
-            borderColor={borderColor}
-            border={['left', 'right']}
-            customBorderChars={SplitBorderChars}
-        >
-            <box flexDirection="column" gap={1} width="100%">
-                <text fg="#E1E1E1" wrapMode="word" width="100%">
-                    {currentToast.message}
-                </text>
-            </box>
-        </box>
+        <Box marginLeft={2}>
+            <Text color={color}>● </Text>
+            <Text>{toast.message}</Text>
+        </Box>
     )
 }
