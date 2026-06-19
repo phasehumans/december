@@ -1,0 +1,21 @@
+---
+title: AI Code Agent
+description: Explore December's specialized self-healing loop and AST diff pipeline.
+---
+
+The December Agent is a specialized self-healing system designed to generate complete files, apply precise AST surgical diffs, and dynamically repair build issues.
+
+<Mermaid
+    chart={`graph TD
+    A[Receive Prompt / Change] --> B[Generate Component Diffs]
+    B --> C[Verify Bun Compilation]
+    C -->|Errors Found| D[Auto-Fix Compiler Error]
+    C -->|Clean Build| E[Run Headless E2E Tests]
+    E -->|Console Errors| D
+    E -->|Success| F[Synchronize Canvas State]
+    D --> B`}
+/>
+
+## Self-Healing Loop
+
+Every compile process runs verification pipelines. If a component introduces standard TypeScript warnings or rendering faults, our headless agent captures logs immediately, reasons through dependencies, and automatically executes repair patches before showing you the preview.

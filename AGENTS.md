@@ -1,0 +1,10 @@
+- Follow monorepo architecture: place backend code under [apps/server/src/modules/](file:///home/chaitanya/code/december/apps/server/src/modules) and frontend feature code under [apps/web/src/features/](file:///home/chaitanya/code/december/apps/web/src/features).
+- For backend endpoints, define route in `*.routes.ts`, parse requests in `*.controller.ts` using Zod schemas from [packages/shared/src/schemas/](file:///home/chaitanya/code/december/packages/shared/src/schemas), and perform database transactions inside `*.service.ts`.
+- Structure all API responses exactly as `{ success: true, message: string, data: any }` or `{ success: false, message: string, errors: any }`.
+- Avoid `any` types and use `import type { ... }` for all TypeScript type/interface imports.
+- Do not destructure function parameters inline inside the signature; accept the full object as a single parameter (e.g., `data: SomeType`) and destructure it on the first line inside the function body.
+- Import shared packages using workspace scopes (e.g., `@december/shared`, `@december/database`) rather than relative file paths across package boundaries.
+- Use Turborepo commands (e.g., `bun run build`, `bun run dev`, `bun run test`) executed from the root directory to orchestrate workspace builds and validation tasks.
+- Name branches as `<username>/<type>-<short-description>` (e.g., `chaitanya/fix-tui-chat`).
+- Write commit messages in Conventional Commits format using lowercase: `<type>(<scope>): <description>` (e.g., `fix(db): env load err`).
+- Run `bun run format` to execute Prettier on modified files before wrapping up.

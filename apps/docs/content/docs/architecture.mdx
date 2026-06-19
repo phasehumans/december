@@ -1,0 +1,22 @@
+---
+title: Platform Architecture
+description: Learn how December compiles visual coordinates into clean code and synchronizes states.
+---
+
+December operates on an asynchronous dual-engine pipeline. Visual changes compile into an Abstract Syntax Tree (AST), generating clean code, while runtime sandboxes synchronize state instantly.
+
+<Mermaid
+    chart={`graph TD
+    A[Visual Web Client] -->|State / Prompts| B[REST / API Gateway]
+    B -->|AST Changes| C[Code Agent Service]
+    C -->|Surgical Diff| D[Isolated Vite Runtime]
+    D -->|HMR Updates| A
+    C -->|Git Commit| E[GitHub Repository]
+    B -->|Publish| F[Edge CDN Platform]`}
+/>
+
+## Key Architectural Highlights
+
+- **Dual-Engine Compiler**: Visually parsed node coordinates compile straight to React/JSX elements with styled-utility tokens.
+- **Git Version Control**: Commits, branches, and merges are managed programmatically via headless repository agents.
+- **Isolated Sandbox**: Individual app frames execute on virtual local runtimes using fast Bun-backed services.
