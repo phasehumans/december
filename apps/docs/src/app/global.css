@@ -2,11 +2,135 @@
 @import 'fumadocs-ui/css/neutral.css';
 @import 'fumadocs-ui/css/preset.css';
 
+:root,
+.dark {
+    --background: #171615;
+    --foreground: #e8e8e6;
+    --card: #252423;
+    --card-foreground: #e8e8e6;
+    --popover: #252423;
+    --popover-foreground: #e8e8e6;
+    --primary: #ffffff;
+    --primary-foreground: #171615;
+    --secondary: #1e1d1b;
+    --secondary-foreground: #e8e8e6;
+    --muted: #2f2e2d;
+    --muted-foreground: #a09f9d;
+    --accent: #2f2e2d;
+    --accent-foreground: #ffffff;
+    --border: #333333;
+    --input: #333333;
+    --ring: #ffffff;
+
+    /* Fumadocs overrides */
+    --fd-sidebar-background: #1e1d1b;
+    --fd-background: #171615;
+    --fd-foreground: #e8e8e6;
+    --fd-card: #252423;
+    --fd-border: #333333;
+    --fd-primary: #ffffff;
+    --fd-muted: #a09f9d;
+    --fd-accent: #2f2e2d;
+}
+
 html {
     scrollbar-gutter: stable;
+    background-color: #171615;
+    color: #e8e8e6;
 }
 
 html > body[data-scroll-locked] {
     margin-right: 0px !important;
     --removed-body-scroll-bar-size: 0px !important;
+}
+
+/* Custom scrollbar matching December Platform */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+::-webkit-scrollbar-thumb {
+    background: #333333;
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #4b4b4b;
+}
+
+/* Strict monochrome styling to avoid reds, greens, blues, yellows */
+a {
+    color: #e8e8e6 !important;
+    text-decoration-color: #333333 !important;
+}
+a:hover {
+    color: #ffffff !important;
+    text-decoration-color: #ffffff !important;
+}
+
+/* Override any default colorful callout, alert, or card styles */
+.fd-callout,
+[class*='bg-blue-'],
+[class*='bg-green-'],
+[class*='bg-red-'],
+[class*='bg-yellow-'],
+[class*='bg-amber-'],
+[class*='bg-orange-'],
+[class*='bg-emerald-'],
+[class*='bg-indigo-'],
+[class*='bg-sky-'] {
+    background-color: #1e1d1b !important;
+    color: #e8e8e6 !important;
+}
+
+[class*='border-blue-'],
+[class*='border-green-'],
+[class*='border-red-'],
+[class*='border-yellow-'],
+[class*='border-amber-'],
+[class*='border-orange-'],
+[class*='border-emerald-'],
+[class*='border-indigo-'],
+[class*='border-sky-'] {
+    border-color: #333333 !important;
+}
+
+[class*='text-blue-'],
+[class*='text-green-'],
+[class*='text-red-'],
+[class*='text-yellow-'],
+[class*='text-amber-'],
+[class*='text-orange-'],
+[class*='text-emerald-'],
+[class*='text-indigo-'],
+[class*='text-sky-'] {
+    color: #e8e8e6 !important;
+}
+
+/* Monochrome tag/badge overrides */
+span[class*='bg-blue-'],
+span[class*='bg-green-'],
+span[class*='bg-red-'],
+span[class*='bg-yellow-'] {
+    background-color: #2f2e2d !important;
+    color: #ffffff !important;
+    border: 1px solid #333333 !important;
+}
+
+/* Minimal inline code styling */
+code {
+    background-color: #1e1d1b !important;
+    color: #e8e8e6 !important;
+    border: 1px solid #333333 !important;
+    padding: 0.15em 0.35em !important;
+    border-radius: 4px !important;
+    font-size: 85% !important;
+}
+
+pre code {
+    background-color: transparent !important;
+    border: none !important;
+    padding: 0 !important;
 }

@@ -1,0 +1,21 @@
+{
+    "title": "Docs",
+    "pages": [
+        "index",
+        "quickstart",
+        "cli-introduction",
+        "cli-commands",
+        "cli-redemption",
+        "custom-design",
+        "architecture",
+        "agent",
+        "canvas",
+        "runtime",
+        "deployments",
+        "settings",
+        "security",
+        "changelog",
+        "privacy",
+        "terms"
+    ]
+}
