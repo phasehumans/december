@@ -7,8 +7,10 @@ type Props = {
 export function UserMessage({ message }: Props) {
     return (
         <Box paddingX={2} paddingY={1}>
-            <Text>{'❯ '}</Text>
-            <Text bold>{message}</Text>
+            <Text color="white">{'✱ '}</Text>
+            <Text bold color="white">
+                {message}
+            </Text>
         </Box>
     )
 }

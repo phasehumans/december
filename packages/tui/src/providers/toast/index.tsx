@@ -13,6 +13,7 @@ const VARIANT_COLORS: Record<ToastVariant, string> = {
 }
 
 export type ToastContextValue = {
+    currentToast: ToastOptions | null
     show: (options: ToastOptions) => void
 }
 
@@ -62,15 +63,11 @@ export function ToastProvider({ children }: ToastProviderProps) {
     )
 
     const value: ToastContextValue = {
+        currentToast,
         show,
     }
 
-    return (
-        <ToastContext.Provider value={value}>
-            {currentToast && <Toast toast={currentToast} />}
-            {children}
-        </ToastContext.Provider>
-    )
+    return <ToastContext.Provider value={value}>{children}</ToastContext.Provider>
 }
 
 type ToastProps = {

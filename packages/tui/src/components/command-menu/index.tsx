@@ -20,7 +20,7 @@ export function CommandMenu({ query, selectedIndex, windowStart }: CommandMenuPr
     if (filtered.length === 0) {
         return (
             <Box paddingLeft={2} paddingY={1}>
-                <Text color="gray">No matching commands</Text>
+                <Text color="#888888">No matching commands</Text>
             </Box>
         )
     }
@@ -32,52 +32,52 @@ export function CommandMenu({ query, selectedIndex, windowStart }: CommandMenuPr
 
     return (
         <Box flexDirection="column">
-            {/* ↑ N more above */}
+            {/* ↑ N more */}
             {itemsAbove > 0 && (
-                <Box paddingLeft={4}>
-                    <Text color="gray">↑ {itemsAbove} more</Text>
+                <Box paddingLeft={2}>
+                    <Text color="#888888">↑ {itemsAbove} more</Text>
                 </Box>
             )}
 
-            {/* Visible command rows */}
+            {/* Command rows */}
             {visibleItems.map((cmd, relIdx) => {
                 const absIdx = windowStart + relIdx
                 const isSelected = absIdx === selectedIndex
                 return (
                     <Box key={cmd.value} paddingLeft={2}>
-                        <Text color={isSelected ? 'white' : 'gray'}>
-                            {isSelected ? '> ' : '  '}
+                        <Text color={isSelected ? '#FFFFFF' : '#888888'}>
+                            {isSelected ? '● ' : '  '}
                         </Text>
                         <Box width={CMD_COL_WIDTH}>
-                            <Text color={isSelected ? 'white' : 'gray'} bold={isSelected}>
+                            <Text color={isSelected ? '#FFFFFF' : '#888888'} bold={isSelected}>
                                 /{cmd.name}
                             </Text>
                         </Box>
-                        <Text color="gray">{cmd.description}</Text>
+                        <Text color="#888888">{cmd.description}</Text>
                     </Box>
                 )
             })}
 
-            {/* ↓ N more below */}
+            {/* ↓ N more */}
             {itemsBelow > 0 && (
-                <Box paddingLeft={4}>
-                    <Text color="gray">↓ {itemsBelow} more</Text>
+                <Box paddingLeft={2}>
+                    <Text color="#888888">↓ {itemsBelow} more</Text>
                 </Box>
             )}
 
-            {/* Single-line footer: ↑↓ Navigate · enter Select · tab Complete · esc Cancel */}
+            {/* Single-line footer */}
             <Box paddingLeft={2} paddingTop={1} paddingBottom={1} gap={1}>
-                <Text color="gray">↑↓</Text>
-                <Text color="white">Navigate</Text>
-                <Text color="gray">·</Text>
-                <Text color="gray">enter</Text>
-                <Text color="white">Select</Text>
-                <Text color="gray">·</Text>
-                <Text color="gray">tab</Text>
-                <Text color="white">Complete</Text>
-                <Text color="gray">·</Text>
-                <Text color="gray">esc</Text>
-                <Text color="white">Cancel</Text>
+                <Text color="#888888">↑↓</Text>
+                <Text color="#FFFFFF">Navigate</Text>
+                <Text color="#888888">·</Text>
+                <Text color="#888888">enter</Text>
+                <Text color="#FFFFFF">Select</Text>
+                <Text color="#888888">·</Text>
+                <Text color="#888888">tab</Text>
+                <Text color="#FFFFFF">Complete</Text>
+                <Text color="#888888">·</Text>
+                <Text color="#888888">esc</Text>
+                <Text color="#FFFFFF">Cancel</Text>
             </Box>
         </Box>
     )

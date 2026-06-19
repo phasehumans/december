@@ -18,9 +18,12 @@ use crate::{
     services::{backend::BackendCallbackClient, storage::ObjectStorage},
 };
 
+use dotenvy::from_filename;
+
 #[tokio::main]
 async fn main() -> Result<(), RuntimeServiceError> {
     load_runtime_env();
+    println!("S3_BUCKET={:?}", env::var("S3_BUCKET"));
 
     tracing_subscriber::registry()
         .with(
@@ -68,22 +71,24 @@ async fn main() -> Result<(), RuntimeServiceError> {
 }
 
 fn load_runtime_env() {
-    for path in candidate_env_paths() {
-        let Ok(contents) = fs::read_to_string(&path) else {
-            continue;
-        };
+    from_filename("../../.env").ok();
+    // for path in candidate_env_paths() {
+    //     let Ok(contents) = fs::read_to_string(&path) else {
+    //         continue;
+    //     };
 
-        for (key, value) in parse_env_assignments(&contents) {
-            if env::var_os(&key).is_none() {
-                unsafe {
-                    env::set_var(key, value);
-                }
-            }
-        }
+    //     for (key, value) in parse_env_assignments(&contents) {
+    //         if env::var_os(&key).is_none() {
+    //             unsafe {
+    //                 env::set_var(key, value);
+    //             }
+    //         }
+    //     }
 
-        break;
-    }
+    //     break;
+    // }
 }
+
 
 fn candidate_env_paths() -> Vec<PathBuf> {
     let mut paths = Vec::new();
