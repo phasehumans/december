@@ -42,6 +42,7 @@ pub struct DockerConfig {
 
 impl AppConfig {
     pub fn from_env() -> Result<Self, RuntimeServiceError> {
+        println!("cwd: {:?}", std::env::current_dir());
         let bind_addr = env::var("RUNTIME_BIND_ADDR")
             .unwrap_or_else(|_| "0.0.0.0:5050".to_string())
             .parse::<SocketAddr>()
@@ -75,7 +76,7 @@ impl AppConfig {
             .unwrap_or(false);
 
         let s3 = ObjectStorageConfig {
-            bucket: env::var("S3_BUCKET").unwrap_or_else(|_| "december".to_string()),
+            bucket: env::var("S3_BUCKET").unwrap_or_else(|_| "december-storage".to_string()),
             endpoint: env::var("S3_ENDPOINT")
                 .unwrap_or_else(|_| "http://127.0.0.1:9000".to_string()),
             region: env::var("S3_REGION").unwrap_or_else(|_| "us-east-1".to_string()),
@@ -101,6 +102,8 @@ impl AppConfig {
             workdir_in_container: "/workspace".to_string(),
             container_port: 4173,
         };
+
+        println!("workspace_root: {:?}", workspace_root);
 
         Ok(Self {
             bind_addr,

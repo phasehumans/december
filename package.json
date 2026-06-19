@@ -20,7 +20,6 @@
         "db:generate": "turbo run db:generate",
         "db:migrate": "turbo run db:migrate",
         "db:studio": "turbo run db:studio",
-        "db:reset": "bun scripts/reset.sh",
         "docker:start": "docker compose -f infra/minio/docker-compose.yml -p december-minio up -d && docker compose -f infra/postgres/docker-compose.yml -p december-postgres up -d && docker compose -f infra/nginx/docker-compose.yml -p december-nginx up -d",
         "docker:stop": "docker compose -f infra/nginx/docker-compose.yml -p december-nginx down && docker compose -f infra/postgres/docker-compose.yml -p december-postgres down && docker compose -f infra/minio/docker-compose.yml -p december-minio down",
         "docker:kill": "docker rm -f $(docker ps -aq --filter \"name=december-preview\")",

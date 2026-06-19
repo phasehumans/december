@@ -1,8 +1,9 @@
-import { Box, Text, useStdout } from 'ink'
+import { Box, Text } from 'ink'
 import TextInput from 'ink-text-input'
 import { useState, useCallback } from 'react'
 
-import { useDialog } from '../providers/dialog'
+import { useTerminalColumns } from '../hooks/use-terminal-columns'
+import { useDialog, InlineDialog } from '../providers/dialog'
 import { useToast } from '../providers/toast'
 
 import { CommandMenu } from './command-menu'
@@ -23,8 +24,7 @@ export function InputBar({
     placeholder = 'Ask December to build features, fix bugs, or work on your code...',
 }: Props) {
     const [value, setValue] = useState('')
-    const { stdout } = useStdout()
-    const cols = stdout?.columns ?? 80
+    const cols = useTerminalColumns()
     const toast = useToast()
     const dialog = useDialog()
 
@@ -88,63 +88,66 @@ export function InputBar({
         ]
     )
 
-    // Box fills available width with 2-char padding on each side
-    const innerWidth = Math.max(20, cols - 4)
-    // Border characters
-    const topBorder = '┌' + '─'.repeat(innerWidth) + '┐'
-    const bottomBorder = '└' + '─'.repeat(innerWidth) + '┘'
+    const innerWidth = Math.max(8, cols - 4)
+    const sep = '─'.repeat(innerWidth)
 
     return (
-        <Box flexDirection="column" paddingX={2} paddingTop={1}>
-            {/* ── Top border ── */}
-            <Text color="gray">{topBorder}</Text>
-
-            {/* ── Empty padding row ── */}
-            <Box>
-                <Text color="gray">│</Text>
-                <Box width={innerWidth}>
-                    <Text> </Text>
-                </Box>
-                <Text color="gray">│</Text>
-            </Box>
-
-            {/* ── Prompt row ── */}
-            <Box>
-                <Text color="gray">│</Text>
-                <Text color={disabled ? 'gray' : 'white'}> {'>'} </Text>
-                <Box width={innerWidth - 3} flexGrow={1}>
-                    <TextInput
-                        value={value}
-                        onChange={handleChange}
-                        onSubmit={handleSubmit}
-                        placeholder={placeholder}
-                        focus={!disabled && !dialog.isOpen}
-                    />
-                </Box>
-                <Text color="gray">│</Text>
-            </Box>
-
-            {/* ── Empty padding row ── */}
-            <Box>
-                <Text color="gray">│</Text>
-                <Box width={innerWidth}>
-                    <Text> </Text>
-                </Box>
-                <Text color="gray">│</Text>
-            </Box>
-
-            {/* ── Bottom border ── */}
-            <Text color="gray">{bottomBorder}</Text>
-
-            {/* ── Status row: only shown when dropdown is NOT open ── */}
-            {!showCommandMenu && (
-                <Box width={cols - 4} justifyContent="space-between" marginTop={1}>
-                    <Text color="gray">Use /clear to start a fresh conversation</Text>
-                    <ModelSelector />
+        <Box flexDirection="column" paddingX={2}>
+            {/* Inline dialog — shown on right above prompt when open */}
+            {dialog.isOpen && dialog.currentDialog && (
+                <Box justifyContent="flex-end">
+                    <InlineDialog config={dialog.currentDialog} close={dialog.close} />
                 </Box>
             )}
 
-            {/* ── Command dropdown (below box) ── */}
+            {/* Top separator */}
+            <Text color="#555555">{sep}</Text>
+
+            {/* Prompt */}
+            <Box>
+                <Text color={disabled ? '#555555' : 'white'}>{`❭ `}</Text>
+                <TextInput
+                    value={value}
+                    onChange={handleChange}
+                    onSubmit={handleSubmit}
+                    placeholder={placeholder}
+                    focus={!disabled && !dialog.isOpen}
+                />
+            </Box>
+
+            {/* Bottom separator */}
+            <Text color="#555555">{sep}</Text>
+
+            {/* Status row — model left, december studio right */}
+            {!showCommandMenu && (
+                <Box width={innerWidth} justifyContent="space-between">
+                    <Box gap={2} alignItems="center">
+                        <ModelSelector />
+                        {toast.currentToast && (
+                            <Box gap={1}>
+                                <Text
+                                    color={
+                                        toast.currentToast.variant === 'success'
+                                            ? '#6EE7B7'
+                                            : toast.currentToast.variant === 'error'
+                                              ? '#FCA5A5'
+                                              : 'gray'
+                                    }
+                                >
+                                    ●
+                                </Text>
+                                <Text color="gray">{toast.currentToast.message}</Text>
+                            </Box>
+                        )}
+                    </Box>
+                    <Box gap={1}>
+                        <Text color="gray">december studio</Text>
+                        <Text color="gray">↗</Text>
+                    </Box>
+                </Box>
+            )}
+
+            {/* Command dropdown */}
             {showCommandMenu && (
                 <CommandMenu
                     query={commandQuery}

@@ -61,19 +61,23 @@ impl ObjectStorage {
     }
 
     pub async fn fetch_bytes(&self, key: &str) -> Result<Vec<u8>, RuntimeServiceError> {
-        let response = self
-            .client
-            .get_object()
-            .bucket(&self.bucket)
-            .key(key)
-            .send()
-            .await
-            .map_err(|error| {
-                RuntimeServiceError::infra_runtime(
-                    "failed to fetch object from storage",
-                    Some(error.to_string()),
-                )
-            })?;
+//         println!("bucket = {}", self.bucket);
+// println!("key = {}", key);
+let response = self
+.client
+.get_object()
+.bucket(&self.bucket)
+.key(key)
+.send()
+.await
+.map_err(|error| {
+    println!("S3 ERROR: {:?}", error);
+
+    RuntimeServiceError::infra_runtime(
+        "failed to fetch object from storage",
+        Some(error.to_string()),
+    )
+})?;
 
         let collected = response.body.collect().await.map_err(|error| {
             RuntimeServiceError::infra_runtime(
