@@ -13,7 +13,7 @@ import profileRouter from './modules/profile/profile.routes'
 import projectRouter from './modules/project/project.routes'
 import runtimeRouter from './modules/runtime/runtime.routes'
 import templateRouter from './modules/template/template.routes'
-import uploadRouter from './modules/upload/upload.routes'
+import uploadRouter from './modules/import/upload.routes'
 import usageRouter from './modules/usage/usage.routes'
 
 const app = express()

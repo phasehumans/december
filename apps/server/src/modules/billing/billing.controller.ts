@@ -4,6 +4,7 @@ import {
     creditsHistoryQuerySchema,
     verifySubscriptionSchema,
     redeemCodeSchema,
+    addCreditsSchema,
 } from '@december/shared'
 
 import { AppError } from '../../shared/appError'
@@ -371,6 +372,55 @@ const redeemCode = async (req: Request, res: Response) => {
     }
 }
 
+const addCredits = async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
+
+    if (!userId) {
+        return res.status(401).json({
+            success: false,
+            message: 'unauthorized',
+        })
+    }
+
+    const parsedBody = addCreditsSchema.safeParse(req.body)
+
+    if (!parsedBody.success) {
+        return res.status(400).json({
+            success: false,
+            message: 'validation failed',
+            errors: parsedBody.error.flatten().fieldErrors,
+        })
+    }
+
+    try {
+        const result = await billingService.addCredits({
+            userId,
+            amountInCents: parsedBody.data.amountInCents,
+            paymentMethod: parsedBody.data.paymentMethod,
+        })
+
+        return res.status(200).json({
+            success: true,
+            message: 'credits added successfully',
+            data: result,
+        })
+    } catch (error) {
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({
+                success: false,
+                message: 'failed to add credits',
+                errors: error.message,
+            })
+        }
+
+        return res.status(500).json({
+            success: false,
+            message: 'failed to add credits',
+            errors: error instanceof Error ? error.message : 'unknown error',
+        })
+    }
+}
+
 export const billingController = {
     getOverview,
     getPlans,
@@ -381,4 +431,5 @@ export const billingController = {
     createPortalSession,
     handleRazorpayWebhook,
     redeemCode,
+    addCredits,
 }

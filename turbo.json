@@ -4,7 +4,7 @@
     "tasks": {
         "db:generate": {
             "inputs": ["prisma/schema.prisma"],
-            "outputs": ["node_modules/.prisma/client/**"]
+            "outputs": ["packages/database/src/generated/client/**"]
         },
         "db:migrate": {
             "cache": false

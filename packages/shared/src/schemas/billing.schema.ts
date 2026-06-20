@@ -36,3 +36,10 @@ export const redeemCodeSchema = z
         code: z.string().trim().min(1, { message: 'redeem code cannot be empty' }),
     })
     .strict()
+
+export const addCreditsSchema = z
+    .object({
+        amountInCents: z.number().int().min(100), // Min $1.00
+        paymentMethod: z.enum(['card', 'upi', 'crypto']),
+    })
+    .strict()

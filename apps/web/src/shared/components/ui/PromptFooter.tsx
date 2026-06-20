@@ -166,16 +166,7 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
                                                 : 'text-[#8F8E8D] hover:bg-[#252422] hover:text-[#D6D5D4]'
                                         )}
                                     >
-                                        <div className="flex items-center gap-1.5 min-w-0">
-                                            <span className="text-[13px] font-medium truncate">
-                                                {model.name}
-                                            </span>
-                                            {!isPro && model.id !== 'Auto' && (
-                                                <span className="bg-[#D6D5C9]/10 text-[#D6D5C9] rounded-full text-[8px] font-medium px-1 py-0.5 uppercase shrink-0 select-none">
-                                                    Pro
-                                                </span>
-                                            )}
-                                        </div>
+                                        <span className="truncate">{model.name}</span>
                                         {isSelected && (
                                             <Icons.Check className="w-4 h-4 text-[#D6D5D4] shrink-0" />
                                         )}

@@ -14,11 +14,10 @@ interface ProfileSettingsSecondaryColumnProps {
     onSignOut: () => void
 }
 
-export const ProfileSettingsSecondaryColumn: React.FC<ProfileSettingsSecondaryColumnProps> = ({
-    isGithubConnected,
-    onConnectGithub,
-    onSignOut,
-}) => {
+export const ProfileSettingsSecondaryColumn: React.FC<ProfileSettingsSecondaryColumnProps> = (
+    props
+) => {
+    const { isGithubConnected, onConnectGithub, onSignOut } = props
     const { data: overview, isLoading: isBillingLoading } = useBillingOverview()
 
     const renderUsageContent = () => {
@@ -93,7 +92,7 @@ export const ProfileSettingsSecondaryColumn: React.FC<ProfileSettingsSecondaryCo
                 </div>
             </SettingsSection>
 
-            <SettingsSection title="Billing & Usage">
+            <SettingsSection title="Credits & Usage">
                 <div className="flex flex-col gap-2">
                     <label className="text-xs font-medium text-neutral-400">Usage</label>
                     {renderUsageContent()}

@@ -17,6 +17,7 @@ billingRouter.post('/subscription/verify', billingController.verifySubscription)
 billingRouter.post('/subscription/cancel', billingController.cancelSubscription)
 billingRouter.get('/credits/history', billingController.getCreditsHistory)
 billingRouter.post('/portal', billingController.createPortalSession)
+billingRouter.post('/credits/add', billingController.addCredits)
 
 billingRouter.post(
     '/redeem-code',

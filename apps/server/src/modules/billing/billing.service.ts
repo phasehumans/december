@@ -170,6 +170,12 @@ const getOverview = async (data: GetOverview) => {
             remainingInCents,
             unlimited: false,
         },
+        claims: claims.map((c) => ({
+            id: c.id,
+            code: c.redeemCode.code,
+            amountInCents: c.redeemCode.creditAmount,
+            createdAt: c.createdAt,
+        })),
     }
 }
 
@@ -785,6 +791,49 @@ const redeemCode = async (data: RedeemCode) => {
     return result
 }
 
+interface AddCredits {
+    userId: string
+    amountInCents: number
+    paymentMethod: string
+}
+
+const addCredits = async (data: AddCredits) => {
+    const { userId, amountInCents, paymentMethod } = data
+
+    const user = await prisma.user.findUnique({
+        where: { id: userId },
+    })
+
+    if (!user) {
+        throw new AppError('User not found', 404)
+    }
+
+    const updatedUser = await prisma.user.update({
+        where: { id: userId },
+        data: {
+            creditBalance: {
+                increment: amountInCents,
+            },
+        },
+    })
+
+    try {
+        await sendNotificationToUser({
+            userId,
+            title: 'Credits Added Successfully',
+            message: `Successfully purchased $${(amountInCents / 100).toFixed(2)} in credits using ${paymentMethod.toUpperCase()}!`,
+            type: 'SUCCESS',
+        })
+    } catch (err) {
+        console.error('Failed to send purchase notification:', err)
+    }
+
+    return {
+        amountInCents,
+        newBalance: updatedUser.creditBalance,
+    }
+}
+
 export const billingService = {
     getOverview,
     getPlans,
@@ -795,4 +844,5 @@ export const billingService = {
     createPortalSession,
     handleRazorpayWebhook,
     redeemCode,
+    addCredits,
 }

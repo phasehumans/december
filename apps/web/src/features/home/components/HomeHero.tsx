@@ -1,12 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { AnimatePresence } from 'framer-motion'
 import React, { useRef, useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 
 import { GitHubRepoForm } from './GitHubRepoForm'
 import { HomeHeader } from './HomeHeader'
 import { OnboardingModal } from './OnboardingModal'
 import PromptInput from './PromptInput'
-import { UploadProjectForm } from './UploadProjectForm'
 
 import type { HomeHeroProps } from '@/features/home/types'
 
@@ -28,9 +28,10 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
     importState,
     onResetImportState,
 }) => {
+    const navigate = useNavigate()
     const canvasRef = useRef<CanvasRef>(null)
     const [prompt, setPrompt] = React.useState('')
-    const [activeImportForm, setActiveImportForm] = useState<'github' | 'upload' | null>(null)
+    const [activeImportForm, setActiveImportForm] = useState<'github' | null>(null)
     const [showUpgradeModal, setShowUpgradeModal] = useState(false)
 
     const queryClient = useQueryClient()
@@ -78,7 +79,7 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
         return () => observer.disconnect()
     }, [])
 
-    const toggleImportForm = (form: 'github' | 'upload') => {
+    const toggleImportForm = (form: 'github') => {
         if (!isAuthenticated) {
             onOpenAuth()
             return
@@ -86,6 +87,14 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
 
         onResetImportState?.()
         setActiveImportForm((prev) => (prev === form ? null : form))
+    }
+
+    const handleTemplateClick = () => {
+        if (!isAuthenticated) {
+            onOpenAuth()
+            return
+        }
+        navigate('/templates')
     }
 
     return (
@@ -130,15 +139,11 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
                                 <span className="text-[11px]">GitHub Repo</span>
                             </button>
                             <button
-                                onClick={() => toggleImportForm('upload')}
-                                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-dashed transition-all group ${
-                                    activeImportForm === 'upload'
-                                        ? 'border-[#5A5A5A] bg-white/5 text-white'
-                                        : 'border-[#404040] bg-transparent hover:bg-white/5 hover:border-[#5A5A5A] text-[#A1A1AA] hover:text-white'
-                                }`}
+                                onClick={handleTemplateClick}
+                                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-dashed border-[#404040] bg-transparent hover:bg-white/5 hover:border-[#5A5A5A] text-[#A1A1AA] hover:text-white transition-all group"
                             >
-                                <Icons.FolderUp className="w-[12px] h-[12px] group-hover:text-white transition-colors" />
-                                <span className="text-[11px]">Upload Project</span>
+                                <Icons.Bookmark className="w-[12px] h-[12px] group-hover:text-white transition-colors" />
+                                <span className="text-[11px]">Template</span>
                             </button>
                         </div>
                     </div>
@@ -154,24 +159,6 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
                                         onResetImportState?.()
                                     }}
                                     onSubmitRepo={onImportGithub}
-                                    isImporting={importState?.status === 'loading'}
-                                    importMessage={importState?.message}
-                                    importError={
-                                        importState?.status === 'failed'
-                                            ? importState.message
-                                            : null
-                                    }
-                                    onResetImportState={onResetImportState}
-                                />
-                            )}
-                            {activeImportForm === 'upload' && (
-                                <UploadProjectForm
-                                    key="upload-form"
-                                    onClose={() => {
-                                        setActiveImportForm(null)
-                                        onResetImportState?.()
-                                    }}
-                                    onUpload={(file) => onImportZip?.(file)}
                                     isImporting={importState?.status === 'loading'}
                                     importMessage={importState?.message}
                                     importError={

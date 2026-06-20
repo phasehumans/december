@@ -21,6 +21,7 @@ import { ProfileIntegrationsSettings } from './ProfileIntegrationsSettings'
 import { ProfileNameModal } from './ProfileNameModal'
 import { ProfilePasswordModal } from './ProfilePasswordModal'
 import { ProfileSettingsContent } from './ProfileSettingsContent'
+import { ConnectCliModal } from './ConnectCliModal'
 import { ProfileSettingsSkeleton } from './ProfileSettingsSkeleton'
 import { ProfileSignOutAllSessionsModal } from './ProfileSignOutAllSessionsModal'
 import { ProfileUsageSettings } from './ProfileUsageSettings'
@@ -50,6 +51,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
     const [tempUsername, setTempUsername] = React.useState('')
     const [deleteAccountModalOpen, setDeleteAccountModalOpen] = React.useState(false)
     const [signOutAllSessionsModalOpen, setSignOutAllSessionsModalOpen] = React.useState(false)
+    const [connectCliModalOpen, setConnectCliModalOpen] = React.useState(false)
 
     const {
         profile,
@@ -175,7 +177,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                             }`}
                         >
                             <CreditCard className="w-[18px] h-[18px]" strokeWidth={1.5} />
-                            Billing
+                            Credits
                         </button>
                         <button
                             onClick={() => navigate(`/profile/${getSlugForProfileTab('Usage')}`)}
@@ -273,9 +275,6 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                                 onOpenSignOutAllSessionsModal={() =>
                                     setSignOutAllSessionsModalOpen(true)
                                 }
-                                onUpgradePlan={() => {
-                                    navigate(`/profile/${getSlugForProfileTab('Billing')}`)
-                                }}
                             />
                         ) : activeTab === 'Preferences' ? (
                             <ProfileGeneralSettings
@@ -401,6 +400,12 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                         console.error('Failed to sign out of all sessions', error)
                     }
                 }}
+            />
+
+            <ConnectCliModal
+                isOpen={connectCliModalOpen}
+                onClose={() => setConnectCliModalOpen(false)}
+                userId={profile?.id}
             />
         </div>
     )

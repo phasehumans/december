@@ -22,28 +22,28 @@ interface ProfileSettingsContentProps {
     onSignOut: () => void
     onOpenSignOutAllSessionsModal: () => void
     onOpenDeleteAccountModal: () => void
-    onUpgradePlan: () => void
 }
 
-export const ProfileSettingsContent: React.FC<ProfileSettingsContentProps> = ({
-    profile,
-    resolvedName,
-    hasProfile,
-    isGithubConnected,
-    emailNotifications,
-    productUpdates,
-    securityAlerts,
-    isNotificationPending,
-    onOpenNameModal,
-    onOpenUsernameModal,
-    onOpenPasswordModal,
-    onNotificationToggle,
-    onConnectGithub,
-    onSignOut,
-    onOpenSignOutAllSessionsModal,
-    onOpenDeleteAccountModal,
-    onUpgradePlan,
-}) => {
+export const ProfileSettingsContent: React.FC<ProfileSettingsContentProps> = (props) => {
+    const {
+        profile,
+        resolvedName,
+        hasProfile,
+        isGithubConnected,
+        emailNotifications,
+        productUpdates,
+        securityAlerts,
+        isNotificationPending,
+        onOpenNameModal,
+        onOpenUsernameModal,
+        onOpenPasswordModal,
+        onNotificationToggle,
+        onConnectGithub,
+        onSignOut,
+        onOpenSignOutAllSessionsModal,
+        onOpenDeleteAccountModal,
+    } = props
+
     return (
         <div className="flex flex-col w-full max-w-[680px] text-[#D6D5C9]">
             {/* Account */}
@@ -111,36 +111,6 @@ export const ProfileSettingsContent: React.FC<ProfileSettingsContentProps> = ({
                             {profile?.hasPassword ? 'Change password' : 'Set password'}
                         </button>
                     </div>
-                </div>
-            </div>
-
-            {/* Your Subscription */}
-            <div className="flex flex-col mb-6">
-                <h2 className="text-[16px] font-medium text-[#D6D5C9] mb-3">Your Subscription</h2>
-                <div className="flex items-center justify-between border-t border-[#242323] pt-4">
-                    <div className="flex flex-col gap-0.5">
-                        <span className="text-[14px] text-[#D6D5C9] flex items-center gap-2">
-                            Unlock the full power of December
-                            <span className="bg-[#2F2E2D] text-[#D6D5D4] rounded-full px-1.5 py-[1px] text-[10px] font-medium">
-                                Pro
-                            </span>
-                        </span>
-                        <span className="text-[13px] text-[#7B7A79]">
-                            Build faster with higher limits and advanced features.{' '}
-                            <a
-                                href="#"
-                                className="text-[#7B7A79] hover:text-[#D6D5C9] hover:underline transition-colors"
-                            >
-                                Learn more
-                            </a>
-                        </span>
-                    </div>
-                    <button
-                        onClick={onUpgradePlan}
-                        className="px-4 py-1.5 rounded-lg bg-[#E8E7E4] text-[#171615] font-medium text-[13px] hover:bg-white transition-colors"
-                    >
-                        Upgrade plan
-                    </button>
                 </div>
             </div>
 

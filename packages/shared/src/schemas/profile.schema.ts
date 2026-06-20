@@ -67,7 +67,7 @@ export const designSchema = z.object({
 })
 
 export const submitFeedbackSchema = z.object({
-    rating: z.union([z.number(), z.string()]).optional(),
+    rating: z.union([z.number(), z.string()]).nullable().optional(),
     feedback: z
         .string({ message: 'feedback content is required' })
         .min(1, 'feedback cannot be empty')

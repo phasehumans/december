@@ -36,7 +36,7 @@ const simpleViewToPath: Record<string, string> = {
     chat: '/',
     'all-projects': '/projects',
     templates: '/templates',
-    docs: '/docs',
+    docs: '/cli',
 }
 
 const simplePathToView: Record<string, ViewState> = Object.fromEntries(

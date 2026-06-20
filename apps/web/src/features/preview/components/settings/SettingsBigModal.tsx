@@ -14,6 +14,12 @@ import {
 } from 'lucide-react'
 import React, { useState, useEffect } from 'react'
 
+const VercelIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+    <svg viewBox="0 0 24 24" fill="currentColor" {...props}>
+        <path d="M24 22.525H0L12 1.745L24 22.525Z" />
+    </svg>
+)
+
 import { GeneralTab } from './GeneralTab'
 import { PublishTab } from './PublishTab'
 import { BigModalOverlay, PremiumInput } from './SettingsFormControls'
@@ -352,9 +358,9 @@ export const SettingsBigModal: React.FC<SettingsModalProps> = ({
 
     const tabs = [
         { id: 'general', label: 'General', icon: <Sliders size={15} /> },
-        { id: 'share', label: 'Share', icon: <Share size={15} /> },
         { id: 'integrations', label: 'GitHub', icon: <Github size={15} /> },
-        { id: 'publish', label: 'Publish', icon: <Cloud size={15} /> },
+        { id: 'publish', label: 'Vercel', icon: <VercelIcon className="w-[15px] h-[15px]" /> },
+        { id: 'share', label: 'Publish', icon: <Cloud size={15} /> },
         { id: 'variables', label: 'Env Variables', icon: <Terminal size={15} /> },
     ]
 

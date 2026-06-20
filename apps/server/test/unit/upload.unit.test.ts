@@ -28,8 +28,8 @@ let downloadGitHubRepoArchive: any
 import { beforeAll } from 'bun:test'
 
 beforeAll(async () => {
-    const utils = await import('../../src/modules/upload/upload.utils')
-    const downloadzip = await import('../../src/modules/upload/downloadzip')
+    const utils = await import('../../src/modules/import/upload.utils')
+    const downloadzip = await import('../../src/modules/import/downloadzip')
     parseGitHubRepoUrl = utils.parseGitHubRepoUrl
     downloadGitHubRepoArchive = downloadzip.downloadGitHubRepoArchive
 })

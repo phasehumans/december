@@ -168,18 +168,10 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
 
     // --- Detail View ---
     if (selectedNotification) {
-        const typeColors: Record<string, string> = {
-            INFO: 'bg-white/[0.04] border-white/[0.08] text-[#D6D5C9]',
-            WARNING: 'bg-amber-500/10 border-amber-500/20 text-amber-400',
-            SUCCESS: 'bg-[#252422]/70 border-[#383736] text-[#E8E8E6]',
-            ERROR: 'bg-red-500/10 border-red-500/20 text-red-400',
-        }
-        const badgeColor = typeColors[selectedNotification.type] || typeColors.INFO
-
         return createPortal(
             <div
                 ref={popoverRef}
-                className="fixed z-[100] rounded-2xl border border-[#2E2D2C] bg-[#1E1D1C] shadow-2xl p-2 pointer-events-auto animate-in fade-in zoom-in-95 duration-200 flex flex-col"
+                className="fixed z-[100] rounded-2xl border border-[#2E2D2C] bg-[#1E1D1C] shadow-2xl p-2 pointer-events-auto animate-in fade-in zoom-in-95 duration-200 flex flex-col font-sans"
                 style={{
                     bottom: position.bottom,
                     left: Math.max(10, position.left),
@@ -190,11 +182,11 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
                 <div className="flex items-center gap-2 px-2 py-1.5 shrink-0">
                     <button
                         onClick={() => setSelectedNotification(null)}
-                        className="text-[#969593] hover:text-[#CBCACA] transition-colors p-1 rounded hover:bg-[#252422] outline-none"
+                        className="text-[#CBCACA] hover:text-white transition-colors p-1.5 rounded-xl hover:bg-[#252422] outline-none"
                     >
                         <ArrowLeft className="w-[15px] h-[15px]" />
                     </button>
-                    <span className="text-[13px] text-[#969593]">Back</span>
+                    <span className="text-[14px] text-[#CBCACA] font-medium">Back</span>
                 </div>
 
                 <div className="h-[1px] bg-[#2B2A29] mx-1 my-1 shrink-0" />
@@ -221,7 +213,7 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
                             </span>
                         </div>
                     </div>
-                    <p className="text-[13px] text-[#CACACA] leading-relaxed whitespace-pre-wrap mt-1">
+                    <p className="text-[13.5px] text-[#CBCACA] leading-relaxed whitespace-pre-wrap mt-1">
                         {selectedNotification.message}
                     </p>
                     {selectedNotification.link && (
@@ -229,7 +221,7 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
                             href={selectedNotification.link}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-[#383736] rounded-lg text-[12px] font-medium text-[#D6D5C9] hover:bg-[#252422] transition-colors w-fit shadow-sm mt-2"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-[#2E2D2C] bg-[#252422]/50 hover:bg-[#252422] rounded-xl text-[12px] font-medium text-[#CBCACA] hover:text-white transition-colors w-fit shadow-sm mt-2"
                         >
                             View Details →
                         </a>
@@ -244,7 +236,7 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
     return createPortal(
         <div
             ref={popoverRef}
-            className="fixed z-[100] rounded-2xl border border-[#2E2D2C] bg-[#1E1D1C] shadow-2xl p-2 pointer-events-auto animate-in fade-in zoom-in-95 duration-200 flex flex-col"
+            className="fixed z-[100] rounded-2xl border border-[#2E2D2C] bg-[#1E1D1C] shadow-2xl p-2 pointer-events-auto animate-in fade-in zoom-in-95 duration-200 flex flex-col font-sans"
             style={{
                 bottom: position.bottom,
                 left: Math.max(10, position.left),
@@ -331,14 +323,11 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
                     </div>
                 ) : notifications.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-[240px] px-6 text-center animate-in fade-in slide-in-from-bottom-2 duration-300">
-                        <div className="relative mb-4 flex h-12 w-12 items-center justify-center rounded-full border border-[#2E2D2C] bg-[#222120]/40 text-[#969593] shadow-lg">
-                            <Inbox className="w-5 h-5" />
-                        </div>
-                        <p className="text-[13px] font-semibold text-[#D6D5C9]">
-                            No notifications yet
-                        </p>
-                        <p className="mt-2 text-[11px] text-[#7B7A79] max-w-[200px] leading-relaxed">
-                            We'll let you know when something needs your attention.
+                        <Inbox className="w-10 h-10 text-[#4E4D4C] mb-4" strokeWidth={1.5} />
+                        <p className="text-[13px] font-medium text-[#7B7A79] leading-snug">
+                            Your notifications will
+                            <br />
+                            appear here
                         </p>
                     </div>
                 ) : (
@@ -349,8 +338,8 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
                                 onClick={() => handleNotificationClick(notification)}
                                 className={`relative group/notif flex flex-col gap-0.5 px-3 py-2.5 rounded-xl cursor-pointer transition-colors ${
                                     notification.isRead
-                                        ? 'text-[#8F8E8D] hover:bg-[#252422]/40'
-                                        : 'bg-[#252422]/20 hover:bg-[#252422]/60 text-[#E8E8E8]'
+                                        ? 'text-[#8F8E8D] hover:bg-[#252422]'
+                                        : 'bg-[#252422]/30 hover:bg-[#252422]/60 text-white'
                                 }`}
                             >
                                 <div className="flex items-center justify-between gap-2 pr-6">
@@ -359,9 +348,9 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
                                             <span className="w-1.5 h-1.5 rounded-full bg-white shrink-0" />
                                         )}
                                         <span
-                                            className={`text-[13px] font-medium truncate ${
+                                            className={`text-[13.5px] font-medium truncate ${
                                                 notification.isRead
-                                                    ? 'text-[#CAC9C9]'
+                                                    ? 'text-[#CBCACA] group-hover/notif:text-white'
                                                     : 'text-white'
                                             }`}
                                         >
@@ -369,10 +358,10 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
                                         </span>
                                     </div>
                                 </div>
-                                <p className="text-[12px] text-[#8F8E8D] line-clamp-2 mt-0.5 leading-relaxed pr-4">
+                                <p className="text-[12px] text-[#8F8E8D] group-hover/notif:text-[#CBCACA] line-clamp-2 mt-0.5 leading-relaxed pr-4">
                                     {notification.message}
                                 </p>
-                                <span className="text-[10px] text-[#6F6E6D] mt-1">
+                                <span className="text-[10px] text-[#6F6E6D] group-hover/notif:text-[#8F8E8D] mt-1">
                                     {new Date(notification.createdAt).toLocaleString(undefined, {
                                         month: 'short',
                                         day: 'numeric',

@@ -1,4 +1,5 @@
 import { serve } from 'bun'
+import path from 'path'
 
 import index from './index.html'
 
@@ -6,28 +7,48 @@ const server = serve({
     routes: {
         // Serve index.html for all unmatched routes.
         '/*': index,
+    },
 
-        '/api/hello': {
-            async GET(req) {
+    async fetch(req) {
+        const url = new URL(req.url)
+        const pathname = url.pathname
+
+        // 1. Serve API routes
+        if (pathname === '/api/hello') {
+            if (req.method === 'GET') {
                 return Response.json({
                     message: 'Hello, world!',
                     method: 'GET',
                 })
-            },
-            async PUT(req) {
+            }
+            if (req.method === 'PUT') {
                 return Response.json({
                     message: 'Hello, world!',
                     method: 'PUT',
                 })
-            },
-        },
+            }
+        }
 
-        '/api/hello/:name': async (req) => {
-            const name = req.params.name
+        if (pathname.startsWith('/api/hello/')) {
+            const name = pathname.slice('/api/hello/'.length)
             return Response.json({
                 message: `Hello, ${name}!`,
             })
-        },
+        }
+
+        // 2. Serve static files from 'public' directory
+        const publicFilePath = path.join(import.meta.dir, '../public', pathname)
+        const file = Bun.file(publicFilePath)
+        const exists = await file.exists()
+        console.log(
+            `[Static File Check] URL: ${pathname} | Resolved Path: ${publicFilePath} | Exists: ${exists}`
+        )
+        if (exists) {
+            return new Response(file)
+        }
+
+        // 3. Fallback: return undefined to let Bun match routes
+        return undefined as any
     },
 
     development: process.env.NODE_ENV !== 'production' && {

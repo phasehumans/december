@@ -1627,6 +1627,10 @@ export const useAppController = () => {
     }, [activeProjectId, clearOpenedProject, resetGenerationFlow, navigate])
 
     const handleNavigate = (target: ViewState) => {
+        if (target === 'docs') {
+            navigate(getPathForView(target))
+            return
+        }
         requireAuthOr(() => {
             navigate(getPathForView(target))
         })

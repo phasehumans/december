@@ -22,7 +22,7 @@ export const ShareTab: React.FC<ShareTabProps> = ({
 }) => {
     return (
         <div className="flex flex-col w-full max-w-[680px] text-[#D6D5C9] animate-in fade-in duration-200">
-            <h1 className="text-[16px] font-medium mb-3">Share</h1>
+            <h1 className="text-[16px] font-medium mb-3">Publish</h1>
             <div className="flex flex-col gap-6 border-t border-[#242323] pt-6">
                 {/* Visibility Cards */}
                 <div className="flex flex-col gap-3 text-left">

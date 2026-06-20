@@ -1,34 +1,33 @@
 import React from 'react'
+import { useNavigate } from 'react-router-dom'
 
 import { Icons } from '@/shared/components/ui/Icons'
 
 export const HomeHeader: React.FC = () => {
+    const navigate = useNavigate()
+
     return (
         <div className="absolute top-4 left-0 w-full px-4 md:px-6 z-50 flex justify-between items-start pointer-events-none">
             {/* Empty left spacer to truly center the middle element */}
             <div className="flex-1" />
 
             {/* Center Heading */}
-            <div className="flex-1 flex justify-center pointer-events-auto">
+            <div className="flex-initial flex justify-center pointer-events-auto">
                 <div
                     onClick={() => {
-                        window.dispatchEvent(
-                            new CustomEvent('hero-canvas-intersect', { detail: true })
-                        )
-                        const el = document.getElementById('hero-canvas-container')
-                        el?.scrollIntoView({ behavior: 'smooth' })
+                        navigate('/cli')
                     }}
-                    className="home-header-badge flex items-center gap-2.5 bg-[#201F1E] border border-white/5 rounded-full pl-1.5 pr-3 py-1 text-[13px] text-[#E8E8E6] shadow-sm transition-all duration-200 cursor-pointer hover:bg-[#2A2928] group"
+                    className="home-header-badge flex items-center gap-2.5 bg-[#201F1E] border border-white/5 rounded-full pl-1.5 pr-3 py-1 text-[13px] text-[#E8E8E6] shadow-sm transition-all duration-200 cursor-pointer hover:bg-[#2A2928] group whitespace-nowrap flex-shrink-0"
                 >
-                    <span className="bg-[#2F2E2D] text-[#D6D5D4] rounded-full px-2 py-0.5 text-[11px] font-medium">
+                    <span className="bg-[#2F2E2D] text-[#D6D5D4] rounded-full px-2 py-0.5 text-[11px] font-medium flex-shrink-0">
                         New
                     </span>
-                    <span className="font-medium text-[#A09F9D] group-hover:text-white transition-colors">
-                        Start building with Canvas
+                    <span className="font-medium text-[#A09F9D] group-hover:text-white transition-colors whitespace-nowrap">
+                        December CLI is now available
                     </span>
-                    <span className="text-neutral-600 font-light mx-0.5">|</span>
-                    <div className="text-[#A09F9D] font-medium flex items-center gap-1 group-hover:text-white transition-colors">
-                        Try Canvas <Icons.ArrowRight className="w-3 h-3" />
+                    <span className="text-neutral-600 font-light mx-0.5 flex-shrink-0">|</span>
+                    <div className="text-[#A09F9D] font-medium flex items-center gap-1 group-hover:text-white transition-colors whitespace-nowrap flex-shrink-0">
+                        Try December CLI <Icons.ArrowRight className="w-3 h-3" />
                     </div>
                 </div>
             </div>
