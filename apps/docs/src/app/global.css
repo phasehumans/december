@@ -31,6 +31,22 @@
     --fd-primary: #ffffff;
     --fd-muted: #a09f9d;
     --fd-accent: #2f2e2d;
+
+    --color-fd-background: #171615;
+    --color-fd-foreground: #e8e8e6;
+    --color-fd-card: #252423;
+    --color-fd-card-foreground: #e8e8e6;
+    --color-fd-border: #333333;
+    --color-fd-primary: #ffffff;
+    --color-fd-primary-foreground: #171615;
+    --color-fd-muted: #a09f9d;
+    --color-fd-muted-foreground: #a09f9d;
+    --color-fd-popover: #252423;
+    --color-fd-popover-foreground: #e8e8e6;
+    --color-fd-secondary: #1e1d1b;
+    --color-fd-secondary-foreground: #e8e8e6;
+    --color-fd-accent: #2f2e2d;
+    --color-fd-accent-foreground: #ffffff;
 }
 
 html {
@@ -133,4 +149,177 @@ pre code {
     background-color: transparent !important;
     border: none !important;
     padding: 0 !important;
+}
+
+/* ==========================================
+   December Web Workspace Style Alignment
+   ========================================== */
+
+/* 1. Sidebar Typography and Theme styling */
+#nd-sidebar,
+.fd-sidebar {
+    font-family: 'Inter', sans-serif !important;
+    background-color: #1e1d1b !important;
+    border-right: 1px solid rgba(255, 255, 255, 0.05) !important;
+}
+
+/* Sidebar links, buttons and folder triggers */
+#nd-sidebar a,
+#nd-sidebar button,
+.fd-sidebar a,
+.fd-sidebar button {
+    font-family: 'Inter', sans-serif !important;
+    font-size: 14px !important;
+    font-weight: 500 !important;
+    letter-spacing: -0.01em !important;
+    color: #8f8e8d !important;
+    background-color: transparent !important;
+    transition:
+        color 0.15s ease,
+        background-color 0.15s ease !important;
+    border-radius: 8px !important;
+    padding: 6px 12px !important;
+}
+
+/* Sidebar Title Link (Header Logo/Title) */
+#nd-sidebar a[href='/'],
+.fd-sidebar a[href='/'] {
+    background-color: transparent !important;
+    padding: 0 !important;
+}
+
+/* Active and Hover states */
+#nd-sidebar a:hover,
+#nd-sidebar button:hover,
+.fd-sidebar a:hover,
+.fd-sidebar button:hover,
+#nd-sidebar a[data-active='true'],
+#nd-sidebar button[data-active='true'],
+.fd-sidebar a[data-active='true'],
+.fd-sidebar button[data-active='true'] {
+    color: #cccbca !important;
+    background-color: #252422 !important;
+}
+
+/* Ensure folder icons and file icons inherit the color and match web size */
+#nd-sidebar a svg,
+#nd-sidebar button svg,
+.fd-sidebar a svg,
+.fd-sidebar button svg {
+    color: inherit !important;
+    width: 18px !important;
+    height: 18px !important;
+}
+
+/* 2. Keyboard Shortcut (<kbd>) styling */
+kbd {
+    background-color: #171615 !important;
+    border: 1px solid #333333 !important;
+    color: #8f8e8d !important;
+    border-radius: 4px !important;
+    font-family: inherit !important;
+    font-size: 11px !important;
+    padding: 1px 5px !important;
+    box-shadow: none !important;
+}
+
+/* 3. Search Dialog Modal Overrides */
+[role='dialog'] [data-search-dialog],
+[role='dialog'] div[class*='search-dialog'],
+.fd-search-dialog,
+div[class*='SearchDialog'] {
+    background-color: #252423 !important;
+    border: 1px solid #333333 !important;
+    color: #e8e8e6 !important;
+    border-radius: 12px !important;
+}
+
+/* Input field inside search dialog */
+[role='dialog'] input,
+.fd-search-dialog input,
+div[class*='SearchDialog'] input {
+    background-color: #171615 !important;
+    border: 1px solid #333333 !important;
+    color: #e8e8e6 !important;
+    border-radius: 6px !important;
+}
+
+/* Search results list active/hover items */
+[role='dialog'] [data-active='true'],
+.fd-search-dialog [data-active='true'],
+[role='dialog'] a:hover,
+.fd-search-dialog a:hover {
+    background-color: #2f2e2d !important;
+    color: #cccbca !important;
+}
+
+/* 4. Hide default nextjs branding/credits or powered-by links */
+a[href*='fumadocs'],
+a[href*='nextjs.org'],
+.fd-sidebar-footer a[href*='fumadocs'],
+div[class*='powered-by'],
+a[class*='powered-by'] {
+    display: none !important;
+}
+
+/* 5. Prose text color alignment for dark mode visibility */
+.prose,
+.prose p,
+.prose li,
+.prose ol,
+.prose ul,
+.prose h1,
+.prose h2,
+.prose h3,
+.prose h4,
+.prose h5,
+.prose h6,
+.prose strong,
+.prose table,
+.prose th,
+.prose td,
+.fd-body,
+.fd-body * {
+    color: #e8e8e6 !important;
+}
+
+/* Ensure code blocks have a visible dark background and white/light grey text */
+pre,
+code,
+pre code {
+    background-color: #252422 !important;
+    color: #e8e8e6 !important;
+    border: 1px solid #333333 !important;
+}
+
+/* Ensure syntax highlighted spans are NOT forced to white/grey */
+pre span {
+    color: inherit !important;
+}
+
+/* 6. Sidebar collapse / open trigger overrides (becomes a white button when collapsed) */
+button[aria-label='Open Sidebar'],
+.fd-sidebar-trigger[data-collapsed='true'],
+button[class*='sidebar-trigger'][class*='collapsed'],
+button[class*='SidebarCollapseTrigger'][class*='collapsed'] {
+    background-color: #ffffff !important;
+    color: #171615 !important;
+    border-color: #ffffff !important;
+    border-radius: 8px !important;
+    width: 32px !important;
+    height: 32px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5) !important;
+}
+
+button[aria-label='Open Sidebar'] svg,
+.fd-sidebar-trigger[data-collapsed='true'] svg {
+    color: #171615 !important;
+}
+
+button[aria-label='Open Sidebar']:hover {
+    background-color: #e8e8e6 !important;
+    border-color: #e8e8e6 !important;
 }
