@@ -39,6 +39,12 @@ export interface BillingOverview {
         remainingInCents: number | null
         unlimited: boolean
     }
+    claims?: Array<{
+        id: string
+        code: string
+        amountInCents: number
+        createdAt: string
+    }>
 }
 
 export interface BillingPlan {
@@ -189,6 +195,13 @@ const redeemCode = (code: string) => {
     })
 }
 
+const addCredits = (amountInCents: number, paymentMethod: string) => {
+    return apiRequest<{ success: boolean; newBalance: number }>('/billing/credits/add', {
+        method: 'POST',
+        body: JSON.stringify({ amountInCents, paymentMethod }),
+    })
+}
+
 export const billingAPI = {
     getOverview,
     getPlans,
@@ -198,4 +211,5 @@ export const billingAPI = {
     getCreditsHistory,
     createPortalSession,
     redeemCode,
+    addCredits,
 }

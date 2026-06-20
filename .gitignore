@@ -31,6 +31,7 @@ logs/
 
 # Generated database directories
 **/generated/prisma/
+packages/database/src/generated/
 
 # Local infrastructure & runtimes
 docker-compose.override.yml

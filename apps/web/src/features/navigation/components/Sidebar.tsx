@@ -11,6 +11,21 @@ import { useBillingOverview } from '@/features/billing/hooks/useBillingData'
 import { Icons } from '@/shared/components/ui/Icons'
 import { cn } from '@/shared/lib/utils'
 
+const HeavyAsteriskIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="3.5"
+        strokeLinecap="round"
+        {...props}
+    >
+        <line x1="12" y1="5" x2="12" y2="19" />
+        <line x1="12" y1="5" x2="12" y2="19" transform="rotate(60 12 12)" />
+        <line x1="12" y1="5" x2="12" y2="19" transform="rotate(120 12 12)" />
+    </svg>
+)
+
 const Sidebar: React.FC<
     SidebarProps & { user?: any; onSignOut?: () => void; onHomeClick?: () => void }
 > = ({
@@ -35,7 +50,7 @@ const Sidebar: React.FC<
     const isHomeActive = path === '/'
     const isProjectsActive = path.startsWith('/projects')
     const isTemplatesActive = path.startsWith('/templates')
-    const isDocsActive = path.startsWith('/docs')
+    const isDocsActive = path.startsWith('/cli')
 
     // Keep exact same size (was 200px when open)
     // No collapse option
@@ -84,8 +99,8 @@ const Sidebar: React.FC<
                     onClick={onTemplates}
                 />
                 <SidebarNavItem
-                    icon={<Icons.DocsBook />}
-                    label="Documentation"
+                    icon={<HeavyAsteriskIcon className="w-[18px] h-[18px]" />}
+                    label="December CLI"
                     active={isDocsActive}
                     onClick={onDocs}
                 />

@@ -77,3 +77,16 @@ export const useCreatePortalSession = () => {
         mutationFn: billingAPI.createPortalSession,
     })
 }
+
+export const useAddCredits = () => {
+    const queryClient = useQueryClient()
+
+    return useMutation({
+        mutationFn: (data: { amountInCents: number; paymentMethod: string }) =>
+            billingAPI.addCredits(data.amountInCents, data.paymentMethod),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: billingQueryKeys.overview })
+            queryClient.invalidateQueries({ queryKey: ['profile'] })
+        },
+    })
+}

@@ -4,12 +4,14 @@ import { ProjectDeleteModal } from './ProjectDeleteModal'
 import { ProjectDuplicateModal } from './ProjectDuplicateModal'
 import { ProjectRenameModal } from './ProjectRenameModal'
 import { ProjectShareModal } from './ProjectShareModal'
+import { ProjectOpenConfirmModal } from './ProjectOpenConfirmModal'
 
 import type {
     DeleteModalState,
     DuplicateModalState,
     RenameModalState,
     ShareModalState,
+    Project,
 } from '@/features/projects/types'
 
 interface ProjectListModalsProps {
@@ -17,6 +19,7 @@ interface ProjectListModalsProps {
     duplicateModal: DuplicateModalState
     shareModal: ShareModalState
     deleteModal: DeleteModalState
+    openConfirmModal: { isOpen: boolean; project: Project | null }
     isRenamePending: boolean
     isDuplicatePending: boolean
     isSharePending: boolean
@@ -30,6 +33,8 @@ interface ProjectListModalsProps {
     onShareConfirm: (category?: string) => void
     onCloseDelete: () => void
     onDeleteConfirm: () => void
+    onCloseOpenConfirm: () => void
+    onOpenConfirm: () => void
 }
 
 export const ProjectListModals: React.FC<ProjectListModalsProps> = ({
@@ -37,6 +42,7 @@ export const ProjectListModals: React.FC<ProjectListModalsProps> = ({
     duplicateModal,
     shareModal,
     deleteModal,
+    openConfirmModal,
     isRenamePending,
     isDuplicatePending,
     isSharePending,
@@ -50,6 +56,8 @@ export const ProjectListModals: React.FC<ProjectListModalsProps> = ({
     onShareConfirm,
     onCloseDelete,
     onDeleteConfirm,
+    onCloseOpenConfirm,
+    onOpenConfirm,
 }) => {
     return (
         <>
@@ -85,6 +93,13 @@ export const ProjectListModals: React.FC<ProjectListModalsProps> = ({
                 isPending={isDeletePending}
                 onClose={onCloseDelete}
                 onConfirm={onDeleteConfirm}
+            />
+
+            <ProjectOpenConfirmModal
+                isOpen={openConfirmModal.isOpen}
+                projectTitle={openConfirmModal.project?.title}
+                onClose={onCloseOpenConfirm}
+                onConfirm={onOpenConfirm}
             />
         </>
     )

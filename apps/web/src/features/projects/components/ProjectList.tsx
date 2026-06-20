@@ -51,6 +51,13 @@ export const ProjectList: React.FC<ProjectListProps> = ({
         isOpen: false,
         project: null,
     })
+    const [openConfirmModal, setOpenConfirmModal] = useState<{
+        isOpen: boolean
+        project: Project | null
+    }>({
+        isOpen: false,
+        project: null,
+    })
     const [settingsModal, setSettingsModal] = useState<{
         isOpen: boolean
         project: Project | null
@@ -184,13 +191,32 @@ export const ProjectList: React.FC<ProjectListProps> = ({
         deleteMutation.mutate(deleteModal.project.id)
     }
 
+    const handleOpenProjectClick = (projectId: string) => {
+        const project = projects.find((p) => p.id === projectId)
+        if (project) {
+            setOpenConfirmModal({
+                isOpen: true,
+                project,
+            })
+        } else {
+            onOpenProject(projectId)
+        }
+    }
+
+    const handleOpenConfirm = () => {
+        if (openConfirmModal.project) {
+            onOpenProject(openConfirmModal.project.id)
+            setOpenConfirmModal({ isOpen: false, project: null })
+        }
+    }
+
     return (
         <div className="relative h-full w-full flex-1 overflow-y-auto bg-background px-8 pb-8 pt-20 font-sans no-scrollbar md:p-16">
             <div className="relative z-10 mx-auto min-h-[520px] max-w-6xl">
                 <ProjectListView
                     projects={filteredAndSortedProjects}
                     onNewProject={onNewProject}
-                    onOpenProject={onOpenProject}
+                    onOpenProject={handleOpenProjectClick}
                     isInitialLoading={isInitialLoading}
                     isFetching={isFetching}
                     errorMessage={errorMessage}
@@ -221,6 +247,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({
                 duplicateModal={duplicateModal}
                 shareModal={shareModal}
                 deleteModal={deleteModal}
+                openConfirmModal={openConfirmModal}
                 isRenamePending={renameMutation.isPending}
                 isDuplicatePending={duplicateMutation.isPending}
                 isSharePending={shareMutation.isPending}
@@ -236,6 +263,8 @@ export const ProjectList: React.FC<ProjectListProps> = ({
                 onShareConfirm={handleShare}
                 onCloseDelete={() => setDeleteModal((prev) => ({ ...prev, isOpen: false }))}
                 onDeleteConfirm={handleDelete}
+                onCloseOpenConfirm={() => setOpenConfirmModal({ isOpen: false, project: null })}
+                onOpenConfirm={handleOpenConfirm}
             />
 
             {settingsModal.isOpen && settingsModal.project && (

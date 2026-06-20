@@ -146,7 +146,7 @@ export const ProfileFeedbackModal: React.FC<ProfileFeedbackModalProps> = ({ isOp
                             </button>
                             <button
                                 type="submit"
-                                disabled={isSubmitting || (!feedback.trim() && !rating)}
+                                disabled={isSubmitting || !feedback.trim()}
                                 className="bg-white text-black hover:bg-neutral-200 active:scale-95 transition-[transform,background-color,border-color,color] duration-200 text-[13px] font-medium px-4 py-2 rounded-lg focus:outline-none disabled:opacity-40 disabled:pointer-events-none flex items-center justify-center min-w-[90px]"
                             >
                                 {isSubmitting ? (

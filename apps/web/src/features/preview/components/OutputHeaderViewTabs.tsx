@@ -58,14 +58,14 @@ export const OutputHeaderViewTabs: React.FC<OutputHeaderViewTabsProps> = ({
                     onSelect={setActiveTab}
                 />
                 <ViewModeTab
-                    label="Code"
-                    tab="code"
+                    label="Canvas"
+                    tab="canvas"
                     activeTab={activeTab}
                     onSelect={setActiveTab}
                 />
                 <ViewModeTab
-                    label="Canvas"
-                    tab="canvas"
+                    label="Code"
+                    tab="code"
                     activeTab={activeTab}
                     onSelect={setActiveTab}
                 />

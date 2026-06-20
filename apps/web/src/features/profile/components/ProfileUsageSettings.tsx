@@ -1,10 +1,9 @@
 import { useQuery } from '@tanstack/react-query'
-import { ChevronDown, Download, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react'
+import { ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react'
 import React, { useState, useEffect } from 'react'
 
 import { useCreditsHistory, useBillingOverview } from '@/features/billing/hooks/useBillingData'
 import { profileAPI } from '@/features/profile/api/profile'
-import { ErrorAlert } from '@/shared/components/ui/ErrorAlert'
 import { Skeleton } from '@/shared/components/ui/Skeleton'
 
 export const ProfileUsageSettings: React.FC = () => {
@@ -19,13 +18,8 @@ export const ProfileUsageSettings: React.FC = () => {
     const [offset, setOffset] = useState(0)
 
     const [timeRange, setTimeRange] = useState<string>('30d')
-    const [isDownloading, setIsDownloading] = useState(false)
     const [isDropdownOpen, setIsDropdownOpen] = useState(false)
-
-    const getEventLabel = (model: string) => {
-        if (/image|img|gen|dall/i.test(model)) return 'Image Generation'
-        return 'Message'
-    }
+    const [expandedRowId, setExpandedRowId] = useState<string | null>(null)
 
     const formatRowDate = (dateStr: string) => {
         const date = new Date(dateStr)
@@ -120,65 +114,21 @@ export const ProfileUsageSettings: React.FC = () => {
         })
     }, [history, activeDateRange])
 
+    // Compute Metrics Stats
+    const stats = React.useMemo(() => {
+        const totalCost = displayEvents.reduce((sum, e) => sum + e.costInCents, 0) / 100
+        const totalTokens = displayEvents.reduce((sum, e) => sum + e.totalTokens, 0)
+
+        return {
+            totalCost,
+            totalTokens,
+        }
+    }, [displayEvents])
+
     const paginatedEvents = displayEvents.slice(offset, offset + limit)
     const totalEvents = displayEvents.length
     const currentPage = Math.floor(offset / limit) + 1
     const totalPages = Math.max(Math.ceil(totalEvents / limit), 1)
-
-    // CSV Downloader
-    const handleDownloadCSV = async () => {
-        if (displayEvents.length === 0) return
-        setIsDownloading(true)
-        try {
-            const headers = [
-                'Date',
-                'Project',
-                'Model',
-                'Token Usage',
-                'Cost ($)',
-                'Input Tokens',
-                'Output Tokens',
-            ]
-            const csvRows = [headers.join(',')]
-
-            for (const event of displayEvents) {
-                const date = new Date(event.createdAt).toISOString()
-                const project = event.project?.name || '-'
-                const cost = (event.costInCents / 100).toFixed(4)
-
-                const values = [
-                    date,
-                    project,
-                    event.model,
-                    event.totalTokens,
-                    cost,
-                    event.inputTokens,
-                    event.outputTokens,
-                ]
-                csvRows.push(
-                    values.map((val) => `"${val?.toString().replace(/"/g, '""')}"`).join(',')
-                )
-            }
-
-            const csvString = csvRows.join('\n')
-            const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' })
-            const url = URL.createObjectURL(blob)
-            const link = document.createElement('a')
-            link.setAttribute('href', url)
-            link.setAttribute(
-                'download',
-                `december_usage_${new Date().toISOString().slice(0, 10)}.csv`
-            )
-            document.body.appendChild(link)
-            link.click()
-            document.body.removeChild(link)
-            URL.revokeObjectURL(url)
-        } catch (err) {
-            console.error('Failed to download CSV:', err)
-        } finally {
-            setIsDownloading(false)
-        }
-    }
 
     const isLoading = isOverviewLoading || isHistoryLoading
 
@@ -209,117 +159,190 @@ export const ProfileUsageSettings: React.FC = () => {
                             })}
                         </div>
 
-                        <button
-                            onClick={handleDownloadCSV}
-                            disabled={displayEvents.length === 0 || isLoading || isDownloading}
-                            className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-[#383736] hover:bg-[#1E1D1B] bg-[#171615] transition-colors text-[13px] disabled:opacity-50 disabled:cursor-not-allowed font-medium active:scale-[0.98]"
-                        >
-                            {isDownloading ? (
-                                <Loader2 className="w-4 h-4 animate-spin text-[#7B7A79]" />
-                            ) : (
-                                <Download className="w-4 h-4 text-[#7B7A79]" />
-                            )}
-                            <span>{isDownloading ? 'Downloading...' : 'Download'}</span>
-                        </button>
+                        {/* Total Spent in place of download button */}
+                        {isLoading ? (
+                            <div className="flex items-center gap-1.5 text-[13px] text-neutral-400 font-medium">
+                                <span>Total spent:</span>
+                                <Skeleton className="h-4 w-12 bg-white/[0.06] rounded" />
+                            </div>
+                        ) : (
+                            <div className="text-[13px] text-neutral-400 font-medium">
+                                Total spent:{' '}
+                                <span className="text-white font-semibold">
+                                    ${stats.totalCost.toFixed(2)}
+                                </span>
+                            </div>
+                        )}
                     </div>
 
                     {/* Table / Loader / Error */}
                     {isLoading ? (
-                        <div className="flex flex-col border border-[#242323] rounded-xl overflow-hidden bg-[#100E12] shadow-sm">
-                            {/* Table Header skeleton */}
-                            <div className="grid grid-cols-[130px_200px_1fr_100px_70px] items-center py-3.5 px-5 border-b border-[#242323] bg-[#171615] text-[12px] text-[#7B7A79] font-medium">
-                                <div>Date</div>
-                                <div>Project</div>
-                                <div>Model</div>
-                                <div>Token Usage</div>
-                                <div className="text-right">Cost</div>
-                            </div>
-                            {/* Table rows skeleton */}
-                            {Array.from({ length: 8 }).map((_, i) => (
-                                <div
-                                    key={i}
-                                    className="grid grid-cols-[130px_200px_1fr_100px_70px] items-center py-5 px-5 border-b border-[#242323]/50 last:border-b-0"
-                                >
-                                    <div className="pr-4">
-                                        <Skeleton className="h-4 w-24 bg-white/[0.06] rounded" />
-                                    </div>
-                                    <div className="pr-4">
-                                        <Skeleton className="h-4 w-20 bg-white/[0.04] rounded" />
-                                    </div>
-                                    <div className="pr-4">
-                                        <Skeleton className="h-4 w-24 bg-white/[0.04] rounded" />
-                                    </div>
-                                    <div className="pr-4">
-                                        <Skeleton className="h-4 w-14 bg-white/[0.04] rounded" />
-                                    </div>
-                                    <div className="flex justify-end pr-1">
-                                        <Skeleton className="h-4 w-10 bg-white/[0.06] rounded" />
-                                    </div>
+                        <div className="flex flex-col gap-6">
+                            {/* Table skeleton */}
+                            <div className="flex flex-col border border-[#242323] rounded-xl overflow-hidden bg-[#100E12] shadow-sm">
+                                {/* Table Header skeleton */}
+                                <div className="grid grid-cols-[130px_200px_1fr_100px_70px] items-center py-3.5 px-5 border-b border-[#242323] bg-[#171615] text-[12px] text-[#7B7A79] font-medium">
+                                    <div>Date</div>
+                                    <div>Project</div>
+                                    <div>Model</div>
+                                    <div>Token Usage</div>
+                                    <div className="text-right">Cost</div>
                                 </div>
-                            ))}
+                                {/* Table rows skeleton */}
+                                {Array.from({ length: 8 }).map((_, i) => (
+                                    <div
+                                        key={i}
+                                        className="grid grid-cols-[130px_200px_1fr_100px_70px] items-center py-5 px-5 border-b border-[#242323]/50 last:border-b-0"
+                                    >
+                                        <div className="pr-4">
+                                            <Skeleton className="h-4 w-24 bg-white/[0.06] rounded" />
+                                        </div>
+                                        <div className="pr-4">
+                                            <Skeleton className="h-4 w-20 bg-white/[0.04] rounded" />
+                                        </div>
+                                        <div className="pr-4">
+                                            <Skeleton className="h-4 w-24 bg-white/[0.04] rounded" />
+                                        </div>
+                                        <div className="pr-4">
+                                            <Skeleton className="h-4 w-14 bg-white/[0.04] rounded" />
+                                        </div>
+                                        <div className="flex justify-end pr-1">
+                                            <Skeleton className="h-4 w-10 bg-white/[0.06] rounded" />
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                     ) : error ? (
-                        <div className="w-full flex justify-center">
-                            <ErrorAlert
-                                message={
-                                    error instanceof Error
-                                        ? error.message
-                                        : 'Failed to load usage events'
-                                }
-                            />
+                        <div className="w-full flex justify-center text-red-500 text-sm">
+                            {(error as any)?.message || 'Failed to load usage events'}
                         </div>
                     ) : (
-                        <div className="flex flex-col border border-[#242323] rounded-xl overflow-hidden bg-[#100E12] shadow-sm">
-                            {/* Header */}
-                            <div className="grid grid-cols-[130px_200px_1fr_100px_70px] items-center py-3.5 px-5 border-b border-[#242323] bg-[#171615] text-[12px] text-[#7B7A79] font-medium">
-                                <div>Date</div>
-                                <div>Project</div>
-                                <div>Model</div>
-                                <div>Token Usage</div>
-                                <div className="text-right">Cost</div>
-                            </div>
+                        <div className="flex flex-col gap-6">
+                            {/* Table */}
+                            <div className="flex flex-col border border-[#242323] rounded-xl overflow-hidden bg-[#100E12] shadow-sm">
+                                {/* Header */}
+                                <div className="grid grid-cols-[130px_200px_1fr_100px_70px] items-center py-3.5 px-5 border-b border-[#242323] bg-[#171615] text-[12px] text-[#7B7A79] font-medium">
+                                    <div>Date</div>
+                                    <div>Project</div>
+                                    <div>Model</div>
+                                    <div>Token Usage</div>
+                                    <div className="text-right">Cost</div>
+                                </div>
 
-                            {/* Rows */}
-                            <div className="flex flex-col divide-y divide-[#242323]/50 min-h-[420px]">
-                                {paginatedEvents.length === 0 ? (
-                                    <div className="flex flex-col items-center justify-center flex-1 h-[420px] text-[#7B7A79] text-[13px]">
-                                        No usage events found for this period.
-                                    </div>
-                                ) : (
-                                    paginatedEvents.map((row) => (
-                                        <div
-                                            key={row.id}
-                                            className="grid grid-cols-[130px_200px_1fr_100px_70px] items-center py-5 px-5 text-[13px] hover:bg-[#1A1918] transition-colors"
-                                        >
-                                            {/* Date */}
-                                            <div className="text-[#D6D5C9]">
-                                                {formatRowDate(row.createdAt)}
-                                            </div>
-
-                                            {/* Project */}
-                                            <div className="text-[#D6D5C9] truncate pr-2 font-medium">
-                                                {row.project?.name || '-'}
-                                            </div>
-
-                                            {/* Model */}
-                                            <div className="text-[#7B7A79] truncate pr-2">
-                                                {formatModelName(row.model)}
-                                            </div>
-
-                                            {/* Token Usage */}
-                                            <div className="text-[#D6D5C9] font-mono text-[12px]">
-                                                {row.totalTokens.toLocaleString()}
-                                            </div>
-
-                                            {/* Cost */}
-                                            <div className="text-right">
-                                                <span className="text-[#D6D5C9]">
-                                                    ${(row.costInCents / 100).toFixed(2)}
-                                                </span>
-                                            </div>
+                                {/* Rows */}
+                                <div className="flex flex-col min-h-[420px]">
+                                    {paginatedEvents.length === 0 ? (
+                                        <div className="flex flex-col items-center justify-center flex-1 h-[420px] text-[#7B7A79] text-[13px]">
+                                            No usage events found for this period.
                                         </div>
-                                    ))
-                                )}
+                                    ) : (
+                                        paginatedEvents.map((row) => {
+                                            const isExpanded = expandedRowId === row.id
+                                            return (
+                                                <div
+                                                    key={row.id}
+                                                    className="flex flex-col border-b border-[#242323]/50 last:border-b-0"
+                                                >
+                                                    <div
+                                                        onClick={() =>
+                                                            setExpandedRowId(
+                                                                isExpanded ? null : row.id
+                                                            )
+                                                        }
+                                                        className="grid grid-cols-[130px_200px_1fr_100px_70px] items-center py-5 px-5 text-[13px] hover:bg-[#1A1918] transition-colors cursor-pointer select-none"
+                                                    >
+                                                        {/* Date */}
+                                                        <div className="text-[#D6D5C9]">
+                                                            {formatRowDate(row.createdAt)}
+                                                        </div>
+
+                                                        {/* Project */}
+                                                        <div className="text-[#D6D5C9] truncate pr-2 font-medium">
+                                                            {row.project?.name || '-'}
+                                                        </div>
+
+                                                        {/* Model */}
+                                                        <div className="text-[#7B7A79] truncate pr-2">
+                                                            {formatModelName(row.model)}
+                                                        </div>
+
+                                                        {/* Token Usage */}
+                                                        <div className="text-[#D6D5C9] font-mono text-[12px]">
+                                                            {row.totalTokens.toLocaleString()}
+                                                        </div>
+
+                                                        {/* Cost */}
+                                                        <div className="text-right">
+                                                            <span className="text-[#D6D5C9]">
+                                                                $
+                                                                {(row.costInCents / 100).toFixed(2)}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                    {isExpanded && (
+                                                        <div className="bg-[#100E12] px-5 py-4 border-t border-[#242323] flex flex-col gap-3 text-[12.5px] text-[#7B7A79] animate-in slide-in-from-top-1 duration-150">
+                                                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                                                <div>
+                                                                    <span className="block text-[10px] text-[#8F8E8D] uppercase font-semibold tracking-wider mb-1">
+                                                                        Input Tokens
+                                                                    </span>
+                                                                    <span className="font-mono text-white">
+                                                                        {row.inputTokens.toLocaleString()}
+                                                                    </span>
+                                                                </div>
+                                                                <div>
+                                                                    <span className="block text-[10px] text-[#8F8E8D] uppercase font-semibold tracking-wider mb-1">
+                                                                        Output Tokens
+                                                                    </span>
+                                                                    <span className="font-mono text-white">
+                                                                        {row.outputTokens.toLocaleString()}
+                                                                    </span>
+                                                                </div>
+                                                                <div>
+                                                                    <span className="block text-[10px] text-[#8F8E8D] uppercase font-semibold tracking-wider mb-1">
+                                                                        Request ID
+                                                                    </span>
+                                                                    <span className="font-mono text-white select-all">
+                                                                        {row.externalRequestId ||
+                                                                            'N/A'}
+                                                                    </span>
+                                                                </div>
+                                                                <div>
+                                                                    <span className="block text-[10px] text-[#8F8E8D] uppercase font-semibold tracking-wider mb-1">
+                                                                        Cost Breakdown
+                                                                    </span>
+                                                                    <span className="text-white font-mono">
+                                                                        $
+                                                                        {(
+                                                                            row.costInCents / 100
+                                                                        ).toFixed(4)}
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                            {row.metadata &&
+                                                                Object.keys(row.metadata).length >
+                                                                    0 && (
+                                                                    <div className="pt-2 border-t border-[#242323]/50">
+                                                                        <span className="block text-[10px] text-[#8F8E8D] uppercase font-semibold tracking-wider mb-1">
+                                                                            Metadata
+                                                                        </span>
+                                                                        <pre className="text-[11px] font-mono text-white/70 overflow-x-auto bg-black/20 p-2 rounded border border-[#242323]">
+                                                                            {JSON.stringify(
+                                                                                row.metadata,
+                                                                                null,
+                                                                                2
+                                                                            )}
+                                                                        </pre>
+                                                                    </div>
+                                                                )}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )
+                                        })
+                                    )}
+                                </div>
                             </div>
                         </div>
                     )}

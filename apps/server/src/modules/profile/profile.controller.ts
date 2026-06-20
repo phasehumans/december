@@ -682,7 +682,7 @@ const submitFeedback = async (req: Request, res: Response) => {
     const { rating, feedback } = parseData.data
 
     try {
-        const ratingStr = rating !== undefined ? String(rating) : null
+        const ratingStr = rating !== undefined && rating !== null ? String(rating) : null
 
         await profileService.createFeedback({
             userId,
@@ -693,6 +693,7 @@ const submitFeedback = async (req: Request, res: Response) => {
         return res.status(200).json({
             success: true,
             message: 'Feedback submitted successfully',
+            data: { message: 'Feedback submitted successfully' },
         })
     } catch (error) {
         if (error instanceof AppError) {

@@ -7,6 +7,7 @@ import {
     CreditCard,
     CircleDollarSign,
     Loader2,
+    FileClock,
 } from 'lucide-react'
 import React from 'react'
 import { createPortal } from 'react-dom'
@@ -129,6 +130,10 @@ export const UserProfilePopover: React.FC<UserProfilePopoverProps> = ({
         )
     }
 
+    const docsUrl =
+        (typeof process !== 'undefined' ? process.env.DOCS_URL : undefined) ||
+        'http://localhost:3005'
+
     const menuItems: Array<{
         icon: React.ComponentType<any>
         label: string
@@ -141,14 +146,24 @@ export const UserProfilePopover: React.FC<UserProfilePopoverProps> = ({
         { icon: SettingsIcon, label: 'Settings', action: onSettings },
         { icon: MessageSquare, label: 'Feedback', action: onFeedbackModal },
         {
-            icon: CreditCard,
-            label: 'Pricing',
+            icon: Icons.DocsBook,
+            label: 'Documentation',
             action: () => {
-                navigate('/profile/billing')
+                window.open(docsUrl, '_blank')
             },
             external: true,
         },
-        { icon: Icons.DocsBook, label: 'Documentation', action: onDocs, external: true },
+        {
+            icon: FileClock,
+            label: 'Changelog',
+            action: () => {
+                window.open(
+                    'https://github.com/phasehumans/december/blob/main/CHANGELOG.md',
+                    '_blank'
+                )
+            },
+            external: true,
+        },
         {
             icon: CircleDollarSign,
             label: 'Credits',

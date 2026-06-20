@@ -14,7 +14,7 @@
         "lint": "eslint .",
         "lint:fix": "eslint . --fix",
         "build": "turbo run build",
-        "dev": "turbo run dev",
+        "dev": "turbo run dev --filter=!@december/cli --filter=!@december/tui",
         "test": "turbo run test",
         "clean": "bun scripts/clear.sh",
         "db:generate": "turbo run db:generate",

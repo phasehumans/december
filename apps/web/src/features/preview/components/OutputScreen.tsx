@@ -792,7 +792,7 @@ You can now ask me to explain specific files, add new features, or debug any iss
                 isOpen={isOutOfCredits}
                 onClose={handleTriggerExit}
                 title="Out of Credits"
-                description="You have used all your credits. Upgrade to Pro to unlock unlimited power."
+                description="You have used all your credits. Add credits to your account balance to resume your project development."
                 variant="premium"
             >
                 <div className="flex flex-col gap-4 mt-2">
@@ -802,7 +802,7 @@ You can now ask me to explain specific files, add new features, or debug any iss
                                 <Check className="w-3.5 h-3.5 text-[#D6D5C9]" />
                             </div>
                             <span className="text-[13px] text-[#D6D5C9]">
-                                Unlimited usage with $5.00 monthly credits
+                                Pay-as-you-go: Only pay for the tokens you actually use
                             </span>
                         </div>
 
@@ -811,7 +811,7 @@ You can now ask me to explain specific files, add new features, or debug any iss
                                 <Check className="w-3.5 h-3.5 text-[#D6D5C9]" />
                             </div>
                             <span className="text-[13px] text-[#D6D5C9]">
-                                Priority execution to build faster
+                                Priority execution and full model access
                             </span>
                         </div>
 
@@ -820,7 +820,7 @@ You can now ask me to explain specific files, add new features, or debug any iss
                                 <Check className="w-3.5 h-3.5 text-[#D6D5C9]" />
                             </div>
                             <span className="text-[13px] text-[#D6D5C9]">
-                                Access to premium models and tools
+                                Top up instantly via UPI QR, Cards, or Crypto
                             </span>
                         </div>
                     </div>
@@ -832,7 +832,7 @@ You can now ask me to explain specific files, add new features, or debug any iss
                             }}
                             className="w-full py-2.5 rounded-lg bg-white text-black text-[13px] font-semibold hover:bg-[#E5E5E5] transition-colors focus:outline-none"
                         >
-                            Upgrade for $5/month
+                            Add Credits
                         </button>
                         <button
                             onClick={handleTriggerExit}
