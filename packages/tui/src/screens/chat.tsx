@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react'
 import { Header } from '../components/header'
 import { InputBar } from '../components/input-bar'
 import { BotMessage, ErrorMessage, UserMessage } from '../components/messages'
+
 import type { MessageBlock } from '../components/messages/bot-message'
 
 type Message = {

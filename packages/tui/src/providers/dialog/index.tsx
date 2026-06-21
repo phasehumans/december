@@ -2,7 +2,6 @@ import { Box, Text, useInput } from 'ink'
 import { createContext, useContext, useState, useCallback } from 'react'
 
 import { useTerminalColumns } from '../../hooks/use-terminal-columns'
-
 import { useKeyboardLayer } from '../keyboard-layer'
 
 import type { DialogConfig } from './types'

@@ -1,5 +1,6 @@
-import { Box, Text } from 'ink'
 import { homedir } from 'node:os'
+
+import { Box, Text } from 'ink'
 
 const VERSION = 'v0.1.0'
 const USER_EMAIL = 'phasehumans@gmail.com'

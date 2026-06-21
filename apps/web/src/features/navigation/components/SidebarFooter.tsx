@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { Bell, ArrowUpCircle } from 'lucide-react'
+import { Bell } from 'lucide-react'
 import React, { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 

@@ -6,6 +6,7 @@ import authRouter from './modules/auth/auth.routes'
 import billingRouter from './modules/billing/billing.routes'
 import canvasRouter from './modules/canvas/canvas.routes'
 import generateRouter from './modules/generation/generation.routes'
+import importRouter from './modules/import/import.routes'
 import integrationsRouter from './modules/integration/integration.routes'
 import notificationRouter from './modules/notification/notification.routes'
 import platformRouter from './modules/platform/platform.routes'
@@ -13,7 +14,6 @@ import profileRouter from './modules/profile/profile.routes'
 import projectRouter from './modules/project/project.routes'
 import runtimeRouter from './modules/runtime/runtime.routes'
 import templateRouter from './modules/template/template.routes'
-import uploadRouter from './modules/import/upload.routes'
 import usageRouter from './modules/usage/usage.routes'
 
 const app = express()
@@ -43,7 +43,7 @@ app.use('/api/v1/project', projectRouter)
 app.use('/api/v1/canvas', canvasRouter)
 app.use('/api/v1/generate', generateRouter)
 app.use('/api/v1/runtime', runtimeRouter)
-app.use('/api/v1/upload', uploadRouter)
+app.use('/api/v1/upload', importRouter)
 app.use('/api/v1/usage', usageRouter)
 app.use('/api/v1/template', templateRouter)
 app.use('/api/v1/integrations', integrationsRouter)
