@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
 import { useStdout } from 'ink'
+import { useEffect, useState } from 'react'
 
 export function useTerminalColumns() {
     const { stdout } = useStdout()

@@ -1,6 +1,5 @@
 import {
     Sliders,
-    Share,
     Cloud,
     Terminal,
     Globe,

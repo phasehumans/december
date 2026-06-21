@@ -2,7 +2,7 @@ import { importIdParamSchema, uploadRepoSchema } from '@december/shared'
 
 import { AppError } from '../../shared/appError'
 
-import { uploadService } from './upload.service'
+import { uploadService } from './import.service'
 
 import type { Request, Response } from 'express'
 

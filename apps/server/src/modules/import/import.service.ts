@@ -25,7 +25,7 @@ import {
     validateImportProject,
     parseGitHubRepoUrl,
     verifyGitHubRepoAccess,
-} from './upload.utils'
+} from './import.utils'
 
 import type {
     ImportFromGithub,

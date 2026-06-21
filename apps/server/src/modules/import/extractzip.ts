@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { mkdir, readdir } from 'node:fs/promises'
 import { join } from 'node:path'
 
-import { extractZipSafely, importStagingRootDir } from './upload.utils'
+import { extractZipSafely, importStagingRootDir } from './import.utils'
 
 import type { UploadedZipFile, ExtractedUploadedZipArchive } from '@december/shared'
 

@@ -2,9 +2,9 @@ import React from 'react'
 
 import { ProjectDeleteModal } from './ProjectDeleteModal'
 import { ProjectDuplicateModal } from './ProjectDuplicateModal'
+import { ProjectOpenConfirmModal } from './ProjectOpenConfirmModal'
 import { ProjectRenameModal } from './ProjectRenameModal'
 import { ProjectShareModal } from './ProjectShareModal'
-import { ProjectOpenConfirmModal } from './ProjectOpenConfirmModal'
 
 import type {
     DeleteModalState,
