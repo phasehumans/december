@@ -1,8 +1,9 @@
 'use client'
 
-import React from 'react'
-import { Search } from 'lucide-react'
 import { useSearchContext } from 'fumadocs-ui/contexts/search'
+import { Search } from 'lucide-react'
+import React from 'react'
+
 import { gitConfig } from '@/lib/shared'
 
 const XLogo = (props: React.SVGProps<SVGSVGElement>) => (
