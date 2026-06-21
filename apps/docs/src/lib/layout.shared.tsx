@@ -1,6 +1,7 @@
-import type { BaseLayoutProps } from 'fumadocs-ui/layouts/shared'
-import { appName } from './shared'
 import React from 'react'
+
+import type { BaseLayoutProps } from 'fumadocs-ui/layouts/shared'
+
 import { HeaderActions } from '@/components/HeaderActions'
 
 const DecemberLogo = (props: React.SVGProps<SVGSVGElement>) => {

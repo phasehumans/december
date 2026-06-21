@@ -1,7 +1,6 @@
 import { ChevronLeft, Copy, Check } from 'lucide-react'
 import React, { useState } from 'react'
 
-import { Icons } from '@/shared/components/ui/Icons'
 import terminalPng from '../../../../public/terminal.png'
 
 interface CliPageProps {

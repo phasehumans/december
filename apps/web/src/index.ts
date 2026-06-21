@@ -1,5 +1,6 @@
-import { serve } from 'bun'
 import path from 'path'
+
+import { serve } from 'bun'
 
 import index from './index.html'
 

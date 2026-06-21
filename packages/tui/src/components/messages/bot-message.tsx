@@ -1,4 +1,5 @@
 import { Box, Text } from 'ink'
+
 import { Spinner } from '../spinner'
 
 export type MessageBlock =

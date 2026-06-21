@@ -4,7 +4,6 @@ import {
     ExternalLink,
     Settings as SettingsIcon,
     MessageSquare,
-    CreditCard,
     CircleDollarSign,
     Loader2,
     FileClock,
