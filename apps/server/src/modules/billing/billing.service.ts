@@ -1,11 +1,10 @@
 import crypto from 'crypto'
 
-import { prisma } from '@december/database'
-
 import { razorpay } from '../../config/razorpay'
 import { AppError } from '../../shared/appError'
 import { sendNotificationToUser } from '../notification/notification.service'
 
+import { billingRepository } from './billing.repository'
 import {
     getPlanCatalog,
     getRazorpayKeyId,
@@ -28,37 +27,13 @@ import type {
     RedeemCode,
     PersistProviderSubscription,
     RazorpaySubscriptionLike,
-} from '@december/shared'
-
-// const getUserForBilling = async (userId: string) => {
-//     const user = await prisma.user.findUnique({
-//         where: {
-//             id: userId,
-//         },
-//         select: {
-//             id: true,
-//             name: true,
-//             email: true,
-//             subscriptionPlan: true,
-//             subscriptionStatus: true,
-//             currentPeriodEnd: true,
-//             subscription: true,
-//             isDeleted: true
-//         },
-//     })
-
-//     if (!user || user.isDeleted == true) {
-//         throw new AppError('user not found', 404)
-//     }
-
-//     return user
-// }
+} from './billing.types'
 
 type BillingUser = {
     subscriptionPlan: string | null
     subscriptionStatus: string | null
     currentPeriodEnd: Date | null
-    subscription: unknown
+    subscription: any
 }
 
 const buildSubscriptionSummary = (user: BillingUser) => {
@@ -72,23 +47,7 @@ const buildSubscriptionSummary = (user: BillingUser) => {
 
 const getOverview = async (data: GetOverview) => {
     const { userId } = data
-    const user = await prisma.user.findUnique({
-        where: {
-            id: userId,
-        },
-        select: {
-            id: true,
-            name: true,
-            email: true,
-            subscriptionPlan: true,
-            subscriptionStatus: true,
-            currentPeriodEnd: true,
-            subscription: true,
-            createdAt: true,
-            creditBalance: true,
-            giftedCredits: true,
-        },
-    })
+    const user = await billingRepository.findUserForOverview(userId)
 
     if (!user) {
         throw new AppError('user not found', 404)
@@ -104,8 +63,9 @@ const getOverview = async (data: GetOverview) => {
         periodStart = user.createdAt
         periodEnd = new Date('2099-12-31T23:59:59.000Z')
     } else {
-        const subscriptionPeriodStart = user.subscription?.currentPeriodStart
-        const subscriptionPeriodEnd = user.subscription?.currentPeriodEnd
+        const sub = user.subscription as any
+        const subscriptionPeriodStart = sub?.currentPeriodStart
+        const subscriptionPeriodEnd = sub?.currentPeriodEnd
         const hasActiveSubscriptionPeriod =
             subscriptionPeriodStart !== undefined &&
             subscriptionPeriodEnd !== undefined &&
@@ -119,37 +79,13 @@ const getOverview = async (data: GetOverview) => {
     }
 
     const [aggregate, claims] = await Promise.all([
-        prisma.usageEvent.aggregate({
-            where: {
-                userId,
-                ...(isPro ? { periodStart } : {}),
-                createdAt: {
-                    gte: periodStart,
-                    lt: periodEnd,
-                },
-            },
-            _sum: {
-                costInCents: true,
-                inputTokens: true,
-                outputTokens: true,
-                totalTokens: true,
-            },
-        }),
-        prisma.redeemCodeClaim.findMany({
-            where: { userId },
-            include: {
-                redeemCode: true,
-            },
-        }),
+        billingRepository.aggregateUsage(userId, periodStart, periodEnd, isPro),
+        billingRepository.findRedeemCodeClaims(userId),
     ])
 
     const usedInCents = aggregate._sum.costInCents ?? 0
     const creditLimitInCents = isPro ? 500 : 100
     const totalGiftedCredits = claims.reduce((sum, c) => sum + c.redeemCode.creditAmount, 0)
-
-    const remainingPlanCreditsInCents = user.creditBalance
-    const remainingGiftedCreditsInCents = user.giftedCredits
-    const remainingInCents = remainingPlanCreditsInCents + remainingGiftedCreditsInCents
 
     return {
         ...buildSubscriptionSummary(user),
@@ -165,36 +101,18 @@ const getOverview = async (data: GetOverview) => {
             limitInCents: creditLimitInCents,
             giftedCreditsInCents: totalGiftedCredits,
             usedInCents,
-            remainingPlanCreditsInCents,
-            remainingGiftedCreditsInCents,
-            remainingInCents,
-            unlimited: false,
         },
-        claims: claims.map((c) => ({
-            id: c.id,
-            code: c.redeemCode.code,
-            amountInCents: c.redeemCode.creditAmount,
-            createdAt: c.createdAt,
-        })),
     }
 }
 
 const getPlans = async () => {
     const plans = getPlanCatalog()
-    const razorpayPlanId = process.env.RAZORPAY_PRO_PLAN_ID
-
-    if (!razorpayPlanId) {
-        return plans
-    }
+    const razorpayPlanId = getRazorpayProPlanId()
 
     try {
-        const razorpayPlan = await razorpay.plans.fetch(razorpayPlanId)
-
+        const razorpayPlan = (await razorpay.plans.fetch(razorpayPlanId)) as any
         return plans.map((plan) => {
-            if (plan.id !== 'PRO') {
-                return plan
-            }
-
+            if (plan.id !== 'PRO') return plan
             return {
                 ...plan,
                 priceInPaise: razorpayPlan.item?.amount ?? plan.priceInPaise,
@@ -210,20 +128,7 @@ const getPlans = async () => {
 
 const createSubscription = async (data: CreateSubscription) => {
     const { userId, plan, totalCount, quantity } = data
-    const user = await prisma.user.findUnique({
-        where: {
-            id: userId,
-        },
-        select: {
-            id: true,
-            name: true,
-            email: true,
-            subscriptionPlan: true,
-            subscriptionStatus: true,
-            currentPeriodEnd: true,
-            subscription: true,
-        },
-    })
+    const user = await billingRepository.findUserForCreateSub(userId)
 
     if (!user) {
         throw new AppError('user not found', 404)
@@ -266,37 +171,17 @@ const persistProviderSubscription = async (data: PersistProviderSubscription) =>
     const userStatus = mapUserSubscriptionStatus(provSubscription.status)
     const userPlan = userStatus === 'ACTIVE' || userStatus === 'PAST_DUE' ? 'PRO' : 'FREE'
 
-    const existingForProvider = await prisma.subscription.findUnique({
-        where: {
-            providerSubscriptionId: provSubscription.id,
-        },
-        select: {
-            userId: true,
-        },
-    })
+    const existingForProvider = await billingRepository.findSubscriptionByProviderId(
+        provSubscription.id
+    )
 
     if (existingForProvider && existingForProvider.userId !== userId) {
         throw new AppError('subscription belongs to another user', 409)
     }
 
-    const previousUser = await prisma.user.findUnique({
-        where: {
-            id: userId,
-        },
-        select: {
-            subscriptionPlan: true,
-        },
-    })
+    const previousUser = await billingRepository.findUserPlan(userId)
 
-    const existingSubscription = await prisma.subscription.findUnique({
-        where: {
-            userId: userId,
-        },
-        select: {
-            currentPeriodStart: true,
-            plan: true,
-        },
-    })
+    const existingSubscription = await billingRepository.findSubscriptionByUserId(userId)
 
     let nextCreditBalance: number | undefined = undefined
 
@@ -319,47 +204,19 @@ const persistProviderSubscription = async (data: PersistProviderSubscription) =>
         nextCreditBalance = 0 // Clear to 0
     }
 
-    const [subscription, user] = await prisma.$transaction([
-        prisma.subscription.upsert({
-            where: {
-                userId: userId,
-            },
-            create: {
-                userId: userId,
-                provider: 'razorpay',
-                providerSubscriptionId: provSubscription.id,
-                providerCustomerId: provSubscription.customer_id ?? null,
-                providerPlanId: provSubscription.plan_id ?? getRazorpayProPlanId(),
-                status: providerStatus,
-                plan: 'PRO',
-                cancelAtPeriodEnd: cancelAtPeriodEnd ?? false,
-                currentPeriodStart: periodStart,
-                currentPeriodEnd: periodEnd,
-            },
-            update: {
-                provider: 'razorpay',
-                providerSubscriptionId: provSubscription.id,
-                providerCustomerId: provSubscription.customer_id ?? null,
-                providerPlanId: provSubscription.plan_id ?? getRazorpayProPlanId(),
-                status: providerStatus,
-                plan: 'PRO',
-                cancelAtPeriodEnd: cancelAtPeriodEnd ?? false,
-                currentPeriodStart: periodStart,
-                currentPeriodEnd: periodEnd,
-            },
-        }),
-        prisma.user.update({
-            where: {
-                id: userId,
-            },
-            data: {
-                subscriptionPlan: userPlan,
-                subscriptionStatus: userStatus,
-                currentPeriodEnd: periodEnd,
-                ...(nextCreditBalance !== undefined ? { creditBalance: nextCreditBalance } : {}),
-            },
-        }),
-    ])
+    const [subscription, user] = await billingRepository.persistProviderSubscription({
+        userId,
+        userPlan,
+        userStatus,
+        periodEnd,
+        nextCreditBalance,
+        providerSubscriptionId: provSubscription.id,
+        providerCustomerId: provSubscription.customer_id ?? null,
+        providerPlanId: provSubscription.plan_id ?? getRazorpayProPlanId(),
+        status: providerStatus,
+        cancelAtPeriodEnd: cancelAtPeriodEnd ?? false,
+        periodStart,
+    })
 
     if (userPlan === 'PRO' && previousUser?.subscriptionPlan !== 'PRO') {
         try {
@@ -393,21 +250,7 @@ const verifySubscription = async (data: VerifySubscription) => {
         throw new AppError('invalid razorpay signature', 400)
     }
 
-    // await getUserForBilling(userId)
-    const user = await prisma.user.findUnique({
-        where: {
-            id: userId,
-        },
-        select: {
-            id: true,
-            name: true,
-            email: true,
-            subscriptionPlan: true,
-            subscriptionStatus: true,
-            currentPeriodEnd: true,
-            subscription: true,
-        },
-    })
+    const user = await billingRepository.findUserForCreateSub(userId)
 
     if (!user) {
         throw new AppError('user not found', 404)
@@ -445,35 +288,23 @@ const verifySubscription = async (data: VerifySubscription) => {
 
 const cancelSubscription = async (data: CancelSubscription) => {
     const { userId, cancelAtPeriodEnd } = data
-    const user = await prisma.user.findUnique({
-        where: {
-            id: userId,
-        },
-        select: {
-            id: true,
-            name: true,
-            email: true,
-            subscriptionPlan: true,
-            subscriptionStatus: true,
-            currentPeriodEnd: true,
-            subscription: true,
-        },
-    })
+    const user = await billingRepository.findUserForCreateSub(userId)
 
     if (!user) {
         throw new AppError('user not found', 404)
     }
 
-    if (!user.subscription) {
+    const sub = user.subscription as any
+    if (!sub) {
         throw new AppError('subscription not found', 404)
     }
 
-    if (user.subscription.provider !== 'razorpay') {
+    if (sub.provider !== 'razorpay') {
         throw new AppError('unsupported billing provider', 400)
     }
 
     const canceledSubscription = (await razorpay.subscriptions.cancel(
-        user.subscription.providerSubscriptionId,
+        sub.providerSubscriptionId,
         cancelAtPeriodEnd
     )) as RazorpaySubscriptionLike
 
@@ -486,29 +317,15 @@ const cancelSubscription = async (data: CancelSubscription) => {
     const providerStatus = mapRazorpayProviderStatus(canceledSubscription.status)
     const { periodStart, periodEnd } = resolveSubscriptionPeriods(canceledSubscription)
 
-    const [subscription, updatedUser] = await prisma.$transaction([
-        prisma.subscription.update({
-            where: {
-                userId: userId,
-            },
-            data: {
-                status: providerStatus,
-                cancelAtPeriodEnd: cancelAtPeriodEnd,
-                currentPeriodStart: periodStart,
-                currentPeriodEnd: periodEnd,
-            },
-        }),
-        prisma.user.update({
-            where: {
-                id: userId,
-            },
-            data: {
-                subscriptionPlan: nextUserPlan,
-                subscriptionStatus: nextUserStatus,
-                currentPeriodEnd: periodEnd,
-            },
-        }),
-    ])
+    const [subscription, updatedUser] = await billingRepository.cancelSubscription({
+        userId,
+        providerStatus,
+        cancelAtPeriodEnd,
+        periodStart,
+        periodEnd,
+        nextUserPlan,
+        nextUserStatus,
+    })
 
     return {
         subscription,
@@ -522,20 +339,7 @@ const cancelSubscription = async (data: CancelSubscription) => {
 
 const getCreditsHistory = async (data: CreditsHistory) => {
     const { userId, limit, offset, periodStart, periodEnd } = data
-    const user = await prisma.user.findUnique({
-        where: {
-            id: userId,
-        },
-        select: {
-            id: true,
-            name: true,
-            email: true,
-            subscriptionPlan: true,
-            subscriptionStatus: true,
-            currentPeriodEnd: true,
-            subscription: true,
-        },
-    })
+    const user = await billingRepository.findUserForCreateSub(userId)
 
     if (!user) {
         throw new AppError('user not found', 404)
@@ -561,24 +365,8 @@ const getCreditsHistory = async (data: CreditsHistory) => {
     }
 
     const [events, total] = await Promise.all([
-        prisma.usageEvent.findMany({
-            where,
-            orderBy: {
-                createdAt: 'desc',
-            },
-            include: {
-                project: {
-                    select: {
-                        name: true,
-                    },
-                },
-            },
-            skip: offset,
-            take: limit,
-        }),
-        prisma.usageEvent.count({
-            where,
-        }),
+        billingRepository.findManyUsageEvents(where, offset, limit),
+        billingRepository.countUsageEvents(where),
     ])
 
     const periods = new Map<string, { periodStart: Date; periodEnd: Date; costInCents: number }>()
@@ -606,29 +394,17 @@ const getCreditsHistory = async (data: CreditsHistory) => {
 
 const createPortalSession = async (data: CreatePortalSession) => {
     const { userId } = data
-    const user = await prisma.user.findUnique({
-        where: {
-            id: userId,
-        },
-        select: {
-            id: true,
-            name: true,
-            email: true,
-            subscriptionPlan: true,
-            subscriptionStatus: true,
-            currentPeriodEnd: true,
-            subscription: true,
-        },
-    })
+    const user = await billingRepository.findUserForCreateSub(userId)
 
     if (!user) {
         throw new AppError('user not found', 404)
     }
 
+    const sub = user.subscription as any
     return {
         provider: 'razorpay',
         url: process.env.RAZORPAY_DASHBOARD_URL ?? 'https://dashboard.razorpay.com/',
-        subscriptionId: user.subscription?.providerSubscriptionId ?? null,
+        subscriptionId: sub?.providerSubscriptionId ?? null,
     }
 }
 
@@ -654,14 +430,9 @@ const handleRazorpayWebhook = async (data: RazorpayWebhook) => {
         }
     }
 
-    const existingSubscription = await prisma.subscription.findUnique({
-        where: {
-            providerSubscriptionId: subscription.id,
-        },
-        select: {
-            userId: true,
-        },
-    })
+    const existingSubscription = await billingRepository.findSubscriptionByProviderId(
+        subscription.id
+    )
     const userId = existingSubscription?.userId ?? subscription.notes?.userId?.toString()
 
     if (!userId) {
@@ -673,17 +444,9 @@ const handleRazorpayWebhook = async (data: RazorpayWebhook) => {
         }
     }
 
-    const user = await prisma.user.findUnique({
-        where: {
-            id: userId,
-            isDeleted: false,
-        },
-        select: {
-            id: true,
-        },
-    })
+    const user = await billingRepository.findUserById(userId)
 
-    if (!user) {
+    if (!user || user.isDeleted) {
         return {
             processed: false,
             reason: 'user not found',
@@ -710,72 +473,12 @@ const redeemCode = async (data: RedeemCode) => {
 
     const normalizedCode = code.trim().toUpperCase()
     if (!normalizedCode) {
-        throw new AppError('Redeem code cannot be empty', 400)
+        throw new AppError('redeem code cannot be empty', 400)
     }
 
     const codeHash = crypto.createHash('sha256').update(normalizedCode).digest('hex')
 
-    const result = await prisma.$transaction(async (tx) => {
-        const dbCode = await tx.redeemCode.findUnique({
-            where: { codeHash },
-        })
-
-        if (!dbCode) {
-            throw new AppError('Invalid or expired redeem code.', 404)
-        }
-
-        const now = new Date()
-        if (dbCode.expiresAt && dbCode.expiresAt < now) {
-            throw new AppError('This redeem code has expired.', 400)
-        }
-
-        if (dbCode.maxRedemptions !== null && dbCode.redemptionCount >= dbCode.maxRedemptions) {
-            throw new AppError('This redeem code has reached its maximum redemptions.', 400)
-        }
-
-        const existingClaim = await tx.redeemCodeClaim.findUnique({
-            where: {
-                redeemCodeId_userId: {
-                    redeemCodeId: dbCode.id,
-                    userId,
-                },
-            },
-        })
-
-        if (existingClaim) {
-            throw new AppError('You have already redeemed this code.', 409)
-        }
-
-        const updatedUser = await tx.user.update({
-            where: { id: userId },
-            data: {
-                giftedCredits: {
-                    increment: dbCode.creditAmount,
-                },
-            },
-        })
-
-        await tx.redeemCodeClaim.create({
-            data: {
-                redeemCodeId: dbCode.id,
-                userId,
-            },
-        })
-
-        await tx.redeemCode.update({
-            where: { id: dbCode.id },
-            data: {
-                redemptionCount: {
-                    increment: 1,
-                },
-            },
-        })
-
-        return {
-            creditAmount: dbCode.creditAmount,
-            newBalance: updatedUser.giftedCredits,
-        }
-    })
+    const result = await billingRepository.redeemCode({ userId, codeHash })
 
     try {
         await sendNotificationToUser({
@@ -800,22 +503,13 @@ interface AddCredits {
 const addCredits = async (data: AddCredits) => {
     const { userId, amountInCents, paymentMethod } = data
 
-    const user = await prisma.user.findUnique({
-        where: { id: userId },
-    })
+    const user = await billingRepository.findUserByIdForCredits(userId)
 
     if (!user) {
-        throw new AppError('User not found', 404)
+        throw new AppError('user not found', 404)
     }
 
-    const updatedUser = await prisma.user.update({
-        where: { id: userId },
-        data: {
-            creditBalance: {
-                increment: amountInCents,
-            },
-        },
-    })
+    const updatedUser = await billingRepository.addCredits(userId, amountInCents)
 
     try {
         await sendNotificationToUser({

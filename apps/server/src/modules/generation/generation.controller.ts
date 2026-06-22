@@ -1,15 +1,16 @@
-import { prisma } from '@december/database'
-import {
-    applyProjectEditSchema,
-    applyProjectFixSchema,
-    generateWebsiteSchema,
-} from '@december/shared'
-
 import { AppError } from '../../shared/appError'
+import { asyncHandler } from '../../shared/asyncHandler'
+import { sendSuccess } from '../../shared/response'
 import { runtimeService } from '../runtime/runtime.service'
 import { usageService } from '../usage/usage.service'
 
 import { normalizeGenerationError } from './generation.error'
+import { findProjectByIdAndUser } from './generation.repository'
+import {
+    applyProjectEditSchema,
+    applyProjectFixSchema,
+    generateWebsiteSchema,
+} from './generation.schema'
 import { generateService } from './generation.service'
 
 import type { Request, Response } from 'express'
@@ -23,25 +24,13 @@ const writeEvent = (res: Response, event: string, data: unknown) => {
     res.write(`data: ${JSON.stringify(data)}\n\n`)
 }
 
-const generateWebsite = async (req: Request, res: Response) => {
-    const parseData = generateWebsiteSchema.safeParse(req.body)
-
-    if (!parseData.success) {
-        return res.status(400).json({
-            success: false,
-            message: 'validation failed',
-            errors: parseData.error.flatten().fieldErrors,
-        })
-    }
-
-    const { prompt, projectId, canvasState } = parseData.data
+const generateWebsite = asyncHandler(async (req: Request, res: Response) => {
+    const parseData = generateWebsiteSchema.parse(req.body)
+    const { prompt, projectId, canvasState } = parseData
     const userId = req.user?.userId as string | undefined
 
     if (!userId) {
-        return res.status(400).json({
-            success: false,
-            message: 'unauthorized',
-        })
+        throw new AppError('unauthorized', 401)
     }
 
     const hasCredits = await usageService.hasMinimumBalance({ userId })
@@ -91,7 +80,7 @@ const generateWebsite = async (req: Request, res: Response) => {
 
         return res.end()
     }
-}
+})
 
 const prepareStream = (res: Response) => {
     res.status(200)
@@ -104,24 +93,12 @@ const prepareStream = (res: Response) => {
     writeEvent(res, 'connected', { ok: true })
 }
 
-const applyProjectEdit = async (req: Request, res: Response) => {
-    const parseData = applyProjectEditSchema.safeParse(req.body)
-
-    if (!parseData.success) {
-        return res.status(400).json({
-            success: false,
-            message: 'validation failed',
-            errors: parseData.error.flatten().fieldErrors,
-        })
-    }
-
+const applyProjectEdit = asyncHandler(async (req: Request, res: Response) => {
+    const parseData = applyProjectEditSchema.parse(req.body)
     const userId = req.user?.userId as string | undefined
 
     if (!userId) {
-        return res.status(400).json({
-            success: false,
-            message: 'unauthorized',
-        })
+        throw new AppError('unauthorized', 401)
     }
 
     const hasCredits = await usageService.hasMinimumBalance({ userId })
@@ -137,7 +114,7 @@ const applyProjectEdit = async (req: Request, res: Response) => {
         prepareStream(res)
 
         await generateService.applyProjectEdit({
-            ...parseData.data,
+            ...parseData,
             userId,
             onEvent: async (event) => {
                 writeEvent(res, event.type, event.data)
@@ -162,26 +139,14 @@ const applyProjectEdit = async (req: Request, res: Response) => {
 
         return res.end()
     }
-}
+})
 
-const applyProjectFix = async (req: Request, res: Response) => {
-    const parseData = applyProjectFixSchema.safeParse(req.body)
-
-    if (!parseData.success) {
-        return res.status(400).json({
-            success: false,
-            message: 'validation failed',
-            errors: parseData.error.flatten().fieldErrors,
-        })
-    }
-
+const applyProjectFix = asyncHandler(async (req: Request, res: Response) => {
+    const parseData = applyProjectFixSchema.parse(req.body)
     const userId = req.user?.userId as string | undefined
 
     if (!userId) {
-        return res.status(400).json({
-            success: false,
-            message: 'unauthorized',
-        })
+        throw new AppError('unauthorized', 401)
     }
 
     const hasCredits = await usageService.hasMinimumBalance({ userId })
@@ -197,7 +162,7 @@ const applyProjectFix = async (req: Request, res: Response) => {
         prepareStream(res)
 
         await generateService.applyProjectFix({
-            ...parseData.data,
+            ...parseData,
             userId,
             onEvent: async (event) => {
                 writeEvent(res, event.type, event.data)
@@ -222,57 +187,25 @@ const applyProjectFix = async (req: Request, res: Response) => {
 
         return res.end()
     }
-}
+})
 
-const validateProject = async (req: Request, res: Response) => {
+const validateProject = asyncHandler(async (req: Request, res: Response) => {
     const id = req.params.id as string
     const userId = req.user?.userId as string | undefined
 
     if (!userId) {
-        return res.status(400).json({
-            success: false,
-            message: 'unauthorized',
-        })
+        throw new AppError('unauthorized', 401)
     }
 
-    try {
-        const project = await prisma.project.findFirst({
-            where: {
-                id,
-                userId,
-            },
-        })
+    const project = await findProjectByIdAndUser({ id, userId })
 
-        if (!project) {
-            return res.status(404).json({
-                success: false,
-                message: 'project not found',
-            })
-        }
-
-        const result = await runtimeService.checkSandboxCompilation({ projectId: id })
-        return res.status(200).json({
-            success: true,
-            data: result,
-        })
-    } catch (error) {
-        if (error instanceof AppError) {
-            return res.status(error.statusCode).json({
-                success: false,
-                message: 'failed to validate project',
-                errors: error.message,
-            })
-        }
-
-        const normalizedError = normalizeGenerationError({ error })
-        console.error('[generation/validate]', normalizedError.internalMessage)
-        return res.status(500).json({
-            success: false,
-            message: normalizedError.publicMessage,
-            errors: error instanceof Error ? error.message : 'unknown error',
-        })
+    if (!project) {
+        throw new AppError('project not found', 404)
     }
-}
+
+    const result = await runtimeService.checkSandboxCompilation({ projectId: id })
+    return sendSuccess(res, 'project validated successfully', result)
+})
 
 export const generateContoller = {
     applyProjectEdit,

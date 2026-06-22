@@ -1,6 +1,6 @@
-import { prisma } from '@december/database'
+import { memoryRepository } from './memory.repository'
 
-import type { UpsertStyleGuidelines, LoadMemoryPromptInstructions } from '@december/shared'
+import type { UpsertStyleGuidelines, LoadMemoryPromptInstructions } from './memory.types'
 
 export function extractStyleGuidelines(prompt: string): Record<string, string> {
     const guidelines: Record<string, string> = {}
@@ -24,21 +24,10 @@ export async function upsertStyleGuidelines(data: UpsertStyleGuidelines): Promis
 
     await Promise.all(
         entries.map(async ([key, value]) => {
-            await prisma.projectMemory.upsert({
-                where: {
-                    projectId_key: {
-                        projectId,
-                        key,
-                    },
-                },
-                update: {
-                    value,
-                },
-                create: {
-                    projectId,
-                    key,
-                    value,
-                },
+            await memoryRepository.upsertProjectMemory({
+                projectId,
+                key,
+                value,
             })
         })
     )
@@ -52,21 +41,14 @@ export async function loadMemoryPromptInstructions(
 
     // 1. Load general design preference (design.md)
     if (userId) {
-        const user = await prisma.user.findUnique({
-            where: { id: userId },
-            select: { design: true },
-        })
+        const user = await memoryRepository.findUserDesignPreference(userId)
         if (user?.design?.trim()) {
             instructions += `\n### General Design Preferences (design.md):\n${user.design.trim()}\n`
         }
     }
 
     // 2. Load project-specific guidelines
-    const memories = await prisma.projectMemory.findMany({
-        where: { projectId },
-        select: { key: true, value: true },
-        orderBy: { key: 'asc' },
-    })
+    const memories = await memoryRepository.findProjectMemories(projectId)
 
     if (memories.length > 0) {
         instructions += `\n### Project-Specific Style Guidelines:\n`

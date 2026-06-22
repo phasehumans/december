@@ -1,7 +1,8 @@
-import { prisma } from '@december/database'
 import bcrypt from 'bcrypt'
 
 import { AppError } from '../../shared/appError'
+
+import { profileRepository } from './profile.repository'
 
 export const profileSelect = {
     id: true,
@@ -54,19 +55,11 @@ import type {
     Deletedesign,
     CreateFeedback,
     CompleteOnboarding,
-} from '@december/shared'
+} from './profile.types'
 
 const getInfo = async (data: GetInfo) => {
     const { userId } = data
-    const profile = await prisma.user.findUnique({
-        where: {
-            id: userId,
-        },
-        select: {
-            name: true,
-            githubConnected: true,
-        },
-    })
+    const profile = await profileRepository.findUserByIdForInfo(userId)
 
     if (!profile) {
         throw new AppError('user not found', 404)
@@ -80,19 +73,7 @@ const getInfo = async (data: GetInfo) => {
 
 const getProfileCard = async (data: GetProfileCard) => {
     const { userId } = data
-    const profile = await prisma.user.findUnique({
-        where: {
-            id: userId,
-        },
-        select: {
-            id: true,
-            name: true,
-            username: true,
-            email: true,
-            avatarUrl: true,
-            createdAt: true,
-        },
-    })
+    const profile = await profileRepository.findUserByIdForCard(userId)
 
     if (!profile) {
         throw new AppError('user not found', 404)
@@ -103,15 +84,7 @@ const getProfileCard = async (data: GetProfileCard) => {
 
 const getProfile = async (data: GetProfile) => {
     const { userId } = data
-    const profile = await prisma.user.findUnique({
-        where: {
-            id: userId,
-        },
-        select: {
-            ...profileSelect,
-            password: true,
-        },
-    })
+    const profile = await profileRepository.findUserByIdForProfile(userId, profileSelect)
 
     if (!profile) {
         throw new AppError('user not found', 404)
@@ -127,30 +100,13 @@ const getProfile = async (data: GetProfile) => {
 const updateName = async (data: UpdateName) => {
     const { name, userId } = data
 
-    const existingUser = await prisma.user.findUnique({
-        where: {
-            id: userId,
-        },
-        select: {
-            id: true,
-        },
-    })
+    const existingUser = await profileRepository.findUserByIdForExistCheck(userId)
 
     if (!existingUser) {
         throw new AppError('user not found', 404)
     }
 
-    const updatedUser = await prisma.user.update({
-        where: {
-            id: userId,
-        },
-        data: {
-            name: name,
-        },
-        select: {
-            name: true,
-        },
-    })
+    const updatedUser = await profileRepository.updateUserName(userId, name)
 
     return updatedUser
 }
@@ -158,15 +114,7 @@ const updateName = async (data: UpdateName) => {
 const updateUsername = async (data: UpdateUsername) => {
     const { userId, username } = data
 
-    const existingUser = await prisma.user.findUnique({
-        where: {
-            id: userId,
-        },
-        select: {
-            id: true,
-            username: true,
-        },
-    })
+    const existingUser = await profileRepository.findUserByIdForUsernameCheck(userId)
 
     if (!existingUser) {
         throw new AppError('user not found', 404)
@@ -176,31 +124,14 @@ const updateUsername = async (data: UpdateUsername) => {
         throw new AppError('new username must be different from the current one', 400)
     }
 
-    const existingUsername = await prisma.user.findUnique({
-        where: {
-            username: username,
-        },
-        select: {
-            id: true,
-        },
-    })
+    const existingUsername = await profileRepository.findUserByUsername(username)
 
     if (existingUsername) {
         throw new AppError(`${username} is already taken, try another one`, 409)
     }
 
     try {
-        const updatedUser = await prisma.user.update({
-            where: {
-                id: userId,
-            },
-            data: {
-                username: username,
-            },
-            select: {
-                username: true,
-            },
-        })
+        const updatedUser = await profileRepository.updateUsername(userId, username)
 
         return updatedUser
     } catch (error: any) {
@@ -216,30 +147,13 @@ const updateUsername = async (data: UpdateUsername) => {
 const updateAvatarUrl = async (data: UpdateAvatarUrl) => {
     const { userId, avatarUrl } = data
 
-    const existingUser = await prisma.user.findUnique({
-        where: {
-            id: userId,
-        },
-        select: {
-            id: true,
-        },
-    })
+    const existingUser = await profileRepository.findUserByIdForExistCheck(userId)
 
     if (!existingUser) {
         throw new AppError('user not found', 404)
     }
 
-    const updatedUser = await prisma.user.update({
-        where: {
-            id: userId,
-        },
-        data: {
-            avatarUrl: avatarUrl,
-        },
-        select: {
-            avatarUrl: true,
-        },
-    })
+    const updatedUser = await profileRepository.updateAvatarUrl(userId, avatarUrl)
 
     return updatedUser
 }
@@ -247,15 +161,7 @@ const updateAvatarUrl = async (data: UpdateAvatarUrl) => {
 const changePassword = async (data: ChangePassword) => {
     const { currentPassword, newPassword, userId } = data
 
-    const existingUser = await prisma.user.findUnique({
-        where: {
-            id: userId,
-        },
-        select: {
-            id: true,
-            password: true,
-        },
-    })
+    const existingUser = await profileRepository.findUserPasswordById(userId)
 
     if (!existingUser) {
         throw new AppError('user not found', 404)
@@ -265,17 +171,7 @@ const changePassword = async (data: ChangePassword) => {
         // OAuth only user setting password for the first time
         const hashPassword = await bcrypt.hash(newPassword, 10)
 
-        await prisma.user.update({
-            where: {
-                id: userId,
-            },
-            data: {
-                password: hashPassword,
-            },
-            select: {
-                id: true,
-            },
-        })
+        await profileRepository.updatePassword(userId, hashPassword)
 
         return { success: true }
     }
@@ -298,17 +194,7 @@ const changePassword = async (data: ChangePassword) => {
 
     const hashPassword = await bcrypt.hash(newPassword, 10)
 
-    await prisma.user.update({
-        where: {
-            id: userId,
-        },
-        data: {
-            password: hashPassword,
-        },
-        select: {
-            id: true,
-        },
-    })
+    await profileRepository.updatePassword(userId, hashPassword)
 
     return { success: true }
 }
@@ -316,14 +202,7 @@ const changePassword = async (data: ChangePassword) => {
 const updateNotifications = async (data: UpdateNotifications) => {
     const { userId, notifyProductUpdates, notifyProjectActivity, notifySecurityAlerts } = data
 
-    const existingUser = await prisma.user.findUnique({
-        where: {
-            id: userId,
-        },
-        select: {
-            id: true,
-        },
-    })
+    const existingUser = await profileRepository.findUserByIdForExistCheck(userId)
 
     if (!existingUser) {
         throw new AppError('user not found', 404)
@@ -351,17 +230,7 @@ const updateNotifications = async (data: UpdateNotifications) => {
         throw new AppError('at least one notification setting must be provided', 400)
     }
 
-    const updatedUser = await prisma.user.update({
-        where: {
-            id: userId,
-        },
-        data: updateData,
-        select: {
-            notifyProjectActivity: true,
-            notifyProductUpdates: true,
-            notifySecurityAlerts: true,
-        },
-    })
+    const updatedUser = await profileRepository.updateNotifications(userId, updateData)
 
     return updatedUser
 }
@@ -369,57 +238,26 @@ const updateNotifications = async (data: UpdateNotifications) => {
 const signout = async (data: Signout) => {
     const { userId, sessionId } = data
 
-    const existingSession = await prisma.session.findFirst({
-        where: {
-            id: sessionId,
-            userId,
-            isRevoked: false,
-        },
-    })
+    const existingSession = await profileRepository.findSession(sessionId, userId)
 
     if (!existingSession) {
         // optional: don't throw, just silently succeed
         return
     }
 
-    await prisma.session.update({
-        where: {
-            id: sessionId,
-        },
-        data: {
-            isRevoked: true,
-            revokedAt: new Date(),
-        },
-    })
+    await profileRepository.revokeSession(sessionId)
 }
 
 const signoutAll = async (data: SignoutAll) => {
     const { userId } = data
 
-    await prisma.session.updateMany({
-        where: {
-            userId,
-            isRevoked: false,
-        },
-        data: {
-            isRevoked: true,
-            revokedAt: new Date(),
-        },
-    })
+    await profileRepository.revokeAllSessions(userId)
 }
 
 const deleteAccount = async (data: DeleteAccount) => {
     const { userId } = data
 
-    const existingUser = await prisma.user.findUnique({
-        where: {
-            id: userId,
-        },
-        select: {
-            id: true,
-            isDeleted: true,
-        },
-    })
+    const existingUser = await profileRepository.findUserByIdForDeleteCheck(userId)
 
     if (!existingUser) {
         throw new AppError('user not found', 404)
@@ -429,62 +267,13 @@ const deleteAccount = async (data: DeleteAccount) => {
         throw new AppError('user account is already deleted', 409)
     }
 
-    await prisma.$transaction([
-        prisma.session.updateMany({
-            where: {
-                userId,
-                isRevoked: false,
-            },
-            data: {
-                isRevoked: true,
-                revokedAt: new Date(),
-            },
-        }),
-
-        prisma.user.update({
-            where: {
-                id: userId,
-            },
-            data: {
-                isDeleted: true,
-                deletedAt: new Date(),
-                githubToken: null,
-                githubConnected: false,
-                githubUsername: null,
-                vercelAccessToken: null,
-                vercelConnected: false,
-                vercelTeamId: null,
-                vercelConfigurationId: null,
-                supabaseConnected: false,
-                supabaseAccessToken: null,
-                supabaseRefreshToken: null,
-                supabaseTokenExpiresAt: null,
-                supabaseTokenScope: null,
-                supabaseUserId: null,
-                supabaseConnectedAt: null,
-                notionAccessToken: null,
-                notionWorkspaceId: null,
-                notionWorkspaceName: null,
-            },
-            select: {
-                id: true,
-            },
-        }),
-    ])
+    await profileRepository.deleteAccount(userId)
 }
 
 const chatSuggestions = async (data: ChatSuggestions) => {
     const { userId, chatSuggestions } = data
 
-    const existingUser = await prisma.user.findUnique({
-        where: {
-            id: userId,
-        },
-        select: {
-            id: true,
-            chatSuggestions: true,
-        },
-    })
+    const existingUser = await profileRepository.findUserByIdForChatSuggestions(userId)
 
     if (!existingUser) {
         throw new AppError('user not found', 404)
@@ -497,17 +286,7 @@ const chatSuggestions = async (data: ChatSuggestions) => {
         )
     }
 
-    const updatedUser = await prisma.user.update({
-        where: {
-            id: userId,
-        },
-        data: {
-            chatSuggestions: chatSuggestions,
-        },
-        select: {
-            chatSuggestions: true,
-        },
-    })
+    const updatedUser = await profileRepository.updateChatSuggestions(userId, chatSuggestions)
 
     return updatedUser
 }
@@ -515,15 +294,7 @@ const chatSuggestions = async (data: ChatSuggestions) => {
 const generationSound = async (data: UpdateGenerationSoundPayload) => {
     const { userId, generationSound } = data
 
-    const existingUser = await prisma.user.findUnique({
-        where: {
-            id: userId,
-        },
-        select: {
-            id: true,
-            generationSound: true,
-        },
-    })
+    const existingUser = await profileRepository.findUserByIdForGenerationSound(userId)
 
     if (!existingUser) {
         throw new AppError('user not found', 404)
@@ -536,31 +307,14 @@ const generationSound = async (data: UpdateGenerationSoundPayload) => {
         )
     }
 
-    const updatedUser = await prisma.user.update({
-        where: {
-            id: userId,
-        },
-        data: {
-            generationSound: generationSound,
-        },
-        select: {
-            generationSound: true,
-        },
-    })
+    const updatedUser = await profileRepository.updateGenerationSound(userId, generationSound)
 
     return updatedUser
 }
 
 const getdesign = async (data: Getdesign) => {
     const { userId } = data
-    const user = await prisma.user.findUnique({
-        where: {
-            id: userId,
-        },
-        select: {
-            design: true,
-        },
-    })
+    const user = await profileRepository.getUserDesign(userId)
 
     if (!user) {
         throw new AppError('user not found', 404)
@@ -572,101 +326,48 @@ const getdesign = async (data: Getdesign) => {
 const updatedesign = async (data: Updatedesign) => {
     const { userId, design } = data
 
-    const existingUser = await prisma.user.findUnique({
-        where: {
-            id: userId,
-        },
-        select: {
-            id: true,
-        },
-    })
+    const existingUser = await profileRepository.findUserByIdForExistCheck(userId)
 
     if (!existingUser) {
         throw new AppError('user not found', 404)
     }
 
-    const updatedUser = await prisma.user.update({
-        where: {
-            id: userId,
-        },
-        data: {
-            design,
-        },
-        select: {
-            design: true,
-        },
-    })
+    const updatedUser = await profileRepository.updateUserDesign(userId, design)
 
     return { design: updatedUser.design }
 }
 
 const deletedesign = async (data: Deletedesign) => {
     const { userId } = data
-    const existingUser = await prisma.user.findUnique({
-        where: {
-            id: userId,
-        },
-        select: {
-            id: true,
-        },
-    })
+    const existingUser = await profileRepository.findUserByIdForExistCheck(userId)
 
     if (!existingUser) {
         throw new AppError('user not found', 404)
     }
 
-    await prisma.user.update({
-        where: {
-            id: userId,
-        },
-        data: {
-            design: null,
-        },
-        select: {
-            id: true,
-        },
-    })
+    await profileRepository.deleteUserDesign(userId)
 }
 
 const completeOnboarding = async (data: CompleteOnboarding) => {
     const { userId } = data
-    const existingUser = await prisma.user.findUnique({
-        where: {
-            id: userId,
-        },
-        select: {
-            id: true,
-        },
-    })
+    const existingUser = await profileRepository.findUserByIdForExistCheck(userId)
 
     if (!existingUser) {
         throw new AppError('user not found', 404)
     }
 
-    const updatedUser = await prisma.user.update({
-        where: {
-            id: userId,
-        },
-        data: {
-            hasCompletedOnboarding: true,
-        },
-        select: {
-            id: true,
-            hasCompletedOnboarding: true,
-        },
-    })
+    const updatedUser = await profileRepository.updateCompleteOnboarding(userId)
 
     return updatedUser
 }
 
 const createFeedback = async (data: CreateFeedback) => {
     const { userId, rating, feedback } = data
-    return prisma.feedback.create({
-        data: {
-            userId: userId,
-            rating: rating ?? null,
-            feedback: feedback,
-        },
+    const ratingStr = rating !== undefined && rating !== null ? String(rating) : null
+    return profileRepository.createFeedback({
+        userId: userId,
+        rating: ratingStr,
+        feedback: feedback,
     })
 }
 

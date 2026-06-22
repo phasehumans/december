@@ -1,208 +1,101 @@
 import { AppError } from '../../shared/appError'
-import type { Request, Response } from 'express'
+import { asyncHandler } from '../../shared/asyncHandler'
+import { sendSuccess } from '../../shared/response'
 
 import {
     previewIdParamSchema,
     runtimeStatusCallbackSchema,
     startPreviewSchema,
-} from '@december/shared'
+} from './runtime.schema'
 import { runtimeService } from './runtime.service'
 
-const getErrorStatus = (message: string) =>
-    message.toLowerCase().includes('not found') ? 404 : 500
+import type { Request, Response } from 'express'
 
-const startPreview = async (req: Request, res: Response) => {
-    const parseData = startPreviewSchema.safeParse(req.body)
+const startPreview = asyncHandler(async (req: Request, res: Response) => {
+    const parseData = startPreviewSchema.parse(req.body)
     const userId = req.user?.userId as string | undefined
 
-    if (!parseData.success) {
-        return res.status(400).json({
-            success: false,
-            message: 'validation failed',
-            errors: parseData.error.flatten().fieldErrors,
-        })
-    }
-
     if (!userId) {
-        return res.status(400).json({
-            success: false,
-            message: 'unauthorized',
-        })
+        throw new AppError('unauthorized', 401)
     }
 
-    try {
-        const result = await runtimeService.startPreview({
-            userId,
-            projectId: parseData.data.projectId,
-            versionId: parseData.data.versionId,
-        })
+    const result = await runtimeService.startPreview({
+        userId,
+        projectId: parseData.projectId,
+        versionId: parseData.versionId,
+    })
 
-        return res.status(200).json({
-            success: true,
-            message: 'preview started',
-            data: result,
-        })
-    } catch (error) {
-        if (error instanceof AppError) {
-            return res.status(error.statusCode).json({
-                success: false,
-                errors: error.message,
-            })
-        }
+    return sendSuccess(res, 'preview started', result)
+})
 
-        const message = error instanceof Error ? error.message : 'unknown error'
-        return res.status(getErrorStatus(message)).json({
-            success: false,
-            errors: message,
-        })
-    }
-}
-
-const getPreviewStatus = async (req: Request, res: Response) => {
-    const parseParams = previewIdParamSchema.safeParse(req.params)
+const getPreviewStatus = asyncHandler(async (req: Request, res: Response) => {
+    const parseParams = previewIdParamSchema.parse(req.params)
     const userId = req.user?.userId as string | undefined
 
-    if (!parseParams.success) {
-        return res.status(400).json({
-            success: false,
-            message: 'validation failed',
-            errors: parseParams.error.flatten().fieldErrors,
-        })
-    }
-
     if (!userId) {
-        return res.status(400).json({
-            success: false,
-            message: 'unauthorized',
-        })
+        throw new AppError('unauthorized', 401)
     }
 
-    try {
-        const result = await runtimeService.getPreviewStatus({
-            userId,
-            previewId: parseParams.data.id,
-        })
+    const result = await runtimeService.getPreviewStatus({
+        userId,
+        previewId: parseParams.id,
+    })
 
-        return res.status(200).json({
-            success: true,
-            message: 'preview status fetched',
-            data: result,
-        })
-    } catch (error) {
-        if (error instanceof AppError) {
-            return res.status(error.statusCode).json({
-                success: false,
-                errors: error.message,
-            })
-        }
+    return sendSuccess(res, 'preview status fetched', result)
+})
 
-        const message = error instanceof Error ? error.message : 'unknown error'
-        return res.status(getErrorStatus(message)).json({
-            success: false,
-            errors: message,
-        })
-    }
-}
-
-const deletePreview = async (req: Request, res: Response) => {
-    const parseParams = previewIdParamSchema.safeParse(req.params)
+const deletePreview = asyncHandler(async (req: Request, res: Response) => {
+    const parseParams = previewIdParamSchema.parse(req.params)
     const userId = req.user?.userId as string | undefined
 
-    if (!parseParams.success) {
-        return res.status(400).json({
-            success: false,
-            message: 'validation failed',
-            errors: parseParams.error.flatten().fieldErrors,
-        })
-    }
-
     if (!userId) {
-        return res.status(400).json({
-            success: false,
-            message: 'unauthorized',
-        })
+        throw new AppError('unauthorized', 401)
     }
 
-    try {
-        const result = await runtimeService.deletePreview({
-            userId,
-            previewId: parseParams.data.id,
-        })
+    const result = await runtimeService.deletePreview({
+        userId,
+        previewId: parseParams.id,
+    })
 
-        return res.status(200).json({
-            success: true,
-            message: 'preview deleted',
-            data: result,
-        })
-    } catch (error) {
-        if (error instanceof AppError) {
-            return res.status(error.statusCode).json({
-                success: false,
-                errors: error.message,
-            })
-        }
+    return sendSuccess(res, 'preview deleted', result)
+})
 
-        const message = error instanceof Error ? error.message : 'unknown error'
-        return res.status(getErrorStatus(message)).json({
-            success: false,
-            errors: message,
-        })
-    }
-}
-
-const receiveRuntimeStatus = async (req: Request, res: Response) => {
-    const parseParams = previewIdParamSchema.safeParse(req.params)
-    const parseBody = runtimeStatusCallbackSchema.safeParse(req.body)
+const receiveRuntimeStatus = asyncHandler(async (req: Request, res: Response) => {
     const expectedSecret = process.env.RUNTIME_SHARED_SECRET
     const receivedSecret = req.header('x-december-runtime-secret')
 
     if (expectedSecret && receivedSecret !== expectedSecret) {
-        return res.status(401).json({
-            success: false,
-            message: 'unauthorized runtime callback',
-        })
+        throw new AppError('unauthorized runtime callback', 401)
     }
 
-    if (!parseParams.success || !parseBody.success) {
-        return res.status(400).json({
-            success: false,
-            message: 'validation failed',
-            errors: {
-                ...(parseParams.success ? {} : parseParams.error.flatten().fieldErrors),
-                ...(parseBody.success ? {} : parseBody.error.flatten().fieldErrors),
-            },
-        })
-    }
+    const parseParams = previewIdParamSchema.parse(req.params)
+    const parseBody = runtimeStatusCallbackSchema.parse(req.body)
 
     const result = runtimeService.recordRuntimeStatus({
-        previewId: parseParams.data.id,
+        previewId: parseParams.id,
         status: {
-            previewId: parseBody.data.previewId,
-            projectId: parseBody.data.projectId,
-            state: parseBody.data.state,
-            backendStatus: parseBody.data.status,
-            currentVersion: parseBody.data.currentVersion ?? null,
-            healthyVersion: parseBody.data.healthyVersion ?? null,
-            previewUrl: parseBody.data.previewUrl ?? null,
-            lastError: parseBody.data.error
+            previewId: parseBody.previewId,
+            projectId: parseBody.projectId,
+            state: parseBody.state,
+            backendStatus: parseBody.status,
+            currentVersion: parseBody.currentVersion ?? null,
+            healthyVersion: parseBody.healthyVersion ?? null,
+            previewUrl: parseBody.previewUrl ?? null,
+            lastError: parseBody.error
                 ? {
-                      class: parseBody.data.error.class,
-                      code: parseBody.data.error.code,
-                      message: parseBody.data.error.message,
-                      detail: parseBody.data.error.detail ?? null,
-                      retryable: parseBody.data.error.retryable,
+                      class: parseBody.error.class,
+                      code: parseBody.error.code,
+                      message: parseBody.error.message,
+                      detail: parseBody.error.detail ?? null,
+                      retryable: parseBody.error.retryable,
                   }
                 : null,
-            updatedAt: parseBody.data.updatedAt,
+            updatedAt: parseBody.updatedAt,
         },
     })
 
-    return res.status(200).json({
-        success: true,
-        message: 'runtime status recorded',
-        data: result,
-    })
-}
+    return sendSuccess(res, 'runtime status recorded', result)
+})
 
 export const runtimeController = {
     startPreview,

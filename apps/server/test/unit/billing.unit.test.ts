@@ -44,3 +44,26 @@ describe('billing.unit', () => {
         )
     })
 })
+
+import {
+    createSubscriptionSchema,
+    redeemCodeSchema,
+} from '../../src/modules/billing/billing.schema'
+
+describe('billing schemas', () => {
+    it('createSubscriptionSchema validation', () => {
+        const valid = createSubscriptionSchema.safeParse({ plan: 'PRO', quantity: 2 })
+        expect(valid.success).toBe(true)
+
+        const invalid = createSubscriptionSchema.safeParse({ plan: 'INVALID' })
+        expect(invalid.success).toBe(false)
+    })
+
+    it('redeemCodeSchema validation', () => {
+        const valid = redeemCodeSchema.safeParse({ code: 'CODE123' })
+        expect(valid.success).toBe(true)
+
+        const empty = redeemCodeSchema.safeParse({ code: '' })
+        expect(empty.success).toBe(false)
+    })
+})

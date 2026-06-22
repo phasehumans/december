@@ -1,3 +1,7 @@
+import { AppError } from '../../shared/appError'
+import { asyncHandler } from '../../shared/asyncHandler'
+import { sendSuccess } from '../../shared/response'
+
 import {
     cancelSubscriptionSchema,
     createSubscriptionSchema,
@@ -5,421 +9,154 @@ import {
     verifySubscriptionSchema,
     redeemCodeSchema,
     addCreditsSchema,
-} from '@december/shared'
-
-import { AppError } from '../../shared/appError'
-
+} from './billing.schema'
 import { billingService } from './billing.service'
 
 import type { Request, Response } from 'express'
 
-const getOverview = async (req: Request, res: Response) => {
+const getOverview = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user?.userId as string | undefined
 
     if (!userId) {
-        return res.status(401).json({
-            success: false,
-            message: 'unauthorized',
-        })
+        throw new AppError('unauthorized', 401)
     }
 
-    try {
-        const result = await billingService.getOverview({ userId })
-        return res.status(200).json({
-            success: true,
-            message: 'billing overview fetched successfully',
-            data: result,
-        })
-    } catch (error) {
-        if (error instanceof AppError) {
-            return res.status(error.statusCode).json({
-                success: false,
-                message: 'failed to fetch billing overview',
-                errors: error.message,
-            })
-        }
+    const result = await billingService.getOverview({ userId })
+    return sendSuccess(res, 'billing overview fetched successfully', result)
+})
 
-        return res.status(500).json({
-            success: false,
-            message: 'failed to fetch billing overview',
-            errors: error instanceof Error ? error.message : 'unknown error',
-        })
-    }
-}
+const getPlans = asyncHandler(async (req: Request, res: Response) => {
+    const result = await billingService.getPlans()
+    return sendSuccess(res, 'billing plans fetched successfully', result)
+})
 
-const getPlans = async (req: Request, res: Response) => {
-    try {
-        const result = await billingService.getPlans()
-        return res.status(200).json({
-            success: true,
-            message: 'billing plans fetched successfully',
-            data: result,
-        })
-    } catch (error) {
-        if (error instanceof AppError) {
-            return res.status(error.statusCode).json({
-                success: false,
-                message: 'failed to fetch billing plans',
-                errors: error.message,
-            })
-        }
-
-        return res.status(500).json({
-            success: false,
-            message: 'failed to fetch billing plans',
-            errors: error instanceof Error ? error.message : 'unknown error',
-        })
-    }
-}
-
-const createSubscription = async (req: Request, res: Response) => {
+const createSubscription = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user?.userId as string | undefined
 
     if (!userId) {
-        return res.status(401).json({
-            success: false,
-            message: 'unauthorized',
-        })
+        throw new AppError('unauthorized', 401)
     }
 
-    const parsedBody = createSubscriptionSchema.safeParse(req.body)
+    const parsedBody = createSubscriptionSchema.parse(req.body)
 
-    if (!parsedBody.success) {
-        return res.status(400).json({
-            success: false,
-            message: 'validation failed',
-            errors: parsedBody.error.flatten().fieldErrors,
-        })
-    }
+    const result = await billingService.createSubscription({
+        userId,
+        ...parsedBody,
+    })
+    return sendSuccess(res, 'subscription order created successfully', result, 201)
+})
 
-    try {
-        const result = await billingService.createSubscription({
-            userId,
-            ...parsedBody.data,
-        })
-        return res.status(201).json({
-            success: true,
-            message: 'billing subscription created successfully',
-            data: result,
-        })
-    } catch (error) {
-        if (error instanceof AppError) {
-            return res.status(error.statusCode).json({
-                success: false,
-                message: 'failed to create billing subscription',
-                errors: error.message,
-            })
-        }
-
-        return res.status(500).json({
-            success: false,
-            message: 'failed to create billing subscription',
-            errors: error instanceof Error ? error.message : 'unknown error',
-        })
-    }
-}
-
-const verifySubscription = async (req: Request, res: Response) => {
+const verifySubscription = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user?.userId as string | undefined
 
     if (!userId) {
-        return res.status(401).json({
-            success: false,
-            message: 'unauthorized',
-        })
+        throw new AppError('unauthorized', 401)
     }
 
-    const parsedBody = verifySubscriptionSchema.safeParse(req.body)
+    const parsedBody = verifySubscriptionSchema.parse(req.body)
 
-    if (!parsedBody.success) {
-        return res.status(400).json({
-            success: false,
-            message: 'validation failed',
-            errors: parsedBody.error.flatten().fieldErrors,
-        })
-    }
+    const result = await billingService.verifySubscription({
+        userId,
+        ...parsedBody,
+    })
+    return sendSuccess(res, 'subscription verified successfully', result)
+})
 
-    try {
-        const result = await billingService.verifySubscription({
-            userId,
-            ...parsedBody.data,
-        })
-
-        return res.status(200).json({
-            success: true,
-            message: 'billing subscription verified successfully',
-            data: result,
-        })
-    } catch (error) {
-        if (error instanceof AppError) {
-            return res.status(error.statusCode).json({
-                success: false,
-                message: 'failed to verify billing subscription',
-                errors: error.message,
-            })
-        }
-
-        return res.status(500).json({
-            success: false,
-            message: 'failed to verify billing subscription',
-            errors: error instanceof Error ? error.message : 'unknown error',
-        })
-    }
-}
-
-const cancelSubscription = async (req: Request, res: Response) => {
+const cancelSubscription = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user?.userId as string | undefined
 
     if (!userId) {
-        return res.status(401).json({
-            success: false,
-            message: 'unauthorized',
-        })
+        throw new AppError('unauthorized', 401)
     }
 
-    const parsedBody = cancelSubscriptionSchema.safeParse(req.body ?? {})
+    const parsedBody = cancelSubscriptionSchema.parse(req.body)
 
-    if (!parsedBody.success) {
-        return res.status(400).json({
-            success: false,
-            message: 'validation failed',
-            errors: parsedBody.error.flatten().fieldErrors,
-        })
-    }
+    const result = await billingService.cancelSubscription({
+        userId,
+        ...parsedBody,
+    })
+    return sendSuccess(res, 'subscription cancellation processed', result)
+})
 
-    try {
-        const result = await billingService.cancelSubscription({
-            userId,
-            ...parsedBody.data,
-        })
-        return res.status(200).json({
-            success: true,
-            message: 'billing subscription canceled successfully',
-            data: result,
-        })
-    } catch (error) {
-        if (error instanceof AppError) {
-            return res.status(error.statusCode).json({
-                success: false,
-                message: 'failed to cancel billing subscription',
-                errors: error.message,
-            })
-        }
-
-        return res.status(500).json({
-            success: false,
-            message: 'failed to cancel billing subscription',
-            errors: error instanceof Error ? error.message : 'unknown error',
-        })
-    }
-}
-
-const getCreditsHistory = async (req: Request, res: Response) => {
+const getCreditsHistory = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user?.userId as string | undefined
 
     if (!userId) {
-        return res.status(401).json({
-            success: false,
-            message: 'unauthorized',
-        })
+        throw new AppError('unauthorized', 401)
     }
 
-    const parsedQuery = creditsHistoryQuerySchema.safeParse(req.query)
+    const parsedQuery = creditsHistoryQuerySchema.parse(req.query)
+    const limit = parsedQuery.limit ? parseInt(parsedQuery.limit, 10) : 10
+    const offset = parsedQuery.offset ? parseInt(parsedQuery.offset, 10) : 0
 
-    if (!parsedQuery.success) {
-        return res.status(400).json({
-            success: false,
-            message: 'validation failed',
-            errors: parsedQuery.error.flatten().fieldErrors,
-        })
-    }
+    const result = await billingService.getCreditsHistory({
+        userId,
+        limit,
+        offset,
+        periodStart: parsedQuery.periodStart,
+        periodEnd: parsedQuery.periodEnd,
+    })
+    return sendSuccess(res, 'credits history fetched successfully', result)
+})
 
-    try {
-        const result = await billingService.getCreditsHistory({
-            userId,
-            ...parsedQuery.data,
-        })
-        return res.status(200).json({
-            success: true,
-            message: 'billing credits history fetched successfully',
-            data: result,
-        })
-    } catch (error) {
-        if (error instanceof AppError) {
-            return res.status(error.statusCode).json({
-                success: false,
-                message: 'failed to fetch billing credits history',
-                errors: error.message,
-            })
-        }
-
-        return res.status(500).json({
-            success: false,
-            message: 'failed to fetch billing credits history',
-            errors: error instanceof Error ? error.message : 'unknown error',
-        })
-    }
-}
-
-const createPortalSession = async (req: Request, res: Response) => {
+const createPortalSession = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user?.userId as string | undefined
 
     if (!userId) {
-        return res.status(401).json({
-            success: false,
-            message: 'unauthorized',
-        })
+        throw new AppError('unauthorized', 401)
     }
 
-    try {
-        const result = await billingService.createPortalSession({ userId })
-        return res.status(200).json({
-            success: true,
-            message: 'billing portal created successfully',
-            data: result,
-        })
-    } catch (error) {
-        if (error instanceof AppError) {
-            return res.status(error.statusCode).json({
-                success: false,
-                message: 'failed to create billing portal',
-                errors: error.message,
-            })
-        }
+    const result = await billingService.createPortalSession({ userId })
+    return sendSuccess(res, 'customer portal session created successfully', result)
+})
 
-        return res.status(500).json({
-            success: false,
-            message: 'failed to create billing portal',
-            errors: error instanceof Error ? error.message : 'unknown error',
-        })
+const handleRazorpayWebhook = asyncHandler(async (req: Request, res: Response) => {
+    const signature = req.headers['x-razorpay-signature'] as string | undefined
+
+    if (!signature) {
+        throw new AppError('razorpay signature header missing', 400)
     }
-}
 
-const handleRazorpayWebhook = async (req: Request, res: Response) => {
-    try {
-        const result = await billingService.handleRazorpayWebhook({
-            body: req.body,
-            rawBody: (req as Request & { rawBody?: Buffer }).rawBody,
-            signature: req.headers['x-razorpay-signature']?.toString(),
-        })
-        return res.status(200).json({
-            success: true,
-            message: 'razorpay webhook processed successfully',
-            data: result,
-        })
-    } catch (error) {
-        if (error instanceof AppError) {
-            return res.status(error.statusCode).json({
-                success: false,
-                message: 'failed to process razorpay webhook',
-                errors: error.message,
-            })
-        }
+    const result = await billingService.handleRazorpayWebhook({
+        body: req.body,
+        rawBody: req.rawBody,
+        signature,
+    })
 
-        return res.status(500).json({
-            success: false,
-            message: 'failed to process razorpay webhook',
-            errors: error instanceof Error ? error.message : 'unknown error',
-        })
-    }
-}
+    return sendSuccess(res, 'webhook processed successfully', result)
+})
 
-const redeemCode = async (req: Request, res: Response) => {
+const redeemCode = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user?.userId as string | undefined
 
     if (!userId) {
-        return res.status(401).json({
-            success: false,
-            message: 'unauthorized',
-        })
+        throw new AppError('unauthorized', 401)
     }
 
-    const parsedBody = redeemCodeSchema.safeParse(req.body)
+    const parsedBody = redeemCodeSchema.parse(req.body)
 
-    if (!parsedBody.success) {
-        return res.status(400).json({
-            success: false,
-            message: 'validation failed',
-            errors: parsedBody.error.flatten().fieldErrors,
-        })
-    }
+    const result = await billingService.redeemCode({
+        userId,
+        ...parsedBody,
+    })
+    return sendSuccess(res, 'code redeemed successfully', result)
+})
 
-    try {
-        const result = await billingService.redeemCode({
-            userId,
-            code: parsedBody.data.code,
-        })
-
-        return res.status(200).json({
-            success: true,
-            message: 'Code redeemed successfully.',
-            data: result,
-        })
-    } catch (error) {
-        if (error instanceof AppError) {
-            return res.status(error.statusCode).json({
-                success: false,
-                message: 'Failed to redeem code.',
-                errors: error.message,
-            })
-        }
-
-        return res.status(500).json({
-            success: false,
-            message: 'Failed to redeem code.',
-            errors: error instanceof Error ? error.message : 'unknown error',
-        })
-    }
-}
-
-const addCredits = async (req: Request, res: Response) => {
+const addCredits = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user?.userId as string | undefined
 
     if (!userId) {
-        return res.status(401).json({
-            success: false,
-            message: 'unauthorized',
-        })
+        throw new AppError('unauthorized', 401)
     }
 
-    const parsedBody = addCreditsSchema.safeParse(req.body)
+    const parsedBody = addCreditsSchema.parse(req.body)
 
-    if (!parsedBody.success) {
-        return res.status(400).json({
-            success: false,
-            message: 'validation failed',
-            errors: parsedBody.error.flatten().fieldErrors,
-        })
-    }
-
-    try {
-        const result = await billingService.addCredits({
-            userId,
-            amountInCents: parsedBody.data.amountInCents,
-            paymentMethod: parsedBody.data.paymentMethod,
-        })
-
-        return res.status(200).json({
-            success: true,
-            message: 'credits added successfully',
-            data: result,
-        })
-    } catch (error) {
-        if (error instanceof AppError) {
-            return res.status(error.statusCode).json({
-                success: false,
-                message: 'failed to add credits',
-                errors: error.message,
-            })
-        }
-
-        return res.status(500).json({
-            success: false,
-            message: 'failed to add credits',
-            errors: error instanceof Error ? error.message : 'unknown error',
-        })
-    }
-}
+    const result = await billingService.addCredits({
+        userId,
+        ...parsedBody,
+    })
+    return sendSuccess(res, 'credits added successfully', result)
+})
 
 export const billingController = {
     getOverview,

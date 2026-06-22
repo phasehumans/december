@@ -1,5 +1,14 @@
-import { prisma } from '@december/database'
-import { planAgentResponseSchema } from '@december/shared'
+import {
+    findUserSubscriptionInfo,
+    updateProjectCurrentVersion,
+    findAgentSessionMemory,
+    createAgentSessionMemory,
+    updateProjectVersionCanvas,
+    updateProjectDetails,
+    completeWebsiteGeneration,
+    initializeGenerationTarget,
+} from './generation.repository'
+import { planAgentResponseSchema } from './generation.schema'
 
 import { saveProjectFiles } from '../../shared/save-project-files'
 import {
@@ -61,10 +70,7 @@ const fileTreeForPlanning = (files: Record<string, string>) =>
 const toVisibleMessage = (lines: string[]) => lines.join('\n')
 
 const resolveModel = async (userId: string, requestedModel?: string): Promise<string> => {
-    const user = await prisma.user.findUnique({
-        where: { id: userId },
-        select: { subscriptionPlan: true, subscriptionStatus: true },
-    })
+    const user = await findUserSubscriptionInfo({ userId })
     const isPro = user?.subscriptionPlan === 'PRO' && user?.subscriptionStatus === 'ACTIVE'
     if (isPro && requestedModel) {
         return requestedModel
@@ -100,10 +106,7 @@ const executeSelfCorrection = async (
                 console.log(
                     `[self-healing] Rolling back project ${projectId} currentVersionId pointer to ${lastHealthyVersionId}`
                 )
-                await prisma.project.update({
-                    where: { id: projectId },
-                    data: { currentVersionId: lastHealthyVersionId },
-                })
+                await updateProjectCurrentVersion({ projectId, versionId: lastHealthyVersionId })
             }
             return currentResult
         }
@@ -130,12 +133,10 @@ const executeSelfCorrection = async (
         const errorSignature = getErrorSignature(compileErrors)
 
         // Check if we've already seen this exact error in this session (scoped to initialVersionId)
-        const existingMemory = await prisma.agentSessionMemory.findFirst({
-            where: {
-                projectId,
-                versionId: initialVersionId,
-                errorSignature,
-            },
+        const existingMemory = await findAgentSessionMemory({
+            projectId,
+            versionId: initialVersionId,
+            errorSignature,
         })
 
         if (existingMemory) {
@@ -146,21 +147,16 @@ const executeSelfCorrection = async (
                 console.log(
                     `[self-healing] Rolling back project ${projectId} currentVersionId pointer to ${lastHealthyVersionId}`
                 )
-                await prisma.project.update({
-                    where: { id: projectId },
-                    data: { currentVersionId: lastHealthyVersionId },
-                })
+                await updateProjectCurrentVersion({ projectId, versionId: lastHealthyVersionId })
             }
             return currentResult
         }
 
         // Log the error signature to prevent repeating it
-        await prisma.agentSessionMemory.create({
-            data: {
-                projectId,
-                versionId: initialVersionId,
-                errorSignature,
-            },
+        await createAgentSessionMemory({
+            projectId,
+            versionId: initialVersionId,
+            errorSignature,
         })
 
         if (attempt === maxAttempts) {
@@ -171,10 +167,7 @@ const executeSelfCorrection = async (
                 console.log(
                     `[self-healing] Rolling back project ${projectId} currentVersionId pointer to ${lastHealthyVersionId}`
                 )
-                await prisma.project.update({
-                    where: { id: projectId },
-                    data: { currentVersionId: lastHealthyVersionId },
-                })
+                await updateProjectCurrentVersion({ projectId, versionId: lastHealthyVersionId })
             }
             return currentResult
         }
@@ -241,14 +234,10 @@ export const generateWebsite = async (data: GenerateWebsiteInput) => {
             canvasState: data.canvasState,
         })
 
-        await prisma.projectVersion.update({
-            where: {
-                id: versionId,
-            },
-            data: {
-                canvasStateJson: persistedCanvas.canvasStateJson as any,
-                canvasAssetManifestJson: persistedCanvas.canvasAssetManifestJson as any,
-            },
+        await updateProjectVersionCanvas({
+            versionId,
+            canvasStateJson: persistedCanvas.canvasStateJson,
+            canvasAssetManifestJson: persistedCanvas.canvasAssetManifestJson,
         })
         await onEvent?.({
             type: 'project-created',
@@ -357,15 +346,11 @@ export const generateWebsite = async (data: GenerateWebsiteInput) => {
             planOfActionMessage
         )
 
-        project = await prisma.project.update({
-            where: {
-                id: project.id,
-            },
-            data: {
-                name: planData.projectName,
-                description: intent.summary,
-                prompt,
-            },
+        project = await updateProjectDetails({
+            projectId: project.id,
+            name: planData.projectName,
+            description: intent.summary,
+            prompt,
         })
 
         await onEvent?.({
@@ -477,62 +462,19 @@ export const generateWebsite = async (data: GenerateWebsiteInput) => {
             })),
         })
 
-        const persisted = await prisma.$transaction(async (tx) => {
-            const updatedVersion = await tx.projectVersion.update({
-                where: {
-                    id: versionId,
-                },
-                data: {
-                    summary: generatedSummary,
-                    status: 'READY',
-                    manifestJson: savedFiles.map((file) => ({
-                        path: file.path,
-                        key: file.key,
-                        contentType: file.contentType,
-                        size: file.size,
-                    })),
-                    canvasStateJson: persistedCanvas.canvasStateJson as any,
-                    canvasAssetManifestJson: persistedCanvas.canvasAssetManifestJson as any,
-                    intentJson: intent as any,
-                    planJson: plan as any,
-                    messages: {
-                        create: [
-                            {
-                                projectId: project!.id,
-                                role: 'USER',
-                                content: prompt,
-                                sequence: 1,
-                            },
-                            {
-                                projectId: project!.id,
-                                role: 'ASSISTANT',
-                                content: assistantMessageContent,
-                                status: 'done',
-                                sequence: 2,
-                            },
-                        ],
-                    },
-                },
-            })
-
-            const updatedProject = await tx.project.update({
-                where: {
-                    id: project!.id,
-                },
-                data: {
-                    name: planData.projectName,
-                    description: intent.summary,
-                    prompt,
-                    projectStatus: 'READY',
-                    currentVersionId: updatedVersion.id,
-                    versionCount: versionNumber,
-                },
-            })
-
-            return {
-                project: updatedProject,
-                version: updatedVersion,
-            }
+        const persisted = await completeWebsiteGeneration({
+            projectId: project.id,
+            versionId,
+            generatedSummary,
+            savedFiles,
+            canvasStateJson: persistedCanvas.canvasStateJson,
+            canvasAssetManifestJson: persistedCanvas.canvasAssetManifestJson,
+            intent,
+            plan,
+            prompt,
+            assistantMessageContent,
+            projectName: planData.projectName,
+            versionNumber,
         })
 
         messagesPersisted = true

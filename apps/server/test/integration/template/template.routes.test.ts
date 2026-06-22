@@ -6,6 +6,7 @@ import express from 'express'
 import { Router } from 'express'
 import request from 'supertest'
 
+import { errorHandler } from '../../../src/middleware/error.middleware'
 import { templateController } from '../../../src/modules/template/template.controller'
 
 const TEST_USER_ID = 'template-test-user-id'
@@ -64,12 +65,7 @@ describe('template.routes.integration', () => {
         testRouter.post('/:templateId/like', templateController.toggleLike)
         app.use('/api/v1/templates', testRouter)
 
-        app.use((err: any, _req: any, res: any, _next: any) => {
-            res.status(err.statusCode || 500).json({
-                success: false,
-                message: err.message,
-            })
-        })
+        app.use(errorHandler)
     })
 
     beforeEach(async () => {

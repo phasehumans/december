@@ -1,102 +1,43 @@
-import { importIdParamSchema, uploadRepoSchema } from '@december/shared'
-
+import { asyncHandler } from '../../shared/asyncHandler'
 import { AppError } from '../../shared/appError'
+import { sendSuccess } from '../../shared/response'
 
+import { importIdParamSchema, uploadRepoSchema } from './import.schema'
 import { uploadService } from './import.service'
 
 import type { Request, Response } from 'express'
 
-const importFromGithub = async (req: Request, res: Response) => {
+const importFromGithub = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user?.userId as string | undefined
-    const parseData = uploadRepoSchema.safeParse(req.body)
 
     if (!userId) {
-        return res.status(400).json({
-            success: false,
-            message: 'unauthorized',
-        })
+        throw new AppError('unauthorized', 401)
     }
 
-    if (!parseData.success) {
-        return res.status(400).json({
-            success: false,
-            message: 'validation failed',
-            errors: parseData.error.flatten().fieldErrors,
-        })
-    }
+    const parsedBody = uploadRepoSchema.parse(req.body)
+    const result = await uploadService.importFromGithub({
+        repoURL: parsedBody.repoURL,
+        userId,
+    })
 
-    try {
-        const { repoURL } = parseData.data
+    return sendSuccess(res, 'import queued', result, 202)
+})
 
-        const result = await uploadService.importFromGithub({ repoURL, userId })
-        return res.status(202).json({
-            success: true,
-            message: 'import queued',
-            data: result,
-        })
-    } catch (error) {
-        if (error instanceof AppError) {
-            return res.status(error.statusCode).json({
-                success: false,
-                message: 'failed to import from github',
-                errors: error.message,
-            })
-        }
-
-        return res.status(500).json({
-            success: false,
-            message: 'failed to import from github',
-            errors: error instanceof Error ? error.message : 'unknown error',
-        })
-    }
-}
-
-const getImportStatus = async (req: Request, res: Response) => {
+const getImportStatus = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user?.userId as string | undefined
-    const parseParams = importIdParamSchema.safeParse(req.params)
 
     if (!userId) {
-        return res.status(400).json({
-            success: false,
-            message: 'unauthorized',
-        })
+        throw new AppError('unauthorized', 401)
     }
 
-    if (!parseParams.success) {
-        return res.status(400).json({
-            success: false,
-            message: 'validation failed',
-            errors: parseParams.error.flatten().fieldErrors,
-        })
-    }
+    const parsedParams = importIdParamSchema.parse(req.params)
+    const result = await uploadService.getImportStatus({
+        userId,
+        importId: parsedParams.id,
+    })
 
-    try {
-        const result = await uploadService.getImportStatus({
-            userId,
-            importId: parseParams.data.id,
-        })
-
-        return res.status(200).json({
-            success: true,
-            message: 'import status fetched',
-            data: result,
-        })
-    } catch (error) {
-        if (error instanceof AppError) {
-            return res.status(error.statusCode).json({
-                success: false,
-                message: 'failed to fetched import status',
-                errors: error.message,
-            })
-        }
-
-        return res.status(500).json({
-            success: false,
-            message: 'failed to fetched import status',
-            errors: error instanceof Error ? error.message : 'unknown error',
-        })
-    }
-}
+    return sendSuccess(res, 'import status fetched', result)
+})
 
 export const uploadController = {
     importFromGithub,

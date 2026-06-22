@@ -1,7 +1,7 @@
-import { prisma } from '@december/database'
 import axios from 'axios'
 
 import { AppError } from '../../shared/appError'
+import { platformRepository } from './platform.repository'
 
 import type {
     CreateVercelProject,
@@ -9,25 +9,19 @@ import type {
     GetLatestDeployment,
     GetDeploymentStatus,
     StreamBuildLogs,
-} from '@december/shared'
+} from './platform.types'
 
 interface VercelCredentials {
     accessToken: string
     teamId: string | null
 }
 
-async function getVercelCredentials(userId: string): Promise<VercelCredentials> {
-    const user = await prisma.user.findUnique({
-        where: { id: userId },
-        select: {
-            vercelAccessToken: true,
-            vercelTeamId: true,
-            vercelConnected: true,
-        },
-    })
+async function getVercelCredentials(data: { userId: string }): Promise<VercelCredentials> {
+    const { userId } = data
+    const user = await platformRepository.getVercelCredentials({ userId })
 
     if (!user || !user.vercelConnected || !user.vercelAccessToken) {
-        throw new AppError('Vercel account not connected', 400)
+        throw new AppError('vercel account not connected', 400)
     }
 
     return {
@@ -49,7 +43,7 @@ function buildVercelUrl(path: string, credentials: VercelCredentials): string {
  */
 async function createProject(data: CreateVercelProject) {
     const { userId, name, repoOwner, repoName } = data
-    const creds = await getVercelCredentials(userId)
+    const creds = await getVercelCredentials({ userId })
     const url = buildVercelUrl('/v9/projects', creds)
 
     try {
@@ -94,7 +88,7 @@ async function createProject(data: CreateVercelProject) {
  */
 async function getDeploymentByCommit(data: GetDeploymentByCommit) {
     const { userId, vercelProjectId, commitSha } = data
-    const creds = await getVercelCredentials(userId)
+    const creds = await getVercelCredentials({ userId })
     const baseUrl = buildVercelUrl('/v6/deployments', creds)
     const url = new URL(baseUrl)
     url.searchParams.set('projectId', vercelProjectId)
@@ -133,7 +127,7 @@ async function getDeploymentByCommit(data: GetDeploymentByCommit) {
  */
 async function getDeploymentStatus(data: GetDeploymentStatus) {
     const { userId, deploymentId } = data
-    const creds = await getVercelCredentials(userId)
+    const creds = await getVercelCredentials({ userId })
     const url = buildVercelUrl(`/v13/deployments/${deploymentId}`, creds)
 
     try {
@@ -160,7 +154,7 @@ async function getDeploymentStatus(data: GetDeploymentStatus) {
  */
 async function streamBuildLogs(data: StreamBuildLogs) {
     const { userId, deploymentId, res } = data
-    const creds = await getVercelCredentials(userId)
+    const creds = await getVercelCredentials({ userId })
     const url = buildVercelUrl(`/v2/deployments/${deploymentId}/events`, creds)
 
     res.writeHead(200, {
@@ -207,7 +201,7 @@ async function streamBuildLogs(data: StreamBuildLogs) {
  */
 async function getLatestDeployment(data: GetLatestDeployment) {
     const { userId, vercelProjectId } = data
-    const creds = await getVercelCredentials(userId)
+    const creds = await getVercelCredentials({ userId })
     const baseUrl = buildVercelUrl('/v6/deployments', creds)
     const url = new URL(baseUrl)
     url.searchParams.set('projectId', vercelProjectId)

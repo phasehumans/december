@@ -7,6 +7,7 @@ import express from 'express'
 import { Router } from 'express'
 import request from 'supertest'
 
+import { errorHandler } from '../../../src/middleware/error.middleware'
 import { notificationController } from '../../../src/modules/notification/notification.controller'
 import { notificationService } from '../../../src/modules/notification/notification.service'
 
@@ -77,6 +78,7 @@ describe('notification.routes.integration', () => {
         testRouter.delete('/:id', notificationController.deleteNotification)
         testRouter.delete('/', notificationController.deleteAllReadNotification)
         app.use('/api/v1/notifications', testRouter)
+        app.use(errorHandler)
     })
 
     beforeEach(async () => {
@@ -344,8 +346,7 @@ describe('notification.routes.integration', () => {
                 const res = await request(app).get('/api/v1/notifications')
                 expect(res.status).toBe(500)
                 expect(res.body.success).toBe(false)
-                expect(res.body.message).toBe('failed to fetch notifications')
-                expect(res.body.errors).toBe('Database crash')
+                expect(res.body.message).toBe('internal server error')
             } finally {
                 notificationService.getNotifications = original
             }
@@ -362,8 +363,7 @@ describe('notification.routes.integration', () => {
                 )
                 expect(res.status).toBe(500)
                 expect(res.body.success).toBe(false)
-                expect(res.body.message).toBe('failed to fetch notification')
-                expect(res.body.errors).toBe('Database crash')
+                expect(res.body.message).toBe('internal server error')
             } finally {
                 notificationService.getNotificationById = original
             }
@@ -380,8 +380,7 @@ describe('notification.routes.integration', () => {
                 )
                 expect(res.status).toBe(500)
                 expect(res.body.success).toBe(false)
-                expect(res.body.message).toBe('failed to mark notification as read')
-                expect(res.body.errors).toBe('Database crash')
+                expect(res.body.message).toBe('internal server error')
             } finally {
                 notificationService.markAsRead = original
             }
@@ -398,8 +397,7 @@ describe('notification.routes.integration', () => {
                 )
                 expect(res.status).toBe(500)
                 expect(res.body.success).toBe(false)
-                expect(res.body.message).toBe('failed to delete notification')
-                expect(res.body.errors).toBe('Database crash')
+                expect(res.body.message).toBe('internal server error')
             } finally {
                 notificationService.deleteNotification = original
             }
@@ -414,8 +412,7 @@ describe('notification.routes.integration', () => {
                 const res = await request(app).delete('/api/v1/notifications')
                 expect(res.status).toBe(500)
                 expect(res.body.success).toBe(false)
-                expect(res.body.message).toBe('failed to delete read notifications')
-                expect(res.body.errors).toBe('Database crash')
+                expect(res.body.message).toBe('internal server error')
             } finally {
                 notificationService.deleteAllReadNotification = original
             }

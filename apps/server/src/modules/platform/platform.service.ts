@@ -1,15 +1,14 @@
 import fs from 'fs'
 import path from 'path'
 
-import { prisma } from '@december/database'
-
 import { AppError } from '../../shared/appError'
 import { projectService } from '../project/project.service'
 import { runtimeService } from '../runtime/runtime.service'
 
+import { platformRepository } from './platform.repository'
 import { buildProjectZip } from './platform.utils'
 
-import type { DeployProject, GetProject } from '@december/shared'
+import type { DeployProject, GetProject } from './platform.types'
 
 function copyDirRecursive(src: string, dest: string) {
     fs.mkdirSync(dest, { recursive: true })
@@ -30,16 +29,7 @@ function copyDirRecursive(src: string, dest: string) {
 const deployDecemberProject = async (data: DeployProject) => {
     const { projectId, userId } = data
 
-    const project = await prisma.project.findFirst({
-        where: {
-            id: projectId,
-            userId,
-            isDeleted: false,
-        },
-        include: {
-            currentVersion: true,
-        },
-    })
+    const project = await platformRepository.findProjectForDeployment({ projectId, userId })
 
     if (!project) {
         throw new AppError('project not found', 404)
@@ -87,16 +77,13 @@ const deployDecemberProject = async (data: DeployProject) => {
     copyDirRecursive(distPath, projectDeployPath)
 
     const deployUrl = `http://${projectId}.december.localhost:8085`
-    const updated = await prisma.project.update({
-        where: { id: projectId },
-        data: {
-            decemberDeploymentUrl: deployUrl,
-            decemberLastDeployedAt: new Date(),
-        },
+    const updated = await platformRepository.updateProjectDecemberDeployment({
+        projectId,
+        deployUrl,
     })
 
     return {
-        message: 'Project deployed successfully to December local hosting',
+        message: 'project deployed successfully to december local hosting',
         deploymentUrl: deployUrl,
         lastDeployedAt: updated.decemberLastDeployedAt,
     }

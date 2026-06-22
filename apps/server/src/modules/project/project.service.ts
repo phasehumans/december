@@ -1,7 +1,5 @@
 import crypto from 'crypto'
 
-import { prisma } from '@december/database'
-
 import { AppError } from '../../shared/appError'
 import {
     deletePrefix,
@@ -13,6 +11,7 @@ import {
 } from '../../shared/project-storage'
 import { hydrateCanvasDocument, persistCanvasDocument } from '../canvas/canvas.utils'
 
+import { projectRepository } from './project.repository'
 import { parseStoredProjectFiles, mapVersionSummary } from './project.utils'
 
 import type {
@@ -27,7 +26,7 @@ import type {
     ToggleStarProject,
     StoredProjectFile,
     CopyProjectVersionsAndMessages,
-} from '@december/shared'
+} from './project.types'
 
 // loads code files from objstore to memeory
 export const loadGeneratedFilesFromManifest = async (manifest: StoredProjectFile[]) => {
@@ -61,15 +60,10 @@ export const copyProjectVersionsAndMessages = async (data: CopyProjectVersionsAn
     const { sourceProjectId, newProjectId, newUserId, sourceCurrentVersionId } = data
 
     // find the current version (or latest version if currentVersionId is not set)
-    const version = await prisma.projectVersion.findFirst({
-        where: {
-            projectId: sourceProjectId,
-            ...(sourceCurrentVersionId ? { id: sourceCurrentVersionId } : {}),
-        },
-        orderBy: {
-            versionNumber: 'desc',
-        },
-    })
+    const version = await projectRepository.findFirstVersion(
+        sourceProjectId,
+        sourceCurrentVersionId ?? undefined
+    )
 
     if (!version) {
         return {
@@ -108,38 +102,25 @@ export const copyProjectVersionsAndMessages = async (data: CopyProjectVersionsAn
         canvasState: hydratedCanvasState,
     })
 
-    await prisma.projectVersion.create({
-        data: {
-            id: newVersionId,
-            projectId: newProjectId,
-            versionNumber: 1,
-            label: 'v1',
-            sourcePrompt: version.sourcePrompt,
-            summary: version.summary ?? undefined,
-            status: version.status,
-            objectStoragePrefix: `projects/${newProjectId}/previous-version/${newVersionId}`,
-            manifestJson: newManifest,
-            canvasStateJson: persistedCanvas.canvasStateJson as any,
-            canvasAssetManifestJson: persistedCanvas.canvasAssetManifestJson as any,
-            isDatabaseEnabled: version.isDatabaseEnabled,
-            databaseUrl: version.databaseUrl,
-            ...(version.intentJson !== null ? { intentJson: version.intentJson as any } : {}),
-            ...(version.planJson !== null ? { planJson: version.planJson as any } : {}),
-        },
+    await projectRepository.createVersion({
+        id: newVersionId,
+        projectId: newProjectId,
+        versionNumber: 1,
+        label: 'v1',
+        sourcePrompt: version.sourcePrompt,
+        summary: version.summary ?? undefined,
+        status: version.status,
+        objectStoragePrefix: `projects/${newProjectId}/previous-version/${newVersionId}`,
+        manifestJson: newManifest,
+        canvasStateJson: persistedCanvas.canvasStateJson as any,
+        canvasAssetManifestJson: persistedCanvas.canvasAssetManifestJson as any,
+        isDatabaseEnabled: version.isDatabaseEnabled,
+        databaseUrl: version.databaseUrl,
+        ...(version.intentJson !== null ? { intentJson: version.intentJson as any } : {}),
+        ...(version.planJson !== null ? { planJson: version.planJson as any } : {}),
     })
 
-    await prisma.project.update({
-        where: {
-            id: newProjectId,
-        },
-        data: {
-            currentVersionId: newVersionId,
-            versionCount: 1,
-        },
-        select: {
-            id: true,
-        },
-    })
+    await projectRepository.updateProjectVersionCount(newProjectId, newVersionId, 1)
 
     return {
         newCurrentVersionId: newVersionId,
@@ -150,30 +131,7 @@ export const copyProjectVersionsAndMessages = async (data: CopyProjectVersionsAn
 const getAllProjects = async (data: GetAllProjects) => {
     const { userId } = data
 
-    const projects = await prisma.project.findMany({
-        where: {
-            userId: userId,
-        },
-        select: {
-            id: true,
-            name: true,
-            description: true,
-            prompt: true,
-            isStarred: true,
-            isSharedAsTemplate: true,
-            projectStatus: true,
-            versionCount: true,
-            currentVersionId: true,
-            createdAt: true,
-            updatedAt: true,
-            userId: true,
-            user: {
-                select: {
-                    username: true,
-                },
-            },
-        },
-    })
+    const projects = await projectRepository.findManyProjects(userId)
 
     return projects
 }
@@ -181,70 +139,19 @@ const getAllProjects = async (data: GetAllProjects) => {
 const getProjectById = async (data: GetProject) => {
     const { userId, projectId, versionId } = data
 
-    const project = await prisma.project.findFirst({
-        where: {
-            id: projectId,
-            userId: userId,
-        },
-        select: {
-            id: true,
-            name: true,
-            description: true,
-            prompt: true,
-            isStarred: true,
-            isSharedAsTemplate: true,
-            projectStatus: true,
-            versionCount: true,
-            currentVersionId: true,
-            createdAt: true,
-            updatedAt: true,
-            userId: true,
-            githubRepoName: true,
-            githubRepoOwner: true,
-            githubRepoUrl: true,
-            githubLastSyncedAt: true,
-            vercelProjectId: true,
-            vercelProjectName: true,
-            vercelDeploymentUrl: true,
-            vercelLastDeployedAt: true,
-            user: {
-                select: {
-                    username: true,
-                },
-            },
-        },
-    })
+    const project = await projectRepository.findProjectById(projectId, userId)
 
     if (!project) {
         throw new AppError('project not found', 404)
     }
 
-    const versions = await prisma.projectVersion.findMany({
-        where: {
-            projectId: project.id,
-        },
-        orderBy: {
-            versionNumber: 'desc',
-        },
-    })
+    const versions = await projectRepository.findManyVersions(project.id)
 
     // provided version on newest version [0]
     const selectedVersionId = versionId ?? versions[0]?.id ?? null
 
     const activeVersion = selectedVersionId
-        ? await prisma.projectVersion.findFirst({
-              where: {
-                  id: selectedVersionId,
-                  projectId: project.id,
-              },
-              include: {
-                  messages: {
-                      orderBy: {
-                          sequence: 'asc',
-                      },
-                  },
-              },
-          })
+        ? await projectRepository.findVersionById(selectedVersionId, project.id)
         : null
 
     if (selectedVersionId && !activeVersion) {
@@ -292,28 +199,12 @@ const getProjectById = async (data: GetProject) => {
 const createProject = async (data: CreateProject) => {
     const { name, description, prompt, userId } = data
 
-    const project = await prisma.project.create({
-        data: {
-            name,
-            description,
-            prompt,
-            isStarred: false,
-            userId,
-        },
-        select: {
-            id: true,
-            name: true,
-            description: true,
-            prompt: true,
-            isStarred: true,
-            isSharedAsTemplate: true,
-            projectStatus: true,
-            versionCount: true,
-            currentVersionId: true,
-            createdAt: true,
-            updatedAt: true,
-            userId: true,
-        },
+    const project = await projectRepository.createProject({
+        name,
+        description,
+        prompt,
+        isStarred: false,
+        userId,
     })
 
     return project
@@ -322,14 +213,8 @@ const createProject = async (data: CreateProject) => {
 const renameProject = async (data: RenameProject) => {
     const { projectId, userId, rename } = data
 
-    const result = await prisma.project.updateMany({
-        where: {
-            id: projectId,
-            userId,
-        },
-        data: {
-            name: rename,
-        },
+    const result = await projectRepository.updateProjectMany(projectId, userId, {
+        name: rename,
     })
 
     if (result.count === 0) {
@@ -350,13 +235,7 @@ const updateGeneralSettings = async (data: UpdateGeneralSettings) => {
     if (isSharedAsTemplate !== undefined) updateData.isSharedAsTemplate = isSharedAsTemplate
     if (projectCategory !== undefined) updateData.projectCategory = projectCategory
 
-    const result = await prisma.project.updateMany({
-        where: {
-            id: projectId,
-            userId,
-        },
-        data: updateData,
-    })
+    const result = await projectRepository.updateProjectMany(projectId, userId, updateData)
 
     if (result.count === 0) {
         throw new AppError('project not found', 404)
@@ -368,12 +247,7 @@ const updateGeneralSettings = async (data: UpdateGeneralSettings) => {
 const deleteProject = async (data: DeleteProject) => {
     const { userId, projectId } = data
 
-    const result = await prisma.project.deleteMany({
-        where: {
-            id: projectId,
-            userId,
-        },
-    })
+    const result = await projectRepository.deleteProjectMany(projectId, userId)
 
     if (result.count === 0) {
         throw new AppError('project not found', 404)
@@ -391,60 +265,20 @@ const deleteProject = async (data: DeleteProject) => {
 const duplicateProject = async (data: DuplicateProject) => {
     const { projectId, userId, name } = data
 
-    const sourceProject = await prisma.project.findFirst({
-        where: {
-            id: projectId,
-            userId: userId,
-        },
-        select: {
-            id: true,
-            name: true,
-            description: true,
-            prompt: true,
-            projectStatus: true,
-            currentVersionId: true,
-        },
-    })
+    const sourceProject = await projectRepository.findProjectForDuplicate(projectId, userId)
 
     if (!sourceProject) {
         throw new AppError('project not found', 404)
     }
 
-    const latestVersion = await prisma.projectVersion.findFirst({
-        where: {
-            projectId: sourceProject.id,
-        },
-        orderBy: {
-            versionNumber: 'desc',
-        },
-        select: {
-            id: true,
-            sourcePrompt: true,
-        },
-    })
+    const latestVersion = await projectRepository.findLatestVersionForDuplicate(sourceProject.id)
 
-    const newProject = await prisma.project.create({
-        data: {
-            name: name || `Copy of ${sourceProject.name}`,
-            description: sourceProject.description,
-            prompt: latestVersion?.sourcePrompt ?? sourceProject.prompt,
-            projectStatus: latestVersion ? 'READY' : sourceProject.projectStatus,
-            userId: userId,
-        },
-        select: {
-            id: true,
-            name: true,
-            description: true,
-            prompt: true,
-            isStarred: true,
-            isSharedAsTemplate: true,
-            projectStatus: true,
-            versionCount: true,
-            currentVersionId: true,
-            createdAt: true,
-            updatedAt: true,
-            userId: true,
-        },
+    const newProject = await projectRepository.createProject({
+        name: name || `Copy of ${sourceProject.name}`,
+        description: sourceProject.description,
+        prompt: latestVersion?.sourcePrompt ?? sourceProject.prompt,
+        projectStatus: latestVersion ? 'READY' : sourceProject.projectStatus,
+        userId: userId,
     })
 
     // if source project has no version (empty project); return new project
@@ -466,9 +300,7 @@ const duplicateProject = async (data: DuplicateProject) => {
         return newProject
     } catch (error) {
         try {
-            await prisma.project.delete({
-                where: { id: newProject.id },
-            })
+            await projectRepository.deleteProject(newProject.id)
         } catch (dbError) {
             console.error('Failed to rollback project creation in database:', dbError)
         }
@@ -484,15 +316,9 @@ const duplicateProject = async (data: DuplicateProject) => {
 const shareProjectAsTemplate = async (data: ShareProject) => {
     const { userId, projectId, isSharedAsTemplate, projectCategory } = data
 
-    const project = await prisma.project.updateMany({
-        where: {
-            id: projectId,
-            userId: userId,
-        },
-        data: {
-            isSharedAsTemplate,
-            ...(projectCategory ? { projectCategory } : {}),
-        },
+    const project = await projectRepository.updateProjectMany(projectId, userId, {
+        isSharedAsTemplate,
+        ...(projectCategory ? { projectCategory } : {}),
     })
 
     if (project.count === 0) {
@@ -507,14 +333,8 @@ const shareProjectAsTemplate = async (data: ShareProject) => {
 const toggleStarProject = async (data: ToggleStarProject) => {
     const { userId, projectId, isStarred } = data
 
-    const project = await prisma.project.updateMany({
-        where: {
-            id: projectId,
-            userId: userId,
-        },
-        data: {
-            isStarred,
-        },
+    const project = await projectRepository.updateProjectMany(projectId, userId, {
+        isStarred,
     })
 
     if (project.count === 0) {

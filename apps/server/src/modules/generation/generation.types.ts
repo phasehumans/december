@@ -1,4 +1,4 @@
-import { prisma } from '@december/database'
+import type { Project } from '@december/database'
 import { z } from 'zod'
 
 import {
@@ -7,7 +7,7 @@ import {
     projectPatchOperationSchema,
     projectIntentSchema,
     projectPlanSchema,
-} from '../../../../apps/server/src/modules/generation/generation.schema'
+} from './generation.schema'
 
 import type { PreviewManifestRef } from './preview-manifest.types'
 
@@ -25,12 +25,12 @@ export type ProjectPlan = z.infer<typeof projectPlanSchema>
 export type PlannedProjectFile = z.infer<typeof plannedProjectFileSchema>
 export type ProjectChangePlan = z.infer<typeof projectChangePlanSchema>
 export type ProjectPatchOperation = z.infer<typeof projectPatchOperationSchema>
-export type ProjectRecord = Awaited<ReturnType<typeof prisma.project.create>>
+export type ProjectRecord = Project
 
 // StoredProjectFile is imported from project.types
 
 export type RevisionBase = {
-    project: NonNullable<Awaited<ReturnType<typeof prisma.project.findFirst>>>
+    project: Project
     baseVersion: any
     baseFiles: Record<string, string>
     nextVersionNumber: number

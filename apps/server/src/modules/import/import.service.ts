@@ -1,10 +1,11 @@
 import { randomUUID } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
 
-import { prisma } from '@december/database'
+import { importRepository } from './import.repository'
 
 import { AppError } from '../../shared/appError'
-import { publishPreviewManifest, type PreviewManifestFile } from '../../shared/preview-manifest'
+import { publishPreviewManifest } from '../../shared/preview-manifest'
+import type { PreviewManifestFile } from '../../shared/preview-manifest'
 import {
     deletePrefix,
     currentKey,
@@ -42,7 +43,7 @@ import type {
     ProcessGithubImportParams,
     ProcessZipImportParams,
     FailImportParams,
-} from '@december/shared'
+} from './import.types'
 import type { RuntimePreviewStatus } from '@december/shared'
 
 const MAX_UPLOAD_ZIP_BYTES = 50 * 1024 * 1024
@@ -72,27 +73,23 @@ const toErrorPayload = (error: unknown) => ({
 
 const updateImportStatus = async (data: UpdateImportStatusParams) => {
     const { importId, status, data: updateData } = data
-    return prisma.projectImport.update({
-        where: { id: importId },
-        data: {
-            status,
-            ...(updateData ?? {}),
-        },
+    return importRepository.updateImport({
+        importId,
+        status,
+        updateData,
         select: publicImportSelect,
     })
 }
 
 const createImportRecord = async (data: CreateImportRecordParams) => {
     const { userId, sourceType, sourceUrl, sourceFileName, projectId, projectVersionId } = data
-    return prisma.projectImport.create({
-        data: {
-            userId,
-            sourceType,
-            projectId,
-            projectVersionId,
-            ...(sourceUrl ? { sourceUrl } : {}),
-            ...(sourceFileName ? { sourceFileName } : {}),
-        },
+    return importRepository.createImport({
+        userId,
+        sourceType,
+        sourceUrl: sourceUrl ?? undefined,
+        sourceFileName: sourceFileName ?? undefined,
+        projectId: projectId ?? undefined,
+        projectVersionId: projectVersionId ?? undefined,
         select: publicImportSelect,
     })
 }
@@ -153,95 +150,57 @@ const createPlaceholderProject = async (data: CreatePlaceholderProjectParams) =>
             .replace(/\.zip$/i, '')
             .slice(0, 20) || 'Imported project'
 
-    const createdProject = await prisma.project.create({
-        data: {
-            id: projectId,
-            name: displayName,
-            description: `Importing project...`.slice(0, 30),
-            prompt: prompt,
-            projectStatus: 'GENERATING',
-            userId,
-            versionCount: 1,
-            versions: {
-                create: {
-                    id: versionId,
-                    versionNumber: 1,
-                    label: 'import',
-                    sourcePrompt: prompt,
-                    summary: 'Importing project files...',
-                    status: 'GENERATING',
-                    objectStoragePrefix: versionPrefix(projectId, versionId),
-                    manifestJson: [],
-                },
-            },
-        },
-        select: {
-            id: true,
-        },
+    return importRepository.createPlaceholderProject({
+        projectId,
+        versionId,
+        userId,
+        displayName,
+        prompt,
+        versionPrefix: versionPrefix(projectId, versionId),
     })
-
-    await prisma.project.update({
-        where: { id: createdProject.id },
-        data: {
-            currentVersionId: versionId,
-        },
-        select: { id: true },
-    })
-
-    return createdProject
 }
 
 const updateImportedProjectVersion = async (data: UpdateImportedProjectVersionParams) => {
     const { projectId, versionId, project, manifestFiles, sourceType, sourceLabel } = data
-    await prisma.project.update({
-        where: { id: projectId },
-        data: {
-            description: `Imported ${project.detection.framework} project`.slice(0, 30),
-            projectStatus: 'READY',
-        },
-    })
 
-    await prisma.projectVersion.update({
-        where: { id: versionId },
-        data: {
-            summary: `Imported ${project.files.length} files`,
-            status: 'READY',
-            manifestJson: manifestFiles.map((file) => ({
-                path: file.path,
-                key: file.objectKey,
-                contentType: file.contentType,
-                size: file.size,
-            })),
-            messages: {
-                create: [
-                    {
-                        role: 'USER',
-                        content:
-                            sourceType === 'github'
-                                ? `Importing GitHub repository: ${sourceLabel}`
-                                : `Uploading ZIP archive: ${sourceLabel || 'project.zip'}`,
-                        sequence: 1,
-                        projectId: projectId,
-                    },
-                    {
-                        role: 'ASSISTANT',
-                        content:
-                            sourceType === 'github'
-                                ? `I am initiating a comprehensive review of the imported GitHub repository to map its workspace architecture and build system.\n\nFirst, I will scan the root directory for standard configuration entrypoints like \`package.json\`, \`tsconfig.json\`, \`vite.config.ts\`, or \`next.config.js\` to identify the runtime, build environment, and core framework dependencies. I also need to verify if this is a monorepo setup (e.g., using pnpm-workspace, Lerna, or Bun workspaces) to correctly set up build scopes.\n\nNext, I will inspect the source folder layout (\`src\`, \`app\`, \`pages\`, or \`components\`) to trace the component architecture, entry routers, and styles (e.g., Tailwind CSS, styled-components, or vanilla CSS modules). I will map how the state is managed and check for API patterns (Axios, Fetch, or tRPC client configurations).\n\nFinally, I will analyze the environment file placeholders, database prisma schemas, or container setups if present, to ensure local execution alignment. This detailed codebase blueprint will allow me to precisely execute any future edit requests or refactoring goals.\n\n### Project Metadata\n\nI have successfully analyzed the codebase and mapped the architecture:\n\n- **Project Type**: Imported GitHub Repository\n- **Detected Framework**: ${project.detection.framework}\n- **Workspace Architecture**: ${project.files.length > 50 ? 'Medium-scale Web Application' : 'Single-page React/Vite Application'}\n- **Build Configuration**: Configured and validated\n- **Environment Status**: Container initialized, dependencies mapped\n- **Total Files Mapped**: ${project.files.length}\n\nYou can now ask me to explain specific files, add new features, or debug any issues in the code.`
-                                : `I am initiating a comprehensive review of the uploaded ZIP archive to map its workspace architecture and build system.\n\nFirst, I will extract and scan the package files in the archive to find standard configuration entrypoints like \`package.json\`, \`tsconfig.json\`, \`vite.config.ts\`, or \`next.config.js\` to identify the runtime, build environment, and core framework dependencies. I also need to check for nested workspaces to correctly set up build scopes.\n\nNext, I will inspect the source folder layout (\`src\`, \`app\`, \`pages\`, or \`components\`) to trace the component architecture, entry routers, and styles (e.g., Tailwind CSS, styled-components, or vanilla CSS modules). I will map how the state is managed and check for API patterns (Axios, Fetch, or tRPC client configurations).\n\nFinally, I will analyze the environment file placeholders, database prisma schemas, or container setups if present, to ensure local execution alignment. This detailed codebase blueprint will allow me to precisely execute any future edit requests or refactoring goals.\n\n### Project Metadata\n\nI have successfully analyzed the codebase and mapped the architecture:\n\n- **Project Type**: Uploaded ZIP Archive\n- **Detected Framework**: ${project.detection.framework}\n- **Workspace Architecture**: ${project.files.length > 50 ? 'Medium-scale Web Application' : 'Single-page React/Vite Application'}\n- **Build Configuration**: Configured and validated\n- **Environment Status**: Container initialized, dependencies mapped\n- **Total Files Mapped**: ${project.files.length}\n\nYou can now ask me to explain specific files, add new features, or debug any issues in the code.`,
-                        status: 'done',
-                        sequence: 2,
-                        projectId: projectId,
-                    },
-                ],
-            },
+    const description = `Imported ${project.detection.framework} project`.slice(0, 30)
+    const summary = `Imported ${project.files.length} files`
+    const manifestJson = manifestFiles.map((file) => ({
+        path: file.path,
+        key: file.objectKey,
+        contentType: file.contentType,
+        size: file.size,
+    }))
+    const messages = [
+        {
+            role: 'USER' as const,
+            content:
+                sourceType === 'github'
+                    ? `Importing GitHub repository: ${sourceLabel}`
+                    : `Uploading ZIP archive: ${sourceLabel || 'project.zip'}`,
+            sequence: 1,
+            projectId: projectId,
         },
-    })
+        {
+            role: 'ASSISTANT' as const,
+            content:
+                sourceType === 'github'
+                    ? `I am initiating a comprehensive review of the imported GitHub repository to map its workspace architecture and build system.\n\nFirst, I will scan the root directory for standard configuration entrypoints like \`package.json\`, \`tsconfig.json\`, \`vite.config.ts\`, or \`next.config.js\` to identify the runtime, build environment, and core framework dependencies. I also need to verify if this is a monorepo setup (e.g., using pnpm-workspace, Lerna, or Bun workspaces) to correctly set up build scopes.\n\nNext, I will inspect the source folder layout (\`src\`, \`app\`, \`pages\`, or \`components\`) to trace the component architecture, entry routers, and styles (e.g., Tailwind CSS, styled-components, or vanilla CSS modules). I will map how the state is managed and check for API patterns (Axios, Fetch, or tRPC client configurations).\n\nFinally, I will analyze the environment file placeholders, database prisma schemas, or container setups if present, to ensure local execution alignment. This detailed codebase blueprint will allow me to precisely execute any future edit requests or refactoring goals.\n\n### Project Metadata\n\nI have successfully analyzed the codebase and mapped the architecture:\n\n- **Project Type**: Imported GitHub Repository\n- **Detected Framework**: ${project.detection.framework}\n- **Workspace Architecture**: ${project.files.length > 50 ? 'Medium-scale Web Application' : 'Single-page React/Vite Application'}\n- **Build Configuration**: Configured and validated\n- **Environment Status**: Container initialized, dependencies mapped\n- **Total Files Mapped**: ${project.files.length}\n\nYou can now ask me to explain specific files, add new features, or debug any issues in the code.`
+                    : `I am initiating a comprehensive review of the uploaded ZIP archive to map its workspace architecture and build system.\n\nFirst, I will extract and scan the package files in the archive to find standard configuration entrypoints like \`package.json\`, \`tsconfig.json\`, \`vite.config.ts\`, or \`next.config.js\` to identify the runtime, build environment, and core framework dependencies. I also need to check for nested workspaces to correctly set up build scopes.\n\nNext, I will inspect the source folder layout (\`src\`, \`app\`, \`pages\`, or \`components\`) to trace the component architecture, entry routers, and styles (e.g., Tailwind CSS, styled-components, or vanilla CSS modules). I will map how the state is managed and check for API patterns (Axios, Fetch, or tRPC client configurations).\n\nFinally, I will analyze the environment file placeholders, database prisma schemas, or container setups if present, to ensure local execution alignment. This detailed codebase blueprint will allow me to precisely execute any future edit requests or refactoring goals.\n\n### Project Metadata\n\nI have successfully analyzed the codebase and mapped the architecture:\n\n- **Project Type**: Uploaded ZIP Archive\n- **Detected Framework**: ${project.detection.framework}\n- **Workspace Architecture**: ${project.files.length > 50 ? 'Medium-scale Web Application' : 'Single-page React/Vite Application'}\n- **Build Configuration**: Configured and validated\n- **Environment Status**: Container initialized, dependencies mapped\n- **Total Files Mapped**: ${project.files.length}\n\nYou can now ask me to explain specific files, add new features, or debug any issues in the code.`,
+            status: 'done' as const,
+            sequence: 2,
+            projectId: projectId,
+        },
+    ]
 
-    return {
+    return importRepository.updateImportedProjectVersion({
         projectId,
         versionId,
-    }
+        description,
+        summary,
+        manifestJson,
+        messages,
+    })
 }
 
 const startRuntimeForImport = async (data: StartRuntimeForImportParams) => {
@@ -381,18 +340,10 @@ const failImport = async (data: FailImportParams) => {
     const { importId, error } = data
     console.error(`[import:${importId}] IMPORT FAILED:`, error)
 
-    const importRecord = await prisma.projectImport
-        .findUnique({
-            where: { id: importId },
-            select: {
-                objectPrefix: true,
-                projectId: true,
-            },
-        })
-        .catch((dbErr) => {
-            console.error(`[import:${importId}] failed to fetch import record:`, dbErr)
-            return null
-        })
+    const importRecord = await importRepository.findImportForFail(importId).catch((dbErr) => {
+        console.error(`[import:${importId}] failed to fetch import record:`, dbErr)
+        return null
+    })
 
     if (importRecord?.objectPrefix && !importRecord.projectId) {
         await deletePrefix(importRecord.objectPrefix).catch((delErr) => {
@@ -419,12 +370,7 @@ const processGithubImport = async (data: ProcessGithubImportParams) => {
     try {
         console.log(`[import:${importId}] processGithubImport: starting for ${owner}/${repo}`)
 
-        await prisma.projectImport.update({
-            where: { id: importId },
-            data: {
-                attempts: { increment: 1 },
-            },
-        })
+        await importRepository.incrementAttempts(importId)
 
         await updateImportStatus({
             importId,
@@ -512,16 +458,7 @@ const importFromGithub = async (data: ImportFromGithub) => {
         throw new AppError(parseData.error, 400)
     }
 
-    const user = await prisma.user.findUnique({
-        where: {
-            id: userId,
-        },
-        select: {
-            id: true,
-            githubToken: true,
-            subscriptionPlan: true,
-        },
-    })
+    const user = await importRepository.findUserForImport(userId)
 
     if (!user) {
         throw new AppError('user not found', 404)
@@ -532,11 +469,9 @@ const importFromGithub = async (data: ImportFromGithub) => {
     }
 
     if (user.subscriptionPlan === 'FREE') {
-        const importCount = await prisma.projectImport.count({
-            where: {
-                userId,
-                sourceType: 'GITHUB',
-            },
+        const importCount = await importRepository.countUserImports({
+            userId,
+            sourceType: 'GITHUB',
         })
 
         if (importCount >= 1) {
@@ -579,11 +514,9 @@ const importFromGithub = async (data: ImportFromGithub) => {
 
 const getImportStatus = async (data: GetImportStatus) => {
     const { userId, importId } = data
-    const importRecord = await prisma.projectImport.findFirst({
-        where: {
-            id: importId,
-            userId,
-        },
+    const importRecord = await importRepository.findImportForStatus({
+        id: importId,
+        userId,
         select: publicImportSelect,
     })
 

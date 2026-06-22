@@ -1,4 +1,7 @@
-import { planAgentResponseSchema, projectChangePlanResponseSchema } from '@december/shared'
+import {
+    planAgentResponseSchema,
+    projectChangePlanResponseSchema,
+} from '../../src/modules/generation/generation.schema'
 import { describe, expect, test } from 'bun:test'
 
 import {

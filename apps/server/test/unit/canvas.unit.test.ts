@@ -286,3 +286,65 @@ describe('canvas.persistence', () => {
         })
     })
 })
+
+import { saveCanvasSchema, webClipRequestSchema } from '../../src/modules/canvas/canvas.schema'
+
+describe('canvas schemas', () => {
+    describe('webClipRequestSchema', () => {
+        it('should validate valid web-clip requests', () => {
+            const valid = webClipRequestSchema.safeParse({ url: 'https://google.com' })
+            expect(valid.success).toBe(true)
+        })
+
+        it('should reject invalid web-clip requests (missing http/https)', () => {
+            const invalid = webClipRequestSchema.safeParse({ url: 'ftp://google.com' })
+            expect(invalid.success).toBe(false)
+        })
+
+        it('should reject malformed URLs', () => {
+            const invalid = webClipRequestSchema.safeParse({ url: 'not-a-url' })
+            expect(invalid.success).toBe(false)
+        })
+    })
+
+    describe('saveCanvasSchema', () => {
+        it('should validate valid canvas save request', () => {
+            const payload = {
+                projectId: '11111111-2222-4333-8444-555555555555',
+                versionId: '22222222-3333-4444-8555-666666666666',
+                canvasState: {
+                    items: [
+                        {
+                            id: 'note-1',
+                            type: 'note',
+                            x: 10,
+                            y: 20,
+                            content: 'my test note',
+                        },
+                    ],
+                    connections: [],
+                    pan: { x: 0, y: 0 },
+                    scale: 100,
+                    hasInteracted: true,
+                },
+            }
+            const res = saveCanvasSchema.safeParse(payload)
+            expect(res.success).toBe(true)
+        })
+
+        it('should reject invalid projectId uuid', () => {
+            const payload = {
+                projectId: 'invalid-uuid',
+                canvasState: {
+                    items: [],
+                    connections: [],
+                    pan: { x: 0, y: 0 },
+                    scale: 100,
+                    hasInteracted: false,
+                },
+            }
+            const res = saveCanvasSchema.safeParse(payload)
+            expect(res.success).toBe(false)
+        })
+    })
+})

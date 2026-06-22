@@ -334,3 +334,68 @@ describe('project.utils', () => {
         })
     })
 })
+
+import {
+    createProjectSchema,
+    renameProjectSchema,
+    updateGeneralSettingsSchema,
+} from '../../src/modules/project/project.schema'
+
+describe('project schemas', () => {
+    describe('createProjectSchema', () => {
+        test('validates correct project creation input', () => {
+            const res = createProjectSchema.safeParse({
+                name: 'test-project',
+                description: 'this is a description with at least ten characters',
+                prompt: 'create a nice button',
+            })
+            expect(res.success).toBe(true)
+        })
+
+        test('fails if name is too short', () => {
+            const res = createProjectSchema.safeParse({
+                name: 'ab',
+                prompt: 'create a nice button',
+            })
+            expect(res.success).toBe(false)
+        })
+
+        test('fails if description is too short', () => {
+            const res = createProjectSchema.safeParse({
+                name: 'test-project',
+                description: 'short',
+                prompt: 'create a nice button',
+            })
+            expect(res.success).toBe(false)
+        })
+    })
+
+    describe('renameProjectSchema', () => {
+        test('validates valid rename input', () => {
+            const res = renameProjectSchema.safeParse({ rename: 'new-name' })
+            expect(res.success).toBe(true)
+        })
+
+        test('fails if rename is empty', () => {
+            const res = renameProjectSchema.safeParse({ rename: '' })
+            expect(res.success).toBe(false)
+        })
+    })
+
+    describe('updateGeneralSettingsSchema', () => {
+        test('validates valid partial updates', () => {
+            const res = updateGeneralSettingsSchema.safeParse({
+                isStarred: true,
+                projectCategory: 'DASHBOARD',
+            })
+            expect(res.success).toBe(true)
+        })
+
+        test('fails if category is invalid', () => {
+            const res = updateGeneralSettingsSchema.safeParse({
+                projectCategory: 'INVALID_CATEGORY',
+            })
+            expect(res.success).toBe(false)
+        })
+    })
+})

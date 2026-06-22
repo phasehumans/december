@@ -5,6 +5,7 @@ import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'bun:test'
 import express, { Router } from 'express'
 import request from 'supertest'
 
+import { errorHandler } from '../../../src/middleware/error.middleware'
 import { projectController } from '../../../src/modules/project/project.controller'
 
 const TEST_USER_ID = 'test-project-user-id'
@@ -79,6 +80,8 @@ describe('project.routes.integration', () => {
         testRouter.post('/:projectId/star', projectController.toggleStarProject)
 
         app.use('/api/v1/projects', testRouter)
+
+        app.use(errorHandler)
     })
 
     beforeEach(async () => {
