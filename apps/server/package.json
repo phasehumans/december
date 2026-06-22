@@ -7,9 +7,7 @@
     "scripts": {
         "dev": "bun --watch src/server.ts",
         "start": "bun src/server.ts",
-        "studio": "bunx prisma studio --browser none --port 5555",
-        "studio:test": "bunx dotenv -e .env.test -- bunx prisma studio --browser none --port 5556",
-        "migrate:test": "dotenv -e .env.test -- bunx prisma migrate deploy"
+        "studio": "bunx prisma studio --browser none --port 5555"
     },
     "devDependencies": {
         "@types/adm-zip": "^0.5.8",

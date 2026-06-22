@@ -5,12 +5,7 @@ import jwt, { type SignOptions } from 'jsonwebtoken'
 import resend from '../../config/email'
 import { env } from '../../env'
 
-export type TokenPayload = {
-    userId: string
-    sessionId: string
-    iat?: number
-    exp?: number
-}
+import type { TokenPayload } from './auth.types'
 
 export const sendOTP = async (email: string, otp: string) => {
     const attachments: any[] = []

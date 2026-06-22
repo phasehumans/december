@@ -8,6 +8,8 @@
     "scripts": {
         "db:generate": "prisma generate",
         "db:migrate": "prisma migrate dev",
+        "db:migrate:dev": "bunx dotenv-cli -e ../../.env -- prisma migrate dev",
+        "db:migrate:test": "bunx dotenv-cli -e ../../.env.test -- prisma migrate deploy",
         "db:studio": "prisma studio --browser none --port 5555"
     },
     "dependencies": {

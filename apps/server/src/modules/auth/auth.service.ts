@@ -2,6 +2,7 @@ import crypto from 'crypto'
 
 import bcrypt from 'bcrypt'
 
+import { env } from '../../env'
 import { AppError } from '../../shared/appError'
 import { sendNotificationToUser } from '../notification/notification.service'
 
@@ -16,15 +17,15 @@ import {
 } from './auth.utils'
 
 import type {
-    Signup,
     VerifyOtp,
     Login,
     Google,
+    Signup,
     RefreshSession,
     RequestPasswordReset,
     VerifyPasswordResetOtp,
     ResetPassword,
-} from '@december/shared'
+} from './auth.types'
 
 const signup = async (data: Signup) => {
     const { email, password } = data
@@ -39,9 +40,9 @@ const signup = async (data: Signup) => {
             throw new AppError('email already exists', 409)
         }
 
-        const hashPassword = await bcrypt.hash(password, 10)
+        const hashPassword = await bcrypt.hash(password, env.BCRYPT_SALT_ROUNDS)
         const otp = crypto.randomInt(100000, 1000000).toString()
-        const otpHash = await bcrypt.hash(otp, 10)
+        const otpHash = await bcrypt.hash(otp, env.BCRYPT_SALT_ROUNDS)
 
         await authRepository.updateUser(existingUser.id, {
             password: hashPassword,
@@ -61,9 +62,9 @@ const signup = async (data: Signup) => {
         name = username
     }
 
-    const hashPassword = await bcrypt.hash(password, 10)
+    const hashPassword = await bcrypt.hash(password, env.BCRYPT_SALT_ROUNDS)
     const otp = crypto.randomInt(100000, 1000000).toString()
-    const otpHash = await bcrypt.hash(otp, 10)
+    const otpHash = await bcrypt.hash(otp, env.BCRYPT_SALT_ROUNDS)
 
     const newUser = await authRepository.createUser({
         name: name,
@@ -134,7 +135,7 @@ const verifyOtp = async (data: VerifyOtp) => {
         sessionId,
     })
 
-    const refreshTokenHash = await bcrypt.hash(refreshToken, 10)
+    const refreshTokenHash = await bcrypt.hash(refreshToken, env.BCRYPT_SALT_ROUNDS)
 
     await authRepository.createSession({
         id: sessionId,
@@ -208,7 +209,7 @@ const login = async (data: Login) => {
         sessionId,
     })
 
-    const refreshTokenHash = await bcrypt.hash(refreshToken, 10)
+    const refreshTokenHash = await bcrypt.hash(refreshToken, env.BCRYPT_SALT_ROUNDS)
 
     await authRepository.createSession({
         id: sessionId,
@@ -244,7 +245,7 @@ const requestPasswordReset = async (data: RequestPasswordReset) => {
     }
 
     const otp = crypto.randomInt(100000, 1000000).toString()
-    const otpHash = await bcrypt.hash(otp, 10)
+    const otpHash = await bcrypt.hash(otp, env.BCRYPT_SALT_ROUNDS)
 
     await authRepository.updateUser(user.id, {
         otpHash,
@@ -312,7 +313,7 @@ const resetPassword = async (data: ResetPassword) => {
         throw new AppError('invalid or expired reset code', 401)
     }
 
-    const password = await bcrypt.hash(newPassword, 10)
+    const password = await bcrypt.hash(newPassword, env.BCRYPT_SALT_ROUNDS)
 
     await authRepository.resetPasswordAndRevokeSessions(user.id, password)
 }
@@ -390,7 +391,7 @@ const google = async (data: Google) => {
         sessionId,
     })
 
-    const refreshTokenHash = await bcrypt.hash(refreshToken, 10)
+    const refreshTokenHash = await bcrypt.hash(refreshToken, env.BCRYPT_SALT_ROUNDS)
 
     await authRepository.createSession({
         id: sessionId,
@@ -469,7 +470,7 @@ const refreshSession = async (data: RefreshSession) => {
         sessionId: session.id,
     })
 
-    const newRefreshTokenHash = await bcrypt.hash(newRefreshToken, 10)
+    const newRefreshTokenHash = await bcrypt.hash(newRefreshToken, env.BCRYPT_SALT_ROUNDS)
 
     await authRepository.updateSession(session.id, {
         refreshTokenHash: newRefreshTokenHash,

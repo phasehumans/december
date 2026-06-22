@@ -22,12 +22,12 @@ export const forgotPasswordRequestSchema = z.object({
 
 export const forgotPasswordVerifySchema = z.object({
     email: z.string({ message: 'email is required' }).email('please enter a valid email address'),
-    otp: z.string({ message: 'OTP is required' }).regex(/^\d{6}$/, 'OTP must be exactly 6 digits'),
+    otp: z.string({ message: 'otp is required' }).regex(/^\d{6}$/, 'otp must be exactly 6 digits'),
 })
 
 export const forgotPasswordResetSchema = z.object({
     email: z.string({ message: 'email is required' }).email('please enter a valid email address'),
-    otp: z.string({ message: 'OTP is required' }).regex(/^\d{6}$/, 'OTP must be exactly 6 digits'),
+    otp: z.string({ message: 'otp is required' }).regex(/^\d{6}$/, 'otp must be exactly 6 digits'),
     newPassword: z
         .string({ message: 'new password is required' })
         .min(6, 'new password must be at least 6 characters')
