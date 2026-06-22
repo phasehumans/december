@@ -166,7 +166,6 @@ describe('auth.utils', () => {
             expect(html).not.toContain('x.png')
             expect(html).not.toContain('GitHub')
             expect(html).not.toContain('X')
-            // Check that attachments are empty or undefined
             expect(arg.attachments).toBeUndefined()
         })
     })

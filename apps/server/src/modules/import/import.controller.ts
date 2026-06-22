@@ -51,51 +51,6 @@ const importFromGithub = async (req: Request, res: Response) => {
     }
 }
 
-const importFromZip = async (req: Request, res: Response) => {
-    const userId = req.user?.userId as string | undefined
-    const file = (req as any).file
-    if (!userId) {
-        return res.status(400).json({
-            success: false,
-            message: 'unauthorized',
-        })
-    }
-
-    if (!file) {
-        return res.status(400).json({
-            success: false,
-            message: 'zip file is required',
-        })
-    }
-
-    try {
-        const result = await uploadService.importFromZip({
-            zipFile: file,
-            userId,
-        })
-
-        return res.status(202).json({
-            success: true,
-            message: 'import queued',
-            data: result,
-        })
-    } catch (error) {
-        if (error instanceof AppError) {
-            return res.status(error.statusCode).json({
-                success: false,
-                message: 'failed to import from zip',
-                errors: error.message,
-            })
-        }
-
-        return res.status(500).json({
-            success: false,
-            message: 'failed to import from zip',
-            errors: error instanceof Error ? error.message : 'unknown error',
-        })
-    }
-}
-
 const getImportStatus = async (req: Request, res: Response) => {
     const userId = req.user?.userId as string | undefined
     const parseParams = importIdParamSchema.safeParse(req.params)
@@ -145,6 +100,5 @@ const getImportStatus = async (req: Request, res: Response) => {
 
 export const uploadController = {
     importFromGithub,
-    importFromZip,
     getImportStatus,
 }
