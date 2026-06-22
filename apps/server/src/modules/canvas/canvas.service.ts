@@ -5,11 +5,10 @@ import os from 'os'
 import path from 'path'
 import { fileURLToPath } from 'url'
 
-import { prisma } from '@december/database'
-
 import { AppError } from '../../shared/appError'
 import { assetKey, putBinaryFile, temporaryCanvasAssetKey } from '../../shared/project-storage'
 
+import { canvasRepository } from './canvas.repository'
 import { persistCanvasDocument } from './canvas.utils'
 
 import type {
@@ -17,7 +16,7 @@ import type {
     ClipperWorkerSection,
     CreateWebClips,
     SaveCanvas,
-} from '@december/shared'
+} from './canvas.types'
 
 const IMAGE_CONTENT_TYPE = 'image/png'
 const CLIPPER_WORKER_TIMEOUT_MS = 120000
@@ -168,15 +167,7 @@ const runClipperWorker = async (url: string) => {
 }
 
 const assertProjectAccess = async (projectId: string, userId: string) => {
-    const project = await prisma.project.findFirst({
-        where: {
-            id: projectId,
-            userId,
-        },
-        select: {
-            id: true,
-        },
-    })
+    const project = await canvasRepository.findProjectAccess({ projectId, userId })
 
     if (!project) {
         throw new AppError('project not found')
@@ -237,10 +228,7 @@ const saveCanvas = async (data: SaveCanvas) => {
     const { projectId, userId, versionId, canvasState } = data
     await assertProjectAccess(projectId, userId)
 
-    const project = await prisma.project.findUnique({
-        where: { id: projectId },
-        select: { currentVersionId: true },
-    })
+    const project = await canvasRepository.findProjectById(projectId)
 
     if (!project) {
         throw new AppError('project not found')
@@ -258,12 +246,10 @@ const saveCanvas = async (data: SaveCanvas) => {
         canvasState,
     })
 
-    await prisma.projectVersion.update({
-        where: { id: targetVersionId },
-        data: {
-            canvasStateJson: persistedCanvas.canvasStateJson as any,
-            canvasAssetManifestJson: persistedCanvas.canvasAssetManifestJson as any,
-        },
+    await canvasRepository.updateProjectVersion({
+        versionId: targetVersionId,
+        canvasStateJson: persistedCanvas.canvasStateJson,
+        canvasAssetManifestJson: persistedCanvas.canvasAssetManifestJson,
     })
 
     return {

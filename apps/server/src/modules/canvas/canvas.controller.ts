@@ -1,101 +1,39 @@
-import { saveCanvasSchema, webClipRequestSchema } from '@december/shared'
-
 import { AppError } from '../../shared/appError'
+import { asyncHandler } from '../../shared/asyncHandler'
+import { sendSuccess } from '../../shared/response'
 
+import { saveCanvasSchema, webClipRequestSchema } from './canvas.schema'
 import { canvasService } from './canvas.service'
 
 import type { Request, Response } from 'express'
 
-const createWebClips = async (req: Request, res: Response) => {
+const createWebClips = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user?.userId as string | undefined
-    const parseData = webClipRequestSchema.safeParse(req.body)
-
     if (!userId) {
-        return res.status(400).json({
-            success: false,
-            message: 'unauthorized',
-        })
+        throw new AppError('unauthorized', 400)
     }
 
-    if (!parseData.success) {
-        return res.status(400).json({
-            success: false,
-            message: 'validation failed',
-            errors: parseData.error.flatten().fieldErrors,
-        })
-    }
+    const parseData = webClipRequestSchema.parse(req.body)
+    const { url, projectId } = parseData
 
-    const { url, projectId } = parseData.data
+    const result = await canvasService.createWebClips({ url, userId, projectId })
+    return sendSuccess(res, 'web clips created successfully', result)
+})
 
-    try {
-        const result = await canvasService.createWebClips({ url, userId, projectId })
-        return res.status(200).json({
-            success: true,
-            message: 'web clips created successfully',
-            data: result,
-        })
-    } catch (error) {
-        if (error instanceof AppError) {
-            return res.status(error.statusCode).json({
-                success: false,
-                message: 'failed to create web clips',
-                errors: error.message,
-            })
-        }
-
-        return res.status(500).json({
-            success: false,
-            message: 'failed to create web clips',
-            errors: error instanceof Error ? error.message : 'unknown error',
-        })
-    }
-}
-
-const saveCanvas = async (req: Request, res: Response) => {
+const saveCanvas = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user?.userId as string | undefined
-    const parseData = saveCanvasSchema.safeParse(req.body)
-
     if (!userId) {
-        return res.status(400).json({
-            success: false,
-            message: 'unauthorized',
-        })
+        throw new AppError('unauthorized', 400)
     }
 
-    if (!parseData.success) {
-        return res.status(400).json({
-            success: false,
-            message: 'validation failed',
-            errors: parseData.error.flatten().fieldErrors,
-        })
-    }
+    const parseData = saveCanvasSchema.parse(req.body)
 
-    try {
-        const result = await canvasService.saveCanvas({
-            userId,
-            ...parseData.data,
-        })
-        return res.status(200).json({
-            success: true,
-            message: 'canvas saved successfully',
-            data: result,
-        })
-    } catch (error) {
-        if (error instanceof AppError) {
-            return res.status(error.statusCode).json({
-                success: false,
-                message: 'failed to save canvas',
-                errors: error.message,
-            })
-        }
-
-        return res.status(500).json({
-            success: false,
-            message: 'failed to save canvas',
-            errors: error instanceof Error ? error.message : 'unknown error',
-        })
-    }
-}
+    const result = await canvasService.saveCanvas({
+        userId,
+        ...parseData,
+    })
+    return sendSuccess(res, 'canvas saved successfully', result)
+})
 
 export const canvasController = {
     createWebClips,

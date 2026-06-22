@@ -1,13 +1,11 @@
 import { randomUUID } from 'crypto'
 
-import {
-    canvasDocumentSchema,
-    canvasAssetKindSchema,
-    type CanvasDocument,
-    type PersistImageAsset,
-    type PersistCanvasDocument,
-    type HydrateCanvasDocument,
-} from '@december/shared'
+import { canvasDocumentSchema, canvasAssetKindSchema, type CanvasDocument } from './canvas.schema'
+import type {
+    PersistImageAsset,
+    PersistCanvasDocument,
+    HydrateCanvasDocument,
+} from './canvas.types'
 import { z } from 'zod'
 
 import {

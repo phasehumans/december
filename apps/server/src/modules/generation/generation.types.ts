@@ -7,7 +7,7 @@ import {
     projectPatchOperationSchema,
     projectIntentSchema,
     projectPlanSchema,
-} from '../schemas/generation.schema'
+} from '../../../../apps/server/src/modules/generation/generation.schema'
 
 import type { PreviewManifestRef } from './preview-manifest.types'
 
