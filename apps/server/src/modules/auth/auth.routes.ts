@@ -13,4 +13,6 @@ authRouter.post('/forgot-password/reset', authController.resetPassword)
 authRouter.post('/google', authController.google)
 authRouter.post('/refresh', authController.refreshSession)
 
+// add cli auth via code (ref devin authflow)
+
 export default authRouter

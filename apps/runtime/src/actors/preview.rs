@@ -51,6 +51,7 @@ pub struct PreviewActor {
     last_report_signature: Option<String>,
     command_rx: mpsc::Receiver<ActorCommand>,
     status_tx: watch::Sender<PreviewStatusSnapshot>,
+    is_new_project: bool,
 }
 
 impl PreviewActor {
@@ -60,6 +61,7 @@ impl PreviewActor {
         config: Arc<AppConfig>,
         storage: ObjectStorage,
         backend: BackendCallbackClient,
+        is_new_project: bool,
     ) -> Result<PreviewActorHandle, RuntimeServiceError> {
         let display_url = Some(format!(
             "{}/previews/{}/display",
@@ -88,6 +90,7 @@ impl PreviewActor {
             last_report_signature: None,
             command_rx,
             status_tx,
+            is_new_project,
         };
 
         tokio::spawn(actor.run());
@@ -297,6 +300,11 @@ impl PreviewActor {
             }
         };
 
+        if self.is_new_project {
+            write_scaffold_files(&workspace_path).await?;
+            self.is_new_project = false;
+        }
+
         self.sandbox.ensure_started(&workspace_path).await
     }
 
@@ -462,4 +470,148 @@ impl PreviewActorHandle {
             )
         })?
     }
+}
+
+async fn write_scaffold_files(workspace_path: &std::path::Path) -> Result<(), RuntimeServiceError> {
+    let index_html = r#"<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>December App</title>
+    </head>
+    <body class="bg-slate-950 text-slate-50">
+        <div id="root"></div>
+        <script type="module" src="/src/main.tsx"></script>
+    </body>
+</html>
+"#;
+
+    let package_json = r#"{
+    "name": "december-workspace",
+    "private": true,
+    "version": "0.1.0",
+    "type": "module",
+    "scripts": {
+        "dev": "vite --host 0.0.0.0 --port 5173",
+        "build": "tsc --noEmit && vite build",
+        "preview": "vite preview"
+    },
+    "dependencies": {
+        "react": "^19.0.0",
+        "react-dom": "^19.0.0",
+        "lucide-react": "^0.450.0"
+    },
+    "devDependencies": {
+        "@types/react": "^19.0.0",
+        "@types/react-dom": "^19.0.0",
+        "@vitejs/plugin-react": "^4.3.0",
+        "@tailwindcss/vite": "^4.0.0",
+        "typescript": "^5.6.0",
+        "vite": "^6.0.0"
+    }
+}
+"#;
+
+    let tsconfig_json = r#"{
+    "compilerOptions": {
+        "target": "ES2022",
+        "useDefineForClassFields": true,
+        "lib": ["DOM", "DOM.Iterable", "ES2022"],
+        "module": "ESNext",
+        "skipLibCheck": true,
+        "moduleResolution": "bundler",
+        "allowImportingTsExtensions": true,
+        "resolveJsonModule": true,
+        "isolatedModules": true,
+        "noEmit": true,
+        "jsx": "react-jsx",
+        "strict": true,
+        "noUnusedLocals": false,
+        "noUnusedParameters": false,
+        "noFallthroughCasesInSwitch": true
+    },
+    "include": ["src"]
+}
+"#;
+
+    let vite_config_ts = r#"import tailwindcss from '@tailwindcss/vite'
+import react from '@vitejs/plugin-react'
+import { defineConfig } from 'vite'
+
+export default defineConfig({
+    plugins: [react(), tailwindcss()],
+    server: {
+        host: '0.0.0.0',
+        port: 5173,
+        strictPort: true,
+    },
+})
+"#;
+
+    let main_tsx = r#"import React from 'react'
+import ReactDOM from 'react-dom/client'
+
+import App from './App.tsx'
+import './index.css'
+
+ReactDOM.createRoot(document.getElementById('root')!).render(
+    <React.StrictMode>
+        <App />
+    </React.StrictMode>
+)
+"#;
+
+    let app_tsx = r#"import React from 'react'
+
+export default function App() {
+    return (
+        <div style={{ padding: '20px', fontFamily: 'sans-serif' }}>
+            <h1>Initializing...</h1>
+            <p>Please wait while the AI builds your application.</p>
+        </div>
+    )
+}
+"#;
+
+    let index_css = r#"body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+"#;
+
+    // Create the directories and write the files
+    tokio::fs::create_dir_all(workspace_path.join("src"))
+        .await
+        .map_err(|e| RuntimeServiceError::infra_runtime("failed to create src dir for scaffold", Some(e.to_string())))?;
+
+    tokio::fs::write(workspace_path.join("index.html"), index_html)
+        .await
+        .map_err(|e| RuntimeServiceError::infra_runtime("failed to write scaffold index.html", Some(e.to_string())))?;
+
+    tokio::fs::write(workspace_path.join("package.json"), package_json)
+        .await
+        .map_err(|e| RuntimeServiceError::infra_runtime("failed to write scaffold package.json", Some(e.to_string())))?;
+
+    tokio::fs::write(workspace_path.join("tsconfig.json"), tsconfig_json)
+        .await
+        .map_err(|e| RuntimeServiceError::infra_runtime("failed to write scaffold tsconfig.json", Some(e.to_string())))?;
+
+    tokio::fs::write(workspace_path.join("vite.config.ts"), vite_config_ts)
+        .await
+        .map_err(|e| RuntimeServiceError::infra_runtime("failed to write scaffold vite.config.ts", Some(e.to_string())))?;
+
+    tokio::fs::write(workspace_path.join("src/main.tsx"), main_tsx)
+        .await
+        .map_err(|e| RuntimeServiceError::infra_runtime("failed to write scaffold main.tsx", Some(e.to_string())))?;
+
+    tokio::fs::write(workspace_path.join("src/App.tsx"), app_tsx)
+        .await
+        .map_err(|e| RuntimeServiceError::infra_runtime("failed to write scaffold App.tsx", Some(e.to_string())))?;
+
+    tokio::fs::write(workspace_path.join("src/index.css"), index_css)
+        .await
+        .map_err(|e| RuntimeServiceError::infra_runtime("failed to write scaffold index.css", Some(e.to_string())))?;
+
+    Ok(())
 }

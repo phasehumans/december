@@ -8,3 +8,9 @@
 - Name branches as `<username>/<type>-<short-description>` (e.g., `chaitanya/fix-tui-chat`).
 - Write commit messages in Conventional Commits format using lowercase: `<type>(<scope>): <description>` (e.g., `fix(db): env load err`).
 - Run `bun run format` to execute Prettier on modified files before wrapping up.
+- Enforce lowercase for all API response strings: ensure all API `message` and `errors` descriptions are strictly lowercase.
+- Use `asyncHandler` wrapper for Express controllers: avoid manual try-catch blocks in controller endpoints; let unhandled errors propagate to the global error middlewer.
+- Validate request payloads with Zod `.parse()` in controllers: let Zod validation errors bubble up naturally so the global error handler can format a 400 response with field-level errors.
+- Standardize success responses: use the `sendSuccess` helper to maintain the `{ success: true, message: string, data: any }` format. Always return a `data` field (defaulting to `null` if empty) to prevent frontend errors.
+- Encapsulate database access in a Repository layer: place direct ORM queries (Prisma) in a dedicated `*.repository.ts` file under each module.
+- Import Prisma type declarations from `@december/database` instead of directly from `@prisma/client`.

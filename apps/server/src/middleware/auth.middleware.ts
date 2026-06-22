@@ -1,6 +1,8 @@
 import { prisma } from '@december/database'
 import jwt from 'jsonwebtoken'
 
+import { env } from '../env'
+
 import type { TokenPayload } from '../modules/auth/auth.utils'
 import type { Request, Response, NextFunction } from 'express'
 
@@ -28,14 +30,7 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
             })
         }
 
-        const secret = process.env.ACCESS_TOKEN_SECRET
-
-        if (!secret) {
-            return res.status(500).json({
-                success: false,
-                message: 'ACCESS_TOKEN_SECRET is not configured',
-            })
-        }
+        const secret = env.ACCESS_TOKEN_SECRET
 
         const decoded = jwt.verify(token, secret) as TokenPayload | string
 

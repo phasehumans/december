@@ -1,9 +1,9 @@
-import './env'
 import app from './app'
 import { ensureStorageBucket } from './config/s3'
+import { env } from './env'
 
-const PORT = process.env.PORT
-const ENV = process.env.ENV
+const PORT = env.PORT
+const ENV = env.ENV
 
 await ensureStorageBucket()
 
