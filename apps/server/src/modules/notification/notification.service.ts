@@ -1,6 +1,5 @@
-import { prisma } from '@december/database'
-
 import { AppError } from '../../shared/appError'
+import { notificationRepository } from './notification.repository'
 
 export const notificationSelect = {
     id: true,
@@ -19,35 +18,30 @@ import type {
     DeleteNotification,
     SendNotificationToUser,
     DeleteAllReadNotification,
-} from '@december/shared'
+} from './notification.types'
 
 const getNotifications = async (data: GetNotifications) => {
     const { userId } = data
-    return prisma.notification.findMany({
-        where: { userId },
+    return notificationRepository.findManyNotifications({
+        userId,
         select: notificationSelect,
-        orderBy: { createdAt: 'desc' },
     })
 }
 
 const getNotificationById = async (data: GetNotificationById) => {
     const { userId, id } = data
-    return prisma.notification.findUnique({
-        where: {
-            id: id,
-            userId: userId,
-        },
+    return notificationRepository.findNotificationById({
+        userId,
+        id,
         select: notificationSelect,
     })
 }
 
 const markAsRead = async (data: MarkAsRead) => {
     const { userId, id } = data
-    const existing = await prisma.notification.findFirst({
-        where: {
-            id: id,
-            userId: userId,
-        },
+    const existing = await notificationRepository.findFirstNotification({
+        userId,
+        id,
         select: {
             id: true,
         },
@@ -57,25 +51,18 @@ const markAsRead = async (data: MarkAsRead) => {
         throw new AppError('notification not found', 404)
     }
 
-    return prisma.notification.update({
-        where: {
-            id: id,
-            userId: userId,
-        },
-        data: {
-            isRead: true,
-        },
+    return notificationRepository.updateNotificationRead({
+        userId,
+        id,
         select: notificationSelect,
     })
 }
 
 const deleteNotification = async (data: DeleteNotification) => {
     const { userId, id } = data
-    const existing = await prisma.notification.findFirst({
-        where: {
-            id: id,
-            userId: userId,
-        },
+    const existing = await notificationRepository.findFirstNotification({
+        userId,
+        id,
         select: {
             id: true,
         },
@@ -85,36 +72,27 @@ const deleteNotification = async (data: DeleteNotification) => {
         throw new AppError('notification not found', 404)
     }
 
-    return prisma.notification.delete({
-        where: {
-            id: id,
-            userId: userId,
-        },
+    return notificationRepository.deleteNotification({
+        userId,
+        id,
         select: notificationSelect,
     })
 }
 
 const sendNotificationToUser = async (data: SendNotificationToUser) => {
-    return prisma.notification.create({
-        data: {
-            userId: data.userId,
-            title: data.title,
-            message: data.message,
-            type: data.type || 'INFO',
-            link: data.link,
-        },
+    return notificationRepository.createNotification({
+        userId: data.userId,
+        title: data.title,
+        message: data.message,
+        type: data.type || 'INFO',
+        link: data.link,
         select: notificationSelect,
     })
 }
 
 const deleteAllReadNotification = async (data: DeleteAllReadNotification) => {
     const { userId } = data
-    return prisma.notification.deleteMany({
-        where: {
-            userId,
-            isRead: true,
-        },
-    })
+    return notificationRepository.deleteManyReadNotifications(userId)
 }
 
 export const notificationService = {

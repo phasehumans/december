@@ -1,4 +1,3 @@
-import { prisma } from '@december/database'
 import {
     getLatestPreviewManifestRef,
     publishStoredPreviewManifest,
@@ -6,7 +5,9 @@ import {
 } from '../../shared/preview-manifest'
 import { getBinaryFile, putBinaryFile } from '../../shared/project-storage'
 import { chromium } from 'playwright'
+import { runtimeRepository } from './runtime.repository'
 
+import type { StoredProjectFile } from '@december/shared'
 import type {
     RuntimePreviewError,
     RuntimePreviewStatus,
@@ -17,8 +18,7 @@ import type {
     CheckSandboxCompilation,
     EnsureManifestRef,
     ProjectVersionRecord,
-    StoredProjectFile,
-} from '@december/shared'
+} from './runtime.types'
 
 
 
@@ -98,12 +98,7 @@ async function takePreviewScreenshot(projectId: string, previewUrl: string) {
         console.log(`[Screenshot] Screenshot uploaded to object storage successfully.`)
         
         console.log(`[Screenshot] Updating database for project ${projectId} with previewImageKey...`)
-        await prisma.project.update({
-            where: { id: projectId },
-            data: {
-                previewImageKey: key
-            }
-        })
+        await runtimeRepository.updateProjectPreviewImage({ projectId, key })
         console.log(`[Screenshot] Database updated successfully.`)
         
         console.log(`[Screenshot] Screenshot capture workflow completed successfully for project ${projectId}.`)
@@ -184,32 +179,15 @@ const runtimeRequest = async <T>(path: string, init?: RequestInit) => {
 
 const loadProjectVersion = async (data: StartPreview) => {
     const { userId, projectId, versionId } = data
-    const project = await prisma.project.findFirst({
-        where: {
-            id: projectId,
-            userId,
-        },
-        select: {
-            id: true,
-            currentVersionId: true,
-            githubRepoUrl: true,
-        },
-    })
+    const project = await runtimeRepository.findProjectForPreview({ projectId, userId })
 
     if (!project) {
         throw new Error('project not found')
     }
 
-    const version = await prisma.projectVersion.findFirst({
-        where: {
-            projectId: project.id,
-            id: versionId ?? project.currentVersionId ?? undefined,
-        },
-        orderBy: versionId
-            ? undefined
-            : {
-                  versionNumber: 'desc',
-              },
+    const version = await runtimeRepository.findProjectVersion({
+        projectId: project.id,
+        versionId: versionId ?? project.currentVersionId ?? undefined,
     })
 
     if (!version) {
@@ -297,9 +275,7 @@ const startPreview = async (data: StartPreview) => {
         version,
     })
 
-    const isImported = await prisma.projectImport.findFirst({
-        where: { projectId: project.id },
-    })
+    const isImported = await runtimeRepository.findProjectImport({ projectId: project.id })
     const isGithub = !!project.githubRepoUrl
     
     // Check if it's a duplicate or remix by checking if the manifest has files other than the scaffold
@@ -336,30 +312,16 @@ const notifyManifestPublished = async (data: NotifyManifestPublished) => {
 
 const getPreviewStatus = async (data: PreviewIdentifier) => {
     const { userId, previewId } = data
-    const project = await prisma.project.findFirst({
-        where: {
-            id: previewId,
-            userId,
-        },
-        select: {
-            id: true,
-            currentVersionId: true,
-        },
-    })
+    const project = await runtimeRepository.findProjectForStatus({ previewId, userId })
 
     if (!project) {
         throw new Error('project not found')
     }
 
     // Check project version structure before getting status
-    const version = await prisma.projectVersion.findFirst({
-        where: {
-            projectId: project.id,
-            id: project.currentVersionId ?? undefined,
-        },
-        orderBy: {
-            versionNumber: 'desc',
-        },
+    const version = await runtimeRepository.findProjectVersion({
+        projectId: project.id,
+        versionId: project.currentVersionId ?? undefined,
     })
 
     if (version && version.status !== 'READY') {
@@ -396,15 +358,7 @@ const getPreviewStatus = async (data: PreviewIdentifier) => {
 
 const deletePreview = async (data: PreviewIdentifier) => {
     const { userId, previewId } = data
-    const project = await prisma.project.findFirst({
-        where: {
-            id: previewId,
-            userId,
-        },
-        select: {
-            id: true,
-        },
-    })
+    const project = await runtimeRepository.findProjectForDelete({ previewId, userId })
 
     if (!project) {
         throw new Error('project not found')

@@ -5,6 +5,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'bun:test'
 import express, { Router } from 'express'
 import request from 'supertest'
 
+import { errorHandler } from '../../../src/middleware/error.middleware'
 import { usageController } from '../../../src/modules/usage/usage.controller'
 
 const TEST_USER_ID = 'test-usage-user-id'
@@ -41,6 +42,7 @@ describe('usage.routes.integration', () => {
         testRouter.get('/check', usageController.checkEnoughCredits)
 
         app.use('/api/v1/usage', testRouter)
+        app.use(errorHandler)
     })
 
     beforeEach(async () => {

@@ -3,7 +3,7 @@ import '../../env'
 import path from 'path'
 
 import { prisma } from '@december/database'
-import { GenerationSound } from '@december/shared'
+import { GenerationSound } from '../../../src/modules/profile/profile.schema'
 import bcrypt from 'bcrypt'
 import { describe, it, expect, beforeAll, beforeEach, afterAll, mock } from 'bun:test'
 import express from 'express'
@@ -61,10 +61,12 @@ describe('profile.routes.integration', () => {
         }))
 
         const profileRouter = (await import('../../../src/modules/profile/profile.routes')).default
+        const errorHandler = (await import('../../../src/middleware/error.middleware')).errorHandler
 
         app = express()
         app.use(express.json())
         app.use('/api/v1/profile', profileRouter)
+        app.use(errorHandler)
     })
 
     beforeEach(async () => {
@@ -421,7 +423,7 @@ describe('profile.routes.integration', () => {
 
             expect(res.status).toBe(200)
             expect(res.body.success).toBe(true)
-            expect(res.body.message).toBe('Feedback submitted successfully')
+            expect(res.body.message).toBe('feedback submitted successfully')
 
             // Verify db has the feedback
             const dbFeedback = await prisma.feedback.findFirst({

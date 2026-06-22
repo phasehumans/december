@@ -451,3 +451,186 @@ export const markGenerationFailed = async (data: MarkGenerationFailed) => {
         })
     })
 }
+
+export const findUserSubscriptionInfo = async (data: { userId: string }) => {
+    const { userId } = data
+    return prisma.user.findUnique({
+        where: { id: userId },
+        select: { subscriptionPlan: true, subscriptionStatus: true },
+    })
+}
+
+export const updateProjectCurrentVersion = async (data: {
+    projectId: string
+    versionId: string
+}) => {
+    const { projectId, versionId } = data
+    return prisma.project.update({
+        where: { id: projectId },
+        data: { currentVersionId: versionId },
+    })
+}
+
+export const findAgentSessionMemory = async (data: {
+    projectId: string
+    versionId: string
+    errorSignature: string
+}) => {
+    const { projectId, versionId, errorSignature } = data
+    return prisma.agentSessionMemory.findFirst({
+        where: {
+            projectId,
+            versionId,
+            errorSignature,
+        },
+    })
+}
+
+export const createAgentSessionMemory = async (data: {
+    projectId: string
+    versionId: string
+    errorSignature: string
+}) => {
+    const { projectId, versionId, errorSignature } = data
+    return prisma.agentSessionMemory.create({
+        data: {
+            projectId,
+            versionId,
+            errorSignature,
+        },
+    })
+}
+
+export const updateProjectVersionCanvas = async (data: {
+    versionId: string
+    canvasStateJson: any
+    canvasAssetManifestJson: any
+}) => {
+    const { versionId, canvasStateJson, canvasAssetManifestJson } = data
+    return prisma.projectVersion.update({
+        where: {
+            id: versionId,
+        },
+        data: {
+            canvasStateJson,
+            canvasAssetManifestJson,
+        },
+    })
+}
+
+export const updateProjectDetails = async (data: {
+    projectId: string
+    name: string
+    description: string | null
+    prompt: string
+}) => {
+    const { projectId, name, description, prompt } = data
+    return prisma.project.update({
+        where: {
+            id: projectId,
+        },
+        data: {
+            name,
+            description,
+            prompt,
+        },
+    })
+}
+
+export const findProjectByIdAndUser = async (data: { id: string; userId: string }) => {
+    const { id, userId } = data
+    return prisma.project.findFirst({
+        where: {
+            id,
+            userId,
+        },
+    })
+}
+
+export const completeWebsiteGeneration = async (data: {
+    projectId: string
+    versionId: string
+    generatedSummary: string
+    savedFiles: any[]
+    canvasStateJson: any
+    canvasAssetManifestJson: any
+    intent: any
+    plan: any
+    prompt: string
+    assistantMessageContent: string
+    projectName: string
+    versionNumber: number
+}) => {
+    const {
+        projectId,
+        versionId,
+        generatedSummary,
+        savedFiles,
+        canvasStateJson,
+        canvasAssetManifestJson,
+        intent,
+        plan,
+        prompt,
+        assistantMessageContent,
+        projectName,
+        versionNumber,
+    } = data
+
+    return prisma.$transaction(async (tx) => {
+        const updatedVersion = await tx.projectVersion.update({
+            where: {
+                id: versionId,
+            },
+            data: {
+                summary: generatedSummary,
+                status: 'READY',
+                manifestJson: savedFiles.map((file) => ({
+                    path: file.path,
+                    key: file.key,
+                    contentType: file.contentType,
+                    size: file.size,
+                })),
+                canvasStateJson: canvasStateJson as any,
+                canvasAssetManifestJson: canvasAssetManifestJson as any,
+                intentJson: intent as any,
+                planJson: plan as any,
+                messages: {
+                    create: [
+                        {
+                            projectId,
+                            role: 'USER',
+                            content: prompt,
+                            sequence: 1,
+                        },
+                        {
+                            projectId,
+                            role: 'ASSISTANT',
+                            content: assistantMessageContent,
+                            status: 'done',
+                            sequence: 2,
+                        },
+                    ],
+                },
+            },
+        })
+
+        const updatedProject = await tx.project.update({
+            where: {
+                id: projectId,
+            },
+            data: {
+                name: projectName,
+                description: intent.summary,
+                prompt,
+                projectStatus: 'READY',
+                currentVersionId: updatedVersion.id,
+                versionCount: versionNumber,
+            },
+        })
+
+        return {
+            project: updatedProject,
+            version: updatedVersion,
+        }
+    })
+}

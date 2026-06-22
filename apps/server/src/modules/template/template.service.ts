@@ -1,9 +1,8 @@
-import { prisma } from '@december/database'
-
 import { AppError } from '../../shared/appError'
 import { getBinaryFile, deletePrefix, projectPrefix } from '../../shared/project-storage'
 import { sendNotificationToUser } from '../notification/notification.service'
 import { copyProjectVersionsAndMessages } from '../project/project.service'
+import { templateRepository } from './template.repository'
 
 import type {
     ToggleLike,
@@ -14,7 +13,7 @@ import type {
     GetFeaturedTemplates,
     GetTemplatePreviewImage,
     DbTemplateWithLikes,
-} from '@december/shared'
+} from './template.types'
 
 const mapTemplateWithLikeMeta = (
     template: DbTemplateWithLikes,
@@ -44,39 +43,7 @@ const mapTemplateWithLikeMeta = (
 
 const getAllTemplates = async (data: GetAllTemplates = {}) => {
     const { userId } = data
-    const templates = await prisma.project.findMany({
-        where: {
-            isSharedAsTemplate: true,
-        },
-        orderBy: {
-            updatedAt: 'desc',
-        },
-        select: {
-            id: true,
-            name: true,
-            description: true,
-            prompt: true,
-            isFeatured: true,
-            isSharedAsTemplate: true,
-            projectCategory: true,
-            createdAt: true,
-            updatedAt: true,
-            userId: true,
-            previewImageKey: true,
-            user: {
-                select: {
-                    name: true,
-                    username: true,
-                },
-            },
-            likes: {
-                select: {
-                    userId: true,
-                    isLiked: true,
-                },
-            },
-        },
-    })
+    const templates = await templateRepository.findManyTemplates()
 
     if (!userId) {
         return templates
@@ -87,37 +54,7 @@ const getAllTemplates = async (data: GetAllTemplates = {}) => {
 
 const getTemplateById = async (data: GetTemplateById) => {
     const { templateId, userId } = data
-    const template = await prisma.project.findFirst({
-        where: {
-            id: templateId,
-            isSharedAsTemplate: true,
-        },
-        select: {
-            id: true,
-            name: true,
-            description: true,
-            prompt: true,
-            isFeatured: true,
-            isSharedAsTemplate: true,
-            projectCategory: true,
-            createdAt: true,
-            updatedAt: true,
-            userId: true,
-            previewImageKey: true,
-            user: {
-                select: {
-                    name: true,
-                    username: true,
-                },
-            },
-            likes: {
-                select: {
-                    userId: true,
-                    isLiked: true,
-                },
-            },
-        },
-    })
+    const template = await templateRepository.findTemplateById({ templateId })
 
     if (!template) {
         throw new AppError('template not found', 404)
@@ -132,40 +69,7 @@ const getTemplateById = async (data: GetTemplateById) => {
 
 const getFeaturedTemplates = async (data: GetFeaturedTemplates = {}) => {
     const { userId } = data
-    const templates = await prisma.project.findMany({
-        where: {
-            isSharedAsTemplate: true,
-            isFeatured: true,
-        },
-        orderBy: {
-            updatedAt: 'desc',
-        },
-        select: {
-            id: true,
-            name: true,
-            description: true,
-            prompt: true,
-            isFeatured: true,
-            isSharedAsTemplate: true,
-            projectCategory: true,
-            createdAt: true,
-            updatedAt: true,
-            userId: true,
-            previewImageKey: true,
-            user: {
-                select: {
-                    name: true,
-                    username: true,
-                },
-            },
-            likes: {
-                select: {
-                    userId: true,
-                    isLiked: true,
-                },
-            },
-        },
-    })
+    const templates = await templateRepository.findFeaturedTemplates()
 
     if (!userId) {
         return templates
@@ -177,61 +81,23 @@ const getFeaturedTemplates = async (data: GetFeaturedTemplates = {}) => {
 const remixTemplate = async (data: RemixTemplate) => {
     const { userId, templateId, name } = data
 
-    const template = await prisma.project.findUnique({
-        where: {
-            id: templateId,
-        },
-        select: {
-            id: true,
-            name: true,
-            description: true,
-            prompt: true,
-            isSharedAsTemplate: true,
-            projectStatus: true,
-            currentVersionId: true,
-        },
-    })
+    const template = await templateRepository.findProjectForRemix({ templateId })
 
     if (!template || template.isSharedAsTemplate == false) {
         throw new AppError('template not found', 404)
     }
 
-    const latestVersion = await prisma.projectVersion.findFirst({
-        where: {
-            projectId: template.id,
-        },
-        orderBy: {
-            versionNumber: 'desc',
-        },
-        select: {
-            id: true,
-            sourcePrompt: true,
-        },
+    const latestVersion = await templateRepository.findLatestProjectVersion({
+        projectId: template.id,
     })
 
     try {
-        const newProject = await prisma.project.create({
-            data: {
-                name: name || `Remix of ${template.name}`,
-                description: template.description,
-                prompt: latestVersion?.sourcePrompt ?? template.prompt,
-                projectStatus: latestVersion ? 'READY' : template.projectStatus,
-                userId: userId,
-            },
-            select: {
-                id: true,
-                name: true,
-                description: true,
-                prompt: true,
-                isStarred: true,
-                isSharedAsTemplate: true,
-                projectStatus: true,
-                versionCount: true,
-                currentVersionId: true,
-                createdAt: true,
-                updatedAt: true,
-                userId: true,
-            },
+        const newProject = await templateRepository.createRemixedProject({
+            name: name || `Remix of ${template.name}`,
+            description: template.description,
+            prompt: latestVersion?.sourcePrompt ?? template.prompt,
+            projectStatus: latestVersion ? 'READY' : template.projectStatus,
+            userId,
         })
 
         if (!latestVersion) {
@@ -252,9 +118,7 @@ const remixTemplate = async (data: RemixTemplate) => {
             return newProject
         } catch (copyError) {
             try {
-                await prisma.project.delete({
-                    where: { id: newProject.id },
-                })
+                await templateRepository.deleteProject({ id: newProject.id })
             } catch (dbError) {
                 console.error('Failed to rollback project creation in database:', dbError)
             }
@@ -276,55 +140,26 @@ const remixTemplate = async (data: RemixTemplate) => {
 const toggleLike = async (data: ToggleLike) => {
     const { userId, templateId, isLiked } = data
 
-    const user = await prisma.user.findUnique({
-        where: {
-            id: userId,
-        },
-        select: {
-            name: true,
-        },
-    })
+    const user = await templateRepository.findUserForLike({ userId })
 
     if (!user) {
         throw new AppError('user not found', 404)
     }
 
-    const template = await prisma.project.findFirst({
-        where: {
-            id: templateId,
-            isSharedAsTemplate: true,
-        },
-    })
+    const template = await templateRepository.findProjectForLike({ templateId })
 
     if (!template) {
         throw new AppError('template not found', 404)
     }
 
-    const existing = await prisma.projectLike.findUnique({
-        where: {
-            userId_projectId: {
-                userId: userId,
-                projectId: templateId,
-            },
-        },
-    })
+    const existing = await templateRepository.findProjectLike({ userId, templateId })
 
     if (existing) {
         if (existing.isLiked == isLiked) {
             return existing
         }
 
-        const updated = await prisma.projectLike.update({
-            where: {
-                userId_projectId: {
-                    userId: userId,
-                    projectId: templateId,
-                },
-            },
-            data: {
-                isLiked: isLiked,
-            },
-        })
+        const updated = await templateRepository.updateProjectLike({ userId, templateId, isLiked })
 
         if (isLiked && template.userId !== userId) {
             try {
@@ -342,13 +177,7 @@ const toggleLike = async (data: ToggleLike) => {
         return updated
     }
 
-    const created = await prisma.projectLike.create({
-        data: {
-            projectId: templateId,
-            userId: userId,
-            isLiked: isLiked,
-        },
-    })
+    const created = await templateRepository.createProjectLike({ userId, templateId, isLiked })
 
     if (isLiked && template.userId !== userId) {
         try {
@@ -368,16 +197,7 @@ const toggleLike = async (data: ToggleLike) => {
 
 const getTemplatePreviewImage = async (data: GetTemplatePreviewImage) => {
     const { templateId } = data
-    const template = await prisma.project.findFirst({
-        where: {
-            id: templateId,
-            isSharedAsTemplate: true,
-        },
-        select: {
-            id: true,
-            previewImageKey: true,
-        },
-    })
+    const template = await templateRepository.findTemplatePreviewImage({ templateId })
 
     if (!template) {
         throw new AppError('template not found', 404)

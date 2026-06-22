@@ -6,6 +6,7 @@ import express, { Router } from 'express'
 import request from 'supertest'
 
 import { razorpay } from '../../../src/config/razorpay'
+import { errorHandler } from '../../../src/middleware/error.middleware'
 import { billingController } from '../../../src/modules/billing/billing.controller'
 import { createHmacSignature } from '../../../src/modules/billing/billing.utils'
 
@@ -73,6 +74,8 @@ describe('billing.routes.integration', () => {
         billingRouter.post('/portal', billingController.createPortalSession)
 
         app.use('/api/v1/billing', billingRouter)
+
+        app.use(errorHandler)
     })
 
     beforeEach(async () => {

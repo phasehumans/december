@@ -1,6 +1,5 @@
-import { prisma } from '@december/database'
-
 import { AppError } from '../../shared/appError'
+import { usageRepository } from './usage.repository'
 
 import type {
     GetCurrentUsage,
@@ -10,8 +9,7 @@ import type {
     CalculateGenerationCost,
     CanRunSelfCorrection,
     UsageUser,
-    ModelRate,
-} from '@december/shared'
+} from './usage.types'
 
 const getModelRatesFromEnv = (): ModelRate[] => {
     const rates: ModelRate[] = []
@@ -98,25 +96,7 @@ const resolveCurrentPeriod = (user: UsageUser, now = new Date()) => {
 }
 
 const getUsageUser = async (userId: string): Promise<UsageUser> => {
-    const user = await prisma.user.findUnique({
-        where: {
-            id: userId,
-        },
-        select: {
-            id: true,
-            subscriptionPlan: true,
-            subscriptionStatus: true,
-            createdAt: true,
-            creditBalance: true,
-            giftedCredits: true,
-            subscription: {
-                select: {
-                    currentPeriodStart: true,
-                    currentPeriodEnd: true,
-                },
-            },
-        },
-    })
+    const user = await usageRepository.getUsageUser({ userId })
 
     if (!user) {
         throw new AppError('user not found', 404)
@@ -131,39 +111,7 @@ const getPeriodAggregate = async (
     periodEnd: Date,
     isPro: boolean
 ) => {
-    const where: any = {
-        userId,
-        createdAt: {
-            gte: periodStart,
-            lt: periodEnd,
-        },
-    }
-    if (isPro) {
-        where.periodStart = periodStart
-    }
-
-    const [aggregate, eventCount] = await Promise.all([
-        prisma.usageEvent.aggregate({
-            where,
-            _sum: {
-                inputTokens: true,
-                outputTokens: true,
-                totalTokens: true,
-                costInCents: true,
-            },
-        }),
-        prisma.usageEvent.count({
-            where,
-        }),
-    ])
-
-    return {
-        eventCount,
-        inputTokens: aggregate._sum.inputTokens ?? 0,
-        outputTokens: aggregate._sum.outputTokens ?? 0,
-        totalTokens: aggregate._sum.totalTokens ?? 0,
-        costInCents: aggregate._sum.costInCents ?? 0,
-    }
+    return usageRepository.getPeriodAggregate({ userId, periodStart, periodEnd, isPro })
 }
 
 const getCurrentUsage = async (data: GetCurrentUsage) => {
@@ -217,15 +165,7 @@ const assertProjectOwnership = async (userId: string, projectId?: string) => {
         return
     }
 
-    const project = await prisma.project.findFirst({
-        where: {
-            id: projectId,
-            userId,
-        },
-        select: {
-            id: true,
-        },
-    })
+    const project = await usageRepository.findProject({ projectId, userId })
 
     if (!project) {
         throw new AppError('project not found', 404)
@@ -233,11 +173,7 @@ const assertProjectOwnership = async (userId: string, projectId?: string) => {
 }
 
 const findExternalUsageEvent = (externalRequestId: string) => {
-    return prisma.usageEvent.findFirst({
-        where: {
-            externalRequestId,
-        },
-    })
+    return usageRepository.findExternalUsageEvent({ externalRequestId })
 }
 
 const recordUsageEvent = async (data: RecordUsageEvent) => {
@@ -267,14 +203,11 @@ const recordUsageEvent = async (data: RecordUsageEvent) => {
     })
 
     try {
-        const result = await prisma.$transaction(async (tx) => {
+        const result = await usageRepository.runTransaction(async (tx) => {
             const costLogged = calculatedCost
 
             // Re-fetch user inside transaction to avoid race conditions
-            const dbUser = await tx.user.findUnique({
-                where: { id: user.id },
-                select: { creditBalance: true, giftedCredits: true },
-            })
+            const dbUser = await usageRepository.findUserCredits({ userId: user.id }, tx)
             if (!dbUser) {
                 throw new AppError('user not found', 404)
             }
@@ -292,17 +225,18 @@ const recordUsageEvent = async (data: RecordUsageEvent) => {
             }
 
             // Update user balance
-            await tx.user.update({
-                where: { id: user.id },
-                data: {
+            await usageRepository.updateUserCredits(
+                {
+                    userId: user.id,
                     creditBalance: newCreditBalance,
                     giftedCredits: newGiftedCredits,
                 },
-            })
+                tx
+            )
 
             // Create usage event
-            const event = await tx.usageEvent.create({
-                data: {
+            const event = await usageRepository.createUsageEvent(
+                {
                     userId: user.id,
                     model: data.model,
                     inputTokens: data.inputTokens,
@@ -314,9 +248,10 @@ const recordUsageEvent = async (data: RecordUsageEvent) => {
                     externalRequestId: data.externalRequestId,
                     periodStart,
                     periodEnd,
-                    metadata: data.metadata as any,
+                    metadata: data.metadata,
                 },
-            })
+                tx
+            )
 
             return event
         })
@@ -344,10 +279,7 @@ const recordUsageEvent = async (data: RecordUsageEvent) => {
 const canRunSelfCorrection = async (data: CanRunSelfCorrection): Promise<boolean> => {
     try {
         const { userId } = data
-        const user = await prisma.user.findUnique({
-            where: { id: userId },
-            select: { creditBalance: true, giftedCredits: true },
-        })
+        const user = await usageRepository.findUserCredits({ userId })
         if (!user) return false
 
         const threshold = parseInt(process.env.SELF_CORRECTION_CREDIT_THRESHOLD || '5', 10) // default 5 cents

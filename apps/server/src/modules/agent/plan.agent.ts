@@ -1,4 +1,7 @@
-import { projectChangePlanResponseSchema, planAgentResponseSchema } from '@december/shared'
+import {
+    projectChangePlanResponseSchema,
+    planAgentResponseSchema,
+} from '../generation/generation.schema'
 import { z } from 'zod'
 
 import { openai } from '../../config/oai'

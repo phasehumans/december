@@ -1,5 +1,5 @@
 import { prisma } from '@december/database'
-import { GenerationSound } from '@december/shared'
+import { GenerationSound } from '../../../src/modules/profile/profile.schema'
 import bcrypt from 'bcrypt'
 import { describe, it, expect, beforeEach, afterAll } from 'bun:test'
 

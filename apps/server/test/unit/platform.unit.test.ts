@@ -115,3 +115,49 @@ describe('December Local Deployment Service', () => {
         ).rejects.toThrow('Built production assets not found')
     })
 })
+
+import { downloadProjectVersionSchema } from '../../src/modules/platform/platform.schema'
+import { buildProjectZip } from '../../src/modules/platform/platform.utils'
+
+describe('platform schemas', () => {
+    describe('downloadProjectVersionSchema', () => {
+        test('should validate a valid versionId UUID', () => {
+            const res = downloadProjectVersionSchema.safeParse({
+                versionId: '11111111-2222-4333-8444-555555555555',
+            })
+            expect(res.success).toBe(true)
+        })
+
+        test('should validate undefined/missing versionId since it is optional', () => {
+            const res = downloadProjectVersionSchema.safeParse({})
+            expect(res.success).toBe(true)
+        })
+
+        test('should reject invalid versionId UUID', () => {
+            const res = downloadProjectVersionSchema.safeParse({
+                versionId: 'not-a-uuid',
+            })
+            expect(res.success).toBe(false)
+        })
+    })
+})
+
+describe('platform utils', () => {
+    describe('buildProjectZip', () => {
+        test('should successfully compile file entries into a ZIP buffer structure', () => {
+            const entries = [
+                { path: 'index.html', content: '<html></html>' },
+                { path: 'src/App.tsx', content: 'export const App = () => null' },
+            ]
+            const buffer = buildProjectZip(entries)
+            expect(buffer).toBeInstanceOf(Uint8Array)
+            expect(buffer.length).toBeGreaterThan(0)
+
+            // A ZIP file starts with the local file header signature: PK\x03\x04
+            expect(buffer[0]).toBe(0x50) // P
+            expect(buffer[1]).toBe(0x4b) // K
+            expect(buffer[2]).toBe(0x03) // \x03
+            expect(buffer[3]).toBe(0x04) // \x04
+        })
+    })
+})

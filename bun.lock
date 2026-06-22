@@ -160,15 +160,6 @@
         "typescript": "^5",
       },
     },
-    "packages/core": {
-      "name": "@december/core",
-      "devDependencies": {
-        "@types/bun": "latest",
-      },
-      "peerDependencies": {
-        "typescript": "^5",
-      },
-    },
     "packages/database": {
       "name": "@december/database",
       "dependencies": {
@@ -373,8 +364,6 @@
     "@december/agent": ["@december/agent@workspace:packages/agent"],
 
     "@december/cli": ["@december/cli@workspace:apps/cli"],
-
-    "@december/core": ["@december/core@workspace:packages/core"],
 
     "@december/database": ["@december/database@workspace:packages/database"],
 

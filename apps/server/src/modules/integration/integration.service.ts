@@ -1,4 +1,3 @@
-import { prisma } from '@december/database'
 import axios from 'axios'
 
 import { AppError } from '../../shared/appError'
@@ -6,6 +5,7 @@ import { getBinaryFile, getTextFile } from '../../shared/project-storage'
 import { sendNotificationToUser } from '../notification/notification.service'
 import { parseStoredProjectFiles } from '../project/project.utils'
 
+import { integrationRepository } from './integration.repository'
 import type {
     ListGithubRepos,
     ConnectVercel,
@@ -15,16 +15,12 @@ import type {
     CreateRepo,
     UpdateRepo,
     GithubRepo,
-} from '@december/shared'
+} from './integration.types'
 
 const connectVercel = async (data: ConnectVercel) => {
     const { code, userId, teamId, configurationId } = data
 
-    const existingUser = await prisma.user.findFirst({
-        where: {
-            id: userId,
-        },
-    })
+    const existingUser = await integrationRepository.findUserFirst(userId)
 
     if (!existingUser || existingUser.isDeleted == true) {
         throw new AppError('user not found', 404)
@@ -58,16 +54,11 @@ const connectVercel = async (data: ConnectVercel) => {
         throw new AppError('vercel access token missing', 400)
     }
 
-    const updatedUser = await prisma.user.update({
-        where: {
-            id: userId,
-        },
-        data: {
-            vercelConnected: true,
-            vercelAccessToken: accessToken,
-            vercelTeamId: teamId,
-            vercelConfigurationId: configurationId,
-        },
+    const updatedUser = await integrationRepository.updateUserVercel({
+        id: userId,
+        vercelAccessToken: accessToken,
+        vercelTeamId: teamId ?? null,
+        vercelConfigurationId: configurationId ?? null,
     })
 
     try {
@@ -87,11 +78,7 @@ const connectVercel = async (data: ConnectVercel) => {
 const connectSupabase = async (data: ConnectSupabase) => {
     const { userId, code } = data
 
-    const existingUser = await prisma.user.findFirst({
-        where: {
-            id: userId,
-        },
-    })
+    const existingUser = await integrationRepository.findUserFirst(userId)
 
     if (!existingUser || existingUser.isDeleted == true) {
         throw new AppError('user not found', 404)
@@ -115,19 +102,12 @@ const connectSupabase = async (data: ConnectSupabase) => {
 
     const expiresAt = new Date(Date.now() + tokenData.expires_in * 1000)
 
-    const updatedUser = await prisma.user.update({
-        where: {
-            id: userId,
-        },
-
-        data: {
-            supabaseConnected: true,
-            supabaseAccessToken: tokenData.access_token,
-            supabaseRefreshToken: tokenData.refresh_token,
-            supabaseTokenExpiresAt: expiresAt,
-            supabaseTokenScope: tokenData.scope ?? null,
-            supabaseConnectedAt: new Date(),
-        },
+    const updatedUser = await integrationRepository.updateUserSupabase({
+        id: userId,
+        supabaseAccessToken: tokenData.access_token,
+        supabaseRefreshToken: tokenData.refresh_token,
+        supabaseTokenExpiresAt: expiresAt,
+        supabaseTokenScope: tokenData.scope ?? null,
     })
 
     try {
@@ -147,11 +127,7 @@ const connectSupabase = async (data: ConnectSupabase) => {
 const connectNotion = async (data: ConnectNotion) => {
     const { userId, code } = data
 
-    const existingUser = await prisma.user.findFirst({
-        where: {
-            id: userId,
-        },
-    })
+    const existingUser = await integrationRepository.findUserFirst(userId)
 
     if (!existingUser || existingUser.isDeleted == true) {
         throw new AppError('user not found', 404)
@@ -178,16 +154,11 @@ const connectNotion = async (data: ConnectNotion) => {
 
     const notionData = response.data
 
-    const updatedUser = await prisma.user.update({
-        where: {
-            id: userId,
-        },
-
-        data: {
-            notionAccessToken: notionData.access_token,
-            notionWorkspaceId: notionData.workspace_id,
-            notionWorkspaceName: notionData.workspace_name,
-        },
+    const updatedUser = await integrationRepository.updateUserNotion({
+        id: userId,
+        notionAccessToken: notionData.access_token,
+        notionWorkspaceId: notionData.workspace_id,
+        notionWorkspaceName: notionData.workspace_name,
     })
 
     try {
@@ -207,31 +178,17 @@ const connectNotion = async (data: ConnectNotion) => {
 const connectGithub = async (data: ConnectGithub) => {
     const { username, accessToken, userId } = data
 
-    const existingUser = await prisma.user.findFirst({
-        where: {
-            id: userId,
-        },
-    })
+    const existingUser = await integrationRepository.findUserFirst(userId)
 
     if (!existingUser || existingUser.isDeleted == true) {
         throw new AppError('user not found', 404)
     }
 
     try {
-        const updatedUser = await prisma.user.update({
-            where: {
-                id: userId,
-            },
-            data: {
-                githubUsername: username,
-                githubToken: accessToken,
-                githubConnected: true,
-            },
-            select: {
-                id: true,
-                githubConnected: true,
-                githubUsername: true,
-            },
+        const updatedUser = await integrationRepository.updateUserGithub({
+            id: userId,
+            username,
+            accessToken,
         })
 
         try {
@@ -256,16 +213,7 @@ const connectGithub = async (data: ConnectGithub) => {
 
 const getUserGithubRepos = async (data: ListGithubRepos): Promise<GithubRepo[]> => {
     const { userId } = data
-    const user = await prisma.user.findUnique({
-        where: {
-            id: userId,
-        },
-        select: {
-            githubToken: true,
-            githubUsername: true,
-            githubConnected: true,
-        },
-    })
+    const user = await integrationRepository.findUserGithubConnection(userId)
 
     if (!user) {
         throw new AppError('user not found', 404)
@@ -275,7 +223,7 @@ const getUserGithubRepos = async (data: ListGithubRepos): Promise<GithubRepo[]> 
         throw new AppError('github is not connected', 401)
     }
 
-    if (user.githubToken === undefined) {
+    if (!user.githubToken) {
         throw new AppError('github access token not found', 401)
     }
 
@@ -315,23 +263,13 @@ const getUserGithubRepos = async (data: ListGithubRepos): Promise<GithubRepo[]> 
 
 const createRepo = async (data: CreateRepo) => {
     const { userId, projectId } = data
-    const user = await prisma.user.findUnique({
-        where: {
-            id: userId,
-        },
-        select: {
-            githubToken: true,
-            githubConnected: true,
-        },
-    })
+    const user = await integrationRepository.findUserGithubConnection(userId)
 
     if (!user || !user.githubConnected || !user.githubToken) {
         throw new AppError('GitHub account not connected', 400)
     }
 
-    const project = await prisma.project.findFirst({
-        where: { id: projectId, userId },
-    })
+    const project = await integrationRepository.findProjectByIdAndUser({ projectId, userId })
 
     if (!project) {
         throw new AppError('Project not found', 404)
@@ -363,13 +301,11 @@ const createRepo = async (data: CreateRepo) => {
     const repoOwner = repoData.owner.login
     const repoUrl = repoData.html_url
 
-    const updatedProject = await prisma.project.update({
-        where: { id: projectId },
-        data: {
-            githubRepoName: repoName,
-            githubRepoOwner: repoOwner,
-            githubRepoUrl: repoUrl,
-        },
+    const updatedProject = await integrationRepository.updateProjectGithub({
+        projectId,
+        githubRepoName: repoName,
+        githubRepoOwner: repoOwner,
+        githubRepoUrl: repoUrl,
     })
 
     try {
@@ -383,21 +319,13 @@ const createRepo = async (data: CreateRepo) => {
 
 const updateRepo = async (data: UpdateRepo) => {
     const { userId, projectId } = data
-    const user = await prisma.user.findUnique({
-        where: { id: userId },
-        select: {
-            githubToken: true,
-            githubConnected: true,
-        },
-    })
+    const user = await integrationRepository.findUserGithubConnection(userId)
 
     if (!user || !user.githubConnected || !user.githubToken) {
         throw new AppError('GitHub account not connected', 400)
     }
 
-    const project = await prisma.project.findFirst({
-        where: { id: projectId, userId },
-    })
+    const project = await integrationRepository.findProjectByIdAndUser({ projectId, userId })
 
     if (!project) {
         throw new AppError('Project not found', 404)
@@ -417,8 +345,9 @@ const updateRepo = async (data: UpdateRepo) => {
         throw new AppError('No active version found for this project', 400)
     }
 
-    const activeVersion = await prisma.projectVersion.findFirst({
-        where: { id: activeVersionId, projectId },
+    const activeVersion = await integrationRepository.findProjectVersionByIdAndProject({
+        versionId: activeVersionId,
+        projectId,
     })
 
     if (!activeVersion) {
@@ -606,12 +535,7 @@ const updateRepo = async (data: UpdateRepo) => {
         )
     }
 
-    const updatedProject = await prisma.project.update({
-        where: { id: projectId },
-        data: {
-            githubLastSyncedAt: new Date(),
-        },
-    })
+    const updatedProject = await integrationRepository.updateProjectSynced(projectId)
 
     return {
         project: updatedProject,
