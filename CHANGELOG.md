@@ -1,5 +1,12 @@
 ## [unreleased]
 
+### Testing
+
+- _(auth)_ Add auth tests #103
+- _(canvas)_ Added tests #105
+
+## [0.1.4] - 2026-06-17
+
 ### Features
 
 - _(tui)_ Add dropdwon and prompt box in tui
@@ -9,6 +16,10 @@
 ### Bug Fixes
 
 - _(db)_ Env load err
+
+### Miscellaneous Tasks
+
+- _(release)_ V0.1.4
 
 ## [0.1.3] - 2026-06-16
 
