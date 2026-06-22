@@ -192,6 +192,7 @@ const loadProjectVersion = async (data: StartPreview) => {
         select: {
             id: true,
             currentVersionId: true,
+            githubRepoUrl: true,
         },
     })
 
@@ -296,11 +297,24 @@ const startPreview = async (data: StartPreview) => {
         version,
     })
 
+    const isImported = await prisma.projectImport.findFirst({
+        where: { projectId: project.id },
+    })
+    const isGithub = !!project.githubRepoUrl
+    
+    // Check if it's a duplicate or remix by checking if the manifest has files other than the scaffold
+    const manifestFiles = parseStoredProjectFiles(version.manifestJson)
+    const scaffoldPaths = ['package.json', 'vite.config.ts', 'tsconfig.json', 'index.html', 'src/main.tsx']
+    const hasOtherFiles = manifestFiles.some((f) => !scaffoldPaths.includes(f.path))
+
+    const isNewProject = version.versionNumber === 1 && !isImported && !isGithub && !hasOtherFiles
+
     return runtimeRequest<RuntimePreviewStatus>('/previews/start', {
         method: 'POST',
         body: JSON.stringify({
             previewId: previewIdForProject(project.id),
             projectId: project.id,
+            isNewProject,
             ...(initialManifest ? { initialManifest } : {}),
         }),
     })
