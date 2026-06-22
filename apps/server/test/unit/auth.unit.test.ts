@@ -1,5 +1,15 @@
 import { describe, expect, test, mock, beforeEach, beforeAll } from 'bun:test'
 
+import {
+    signupSchema,
+    loginSchema,
+    forgotPasswordRequestSchema,
+    forgotPasswordVerifySchema,
+    forgotPasswordResetSchema,
+    verifyOtpSchema,
+    googleAuthSchema,
+} from '../../src/modules/auth/auth.schema'
+
 const sendMock = mock(async (payload: any) => {
     return { data: { id: 'test-email-id' } }
 })
@@ -24,6 +34,9 @@ let generateAccessToken: any
 let generateRefreshToken: any
 
 beforeAll(async () => {
+    const { env } = await import('../../src/env')
+    env.SENDER_EMAIL = 'test-sender@example.com'
+
     const utils = await import('../../src/modules/auth/auth.utils')
     getNameFromEmail = utils.getNameFromEmail
     getUsername = utils.getUsername
@@ -190,6 +203,104 @@ describe('auth.utils', () => {
 
         test('should throw error on invalid refresh tokens', () => {
             expect(() => verifyRefreshToken('invalid-token')).toThrow()
+        })
+    })
+})
+
+describe('auth schemas', () => {
+    describe('signupSchema', () => {
+        test('should validate correct payload', () => {
+            const data = { email: 'test@example.com', password: 'password123' }
+            const parsed = signupSchema.parse(data)
+            expect(parsed).toEqual(data)
+        })
+
+        test('should fail if email is invalid', () => {
+            const data = { email: 'invalidemail', password: 'password123' }
+            expect(() => signupSchema.parse(data)).toThrow()
+        })
+
+        test('should fail if password is too short', () => {
+            const data = { email: 'test@example.com', password: '123' }
+            expect(() => signupSchema.parse(data)).toThrow()
+        })
+
+        test('should fail if password is too long', () => {
+            const data = { email: 'test@example.com', password: 'a'.repeat(21) }
+            expect(() => signupSchema.parse(data)).toThrow()
+        })
+    })
+
+    describe('loginSchema', () => {
+        test('should validate correct payload', () => {
+            const data = { email: 'test@example.com', password: 'password123' }
+            const parsed = loginSchema.parse(data)
+            expect(parsed).toEqual(data)
+        })
+
+        test('should fail if email is invalid', () => {
+            const data = { email: 'invalidemail', password: 'password123' }
+            expect(() => loginSchema.parse(data)).toThrow()
+        })
+    })
+
+    describe('forgotPasswordRequestSchema', () => {
+        test('should validate correct payload', () => {
+            const data = { email: 'test@example.com' }
+            const parsed = forgotPasswordRequestSchema.parse(data)
+            expect(parsed).toEqual(data)
+        })
+
+        test('should fail if email is invalid', () => {
+            const data = { email: 'invalidemail' }
+            expect(() => forgotPasswordRequestSchema.parse(data)).toThrow()
+        })
+    })
+
+    describe('forgotPasswordVerifySchema', () => {
+        test('should validate correct payload', () => {
+            const data = { email: 'test@example.com', otp: '123456' }
+            const parsed = forgotPasswordVerifySchema.parse(data)
+            expect(parsed).toEqual(data)
+        })
+
+        test('should fail if otp format is invalid', () => {
+            const data = { email: 'test@example.com', otp: '12345' }
+            expect(() => forgotPasswordVerifySchema.parse(data)).toThrow()
+        })
+    })
+
+    describe('forgotPasswordResetSchema', () => {
+        test('should validate correct payload', () => {
+            const data = { email: 'test@example.com', otp: '123456', newPassword: 'password123' }
+            const parsed = forgotPasswordResetSchema.parse(data)
+            expect(parsed).toEqual(data)
+        })
+
+        test('should fail if new password is too short', () => {
+            const data = { email: 'test@example.com', otp: '123456', newPassword: '123' }
+            expect(() => forgotPasswordResetSchema.parse(data)).toThrow()
+        })
+    })
+
+    describe('verifyOtpSchema', () => {
+        test('should validate correct payload', () => {
+            const data = { email: 'test@example.com', otp: '123456' }
+            const parsed = verifyOtpSchema.parse(data)
+            expect(parsed).toEqual(data)
+        })
+    })
+
+    describe('googleAuthSchema', () => {
+        test('should validate correct payload', () => {
+            const data = { code: 'auth-code' }
+            const parsed = googleAuthSchema.parse(data)
+            expect(parsed).toEqual(data)
+        })
+
+        test('should fail if code is empty', () => {
+            const data = { code: '' }
+            expect(() => googleAuthSchema.parse(data)).toThrow()
         })
     })
 })

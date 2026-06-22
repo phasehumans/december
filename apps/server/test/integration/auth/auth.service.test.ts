@@ -2,14 +2,15 @@ import { prisma } from '@december/database'
 import bcrypt from 'bcrypt'
 import { describe, it, expect, beforeEach, afterAll, mock } from 'bun:test'
 
+import * as actualUtils from '../../../src/modules/auth/auth.utils'
+
 const sendOTPMock = mock(async () => {})
 const sendWelcomeEmailMock = mock(async () => {})
 const sendNotificationMock = mock(async () => ({}))
 
 mock.module('../../../src/modules/auth/auth.utils', () => {
-    const actual = require('../../../src/modules/auth/auth.utils')
     return {
-        ...actual,
+        ...actualUtils,
         sendOTP: sendOTPMock,
         sendWelcomeEmail: sendWelcomeEmailMock,
     }

@@ -7,12 +7,20 @@ import { env } from '../../env'
 
 import type { TokenPayload } from './auth.types'
 
+export const getNameFromEmail = (email: string): string => {
+    if (!email) return ''
+    const parts = email.split('@')
+    if (parts.length < 2 || !parts[0]) return ''
+    const localPart = parts[0]
+    return localPart.replace(/\d/g, '')
+}
+
 export const sendOTP = async (email: string, otp: string) => {
     const attachments: any[] = []
     const fromEmail = env.SENDER_EMAIL || 'onboarding@resend.dev'
 
     await resend.emails.send({
-        from: `Chaitanya <${fromEmail}>`,
+        from: `December <${fromEmail}>`,
         to: email,
         subject: 'Your Verification Code',
         html: `
@@ -132,7 +140,7 @@ export const sendWelcomeEmail = async (email: string, name: string) => {
     const fromEmail = env.SENDER_EMAIL || 'onboarding@resend.dev'
 
     await resend.emails.send({
-        from: `Chaitanya <${fromEmail}>`,
+        from: `December <${fromEmail}>`,
         to: email,
         subject: 'Welcome to December',
         html: `
@@ -2668,7 +2676,9 @@ export const getUsername = (): string => {
         'cripps',
     ]
 
-    return `${firstWords}_${secondWords}`
+    const firstWord = firstWords[Math.floor(Math.random() * firstWords.length)]
+    const secondWord = secondWords[Math.floor(Math.random() * secondWords.length)]
+    return `${firstWord}_${secondWord}`
 }
 
 export const generateAccessToken = (payload: TokenPayload) => {
