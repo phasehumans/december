@@ -1,16 +1,16 @@
 import { CreateBucketCommand, HeadBucketCommand, S3Client } from '@aws-sdk/client-s3'
 
-const S3_BUCKET = process.env.S3_BUCKET || 'december-storage'
+import { env } from '../env'
+
+const S3_BUCKET = env.S3_BUCKET
 
 export const s3 = new S3Client({
-    region: process.env.S3_REGION || 'us-east-1',
-    endpoint: process.env.S3_ENDPOINT || 'http://127.0.0.1:9000',
-    forcePathStyle: process.env.S3_FORCE_PATH_STYLE
-        ? process.env.S3_FORCE_PATH_STYLE === 'true'
-        : true,
+    region: env.S3_REGION,
+    endpoint: env.S3_ENDPOINT,
+    forcePathStyle: env.S3_FORCE_PATH_STYLE,
     credentials: {
-        accessKeyId: process.env.S3_ACCESS_KEY || 'decemberadmin',
-        secretAccessKey: process.env.S3_SECRET_KEY || 'minio@2004',
+        accessKeyId: env.S3_ACCESS_KEY,
+        secretAccessKey: env.S3_SECRET_KEY,
     },
 })
 

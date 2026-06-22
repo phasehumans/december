@@ -36,8 +36,9 @@ impl ActorRegistry {
         preview_id: String,
         project_id: String,
         initial_manifest: Option<ManifestRef>,
+        is_new_project: bool,
     ) -> Result<PreviewStatusSnapshot, RuntimeServiceError> {
-        let handle = self.ensure_actor(preview_id, project_id).await?;
+        let handle = self.ensure_actor(preview_id, project_id, is_new_project).await?;
 
         if let Some(manifest) = initial_manifest {
             handle.apply_manifest(manifest).await?;
@@ -52,7 +53,7 @@ impl ActorRegistry {
         project_id: String,
         manifest: ManifestRef,
     ) -> Result<PreviewStatusSnapshot, RuntimeServiceError> {
-        let handle = self.ensure_actor(preview_id, project_id).await?;
+        let handle = self.ensure_actor(preview_id, project_id, false).await?;
         handle.apply_manifest(manifest).await?;
         Ok(handle.snapshot())
     }
@@ -95,6 +96,7 @@ impl ActorRegistry {
         &self,
         preview_id: String,
         project_id: String,
+        is_new_project: bool,
     ) -> Result<PreviewActorHandle, RuntimeServiceError> {
         {
             let guard = self.inner.read().await;
@@ -114,6 +116,7 @@ impl ActorRegistry {
             self.config.clone(),
             self.storage.clone(),
             self.backend.clone(),
+            is_new_project,
         )?;
         guard.insert(preview_id, handle.clone());
         Ok(handle)

@@ -1,10 +1,12 @@
 import OpenAI from 'openai'
 
+import { env } from '../env'
+
 export const openai = new OpenAI({
     baseURL: 'https://openrouter.ai/api/v1',
-    apiKey: process.env.OPENROUTER_API_KEY,
+    apiKey: env.OPENROUTER_API_KEY,
     defaultHeaders: {
-        'HTTP-Referer': process.env.SERVER_URL,
+        'HTTP-Referer': env.SERVER_URL,
         'X-OpenRouter-Title': 'december',
         // 'X-Title': 'december',
     },

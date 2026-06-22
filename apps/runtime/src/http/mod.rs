@@ -29,6 +29,7 @@ struct StartPreviewRequest {
     preview_id: String,
     project_id: String,
     initial_manifest: Option<ManifestRef>,
+    is_new_project: Option<bool>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -76,7 +77,12 @@ async fn start_preview(
 
     let snapshot = state
         .registry
-        .start_or_update(body.preview_id, body.project_id, body.initial_manifest)
+        .start_or_update(
+            body.preview_id,
+            body.project_id,
+            body.initial_manifest,
+            body.is_new_project.unwrap_or(false),
+        )
         .await?;
 
     Ok(Json(ApiEnvelope {

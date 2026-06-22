@@ -2,57 +2,26 @@
 
 set -e
 
+# Resolve project root from script location
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
 # Ensure bun is in PATH
 export PATH="$PATH:/home/chaitanya/.bun/bin"
 
-cd apps/server
+# 1. Start all Docker containers
+echo "[test] Starting all Docker containers..."
+cd "$PROJECT_ROOT"
+bun run docker:start
 
-# write updated tests for module; integration, canvas, upload
+# 2. Run database migrations on the test database
+echo "[test] Running database migrations on test database..."
+cd "$PROJECT_ROOT/packages/database"
+bun run db:migrate:test
 
-bun test test/unit/auth.unit.test.ts
-bun test test/integration/auth/auth.routes.test.ts
-bun test test/integration/auth/auth.service.test.ts
+# 3. Run the auth module tests
+echo "[test] Running auth tests..."
+NODE_ENV=test bun test ./test/unit/auth.unit.test.ts
+NODE_ENV=test bun test ./test/integration/auth/auth.routes.test.ts
+NODE_ENV=test bun test ./test/integration/auth/auth.service.test.ts
 
-# # bun test test/unit/billing.unit.test.ts
-# # bun test test/integration/billing/billing.routes.test.ts
-# # bun test test/integration/billing/billing.service.test.ts
-
-bun test test/unit/canvas.unit.test.ts
-bun test test/integration/canvas/canvas.routes.test.ts
-bun test test/integration/canvas/canvas.service.test.ts
-
-# # bun test test/unit/generation.unit.test.ts
-# # bun test test/integration/generation/generation.routes.test.ts
-# # bun test test/integration/generation/generation.service.test.ts
-
-bun test test/unit/integration.unit.test.ts
-bun test test/integration/integration/integration.routes.test.ts
-bun test test/integration/integration/integration.service.test.ts
-
-bun test test/unit/notification.unit.test.ts
-bun test test/integration/notification/notification.routes.test.ts
-bun test test/integration/notification/notification.service.test.ts
-
-bun test test/unit/profile.unit.test.ts
-bun test test/integration/profile/profile.routes.test.ts
-bun test test/integration/profile/profile.service.test.ts
-
-bun test test/unit/project.unit.test.ts
-bun test test/integration/project/project.routes.test.ts
-bun test test/integration/project/project.service.test.ts
-
-# bun test test/unit/runtime.unit.test.ts
-# bun test test/integration/runtime/runtime.routes.test.ts
-# bun test test/integration/runtime/runtime.service.test.ts
-
-bun test test/unit/template.unit.test.ts
-bun test test/integration/template/template.routes.test.ts
-bun test test/integration/template/template.service.test.ts
-
-bun test test/unit/upload.unit.test.ts
-bun test test/integration/upload/upload.routes.test.ts
-bun test test/integration/upload/upload.service.test.ts
-
-# bun test test/unit/usage.unit.test.ts
-# bun test test/integration/usage/usage.routes.test.ts
-# bun test test/integration/usage/usage.service.test.ts

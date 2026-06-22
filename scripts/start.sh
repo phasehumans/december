@@ -54,6 +54,13 @@ if tmux has-session -t "$SESSION_NAME" 2>/dev/null; then
   exit 0
 fi
 
+echo "[december] Running bun install..."
+cd "$PROJECT_ROOT"
+bun install
+
+echo "[december] Starting Docker containers..."
+bun run docker:start
+
 echo "[december] Starting runtime..."
 tmux new-session -d -s "$SESSION_NAME" -n runtime
 tmux send-keys -t "$SESSION_NAME:runtime" "cd \"$RUNTIME_DIR\" && echo '[runtime] starting...' && cargo run" C-m
