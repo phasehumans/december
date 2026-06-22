@@ -21,7 +21,7 @@ bun run db:migrate:test
 
 # 3. Run the auth module tests
 echo "[test] Running auth tests..."
-NODE_ENV=test bun test ./test/unit/auth.unit.test.ts
-NODE_ENV=test bun test ./test/integration/auth/auth.routes.test.ts
-NODE_ENV=test bun test ./test/integration/auth/auth.service.test.ts
-
+cd "$PROJECT_ROOT/apps/server"
+NODE_ENV=test bun test --preload ./test/env.ts ./test/unit/auth.unit.test.ts
+NODE_ENV=test bun test --preload ./test/env.ts ./test/integration/auth/auth.routes.test.ts
+NODE_ENV=test bun test --preload ./test/env.ts ./test/integration/auth/auth.service.test.ts
