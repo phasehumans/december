@@ -19,6 +19,8 @@
         "clean": "bun scripts/clear.sh",
         "db:generate": "turbo run db:generate",
         "db:migrate": "turbo run db:migrate",
+        "db:migrate:dev": "turbo run db:migrate:dev",
+        "db:migrate:test": "turbo run db:migrate:test",
         "db:studio": "turbo run db:studio",
         "docker:start": "docker compose -f infra/minio/docker-compose.yml -p december-minio up -d && docker compose -f infra/postgres/docker-compose.yml -p december-postgres up -d && docker compose -f infra/nginx/docker-compose.yml -p december-nginx up -d",
         "docker:stop": "docker compose -f infra/nginx/docker-compose.yml -p december-nginx down && docker compose -f infra/postgres/docker-compose.yml -p december-postgres down && docker compose -f infra/minio/docker-compose.yml -p december-minio down",

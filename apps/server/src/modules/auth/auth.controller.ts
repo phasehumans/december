@@ -1,12 +1,3 @@
-import {
-    forgotPasswordRequestSchema,
-    forgotPasswordResetSchema,
-    forgotPasswordVerifySchema,
-    loginSchema,
-    signupSchema,
-    verifyOtpSchema,
-    googleAuthSchema,
-} from '@december/shared'
 import axios from 'axios'
 import { OAuth2Client } from 'google-auth-library'
 
@@ -16,6 +7,15 @@ import { asyncHandler } from '../../shared/asyncHandler'
 import { sendSuccess } from '../../shared/response'
 
 import { authCookie } from './auth.cookie'
+import {
+    forgotPasswordRequestSchema,
+    forgotPasswordResetSchema,
+    forgotPasswordVerifySchema,
+    loginSchema,
+    signupSchema,
+    verifyOtpSchema,
+    googleAuthSchema,
+} from './auth.schema'
 import { authService } from './auth.service'
 
 import type { Request, Response, NextFunction } from 'express'

@@ -3,8 +3,10 @@ import path from 'path'
 import dotenv from 'dotenv'
 import { z } from 'zod'
 
+const envFile = process.env.NODE_ENV === 'test' || process.env.ENV === 'TEST' ? '.env.test' : '.env'
+
 dotenv.config({
-    path: path.resolve(process.cwd(), '../../.env'),
+    path: path.resolve(process.cwd(), `../../${envFile}`),
 })
 
 const envSchema = z.object({
@@ -53,6 +55,7 @@ const envSchema = z.object({
 
     OPENROUTER_API_KEY: z.string().min(1).optional(),
     AUTO_MODEL: z.string().optional(),
+    BCRYPT_SALT_ROUNDS: z.coerce.number().default(10),
 })
 
 const parsedEnv = envSchema.safeParse(process.env)
