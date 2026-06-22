@@ -12,9 +12,8 @@ const verifyIdTokenMock = mock()
 const sendNotificationMock = mock(async () => ({}))
 
 mock.module('../../../src/modules/auth/auth.utils', () => {
-    const actual = require('../../../src/modules/auth/auth.utils')
     return {
-        ...actual,
+        ...actualUtils,
         sendOTP: sendOTPMock,
         sendWelcomeEmail: sendWelcomeEmailMock,
     }
@@ -35,7 +34,9 @@ mock.module('google-auth-library', () => ({
     },
 }))
 
+import { errorHandler } from '../../../src/middleware/error.middleware'
 import authRouter from '../../../src/modules/auth/auth.routes'
+import * as actualUtils from '../../../src/modules/auth/auth.utils'
 
 const createApp = () => {
     const app = express()
@@ -43,12 +44,7 @@ const createApp = () => {
     app.use(cookieParser())
     app.use('/auth', authRouter)
 
-    app.use((err: any, _req: any, res: any, _next: any) => {
-        res.status(err.statusCode || 500).json({
-            success: false,
-            message: err.message,
-        })
-    })
+    app.use(errorHandler)
 
     return app
 }
@@ -453,8 +449,7 @@ describe('auth.routes.integration', () => {
             })
 
             expect(res.status).toBe(401)
-            expect(res.body.message).toBe('otp verification failed')
-            expect(res.body.errors).toBe('invalid or expired reset code')
+            expect(res.body.message).toBe('invalid or expired reset code')
         })
 
         it('should fail to verify reset otp with expired otp', async () => {
@@ -471,8 +466,7 @@ describe('auth.routes.integration', () => {
             })
 
             expect(res.status).toBe(401)
-            expect(res.body.message).toBe('otp verification failed')
-            expect(res.body.errors).toBe('invalid or expired reset code')
+            expect(res.body.message).toBe('invalid or expired reset code')
         })
 
         it('should fail to reset password with wrong otp', async () => {
@@ -490,8 +484,7 @@ describe('auth.routes.integration', () => {
             })
 
             expect(res.status).toBe(401)
-            expect(res.body.message).toBe('password reset failed')
-            expect(res.body.errors).toBe('invalid or expired reset code')
+            expect(res.body.message).toBe('invalid or expired reset code')
         })
 
         it('should fail to reset password with expired otp', async () => {
@@ -509,8 +502,7 @@ describe('auth.routes.integration', () => {
             })
 
             expect(res.status).toBe(401)
-            expect(res.body.message).toBe('password reset failed')
-            expect(res.body.errors).toBe('invalid or expired reset code')
+            expect(res.body.message).toBe('invalid or expired reset code')
         })
     })
 
@@ -553,7 +545,7 @@ describe('auth.routes.integration', () => {
                 code: 'bad-code',
             })
 
-            expect(res.status).toBe(500)
+            expect(res.status).toBe(400)
         })
     })
 
