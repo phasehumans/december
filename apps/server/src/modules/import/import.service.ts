@@ -504,76 +504,6 @@ const processGithubImport = async (data: ProcessGithubImportParams) => {
     }
 }
 
-const processZipImport = async (data: ProcessZipImportParams) => {
-    const { importId, userId, projectId, versionId, zipFile } = data
-    let tempRootDir: string | null = null
-
-    try {
-        console.log(`[import:${importId}] processZipImport: starting for ${zipFile.originalname}`)
-
-        await prisma.projectImport.update({
-            where: { id: importId },
-            data: {
-                attempts: { increment: 1 },
-            },
-        })
-
-        await updateImportStatus({
-            importId,
-            status: 'VALIDATING',
-            data: { errorMessage: 'Extracting zip archive...' },
-        })
-        const extracted = await extractUploadedZipArchive(zipFile)
-
-        if (!extracted.ok) {
-            throw new Error(extracted.error)
-        }
-
-        console.log(`[import:${importId}] zip extracted: ${extracted.repoRootDir}`)
-        tempRootDir = extracted.tempRootDir
-
-        console.log(`[import:${importId}] validating project structure...`)
-        await updateImportStatus({
-            importId,
-            status: 'VALIDATING',
-            data: { errorMessage: 'Checking project structure...' },
-        })
-        const validatedProject = await validateImportProject(extracted.repoRootDir)
-        console.log(
-            `[import:${importId}] validation passed=${validatedProject.isValid}: ${validatedProject.files.length} files, framework=${validatedProject.detection.framework}`
-        )
-
-        await updateImportStatus({
-            importId,
-            status: 'VALIDATING',
-            data: { errorMessage: 'Persisting source locally...' },
-        })
-        await persistImportSourceLocally({
-            userId,
-            importId,
-            sourceDir: validatedProject.rootDir,
-        })
-        console.log(`[import:${importId}] persisted source locally`)
-
-        await finalizeImportProject({
-            importId,
-            userId,
-            projectId,
-            versionId,
-            validatedProject,
-            sourceType: 'zip',
-            sourceLabel: zipFile.originalname,
-        })
-
-        console.log(`[import:${importId}] processZipImport: completed successfully`)
-    } catch (error) {
-        console.error(`[import:${importId}] processZipImport FAILED:`, error)
-        await failImport({ importId, error })
-    } finally {
-        await cleanupImportDir(tempRootDir)
-    }
-}
-
 const importFromGithub = async (data: ImportFromGithub) => {
     const { userId, repoURL } = data
     const parseData = parseGitHubRepoUrl(repoURL)
@@ -647,75 +577,6 @@ const importFromGithub = async (data: ImportFromGithub) => {
     return importRecord
 }
 
-const importFromZip = async (data: ImportFromZip) => {
-    const { userId, zipFile } = data
-
-    const user = await prisma.user.findUnique({
-        where: { id: userId },
-        select: { id: true, subscriptionPlan: true },
-    })
-
-    if (!user) {
-        throw new Error('user not found')
-    }
-
-    if (user.subscriptionPlan === 'FREE') {
-        const importCount = await prisma.projectImport.count({
-            where: {
-                userId,
-                sourceType: 'ZIP',
-            },
-        })
-
-        if (importCount >= 1) {
-            throw new AppError('Limit exceeded (1 free import). Upgrade to continue.', 403)
-        }
-    }
-
-    const isZip =
-        zipFile.mimetype === 'application/zip' ||
-        zipFile.mimetype === 'application/x-zip-compressed' ||
-        zipFile.originalname.toLowerCase().endsWith('.zip')
-
-    if (!isZip) {
-        throw new Error('Only zip files are allowed')
-    }
-
-    if (zipFile.buffer.byteLength > MAX_UPLOAD_ZIP_BYTES) {
-        throw new Error('Zip file is too large')
-    }
-
-    const projectId = randomUUID()
-    const versionId = randomUUID()
-
-    // Create placeholder Project immediately
-    await createPlaceholderProject({
-        projectId,
-        versionId,
-        userId,
-        name: zipFile.originalname,
-        prompt: `Imported from uploaded zip: ${zipFile.originalname}`,
-    })
-
-    const importRecord = await createImportRecord({
-        userId,
-        sourceType: 'ZIP',
-        sourceFileName: zipFile.originalname,
-        projectId,
-        projectVersionId: versionId,
-    })
-
-    void processZipImport({
-        importId: importRecord.id,
-        userId,
-        projectId,
-        versionId,
-        zipFile,
-    })
-
-    return importRecord
-}
-
 const getImportStatus = async (data: GetImportStatus) => {
     const { userId, importId } = data
     const importRecord = await prisma.projectImport.findFirst({
@@ -779,6 +640,5 @@ const getImportStatus = async (data: GetImportStatus) => {
 
 export const uploadService = {
     importFromGithub,
-    importFromZip,
     getImportStatus,
 }

@@ -25,3 +25,10 @@ cd "$PROJECT_ROOT/apps/server"
 NODE_ENV=test bun test --preload ./test/env.ts ./test/unit/auth.unit.test.ts
 NODE_ENV=test bun test --preload ./test/env.ts ./test/integration/auth/auth.routes.test.ts
 NODE_ENV=test bun test --preload ./test/env.ts ./test/integration/auth/auth.service.test.ts
+
+# 4. Run the canvas module tests
+echo "[test] Running canvas tests..."
+NODE_ENV=test bun test --preload ./test/env.ts ./test/unit/canvas.unit.test.ts
+NODE_ENV=test bun test --preload ./test/env.ts ./test/integration/canvas/canvas.routes.test.ts
+NODE_ENV=test bun test --preload ./test/env.ts ./test/integration/canvas/canvas.service.test.ts
+

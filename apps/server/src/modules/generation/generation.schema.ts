@@ -1,7 +1,5 @@
 import { z } from 'zod'
 
-import { canvasDocumentSchema } from './canvas.schema'
-
 const fileGeneratorSchema = z.enum([
     'static',
     'app-shell',
@@ -35,7 +33,7 @@ export const plannedProjectFileSchema = z
 export const generateWebsiteSchema = z.object({
     prompt: z.string().min(5),
     projectId: z.string().uuid().optional(),
-    canvasState: canvasDocumentSchema.optional(),
+    canvasState: z.any().optional(),
     model: z.string().optional(),
 })
 
@@ -51,7 +49,7 @@ export const applyProjectEditSchema = z.object({
     versionId: z.string().uuid().optional(),
     prompt: z.string().min(1),
     selectedElement: previewSelectedElementSchema.optional(),
-    canvasState: canvasDocumentSchema.optional(),
+    canvasState: z.any().optional(),
     model: z.string().optional(),
 })
 
@@ -79,7 +77,7 @@ export const projectIntentSchema = z.object({
 export const extractProjectPlanSchema = z
     .object({
         userPrompt: z.string().min(1),
-        canvasState: canvasDocumentSchema.optional(),
+        canvasState: z.any().optional(),
     })
     .strict()
 
