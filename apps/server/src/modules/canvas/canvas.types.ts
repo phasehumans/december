@@ -1,4 +1,4 @@
-import type { CanvasDocument } from '../schemas/canvas.schema'
+import type { CanvasDocument } from './canvas.schema'
 
 export type CreateWebClips = {
     url: string

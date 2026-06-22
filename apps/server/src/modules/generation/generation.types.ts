@@ -7,16 +7,15 @@ import {
     projectPatchOperationSchema,
     projectIntentSchema,
     projectPlanSchema,
-} from '../schemas/generation.schema'
+} from '../../../../apps/server/src/modules/generation/generation.schema'
 
 import type { PreviewManifestRef } from './preview-manifest.types'
-import type { CanvasDocument } from '../schemas/canvas.schema'
 
 export type GenerateWebsiteInput = {
     prompt: string
     userId: string
     projectId?: string
-    canvasState?: CanvasDocument
+    canvasState?: any
     model?: string
     onEvent?: (event: GenerationStreamEvent) => Promise<void> | void
 }

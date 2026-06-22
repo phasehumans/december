@@ -1,4 +1,4 @@
-import { GenerationSound as GenerationSoundEnum } from '../schemas/profile.schema'
+import { GenerationSound as GenerationSoundEnum } from '../../../../apps/server/src/modules/profile/profile.schema'
 
 export type GetInfo = {
     userId: string
