@@ -1,6 +1,8 @@
-export type Signup = {
-    email: string
-    password: string
+export type TokenPayload = {
+    userId: string
+    sessionId: string
+    iat?: number
+    exp?: number
 }
 
 export type VerifyOtp = {
@@ -23,6 +25,11 @@ export type Google = {
     sub: string
     userAgent?: string
     ipAddress?: string
+}
+
+export type Signup = {
+    email: string
+    password: string
 }
 
 export type RefreshSession = {

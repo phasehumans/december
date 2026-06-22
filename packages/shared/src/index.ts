@@ -1,7 +1,6 @@
 // Export all schema files
 export * from './schemas/integration.schema'
 export * from './schemas/canvas.schema'
-export * from './schemas/auth.schema'
 export * from './schemas/cli.schema'
 export * from './schemas/profile.schema'
 export * from './schemas/runtime.schema'
@@ -17,7 +16,6 @@ export * from './schemas/usage.schema'
 // Export all types files
 export * from './types/integration.types'
 export * from './types/canvas.types'
-export * from './types/auth.types'
 export * from './types/cli.types'
 export * from './types/agent.types'
 export * from './types/memory.types'

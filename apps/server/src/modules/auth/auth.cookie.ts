@@ -1,40 +1,66 @@
+import { env } from '../../env'
+
 import type { Response } from 'express'
 
-const setAuthCookies = (res: Response, accessToken: string, refreshToken: string) => {
-    const isProduction = process.env.NODE_ENV === 'production'
+const isProduction = env.ENV === 'PROD'
 
+const setAuthCookies = (res: Response, accessToken: string, refreshToken: string) => {
     res.cookie('accessToken', accessToken, {
         httpOnly: true,
         secure: isProduction,
-        sameSite: isProduction ? 'none' : 'lax',
+        sameSite: 'lax',
         maxAge: 15 * 60 * 1000, // 15 min
+        path: '/',
     })
 
     res.cookie('refreshToken', refreshToken, {
         httpOnly: true,
         secure: isProduction,
-        sameSite: isProduction ? 'none' : 'lax',
-        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+        sameSite: 'lax',
+        maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+        path: '/',
+    })
+}
+
+const setAccessTokenCookie = (res: Response, accessToken: string) => {
+    res.cookie('accessToken', accessToken, {
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: 'lax',
+        maxAge: 15 * 60 * 1000, // 15 min
+        path: '/',
+    })
+}
+
+const setRefreshTokenCookie = (res: Response, refreshToken: string) => {
+    res.cookie('refreshToken', refreshToken, {
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: 'lax',
+        maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+        path: '/',
     })
 }
 
 const clearAuthCookies = (res: Response) => {
-    const isProduction = process.env.NODE_ENV === 'production'
-
     res.clearCookie('accessToken', {
         httpOnly: true,
         secure: isProduction,
-        sameSite: isProduction ? 'none' : 'lax',
+        sameSite: 'lax',
+        path: '/',
     })
 
     res.clearCookie('refreshToken', {
         httpOnly: true,
         secure: isProduction,
-        sameSite: isProduction ? 'none' : 'lax',
+        sameSite: 'lax',
+        path: '/',
     })
 }
 
 export const authCookie = {
     setAuthCookies,
+    setAccessTokenCookie,
+    setRefreshTokenCookie,
     clearAuthCookies,
 }

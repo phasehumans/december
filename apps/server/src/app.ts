@@ -2,6 +2,8 @@ import cookieParser from 'cookie-parser'
 import cors from 'cors'
 import express from 'express'
 
+import { env } from './env'
+import { errorHandler } from './middleware/error.middleware'
 import authRouter from './modules/auth/auth.routes'
 import billingRouter from './modules/billing/billing.routes'
 import canvasRouter from './modules/canvas/canvas.routes'
@@ -32,7 +34,7 @@ app.use(cookieParser())
 app.use(express.urlencoded({ extended: true, limit: '25mb' }))
 app.use(
     cors({
-        origin: process.env.WEB_URL,
+        origin: env.WEB_URL,
         credentials: true,
     })
 )
@@ -50,5 +52,7 @@ app.use('/api/v1/integrations', integrationsRouter)
 app.use('/api/v1/notification', notificationRouter)
 app.use('/api/v1/billing', billingRouter)
 app.use('/api/v1/platform', platformRouter)
+
+app.use(errorHandler)
 
 export default app

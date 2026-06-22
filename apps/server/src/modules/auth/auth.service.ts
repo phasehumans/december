@@ -1,42 +1,36 @@
 import crypto from 'crypto'
 
-import { prisma } from '@december/database'
 import bcrypt from 'bcrypt'
 
+import { env } from '../../env'
 import { AppError } from '../../shared/appError'
 import { sendNotificationToUser } from '../notification/notification.service'
 
+import { authRepository } from './auth.repository'
 import {
     sendOTP,
     sendWelcomeEmail,
-    getNameFromEmail,
     getUsername,
     generateAccessToken,
     generateRefreshToken,
-    getRefreshTokenExpiryDate,
     verifyRefreshToken,
-    isSessionExpired,
 } from './auth.utils'
 
 import type {
-    Signup,
     VerifyOtp,
     Login,
     Google,
+    Signup,
     RefreshSession,
     RequestPasswordReset,
     VerifyPasswordResetOtp,
     ResetPassword,
-} from '@december/shared'
+} from './auth.types'
 
 const signup = async (data: Signup) => {
     const { email, password } = data
 
-    const existingUser = await prisma.user.findUnique({
-        where: {
-            email: email,
-        },
-    })
+    const existingUser = await authRepository.findUserByEmail(email)
 
     if (existingUser) {
         if (!existingUser.password) {
@@ -46,19 +40,14 @@ const signup = async (data: Signup) => {
             throw new AppError('email already exists', 409)
         }
 
-        const hashPassword = await bcrypt.hash(password, 10)
+        const hashPassword = await bcrypt.hash(password, env.BCRYPT_SALT_ROUNDS)
         const otp = crypto.randomInt(100000, 1000000).toString()
-        const otpHash = await bcrypt.hash(otp, 10)
+        const otpHash = await bcrypt.hash(otp, env.BCRYPT_SALT_ROUNDS)
 
-        await prisma.user.update({
-            where: {
-                id: existingUser.id,
-            },
-            data: {
-                password: hashPassword,
-                otpHash,
-                otpExpiresAt: new Date(Date.now() + 10 * 60 * 1000),
-            },
+        await authRepository.updateUser(existingUser.id, {
+            password: hashPassword,
+            otpHash,
+            otpExpiresAt: new Date(Date.now() + 10 * 60 * 1000),
         })
 
         await sendOTP(existingUser.email, otp)
@@ -66,30 +55,26 @@ const signup = async (data: Signup) => {
         return { message: 'otp sent successfully' }
     }
 
-    let name = getNameFromEmail(email)
+    let name = email.split('@')[0]?.replace(/\d+/g, '')
     const username = getUsername()
 
     if (!name) {
         name = username
     }
 
-    const hashPassword = await bcrypt.hash(password, 10)
+    const hashPassword = await bcrypt.hash(password, env.BCRYPT_SALT_ROUNDS)
     const otp = crypto.randomInt(100000, 1000000).toString()
-    const otpHash = await bcrypt.hash(otp, 10)
+    const otpHash = await bcrypt.hash(otp, env.BCRYPT_SALT_ROUNDS)
 
-    const newUser = await prisma.user.create({
-        data: {
-            name: name,
-            email: email,
-            username: username,
-            password: hashPassword,
-            emailVerified: false,
-            otpHash: otpHash,
-            otpExpiresAt: new Date(Date.now() + 10 * 60 * 1000),
-        },
+    const newUser = await authRepository.createUser({
+        name: name,
+        email: email,
+        username: username,
+        password: hashPassword,
+        emailVerified: false,
+        otpHash: otpHash,
+        otpExpiresAt: new Date(Date.now() + 10 * 60 * 1000),
     })
-
-    // console.log(otp)
 
     await sendOTP(newUser.email, otp)
 
@@ -99,11 +84,7 @@ const signup = async (data: Signup) => {
 const verifyOtp = async (data: VerifyOtp) => {
     const { email, otp, userAgent, ipAddress } = data
 
-    const user = await prisma.user.findUnique({
-        where: {
-            email: email,
-        },
-    })
+    const user = await authRepository.findUserByEmail(email)
 
     if (!user) {
         throw new AppError('user not found', 404)
@@ -122,14 +103,9 @@ const verifyOtp = async (data: VerifyOtp) => {
     }
 
     if (user.otpExpiresAt < new Date()) {
-        await prisma.user.update({
-            where: {
-                id: user.id,
-            },
-            data: {
-                otpHash: null,
-                otpExpiresAt: null,
-            },
+        await authRepository.updateUser(user.id, {
+            otpHash: null,
+            otpExpiresAt: null,
         })
 
         throw new AppError('otp expired', 401)
@@ -141,15 +117,10 @@ const verifyOtp = async (data: VerifyOtp) => {
         throw new AppError('invalid otp', 401)
     }
 
-    await prisma.user.update({
-        where: {
-            id: user.id,
-        },
-        data: {
-            emailVerified: true,
-            otpHash: null,
-            otpExpiresAt: null,
-        },
+    await authRepository.updateUser(user.id, {
+        emailVerified: true,
+        otpHash: null,
+        otpExpiresAt: null,
     })
 
     const sessionId = crypto.randomUUID()
@@ -159,23 +130,20 @@ const verifyOtp = async (data: VerifyOtp) => {
         sessionId,
     })
 
-    // added jti; to grab specific token
     const refreshToken = generateRefreshToken({
         userId: user.id,
         sessionId,
     })
 
-    const refreshTokenHash = await bcrypt.hash(refreshToken, 10)
+    const refreshTokenHash = await bcrypt.hash(refreshToken, env.BCRYPT_SALT_ROUNDS)
 
-    await prisma.session.create({
-        data: {
-            id: sessionId,
-            userId: user.id,
-            refreshTokenHash: refreshTokenHash,
-            userAgent: userAgent,
-            ipAddress: ipAddress,
-            expiresAt: getRefreshTokenExpiryDate(),
-        },
+    await authRepository.createSession({
+        id: sessionId,
+        userId: user.id,
+        refreshTokenHash: refreshTokenHash,
+        userAgent: userAgent,
+        ipAddress: ipAddress,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
     })
 
     try {
@@ -205,11 +173,7 @@ const verifyOtp = async (data: VerifyOtp) => {
 const login = async (data: Login) => {
     const { email, password, userAgent, ipAddress } = data
 
-    const existingUser = await prisma.user.findUnique({
-        where: {
-            email,
-        },
-    })
+    const existingUser = await authRepository.findUserByEmail(email)
 
     if (!existingUser) {
         throw new AppError('invalid email or password', 401)
@@ -245,17 +209,15 @@ const login = async (data: Login) => {
         sessionId,
     })
 
-    const refreshTokenHash = await bcrypt.hash(refreshToken, 10)
+    const refreshTokenHash = await bcrypt.hash(refreshToken, env.BCRYPT_SALT_ROUNDS)
 
-    await prisma.session.create({
-        data: {
-            id: sessionId,
-            userId: existingUser.id,
-            refreshTokenHash: refreshTokenHash,
-            userAgent: userAgent,
-            ipAddress: ipAddress,
-            expiresAt: getRefreshTokenExpiryDate(),
-        },
+    await authRepository.createSession({
+        id: sessionId,
+        userId: existingUser.id,
+        refreshTokenHash: refreshTokenHash,
+        userAgent: userAgent,
+        ipAddress: ipAddress,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
     })
 
     try {
@@ -276,27 +238,18 @@ const login = async (data: Login) => {
 }
 
 const requestPasswordReset = async (data: RequestPasswordReset) => {
-    const user = await prisma.user.findUnique({
-        where: {
-            email: data.email,
-        },
-    })
+    const user = await authRepository.findUserByEmail(data.email)
 
     if (!user || user.deletedAt || user.isDeleted || !user.emailVerified) {
         return
     }
 
     const otp = crypto.randomInt(100000, 1000000).toString()
-    const otpHash = await bcrypt.hash(otp, 10)
+    const otpHash = await bcrypt.hash(otp, env.BCRYPT_SALT_ROUNDS)
 
-    await prisma.user.update({
-        where: {
-            id: user.id,
-        },
-        data: {
-            otpHash,
-            otpExpiresAt: new Date(Date.now() + 10 * 60 * 1000),
-        },
+    await authRepository.updateUser(user.id, {
+        otpHash,
+        otpExpiresAt: new Date(Date.now() + 10 * 60 * 1000),
     })
 
     await sendOTP(user.email, otp)
@@ -304,11 +257,7 @@ const requestPasswordReset = async (data: RequestPasswordReset) => {
 
 const verifyPasswordResetOtp = async (data: VerifyPasswordResetOtp) => {
     const { email, otp } = data
-    const user = await prisma.user.findUnique({
-        where: {
-            email,
-        },
-    })
+    const user = await authRepository.findUserByEmail(email)
 
     if (!user || user.deletedAt || user.isDeleted || !user.emailVerified) {
         throw new AppError('invalid or expired reset code', 401)
@@ -319,14 +268,9 @@ const verifyPasswordResetOtp = async (data: VerifyPasswordResetOtp) => {
     }
 
     if (user.otpExpiresAt < new Date()) {
-        await prisma.user.update({
-            where: {
-                id: user.id,
-            },
-            data: {
-                otpHash: null,
-                otpExpiresAt: null,
-            },
+        await authRepository.updateUser(user.id, {
+            otpHash: null,
+            otpExpiresAt: null,
         })
 
         throw new AppError('invalid or expired reset code', 401)
@@ -344,11 +288,7 @@ const verifyPasswordResetOtp = async (data: VerifyPasswordResetOtp) => {
 const resetPassword = async (data: ResetPassword) => {
     const { email, otp, newPassword } = data
 
-    const user = await prisma.user.findUnique({
-        where: {
-            email,
-        },
-    })
+    const user = await authRepository.findUserByEmail(email)
 
     if (!user || user.deletedAt || user.isDeleted || !user.emailVerified) {
         throw new AppError('invalid or expired reset code', 401)
@@ -359,14 +299,9 @@ const resetPassword = async (data: ResetPassword) => {
     }
 
     if (user.otpExpiresAt < new Date()) {
-        await prisma.user.update({
-            where: {
-                id: user.id,
-            },
-            data: {
-                otpHash: null,
-                otpExpiresAt: null,
-            },
+        await authRepository.updateUser(user.id, {
+            otpHash: null,
+            otpExpiresAt: null,
         })
 
         throw new AppError('invalid or expired reset code', 401)
@@ -378,54 +313,27 @@ const resetPassword = async (data: ResetPassword) => {
         throw new AppError('invalid or expired reset code', 401)
     }
 
-    const password = await bcrypt.hash(newPassword, 10)
+    const password = await bcrypt.hash(newPassword, env.BCRYPT_SALT_ROUNDS)
 
-    await prisma.$transaction([
-        prisma.user.update({
-            where: {
-                id: user.id,
-            },
-            data: {
-                password,
-                otpHash: null,
-                otpExpiresAt: null,
-            },
-        }),
-        prisma.session.updateMany({
-            where: {
-                userId: user.id,
-                isRevoked: false,
-            },
-            data: {
-                isRevoked: true,
-                revokedAt: new Date(),
-            },
-        }),
-    ])
+    await authRepository.resetPasswordAndRevokeSessions(user.id, password)
 }
 
 const google = async (data: Google) => {
     const { name, email, sub, userAgent, ipAddress } = data
 
-    let user = await prisma.user.findUnique({
-        where: {
-            email: email,
-        },
-    })
+    let user = await authRepository.findUserByEmail(email)
 
     const username = getUsername()
     let isNewUser = false
 
     if (!user) {
         isNewUser = true
-        user = await prisma.user.create({
-            data: {
-                email: email,
-                username: username,
-                emailVerified: true,
-                googleId: sub,
-                name: name,
-            },
+        user = await authRepository.createUser({
+            email: email,
+            username: username,
+            emailVerified: true,
+            googleId: sub,
+            name: name,
         })
 
         try {
@@ -448,16 +356,11 @@ const google = async (data: Google) => {
     } else if (user.deletedAt || user.isDeleted) {
         throw new AppError('account has been deleted', 403)
     } else if (!user.googleId) {
-        user = await prisma.user.update({
-            where: {
-                id: user.id,
-            },
-            data: {
-                googleId: sub,
-                emailVerified: true,
-                otpHash: null,
-                otpExpiresAt: null,
-            },
+        user = await authRepository.updateUser(user.id, {
+            googleId: sub,
+            emailVerified: true,
+            otpHash: null,
+            otpExpiresAt: null,
         })
     } else if (user.googleId !== sub) {
         throw new AppError('google id mismatch', 400)
@@ -488,17 +391,15 @@ const google = async (data: Google) => {
         sessionId,
     })
 
-    const refreshTokenHash = await bcrypt.hash(refreshToken, 10)
+    const refreshTokenHash = await bcrypt.hash(refreshToken, env.BCRYPT_SALT_ROUNDS)
 
-    await prisma.session.create({
-        data: {
-            id: sessionId,
-            userId: user.id,
-            refreshTokenHash,
-            userAgent: userAgent,
-            ipAddress: ipAddress,
-            expiresAt: getRefreshTokenExpiryDate(),
-        },
+    await authRepository.createSession({
+        id: sessionId,
+        userId: user.id,
+        refreshTokenHash,
+        userAgent: userAgent,
+        ipAddress: ipAddress,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
     })
 
     return {
@@ -524,66 +425,38 @@ const refreshSession = async (data: RefreshSession) => {
 
     const { userId, sessionId } = payload
 
-    const session = await prisma.session.findUnique({
-        where: {
-            id: sessionId,
-        },
-    })
+    const session = await authRepository.findSessionById(sessionId)
 
     if (!session) {
         throw new AppError('session not found', 401)
     }
 
     if (session.userId !== userId) {
-        await prisma.session.deleteMany({
-            where: {
-                id: session.id,
-            },
-        })
+        await authRepository.deleteSessionsBySessionId(session.id)
         throw new AppError('invalid session', 401)
     }
 
-    if (isSessionExpired(session.expiresAt)) {
-        await prisma.session.deleteMany({
-            where: {
-                id: session.id,
-            },
-        })
+    if (session.expiresAt.getTime() <= Date.now()) {
+        await authRepository.deleteSessionsBySessionId(session.id)
         throw new AppError('session expired', 401)
     }
 
     const isRefreshTokenValid = await bcrypt.compare(refreshToken, session.refreshTokenHash)
 
     if (!isRefreshTokenValid) {
-        await prisma.session.deleteMany({
-            where: {
-                id: session.id,
-            },
-        })
+        await authRepository.deleteSessionsBySessionId(session.id)
         throw new AppError('invalid refresh token', 401)
     }
 
-    const user = await prisma.user.findUnique({
-        where: {
-            id: userId,
-        },
-    })
+    const user = await authRepository.findUserById(userId)
 
     if (!user) {
-        await prisma.session.deleteMany({
-            where: {
-                id: session.id,
-            },
-        })
+        await authRepository.deleteSessionsBySessionId(session.id)
         throw new AppError('user not found', 401)
     }
 
     if (user.deletedAt || user.isDeleted) {
-        await prisma.session.deleteMany({
-            where: {
-                id: session.id,
-            },
-        })
+        await authRepository.deleteSessionsBySessionId(session.id)
         throw new AppError('account no longer exists', 401)
     }
 
@@ -597,16 +470,11 @@ const refreshSession = async (data: RefreshSession) => {
         sessionId: session.id,
     })
 
-    const newRefreshTokenHash = await bcrypt.hash(newRefreshToken, 10)
+    const newRefreshTokenHash = await bcrypt.hash(newRefreshToken, env.BCRYPT_SALT_ROUNDS)
 
-    await prisma.session.update({
-        where: {
-            id: session.id,
-        },
-        data: {
-            refreshTokenHash: newRefreshTokenHash,
-            expiresAt: getRefreshTokenExpiryDate(),
-        },
+    await authRepository.updateSession(session.id, {
+        refreshTokenHash: newRefreshTokenHash,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
     })
 
     return {

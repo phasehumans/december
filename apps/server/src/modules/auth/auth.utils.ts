@@ -1,29 +1,18 @@
-import { Resend } from 'resend'
-
-const resendkey = process.env.RESEND_API_KEY
-if (!resendkey) {
-    console.log('resend key is missing')
-}
-const resend = new Resend(resendkey)
 import { randomUUID } from 'crypto'
 
 import jwt, { type SignOptions } from 'jsonwebtoken'
 
-import type { Response } from 'express'
+import resend from '../../config/email'
+import { env } from '../../env'
 
-export type TokenPayload = {
-    userId: string
-    sessionId: string
-    iat?: number
-    exp?: number
-}
+import type { TokenPayload } from './auth.types'
 
 export const sendOTP = async (email: string, otp: string) => {
     const attachments: any[] = []
-    const fromEmail = process.env.SENDER_EMAIL || 'onboarding@resend.dev'
+    const fromEmail = env.SENDER_EMAIL || 'onboarding@resend.dev'
 
     await resend.emails.send({
-        from: `December <${fromEmail}>`,
+        from: `Chaitanya <${fromEmail}>`,
         to: email,
         subject: 'Your Verification Code',
         html: `
@@ -140,10 +129,10 @@ export const sendOTP = async (email: string, otp: string) => {
 }
 
 export const sendWelcomeEmail = async (email: string, name: string) => {
-    const fromEmail = process.env.SENDER_EMAIL || 'onboarding@resend.dev'
+    const fromEmail = env.SENDER_EMAIL || 'onboarding@resend.dev'
 
     await resend.emails.send({
-        from: `December <${fromEmail}>`,
+        from: `Chaitanya <${fromEmail}>`,
         to: email,
         subject: 'Welcome to December',
         html: `
@@ -270,10 +259,6 @@ export const sendWelcomeEmail = async (email: string, name: string) => {
         </html>
       `,
     })
-}
-
-export const getNameFromEmail = (email: string) => {
-    return email.split('@')[0]?.replace(/\d+/g, '')
 }
 
 export const getUsername = (): string => {
@@ -2683,33 +2668,12 @@ export const getUsername = (): string => {
         'cripps',
     ]
 
-    const first = firstWords[Math.floor(Math.random() * firstWords.length)]
-    const second = secondWords[Math.floor(Math.random() * secondWords.length)]
-
-    return `${first}_${second}`
-}
-
-const ACCESS_TOKEN_COOKIE_NAME = 'accessToken'
-const REFRESH_TOKEN_COOKIE_NAME = 'refreshToken'
-
-const isProduction = process.env.NODE_ENV === 'production'
-
-const getAccessTokenMaxAge = () => {
-    return 15 * 60 * 1000 // 15 minutes
-}
-
-const getRefreshTokenMaxAge = () => {
-    return 30 * 24 * 60 * 60 * 1000 // 30 days
+    return `${firstWords}_${secondWords}`
 }
 
 export const generateAccessToken = (payload: TokenPayload) => {
-    const secret = process.env.ACCESS_TOKEN_SECRET
-
-    if (!secret) {
-        throw new Error('ACCESS_TOKEN_SECRET is not defined')
-    }
-
-    const expiresIn = (process.env.ACCESS_TOKEN_EXPIRES_IN || '15m') as SignOptions['expiresIn']
+    const secret = env.ACCESS_TOKEN_SECRET
+    const expiresIn = env.ACCESS_TOKEN_EXPIRES_IN as SignOptions['expiresIn']
 
     return jwt.sign(
         {
@@ -2725,13 +2689,8 @@ export const generateAccessToken = (payload: TokenPayload) => {
 }
 
 export const generateRefreshToken = (payload: TokenPayload) => {
-    const secret = process.env.REFRESH_TOKEN_SECRET
-
-    if (!secret) {
-        throw new Error('REFRESH_TOKEN_SECRET is not defined')
-    }
-
-    const expiresIn = (process.env.REFRESH_TOKEN_EXPIRES_IN || '30d') as SignOptions['expiresIn']
+    const secret = env.REFRESH_TOKEN_SECRET
+    const expiresIn = env.REFRESH_TOKEN_EXPIRES_IN as SignOptions['expiresIn']
 
     return jwt.sign(
         {
@@ -2747,67 +2706,11 @@ export const generateRefreshToken = (payload: TokenPayload) => {
 }
 
 export const verifyAccessToken = (token: string) => {
-    const secret = process.env.ACCESS_TOKEN_SECRET
-
-    if (!secret) {
-        throw new Error('ACCESS_TOKEN_SECRET is not defined')
-    }
-
+    const secret = env.ACCESS_TOKEN_SECRET
     return jwt.verify(token, secret) as TokenPayload
 }
 
 export const verifyRefreshToken = (token: string) => {
-    const secret = process.env.REFRESH_TOKEN_SECRET
-
-    if (!secret) {
-        throw new Error('REFRESH_TOKEN_SECRET is not defined')
-    }
-
+    const secret = env.REFRESH_TOKEN_SECRET
     return jwt.verify(token, secret) as TokenPayload
-}
-
-export const setAccessTokenCookie = (res: Response, accessToken: string) => {
-    res.cookie(ACCESS_TOKEN_COOKIE_NAME, accessToken, {
-        httpOnly: true,
-        secure: isProduction,
-        sameSite: 'lax',
-        maxAge: getAccessTokenMaxAge(),
-        path: '/',
-    })
-}
-
-export const setRefreshTokenCookie = (res: Response, refreshToken: string) => {
-    res.cookie(REFRESH_TOKEN_COOKIE_NAME, refreshToken, {
-        httpOnly: true,
-        secure: isProduction,
-        sameSite: 'lax',
-        maxAge: getRefreshTokenMaxAge(),
-        path: '/',
-    })
-}
-
-export const clearAuthCookies = (res: Response) => {
-    res.clearCookie(ACCESS_TOKEN_COOKIE_NAME, {
-        httpOnly: true,
-        secure: isProduction,
-        sameSite: 'lax',
-        path: '/',
-    })
-
-    res.clearCookie(REFRESH_TOKEN_COOKIE_NAME, {
-        httpOnly: true,
-        secure: isProduction,
-        sameSite: 'lax',
-        path: '/',
-    })
-}
-
-export const getRefreshTokenExpiryDate = () => {
-    const expiresAt = new Date()
-    expiresAt.setDate(expiresAt.getDate() + 7) // matches 7d refresh token expiry
-    return expiresAt
-}
-
-export const isSessionExpired = (expiresAt: Date) => {
-    return expiresAt.getTime() <= Date.now()
 }

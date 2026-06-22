@@ -362,6 +362,11 @@ impl Sandbox for DockerSandbox {
             port_mappings = ?port_mappings,
             "ensuring preview sandbox is started with port mappings"
         );
+        log_to_workspace(workspace_host_path, &format!("Container spinup initiated for preview_id: {}", self.preview_id)).await;
+        log_to_workspace(workspace_host_path, &format!("Container name: {}", container_name)).await;
+        log_to_workspace(workspace_host_path, &format!("Using image: {}", self.config.image)).await;
+        log_to_workspace(workspace_host_path, &format!("Port mappings: {:?}", port_mappings)).await;
+
         self.ensure_image_available().await?;
         let workspace = workspace_host_path.canonicalize().map_err(|error| {
             RuntimeServiceError::infra_runtime(
@@ -381,6 +386,7 @@ impl Sandbox for DockerSandbox {
             .is_ok()
         {
             info!(preview_id = %self.preview_id, name = %container_name, "removing existing preview container with same name");
+            log_to_workspace(&workspace, "Removing existing preview container with same name...").await;
             let _ = self
                 .docker
                 .remove_container(
@@ -394,6 +400,7 @@ impl Sandbox for DockerSandbox {
         }
 
         info!(preview_id = %self.preview_id, name = %container_name, "creating new preview container");
+        log_to_workspace(&workspace, "Creating new preview container...").await;
         self.docker
             .create_container(
                 Some(CreateContainerOptions {
@@ -441,6 +448,7 @@ impl Sandbox for DockerSandbox {
             })?;
 
         info!(preview_id = %self.preview_id, name = %container_name, "starting preview container");
+        log_to_workspace(&workspace, "Starting preview container...").await;
         self.docker
             .start_container(&container_name, None::<StartContainerOptions<String>>)
             .await
@@ -452,6 +460,7 @@ impl Sandbox for DockerSandbox {
             })?;
 
         info!(preview_id = %self.preview_id, name = %container_name, "preview container started successfully");
+        log_to_workspace(&workspace, "Preview container started successfully.").await;
         state.container_name = Some(container_name);
         state.host_port = Some(default_host_port);
         state.port_mappings = port_mappings;
@@ -460,12 +469,19 @@ impl Sandbox for DockerSandbox {
     }
 
     async fn install_dependencies(&self) -> Result<(), RuntimeServiceError> {
-        let container_name = {
+        let (container_name, workspace_host_path) = {
             let state = self.state.lock().await;
-            state.container_name.clone().ok_or_else(|| {
-                RuntimeServiceError::infra_runtime("preview container is not started", None)
-            })?
+            (
+                state.container_name.clone().ok_or_else(|| {
+                    RuntimeServiceError::infra_runtime("preview container is not started", None)
+                })?,
+                state.workspace_host_path.clone(),
+            )
         };
+
+        if let Some(ref path) = workspace_host_path {
+            log_to_workspace(path, "Starting dependency installation (bun install)...").await;
+        }
 
         info!(preview_id = %self.preview_id, name = %container_name, "running bun install inside preview container...");
         let (exit_code, output) = self
@@ -474,6 +490,16 @@ impl Sandbox for DockerSandbox {
                 "cd /workspace && bun install --no-progress --backend=copyfile --prefer-offline",
             )
             .await?;
+
+        if let Some(ref path) = workspace_host_path {
+            log_to_workspace(
+                path,
+                &format!(
+                    "Dependency installation completed with exit code: {}\n--- Output ---\n{}\n--------------",
+                    exit_code, output
+                ),
+            ).await;
+        }
 
         if exit_code != 0 {
             error!(preview_id = %self.preview_id, name = %container_name, exit_code, "bun install failed inside container");
@@ -498,10 +524,18 @@ impl Sandbox for DockerSandbox {
             )
         };
 
+        if let Some(ref path) = workspace_host_path {
+            log_to_workspace(path, "Restarting dev server...").await;
+        }
+
         info!(preview_id = %self.preview_id, name = %container_name, "stopping existing dev server inside container...");
         self.stop_dev_server_process(&container_name).await?;
 
         let dev_cmd = self.determine_dev_command(workspace_host_path.as_deref()).await;
+        if let Some(ref path) = workspace_host_path {
+            log_to_workspace(path, &format!("Determined dev server command: {}", dev_cmd)).await;
+        }
+
         info!(
             preview_id = %self.preview_id,
             name = %container_name,
@@ -516,6 +550,16 @@ impl Sandbox for DockerSandbox {
 
         let (exit_code, output) = self.run_shell(&container_name, &shell_script).await?;
 
+        if let Some(ref path) = workspace_host_path {
+            log_to_workspace(
+                path,
+                &format!(
+                    "Dev server start command completed with exit code: {}\n--- Output ---\n{}\n--------------",
+                    exit_code, output
+                ),
+            ).await;
+        }
+
         if exit_code != 0 {
             error!(preview_id = %self.preview_id, name = %container_name, exit_code, "failed to start preview dev server inside container");
             return Err(RuntimeServiceError::stable_compile_runtime(
@@ -529,8 +573,16 @@ impl Sandbox for DockerSandbox {
     }
 
     async fn stop(&self) -> Result<(), RuntimeServiceError> {
-        let state = self.state.lock().await;
-        if let Some(container_name) = &state.container_name {
+        let (container_name, workspace_host_path) = {
+            let state = self.state.lock().await;
+            (state.container_name.clone(), state.workspace_host_path.clone())
+        };
+
+        if let Some(ref path) = workspace_host_path {
+            log_to_workspace(path, "Stopping and removing container...").await;
+        }
+
+        if let Some(container_name) = &container_name {
             let _ = self
                 .docker
                 .stop_container(container_name, Some(StopContainerOptions { t: 5 }))
@@ -546,6 +598,11 @@ impl Sandbox for DockerSandbox {
                 )
                 .await;
         }
+
+        if let Some(ref path) = workspace_host_path {
+            log_to_workspace(path, "Container stopped and removed successfully.").await;
+        }
+
         Ok(())
     }
 
@@ -602,12 +659,19 @@ impl Sandbox for DockerSandbox {
     }
 
     async fn run_compile_check(&self) -> Result<CompileCheckResult, RuntimeServiceError> {
-        let container_name = {
+        let (container_name, workspace_host_path) = {
             let state = self.state.lock().await;
-            state.container_name.clone().ok_or_else(|| {
-                RuntimeServiceError::infra_runtime("preview container is not started", None)
-            })?
+            (
+                state.container_name.clone().ok_or_else(|| {
+                    RuntimeServiceError::infra_runtime("preview container is not started", None)
+                })?,
+                state.workspace_host_path.clone(),
+            )
         };
+
+        if let Some(ref path) = workspace_host_path {
+            log_to_workspace(path, "Running compile checks (tsc and build)...").await;
+        }
 
         info!(preview_id = %self.preview_id, name = %container_name, "running compilation checks inside container...");
 
@@ -624,7 +688,19 @@ impl Sandbox for DockerSandbox {
         // 3. Check if dev server is healthy
         let health = self.health_check().await?;
 
-        if tsc_exit == 0 && build_exit == 0 && health.healthy {
+        let compile_success = tsc_exit == 0 && build_exit == 0 && health.healthy;
+
+        if let Some(ref path) = workspace_host_path {
+            log_to_workspace(
+                path,
+                &format!(
+                    "Compile check result: success={}\n--- TypeScript compiler check (exit={}) ---\n{}\n--- Bundler build check (exit={}) ---\n{}",
+                    compile_success, tsc_exit, tsc_output, build_exit, build_output
+                ),
+            ).await;
+        }
+
+        if compile_success {
             return Ok(CompileCheckResult {
                 success: true,
                 errors: None,
@@ -686,4 +762,33 @@ fn trim_output(output: &str) -> String {
     }
 
     compact[..1200].to_string()
+}
+
+async fn log_to_workspace(workspace_path: &Path, message: &str) {
+    let now = chrono::Utc::now().to_rfc3339();
+    let formatted = format!("[{}] {}\n", now, message);
+
+    // Write/append to logs.txt
+    let logs_path = workspace_path.join("logs.txt");
+    if let Ok(mut file) = tokio::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&logs_path)
+        .await
+    {
+        use tokio::io::AsyncWriteExt;
+        let _ = file.write_all(formatted.as_bytes()).await;
+    }
+
+    // Write/append to log.txt
+    let log_path = workspace_path.join("log.txt");
+    if let Ok(mut file) = tokio::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&log_path)
+        .await
+    {
+        use tokio::io::AsyncWriteExt;
+        let _ = file.write_all(formatted.as_bytes()).await;
+    }
 }
