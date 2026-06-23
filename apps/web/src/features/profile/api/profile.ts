@@ -290,7 +290,7 @@ export type GithubRepo = {
 }
 
 const getGithubRepos = () => {
-    return apiRequest<GithubRepo[]>('/integrations/github/repos')
+    return apiRequest<GithubRepo[]>('/platform/github/repos')
 }
 
 const getGithubConnectUrl = (userId: string) => {
@@ -353,14 +353,14 @@ const createGithubRepo = (
     projectId: string,
     data: { name: string; private: boolean; description?: string }
 ) => {
-    return apiRequest<BackendProject>(`/integrations/projects/${projectId}/github/repository`, {
+    return apiRequest<BackendProject>(`/platform/projects/${projectId}/github/repository`, {
         method: 'POST',
         body: JSON.stringify(data),
     })
 }
 
 const syncGithubRepo = (projectId: string, data: { commitMessage?: string }) => {
-    return apiRequest<BackendProject>(`/integrations/projects/${projectId}/github/sync`, {
+    return apiRequest<BackendProject>(`/platform/projects/${projectId}/github/sync`, {
         method: 'POST',
         body: JSON.stringify(data),
     })

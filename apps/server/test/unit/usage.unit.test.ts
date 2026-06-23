@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test'
+
 import { usageCheckQuerySchema, recordUsageEventSchema } from '../../src/modules/usage/usage.schema'
 
 describe('usage schemas', () => {

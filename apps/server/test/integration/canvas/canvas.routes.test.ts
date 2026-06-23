@@ -3,6 +3,8 @@ import { describe, it, expect, beforeEach, afterAll, mock } from 'bun:test'
 import jwt from 'jsonwebtoken'
 import request from 'supertest'
 
+import { env } from '../../../src/env'
+
 const putBinaryFileMock = mock(async () => {})
 const getBinaryFileMock = mock(async () => null)
 const deleteObjectMock = mock(async () => {})
@@ -47,6 +49,7 @@ describe('canvas.routes.integration', () => {
             data: {
                 name: 'Test Project',
                 userId: user.id,
+                prompt: 'test prompt',
             },
         })
 
@@ -57,6 +60,7 @@ describe('canvas.routes.integration', () => {
                 status: 'READY',
                 sourcePrompt: 'initial prompt',
                 objectStoragePrefix: `projects/${project.id}/v1/`,
+                manifestJson: [],
             },
         })
 
@@ -71,14 +75,11 @@ describe('canvas.routes.integration', () => {
                 expiresAt: new Date(Date.now() + 3600000),
                 userAgent: 'test-agent',
                 ipAddress: '127.0.0.1',
+                refreshTokenHash: 'session-hash',
             },
         })
 
-        process.env.ACCESS_TOKEN_SECRET = 'test-access-secret'
-        token = jwt.sign(
-            { userId: user.id, sessionId: session.id },
-            process.env.ACCESS_TOKEN_SECRET
-        )
+        token = jwt.sign({ userId: user.id, sessionId: session.id }, env.ACCESS_TOKEN_SECRET)
     })
 
     afterAll(async () => {
@@ -134,6 +135,7 @@ describe('canvas.routes.integration', () => {
                 data: {
                     name: 'Other Project',
                     userId: otherUser.id,
+                    prompt: 'test prompt',
                 },
             })
 

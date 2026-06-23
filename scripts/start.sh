@@ -4,7 +4,6 @@ set -e
 
 SESSION_NAME="december"
 
-# Resolve project root from script location
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
@@ -12,7 +11,6 @@ RUNTIME_DIR="$PROJECT_ROOT/apps/runtime"
 SERVER_DIR="$PROJECT_ROOT/apps/server"
 WEB_DIR="$PROJECT_ROOT/apps/web"
 
-# Check required tools
 if ! command -v tmux >/dev/null 2>&1; then
   echo "[ERROR] tmux is not installed."
   echo "Install it with:"
@@ -30,7 +28,6 @@ if ! command -v bun >/dev/null 2>&1; then
   exit 1
 fi
 
-# Check directories
 if [ ! -d "$RUNTIME_DIR" ]; then
   echo "[ERROR] Runtime directory not found: $RUNTIME_DIR"
   exit 1
@@ -46,7 +43,6 @@ if [ ! -d "$WEB_DIR" ]; then
   exit 1
 fi
 
-# Prevent duplicate session
 if tmux has-session -t "$SESSION_NAME" 2>/dev/null; then
   echo "[INFO] tmux session '$SESSION_NAME' already exists."
   echo "[INFO] Attaching to existing session..."

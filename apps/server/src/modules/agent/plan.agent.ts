@@ -1,10 +1,10 @@
+import { z } from 'zod'
+
+import { openai } from '../../config/oai'
 import {
     projectChangePlanResponseSchema,
     planAgentResponseSchema,
 } from '../generation/generation.schema'
-import { z } from 'zod'
-
-import { openai } from '../../config/oai'
 import {
     autoHealPlanAgentResponse,
     autoHealChangePlanResponse,

@@ -170,7 +170,7 @@ const assertProjectAccess = async (projectId: string, userId: string) => {
     const project = await canvasRepository.findProjectAccess({ projectId, userId })
 
     if (!project) {
-        throw new AppError('project not found')
+        throw new AppError('project not found', 400)
     }
 }
 
@@ -231,12 +231,12 @@ const saveCanvas = async (data: SaveCanvas) => {
     const project = await canvasRepository.findProjectById(projectId)
 
     if (!project) {
-        throw new AppError('project not found')
+        throw new AppError('project not found', 400)
     }
 
     const targetVersionId = versionId || project.currentVersionId
     if (!targetVersionId) {
-        throw new AppError('no project version found to save canvas state')
+        throw new AppError('no project version found to save canvas state', 400)
     }
 
     const persistedCanvas = await persistCanvasDocument({
