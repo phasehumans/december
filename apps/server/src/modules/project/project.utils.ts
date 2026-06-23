@@ -2,7 +2,7 @@ import type {
     StoredProjectFile,
     ProjectVersionSummaryInput,
     ProjectVersionSummary,
-} from '@december/shared'
+} from './project.types'
 
 export const parseStoredProjectFiles = (value: unknown): StoredProjectFile[] => {
     if (!Array.isArray(value)) {

@@ -186,10 +186,10 @@ describe('canvas.service.integration', () => {
 
             expect(result.sourceUrl).toBe('https://google.com')
             expect(result.clips.length).toBe(1)
-            expect(result.clips[0].content).toContain('data:image/png;base64,')
-            expect(result.clips[0].assetKind).toBe('web-clip')
-            expect(result.clips[0].width).toBe(1024)
-            expect(result.clips[0].height).toBe(768)
+            expect(result.clips[0]!.content).toContain('data:image/png;base64,')
+            expect(result.clips[0]!.assetKind).toBe('web-clip')
+            expect(result.clips[0]!.width).toBe(1024)
+            expect(result.clips[0]!.height).toBe(768)
 
             expect(spawnMock).toHaveBeenCalledTimes(1)
             expect(readFileMock).toHaveBeenCalledTimes(1)

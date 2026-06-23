@@ -8,7 +8,7 @@ import {
     projectPlanSchema,
 } from './generation.schema'
 
-import type { PreviewManifestRef } from './preview-manifest.types'
+import type { PreviewManifestRef } from '@december/shared'
 import type { Project } from '@december/database'
 
 export type GenerateWebsiteInput = {

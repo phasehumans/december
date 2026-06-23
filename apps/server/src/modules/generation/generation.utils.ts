@@ -95,11 +95,11 @@ import type {
     ProjectChangePlan,
     ProjectPlan,
     RevisionBase,
-    StoredProjectFile,
     VersionSummary,
     MergeProjectFiles,
     MapVersionSummary,
-} from '@december/shared'
+} from './generation.types'
+import type { StoredProjectFile } from '../project/project.types'
 
 export const createProjectName = (prompt: string) => {
     const words = cleanPrompt(prompt)

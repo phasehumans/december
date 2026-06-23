@@ -1,4 +1,4 @@
-import type { EmitAssistantMessage, EmitFileStream, EmitPatchFileStream } from '@december/shared'
+import type { EmitAssistantMessage, EmitFileStream, EmitPatchFileStream } from './generation.types'
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 

@@ -21,7 +21,9 @@ export const errorHandler = (err: any, req: Request, res: Response, _next: NextF
         })
     }
 
-    console.error('Unhandled Server Error:', err)
+    if (env.ENV !== 'TEST') {
+        console.error('Unhandled Server Error:', err)
+    }
 
     const isDev = env.ENV === 'DEV'
     return res.status(500).json({

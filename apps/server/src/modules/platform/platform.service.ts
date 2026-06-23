@@ -12,12 +12,12 @@ import { buildProjectZip } from './platform.utils'
 
 import type {
     DeployProject,
-    GetProject,
     ListGithubRepos,
     GithubRepo,
     CreateRepo,
     UpdateRepo,
 } from './platform.types'
+import type { GetProject } from '../project/project.types'
 
 function copyDirRecursive(src: string, dest: string) {
     fs.mkdirSync(dest, { recursive: true })

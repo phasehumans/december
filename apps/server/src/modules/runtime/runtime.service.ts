@@ -1,13 +1,13 @@
 import {
     getLatestPreviewManifestRef,
     publishStoredPreviewManifest,
-    type PreviewManifestRef,
 } from '../../shared/preview-manifest'
 import { getBinaryFile, putBinaryFile } from '../../shared/project-storage'
 import { chromium } from 'playwright'
 import { runtimeRepository } from './runtime.repository'
 
-import type { StoredProjectFile } from '@december/shared'
+import type { PreviewManifestRef } from '@december/shared'
+import type { StoredProjectFile } from '../project/project.types'
 import type {
     RuntimePreviewError,
     RuntimePreviewStatus,
