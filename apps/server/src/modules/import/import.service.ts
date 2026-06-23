@@ -1,11 +1,8 @@
 import { randomUUID } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
 
-import { importRepository } from './import.repository'
-
 import { AppError } from '../../shared/appError'
 import { publishPreviewManifest } from '../../shared/preview-manifest'
-import type { PreviewManifestFile } from '../../shared/preview-manifest'
 import {
     deletePrefix,
     currentKey,
@@ -19,7 +16,7 @@ import {
 import { runtimeService } from '../runtime/runtime.service'
 
 import { downloadGitHubRepoArchive } from './downloadzip'
-import { extractUploadedZipArchive } from './extractzip'
+import { importRepository } from './import.repository'
 import {
     cleanupImportDir,
     persistImportSourceLocally,
@@ -30,7 +27,6 @@ import {
 
 import type {
     ImportFromGithub,
-    ImportFromZip,
     GetImportStatus,
     UpdateImportStatusParams,
     CreateImportRecordParams,
@@ -41,12 +37,10 @@ import type {
     StartRuntimeForImportParams,
     FinalizeImportProjectParams,
     ProcessGithubImportParams,
-    ProcessZipImportParams,
     FailImportParams,
 } from './import.types'
+import type { PreviewManifestFile } from '../../shared/preview-manifest'
 import type { RuntimePreviewStatus } from '@december/shared'
-
-const MAX_UPLOAD_ZIP_BYTES = 50 * 1024 * 1024
 
 const publicImportSelect = {
     id: true,

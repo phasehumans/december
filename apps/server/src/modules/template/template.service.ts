@@ -2,6 +2,7 @@ import { AppError } from '../../shared/appError'
 import { getBinaryFile, deletePrefix, projectPrefix } from '../../shared/project-storage'
 import { sendNotificationToUser } from '../notification/notification.service'
 import { copyProjectVersionsAndMessages } from '../project/project.service'
+
 import { templateRepository } from './template.repository'
 
 import type {

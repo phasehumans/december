@@ -1,15 +1,3 @@
-import {
-    findUserSubscriptionInfo,
-    updateProjectCurrentVersion,
-    findAgentSessionMemory,
-    createAgentSessionMemory,
-    updateProjectVersionCanvas,
-    updateProjectDetails,
-    completeWebsiteGeneration,
-    initializeGenerationTarget,
-} from './generation.repository'
-import { planAgentResponseSchema } from './generation.schema'
-
 import { saveProjectFiles } from '../../shared/save-project-files'
 import {
     extractProjectChangePlan,
@@ -28,6 +16,16 @@ import { runtimeService } from '../runtime/runtime.service'
 import { usageService } from '../usage/usage.service'
 
 import {
+    findUserSubscriptionInfo,
+    updateProjectCurrentVersion,
+    findAgentSessionMemory,
+    createAgentSessionMemory,
+    updateProjectVersionCanvas,
+    updateProjectDetails,
+    completeWebsiteGeneration,
+    initializeGenerationTarget,
+} from './generation.repository'
+import {
     getProjectRevisionBase,
     initializeGenerationTarget,
     markGenerationFailed,
@@ -38,6 +36,7 @@ import {
     publishFinalPreviewSnapshot,
     publishIncrementalPreviewSnapshot,
 } from './generation.runtime'
+import { planAgentResponseSchema } from './generation.schema'
 import { emitAssistantMessage, emitFileStream, emitPatchFileStream } from './generation.stream'
 import { cleanPrompt } from './generation.utils'
 import {

@@ -1,9 +1,9 @@
+import { describe, expect, test } from 'bun:test'
+
 import {
     planAgentResponseSchema,
     projectChangePlanResponseSchema,
 } from '../../src/modules/generation/generation.schema'
-import { describe, expect, test } from 'bun:test'
-
 import {
     autoHealPlanAgentResponse,
     autoHealChangePlanResponse,

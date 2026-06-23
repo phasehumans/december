@@ -1,21 +1,13 @@
 import { z } from 'zod'
 
-export const createGithubRepoSchema = z.object({
-    name: z
-        .string({ message: 'repository name is required' })
-        .min(1, 'repository name must be at least 1 character')
-        .max(100, 'repository name must be at most 100 characters')
-        .regex(
-            /^[a-zA-Z0-9_.-]+$/,
-            'repository name can only contain letters, numbers, dots, hyphens, and underscores'
-        ),
-    private: z.boolean({ message: 'private must be a boolean' }).default(true),
-    description: z.string({ message: 'description must be a string' }).optional(),
+export const connectVercelQuerySchema = z.object({
+    code: z.string({ message: 'code is required' }).min(1, 'code cannot be empty'),
+    state: z.string({ message: 'state is required' }).min(1, 'state cannot be empty'),
+    teamId: z.string().optional(),
+    configurationId: z.string().optional(),
 })
 
-export const syncGithubRepoSchema = z.object({
-    commitMessage: z
-        .string({ message: 'commitMessage must be a string' })
-        .min(1, 'commit message must be at least 1 character')
-        .optional(),
+export const connectOAuthQuerySchema = z.object({
+    code: z.string({ message: 'code is required' }).min(1, 'code cannot be empty'),
+    state: z.string({ message: 'state is required' }).min(1, 'state cannot be empty'),
 })

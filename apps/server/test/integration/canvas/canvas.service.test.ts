@@ -1,3 +1,6 @@
+import * as childProcess from 'child_process'
+import * as fsPromises from 'fs/promises'
+
 import { prisma } from '@december/database'
 import { describe, it, expect, beforeEach, afterAll, mock } from 'bun:test'
 
@@ -38,6 +41,7 @@ const spawnMock = mock((command: string, args: string[], options: any) => {
 })
 
 mock.module('child_process', () => ({
+    ...childProcess,
     spawn: spawnMock,
 }))
 
@@ -45,6 +49,7 @@ const readFileMock = mock(async () => Buffer.from('mock-image-data'))
 const rmMock = mock(async () => {})
 
 mock.module('fs/promises', () => ({
+    ...fsPromises,
     readFile: readFileMock,
     rm: rmMock,
 }))
@@ -89,6 +94,7 @@ describe('canvas.service.integration', () => {
             data: {
                 name: 'Test Project',
                 userId: user.id,
+                prompt: 'test prompt',
             },
         })
 
@@ -99,6 +105,7 @@ describe('canvas.service.integration', () => {
                 status: 'READY',
                 sourcePrompt: 'initial prompt',
                 objectStoragePrefix: `projects/${project.id}/v1/`,
+                manifestJson: [],
             },
         })
 

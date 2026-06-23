@@ -1,4 +1,5 @@
 import { AppError } from '../../shared/appError'
+
 import { notificationRepository } from './notification.repository'
 
 export const notificationSelect = {

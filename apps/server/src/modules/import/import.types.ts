@@ -1,19 +1,8 @@
 import type { PreviewManifestFile } from './preview-manifest.types'
 
-export type UploadedZipFile = {
-    originalname: string
-    mimetype: string
-    buffer: Buffer
-}
-
 export type ImportFromGithub = {
     userId: string
     repoURL: string
-}
-
-export type ImportFromZip = {
-    userId: string
-    zipFile: UploadedZipFile
 }
 
 export type GetImportStatus = {
@@ -21,7 +10,7 @@ export type GetImportStatus = {
     importId: string
 }
 
-export type ImportSource = 'GITHUB' | 'ZIP'
+export type ImportSource = 'GITHUB'
 
 export type ImportStatus =
     | 'PENDING'
@@ -75,24 +64,6 @@ export type DownloadedGitHubRepoArchive =
               | 'NETWORK_ERROR'
               | 'EXTRACT_FAILED'
               | 'EMPTY_ARCHIVE'
-      }
-
-export type ExtractedUploadedZipArchive =
-    | {
-          ok: true
-          owner: string
-          repo: string
-          ref: string | null
-          zipUrl: null
-          tempRootDir: string
-          zipFilePath: string
-          extractDir: string
-          repoRootDir: string
-      }
-    | {
-          ok: false
-          error: string
-          code: 'INVALID_FILE' | 'SAVE_FAILED' | 'EXTRACT_FAILED' | 'EMPTY_ARCHIVE'
       }
 
 export type ParsedGitHubRepo =
@@ -195,14 +166,6 @@ export type ProcessGithubImportParams = {
     owner: string
     repo: string
     token: string
-}
-
-export type ProcessZipImportParams = {
-    importId: string
-    userId: string
-    projectId: string
-    versionId: string
-    zipFile: UploadedZipFile
 }
 
 export type FailImportParams = {

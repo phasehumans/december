@@ -1,8 +1,8 @@
 import { prisma } from '@december/database'
-import { GenerationSound } from '../../../src/modules/profile/profile.schema'
 import bcrypt from 'bcrypt'
 import { describe, it, expect, beforeEach, afterAll } from 'bun:test'
 
+import { GenerationSound } from '../../../src/modules/profile/profile.schema'
 import { profileService } from '../../../src/modules/profile/profile.service'
 
 const createUser = async (overrides: Record<string, unknown> = {}) => {
