@@ -9,7 +9,7 @@ import type {
     RazorpaySubscriptionLike,
     VerifyRazorpaySubscriptionPayment,
     VerifyRazorpayWebhookSignature,
-} from '@december/shared'
+} from './billing.types'
 
 const FREE_MONTHLY_CREDIT_CENTS = 100
 const PRO_MONTHLY_CREDIT_CENTS = 500

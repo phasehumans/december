@@ -4,7 +4,7 @@ import type {
     ProjectIntent,
     ProjectPlan,
     GenerateWebsiteInput,
-} from './generation.types'
+} from '../generation/generation.types'
 
 export type GenerateProjectFile = {
     brief: ProjectIntent

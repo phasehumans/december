@@ -9,7 +9,7 @@ import type {
     NotifyRuntimeOfManifest,
     PublishIncrementalPreviewSnapshot,
     PublishFinalPreviewSnapshot,
-} from '@december/shared'
+} from './generation.types'
 
 export const notifyRuntimeOfManifest = async (data: NotifyRuntimeOfManifest) => {
     const { projectId, manifest } = data

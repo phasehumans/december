@@ -159,7 +159,7 @@ const verifyOtp = async (data: VerifyOtp) => {
     }
 
     try {
-        await sendWelcomeEmail(user.email, user.name || '')
+        // await sendWelcomeEmail(user.email, user.name || '')
     } catch (error) {
         console.error('failed to send welcome email:', error)
     }
@@ -349,7 +349,7 @@ const google = async (data: Google) => {
         }
 
         try {
-            await sendWelcomeEmail(user.email, user.name || '')
+            // await sendWelcomeEmail(user.email, user.name || '')
         } catch (error) {
             console.error('failed to send welcome email:', error)
         }
