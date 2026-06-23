@@ -9,7 +9,7 @@ import type {
     PreviewManifest,
     PreviewManifestRef,
     PreviewManifestStoredFile,
-} from '@december/shared'
+} from './preview-manifest.types'
 
 const guessContentType = (path: string) => {
     if (path.endsWith('.tsx')) return 'text/tsx; charset=utf-8'

@@ -14,11 +14,11 @@ import type {
     GenerateWebsiteInput,
     PersistedProjectRevision,
     RevisionBase,
-    StoredProjectFile,
     GetProjectRevisionBase,
     PersistProjectRevision,
     MarkGenerationFailed,
-} from '@december/shared'
+} from './generation.types'
+import type { StoredProjectFile } from '../project/project.types'
 
 export const loadGeneratedFilesFromManifest = async (manifest: StoredProjectFile[]) => {
     const files = await Promise.all(
@@ -122,7 +122,7 @@ export const initializeGenerationTarget = async (data: GenerateWebsiteInput) => 
     })
 
     if (result.versionNumber === 1) {
-        const scaffoldDir = path.resolve(__dirname, '../scaffold')
+        const scaffoldDir = path.resolve(__dirname, '../../../../runtime/scaffold')
         const filesToSave = [
             {
                 path: 'package.json',

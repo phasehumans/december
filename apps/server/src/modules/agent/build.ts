@@ -3,7 +3,7 @@ import {
     generateProjectPatchFile as generateProjectPatchFileAgent,
 } from './build.agent'
 
-import type { GenerateProjectFile, GenerateProjectPatchFile } from '@december/shared'
+import type { GenerateProjectFile, GenerateProjectPatchFile } from './agent.types'
 
 export const generateProjectFile = (data: GenerateProjectFile) => generateProjectFileAgent(data)
 

@@ -14,7 +14,7 @@ import { loadMemoryPromptInstructions } from '../memory/memory.service'
 import { parseModelJson, retryAsync } from './agents.utils'
 import { CHANGE_PLAN_AGENT_PROMPT, PLAN_AGENT_PROMPT } from './plan.prompt'
 
-import type { ExtractProjectPlan, ExtractProjectChangePlan } from '@december/shared'
+import type { ExtractProjectPlan, ExtractProjectChangePlan } from './agent.types'
 
 type ExtractProjectPlanResponse = z.infer<typeof planAgentResponseSchema>
 type ExtractProjectChangePlanResponse = z.infer<typeof projectChangePlanResponseSchema>

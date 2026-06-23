@@ -39,7 +39,7 @@ import type {
     ProcessGithubImportParams,
     FailImportParams,
 } from './import.types'
-import type { PreviewManifestFile } from '@december/shared'
+import type { PreviewManifestFile } from '../../shared/preview-manifest.types'
 import type { RuntimePreviewStatus } from '../runtime/runtime.types'
 
 const publicImportSelect = {

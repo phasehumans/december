@@ -4,5 +4,5 @@
         "typeRoots": ["./node_modules/@types", "./src/types"],
         "types": ["bun"]
     },
-    "exclude": ["node_modules", "dist", "src/scaffold"]
+    "exclude": ["node_modules", "dist"]
 }

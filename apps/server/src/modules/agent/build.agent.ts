@@ -1,13 +1,13 @@
+import { z } from 'zod'
+
+import { openai } from '../../config/oai'
+import { buildDeclarationMap } from '../generation/context-indexer'
 import {
     plannedProjectFileSchema,
     projectPatchOperationSchema,
     projectIntentSchema,
     projectPlanSchema,
-} from '@december/shared'
-import { z } from 'zod'
-
-import { openai } from '../../config/oai'
-import { buildDeclarationMap } from '../generation/context-indexer'
+} from '../generation/generation.schema'
 import {
     assertFrontendWorkspacePath,
     isFrontendWorkspacePath,
@@ -21,7 +21,7 @@ import {
     BUILD_SUMMARY_AGENT_PROMPT,
 } from './build.prompt'
 
-import type { GenerateProjectFile, GenerateProjectPatchFile } from '@december/shared'
+import type { GenerateProjectFile, GenerateProjectPatchFile } from './agent.types'
 
 type ProjectIntent = z.infer<typeof projectIntentSchema>
 type ProjectPlan = z.infer<typeof projectPlanSchema>

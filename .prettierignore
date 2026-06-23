@@ -20,4 +20,3 @@ package-lock.json
 logs
 runtime
 infra
-apps/docs/.next
