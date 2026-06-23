@@ -1,4 +1,4 @@
-import type { PreviewManifestFile } from './preview-manifest.types'
+import type { PreviewManifestFile } from '@december/shared'
 
 export type ImportFromGithub = {
     userId: string

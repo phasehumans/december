@@ -6,7 +6,7 @@ import { promisify } from 'node:util'
 
 import { importStagingRootDir } from './import.utils'
 
-import type { DownloadedGitHubRepoArchive } from '@december/shared'
+import type { DownloadedGitHubRepoArchive } from './import.types'
 
 const execAsync = promisify(exec)
 
@@ -22,26 +22,18 @@ export async function downloadGitHubRepoArchive(
 
     try {
         await mkdir(tempRootDir, { recursive: true })
-        console.log(`[git-clone] target dir: ${tempRootDir}`)
 
         // Execute git clone
         const cloneCommand = resolvedRef
             ? `git clone --depth 1 -b ${resolvedRef} ${cloneUrl} "${tempRootDir}"`
             : `git clone --depth 1 ${cloneUrl} "${tempRootDir}"`
 
-        console.log(
-            `[git-clone] running: git clone --depth 1 ${resolvedRef ? `-b ${resolvedRef} ` : ''}https://***@github.com/${owner}/${repo}.git "${tempRootDir}"`
-        )
-
         try {
             await execAsync(cloneCommand)
-            console.log(`[git-clone] clone succeeded`)
         } catch (err: any) {
             // If it fails with a specific ref, fallback to default clone
             if (resolvedRef) {
-                console.log(`[git-clone] branch clone failed, falling back to default clone`)
                 await execAsync(`git clone --depth 1 ${cloneUrl} "${tempRootDir}"`)
-                console.log(`[git-clone] fallback clone succeeded`)
             } else {
                 throw err
             }
@@ -49,7 +41,6 @@ export async function downloadGitHubRepoArchive(
 
         // Remove the .git directory so it doesn't get validated/uploaded
         await rm(join(tempRootDir, '.git'), { recursive: true, force: true }).catch(() => undefined)
-        console.log(`[git-clone] .git directory removed`)
 
         return {
             ok: true,

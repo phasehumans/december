@@ -39,8 +39,8 @@ import type {
     ProcessGithubImportParams,
     FailImportParams,
 } from './import.types'
-import type { PreviewManifestFile } from '../../shared/preview-manifest'
-import type { RuntimePreviewStatus } from '@december/shared'
+import type { PreviewManifestFile } from '@december/shared'
+import type { RuntimePreviewStatus } from '../runtime/runtime.types'
 
 const publicImportSelect = {
     id: true,
@@ -173,7 +173,7 @@ const updateImportedProjectVersion = async (data: UpdateImportedProjectVersionPa
                     ? `Importing GitHub repository: ${sourceLabel}`
                     : `Uploading ZIP archive: ${sourceLabel || 'project.zip'}`,
             sequence: 1,
-            projectId: projectId,
+            project: { connect: { id: projectId } },
         },
         {
             role: 'ASSISTANT' as const,
@@ -183,7 +183,7 @@ const updateImportedProjectVersion = async (data: UpdateImportedProjectVersionPa
                     : `I am initiating a comprehensive review of the uploaded ZIP archive to map its workspace architecture and build system.\n\nFirst, I will extract and scan the package files in the archive to find standard configuration entrypoints like \`package.json\`, \`tsconfig.json\`, \`vite.config.ts\`, or \`next.config.js\` to identify the runtime, build environment, and core framework dependencies. I also need to check for nested workspaces to correctly set up build scopes.\n\nNext, I will inspect the source folder layout (\`src\`, \`app\`, \`pages\`, or \`components\`) to trace the component architecture, entry routers, and styles (e.g., Tailwind CSS, styled-components, or vanilla CSS modules). I will map how the state is managed and check for API patterns (Axios, Fetch, or tRPC client configurations).\n\nFinally, I will analyze the environment file placeholders, database prisma schemas, or container setups if present, to ensure local execution alignment. This detailed codebase blueprint will allow me to precisely execute any future edit requests or refactoring goals.\n\n### Project Metadata\n\nI have successfully analyzed the codebase and mapped the architecture:\n\n- **Project Type**: Uploaded ZIP Archive\n- **Detected Framework**: ${project.detection.framework}\n- **Workspace Architecture**: ${project.files.length > 50 ? 'Medium-scale Web Application' : 'Single-page React/Vite Application'}\n- **Build Configuration**: Configured and validated\n- **Environment Status**: Container initialized, dependencies mapped\n- **Total Files Mapped**: ${project.files.length}\n\nYou can now ask me to explain specific files, add new features, or debug any issues in the code.`,
             status: 'done' as const,
             sequence: 2,
-            projectId: projectId,
+            project: { connect: { id: projectId } },
         },
     ]
 
@@ -216,10 +216,6 @@ const startRuntimeForImport = async (data: StartRuntimeForImportParams) => {
 const finalizeImportProject = async (data: FinalizeImportProjectParams) => {
     const { importId, userId, projectId, versionId, validatedProject, sourceType, sourceLabel } =
         data
-    console.log(`[import:${importId}] finalizeImportProject: starting upload for ${sourceLabel}`)
-    console.log(
-        `[import:${importId}] files to upload: ${validatedProject.files.length}, totalBytes: ${validatedProject.totalBytes}`
-    )
 
     await updateImportStatus({
         importId,
@@ -232,13 +228,11 @@ const finalizeImportProject = async (data: FinalizeImportProjectParams) => {
         },
     })
 
-    console.log(`[import:${importId}] uploading import source files to MinIO...`)
     await uploadImportSourceFiles({
         userId,
         importId,
         project: validatedProject,
     })
-    console.log(`[import:${importId}] import source files uploaded successfully`)
 
     await updateImportStatus({
         importId,
@@ -249,15 +243,12 @@ const finalizeImportProject = async (data: FinalizeImportProjectParams) => {
         },
     })
 
-    console.log(`[import:${importId}] uploading project files to MinIO...`)
     const uploadedFiles = await uploadValidatedProject({
         projectId,
         versionId,
         project: validatedProject,
     })
-    console.log(`[import:${importId}] project files uploaded: ${uploadedFiles.length} files`)
 
-    console.log(`[import:${importId}] updating project version in DB...`)
     await updateImportedProjectVersion({
         projectId,
         versionId,
@@ -266,9 +257,7 @@ const finalizeImportProject = async (data: FinalizeImportProjectParams) => {
         sourceType,
         sourceLabel,
     })
-    console.log(`[import:${importId}] project version updated: ${projectId}/${versionId}`)
 
-    console.log(`[import:${importId}] publishing preview manifest...`)
     await publishPreviewManifest({
         manifestVersion: 'import',
         projectId,
@@ -277,11 +266,9 @@ const finalizeImportProject = async (data: FinalizeImportProjectParams) => {
         runnable: true,
         files: uploadedFiles,
     })
-    console.log(`[import:${importId}] preview manifest published`)
 
     // Check if the project structure is valid
     if (!validatedProject.isValid) {
-        console.log(`[import:${importId}] project is invalid: ${validatedProject.validationError}`)
         await updateImportStatus({
             importId,
             status: 'FAILED',
@@ -303,15 +290,11 @@ const finalizeImportProject = async (data: FinalizeImportProjectParams) => {
         },
     })
 
-    console.log(`[import:${importId}] starting runtime preview...`)
     const preview = await startRuntimeForImport({
         userId,
         projectId,
         versionId,
     })
-    console.log(
-        `[import:${importId}] runtime result: status=${preview.backendStatus}, url=${preview.previewUrl ?? 'none'}`
-    )
 
     await updateImportStatus({
         importId,
@@ -362,8 +345,6 @@ const processGithubImport = async (data: ProcessGithubImportParams) => {
     let tempRootDir: string | null = null
 
     try {
-        console.log(`[import:${importId}] processGithubImport: starting for ${owner}/${repo}`)
-
         await importRepository.incrementAttempts(importId)
 
         await updateImportStatus({
@@ -382,7 +363,6 @@ const processGithubImport = async (data: ProcessGithubImportParams) => {
         }
 
         const ref = repoAccessInfo.defaultBranch ?? 'main'
-        console.log(`[import:${importId}] cloning ${owner}/${repo} ref=${ref}...`)
         await updateImportStatus({
             importId,
             status: 'VALIDATING',
@@ -399,19 +379,14 @@ const processGithubImport = async (data: ProcessGithubImportParams) => {
             throw new AppError(downloaded.error)
         }
 
-        console.log(`[import:${importId}] clone complete: ${downloaded.repoRootDir}`)
         tempRootDir = downloaded.tempRootDir
 
-        console.log(`[import:${importId}] validating project structure...`)
         await updateImportStatus({
             importId,
             status: 'VALIDATING',
             data: { errorMessage: 'Checking project structure...' },
         })
         const validatedProject = await validateImportProject(downloaded.repoRootDir)
-        console.log(
-            `[import:${importId}] validation passed=${validatedProject.isValid}: ${validatedProject.files.length} files, framework=${validatedProject.detection.framework}`
-        )
 
         await updateImportStatus({
             importId,
@@ -423,7 +398,6 @@ const processGithubImport = async (data: ProcessGithubImportParams) => {
             importId,
             sourceDir: validatedProject.rootDir,
         })
-        console.log(`[import:${importId}] persisted source locally`)
 
         await finalizeImportProject({
             importId,
@@ -434,8 +408,6 @@ const processGithubImport = async (data: ProcessGithubImportParams) => {
             sourceType: 'github',
             sourceLabel: repoAccessInfo.normalizedUrl,
         })
-
-        console.log(`[import:${importId}] processGithubImport: completed successfully`)
     } catch (error) {
         console.error(`[import:${importId}] processGithubImport FAILED:`, error)
         await failImport({ importId, error })
@@ -459,18 +431,7 @@ const importFromGithub = async (data: ImportFromGithub) => {
     }
 
     if (!user.githubToken) {
-        throw new AppError('GitHub access token not found', 404)
-    }
-
-    if (user.subscriptionPlan === 'FREE') {
-        const importCount = await importRepository.countUserImports({
-            userId,
-            sourceType: 'GITHUB',
-        })
-
-        if (importCount >= 1) {
-            throw new AppError('Limit exceeded (1 free import). Upgrade to continue.', 403)
-        }
+        throw new AppError('github access token not found', 404)
     }
 
     const projectId = randomUUID()

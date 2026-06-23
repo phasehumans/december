@@ -1,6 +1,6 @@
 import { prisma } from '@december/database'
 
-import type { PreviewManifestRef } from './preview-manifest.types'
+import type { PreviewManifestRef } from '@december/shared'
 
 export type ProjectVersionRecord = NonNullable<
     Awaited<ReturnType<typeof prisma.projectVersion.findFirst>>

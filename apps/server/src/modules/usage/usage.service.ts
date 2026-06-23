@@ -10,6 +10,7 @@ import type {
     CalculateGenerationCost,
     CanRunSelfCorrection,
     UsageUser,
+    ModelRate,
 } from './usage.types'
 
 const getModelRatesFromEnv = (): ModelRate[] => {

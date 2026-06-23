@@ -98,8 +98,8 @@ const deployVercelProject = asyncHandler(async (req: Request, res: Response) => 
 
         await platformRepository.updateProjectVercelLink({
             projectId,
-            vercelProjectId,
-            vercelProjectName,
+            vercelProjectId: vercelProject.id,
+            vercelProjectName: vercelProject.name,
         })
     }
 

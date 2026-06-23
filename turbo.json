@@ -13,6 +13,9 @@
             "cache": false,
             "persistent": true
         },
+        "db:clear": {
+            "cache": false
+        },
         "build": {
             "dependsOn": ["^build", "db:generate"],
             "outputs": ["dist/**", "build/**", "target/**"]

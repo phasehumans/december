@@ -1,11 +1,11 @@
 import { prisma } from '@december/database'
 
-import type { Prisma } from '@december/database'
+import type { Prisma, ProjectImportStatus } from '@december/database'
 
 export const importRepository = {
     async updateImport(data: {
         importId: string
-        status: string
+        status: ProjectImportStatus
         updateData?: Prisma.ProjectImportUpdateInput
         select: Prisma.ProjectImportSelect
     }) {
@@ -106,7 +106,7 @@ export const importRepository = {
         description: string
         summary: string
         manifestJson: Prisma.InputJsonValue
-        messages: Prisma.ProjectMessageCreateWithoutProjectInput[]
+        messages: Prisma.ProjectMessageCreateWithoutProjectVersionInput[]
     }) {
         const { projectId, versionId, description, summary, manifestJson, messages } = data
         return prisma.$transaction(async (tx) => {
