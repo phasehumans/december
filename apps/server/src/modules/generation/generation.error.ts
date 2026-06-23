@@ -1,4 +1,4 @@
-import type { NormalizeGenerationError } from '@december/shared'
+import type { NormalizeGenerationError } from './generation.types'
 
 const getErrorMessage = (error: unknown) => {
     if (error instanceof Error) {
