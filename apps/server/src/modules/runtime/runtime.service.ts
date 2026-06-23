@@ -6,7 +6,7 @@ import { getBinaryFile, putBinaryFile } from '../../shared/project-storage'
 import { chromium } from 'playwright'
 import { runtimeRepository } from './runtime.repository'
 
-import type { PreviewManifestRef } from '@december/shared'
+import type { PreviewManifestRef } from '../../shared/preview-manifest.types'
 import type { StoredProjectFile } from '../project/project.types'
 import type {
     RuntimePreviewError,

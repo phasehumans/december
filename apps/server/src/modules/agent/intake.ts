@@ -3,7 +3,7 @@ import {
     extractProjectPlan as extractProjectPlanAgent,
 } from './plan.agent'
 
-import type { ExtractProjectPlan } from '@december/shared'
+import type { ExtractProjectPlan } from './agent.types'
 
 export const extractProjectPlan = (data: ExtractProjectPlan) => extractProjectPlanAgent(data)
 

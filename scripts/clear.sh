@@ -9,9 +9,9 @@ else
     echo "Directory infra/minio/data/december-storage not found."
 fi
 
-if [ -d "runtime/data/workspaces" ]; then
+if [ -d "apps/runtime/data/workspaces" ]; then
     echo "Clearing runtime/data/workspaces/*"
-    rm -rf runtime/data/workspaces/*
+    rm -rf apps/runtime/data/workspaces/*
 else
     echo "Directory runtime/data/workspaces not found."
 fi

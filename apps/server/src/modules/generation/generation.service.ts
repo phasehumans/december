@@ -24,10 +24,7 @@ import {
     updateProjectDetails,
     completeWebsiteGeneration,
     initializeGenerationTarget,
-} from './generation.repository'
-import {
     getProjectRevisionBase,
-    initializeGenerationTarget,
     markGenerationFailed,
     persistProjectRevision,
     loadGeneratedFilesFromManifest,
@@ -56,7 +53,7 @@ import type {
     ProjectRecord,
     ApplyProjectEdit,
     ApplyProjectFix,
-} from '@december/shared'
+} from './generation.types'
 
 const fileTreeForPlanning = (files: Record<string, string>) =>
     Object.entries(files)
@@ -879,4 +876,8 @@ export const applyProjectEdit = (data: ApplyProjectEdit) => applyProjectChange('
 
 export const applyProjectFix = (data: ApplyProjectFix) => applyProjectChange('fix', data)
 
-export const generateService = { applyProjectEdit, applyProjectFix, generateWebsite }
+export const generateService = {
+    applyProjectEdit,
+    applyProjectFix,
+    generateWebsite,
+}
