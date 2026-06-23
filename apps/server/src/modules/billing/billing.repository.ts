@@ -2,8 +2,6 @@ import { prisma } from '@december/database'
 
 import { AppError } from '../../shared/appError'
 
-import type { Prisma } from '@december/database'
-
 export const billingRepository = {
     async findUserForOverview(id: string) {
         return prisma.user.findUnique({

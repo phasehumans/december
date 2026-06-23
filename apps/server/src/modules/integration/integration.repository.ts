@@ -1,7 +1,5 @@
 import { prisma } from '@december/database'
 
-import type { Prisma } from '@december/database'
-
 export const integrationRepository = {
     async findUserById(id: string) {
         return prisma.user.findUnique({
@@ -90,63 +88,6 @@ export const integrationRepository = {
                 id: true,
                 githubConnected: true,
                 githubUsername: true,
-            },
-        })
-    },
-
-    async findUserGithubConnection(id: string) {
-        return prisma.user.findUnique({
-            where: { id },
-            select: {
-                githubToken: true,
-                githubUsername: true,
-                githubConnected: true,
-            },
-        })
-    },
-
-    async findProjectByIdAndUser(data: { projectId: string; userId: string }) {
-        const { projectId, userId } = data
-        return prisma.project.findFirst({
-            where: {
-                id: projectId,
-                userId,
-            },
-        })
-    },
-
-    async updateProjectGithub(data: {
-        projectId: string
-        githubRepoName: string
-        githubRepoOwner: string
-        githubRepoUrl: string
-    }) {
-        const { projectId, githubRepoName, githubRepoOwner, githubRepoUrl } = data
-        return prisma.project.update({
-            where: { id: projectId },
-            data: {
-                githubRepoName,
-                githubRepoOwner,
-                githubRepoUrl,
-            },
-        })
-    },
-
-    async findProjectVersionByIdAndProject(data: { versionId: string; projectId: string }) {
-        const { versionId, projectId } = data
-        return prisma.projectVersion.findFirst({
-            where: {
-                id: versionId,
-                projectId,
-            },
-        })
-    },
-
-    async updateProjectSynced(projectId: string) {
-        return prisma.project.update({
-            where: { id: projectId },
-            data: {
-                githubLastSyncedAt: new Date(),
             },
         })
     },

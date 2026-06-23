@@ -1,4 +1,3 @@
-import type { Project } from '@december/database'
 import { z } from 'zod'
 
 import {
@@ -10,6 +9,7 @@ import {
 } from './generation.schema'
 
 import type { PreviewManifestRef } from './preview-manifest.types'
+import type { Project } from '@december/database'
 
 export type GenerateWebsiteInput = {
     prompt: string

@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test'
+
 import { toggleLikeSchema, remixTemplateSchema } from '../../src/modules/template/template.schema'
 
 describe('template schemas', () => {

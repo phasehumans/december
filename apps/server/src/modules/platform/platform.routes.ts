@@ -13,4 +13,8 @@ platformRouter.post('/:projectId/vercel/deploy', platformController.deployVercel
 platformRouter.get('/:deploymentId/status', platformController.getVercelDeploymentStatus)
 platformRouter.get('/:deploymentId/logs', platformController.streamVercelBuildLogs)
 
+platformRouter.get('/github/repos', platformController.getUserGithubRepos)
+platformRouter.post('/projects/:projectId/github/repository', platformController.createRepo)
+platformRouter.post('/projects/:projectId/github/sync', platformController.updateRepo)
+
 export default platformRouter

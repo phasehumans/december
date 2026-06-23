@@ -3,11 +3,12 @@ import '../../env'
 import path from 'path'
 
 import { prisma } from '@december/database'
-import { GenerationSound } from '../../../src/modules/profile/profile.schema'
 import bcrypt from 'bcrypt'
 import { describe, it, expect, beforeAll, beforeEach, afterAll, mock } from 'bun:test'
 import express from 'express'
 import request from 'supertest'
+
+import { GenerationSound } from '../../../src/modules/profile/profile.schema'
 
 const TEST_USER_ID = 'test-user-id'
 const TEST_SESSION_ID = 'test-session-id'

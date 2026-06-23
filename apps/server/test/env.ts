@@ -1,10 +1,10 @@
-// import { config } from 'dotenv'
-// config({ path: './server/.env.test' })
-
 import path from 'path'
 
 import dotenv from 'dotenv'
 
-dotenv.config({
-    path: path.resolve(process.cwd(), '../../.env.test'),
-})
+if (!process.env.ENV_LOADED) {
+    dotenv.config({
+        path: path.resolve(process.cwd(), '../../.env.test'),
+    })
+    process.env.ENV_LOADED = 'true'
+}

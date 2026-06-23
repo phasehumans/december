@@ -11,7 +11,6 @@ console.log(`Releasing v${version}...`)
 
 await $`git-cliff -o CHANGELOG.md`
 
-// await $`git add CHANGELOG.md`
 await $`git add .`
 await $`git commit -m ${`chore(release): v${version}`}`
 

@@ -5,9 +5,12 @@ import { z } from 'zod'
 
 const envFile = process.env.NODE_ENV === 'test' || process.env.ENV === 'TEST' ? '.env.test' : '.env'
 
-dotenv.config({
-    path: path.resolve(process.cwd(), `../../${envFile}`),
-})
+if (!process.env.ENV_LOADED) {
+    dotenv.config({
+        path: path.resolve(process.cwd(), `../../${envFile}`),
+    })
+    process.env.ENV_LOADED = 'true'
+}
 
 const envSchema = z.object({
     PORT: z.coerce.number().default(4000),

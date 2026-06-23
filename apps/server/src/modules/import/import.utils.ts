@@ -1,8 +1,6 @@
 import { createHash } from 'node:crypto'
-import { cp, mkdir, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises'
-import { basename, dirname, join, relative, resolve, sep } from 'node:path'
-
-import AdmZip from 'adm-zip'
+import { cp, mkdir, readdir, readFile, rm, stat } from 'node:fs/promises'
+import { basename, dirname, join, relative, sep } from 'node:path'
 
 import type {
     ImportValidationFile,
@@ -14,11 +12,6 @@ import type {
     GitHubRepoApiResponse,
 } from '@december/shared'
 
-const MAX_ZIP_BYTES = 50 * 1024 * 1024
-const MAX_UNCOMPRESSED_BYTES = 150 * 1024 * 1024
-const MAX_FILES = 2500
-const MAX_FILE_BYTES = 20 * 1024 * 1024
-const MAX_COMPRESSION_RATIO = 25
 export const IMPORT_STAGING_DIR = '.december-imports'
 
 const IGNORED_DIRS = new Set([
@@ -65,86 +58,6 @@ export const persistImportSourceLocally = async (data: PersistImportSourceLocall
     })
 
     return targetDir
-}
-
-export const assertZipBufferIsSafe = (zipBuffer: Buffer) => {
-    if (zipBuffer.byteLength > MAX_ZIP_BYTES) {
-        throw new Error('Zip file is too large')
-    }
-
-    let zip: AdmZip
-
-    try {
-        zip = new AdmZip(zipBuffer)
-    } catch {
-        throw new Error('Uploaded zip file is corrupted')
-    }
-
-    const entries = zip.getEntries().filter((entry) => !entry.isDirectory)
-
-    if (entries.length === 0) {
-        throw new Error('Archive does not contain any files')
-    }
-
-    if (entries.length > MAX_FILES) {
-        throw new Error('Archive contains too many files')
-    }
-
-    const uncompressedBytes = entries.reduce((sum, entry) => sum + (entry.header.size ?? 0), 0)
-
-    if (uncompressedBytes > MAX_UNCOMPRESSED_BYTES) {
-        throw new Error('Archive expands to too much data')
-    }
-
-    if (
-        zipBuffer.byteLength > 0 &&
-        uncompressedBytes / zipBuffer.byteLength > MAX_COMPRESSION_RATIO
-    ) {
-        throw new Error('Archive compression ratio is too high')
-    }
-}
-
-export const extractZipSafely = async (zipBuffer: Buffer, extractDir: string) => {
-    assertZipBufferIsSafe(zipBuffer)
-    const zip = new AdmZip(zipBuffer)
-    const extractRoot = resolve(extractDir)
-
-    await mkdir(extractRoot, { recursive: true })
-
-    for (const entry of zip.getEntries()) {
-        const normalizedEntryName = entry.entryName.replace(/\\/g, '/')
-
-        if (
-            !normalizedEntryName ||
-            normalizedEntryName.startsWith('/') ||
-            normalizedEntryName.includes('\0')
-        ) {
-            throw new Error('Archive contains an invalid file path')
-        }
-
-        const targetPath = resolve(extractRoot, normalizedEntryName)
-        const targetRelative = relative(extractRoot, targetPath)
-
-        if (
-            targetRelative.startsWith('..') ||
-            targetRelative === '' ||
-            targetRelative.startsWith(`..${sep}`)
-        ) {
-            throw new Error('Archive contains unsafe file paths')
-        }
-
-        if (entry.isDirectory) {
-            await mkdir(targetPath, { recursive: true })
-            continue
-        }
-
-        if ((entry.header.size ?? 0) > MAX_FILE_BYTES) {
-            throw new Error(`File is too large: ${normalizedEntryName}`)
-        }
-
-        await mkdir(dirname(targetPath), { recursive: true })
-        await writeFile(targetPath, entry.getData())
-    }
 }
 
 const guessContentType = (path: string) => {

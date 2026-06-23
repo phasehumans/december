@@ -1,10 +1,13 @@
 import { AppError } from '../../shared/appError'
 import { asyncHandler } from '../../shared/asyncHandler'
 import { sendSuccess } from '../../shared/response'
-import { integrationsService } from '../integration/integration.service'
 
 import { platformRepository } from './platform.repository'
-import { downloadProjectVersionSchema } from './platform.schema'
+import {
+    downloadProjectVersionSchema,
+    createGithubRepoSchema,
+    syncGithubRepoSchema,
+} from './platform.schema'
 import { platformService } from './platform.service'
 import { vercelService } from './vercel.service'
 
@@ -100,7 +103,7 @@ const deployVercelProject = asyncHandler(async (req: Request, res: Response) => 
         })
     }
 
-    const { commitSha } = await integrationsService.updateRepo({
+    const { commitSha } = await platformService.updateRepo({
         userId,
         projectId,
         commitMessage: 'Auto-deploy triggered from December settings',
@@ -155,10 +158,68 @@ const streamVercelBuildLogs = asyncHandler(async (req: Request, res: Response) =
     await vercelService.streamBuildLogs({ userId, deploymentId, res })
 })
 
+const getUserGithubRepos = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
+
+    if (!userId) {
+        throw new AppError('unauthorized', 401)
+    }
+
+    const result = await platformService.getUserGithubRepos({ userId })
+    return sendSuccess(res, 'repos fetched successfully', result)
+})
+
+const createRepo = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
+    const projectId = req.params.projectId as string | undefined
+
+    if (!userId) {
+        throw new AppError('unauthorized', 401)
+    }
+
+    if (!projectId) {
+        throw new AppError('project id is required', 400)
+    }
+
+    const parsedBody = createGithubRepoSchema.parse(req.body)
+    const result = await platformService.createRepo({
+        userId,
+        projectId,
+        ...parsedBody,
+    })
+
+    return sendSuccess(res, 'repository created and linked successfully', result)
+})
+
+const updateRepo = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
+    const projectId = req.params.projectId as string | undefined
+
+    if (!userId) {
+        throw new AppError('unauthorized', 401)
+    }
+
+    if (!projectId) {
+        throw new AppError('project id is required', 400)
+    }
+
+    const parsedBody = syncGithubRepoSchema.parse(req.body)
+    const result = await platformService.updateRepo({
+        userId,
+        projectId,
+        ...parsedBody,
+    })
+
+    return sendSuccess(res, 'repository synced successfully', result)
+})
+
 export const platformController = {
     deployDecemberProject,
     downloadProjectVersion,
     deployVercelProject,
     getVercelDeploymentStatus,
     streamVercelBuildLogs,
+    getUserGithubRepos,
+    createRepo,
+    updateRepo,
 }
