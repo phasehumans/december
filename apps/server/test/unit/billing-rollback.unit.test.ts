@@ -11,8 +11,6 @@ mock.module('@december/database', () => ({
             findUnique: async () => ({
                 id: 'user-id',
                 isDeleted: false,
-                subscriptionPlan: 'FREE',
-                subscriptionStatus: 'FREE',
                 createdAt: new Date(),
                 creditBalance: mockUserBalance,
                 giftedCredits: mockUserGifted,

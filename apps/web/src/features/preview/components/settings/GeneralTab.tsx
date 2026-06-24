@@ -37,8 +37,6 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
         queryFn: profileAPI.getProfile,
     })
 
-    const isPro = profile?.subscriptionPlan === 'PRO' && profile?.subscriptionStatus === 'ACTIVE'
-
     return (
         <div className="flex flex-col w-full max-w-[680px] text-[#D6D5C9] animate-in fade-in duration-200">
             <h1 className="text-[16px] font-medium mb-3">General Settings</h1>

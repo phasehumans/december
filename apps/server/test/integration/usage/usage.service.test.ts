@@ -34,7 +34,6 @@ describe('usage.service.integration', () => {
     beforeEach(async () => {
         await prisma.usageEvent.deleteMany()
         await prisma.project.deleteMany()
-        await prisma.subscription.deleteMany()
         await prisma.session.deleteMany()
         await prisma.user.deleteMany()
 
@@ -49,10 +48,9 @@ describe('usage.service.integration', () => {
     it('should return empty current-period usage for a new free user', async () => {
         const result = await usageService.getCurrentUsage({ userId })
 
-        expect(result.plan).toBe('FREE')
         expect(result.usage.costInCents).toBe(0)
         expect(result.usage.eventCount).toBe(0)
-        expect(result.credits.limitInCents).toBe(100)
+        expect(result.credits.limitInCents).toBeNull()
         expect(result.credits.remainingInCents).toBe(100)
     })
 
@@ -134,7 +132,6 @@ describe('usage.service.integration', () => {
             where: { id: userId },
             data: {
                 creditBalance: 0,
-                giftedCredits: 0,
             },
         })
 

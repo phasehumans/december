@@ -7,17 +7,16 @@ import { billingController } from './billing.controller'
 
 const billingRouter = Router()
 
-billingRouter.post('/webhooks/razorpay', billingController.handleRazorpayWebhook)
+billingRouter.post('/webhooks/coinbase', billingController.handleCoinbaseWebhook)
 
 billingRouter.use(authMiddleware)
 billingRouter.get('/overview', billingController.getOverview)
-billingRouter.get('/plans', billingController.getPlans)
-billingRouter.post('/subscription', billingController.createSubscription)
-billingRouter.post('/subscription/verify', billingController.verifySubscription)
-billingRouter.post('/subscription/cancel', billingController.cancelSubscription)
 billingRouter.get('/credits/history', billingController.getCreditsHistory)
-billingRouter.post('/portal', billingController.createPortalSession)
 billingRouter.post('/credits/add', billingController.addCredits)
+
+billingRouter.post('/wallet/order/razorpay', billingController.createRazorpayOrder)
+billingRouter.post('/wallet/verify/razorpay', billingController.verifyRazorpayPayment)
+billingRouter.post('/wallet/order/crypto', billingController.createCryptoOrder)
 
 billingRouter.post(
     '/redeem-code',
@@ -30,3 +29,4 @@ billingRouter.post(
 )
 
 export default billingRouter
+export { billingRouter }

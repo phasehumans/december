@@ -1,26 +1,24 @@
 import { z } from 'zod'
 
-export const billingPlanSchema = z.enum(['PRO'])
-
-export const createSubscriptionSchema = z
+export const createRazorpayOrderSchema = z
     .object({
-        plan: billingPlanSchema.default('PRO'),
-        quantity: z.number().int().min(1).max(100).default(1),
-        totalCount: z.number().int().min(1).max(120).default(120),
+        amountInCents: z.number().int().min(100), // min $1.00
+        currency: z.string().trim().length(3).default('USD'),
     })
     .strict()
 
-export const verifySubscriptionSchema = z
+export const verifyRazorpayPaymentSchema = z
     .object({
-        razorpay_subscription_id: z.string().trim().min(1),
+        razorpay_order_id: z.string().trim().min(1),
         razorpay_payment_id: z.string().trim().min(1),
         razorpay_signature: z.string().trim().min(1),
     })
     .strict()
 
-export const cancelSubscriptionSchema = z
+export const createCryptoOrderSchema = z
     .object({
-        cancelAtPeriodEnd: z.boolean().default(true),
+        amountInCents: z.number().int().min(100), // min $1.00
+        currency: z.string().trim().length(3).default('USD'),
     })
     .strict()
 
@@ -39,7 +37,7 @@ export const redeemCodeSchema = z
 
 export const addCreditsSchema = z
     .object({
-        amountInCents: z.number().int().min(100), // Min $1.00
+        amountInCents: z.number().int().min(100),
         paymentMethod: z.enum(['card', 'upi', 'crypto']),
     })
     .strict()
