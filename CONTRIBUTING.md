@@ -7,7 +7,7 @@ We welcome contributions. To ensure a smooth process, please follow these guidel
 1. Ensure you have Bun, Rust, and Docker installed.
 2. Fork the repository and clone it locally.
 3. Install dependencies by running `bun install` in the root directory.
-4. Use `./scripts/containers.sh start` to start the necessary local services.
+4. Use `./scripts/start.sh` to start the necessary local services.
 
 ## Coding Standards
 
@@ -18,10 +18,8 @@ We welcome contributions. To ensure a smooth process, please follow these guidel
 
 ## Testing
 
-- Unit tests for the server are located in `server/tests/unit`.
 - Run the curated server tests using `./scripts/test.sh`.
 - Ensure your changes do not break existing tests and add new tests when introducing new features.
-- For runtime modifications, run Rust checks using `cd runtime && cargo test`.
 
 ## Commit Messages
 

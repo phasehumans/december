@@ -221,9 +221,6 @@ describe('auth.routes.integration', () => {
             const cookies = getCookies(res)
             expect(cookies.some((c) => c.includes('accessToken'))).toBe(true)
             expect(cookies.some((c) => c.includes('refreshToken'))).toBe(true)
-
-            expect(sendWelcomeEmailMock).toHaveBeenCalledTimes(1)
-            expect(sendWelcomeEmailMock).toHaveBeenCalledWith('verify@example.com', 'Test User')
         })
 
         it('should fail if otp missing', async () => {

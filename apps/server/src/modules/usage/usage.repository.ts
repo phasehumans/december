@@ -11,37 +11,20 @@ export const usageRepository = {
             where: { id: userId },
             select: {
                 id: true,
-                subscriptionPlan: true,
-                subscriptionStatus: true,
                 createdAt: true,
                 creditBalance: true,
-                giftedCredits: true,
-                subscription: {
-                    select: {
-                        currentPeriodStart: true,
-                        currentPeriodEnd: true,
-                    },
-                },
             },
         })
     },
 
-    async getPeriodAggregate(data: {
-        userId: string
-        periodStart: Date
-        periodEnd: Date
-        isPro: boolean
-    }) {
-        const { userId, periodStart, periodEnd, isPro } = data
+    async getPeriodAggregate(data: { userId: string; periodStart: Date; periodEnd: Date }) {
+        const { userId, periodStart, periodEnd } = data
         const where: any = {
             userId,
             createdAt: {
                 gte: periodStart,
                 lt: periodEnd,
             },
-        }
-        if (isPro) {
-            where.periodStart = periodStart
         }
 
         const [aggregate, eventCount] = await Promise.all([
@@ -93,19 +76,16 @@ export const usageRepository = {
         const client = tx || prisma
         return client.user.findUnique({
             where: { id: userId },
-            select: { creditBalance: true, giftedCredits: true },
+            select: { creditBalance: true },
         })
     },
 
-    async updateUserCredits(
-        data: { userId: string; creditBalance: number; giftedCredits: number },
-        tx?: any
-    ) {
-        const { userId, creditBalance, giftedCredits } = data
+    async updateUserCredits(data: { userId: string; creditBalance: number }, tx?: any) {
+        const { userId, creditBalance } = data
         const client = tx || prisma
         return client.user.update({
             where: { id: userId },
-            data: { creditBalance, giftedCredits },
+            data: { creditBalance },
         })
     },
 

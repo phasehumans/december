@@ -1,69 +1,230 @@
 import '../env'
 
-import { describe, expect, it } from 'bun:test'
+import crypto from 'crypto'
+import { describe, expect, it, beforeEach, afterEach } from 'bun:test'
 
 import {
-    createHmacSignature,
-    mapRazorpayProviderStatus,
-    mapUserSubscriptionStatus,
-    resolveSubscriptionPeriods,
-} from '../../src/modules/billing/billing.utils'
-
-describe('billing.unit', () => {
-    it('should map Razorpay statuses to provider statuses', () => {
-        expect(mapRazorpayProviderStatus('active')).toBe('ACTIVE')
-        expect(mapRazorpayProviderStatus('authenticated')).toBe('ACTIVE')
-        expect(mapRazorpayProviderStatus('halted')).toBe('PAST_DUE')
-        expect(mapRazorpayProviderStatus('cancelled')).toBe('CANCELED')
-        expect(mapRazorpayProviderStatus('expired')).toBe('INCOMPLETE_EXPIRED')
-        expect(mapRazorpayProviderStatus('created')).toBe('INCOMPLETE')
-    })
-
-    it('should map Razorpay statuses to user statuses', () => {
-        expect(mapUserSubscriptionStatus('active')).toBe('ACTIVE')
-        expect(mapUserSubscriptionStatus('authenticated')).toBe('ACTIVE')
-        expect(mapUserSubscriptionStatus('halted')).toBe('PAST_DUE')
-        expect(mapUserSubscriptionStatus('cancelled')).toBe('CANCELED')
-        expect(mapUserSubscriptionStatus('created')).toBe('FREE')
-    })
-
-    it('should resolve subscription periods from Unix seconds', () => {
-        const result = resolveSubscriptionPeriods({
-            id: 'sub_test',
-            current_start: 1_780_000_000,
-            current_end: 1_782_592_000,
-        })
-
-        expect(result.periodStart.toISOString()).toBe('2026-05-28T20:26:40.000Z')
-        expect(result.periodEnd.toISOString()).toBe('2026-06-27T20:26:40.000Z')
-    })
-
-    it('should create HMAC SHA256 signatures', () => {
-        expect(createHmacSignature('payload', 'secret')).toBe(
-            'b82fcb791acec57859b989b430a826488ce2e479fdf92326bd0a2e8375a42ba4'
-        )
-    })
-})
-
-import {
-    createSubscriptionSchema,
+    createRazorpayOrderSchema,
+    verifyRazorpayPaymentSchema,
+    creditsHistoryQuerySchema,
     redeemCodeSchema,
+    addCreditsSchema,
 } from '../../src/modules/billing/billing.schema'
 
-describe('billing schemas', () => {
-    it('createSubscriptionSchema validation', () => {
-        const valid = createSubscriptionSchema.safeParse({ plan: 'PRO', quantity: 2 })
-        expect(valid.success).toBe(true)
+import {
+    getRazorpayKeyId,
+    getRazorpayKeySecret,
+    verifyRazorpayOrderPayment,
+} from '../../src/modules/billing/billing.utils'
 
-        const invalid = createSubscriptionSchema.safeParse({ plan: 'INVALID' })
-        expect(invalid.success).toBe(false)
+describe('billing.unit.test', () => {
+    describe('schemas', () => {
+        describe('createRazorpayOrderSchema', () => {
+            it('should validate valid payload', () => {
+                const result = createRazorpayOrderSchema.safeParse({
+                    amountInCents: 500,
+                    currency: 'USD',
+                })
+                expect(result.success).toBe(true)
+            })
+
+            it('should default currency to USD if missing', () => {
+                const result = createRazorpayOrderSchema.safeParse({ amountInCents: 500 })
+                expect(result.success).toBe(true)
+                if (result.success) expect(result.data.currency).toBe('USD')
+            })
+
+            it('should fail if amount is less than 200', () => {
+                const result = createRazorpayOrderSchema.safeParse({ amountInCents: 150 })
+                expect(result.success).toBe(false)
+            })
+
+            it('should fail if amount is missing', () => {
+                const result = createRazorpayOrderSchema.safeParse({ currency: 'USD' })
+                expect(result.success).toBe(false)
+            })
+        })
+
+        describe('verifyRazorpayPaymentSchema', () => {
+            it('should validate valid payload', () => {
+                const result = verifyRazorpayPaymentSchema.safeParse({
+                    razorpay_order_id: 'order_123',
+                    razorpay_payment_id: 'pay_123',
+                    razorpay_signature: 'sig_123',
+                })
+                expect(result.success).toBe(true)
+            })
+
+            it('should fail if any field is missing', () => {
+                const result = verifyRazorpayPaymentSchema.safeParse({
+                    razorpay_order_id: 'order_123',
+                    razorpay_payment_id: 'pay_123',
+                })
+                expect(result.success).toBe(false)
+            })
+
+            it('should fail if fields are empty strings', () => {
+                const result = verifyRazorpayPaymentSchema.safeParse({
+                    razorpay_order_id: 'order_123',
+                    razorpay_payment_id: 'pay_123',
+                    razorpay_signature: '   ',
+                })
+                expect(result.success).toBe(false)
+            })
+        })
+
+        describe('creditsHistoryQuerySchema', () => {
+            it('should validate with defaults', () => {
+                const result = creditsHistoryQuerySchema.safeParse({})
+                expect(result.success).toBe(true)
+                if (result.success) {
+                    expect(result.data.limit).toBe(25)
+                    expect(result.data.offset).toBe(0)
+                }
+            })
+
+            it('should validate with custom limit and offset', () => {
+                const result = creditsHistoryQuerySchema.safeParse({ limit: 10, offset: 5 })
+                expect(result.success).toBe(true)
+                if (result.success) {
+                    expect(result.data.limit).toBe(10)
+                    expect(result.data.offset).toBe(5)
+                }
+            })
+
+            it('should coerce strings to numbers', () => {
+                const result = creditsHistoryQuerySchema.safeParse({ limit: '50', offset: '10' })
+                expect(result.success).toBe(true)
+                if (result.success) {
+                    expect(result.data.limit).toBe(50)
+                    expect(result.data.offset).toBe(10)
+                }
+            })
+
+            it('should fail if limit is too large', () => {
+                const result = creditsHistoryQuerySchema.safeParse({ limit: 101 })
+                expect(result.success).toBe(false)
+            })
+        })
+
+        describe('redeemCodeSchema', () => {
+            it('should validate correct code', () => {
+                const result = redeemCodeSchema.safeParse({ code: 'CODE123' })
+                expect(result.success).toBe(true)
+            })
+
+            it('should fail if code is empty', () => {
+                const result = redeemCodeSchema.safeParse({ code: '   ' })
+                expect(result.success).toBe(false)
+            })
+
+            it('should strip whitespace and validate', () => {
+                const result = redeemCodeSchema.safeParse({ code: '  VALID  ' })
+                expect(result.success).toBe(true)
+                if (result.success) {
+                    expect(result.data.code).toBe('VALID')
+                }
+            })
+        })
+
+        describe('addCreditsSchema', () => {
+            it('should validate valid payload', () => {
+                const result = addCreditsSchema.safeParse({
+                    amountInCents: 500,
+                    paymentMethod: 'card',
+                })
+                expect(result.success).toBe(true)
+            })
+
+            it('should fail if amount is less than 100', () => {
+                const result = addCreditsSchema.safeParse({
+                    amountInCents: 50,
+                    paymentMethod: 'card',
+                })
+                expect(result.success).toBe(false)
+            })
+
+            it('should fail if payment method is invalid', () => {
+                const result = addCreditsSchema.safeParse({
+                    amountInCents: 500,
+                    paymentMethod: 'invalid',
+                })
+                expect(result.success).toBe(false)
+            })
+        })
     })
 
-    it('redeemCodeSchema validation', () => {
-        const valid = redeemCodeSchema.safeParse({ code: 'CODE123' })
-        expect(valid.success).toBe(true)
+    describe('utils', () => {
+        let originalKeyId: string | undefined
+        let originalKeySecret: string | undefined
 
-        const empty = redeemCodeSchema.safeParse({ code: '' })
-        expect(empty.success).toBe(false)
+        beforeEach(() => {
+            originalKeyId = process.env.RAZORPAY_KEY_ID
+            originalKeySecret = process.env.RAZORPAY_KEY_SECRET
+        })
+
+        afterEach(() => {
+            process.env.RAZORPAY_KEY_ID = originalKeyId
+            process.env.RAZORPAY_KEY_SECRET = originalKeySecret
+        })
+
+        describe('getRazorpayKeyId', () => {
+            it('should return RAZORPAY_KEY_ID if set', () => {
+                process.env.RAZORPAY_KEY_ID = 'test_key_id'
+                expect(getRazorpayKeyId()).toBe('test_key_id')
+            })
+
+            it('should throw if RAZORPAY_KEY_ID is not set', () => {
+                delete process.env.RAZORPAY_KEY_ID
+                expect(() => getRazorpayKeyId()).toThrow('RAZORPAY_KEY_ID is not configured')
+            })
+        })
+
+        describe('getRazorpayKeySecret', () => {
+            it('should return RAZORPAY_KEY_SECRET if set', () => {
+                process.env.RAZORPAY_KEY_SECRET = 'test_key_secret'
+                expect(getRazorpayKeySecret()).toBe('test_key_secret')
+            })
+
+            it('should throw if RAZORPAY_KEY_SECRET is not set', () => {
+                delete process.env.RAZORPAY_KEY_SECRET
+                expect(() => getRazorpayKeySecret()).toThrow(
+                    'RAZORPAY_KEY_SECRET is not configured'
+                )
+            })
+        })
+
+        describe('verifyRazorpayOrderPayment', () => {
+            it('should return true for valid signature', () => {
+                process.env.RAZORPAY_KEY_SECRET = 'secret_test_key'
+                const orderId = 'order_123'
+                const paymentId = 'pay_123'
+
+                const validSignature = crypto
+                    .createHmac('sha256', 'secret_test_key')
+                    .update(`${orderId}|${paymentId}`)
+                    .digest('hex')
+
+                const result = verifyRazorpayOrderPayment({
+                    orderId,
+                    paymentId,
+                    signature: validSignature,
+                })
+
+                expect(result).toBe(true)
+            })
+
+            it('should return false for invalid signature', () => {
+                process.env.RAZORPAY_KEY_SECRET = 'secret_test_key'
+
+                const result = verifyRazorpayOrderPayment({
+                    orderId: 'order_123',
+                    paymentId: 'pay_123',
+                    signature: 'invalid_signature_string',
+                })
+
+                expect(result).toBe(false)
+            })
+        })
     })
 })

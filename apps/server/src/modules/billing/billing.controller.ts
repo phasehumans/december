@@ -3,12 +3,11 @@ import { asyncHandler } from '../../shared/asyncHandler'
 import { sendSuccess } from '../../shared/response'
 
 import {
-    cancelSubscriptionSchema,
-    createSubscriptionSchema,
     creditsHistoryQuerySchema,
-    verifySubscriptionSchema,
     redeemCodeSchema,
     addCreditsSchema,
+    createRazorpayOrderSchema,
+    verifyRazorpayPaymentSchema,
 } from './billing.schema'
 import { billingService } from './billing.service'
 
@@ -25,57 +24,36 @@ const getOverview = asyncHandler(async (req: Request, res: Response) => {
     return sendSuccess(res, 'billing overview fetched successfully', result)
 })
 
-const getPlans = asyncHandler(async (req: Request, res: Response) => {
-    const result = await billingService.getPlans()
-    return sendSuccess(res, 'billing plans fetched successfully', result)
-})
-
-const createSubscription = asyncHandler(async (req: Request, res: Response) => {
+const createRazorpayOrder = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user?.userId as string | undefined
 
     if (!userId) {
         throw new AppError('unauthorized', 401)
     }
 
-    const parsedBody = createSubscriptionSchema.parse(req.body)
+    const parsedBody = createRazorpayOrderSchema.parse(req.body)
 
-    const result = await billingService.createSubscription({
+    const result = await billingService.createRazorpayOrder({
         userId,
         ...parsedBody,
     })
-    return sendSuccess(res, 'subscription order created successfully', result, 201)
+    return sendSuccess(res, 'razorpay order created successfully', result, 201)
 })
 
-const verifySubscription = asyncHandler(async (req: Request, res: Response) => {
+const verifyRazorpayPayment = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user?.userId as string | undefined
 
     if (!userId) {
         throw new AppError('unauthorized', 401)
     }
 
-    const parsedBody = verifySubscriptionSchema.parse(req.body)
+    const parsedBody = verifyRazorpayPaymentSchema.parse(req.body)
 
-    const result = await billingService.verifySubscription({
+    const result = await billingService.verifyRazorpayPayment({
         userId,
         ...parsedBody,
     })
-    return sendSuccess(res, 'subscription verified successfully', result)
-})
-
-const cancelSubscription = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.user?.userId as string | undefined
-
-    if (!userId) {
-        throw new AppError('unauthorized', 401)
-    }
-
-    const parsedBody = cancelSubscriptionSchema.parse(req.body)
-
-    const result = await billingService.cancelSubscription({
-        userId,
-        ...parsedBody,
-    })
-    return sendSuccess(res, 'subscription cancellation processed', result)
+    return sendSuccess(res, 'payment verified successfully', result)
 })
 
 const getCreditsHistory = asyncHandler(async (req: Request, res: Response) => {
@@ -86,8 +64,8 @@ const getCreditsHistory = asyncHandler(async (req: Request, res: Response) => {
     }
 
     const parsedQuery = creditsHistoryQuerySchema.parse(req.query)
-    const limit = parsedQuery.limit ? parseInt(parsedQuery.limit, 10) : 10
-    const offset = parsedQuery.offset ? parseInt(parsedQuery.offset, 10) : 0
+    const limit = parsedQuery.limit
+    const offset = parsedQuery.offset
 
     const result = await billingService.getCreditsHistory({
         userId,
@@ -97,33 +75,6 @@ const getCreditsHistory = asyncHandler(async (req: Request, res: Response) => {
         periodEnd: parsedQuery.periodEnd,
     })
     return sendSuccess(res, 'credits history fetched successfully', result)
-})
-
-const createPortalSession = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.user?.userId as string | undefined
-
-    if (!userId) {
-        throw new AppError('unauthorized', 401)
-    }
-
-    const result = await billingService.createPortalSession({ userId })
-    return sendSuccess(res, 'customer portal session created successfully', result)
-})
-
-const handleRazorpayWebhook = asyncHandler(async (req: Request, res: Response) => {
-    const signature = req.headers['x-razorpay-signature'] as string | undefined
-
-    if (!signature) {
-        throw new AppError('razorpay signature header missing', 400)
-    }
-
-    const result = await billingService.handleRazorpayWebhook({
-        body: req.body,
-        rawBody: req.rawBody,
-        signature,
-    })
-
-    return sendSuccess(res, 'webhook processed successfully', result)
 })
 
 const redeemCode = asyncHandler(async (req: Request, res: Response) => {
@@ -160,13 +111,9 @@ const addCredits = asyncHandler(async (req: Request, res: Response) => {
 
 export const billingController = {
     getOverview,
-    getPlans,
-    createSubscription,
-    verifySubscription,
-    cancelSubscription,
+    createRazorpayOrder,
+    verifyRazorpayPayment,
     getCreditsHistory,
-    createPortalSession,
-    handleRazorpayWebhook,
     redeemCode,
     addCredits,
 }

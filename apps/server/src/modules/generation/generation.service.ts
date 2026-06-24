@@ -16,7 +16,6 @@ import { runtimeService } from '../runtime/runtime.service'
 import { usageService } from '../usage/usage.service'
 
 import {
-    findUserSubscriptionInfo,
     updateProjectCurrentVersion,
     findAgentSessionMemory,
     createAgentSessionMemory,
@@ -66,9 +65,7 @@ const fileTreeForPlanning = (files: Record<string, string>) =>
 const toVisibleMessage = (lines: string[]) => lines.join('\n')
 
 const resolveModel = async (userId: string, requestedModel?: string): Promise<string> => {
-    const user = await findUserSubscriptionInfo({ userId })
-    const isPro = user?.subscriptionPlan === 'PRO' && user?.subscriptionStatus === 'ACTIVE'
-    if (isPro && requestedModel) {
+    if (requestedModel) {
         return requestedModel
     }
     return process.env.AUTO_MODEL || 'openai/gpt-oss-20b:free'

@@ -1,14 +1,20 @@
 import '../../env'
 
+import crypto from 'crypto'
 import { prisma } from '@december/database'
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'bun:test'
+import { afterAll, beforeAll, beforeEach, describe, expect, it, mock } from 'bun:test'
 import express, { Router } from 'express'
 import request from 'supertest'
+
+const sendNotificationMock = mock(async () => ({}))
+mock.module('../../../src/modules/notification/notification.service', () => ({
+    sendNotificationToUser: sendNotificationMock,
+}))
 
 import { razorpay } from '../../../src/config/razorpay'
 import { errorHandler } from '../../../src/middleware/error.middleware'
 import { billingController } from '../../../src/modules/billing/billing.controller'
-import { createHmacSignature } from '../../../src/modules/billing/billing.utils'
+import { createRateLimiter } from '../../../src/middleware/ratelimit'
 
 const TEST_USER_ID = 'test-billing-user-id'
 const TEST_SESSION_ID = 'test-billing-session-id'
@@ -23,84 +29,62 @@ const createTestUser = async (overrides: Record<string, unknown> = {}) => {
             password: 'hashed-password',
             emailVerified: true,
             isDeleted: false,
+            creditBalance: 100,
             ...overrides,
         },
     })
 }
 
-const activeRazorpaySubscription = (overrides: Record<string, unknown> = {}) => ({
-    id: 'sub_route_123',
-    entity: 'subscription',
-    plan_id: 'plan_route_pro',
-    status: 'active',
-    current_start: 1_780_000_000,
-    current_end: 1_782_592_000,
-    customer_id: 'cust_route_123',
-    short_url: 'https://rzp.io/i/route',
-    notes: {
-        userId: TEST_USER_ID,
-        plan: 'PRO',
-    },
-    ...overrides,
-})
-
 describe('billing.routes.integration', () => {
     let app: express.Application
+    let isCleaningUp = false
 
     beforeAll(() => {
         app = express()
-        app.use(
-            express.json({
-                verify: (req: any, _res, buf) => {
-                    if (req.originalUrl === '/api/v1/billing/webhooks/razorpay') {
-                        req.rawBody = Buffer.from(buf)
-                    }
-                },
-            })
-        )
+        app.use(express.json())
 
         const billingRouter = Router()
-        billingRouter.post('/webhooks/razorpay', billingController.handleRazorpayWebhook)
+        // Mock authentication middleware
         billingRouter.use((req, _res, next) => {
             req.user = { userId: TEST_USER_ID, sessionId: TEST_SESSION_ID }
             next()
         })
+
         billingRouter.get('/overview', billingController.getOverview)
-        billingRouter.get('/plans', billingController.getPlans)
-        billingRouter.post('/subscription', billingController.createSubscription)
-        billingRouter.post('/subscription/verify', billingController.verifySubscription)
-        billingRouter.post('/subscription/cancel', billingController.cancelSubscription)
         billingRouter.get('/credits/history', billingController.getCreditsHistory)
-        billingRouter.post('/portal', billingController.createPortalSession)
+        billingRouter.post('/wallet/order/razorpay', billingController.createRazorpayOrder)
+        billingRouter.post('/wallet/verify/razorpay', billingController.verifyRazorpayPayment)
+        billingRouter.post(
+            '/redeem-code',
+            createRateLimiter({
+                windowMs: 15 * 60 * 1000,
+                max: 3,
+                message: 'Too many redemption attempts. Please try again in 15 minutes.',
+            }),
+            billingController.redeemCode
+        )
+        billingRouter.post('/credits/add', billingController.addCredits)
 
         app.use('/api/v1/billing', billingRouter)
-
         app.use(errorHandler)
     })
 
     beforeEach(async () => {
+        if (isCleaningUp) return
+        sendNotificationMock.mockClear()
+
         process.env.RAZORPAY_KEY_ID = 'rzp_route_key'
         process.env.RAZORPAY_KEY_SECRET = 'razorpay_route_secret'
-        process.env.RAZORPAY_PRO_PLAN_ID = 'plan_route_pro'
-        process.env.RAZORPAY_WEBHOOK_SECRET = 'webhook_route_secret'
-        ;(razorpay.plans as any).fetch = async () => ({
-            id: 'plan_route_pro',
-            period: 'monthly',
-            item: {
-                amount: 99900,
-                currency: 'INR',
-            },
+        ;(razorpay.orders as any).create = async (options: any) => ({
+            id: `order_route_${crypto.randomUUID()}`,
+            amount: options.amount,
+            currency: options.currency,
         })
-        ;(razorpay.subscriptions as any).create = async () => activeRazorpaySubscription()
-        ;(razorpay.subscriptions as any).fetch = async () => activeRazorpaySubscription()
-        ;(razorpay.subscriptions as any).cancel = async () =>
-            activeRazorpaySubscription({
-                status: 'cancelled',
-                ended_at: 1_782_000_000,
-            })
 
+        await prisma.walletTransaction.deleteMany()
         await prisma.usageEvent.deleteMany()
-        await prisma.subscription.deleteMany()
+        await prisma.redeemCodeClaim.deleteMany()
+        await prisma.redeemCode.deleteMany()
         await prisma.session.deleteMany()
         await prisma.user.deleteMany()
 
@@ -108,143 +92,140 @@ describe('billing.routes.integration', () => {
     })
 
     afterAll(async () => {
+        isCleaningUp = true
         await prisma.$disconnect()
+    }, 15000)
+
+    describe('GET /overview', () => {
+        it('should return billing overview (200)', async () => {
+            const res = await request(app).get('/api/v1/billing/overview')
+
+            expect(res.status).toBe(200)
+            expect(res.body.success).toBe(true)
+            expect(res.body.data.creditBalance).toBe(100)
+        })
     })
 
-    it('should return billing overview', async () => {
-        const res = await request(app).get('/api/v1/billing/overview')
+    describe('GET /credits/history', () => {
+        it('should return empty history (200) initially', async () => {
+            const res = await request(app).get('/api/v1/billing/credits/history')
 
-        expect(res.status).toBe(200)
-        expect(res.body.success).toBe(true)
-        expect(res.body.data.plan).toBe('FREE')
-        expect(res.body.data.credits.limitInCents).toBe(100)
-    })
-
-    it('should return billing plans', async () => {
-        const res = await request(app).get('/api/v1/billing/plans')
-
-        expect(res.status).toBe(200)
-        expect(res.body.success).toBe(true)
-        expect(res.body.data.some((plan: { id: string }) => plan.id === 'PRO')).toBe(true)
-    })
-
-    it('should create a Razorpay subscription', async () => {
-        const res = await request(app).post('/api/v1/billing/subscription').send({
-            plan: 'PRO',
-            quantity: 1,
-            totalCount: 12,
+            expect(res.status).toBe(200)
+            expect(res.body.success).toBe(true)
+            expect(res.body.data.total).toBe(0)
+            expect(res.body.data.events.length).toBe(0)
         })
 
-        expect(res.status).toBe(201)
-        expect(res.body.success).toBe(true)
-        expect(res.body.data.keyId).toBe('rzp_route_key')
-        expect(res.body.data.subscriptionId).toBe('sub_route_123')
+        it('should validate query parameters', async () => {
+            const res = await request(app).get('/api/v1/billing/credits/history?limit=1000') // Above max
+            expect(res.status).toBe(400)
+        })
     })
 
-    it('should verify a Razorpay subscription payment', async () => {
-        const paymentId = 'pay_route_123'
-        const signature = createHmacSignature(
-            `${paymentId}|sub_route_123`,
-            process.env.RAZORPAY_KEY_SECRET as string
-        )
+    describe('POST /wallet/order/razorpay', () => {
+        it('should create order successfully (201)', async () => {
+            const res = await request(app).post('/api/v1/billing/wallet/order/razorpay').send({
+                amountInCents: 500,
+                currency: 'USD',
+            })
 
-        const res = await request(app).post('/api/v1/billing/subscription/verify').send({
-            razorpay_subscription_id: 'sub_route_123',
-            razorpay_payment_id: paymentId,
-            razorpay_signature: signature,
+            expect(res.status).toBe(201)
+            expect(res.body.success).toBe(true)
+            expect(res.body.data.keyId).toBe('rzp_route_key')
+            expect(res.body.data.orderId).toContain('order_route_')
         })
 
-        expect(res.status).toBe(200)
-        expect(res.body.success).toBe(true)
-        expect(res.body.data.user.subscriptionPlan).toBe('PRO')
+        it('should reject invalid amount (400)', async () => {
+            const res = await request(app).post('/api/v1/billing/wallet/order/razorpay').send({
+                amountInCents: 100, // Below min 200
+            })
+            expect(res.status).toBe(400)
+        })
     })
 
-    it('should cancel a Razorpay subscription', async () => {
-        await prisma.user.update({
-            where: {
-                id: TEST_USER_ID,
-            },
-            data: {
-                subscriptionPlan: 'PRO',
-                subscriptionStatus: 'ACTIVE',
-            },
-        })
-        await prisma.subscription.create({
-            data: {
-                userId: TEST_USER_ID,
-                provider: 'razorpay',
-                providerSubscriptionId: 'sub_route_123',
-                providerCustomerId: 'cust_route_123',
-                providerPlanId: 'plan_route_pro',
-                status: 'ACTIVE',
-                plan: 'PRO',
-                currentPeriodStart: new Date('2026-05-01T00:00:00.000Z'),
-                currentPeriodEnd: new Date('2026-06-01T00:00:00.000Z'),
-            },
+    describe('POST /wallet/verify/razorpay', () => {
+        it('should verify payment successfully (200)', async () => {
+            const orderRes = await request(app).post('/api/v1/billing/wallet/order/razorpay').send({
+                amountInCents: 500,
+                currency: 'USD',
+            })
+
+            const paymentId = 'pay_route_123'
+            const signature = crypto
+                .createHmac('sha256', 'razorpay_route_secret')
+                .update(`${orderRes.body.data.orderId}|${paymentId}`)
+                .digest('hex')
+
+            const res = await request(app).post('/api/v1/billing/wallet/verify/razorpay').send({
+                razorpay_order_id: orderRes.body.data.orderId,
+                razorpay_payment_id: paymentId,
+                razorpay_signature: signature,
+            })
+
+            expect(res.status).toBe(200)
+            expect(res.body.success).toBe(true)
+            expect(res.body.data.newBalance).toBe(600)
         })
 
-        const res = await request(app).post('/api/v1/billing/subscription/cancel').send({
-            cancelAtPeriodEnd: false,
-        })
+        it('should reject invalid signature (400)', async () => {
+            const res = await request(app).post('/api/v1/billing/wallet/verify/razorpay').send({
+                razorpay_order_id: 'order_route_xyz',
+                razorpay_payment_id: 'pay_route_xyz',
+                razorpay_signature: 'invalid_sig',
+            })
 
-        expect(res.status).toBe(200)
-        expect(res.body.success).toBe(true)
-        expect(res.body.data.user.subscriptionPlan).toBe('FREE')
+            expect(res.status).toBe(400)
+            expect(res.body.message).toBe('invalid razorpay signature')
+        })
     })
 
-    it('should return credits history', async () => {
-        const periodStart = new Date('2026-05-01T00:00:00.000Z')
-        const periodEnd = new Date('2026-06-01T00:00:00.000Z')
+    describe('POST /redeem-code', () => {
+        it('should fail if code is invalid (404/400)', async () => {
+            const res = await request(app).post('/api/v1/billing/redeem-code').send({
+                code: 'INVALID_CODE',
+            })
 
-        await prisma.usageEvent.create({
-            data: {
-                userId: TEST_USER_ID,
-                model: 'gpt-5',
-                inputTokens: 10,
-                outputTokens: 5,
-                totalTokens: 15,
-                costInCents: 3,
-                periodStart,
-                periodEnd,
-            },
+            expect(res.status).toBe(404)
         })
 
-        const res = await request(app).get('/api/v1/billing/credits/history')
+        it('should enforce rate limits on multiple attempts (429)', async () => {
+            for (let i = 0; i < 3; i++) {
+                await request(app)
+                    .post('/api/v1/billing/redeem-code')
+                    .send({
+                        code: `INVALID_CODE_${i}`,
+                    })
+            }
 
-        expect(res.status).toBe(200)
-        expect(res.body.success).toBe(true)
-        expect(res.body.data.total).toBe(1)
-        expect(res.body.data.events[0].costInCents).toBe(3)
+            const res = await request(app).post('/api/v1/billing/redeem-code').send({
+                code: 'RATE_LIMIT_TEST',
+            })
+
+            expect(res.status).toBe(429)
+            expect(res.text).toContain('Too many redemption attempts')
+        })
     })
 
-    it('should return a Razorpay portal target', async () => {
-        const res = await request(app).post('/api/v1/billing/portal')
+    describe('POST /credits/add', () => {
+        it('should add credits successfully (200)', async () => {
+            const res = await request(app).post('/api/v1/billing/credits/add').send({
+                amountInCents: 500,
+                paymentMethod: 'card',
+            })
 
-        expect(res.status).toBe(200)
-        expect(res.body.success).toBe(true)
-        expect(res.body.data.provider).toBe('razorpay')
-        expect(res.body.data.url).toContain('razorpay.com')
-    })
+            expect(res.status).toBe(200)
+            expect(res.body.success).toBe(true)
+            expect(res.body.data.amountInCents).toBe(500)
+            expect(res.body.data.newBalance).toBe(600)
+        })
 
-    it('should process a signed Razorpay webhook without auth', async () => {
-        const payload = {
-            event: 'subscription.activated',
-            payload: {
-                subscription: {
-                    entity: activeRazorpaySubscription(),
-                },
-            },
-        }
-        const rawBody = JSON.stringify(payload)
-        const signature = createHmacSignature(rawBody, 'webhook_route_secret')
+        it('should reject invalid payload (400)', async () => {
+            const res = await request(app).post('/api/v1/billing/credits/add').send({
+                amountInCents: 50, // below 100
+                paymentMethod: 'invalid',
+            })
 
-        const res = await request(app)
-            .post('/api/v1/billing/webhooks/razorpay')
-            .set('x-razorpay-signature', signature)
-            .send(payload)
-
-        expect(res.status).toBe(200)
-        expect(res.body.success).toBe(true)
-        expect(res.body.data.processed).toBe(true)
+            expect(res.status).toBe(400)
+        })
     })
 })

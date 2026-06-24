@@ -8,50 +8,45 @@ datasource db {
 }
 
 model User {
-  id                     String             @id @default(uuid())
+  id                     String              @id @default(uuid())
   name                   String
-  email                  String             @unique
+  email                  String              @unique
   password               String?
-  createdAt              DateTime           @default(now())
-  updatedAt              DateTime           @updatedAt
-  emailVerified          Boolean            @default(false)
+  createdAt              DateTime            @default(now())
+  updatedAt              DateTime            @updatedAt
+  emailVerified          Boolean             @default(false)
   googleId               String?
   otpExpiresAt           DateTime?
   otpHash                String?
   githubToken            String?
   githubUsername         String?
-  githubConnected        Boolean            @default(false)
-  username               String             @unique
-  notifyProductUpdates   Boolean            @default(false)
-  notifyProjectActivity  Boolean            @default(true)
-  notifySecurityAlerts   Boolean            @default(true)
+  githubConnected        Boolean             @default(false)
+  username               String              @unique
+  notifyProductUpdates   Boolean             @default(false)
+  notifyProjectActivity  Boolean             @default(true)
+  notifySecurityAlerts   Boolean             @default(true)
   deletedAt              DateTime?
-  chatSuggestions        Boolean            @default(false)
-  generationSound        GenerationSound    @default(FIRST_GENERATION)
-  isDeleted              Boolean            @default(false)
+  chatSuggestions        Boolean             @default(false)
+  generationSound        GenerationSound     @default(FIRST_GENERATION)
+  isDeleted              Boolean             @default(false)
   avatarUrl              String?
   vercelAccessToken      String?
-  vercelConnected        Boolean            @default(false)
+  vercelConnected        Boolean             @default(false)
   vercelTeamId           String?
   vercelConfigurationId  String?
   notionAccessToken      String?
   notionWorkspaceId      String?
   notionWorkspaceName    String?
   supabaseAccessToken    String?
-  supabaseConnected      Boolean            @default(false)
+  supabaseConnected      Boolean             @default(false)
   supabaseConnectedAt    DateTime?
   supabaseRefreshToken   String?
   supabaseTokenExpiresAt DateTime?
   supabaseTokenScope     String?
   supabaseUserId         String?
-  currentPeriodEnd       DateTime?
-  stripeCustomerId       String?            @unique
-  subscriptionPlan       SubscriptionPlan   @default(FREE)
-  subscriptionStatus     SubscriptionStatus @default(FREE)
-  creditBalance          Int                @default(100)
-  giftedCredits          Int                @default(0)
+  creditBalance          Int                 @default(0)
   design                 String?
-  hasCompletedOnboarding Boolean            @default(false)
+  hasCompletedOnboarding Boolean             @default(false)
   skills                 String?
   feedbacks              Feedback[]
   notifications          Notification[]
@@ -61,7 +56,7 @@ model User {
   likedProjects          ProjectLike[]
   redeemClaims           RedeemCodeClaim[]
   sessions               Session[]
-  subscription           Subscription?
+  walletTransactions     WalletTransaction[]
   usageEvents            UsageEvent[]
 }
 
@@ -251,21 +246,30 @@ model ProjectLike {
   @@index([projectId, isLiked])
 }
 
-model Subscription {
-  id                     String                     @id @default(uuid())
-  userId                 String                     @unique
-  plan                   SubscriptionPlan
-  cancelAtPeriodEnd      Boolean                    @default(false)
-  currentPeriodStart     DateTime
-  currentPeriodEnd       DateTime
-  createdAt              DateTime                   @default(now())
-  updatedAt              DateTime                   @updatedAt
-  provider               String
-  providerCustomerId     String?
-  providerPlanId         String
-  providerSubscriptionId String                     @unique
-  status                 ProviderSubscriptionStatus
-  user                   User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+model WalletTransaction {
+  id                String          @id @default(uuid())
+  userId            String
+  amountInCents     Int
+  currency          String          @default("USD")
+  provider          PaymentProvider
+  providerOrderId   String? // Razorpay order_id or Coinbase charge_id
+  providerPaymentId String? // Razorpay payment_id
+  status            PaymentStatus   @default(PENDING)
+  metadata          Json?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  user              User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum PaymentProvider {
+  RAZORPAY
+  COINBASE
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
 }
 
 model UsageEvent {
@@ -396,26 +400,4 @@ enum ProjectCategory {
   SAAS_APP
   ECOMMERCE
   NONE
-}
-
-enum SubscriptionPlan {
-  FREE
-  PRO
-}
-
-enum SubscriptionStatus {
-  FREE
-  ACTIVE
-  PAST_DUE
-  CANCELED
-}
-
-enum ProviderSubscriptionStatus {
-  ACTIVE
-  CANCELED
-  INCOMPLETE
-  INCOMPLETE_EXPIRED
-  PAST_DUE
-  TRIALING
-  UNPAID
 }

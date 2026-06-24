@@ -6,8 +6,7 @@
     "private": true,
     "scripts": {
         "dev": "bun --watch src/server.ts",
-        "start": "bun src/server.ts",
-        "studio": "bunx prisma studio --browser none --port 5555"
+        "start": "bun src/server.ts"
     },
     "devDependencies": {
         "@types/adm-zip": "^0.5.8",

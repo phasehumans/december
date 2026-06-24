@@ -452,14 +452,6 @@ export const markGenerationFailed = async (data: MarkGenerationFailed) => {
     })
 }
 
-export const findUserSubscriptionInfo = async (data: { userId: string }) => {
-    const { userId } = data
-    return prisma.user.findUnique({
-        where: { id: userId },
-        select: { subscriptionPlan: true, subscriptionStatus: true },
-    })
-}
-
 export const updateProjectCurrentVersion = async (data: {
     projectId: string
     versionId: string

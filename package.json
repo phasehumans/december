@@ -16,7 +16,7 @@
         "build": "turbo run build",
         "dev": "turbo run dev --filter=!@december/cli --filter=!@december/tui",
         "test": "turbo run test",
-        "clean": "bun scripts/clear.sh",
+        "clean": "bun scripts/clean.sh",
         "db:generate": "turbo run db:generate",
         "db:migrate": "turbo run db:migrate",
         "db:migrate:dev": "turbo run db:migrate:dev",

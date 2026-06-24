@@ -48,7 +48,6 @@ describe('usage.routes.integration', () => {
     beforeEach(async () => {
         await prisma.usageEvent.deleteMany()
         await prisma.project.deleteMany()
-        await prisma.subscription.deleteMany()
         await prisma.session.deleteMany()
         await prisma.user.deleteMany()
 
@@ -65,7 +64,7 @@ describe('usage.routes.integration', () => {
         expect(res.status).toBe(200)
         expect(res.body.success).toBe(true)
         expect(res.body.data.usage.costInCents).toBe(0)
-        expect(res.body.data.credits.limitInCents).toBe(100)
+        expect(res.body.data.credits.limitInCents).toBeNull()
         expect(res.body.data.credits.remainingInCents).toBe(100)
     })
 
