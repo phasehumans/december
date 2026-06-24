@@ -3,6 +3,7 @@ import { ArrowUpRight } from 'lucide-react'
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
+import { AddCreditsModal } from './AddCreditsModal'
 import { ProfileSettingsSkeleton } from './ProfileSettingsSkeleton'
 import { RedeemCodeModal } from './RedeemCodeModal'
 
@@ -23,6 +24,7 @@ interface CreditTransaction {
     type: 'purchase' | 'gift'
     methodOrCode: string
     amountInCents: number
+    status: 'SUCCESS' | 'PENDING' | 'FAILED'
 }
 
 export const ProfileBillingSettings: React.FC<ProfileBillingSettingsProps> = (props) => {
@@ -43,95 +45,39 @@ export const ProfileBillingSettings: React.FC<ProfileBillingSettingsProps> = (pr
     } = useBillingOverview()
 
     const [showRedeemModal, setShowRedeemModal] = useState(false)
-
-    // Local Storage transaction log
-    const [localTxHistory] = useState<CreditTransaction[]>(() => {
-        try {
-            const saved = localStorage.getItem('december_credit_transactions')
-            return saved ? JSON.parse(saved) : []
-        } catch {
-            return []
-        }
-    })
+    const [showAddCreditsModal, setShowAddCreditsModal] = useState(false)
 
     const formatCents = (cents: number | null) => {
         if (cents === null) return 'Unlimited'
         return `$${(cents / 100).toFixed(2)}`
     }
 
-    const getGreeting = () => {
-        const hr = new Date().getHours()
-        if (hr < 12) return 'Good morning'
-        if (hr < 17) return 'Good afternoon'
-        return 'Good evening'
-    }
-
     const mergedHistory = React.useMemo(() => {
-        const dummyHistory: CreditTransaction[] = [
-            {
-                id: 'a8f9d2',
-                date: '2026-06-18T14:30:00.000Z',
-                type: 'purchase',
-                methodOrCode: 'Credit Card Purchase',
-                amountInCents: 2500,
-            },
-            {
-                id: 'claim_welcome5',
-                date: '2026-06-15T09:15:00.000Z',
-                type: 'gift',
-                methodOrCode: 'Promo Code: WELCOME5',
-                amountInCents: 500,
-            },
-            {
-                id: 'e3c1b8',
-                date: '2026-06-10T18:45:00.000Z',
-                type: 'purchase',
-                methodOrCode: 'UPI QR Purchase',
-                amountInCents: 1000,
-            },
-            {
-                id: 'claim_gift10',
-                date: '2026-06-05T11:00:00.000Z',
-                type: 'gift',
-                methodOrCode: 'Promo Code: DEVELOPER10',
-                amountInCents: 1000,
-            },
-            {
-                id: 'd9e7f4',
-                date: '2026-05-28T16:20:00.000Z',
-                type: 'purchase',
-                methodOrCode: 'Cryptocurrency Purchase (USDT)',
-                amountInCents: 5000,
-            },
-            {
-                id: 'claim_signuppromo',
-                date: '2026-05-20T08:00:00.000Z',
-                type: 'gift',
-                methodOrCode: 'Sign-up Gift Credits',
-                amountInCents: 500,
-            },
-            {
-                id: 'b2a4c6',
-                date: '2026-05-15T12:00:00.000Z',
-                type: 'purchase',
-                methodOrCode: 'Credit Card Purchase',
-                amountInCents: 1000,
-            },
-        ]
+        if (!overview) return []
 
-        const dbClaims: CreditTransaction[] = !overview
-            ? []
-            : (overview.claims || []).map((claim: any) => ({
-                  id: claim.id,
-                  date: claim.createdAt,
-                  type: 'gift',
-                  methodOrCode: `Promo Code: ${claim.code}`,
-                  amountInCents: claim.amountInCents,
-              }))
+        const dbClaims: CreditTransaction[] = (overview.claims || []).map((claim: any) => ({
+            id: claim.id,
+            date: claim.createdAt,
+            type: 'gift',
+            methodOrCode: `Promo Code: ${claim.code}`,
+            amountInCents: claim.amountInCents,
+            status: 'SUCCESS',
+        }))
 
-        const combined = [...localTxHistory, ...dbClaims, ...dummyHistory]
+        const dbTransactions: CreditTransaction[] = (overview.transactions || [])
+            .filter((tx: any) => tx.status !== 'PENDING')
+            .map((tx: any) => ({
+                id: tx.id,
+                date: tx.createdAt,
+                type: 'purchase',
+                methodOrCode: 'Card/UPI (Razorpay)',
+                amountInCents: tx.amountInCents,
+                status: tx.status as 'SUCCESS' | 'PENDING' | 'FAILED',
+            }))
+
+        const combined = [...dbClaims, ...dbTransactions]
         return combined.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-    }, [localTxHistory, overview])
+    }, [overview])
 
     if (isOverviewLoading) {
         return <ProfileSettingsSkeleton activeTab="Billing" />
@@ -150,7 +96,7 @@ export const ProfileBillingSettings: React.FC<ProfileBillingSettingsProps> = (pr
         )
     }
 
-    const remainingInCents = overview.credits.remainingInCents
+    const remainingInCents = overview.creditBalance ?? 0
 
     return (
         <div className="flex flex-col w-full max-w-[680px] text-[#D6D5C9] animate-in fade-in duration-200">
@@ -158,7 +104,7 @@ export const ProfileBillingSettings: React.FC<ProfileBillingSettingsProps> = (pr
             <div className="flex flex-col mb-6">
                 <h1 className="text-[16px] font-medium text-[#D6D5C9] mb-3">Credits</h1>
                 <div className="flex flex-col gap-4 border-t border-[#242323] pt-4">
-                    {/* Compact credits balance box (items-end moves buttons slightly below to align with balance text bottom) */}
+                    {/* Compact credits balance box */}
                     <div className="flex items-end justify-between border border-[#242323] rounded-2xl p-6 w-full max-w-[520px]">
                         <div className="flex flex-col gap-2">
                             <span className="text-[13px] text-[#7B7A79]">Credit remaining</span>
@@ -169,13 +115,8 @@ export const ProfileBillingSettings: React.FC<ProfileBillingSettingsProps> = (pr
                         <div className="flex items-center gap-2 mb-0.5">
                             <button
                                 type="button"
-                                className="px-4 py-1.5 rounded-lg border border-[#383736] text-[13px] text-[#D6D5C9] hover:bg-[#242323] transition-colors active:scale-[0.98]"
-                            >
-                                Add payment details
-                            </button>
-                            <button
-                                type="button"
-                                className="px-4 py-1.5 rounded-lg bg-white text-black hover:bg-neutral-200 text-[13px] font-semibold transition-colors active:scale-[0.98]"
+                                onClick={() => setShowAddCreditsModal(true)}
+                                className="px-4 py-1.5 rounded-lg bg-white text-black hover:bg-neutral-200 text-[13px] font-semibold transition-colors active:scale-[0.98] cursor-pointer"
                             >
                                 Add Credits
                             </button>
@@ -195,14 +136,14 @@ export const ProfileBillingSettings: React.FC<ProfileBillingSettingsProps> = (pr
                     ) : (
                         <div className="flex flex-col gap-4">
                             {/* Header Row */}
-                            <div className="grid grid-cols-4 gap-4 text-[11px] font-semibold uppercase tracking-wider text-neutral-500 pb-1">
-                                <div>Date</div>
-                                <div>Transaction ID</div>
-                                <div>Details</div>
-                                <div className="text-right">Amount</div>
+                            <div className="grid grid-cols-5 gap-4 text-[11px] font-semibold uppercase tracking-wider text-neutral-500 pb-1">
+                                <div className="col-span-1">Date</div>
+                                <div className="col-span-2">Details</div>
+                                <div className="col-span-1">Status</div>
+                                <div className="col-span-1 text-right">Amount</div>
                             </div>
                             {/* Data Rows */}
-                            <div className="flex flex-col gap-3">
+                            <div className="flex flex-col gap-3.5">
                                 {mergedHistory.map((tx) => {
                                     const formattedDate = new Date(tx.date).toLocaleDateString(
                                         undefined,
@@ -216,26 +157,42 @@ export const ProfileBillingSettings: React.FC<ProfileBillingSettingsProps> = (pr
                                         tx.id.startsWith('claim_') || tx.id.length < 5
                                             ? tx.id
                                             : `tx_${tx.id}`
+
+                                    // Status styling mapping
+                                    const statusConfig = {
+                                        SUCCESS: { label: 'Success', color: 'text-emerald-500' },
+                                        PENDING: { label: 'Pending', color: 'text-amber-500' },
+                                        FAILED: { label: 'Failed', color: 'text-red-500' },
+                                    }[tx.status] || { label: tx.status, color: 'text-neutral-500' }
+
                                     return (
                                         <div
                                             key={tx.id}
-                                            className="grid grid-cols-4 gap-4 items-center text-[13px] text-neutral-300"
+                                            className="grid grid-cols-5 gap-4 items-center text-[13px] text-neutral-300"
                                         >
-                                            <div className="text-[#7B7A79]">{formattedDate}</div>
-                                            <div
-                                                className="font-mono text-xs text-[#7B7A79] truncate"
-                                                title={txId}
-                                            >
-                                                {txId}
+                                            <div className="col-span-1 text-[#7B7A79]">
+                                                {formattedDate}
+                                            </div>
+                                            <div className="col-span-2 flex flex-col min-w-0">
+                                                <span
+                                                    className="text-neutral-300 truncate"
+                                                    title={tx.methodOrCode}
+                                                >
+                                                    {tx.methodOrCode}
+                                                </span>
+                                                <span
+                                                    className="text-[10px] text-[#7B7A79] font-mono mt-0.5 truncate"
+                                                    title={txId}
+                                                >
+                                                    {txId}
+                                                </span>
                                             </div>
                                             <div
-                                                className="text-neutral-400 truncate"
-                                                title={tx.methodOrCode}
+                                                className={`col-span-1 font-medium ${statusConfig.color}`}
                                             >
-                                                {tx.methodOrCode}
+                                                {statusConfig.label}
                                             </div>
-                                            {/* Neutral color amount display (no green) */}
-                                            <div className="text-right text-[#D6D5C9] font-medium font-mono">
+                                            <div className="col-span-1 text-right text-[#D6D5C9] font-medium font-mono">
                                                 +{formatCents(tx.amountInCents)}
                                             </div>
                                         </div>
@@ -290,6 +247,9 @@ export const ProfileBillingSettings: React.FC<ProfileBillingSettingsProps> = (pr
 
             {/* Modals */}
             {showRedeemModal && <RedeemCodeModal onClose={() => setShowRedeemModal(false)} />}
+            {showAddCreditsModal && (
+                <AddCreditsModal onClose={() => setShowAddCreditsModal(false)} />
+            )}
         </div>
     )
 }

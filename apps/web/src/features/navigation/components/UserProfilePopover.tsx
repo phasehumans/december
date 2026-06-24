@@ -116,12 +116,9 @@ export const UserProfilePopover: React.FC<UserProfilePopoverProps> = ({
             return <Loader2 className="w-3.5 h-3.5 animate-spin text-[#969593]" />
         }
         if (!overview) {
-            return <span className="text-[13px] text-[#CBCACA] font-medium">$5.00</span>
+            return <span className="text-[13px] text-[#CBCACA] font-medium">$0.00</span>
         }
-        if (overview.credits.unlimited) {
-            return <span className="text-[13px] text-[#CBCACA] font-medium">Unlimited</span>
-        }
-        const remaining = overview.credits.remainingInCents ?? 0
+        const remaining = overview.creditBalance ?? 0
         return (
             <span className="text-[13px] text-[#CBCACA] font-medium">
                 ${(remaining / 100).toFixed(2)}

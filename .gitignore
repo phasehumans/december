@@ -49,3 +49,4 @@ infra/nginx/deployments/*
 # OS files
 Thumbs.db
 .DS_Store
+TODO.md

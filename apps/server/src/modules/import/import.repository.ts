@@ -157,7 +157,6 @@ export const importRepository = {
             select: {
                 id: true,
                 githubToken: true,
-                subscriptionPlan: true,
             },
         })
     },

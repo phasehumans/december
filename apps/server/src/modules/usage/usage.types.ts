@@ -37,15 +37,8 @@ export type CanRunSelfCorrection = {
 export type UsageUser = {
     id: string
     isDeleted: boolean
-    subscriptionPlan: 'FREE' | 'PRO'
-    subscriptionStatus: 'FREE' | 'ACTIVE' | 'PAST_DUE' | 'CANCELED'
-    subscription: {
-        currentPeriodStart: Date
-        currentPeriodEnd: Date
-    } | null
     createdAt: Date
     creditBalance: number
-    giftedCredits: number
 }
 
 export type ModelRate = {

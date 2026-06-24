@@ -9,7 +9,6 @@ import { sendNotificationToUser } from '../notification/notification.service'
 import { authRepository } from './auth.repository'
 import {
     sendOTP,
-    sendWelcomeEmail,
     getUsername,
     generateAccessToken,
     generateRefreshToken,
@@ -151,7 +150,7 @@ const verifyOtp = async (data: VerifyOtp) => {
             userId: user.id,
             title: 'Welcome to December',
             message:
-                'Your account has been created successfully. You can now start building apps, generating code, and turning your ideas into production-ready projects with AI.',
+                'Your account has been created successfully. You can now start building apps and turn your ideas into reality with December.',
             type: 'SUCCESS',
         })
     } catch (error) {
@@ -219,17 +218,6 @@ const login = async (data: Login) => {
         ipAddress: ipAddress,
         expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
     })
-
-    try {
-        await sendNotificationToUser({
-            userId: existingUser.id,
-            title: 'Successful Sign-in',
-            message: 'You have successfully signed in to your account.',
-            type: 'SUCCESS',
-        })
-    } catch (error) {
-        console.error('failed to send sign-in notification:', error)
-    }
 
     return {
         accessToken,
@@ -341,7 +329,7 @@ const google = async (data: Google) => {
                 userId: user.id,
                 title: 'Welcome to December',
                 message:
-                    'Your account has been created successfully via Google. You can now start building apps, generating code, and turning your ideas into production-ready projects with AI.',
+                    'Your account has been created successfully. You can now start building apps and turn your ideas into reality with December.',
                 type: 'SUCCESS',
             })
         } catch (error) {
@@ -364,19 +352,6 @@ const google = async (data: Google) => {
         })
     } else if (user.googleId !== sub) {
         throw new AppError('google id mismatch', 400)
-    }
-
-    if (!isNewUser) {
-        try {
-            await sendNotificationToUser({
-                userId: user.id,
-                title: 'Successful Sign-in',
-                message: 'You have successfully signed in to your account via Google.',
-                type: 'SUCCESS',
-            })
-        } catch (error) {
-            console.error('failed to send Google sign-in notification:', error)
-        }
     }
 
     const sessionId = crypto.randomUUID()

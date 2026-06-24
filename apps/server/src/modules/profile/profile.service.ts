@@ -30,8 +30,7 @@ export const profileSelect = {
     generationSound: true,
     design: true,
     avatarUrl: true,
-    subscriptionPlan: true,
-    subscriptionStatus: true,
+    creditBalance: true,
     isDeleted: true,
     hasCompletedOnboarding: true,
 }

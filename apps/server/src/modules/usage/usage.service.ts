@@ -72,25 +72,6 @@ const startOfNextUtcMonth = (date: Date) => {
 }
 
 const resolveCurrentPeriod = (user: UsageUser, now = new Date()) => {
-    const isPro = user.subscriptionPlan === 'PRO' && user.subscriptionStatus === 'ACTIVE'
-    if (!isPro) {
-        return {
-            periodStart: user.createdAt,
-            periodEnd: new Date('2099-12-31T23:59:59.000Z'),
-        }
-    }
-
-    if (
-        user.subscription &&
-        user.subscription.currentPeriodStart <= now &&
-        user.subscription.currentPeriodEnd > now
-    ) {
-        return {
-            periodStart: user.subscription.currentPeriodStart,
-            periodEnd: user.subscription.currentPeriodEnd,
-        }
-    }
-
     return {
         periodStart: startOfUtcMonth(now),
         periodEnd: startOfNextUtcMonth(now),
@@ -107,33 +88,24 @@ const getUsageUser = async (userId: string): Promise<UsageUser> => {
     return user as unknown as UsageUser
 }
 
-const getPeriodAggregate = async (
-    userId: string,
-    periodStart: Date,
-    periodEnd: Date,
-    isPro: boolean
-) => {
-    return usageRepository.getPeriodAggregate({ userId, periodStart, periodEnd, isPro })
+const getPeriodAggregate = async (userId: string, periodStart: Date, periodEnd: Date) => {
+    return usageRepository.getPeriodAggregate({ userId, periodStart, periodEnd })
 }
 
 const getCurrentUsage = async (data: GetCurrentUsage) => {
     const { userId } = data
     const user = await getUsageUser(userId)
     const { periodStart, periodEnd } = resolveCurrentPeriod(user)
-    const isPro = user.subscriptionPlan === 'PRO' && user.subscriptionStatus === 'ACTIVE'
-    const usage = await getPeriodAggregate(user.id, periodStart, periodEnd, isPro)
+    const usage = await getPeriodAggregate(user.id, periodStart, periodEnd)
 
-    const creditLimitInCents = isPro ? 500 : 100
-    const remainingCreditsInCents = user.creditBalance + user.giftedCredits
+    const remainingCreditsInCents = user.creditBalance
 
     return {
-        plan: user.subscriptionPlan,
-        status: user.subscriptionStatus,
         periodStart,
         periodEnd,
         usage,
         credits: {
-            limitInCents: creditLimitInCents,
+            limitInCents: null,
             usedInCents: usage.costInCents,
             remainingInCents: remainingCreditsInCents,
             unlimited: false,
@@ -159,7 +131,7 @@ const checkEnoughCredits = async (data: CheckEnoughCredits) => {
 const hasMinimumBalance = async (data: HasMinimumBalance): Promise<boolean> => {
     const { userId } = data
     const user = await getUsageUser(userId)
-    return user.creditBalance + user.giftedCredits >= 1
+    return user.creditBalance >= 1
 }
 
 const assertProjectOwnership = async (userId: string, projectId?: string) => {
@@ -214,24 +186,14 @@ const recordUsageEvent = async (data: RecordUsageEvent) => {
                 throw new AppError('user not found', 404)
             }
 
-            let remainingCost = calculatedCost
             let newCreditBalance = dbUser.creditBalance
-            let newGiftedCredits = dbUser.giftedCredits
-
-            if (newCreditBalance >= remainingCost) {
-                newCreditBalance -= remainingCost
-            } else {
-                remainingCost -= newCreditBalance
-                newCreditBalance = 0
-                newGiftedCredits = Math.max(newGiftedCredits - remainingCost, 0)
-            }
+            newCreditBalance = Math.max(newCreditBalance - calculatedCost, 0)
 
             // Update user balance
             await usageRepository.updateUserCredits(
                 {
                     userId: user.id,
                     creditBalance: newCreditBalance,
-                    giftedCredits: newGiftedCredits,
                 },
                 tx
             )
@@ -285,7 +247,7 @@ const canRunSelfCorrection = async (data: CanRunSelfCorrection): Promise<boolean
         if (!user) return false
 
         const threshold = parseInt(process.env.SELF_CORRECTION_CREDIT_THRESHOLD || '5', 10) // default 5 cents
-        return user.creditBalance + user.giftedCredits >= threshold
+        return user.creditBalance >= threshold
     } catch {
         return false
     }

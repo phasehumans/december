@@ -23,11 +23,6 @@ const app = express()
 app.use(
     express.json({
         limit: '25mb',
-        verify: (req: any, _res, buf) => {
-            if (req.originalUrl === '/api/v1/billing/webhooks/razorpay') {
-                req.rawBody = Buffer.from(buf)
-            }
-        },
     })
 )
 app.use(cookieParser())

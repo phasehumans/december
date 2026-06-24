@@ -29,8 +29,7 @@ export type Profile = {
     memories?: string | null
     design?: string | null
     avatarUrl?: string | null
-    subscriptionPlan?: 'FREE' | 'PRO'
-    subscriptionStatus?: 'FREE' | 'ACTIVE' | 'PAST_DUE' | 'CANCELED'
+    creditBalance?: number
     hasCompletedOnboarding?: boolean
     hasPassword?: boolean
 }

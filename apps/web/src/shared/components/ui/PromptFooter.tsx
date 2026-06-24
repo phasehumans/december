@@ -60,7 +60,7 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
         staleTime: 10 * 1000,
         enabled: isAuthenticated,
     })
-    const isPro = overview?.plan === 'PRO'
+    const isPro = true
 
     const models = [
         { id: 'Auto', name: 'Auto', desc: 'Best model for your task', icon: null },
