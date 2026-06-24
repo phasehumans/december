@@ -32,14 +32,5 @@ export const verifyRazorpayOrderPayment = (data: {
         .update(`${orderId}|${paymentId}`)
         .digest('hex')
 
-    console.log('[Razorpay Signature Debug]:', {
-        orderId,
-        paymentId,
-        secretLength: secret?.length,
-        receivedSignature: signature,
-        generatedSignature,
-        matches: generatedSignature === signature,
-    })
-
     return generatedSignature === signature
 }
