@@ -50,18 +50,6 @@ export interface VerifyRazorpayPaymentResponse {
     newBalance?: number
 }
 
-export interface CreateCryptoOrderInput {
-    amountInCents: number
-    currency?: string
-}
-
-export interface CreateCryptoOrderResponse {
-    chargeId: string
-    hostedUrl: string
-    amount: number
-    currency: string
-}
-
 export interface UsageEvent {
     id: string
     userId: string
@@ -110,13 +98,6 @@ const verifyRazorpayPayment = (data: VerifyRazorpayPaymentInput) => {
     })
 }
 
-const createCryptoOrder = (data: CreateCryptoOrderInput) => {
-    return apiRequest<CreateCryptoOrderResponse>('/billing/wallet/order/crypto', {
-        method: 'POST',
-        body: JSON.stringify(data),
-    })
-}
-
 const getCreditsHistory = (
     params: { limit?: number; offset?: number; periodStart?: string; periodEnd?: string } = {}
 ) => {
@@ -149,7 +130,6 @@ export const billingAPI = {
     getOverview,
     createRazorpayOrder,
     verifyRazorpayPayment,
-    createCryptoOrder,
     getCreditsHistory,
     redeemCode,
     addCredits,

@@ -2,7 +2,7 @@ import { z } from 'zod'
 
 export const createRazorpayOrderSchema = z
     .object({
-        amountInCents: z.number().int().min(100), // min $1.00
+        amountInCents: z.number().int().min(200), // min $2.00
         currency: z.string().trim().length(3).default('USD'),
     })
     .strict()
@@ -12,13 +12,6 @@ export const verifyRazorpayPaymentSchema = z
         razorpay_order_id: z.string().trim().min(1),
         razorpay_payment_id: z.string().trim().min(1),
         razorpay_signature: z.string().trim().min(1),
-    })
-    .strict()
-
-export const createCryptoOrderSchema = z
-    .object({
-        amountInCents: z.number().int().min(100), // min $1.00
-        currency: z.string().trim().length(3).default('USD'),
     })
     .strict()
 

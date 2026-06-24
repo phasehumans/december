@@ -9,7 +9,6 @@ import { sendNotificationToUser } from '../notification/notification.service'
 import { authRepository } from './auth.repository'
 import {
     sendOTP,
-    sendWelcomeEmail,
     getUsername,
     generateAccessToken,
     generateRefreshToken,
