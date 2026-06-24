@@ -91,12 +91,6 @@ const createRazorpayOrder = async (data: CreateRazorpayOrder) => {
 const verifyRazorpayPayment = async (data: VerifyRazorpayPayment) => {
     const { userId, razorpay_order_id, razorpay_payment_id, razorpay_signature } = data
 
-    console.log('[Razorpay Verification Service Call]:', {
-        userId,
-        razorpay_order_id,
-        razorpay_payment_id,
-    })
-
     const isValid = verifyRazorpayOrderPayment({
         orderId: razorpay_order_id,
         paymentId: razorpay_payment_id,

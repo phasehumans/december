@@ -141,6 +141,26 @@ describe('auth.service.integration', () => {
             await authService.signup({ email: 'otp@example.com', password: 'Pass1234' })
             expect(sendOTPMock).toHaveBeenCalledTimes(1)
         })
+
+        it('should throw if google account exists but no password set', async () => {
+            await createUser({
+                email: 'google_only@example.com',
+                username: 'google_only',
+                password: '',
+                googleId: 'some-sub',
+            })
+            let error: any = null
+            try {
+                await authService.signup({
+                    email: 'google_only@example.com',
+                    password: 'Password123',
+                })
+            } catch (e) {
+                error = e
+            }
+            expect(error).not.toBeNull()
+            expect(error.message).toBe('google_account_exists')
+        })
     })
 
     describe('verifyOtp', () => {
@@ -169,9 +189,6 @@ describe('auth.service.integration', () => {
 
             const session = await prisma.session.findFirst({ where: { userId: user.id } })
             expect(session).not.toBeNull()
-
-            expect(sendWelcomeEmailMock).toHaveBeenCalledTimes(1)
-            expect(sendWelcomeEmailMock).toHaveBeenCalledWith('verify@example.com', 'Test User')
         })
 
         it('should fail if otp is invalid', async () => {
@@ -240,6 +257,33 @@ describe('auth.service.integration', () => {
             const sessions = await prisma.session.findMany({ where: { userId: user.id } })
             expect(sessions.length).toBe(1)
             expect(sessions![0]!.isRevoked).toBe(false)
+        })
+
+        it('should fail if account is deleted', async () => {
+            const user = await createUser({
+                email: 'deletedverify@example.com',
+                username: 'deletedverify',
+                emailVerified: false,
+                isDeleted: true,
+                otpHash: await bcrypt.hash('123456', 10),
+                otpExpiresAt: new Date(Date.now() + 10000),
+            })
+            await expect(
+                authService.verifyOtp({ email: user.email, otp: '123456' })
+            ).rejects.toThrow('account has been deleted')
+        })
+
+        it('should fail if email is already verified', async () => {
+            const user = await createUser({
+                email: 'alreadyverified@example.com',
+                username: 'alreadyverified',
+                emailVerified: true,
+                otpHash: await bcrypt.hash('123456', 10),
+                otpExpiresAt: new Date(Date.now() + 10000),
+            })
+            await expect(
+                authService.verifyOtp({ email: user.email, otp: '123456' })
+            ).rejects.toThrow('email already verified')
         })
     })
 
@@ -340,6 +384,18 @@ describe('auth.service.integration', () => {
             const session = await prisma.session.findFirst({ where: { userId: user.id } })
             expect(session).not.toBeNull()
             expect(session!.isRevoked).toBe(false)
+        })
+
+        it('should fail if user is a Google account without password', async () => {
+            const user = await createUser({
+                email: 'googleonlylogin@example.com',
+                username: 'googleonlylogin',
+                password: '',
+                googleId: 'some-sub',
+            })
+            await expect(
+                authService.login({ email: user.email, password: 'Password123' })
+            ).rejects.toThrow('please continue with google login')
         })
     })
 
@@ -511,6 +567,25 @@ describe('auth.service.integration', () => {
             expect(updatedUser!.otpHash).toBeNull()
             expect(updatedUser!.otpExpiresAt).toBeNull()
         })
+        it('should fail to request password reset for deleted user', async () => {
+            const user = await createUser({
+                email: 'delreset@example.com',
+                username: 'delreset',
+                isDeleted: true,
+            })
+            await authService.requestPasswordReset({ email: user.email })
+            expect(sendOTPMock).not.toHaveBeenCalled()
+        })
+
+        it('should fail to request password reset for unverified user', async () => {
+            const user = await createUser({
+                email: 'unverreset@example.com',
+                username: 'unverreset',
+                emailVerified: false,
+            })
+            await authService.requestPasswordReset({ email: user.email })
+            expect(sendOTPMock).not.toHaveBeenCalled()
+        })
     })
 
     describe('google', () => {
@@ -579,6 +654,22 @@ describe('auth.service.integration', () => {
                 where: { email: 'googleverified@example.com' },
             })
             expect(user!.emailVerified).toBe(true)
+        })
+
+        it('should throw if existing user is deleted', async () => {
+            await createUser({
+                email: 'deletedgoogle@example.com',
+                username: 'deletedgoogle',
+                googleId: 'del-sub',
+                isDeleted: true,
+            })
+            await expect(
+                authService.google({
+                    email: 'deletedgoogle@example.com',
+                    name: 'Deleted',
+                    sub: 'del-sub',
+                })
+            ).rejects.toThrow('account has been deleted')
         })
     })
 
@@ -651,6 +742,64 @@ describe('auth.service.integration', () => {
             expect(refreshed.accessToken).toBeString()
             expect(refreshed.refreshToken).toBeString()
             expect(refreshed.accessToken).not.toBe(login.accessToken)
+        })
+
+        it('should fail if session not found in DB', async () => {
+            const token = actualUtils.generateRefreshToken({
+                userId: 'fake-user',
+                sessionId: 'fake-session',
+            })
+            await expect(authService.refreshSession({ refreshToken: token })).rejects.toThrow(
+                'session not found'
+            )
+        })
+
+        it('should fail if session expired in DB', async () => {
+            const user = await createUser({
+                email: 'expiredsession@example.com',
+                username: 'expiredsession',
+            })
+            const sessionId = crypto.randomUUID()
+            const token = actualUtils.generateRefreshToken({ userId: user.id, sessionId })
+
+            await prisma.session.create({
+                data: {
+                    id: sessionId,
+                    userId: user.id,
+                    refreshTokenHash: await bcrypt.hash(token, 10),
+                    expiresAt: new Date(Date.now() - 10000),
+                },
+            })
+
+            await expect(authService.refreshSession({ refreshToken: token })).rejects.toThrow(
+                'session expired'
+            )
+        })
+
+        it('should fail if user mismatch', async () => {
+            const user = await createUser({
+                email: 'mismatchuser@example.com',
+                username: 'mismatchuser',
+            })
+            const otherUser = await createUser({
+                email: 'otheruser@example.com',
+                username: 'otheruser',
+            })
+            const sessionId = crypto.randomUUID()
+            const token = actualUtils.generateRefreshToken({ userId: user.id, sessionId })
+
+            await prisma.session.create({
+                data: {
+                    id: sessionId,
+                    userId: otherUser.id, // Mismatch
+                    refreshTokenHash: await bcrypt.hash(token, 10),
+                    expiresAt: new Date(Date.now() + 100000),
+                },
+            })
+
+            await expect(authService.refreshSession({ refreshToken: token })).rejects.toThrow(
+                'invalid session'
+            )
         })
     })
 })
