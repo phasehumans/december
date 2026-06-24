@@ -1,24 +1,19 @@
 import crypto from 'crypto'
+
 import { razorpay } from '../../config/razorpay'
 import { AppError } from '../../shared/appError'
 import { sendNotificationToUser } from '../notification/notification.service'
 
 import { billingRepository } from './billing.repository'
-import {
-    getRazorpayKeyId,
-    verifyRazorpayOrderPayment,
-    verifyCoinbaseWebhookSignature,
-} from './billing.utils'
+import { getRazorpayKeyId, verifyRazorpayOrderPayment } from './billing.utils'
 
 import type {
     GetOverview,
     CreateRazorpayOrder,
     VerifyRazorpayPayment,
-    CreateCryptoOrder,
-    CoinbaseWebhook,
     CreditsHistory,
-    RedeemCode,
     AddCredits,
+    RedeemCode,
 } from './billing.types'
 
 const getOverview = async (data: GetOverview) => {
@@ -36,7 +31,6 @@ const getOverview = async (data: GetOverview) => {
 
     return {
         creditBalance: user.creditBalance,
-        giftedCredits: 0,
         createdAt: user.createdAt,
         usage: {
             inputTokens: aggregate._sum.inputTokens ?? 0,
@@ -66,7 +60,7 @@ const createRazorpayOrder = async (data: CreateRazorpayOrder) => {
 
     // Razorpay requires INR to enable UPI and domestic payment options.
     // Convert USD cents to INR paise using a rate of 84 (1 USD = 84 INR).
-    const USD_TO_INR_RATE = 84
+    const USD_TO_INR_RATE = 84 //store in env
     const amountInPaise = amountInCents * USD_TO_INR_RATE
 
     const order = await razorpay.orders.create({
@@ -122,16 +116,20 @@ const verifyRazorpayPayment = async (data: VerifyRazorpayPayment) => {
         throw new AppError('transaction order not found', 404)
     }
 
+    if (transaction.userId !== userId) {
+        throw new AppError('unauthorized to verify this transaction', 403)
+    }
+
     if (transaction.status === 'SUCCESS') {
         return { success: true, alreadyProcessed: true }
     }
 
-    await billingRepository.updateWalletTransaction(transaction.id, {
-        status: 'SUCCESS',
-        providerPaymentId: razorpay_payment_id,
-    })
-
-    const updatedUser = await billingRepository.addCredits(userId, transaction.amountInCents)
+    const updatedUser = await billingRepository.verifyAndUpdateWalletTransaction(
+        transaction.id,
+        userId,
+        transaction.amountInCents,
+        razorpay_payment_id
+    )
 
     try {
         await sendNotificationToUser({
@@ -148,139 +146,6 @@ const verifyRazorpayPayment = async (data: VerifyRazorpayPayment) => {
         success: true,
         newBalance: updatedUser.creditBalance,
     }
-}
-
-const createCryptoOrder = async (data: CreateCryptoOrder) => {
-    const { userId, amountInCents, currency = 'USD' } = data
-
-    const apiKey = process.env.COINBASE_API_KEY
-    if (!apiKey) {
-        throw new AppError('Coinbase Commerce API Key not configured', 500)
-    }
-
-    const response = await fetch('https://api.commerce.coinbase.com/charges', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CC-Api-Key': apiKey,
-            'X-CC-Version': '2018-03-22',
-        },
-        body: JSON.stringify({
-            name: 'Wallet Credits',
-            description: `Purchase of $${(amountInCents / 100).toFixed(2)} wallet credits`,
-            pricing_type: 'fixed_price',
-            local_price: {
-                amount: (amountInCents / 100).toFixed(2),
-                currency,
-            },
-            metadata: {
-                userId,
-                amountInCents: amountInCents.toString(),
-            },
-            redirect_url: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/settings/billing?status=success`,
-            cancel_url: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/settings/billing?status=cancel`,
-        }),
-    })
-
-    if (!response.ok) {
-        const errText = await response.text()
-        console.error('Coinbase API error:', errText)
-        throw new AppError('failed to create crypto charge', 500)
-    }
-
-    const resData = (await response.json()) as any
-    const charge = resData.data
-
-    await billingRepository.createWalletTransaction({
-        userId,
-        amountInCents,
-        currency,
-        provider: 'COINBASE',
-        providerOrderId: charge.id,
-        metadata: {
-            hostedUrl: charge.hosted_url,
-        },
-    })
-
-    return {
-        chargeId: charge.id,
-        hostedUrl: charge.hosted_url,
-        amount: amountInCents,
-        currency,
-    }
-}
-
-const handleCoinbaseWebhook = async (data: CoinbaseWebhook & { rawBody?: Buffer }) => {
-    const { body, rawBody, signature } = data
-
-    const payload = rawBody ? rawBody : Buffer.from(JSON.stringify(body))
-    const isValid = verifyCoinbaseWebhookSignature({
-        rawBody: payload,
-        signature,
-    })
-
-    if (!isValid) {
-        throw new AppError('invalid coinbase webhook signature', 400)
-    }
-
-    const eventType = body.event?.type
-    const charge = body.event?.data
-
-    if (!eventType || !charge?.id) {
-        return { processed: false, reason: 'invalid payload structure' }
-    }
-
-    const chargeId = charge.id
-    const transaction = await billingRepository.findWalletTransactionByOrderId(chargeId)
-
-    if (!transaction) {
-        return { processed: false, reason: 'transaction not found' }
-    }
-
-    if (eventType === 'charge:confirmed' || eventType === 'charge:resolved') {
-        if (transaction.status === 'SUCCESS') {
-            return { processed: true, alreadyProcessed: true }
-        }
-
-        await billingRepository.updateWalletTransaction(transaction.id, {
-            status: 'SUCCESS',
-            metadata: {
-                ...((transaction.metadata as Record<string, any>) || {}),
-                coinbaseEvent: body.event,
-            },
-        })
-
-        const updatedUser = await billingRepository.addCredits(
-            transaction.userId,
-            transaction.amountInCents
-        )
-
-        try {
-            await sendNotificationToUser({
-                userId: transaction.userId,
-                title: 'Credits Added via Crypto',
-                message: `Successfully credited $${(transaction.amountInCents / 100).toFixed(2)} to your wallet!`,
-                type: 'SUCCESS',
-            })
-        } catch (err) {
-            console.error('Failed to send notification:', err)
-        }
-
-        return { processed: true, newBalance: updatedUser.creditBalance }
-    }
-
-    if (eventType === 'charge:failed') {
-        await billingRepository.updateWalletTransaction(transaction.id, {
-            status: 'FAILED',
-            metadata: {
-                ...((transaction.metadata as Record<string, any>) || {}),
-                coinbaseEvent: body.event,
-            },
-        })
-        return { processed: true, status: 'FAILED' }
-    }
-
-    return { processed: false, reason: `unhandled event type: ${eventType}` }
 }
 
 const getCreditsHistory = async (data: CreditsHistory) => {
@@ -396,8 +261,6 @@ export const billingService = {
     getOverview,
     createRazorpayOrder,
     verifyRazorpayPayment,
-    createCryptoOrder,
-    handleCoinbaseWebhook,
     getCreditsHistory,
     redeemCode,
     addCredits,

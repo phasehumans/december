@@ -15,17 +15,6 @@ export type VerifyRazorpayPayment = {
     razorpay_signature: string
 }
 
-export type CreateCryptoOrder = {
-    userId: string
-    amountInCents: number
-    currency?: string
-}
-
-export type CoinbaseWebhook = {
-    body: Record<string, any>
-    signature?: string
-}
-
 export type CreditsHistory = {
     userId: string
     limit: number

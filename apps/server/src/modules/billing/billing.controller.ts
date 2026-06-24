@@ -8,7 +8,6 @@ import {
     addCreditsSchema,
     createRazorpayOrderSchema,
     verifyRazorpayPaymentSchema,
-    createCryptoOrderSchema,
 } from './billing.schema'
 import { billingService } from './billing.service'
 
@@ -55,34 +54,6 @@ const verifyRazorpayPayment = asyncHandler(async (req: Request, res: Response) =
         ...parsedBody,
     })
     return sendSuccess(res, 'payment verified successfully', result)
-})
-
-const createCryptoOrder = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.user?.userId as string | undefined
-
-    if (!userId) {
-        throw new AppError('unauthorized', 401)
-    }
-
-    const parsedBody = createCryptoOrderSchema.parse(req.body)
-
-    const result = await billingService.createCryptoOrder({
-        userId,
-        ...parsedBody,
-    })
-    return sendSuccess(res, 'crypto charge created successfully', result, 201)
-})
-
-const handleCoinbaseWebhook = asyncHandler(async (req: Request, res: Response) => {
-    const signature = req.headers['x-cc-webhook-signature'] as string | undefined
-
-    const result = await billingService.handleCoinbaseWebhook({
-        body: req.body,
-        rawBody: (req as any).rawBody,
-        signature,
-    })
-
-    return sendSuccess(res, 'coinbase webhook processed successfully', result)
 })
 
 const getCreditsHistory = asyncHandler(async (req: Request, res: Response) => {
@@ -142,8 +113,6 @@ export const billingController = {
     getOverview,
     createRazorpayOrder,
     verifyRazorpayPayment,
-    createCryptoOrder,
-    handleCoinbaseWebhook,
     getCreditsHistory,
     redeemCode,
     addCredits,

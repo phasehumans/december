@@ -93,6 +93,34 @@ export const billingRepository = {
         })
     },
 
+    async verifyAndUpdateWalletTransaction(
+        transactionId: string,
+        userId: string,
+        amountInCents: number,
+        providerPaymentId: string
+    ) {
+        return prisma.$transaction(async (tx) => {
+            await tx.walletTransaction.update({
+                where: { id: transactionId },
+                data: {
+                    status: 'SUCCESS',
+                    providerPaymentId,
+                },
+            })
+
+            const updatedUser = await tx.user.update({
+                where: { id: userId },
+                data: {
+                    creditBalance: {
+                        increment: amountInCents,
+                    },
+                },
+            })
+
+            return updatedUser
+        })
+    },
+
     async findManyUsageEvents(where: any, offset: number, limit: number) {
         return prisma.usageEvent.findMany({
             where,

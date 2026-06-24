@@ -3,9 +3,9 @@ import { ArrowUpRight } from 'lucide-react'
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
+import { AddCreditsModal } from './AddCreditsModal'
 import { ProfileSettingsSkeleton } from './ProfileSettingsSkeleton'
 import { RedeemCodeModal } from './RedeemCodeModal'
-import { AddCreditsModal } from './AddCreditsModal'
 
 import { useBillingOverview } from '@/features/billing/hooks/useBillingData'
 import { profileAPI } from '@/features/profile/api/profile'
@@ -64,19 +64,16 @@ export const ProfileBillingSettings: React.FC<ProfileBillingSettingsProps> = (pr
             status: 'SUCCESS',
         }))
 
-        const dbTransactions: CreditTransaction[] = (overview.transactions || []).map(
-            (tx: any) => ({
+        const dbTransactions: CreditTransaction[] = (overview.transactions || [])
+            .filter((tx: any) => tx.status !== 'PENDING')
+            .map((tx: any) => ({
                 id: tx.id,
                 date: tx.createdAt,
                 type: 'purchase',
-                methodOrCode:
-                    tx.provider === 'RAZORPAY'
-                        ? 'Card/UPI (Razorpay)'
-                        : 'Cryptocurrency (Coinbase)',
+                methodOrCode: 'Card/UPI (Razorpay)',
                 amountInCents: tx.amountInCents,
                 status: tx.status as 'SUCCESS' | 'PENDING' | 'FAILED',
-            })
-        )
+            }))
 
         const combined = [...dbClaims, ...dbTransactions]
         return combined.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())

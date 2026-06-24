@@ -20,26 +20,6 @@ export const getRazorpayKeySecret = () => {
     return keySecret
 }
 
-export const getCoinbaseWebhookSecret = () => {
-    const secret = process.env.COINBASE_WEBHOOK_SECRET
-
-    if (!secret) {
-        throw new Error('COINBASE_WEBHOOK_SECRET is not configured')
-    }
-
-    return secret
-}
-
-export const getCoinbaseApiKey = () => {
-    const apiKey = process.env.COINBASE_API_KEY
-
-    if (!apiKey) {
-        throw new Error('COINBASE_API_KEY is not configured')
-    }
-
-    return apiKey
-}
-
 export const verifyRazorpayOrderPayment = (data: {
     orderId: string
     paymentId: string
@@ -60,22 +40,6 @@ export const verifyRazorpayOrderPayment = (data: {
         generatedSignature,
         matches: generatedSignature === signature,
     })
-
-    return generatedSignature === signature
-}
-
-export const verifyCoinbaseWebhookSignature = (data: {
-    rawBody: Buffer | string
-    signature?: string
-}) => {
-    const { rawBody, signature } = data
-    const secret = getCoinbaseWebhookSecret()
-
-    if (!signature) {
-        return false
-    }
-
-    const generatedSignature = crypto.createHmac('sha256', secret).update(rawBody).digest('hex')
 
     return generatedSignature === signature
 }
