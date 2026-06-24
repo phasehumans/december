@@ -2,10 +2,10 @@ import '../../env'
 
 import { prisma } from '@december/database'
 import { afterAll, beforeEach, describe, expect, it } from 'bun:test'
+import crypto from 'crypto'
 
 import { razorpay } from '../../../src/config/razorpay'
 import { billingService } from '../../../src/modules/billing/billing.service'
-import { createHmacSignature } from '../../../src/modules/billing/billing.utils'
 
 const createUser = async (overrides: Record<string, unknown> = {}) => {
     return prisma.user.create({
@@ -16,26 +16,11 @@ const createUser = async (overrides: Record<string, unknown> = {}) => {
             password: 'hashed-password',
             emailVerified: true,
             isDeleted: false,
+            creditBalance: 100,
             ...overrides,
         },
     })
 }
-
-const activeRazorpaySubscription = (userId: string, overrides: Record<string, unknown> = {}) => ({
-    id: 'sub_test_123',
-    entity: 'subscription',
-    plan_id: 'plan_test_pro',
-    status: 'active',
-    current_start: 1_780_000_000,
-    current_end: 1_782_592_000,
-    customer_id: 'cust_test_123',
-    short_url: 'https://rzp.io/i/test',
-    notes: {
-        userId,
-        plan: 'PRO',
-    },
-    ...overrides,
-})
 
 describe('billing.service.integration', () => {
     let userId: string
@@ -43,29 +28,16 @@ describe('billing.service.integration', () => {
     beforeEach(async () => {
         process.env.RAZORPAY_KEY_ID = 'rzp_test_key'
         process.env.RAZORPAY_KEY_SECRET = 'razorpay_test_secret'
-        process.env.RAZORPAY_PRO_PLAN_ID = 'plan_test_pro'
-        process.env.RAZORPAY_WEBHOOK_SECRET = 'webhook_test_secret'
-        ;(razorpay.plans as any).fetch = async () => ({
-            id: 'plan_test_pro',
-            period: 'monthly',
-            item: {
-                amount: 199900,
-                currency: 'INR',
-            },
+        process.env.COINBASE_API_KEY = 'coinbase_test_key'
+        process.env.COINBASE_WEBHOOK_SECRET = 'coinbase_webhook_secret'
+        ;(razorpay.orders as any).create = async (options: any) => ({
+            id: 'order_test_123',
+            amount: options.amount,
+            currency: options.currency,
         })
-        ;(razorpay.subscriptions as any).create = async (data: Record<string, unknown>) => ({
-            ...activeRazorpaySubscription(userId),
-            ...data,
-        })
-        ;(razorpay.subscriptions as any).fetch = async () => activeRazorpaySubscription(userId)
-        ;(razorpay.subscriptions as any).cancel = async () =>
-            activeRazorpaySubscription(userId, {
-                status: 'cancelled',
-                ended_at: 1_782_000_000,
-            })
 
+        await prisma.walletTransaction.deleteMany()
         await prisma.usageEvent.deleteMany()
-        await prisma.subscription.deleteMany()
         await prisma.session.deleteMany()
         await prisma.user.deleteMany()
 
@@ -77,118 +49,70 @@ describe('billing.service.integration', () => {
         await prisma.$disconnect()
     })
 
-    it('should fetch configured plans with Razorpay price data', async () => {
-        const plans = await billingService.getPlans()
-        const proPlan = plans.find((plan) => plan.id === 'PRO')
+    it('should return billing overview', async () => {
+        const result = await billingService.getOverview({ userId })
 
-        expect(proPlan?.razorpayPlanId).toBe('plan_test_pro')
-        expect(proPlan?.priceInPaise).toBe(199900)
-        expect(proPlan?.currency).toBe('INR')
+        expect(result.creditBalance).toBe(100)
+        expect(result.giftedCredits).toBe(0)
     })
 
-    it('should create a Razorpay subscription checkout payload', async () => {
-        const result = await billingService.createSubscription({
+    it('should create a Razorpay order checkout payload', async () => {
+        const result = await billingService.createRazorpayOrder({
             userId,
-            plan: 'PRO',
-            quantity: 1,
-            totalCount: 12,
+            amountInCents: 500,
+            currency: 'USD',
         })
 
         expect(result.keyId).toBe('rzp_test_key')
-        expect(result.subscriptionId).toBe('sub_test_123')
-        expect(result.razorpayPlanId).toBe('plan_test_pro')
+        expect(result.orderId).toBe('order_test_123')
+        expect(result.amount).toBe(500)
+        expect(result.currency).toBe('USD')
     })
 
-    it('should verify Razorpay payment signature and activate the subscription', async () => {
-        const paymentId = 'pay_test_123'
-        const signature = createHmacSignature(
-            `${paymentId}|sub_test_123`,
-            process.env.RAZORPAY_KEY_SECRET as string
-        )
-
-        const result = await billingService.verifySubscription({
+    it('should verify Razorpay payment signature and credit the wallet', async () => {
+        await billingService.createRazorpayOrder({
             userId,
-            razorpay_subscription_id: 'sub_test_123',
+            amountInCents: 500,
+            currency: 'USD',
+        })
+
+        const paymentId = 'pay_test_123'
+        const signature = crypto
+            .createHmac('sha256', 'razorpay_test_secret')
+            .update(`order_test_123|${paymentId}`)
+            .digest('hex')
+
+        const result = await billingService.verifyRazorpayPayment({
+            userId,
+            razorpay_order_id: 'order_test_123',
             razorpay_payment_id: paymentId,
             razorpay_signature: signature,
         })
 
-        expect(result.verified).toBe(true)
-        expect(result.user.subscriptionPlan).toBe('PRO')
-        expect(result.user.subscriptionStatus).toBe('ACTIVE')
+        expect(result.success).toBe(true)
+        expect(result.newBalance).toBe(600) // 100 base + 500 added
 
-        const subscription = await prisma.subscription.findUnique({ where: { userId } })
-        expect(subscription?.provider).toBe('razorpay')
-        expect(subscription?.providerSubscriptionId).toBe('sub_test_123')
+        const tx = await prisma.walletTransaction.findFirst({
+            where: { providerOrderId: 'order_test_123' },
+        })
+        expect(tx?.status).toBe('SUCCESS')
+        expect(tx?.providerPaymentId).toBe(paymentId)
     })
 
     it('should reject invalid verification signatures', async () => {
+        await billingService.createRazorpayOrder({
+            userId,
+            amountInCents: 500,
+            currency: 'USD',
+        })
+
         await expect(
-            billingService.verifySubscription({
+            billingService.verifyRazorpayPayment({
                 userId,
-                razorpay_subscription_id: 'sub_test_123',
+                razorpay_order_id: 'order_test_123',
                 razorpay_payment_id: 'pay_test_123',
                 razorpay_signature: 'invalid',
             })
         ).rejects.toThrow('invalid razorpay signature')
-    })
-
-    it('should cancel an active subscription and downgrade the user', async () => {
-        await prisma.user.update({
-            where: {
-                id: userId,
-            },
-            data: {
-                subscriptionPlan: 'PRO',
-                subscriptionStatus: 'ACTIVE',
-            },
-        })
-        await prisma.subscription.create({
-            data: {
-                userId,
-                provider: 'razorpay',
-                providerSubscriptionId: 'sub_test_123',
-                providerCustomerId: 'cust_test_123',
-                providerPlanId: 'plan_test_pro',
-                status: 'ACTIVE',
-                plan: 'PRO',
-                currentPeriodStart: new Date('2026-05-01T00:00:00.000Z'),
-                currentPeriodEnd: new Date('2026-06-01T00:00:00.000Z'),
-            },
-        })
-
-        const result = await billingService.cancelSubscription({
-            userId,
-            cancelAtPeriodEnd: false,
-        })
-
-        expect(result.user.subscriptionPlan).toBe('FREE')
-        expect(result.user.subscriptionStatus).toBe('CANCELED')
-        expect(result.subscription.status).toBe('CANCELED')
-    })
-
-    it('should process signed Razorpay subscription webhooks', async () => {
-        const payload = {
-            event: 'subscription.activated',
-            payload: {
-                subscription: {
-                    entity: activeRazorpaySubscription(userId),
-                },
-            },
-        }
-        const rawBody = Buffer.from(JSON.stringify(payload))
-        const signature = createHmacSignature(rawBody.toString('utf8'), 'webhook_test_secret')
-
-        const result = await billingService.handleRazorpayWebhook({
-            body: payload,
-            rawBody,
-            signature,
-        })
-
-        expect(result.processed).toBe(true)
-
-        const user = await prisma.user.findUnique({ where: { id: userId } })
-        expect(user?.subscriptionPlan).toBe('PRO')
-        expect(user?.subscriptionStatus).toBe('ACTIVE')
     })
 })

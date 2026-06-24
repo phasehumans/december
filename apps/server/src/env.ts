@@ -56,6 +56,9 @@ const envSchema = z.object({
     RAZORPAY_PRO_PLAN_ID: z.string().min(1).optional(),
     RAZORPAY_WEBHOOK_SECRET: z.string().optional(),
 
+    COINBASE_API_KEY: z.string().min(1).optional(),
+    COINBASE_WEBHOOK_SECRET: z.string().min(1).optional(),
+
     OPENROUTER_API_KEY: z.string().min(1).optional(),
     AUTO_MODEL: z.string().optional(),
     BCRYPT_SALT_ROUNDS: z.coerce.number().default(10),

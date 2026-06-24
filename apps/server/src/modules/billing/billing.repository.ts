@@ -10,22 +10,26 @@ export const billingRepository = {
                 id: true,
                 name: true,
                 email: true,
-                subscriptionPlan: true,
-                subscriptionStatus: true,
-                currentPeriodEnd: true,
-                subscription: true,
                 createdAt: true,
                 creditBalance: true,
-                giftedCredits: true,
+                redeemClaims: {
+                    include: {
+                        redeemCode: true,
+                    },
+                },
+                walletTransactions: {
+                    orderBy: {
+                        createdAt: 'desc',
+                    },
+                },
             },
         })
     },
 
-    async aggregateUsage(userId: string, periodStart: Date, periodEnd: Date, isPro: boolean) {
+    async aggregateUsage(userId: string, periodStart: Date, periodEnd: Date) {
         return prisma.usageEvent.aggregate({
             where: {
                 userId,
-                ...(isPro ? { periodStart } : {}),
                 createdAt: {
                     gte: periodStart,
                     lt: periodEnd,
@@ -49,165 +53,44 @@ export const billingRepository = {
         })
     },
 
-    async findUserForCreateSub(id: string) {
-        return prisma.user.findUnique({
-            where: { id },
-            select: {
-                id: true,
-                name: true,
-                email: true,
-                subscriptionPlan: true,
-                subscriptionStatus: true,
-                currentPeriodEnd: true,
-                subscription: true,
-            },
-        })
-    },
-
-    async findSubscriptionByProviderId(providerSubscriptionId: string) {
-        return prisma.subscription.findUnique({
-            where: {
-                providerSubscriptionId,
-            },
-            select: {
-                userId: true,
-            },
-        })
-    },
-
-    async findUserPlan(id: string) {
-        return prisma.user.findUnique({
-            where: { id },
-            select: {
-                subscriptionPlan: true,
-            },
-        })
-    },
-
-    async findSubscriptionByUserId(userId: string) {
-        return prisma.subscription.findUnique({
-            where: { userId },
-            select: {
-                currentPeriodStart: true,
-                plan: true,
-            },
-        })
-    },
-
-    async persistProviderSubscription(data: {
+    async createWalletTransaction(data: {
         userId: string
-        userPlan: string
-        userStatus: string
-        periodEnd: Date
-        nextCreditBalance?: number
-        providerSubscriptionId: string
-        providerCustomerId: string | null
-        providerPlanId: string
-        status: string
-        cancelAtPeriodEnd: boolean
-        periodStart: Date
+        amountInCents: number
+        currency: string
+        provider: 'RAZORPAY' | 'COINBASE'
+        providerOrderId?: string
+        metadata?: any
     }) {
-        const {
-            userId,
-            userPlan,
-            userStatus,
-            periodEnd,
-            nextCreditBalance,
-            providerSubscriptionId,
-            providerCustomerId,
-            providerPlanId,
-            status,
-            cancelAtPeriodEnd,
-            periodStart,
-        } = data
-
-        return prisma.$transaction([
-            prisma.subscription.upsert({
-                where: {
-                    userId,
-                },
-                create: {
-                    userId,
-                    provider: 'razorpay',
-                    providerSubscriptionId,
-                    providerCustomerId,
-                    providerPlanId,
-                    status,
-                    plan: 'PRO',
-                    cancelAtPeriodEnd,
-                    currentPeriodStart: periodStart,
-                    currentPeriodEnd: periodEnd,
-                },
-                update: {
-                    provider: 'razorpay',
-                    providerSubscriptionId,
-                    providerCustomerId,
-                    providerPlanId,
-                    status,
-                    plan: 'PRO',
-                    cancelAtPeriodEnd,
-                    currentPeriodStart: periodStart,
-                    currentPeriodEnd: periodEnd,
-                },
-            }),
-            prisma.user.update({
-                where: {
-                    id: userId,
-                },
-                data: {
-                    subscriptionPlan: userPlan,
-                    subscriptionStatus: userStatus,
-                    currentPeriodEnd: periodEnd,
-                    ...(nextCreditBalance !== undefined
-                        ? { creditBalance: nextCreditBalance }
-                        : {}),
-                },
-            }),
-        ])
+        return prisma.walletTransaction.create({
+            data: {
+                userId: data.userId,
+                amountInCents: data.amountInCents,
+                currency: data.currency,
+                provider: data.provider,
+                providerOrderId: data.providerOrderId,
+                metadata: data.metadata || {},
+            },
+        })
     },
 
-    async cancelSubscription(data: {
-        userId: string
-        providerStatus: string
-        cancelAtPeriodEnd: boolean
-        periodStart: Date
-        periodEnd: Date
-        nextUserPlan: string
-        nextUserStatus: string
-    }) {
-        const {
-            userId,
-            providerStatus,
-            cancelAtPeriodEnd,
-            periodStart,
-            periodEnd,
-            nextUserPlan,
-            nextUserStatus,
-        } = data
+    async findWalletTransactionByOrderId(providerOrderId: string) {
+        return prisma.walletTransaction.findFirst({
+            where: { providerOrderId },
+        })
+    },
 
-        return prisma.$transaction([
-            prisma.subscription.update({
-                where: {
-                    userId,
-                },
-                data: {
-                    status: providerStatus,
-                    cancelAtPeriodEnd,
-                    currentPeriodStart: periodStart,
-                    currentPeriodEnd: periodEnd,
-                },
-            }),
-            prisma.user.update({
-                where: {
-                    id: userId,
-                },
-                data: {
-                    subscriptionPlan: nextUserPlan,
-                    subscriptionStatus: nextUserStatus,
-                    currentPeriodEnd: periodEnd,
-                },
-            }),
-        ])
+    async updateWalletTransaction(
+        id: string,
+        data: {
+            status: 'PENDING' | 'SUCCESS' | 'FAILED'
+            providerPaymentId?: string
+            metadata?: any
+        }
+    ) {
+        return prisma.walletTransaction.update({
+            where: { id },
+            data,
+        })
     },
 
     async findManyUsageEvents(where: any, offset: number, limit: number) {
@@ -280,7 +163,7 @@ export const billingRepository = {
             const updatedUser = await tx.user.update({
                 where: { id: userId },
                 data: {
-                    giftedCredits: {
+                    creditBalance: {
                         increment: dbCode.creditAmount,
                     },
                 },
@@ -304,7 +187,7 @@ export const billingRepository = {
 
             return {
                 creditAmount: dbCode.creditAmount,
-                newBalance: updatedUser.giftedCredits,
+                newBalance: updatedUser.creditBalance,
             }
         })
     },
