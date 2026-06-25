@@ -43,6 +43,20 @@ describe('integration.routes.integration', () => {
 
             expect(response.status).toBe(400)
         })
+
+        it('should return 500 if the service throws an unexpected error', async () => {
+            connectVercelMock.mockImplementationOnce(() => {
+                throw new Error('Unexpected Error')
+            })
+
+            const response = await request(app)
+                .get('/api/v1/integrations/vercel/connect')
+                .query({ code: 'code123', state: 'user123' })
+
+            expect(response.status).toBe(500)
+            expect(response.body.success).toBe(false)
+            expect(response.body.message).toBe('internal server error')
+        })
     })
 
     describe('GET /api/v1/integrations/supabase/connect', () => {
