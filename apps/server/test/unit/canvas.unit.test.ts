@@ -305,6 +305,11 @@ describe('canvas schemas', () => {
             const invalid = webClipRequestSchema.safeParse({ url: 'not-a-url' })
             expect(invalid.success).toBe(false)
         })
+
+        it('should reject missing url', () => {
+            const invalid = webClipRequestSchema.safeParse({})
+            expect(invalid.success).toBe(false)
+        })
     })
 
     describe('saveCanvasSchema', () => {
@@ -342,6 +347,28 @@ describe('canvas schemas', () => {
                     scale: 100,
                     hasInteracted: false,
                 },
+            }
+            const res = saveCanvasSchema.safeParse(payload)
+            expect(res.success).toBe(false)
+        })
+
+        it('should reject missing projectId', () => {
+            const payload = {
+                canvasState: {
+                    items: [],
+                    connections: [],
+                    pan: { x: 0, y: 0 },
+                    scale: 100,
+                    hasInteracted: false,
+                },
+            }
+            const res = saveCanvasSchema.safeParse(payload)
+            expect(res.success).toBe(false)
+        })
+
+        it('should reject missing canvasState', () => {
+            const payload = {
+                projectId: '11111111-2222-4333-8444-555555555555',
             }
             const res = saveCanvasSchema.safeParse(payload)
             expect(res.success).toBe(false)

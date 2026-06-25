@@ -3,15 +3,13 @@ import { asyncHandler } from '../../shared/asyncHandler'
 import { sendSuccess } from '../../shared/response'
 
 import { platformRepository } from './platform.repository'
-import {
-    downloadProjectVersionSchema,
-    createGithubRepoSchema,
-    syncGithubRepoSchema,
-} from './platform.schema'
+import { createGithubRepoSchema, syncGithubRepoSchema, syncEnvVarsSchema } from './platform.schema'
 import { platformService } from './platform.service'
 import { vercelService } from './vercel.service'
 
 import type { Request, Response } from 'express'
+import crypto from 'crypto'
+import { env } from '../../env'
 
 const deployDecemberProject = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user?.userId as string | undefined
@@ -29,7 +27,7 @@ const deployDecemberProject = asyncHandler(async (req: Request, res: Response) =
     return sendSuccess(res, result.message, result)
 })
 
-const downloadProjectVersion = asyncHandler(async (req: Request, res: Response) => {
+const downloadProject = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user?.userId as string | undefined
     const projectId = req.params.projectId as string | undefined
 
@@ -41,13 +39,9 @@ const downloadProjectVersion = asyncHandler(async (req: Request, res: Response) 
         throw new AppError('project id is required', 400)
     }
 
-    const parseData = downloadProjectVersionSchema.parse(req.query)
-    const { versionId } = parseData
-
-    const result = await platformService.downloadProjectVersion({
+    const result = await platformService.downloadProject({
         userId,
         projectId,
-        versionId,
     })
 
     res.setHeader('Content-Type', 'application/zip')
@@ -73,12 +67,10 @@ const deployVercelProject = asyncHandler(async (req: Request, res: Response) => 
         throw new AppError('project not found', 404)
     }
 
-    if (!project.githubRepoOwner || !project.githubRepoName) {
-        throw new AppError('project is not linked to any github repository', 400)
-    }
-
     let vercelProjectId = project.vercelProjectId
     let vercelProjectName = project.vercelProjectName
+
+    const isGithubLinked = !!(project.githubRepoOwner && project.githubRepoName)
 
     if (!vercelProjectId) {
         const sanitizedName = project.name
@@ -90,8 +82,8 @@ const deployVercelProject = asyncHandler(async (req: Request, res: Response) => 
         const vercelProject = await vercelService.createProject({
             userId,
             name: sanitizedName,
-            repoOwner: project.githubRepoOwner,
-            repoName: project.githubRepoName,
+            repoOwner: project.githubRepoOwner || undefined,
+            repoName: project.githubRepoName || undefined,
         })
         vercelProjectId = vercelProject.id
         vercelProjectName = vercelProject.name
@@ -103,28 +95,43 @@ const deployVercelProject = asyncHandler(async (req: Request, res: Response) => 
         })
     }
 
-    const { commitSha } = await platformService.updateRepo({
-        userId,
-        projectId,
-        commitMessage: 'Auto-deploy triggered from December settings',
-    })
+    if (isGithubLinked) {
+        const { commitSha } = await platformService.updateRepo({
+            userId,
+            projectId,
+            commitMessage: 'Auto-deploy triggered from December settings',
+        })
 
-    const deployment = await vercelService.getDeploymentByCommit({
-        userId,
-        vercelProjectId: vercelProjectId!,
-        commitSha,
-    })
+        const deployment = await vercelService.getDeploymentByCommit({
+            userId,
+            vercelProjectId: vercelProjectId!,
+            commitSha,
+        })
 
-    await platformRepository.updateProjectVercelDeployment({
-        projectId,
-        url: deployment.url,
-    })
+        await platformRepository.updateProjectVercelDeployment({
+            projectId,
+            url: deployment.url,
+        })
 
-    return sendSuccess(res, 'auto-deployment triggered on vercel successfully', {
-        deploymentId: deployment.id,
-        url: deployment.url,
-        readyState: deployment.readyState,
-    })
+        return sendSuccess(res, 'auto-deployment triggered on vercel successfully', {
+            deploymentId: deployment.id,
+            url: deployment.url,
+            readyState: deployment.readyState,
+        })
+    } else {
+        const deployment = await platformService.deployVercelDirect({
+            userId,
+            projectId,
+            vercelProjectId: vercelProjectId!,
+            vercelProjectName: vercelProjectName!,
+        })
+
+        return sendSuccess(res, 'direct deployment triggered on vercel successfully', {
+            deploymentId: deployment.id,
+            url: deployment.url,
+            readyState: deployment.readyState,
+        })
+    }
 })
 
 const getVercelDeploymentStatus = asyncHandler(async (req: Request, res: Response) => {
@@ -156,6 +163,22 @@ const streamVercelBuildLogs = asyncHandler(async (req: Request, res: Response) =
     }
 
     await vercelService.streamBuildLogs({ userId, deploymentId, res })
+})
+
+const cancelVercelDeployment = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
+    const deploymentId = req.params.deploymentId as string | undefined
+
+    if (!userId) {
+        throw new AppError('unauthorized', 401)
+    }
+
+    if (!deploymentId) {
+        throw new AppError('deployment id is required', 400)
+    }
+
+    const result = await vercelService.cancelDeployment({ userId, deploymentId })
+    return sendSuccess(res, 'deployment cancelled successfully', result)
 })
 
 const getUserGithubRepos = asyncHandler(async (req: Request, res: Response) => {
@@ -213,13 +236,101 @@ const updateRepo = asyncHandler(async (req: Request, res: Response) => {
     return sendSuccess(res, 'repository synced successfully', result)
 })
 
+const unlinkGithubRepo = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
+    const projectId = req.params.projectId as string | undefined
+
+    if (!userId) {
+        throw new AppError('unauthorized', 401)
+    }
+
+    if (!projectId) {
+        throw new AppError('project id is required', 400)
+    }
+
+    const result = await platformService.unlinkGithubRepo({ userId, projectId })
+    return sendSuccess(res, result.message, result)
+})
+
+const unlinkVercelProject = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
+    const projectId = req.params.projectId as string | undefined
+
+    if (!userId) {
+        throw new AppError('unauthorized', 401)
+    }
+
+    if (!projectId) {
+        throw new AppError('project id is required', 400)
+    }
+
+    const result = await platformService.unlinkVercelProject({ userId, projectId })
+    return sendSuccess(res, result.message, result)
+})
+
+const syncEnvironmentVariables = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
+    const projectId = req.params.projectId as string | undefined
+
+    if (!userId) {
+        throw new AppError('unauthorized', 401)
+    }
+
+    if (!projectId) {
+        throw new AppError('project id is required', 400)
+    }
+
+    const parsedBody = syncEnvVarsSchema.parse(req.body)
+
+    const result = await platformService.syncEnvironmentVariables({
+        userId,
+        projectId,
+        keys: parsedBody.keys,
+    })
+    return sendSuccess(res, result.message, result)
+})
+
+const handleVercelWebhook = asyncHandler(async (req: Request, res: Response) => {
+    const signature = req.headers['x-vercel-signature'] as string
+    if (!signature) {
+        throw new AppError('Missing Vercel signature', 401)
+    }
+
+    const secret = env.VERCEL_WEBHOOK_SECRET
+    if (!secret) {
+        console.warn('Vercel webhook received but no secret is configured')
+        return res.status(200).send('Webhook received, but processing is disabled')
+    }
+
+    const payload = JSON.stringify(req.body)
+    const expectedSignature = crypto.createHmac('sha1', secret).update(payload).digest('hex')
+
+    if (signature !== expectedSignature) {
+        throw new AppError('Invalid Vercel signature', 401)
+    }
+
+    const { type, payload: webhookPayload } = req.body
+    if (type === 'deployment.succeeded' || type === 'deployment.error') {
+        const deploymentUrl = webhookPayload.deployment.url
+        const projectId = webhookPayload.projectId
+        console.log(`Vercel Webhook: Deployment ${deploymentUrl} finished with status ${type}`)
+    }
+
+    return res.status(200).send('Webhook processed successfully')
+})
+
 export const platformController = {
     deployDecemberProject,
-    downloadProjectVersion,
+    downloadProject,
     deployVercelProject,
     getVercelDeploymentStatus,
     streamVercelBuildLogs,
+    cancelVercelDeployment,
     getUserGithubRepos,
     createRepo,
     updateRepo,
+    unlinkGithubRepo,
+    unlinkVercelProject,
+    syncEnvironmentVariables,
+    handleVercelWebhook,
 }
