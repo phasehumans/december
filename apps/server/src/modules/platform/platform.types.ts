@@ -8,8 +8,8 @@ import type { Response } from 'express'
 export type CreateVercelProject = {
     userId: string
     name: string
-    repoOwner: string
-    repoName: string
+    repoOwner?: string
+    repoName?: string
 }
 
 export type GetDeploymentByCommit = {
@@ -67,4 +67,20 @@ export type UpdateRepo = {
     userId: string
     projectId: string
     commitMessage?: string
+}
+
+export type UnlinkProject = {
+    userId: string
+    projectId: string
+}
+
+export type SyncEnvVars = {
+    userId: string
+    projectId: string
+    keys?: string[]
+}
+
+export type CancelDeployment = {
+    userId: string
+    deploymentId: string
 }

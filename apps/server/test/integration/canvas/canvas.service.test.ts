@@ -174,6 +174,27 @@ describe('canvas.service.integration', () => {
             expect(error).not.toBeNull()
             expect(error.message).toBe('project not found')
         })
+
+        it('should throw error if project does not have a currentVersionId set', async () => {
+            await prisma.project.update({
+                where: { id: project.id },
+                data: { currentVersionId: null },
+            })
+
+            let error: any = null
+            try {
+                await canvasService.saveCanvas({
+                    projectId: project.id,
+                    userId: user.id,
+                    canvasState: {},
+                })
+            } catch (e) {
+                error = e
+            }
+
+            expect(error).not.toBeNull()
+            expect(error.message).toBe('no project version found to save canvas state')
+        })
     })
 
     describe('createWebClips', () => {
@@ -220,6 +241,50 @@ describe('canvas.service.integration', () => {
 
             expect(error).not.toBeNull()
             expect(error.message).toBe('project not found')
+        })
+
+        it('should handle worker failure gracefully', async () => {
+            spawnMock.mockImplementationOnce((command: string, args: string[], options: any) => {
+                return {
+                    stdout: { setEncoding: () => {}, on: () => {} },
+                    stderr: { setEncoding: () => {}, on: () => {} },
+                    on: (event: string, callback: any) => {
+                        if (event === 'close') {
+                            callback(1) // Simulate failure code
+                        }
+                    },
+                    kill: () => {},
+                } as any
+            })
+
+            let error: any = null
+            try {
+                await canvasService.createWebClips({
+                    url: 'https://google.com',
+                    userId: user.id,
+                    projectId: project.id,
+                })
+            } catch (e) {
+                error = e
+            }
+
+            expect(error).not.toBeNull()
+            expect(error.message).toContain('clipper worker exited with code 1')
+        })
+
+        it('should handle invalid URL gracefully', async () => {
+            let error: any = null
+            try {
+                await canvasService.createWebClips({
+                    url: 'invalid-url',
+                    userId: user.id,
+                    projectId: project.id,
+                })
+            } catch (e) {
+                error = e
+            }
+
+            expect(error).not.toBeNull()
         })
     })
 })

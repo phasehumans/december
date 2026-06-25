@@ -19,10 +19,27 @@ describe('notification schemas', () => {
         })
         expect(valid.success).toBe(true)
 
-        const invalid = NotificationSchema.safeParse({
+        const invalidId = NotificationSchema.safeParse({
             id: 'not-a-uuid',
         })
-        expect(invalid.success).toBe(false)
+        expect(invalidId.success).toBe(false)
+
+        const missingRequired = NotificationSchema.safeParse({
+            id: crypto.randomUUID(),
+        })
+        expect(missingRequired.success).toBe(false)
+
+        const invalidType = NotificationSchema.safeParse({
+            id: crypto.randomUUID(),
+            userId: crypto.randomUUID(),
+            title: 'Test Title',
+            message: 'Test Message',
+            isRead: false,
+            type: 'INVALID_TYPE',
+            link: null,
+            createdAt: new Date(),
+        })
+        expect(invalidType.success).toBe(false)
     })
 
     test('NotificationParamsSchema validation', () => {

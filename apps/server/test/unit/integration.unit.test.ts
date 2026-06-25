@@ -38,6 +38,14 @@ describe('integration schemas', () => {
             })
             expect(invalid.success).toBe(false)
         })
+
+        test('fails if code is not a string', () => {
+            const invalid = connectVercelQuerySchema.safeParse({
+                code: 123,
+                state: 'user-id-abc',
+            })
+            expect(invalid.success).toBe(false)
+        })
     })
 
     describe('connectOAuthQuerySchema', () => {
@@ -61,6 +69,14 @@ describe('integration schemas', () => {
             const invalid = connectOAuthQuerySchema.safeParse({
                 code: 'oauth-code-123',
                 state: '',
+            })
+            expect(invalid.success).toBe(false)
+        })
+
+        test('fails if state is not a string', () => {
+            const invalid = connectOAuthQuerySchema.safeParse({
+                code: 'oauth-code-123',
+                state: 123,
             })
             expect(invalid.success).toBe(false)
         })
