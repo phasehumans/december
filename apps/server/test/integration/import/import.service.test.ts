@@ -42,12 +42,15 @@ mock.module('../../../src/modules/import/import.utils', () => ({
     persistentImportSourceDir: () => '/tmp',
     persistImportSourceLocally: async () => '/tmp',
     validateImportProject: validateImportProjectMock,
-    parseGitHubRepoUrl: () => ({
-        ok: true,
-        owner: 'owner',
-        repo: 'repo',
-        normalizedUrl: 'https://github.com/owner/repo',
-    }),
+    parseGitHubRepoUrl: (url: string) => {
+        if (url === 'invalid-url') return { ok: false, error: 'invalid' }
+        return {
+            ok: true,
+            owner: 'owner',
+            repo: 'repo',
+            normalizedUrl: 'https://github.com/owner/repo',
+        }
+    },
     verifyGitHubRepoAccess: verifyGitHubRepoAccessMock,
     downloadGitHubRepoArchive: downloadGitHubRepoArchiveMock,
 }))
@@ -112,6 +115,41 @@ describe('import.service.integration', () => {
             expect(dbProject).not.toBeNull()
             expect(dbProject!.name).toBe('repo')
         })
+
+        it('should throw error if url is invalid', async () => {
+            await expect(
+                uploadService.importFromGithub({
+                    userId: user.id,
+                    repoURL: 'invalid-url',
+                })
+            ).rejects.toThrow()
+        })
+
+        it('should throw user not found if user does not exist', async () => {
+            await expect(
+                uploadService.importFromGithub({
+                    userId: 'non-existent-user-id',
+                    repoURL: 'https://github.com/owner/repo',
+                })
+            ).rejects.toThrow('user not found')
+        })
+
+        it('should throw if github token is missing', async () => {
+            const userWithoutToken = await prisma.user.create({
+                data: {
+                    name: 'No Token',
+                    email: 'notoken@example.com',
+                    username: 'notoken',
+                    password: 'password123',
+                },
+            })
+            await expect(
+                uploadService.importFromGithub({
+                    userId: userWithoutToken.id,
+                    repoURL: 'https://github.com/owner/repo',
+                })
+            ).rejects.toThrow('github access token not found')
+        })
     })
 
     describe('getImportStatus', () => {
@@ -132,6 +170,15 @@ describe('import.service.integration', () => {
 
             expect(status.id).toBe(importRecord.id)
             expect(status.status).toBe('PENDING')
+        })
+
+        it('should throw error if import record not found', async () => {
+            await expect(
+                uploadService.getImportStatus({
+                    userId: user.id,
+                    importId: 'non-existent-import-id',
+                })
+            ).rejects.toThrow('import not found')
         })
     })
 })

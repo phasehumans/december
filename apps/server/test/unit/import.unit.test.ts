@@ -56,6 +56,11 @@ describe('import schemas', () => {
             })
             expect(invalid.success).toBe(false)
         })
+
+        test('fails if repoURL is missing', () => {
+            const invalid = uploadRepoSchema.safeParse({})
+            expect(invalid.success).toBe(false)
+        })
     })
 
     describe('importIdParamSchema', () => {
@@ -70,6 +75,11 @@ describe('import schemas', () => {
             const invalid = importIdParamSchema.safeParse({
                 id: 'invalid-id',
             })
+            expect(invalid.success).toBe(false)
+        })
+
+        test('fails if ID is missing', () => {
+            const invalid = importIdParamSchema.safeParse({})
             expect(invalid.success).toBe(false)
         })
     })

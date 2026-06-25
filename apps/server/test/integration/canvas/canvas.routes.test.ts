@@ -157,6 +157,21 @@ describe('canvas.routes.integration', () => {
             expect(response.body.success).toBe(false)
             expect(response.body.message).toBe('project not found')
         })
+
+        it('should fail with 400 due to invalid payload structure', async () => {
+            const response = await request(app)
+                .post('/api/v1/canvas/save')
+                .set('Authorization', `Bearer ${token}`)
+                .send({
+                    projectId: project.id,
+                    // missing canvasState
+                })
+
+            expect(response.status).toBe(400)
+            expect(response.body.success).toBe(false)
+            expect(response.body.message).toBe('validation failed')
+            expect(response.body.errors.canvasState).toBeDefined()
+        })
     })
 
     describe('POST /api/v1/canvas/web-clips', () => {
