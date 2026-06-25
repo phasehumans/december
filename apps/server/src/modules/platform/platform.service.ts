@@ -9,6 +9,7 @@ import { runtimeService } from '../runtime/runtime.service'
 
 import { platformRepository } from './platform.repository'
 import { buildProjectZip } from './platform.utils'
+import { vercelService } from './vercel.service'
 
 import type {
     DeployProject,
@@ -19,18 +20,18 @@ import type {
 } from './platform.types'
 import type { GetProject } from '../project/project.types'
 
-function copyDirRecursive(src: string, dest: string) {
-    fs.mkdirSync(dest, { recursive: true })
-    const entries = fs.readdirSync(src, { withFileTypes: true })
+async function copyDirRecursive(src: string, dest: string) {
+    await fs.promises.mkdir(dest, { recursive: true })
+    const entries = await fs.promises.readdir(src, { withFileTypes: true })
 
     for (const entry of entries) {
         const srcPath = path.join(src, entry.name)
         const destPath = path.join(dest, entry.name)
 
         if (entry.isDirectory()) {
-            copyDirRecursive(srcPath, destPath)
+            await copyDirRecursive(srcPath, destPath)
         } else {
-            fs.copyFileSync(srcPath, destPath)
+            await fs.promises.copyFile(srcPath, destPath)
         }
     }
 }
@@ -80,10 +81,10 @@ const deployDecemberProject = async (data: DeployProject) => {
     const projectDeployPath = path.join(deploymentsRoot, projectId)
 
     if (fs.existsSync(projectDeployPath)) {
-        fs.rmSync(projectDeployPath, { recursive: true, force: true })
+        await fs.promises.rm(projectDeployPath, { recursive: true, force: true })
     }
 
-    copyDirRecursive(distPath, projectDeployPath)
+    await copyDirRecursive(distPath, projectDeployPath)
 
     const deployUrl = `http://${projectId}.december.localhost:8085`
     const updated = await platformRepository.updateProjectDecemberDeployment({
@@ -98,7 +99,7 @@ const deployDecemberProject = async (data: DeployProject) => {
     }
 }
 
-const downloadProjectVersion = async (data: GetProject) => {
+const downloadProject = async (data: GetProject) => {
     const detail = await projectService.getProjectById(data)
 
     if (!detail.activeVersion) {
@@ -141,21 +142,37 @@ const getUserGithubRepos = async (data: ListGithubRepos): Promise<GithubRepo[]> 
         throw new AppError('github access token not found', 401)
     }
 
-    const response = await fetch('https://api.github.com/user/repos?sort=updated&per_page=100', {
-        method: 'GET',
-        headers: {
-            Authorization: `Bearer ${user.githubToken}`,
-            Accept: 'application/vnd.github+json',
-            'X-GitHub-Api-Version': '2022-11-28',
-        },
-    })
+    let repos: any[] = []
+    let page = 1
+    let hasMore = true
 
-    if (!response.ok) {
-        const errorText = await response.text()
-        throw new AppError(`Failed to fetch GitHub repos: ${errorText}`, 401)
+    while (hasMore) {
+        const response = await fetch(
+            `https://api.github.com/user/repos?sort=updated&per_page=100&page=${page}`,
+            {
+                method: 'GET',
+                headers: {
+                    Authorization: `Bearer ${user.githubToken}`,
+                    Accept: 'application/vnd.github+json',
+                    'X-GitHub-Api-Version': '2022-11-28',
+                },
+            }
+        )
+
+        if (!response.ok) {
+            const errorText = await response.text()
+            throw new AppError(`Failed to fetch GitHub repos: ${errorText}`, 401)
+        }
+
+        const pageRepos = (await response.json()) as any[]
+        repos = repos.concat(pageRepos)
+
+        if (pageRepos.length < 100) {
+            hasMore = false
+        } else {
+            page++
+        }
     }
-
-    const repos = (await response.json()) as any[]
 
     return repos.map((repo: any) => ({
         id: repo.id,
@@ -336,56 +353,63 @@ const updateRepo = async (data: UpdateRepo) => {
 
     const treeEntries: any[] = []
 
-    for (const file of manifest) {
-        const isBinary =
-            file.contentType &&
-            !file.contentType.startsWith('text/') &&
-            !file.contentType.includes('json') &&
-            !file.contentType.includes('javascript') &&
-            !file.contentType.includes('typescript') &&
-            !file.contentType.includes('xml')
+    const chunkSize = 5
+    for (let i = 0; i < manifest.length; i += chunkSize) {
+        const chunk = manifest.slice(i, i + chunkSize)
 
-        if (isBinary) {
-            const binaryFile = await getBinaryFile(file.key)
-            if (binaryFile) {
-                const base64Content = Buffer.from(binaryFile.body).toString('base64')
-                const blobResponse = await fetch(
-                    `https://api.github.com/repos/${repoOwner}/${repoName}/git/blobs`,
-                    {
-                        method: 'POST',
-                        headers,
-                        body: JSON.stringify({
-                            content: base64Content,
-                            encoding: 'base64',
-                        }),
+        await Promise.all(
+            chunk.map(async (file) => {
+                const isBinary =
+                    file.contentType &&
+                    !file.contentType.startsWith('text/') &&
+                    !file.contentType.includes('json') &&
+                    !file.contentType.includes('javascript') &&
+                    !file.contentType.includes('typescript') &&
+                    !file.contentType.includes('xml')
+
+                if (isBinary) {
+                    const binaryFile = await getBinaryFile(file.key)
+                    if (binaryFile) {
+                        const base64Content = Buffer.from(binaryFile.body).toString('base64')
+                        const blobResponse = await fetch(
+                            `https://api.github.com/repos/${repoOwner}/${repoName}/git/blobs`,
+                            {
+                                method: 'POST',
+                                headers,
+                                body: JSON.stringify({
+                                    content: base64Content,
+                                    encoding: 'base64',
+                                }),
+                            }
+                        )
+
+                        if (!blobResponse.ok) {
+                            const errorText = await blobResponse.text()
+                            throw new AppError(
+                                `Failed to create binary blob for ${file.path}: ${errorText}`,
+                                blobResponse.status
+                            )
+                        }
+
+                        const blobData = (await blobResponse.json()) as any
+                        treeEntries.push({
+                            path: file.path,
+                            mode: '100644',
+                            type: 'blob',
+                            sha: blobData.sha,
+                        })
                     }
-                )
-
-                if (!blobResponse.ok) {
-                    const errorText = await blobResponse.text()
-                    throw new AppError(
-                        `Failed to create binary blob for ${file.path}: ${errorText}`,
-                        blobResponse.status
-                    )
+                } else {
+                    const textContent = await getTextFile(file.key)
+                    treeEntries.push({
+                        path: file.path,
+                        mode: '100644',
+                        type: 'blob',
+                        content: textContent ?? '',
+                    })
                 }
-
-                const blobData = (await blobResponse.json()) as any
-                treeEntries.push({
-                    path: file.path,
-                    mode: '100644',
-                    type: 'blob',
-                    sha: blobData.sha,
-                })
-            }
-        } else {
-            const textContent = await getTextFile(file.key)
-            treeEntries.push({
-                path: file.path,
-                mode: '100644',
-                type: 'blob',
-                content: textContent ?? '',
             })
-        }
+        )
     }
 
     const treeResponse = await fetch(
@@ -457,10 +481,138 @@ const updateRepo = async (data: UpdateRepo) => {
     }
 }
 
+const unlinkGithubRepo = async (data: { projectId: string; userId: string }) => {
+    const { projectId, userId } = data
+    const project = await platformRepository.findProjectByIdAndUser({ projectId, userId })
+    if (!project) throw new AppError('Project not found', 404)
+
+    await platformRepository.unlinkProjectGithub(projectId)
+    return { message: 'GitHub repository unlinked successfully' }
+}
+
+const unlinkVercelProject = async (data: { projectId: string; userId: string }) => {
+    const { projectId, userId } = data
+    const project = await platformRepository.findProjectByIdAndUser({ projectId, userId })
+    if (!project) throw new AppError('Project not found', 404)
+
+    await platformRepository.unlinkProjectVercel(projectId)
+    return { message: 'Vercel project unlinked successfully' }
+}
+
+const syncEnvironmentVariables = async (data: {
+    projectId: string
+    userId: string
+    keys?: string[]
+}) => {
+    const { projectId, userId, keys } = data
+    const project = await platformRepository.findProjectByIdAndUser({ projectId, userId })
+    if (!project) throw new AppError('Project not found', 404)
+
+    if (!project.vercelProjectId) {
+        throw new AppError('Project is not linked to a Vercel project', 400)
+    }
+
+    const memories = await platformRepository.getProjectMemories(projectId)
+
+    const memoriesToSync = keys ? memories.filter((m) => keys.includes(m.key)) : memories
+
+    if (memoriesToSync.length === 0) {
+        return { message: 'No environment variables to sync' }
+    }
+
+    const envVars = memoriesToSync.map((m) => ({
+        key: m.key,
+        value: m.value,
+        type: 'encrypted',
+        target: ['production', 'preview', 'development'],
+    }))
+
+    await vercelService.addEnvVars({
+        userId,
+        vercelProjectId: project.vercelProjectId,
+        envVars,
+    })
+
+    return { message: 'Environment variables synced successfully' }
+}
+
+const deployVercelDirect = async (data: {
+    userId: string
+    projectId: string
+    vercelProjectId: string
+    vercelProjectName: string
+}) => {
+    const { userId, projectId, vercelProjectId, vercelProjectName } = data
+
+    const project = await platformRepository.findProjectByIdAndUser({ projectId, userId })
+    if (!project) throw new AppError('Project not found', 404)
+
+    const activeVersionId = project.currentVersionId
+    if (!activeVersionId) throw new AppError('No active version found for this project', 400)
+
+    const activeVersion = await platformRepository.findProjectVersionByIdAndProject({
+        versionId: activeVersionId,
+        projectId,
+    })
+    if (!activeVersion) throw new AppError('Active version not found', 404)
+
+    const manifest = parseStoredProjectFiles(activeVersion.manifestJson)
+    if (manifest.length === 0)
+        throw new AppError('No files found in active project version to deploy', 400)
+
+    const filesToDeploy: { file: string; data: string; encoding?: string }[] = []
+
+    for (const file of manifest) {
+        const isBinary =
+            file.contentType &&
+            !file.contentType.startsWith('text/') &&
+            !file.contentType.includes('json') &&
+            !file.contentType.includes('javascript') &&
+            !file.contentType.includes('typescript') &&
+            !file.contentType.includes('xml')
+
+        if (isBinary) {
+            const binaryFile = await getBinaryFile(file.key)
+            if (binaryFile) {
+                const base64Content = Buffer.from(binaryFile.body).toString('base64')
+                filesToDeploy.push({
+                    file: file.path,
+                    data: base64Content,
+                    encoding: 'base64',
+                })
+            }
+        } else {
+            const textContent = await getTextFile(file.key)
+            filesToDeploy.push({
+                file: file.path,
+                data: textContent ?? '',
+            })
+        }
+    }
+
+    const deployment = await vercelService.createDirectDeployment({
+        userId,
+        vercelProjectId,
+        name: vercelProjectName,
+        files: filesToDeploy,
+    })
+
+    await platformRepository.updateProjectVercelDeployment({
+        projectId,
+        url: deployment.url,
+    })
+
+    return deployment
+}
+
 export const platformService = {
     deployDecemberProject,
-    downloadProjectVersion,
+    downloadProject,
     getUserGithubRepos,
     createRepo,
     updateRepo,
+    unlinkGithubRepo,
+    unlinkVercelProject,
+    syncEnvironmentVariables,
+    deployVercelDirect,
 }

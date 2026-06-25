@@ -10,6 +10,8 @@ import type {
     GetLatestDeployment,
     GetDeploymentStatus,
     StreamBuildLogs,
+    CancelDeployment,
+    SyncEnvVars,
 } from './platform.types'
 
 interface VercelCredentials {
@@ -47,24 +49,25 @@ async function createProject(data: CreateVercelProject) {
     const creds = await getVercelCredentials({ userId })
     const url = buildVercelUrl('/v9/projects', creds)
 
+    const payload: any = {
+        name,
+        framework: 'vite',
+    }
+
+    if (repoOwner && repoName) {
+        payload.gitRepository = {
+            type: 'github',
+            repo: `${repoOwner}/${repoName}`,
+        }
+    }
+
     try {
-        const response = await axios.post(
-            url,
-            {
-                name,
-                framework: 'vite',
-                gitRepository: {
-                    type: 'github',
-                    repo: `${repoOwner}/${repoName}`,
-                },
+        const response = await axios.post(url, payload, {
+            headers: {
+                Authorization: `Bearer ${creds.accessToken}`,
+                'Content-Type': 'application/json',
             },
-            {
-                headers: {
-                    Authorization: `Bearer ${creds.accessToken}`,
-                    'Content-Type': 'application/json',
-                },
-            }
-        )
+        })
         return {
             id: response.data.id,
             name: response.data.name,
@@ -95,8 +98,8 @@ async function getDeploymentByCommit(data: GetDeploymentByCommit) {
     url.searchParams.set('projectId', vercelProjectId)
     url.searchParams.set('meta-githubCommitSha', commitSha)
 
-    // Retry loop (max 5 attempts, every 2s) to wait for Vercel webhook registration
-    for (let attempt = 1; attempt <= 5; attempt++) {
+    // Retry loop (max 30 attempts, every 2s) to wait for Vercel webhook registration
+    for (let attempt = 1; attempt <= 30; attempt++) {
         try {
             const response = await axios.get(url.toString(), {
                 headers: {
@@ -143,10 +146,10 @@ async function getDeploymentStatus(data: GetDeploymentStatus) {
             readyState: response.data.readyState,
         }
     } catch (error: any) {
-        throw new AppError(
-            'Failed to fetch Vercel deployment status',
-            error.response?.status || 500
-        )
+        const status = error.response?.status || 500
+        const message =
+            error.response?.data?.error?.message || 'Failed to fetch Vercel deployment status'
+        throw new AppError(message, status)
     }
 }
 
@@ -208,7 +211,7 @@ async function getLatestDeployment(data: GetLatestDeployment) {
     url.searchParams.set('projectId', vercelProjectId)
     url.searchParams.set('limit', '1')
 
-    for (let attempt = 1; attempt <= 5; attempt++) {
+    for (let attempt = 1; attempt <= 30; attempt++) {
         try {
             const response = await axios.get(url.toString(), {
                 headers: {
@@ -235,10 +238,93 @@ async function getLatestDeployment(data: GetLatestDeployment) {
     throw new AppError('No deployment found on Vercel for this project. Please try again.', 404)
 }
 
+async function cancelDeployment(data: CancelDeployment) {
+    const { userId, deploymentId } = data
+    const creds = await getVercelCredentials({ userId })
+    const url = buildVercelUrl(`/v12/deployments/${deploymentId}/cancel`, creds)
+
+    try {
+        const response = await axios.patch(
+            url,
+            {},
+            {
+                headers: {
+                    Authorization: `Bearer ${creds.accessToken}`,
+                },
+            }
+        )
+        return response.data
+    } catch (error: any) {
+        const status = error.response?.status || 500
+        const message = error.response?.data?.error?.message || 'Failed to cancel Vercel deployment'
+        throw new AppError(message, status)
+    }
+}
+
+async function addEnvVars(data: {
+    userId: string
+    vercelProjectId: string
+    envVars: { key: string; value: string; type: string; target: string[] }[]
+}) {
+    const { userId, vercelProjectId, envVars } = data
+    const creds = await getVercelCredentials({ userId })
+    const url = buildVercelUrl(`/v10/projects/${vercelProjectId}/env`, creds)
+
+    try {
+        const response = await axios.post(url, envVars, {
+            headers: {
+                Authorization: `Bearer ${creds.accessToken}`,
+            },
+        })
+        return response.data
+    } catch (error: any) {
+        const status = error.response?.status || 500
+        const message = error.response?.data?.error?.message || 'Failed to sync env vars to Vercel'
+        throw new AppError(message, status)
+    }
+}
+
+async function createDirectDeployment(data: {
+    userId: string
+    vercelProjectId: string
+    name: string
+    files: { file: string; data: string; encoding?: string }[]
+}) {
+    const { userId, vercelProjectId, name, files } = data
+    const creds = await getVercelCredentials({ userId })
+    const url = buildVercelUrl(`/v13/deployments`, creds)
+
+    try {
+        const response = await axios.post(
+            url,
+            {
+                name,
+                projectSettings: {
+                    framework: 'vite',
+                },
+                files,
+            },
+            {
+                headers: {
+                    Authorization: `Bearer ${creds.accessToken}`,
+                },
+            }
+        )
+        return response.data
+    } catch (error: any) {
+        const status = error.response?.status || 500
+        const message = error.response?.data?.error?.message || 'Failed to create direct deployment'
+        throw new AppError(message, status)
+    }
+}
+
 export const vercelService = {
     createProject,
     getDeploymentByCommit,
     getLatestDeployment,
     getDeploymentStatus,
     streamBuildLogs,
+    cancelDeployment,
+    addEnvVars,
+    createDirectDeployment,
 }
