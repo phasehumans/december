@@ -44,6 +44,7 @@ const envSchema = z.object({
     VERCEL_CLIENT_ID: z.string().min(1).optional(),
     VERCEL_CLIENT_SECRET: z.string().min(1).optional(),
     VERCEL_REDIRECT_URI: z.string().url().optional(),
+    VERCEL_WEBHOOK_SECRET: z.string().optional(),
     SUPABASE_CLIENT_ID: z.string().min(1).optional(),
     SUPABASE_CLIENT_SECRET: z.string().min(1).optional(),
     SUPABASE_REDIRECT_URI: z.string().url().optional(),
