@@ -6,7 +6,6 @@ async function findProjectForDeployment(data: { projectId: string; userId: strin
         where: {
             id: projectId,
             userId,
-            isDeleted: false,
         },
         include: {
             currentVersion: true,
