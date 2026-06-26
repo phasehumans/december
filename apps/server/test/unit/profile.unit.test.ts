@@ -1,5 +1,4 @@
 import { describe, expect, test } from 'bun:test'
-
 import {
     updateNameSchema,
     updateUsernameSchema,
@@ -8,202 +7,285 @@ import {
     updateNotificationSchema,
     chatSuggestionsSchema,
     generationSoundSchema,
+    GenerationSound,
     designSchema,
     submitFeedbackSchema,
-    GenerationSound,
 } from '../../src/modules/profile/profile.schema'
 import { sanitizeMarkdown } from '../../src/modules/profile/profile.utils'
 
-describe('profile schemas', () => {
+describe('profile schemas unit tests', () => {
     describe('updateNameSchema', () => {
-        test('validates correct name', () => {
-            const valid = updateNameSchema.safeParse({ name: 'Chaitanya' })
-            expect(valid.success).toBe(true)
+        test('should validate a valid name (3-20 chars)', () => {
+            const res = updateNameSchema.safeParse({ name: 'Alice' })
+            expect(res.success).toBe(true)
         })
 
-        test('fails if name is too short', () => {
-            const tooShort = updateNameSchema.safeParse({ name: 'Ch' })
-            expect(tooShort.success).toBe(false)
+        test('should reject name shorter than 3 characters', () => {
+            const res = updateNameSchema.safeParse({ name: 'Al' })
+            expect(res.success).toBe(false)
         })
 
-        test('fails if name is too long', () => {
-            const tooLong = updateNameSchema.safeParse({ name: 'a'.repeat(21) })
-            expect(tooLong.success).toBe(false)
+        test('should reject name longer than 20 characters', () => {
+            const res = updateNameSchema.safeParse({ name: 'A'.repeat(21) })
+            expect(res.success).toBe(false)
+        })
+
+        test('should reject missing name', () => {
+            const res = updateNameSchema.safeParse({})
+            expect(res.success).toBe(false)
         })
     })
 
     describe('updateUsernameSchema', () => {
-        test('validates correct username', () => {
-            const valid = updateUsernameSchema.safeParse({ username: 'chaitanya_dev' })
-            expect(valid.success).toBe(true)
+        test('should validate a valid username (6-20 lowercase letters/underscores)', () => {
+            const res = updateUsernameSchema.safeParse({ username: 'valid_user' })
+            expect(res.success).toBe(true)
         })
 
-        test('fails if username contains invalid characters', () => {
-            const invalidChars = updateUsernameSchema.safeParse({ username: 'chaitanya-dev' })
-            expect(invalidChars.success).toBe(false)
+        test('should reject username shorter than 6 characters', () => {
+            const res = updateUsernameSchema.safeParse({ username: 'user' })
+            expect(res.success).toBe(false)
         })
 
-        test('fails if username is too short', () => {
-            const tooShort = updateUsernameSchema.safeParse({ username: 'chai' })
-            expect(tooShort.success).toBe(false)
+        test('should reject username longer than 20 characters', () => {
+            const res = updateUsernameSchema.safeParse({ username: 'a_'.repeat(11) })
+            expect(res.success).toBe(false)
         })
 
-        test('fails if username is too long', () => {
-            const tooLong = updateUsernameSchema.safeParse({ username: 'a'.repeat(21) })
-            expect(tooLong.success).toBe(false)
+        test('should reject username containing uppercase letters', () => {
+            const res = updateUsernameSchema.safeParse({ username: 'Valid_User' })
+            expect(res.success).toBe(false)
+        })
+
+        test('should reject username containing numbers or special characters', () => {
+            const res1 = updateUsernameSchema.safeParse({ username: 'user123' })
+            const res2 = updateUsernameSchema.safeParse({ username: 'user@name' })
+            const res3 = updateUsernameSchema.safeParse({ username: 'user name' })
+            expect(res1.success).toBe(false)
+            expect(res2.success).toBe(false)
+            expect(res3.success).toBe(false)
+        })
+
+        test('should reject missing username', () => {
+            const res = updateUsernameSchema.safeParse({})
+            expect(res.success).toBe(false)
         })
     })
 
     describe('updateAvatarUrlSchema', () => {
-        test('validates valid url', () => {
-            const valid = updateAvatarUrlSchema.safeParse({
+        test('should validate a valid avatar URL', () => {
+            const res = updateAvatarUrlSchema.safeParse({
                 avatarUrl: 'https://example.com/avatar.png',
             })
-            expect(valid.success).toBe(true)
+            expect(res.success).toBe(true)
         })
 
-        test('fails if avatarUrl is not a valid URL', () => {
-            const invalid = updateAvatarUrlSchema.safeParse({ avatarUrl: 'not-a-url' })
-            expect(invalid.success).toBe(false)
+        test('should reject invalid URL string', () => {
+            const res = updateAvatarUrlSchema.safeParse({ avatarUrl: 'not-a-url' })
+            expect(res.success).toBe(false)
         })
 
-        test('fails if avatarUrl is too long', () => {
-            const tooLong = updateAvatarUrlSchema.safeParse({
-                avatarUrl: 'https://example.com/' + 'a'.repeat(500),
+        test('should reject avatar URL exceeding 500 characters', () => {
+            const res = updateAvatarUrlSchema.safeParse({
+                avatarUrl: `https://example.com/${'a'.repeat(500)}`,
             })
-            expect(tooLong.success).toBe(false)
+            expect(res.success).toBe(false)
+        })
+
+        test('should reject missing avatar URL', () => {
+            const res = updateAvatarUrlSchema.safeParse({})
+            expect(res.success).toBe(false)
         })
     })
 
     describe('changePasswordSchema', () => {
-        test('validates valid passwords', () => {
-            const valid = changePasswordSchema.safeParse({
-                currentPassword: 'oldpassword123',
-                newPassword: 'newpassword123',
+        test('should validate valid currentPassword and newPassword', () => {
+            const res = changePasswordSchema.safeParse({
+                currentPassword: 'old_password',
+                newPassword: 'new_password',
             })
-            expect(valid.success).toBe(true)
+            expect(res.success).toBe(true)
         })
 
-        test('validates when currentPassword is empty or missing', () => {
-            const validMissing = changePasswordSchema.safeParse({
-                newPassword: 'newpassword123',
-            })
-            expect(validMissing.success).toBe(true)
-
-            const validEmpty = changePasswordSchema.safeParse({
+        test('should validate empty or missing currentPassword', () => {
+            const res1 = changePasswordSchema.safeParse({
                 currentPassword: '',
-                newPassword: 'newpassword123',
+                newPassword: 'new_password',
             })
-            expect(validEmpty.success).toBe(true)
+            const res2 = changePasswordSchema.safeParse({ newPassword: 'new_password' })
+            expect(res1.success).toBe(true)
+            expect(res2.success).toBe(true)
         })
 
-        test('fails if newPassword is too short', () => {
-            const tooShort = changePasswordSchema.safeParse({
-                newPassword: '12345',
+        test('should reject newPassword shorter than 6 characters', () => {
+            const res = changePasswordSchema.safeParse({
+                currentPassword: 'old',
+                newPassword: 'short',
             })
-            expect(tooShort.success).toBe(false)
+            expect(res.success).toBe(false)
         })
 
-        test('fails if newPassword is too long', () => {
-            const tooLong = changePasswordSchema.safeParse({
+        test('should reject newPassword longer than 20 characters', () => {
+            const res = changePasswordSchema.safeParse({
+                currentPassword: 'old',
                 newPassword: 'a'.repeat(21),
             })
-            expect(tooLong.success).toBe(false)
+            expect(res.success).toBe(false)
+        })
+
+        test('should reject currentPassword longer than 20 characters', () => {
+            const res = changePasswordSchema.safeParse({
+                currentPassword: 'a'.repeat(21),
+                newPassword: 'new_password',
+            })
+            expect(res.success).toBe(false)
+        })
+
+        test('should reject missing newPassword', () => {
+            const res = changePasswordSchema.safeParse({ currentPassword: 'old' })
+            expect(res.success).toBe(false)
         })
     })
 
     describe('updateNotificationSchema', () => {
-        test('validates all flags set', () => {
-            const valid = updateNotificationSchema.safeParse({
+        test('should validate valid notification boolean flags', () => {
+            const res = updateNotificationSchema.safeParse({
                 notifyProjectActivity: true,
                 notifyProductUpdates: false,
                 notifySecurityAlerts: true,
             })
-            expect(valid.success).toBe(true)
+            expect(res.success).toBe(true)
         })
 
-        test('validates empty payload', () => {
-            const valid = updateNotificationSchema.safeParse({})
-            expect(valid.success).toBe(true)
+        test('should validate partial or missing flags (all optional)', () => {
+            const res1 = updateNotificationSchema.safeParse({ notifyProjectActivity: true })
+            const res2 = updateNotificationSchema.safeParse({})
+            expect(res1.success).toBe(true)
+            expect(res2.success).toBe(true)
         })
 
-        test('fails if flag is not boolean', () => {
-            const invalid = updateNotificationSchema.safeParse({
-                notifyProjectActivity: 'yes',
-            })
-            expect(invalid.success).toBe(false)
+        test('should reject non-boolean notification flags', () => {
+            const res = updateNotificationSchema.safeParse({ notifyProjectActivity: 'true' })
+            expect(res.success).toBe(false)
         })
     })
 
     describe('chatSuggestionsSchema', () => {
-        test('validates true or false', () => {
-            const valid = chatSuggestionsSchema.safeParse({ chatSuggestions: true })
-            expect(valid.success).toBe(true)
+        test('should validate valid boolean flag', () => {
+            const res1 = chatSuggestionsSchema.safeParse({ chatSuggestions: true })
+            const res2 = chatSuggestionsSchema.safeParse({ chatSuggestions: false })
+            expect(res1.success).toBe(true)
+            expect(res2.success).toBe(true)
         })
 
-        test('fails if not boolean', () => {
-            const invalid = chatSuggestionsSchema.safeParse({ chatSuggestions: 'true' })
-            expect(invalid.success).toBe(false)
+        test('should reject missing flag', () => {
+            const res = chatSuggestionsSchema.safeParse({})
+            expect(res.success).toBe(false)
+        })
+
+        test('should reject non-boolean flag', () => {
+            const res = chatSuggestionsSchema.safeParse({ chatSuggestions: 'true' })
+            expect(res.success).toBe(false)
         })
     })
 
     describe('generationSoundSchema', () => {
-        test('validates correct enum value', () => {
-            const valid = generationSoundSchema.safeParse({
+        test('should validate valid enum values', () => {
+            const res1 = generationSoundSchema.safeParse({
+                generationSound: GenerationSound.ALWAYS,
+            })
+            const res2 = generationSoundSchema.safeParse({ generationSound: GenerationSound.NEVER })
+            const res3 = generationSoundSchema.safeParse({
                 generationSound: GenerationSound.FIRST_GENERATION,
             })
-            expect(valid.success).toBe(true)
+            expect(res1.success).toBe(true)
+            expect(res2.success).toBe(true)
+            expect(res3.success).toBe(true)
         })
 
-        test('fails on invalid enum value', () => {
-            const invalid = generationSoundSchema.safeParse({
-                generationSound: 'MAYBE',
-            })
-            expect(invalid.success).toBe(false)
+        test('should reject invalid enum value', () => {
+            const res = generationSoundSchema.safeParse({ generationSound: 'INVALID_VALUE' })
+            expect(res.success).toBe(false)
+        })
+
+        test('should reject missing enum value', () => {
+            const res = generationSoundSchema.safeParse({})
+            expect(res.success).toBe(false)
         })
     })
 
     describe('designSchema', () => {
-        test('validates valid design string', () => {
-            const valid = designSchema.safeParse({ design: 'my design content' })
-            expect(valid.success).toBe(true)
+        test('should validate valid design string', () => {
+            const res = designSchema.safeParse({ design: 'Dark mode sleek UI' })
+            expect(res.success).toBe(true)
         })
 
-        test('fails if design is too long', () => {
-            const tooLong = designSchema.safeParse({ design: 'a'.repeat(10001) })
-            expect(tooLong.success).toBe(false)
+        test('should validate empty design string', () => {
+            const res = designSchema.safeParse({ design: '' })
+            expect(res.success).toBe(true)
+        })
+
+        test('should reject design string exceeding 10000 characters', () => {
+            const res = designSchema.safeParse({ design: 'a'.repeat(10001) })
+            expect(res.success).toBe(false)
+        })
+
+        test('should reject missing design string', () => {
+            const res = designSchema.safeParse({})
+            expect(res.success).toBe(false)
         })
     })
 
     describe('submitFeedbackSchema', () => {
-        test('validates correct feedback', () => {
-            const valid = submitFeedbackSchema.safeParse({
-                rating: 5,
-                feedback: 'great product!',
-            })
-            expect(valid.success).toBe(true)
+        test('should validate valid feedback with number rating', () => {
+            const res = submitFeedbackSchema.safeParse({ rating: 5, feedback: 'Great job!' })
+            expect(res.success).toBe(true)
         })
 
-        test('fails if feedback is empty', () => {
-            const invalid = submitFeedbackSchema.safeParse({
-                feedback: '',
-            })
-            expect(invalid.success).toBe(false)
+        test('should validate valid feedback with string rating', () => {
+            const res = submitFeedbackSchema.safeParse({ rating: '5', feedback: 'Great job!' })
+            expect(res.success).toBe(true)
         })
 
-        test('fails if feedback is too long', () => {
-            const invalid = submitFeedbackSchema.safeParse({
-                feedback: 'a'.repeat(2001),
-            })
-            expect(invalid.success).toBe(false)
+        test('should validate valid feedback with null or missing rating', () => {
+            const res1 = submitFeedbackSchema.safeParse({ rating: null, feedback: 'Great job!' })
+            const res2 = submitFeedbackSchema.safeParse({ feedback: 'Great job!' })
+            expect(res1.success).toBe(true)
+            expect(res2.success).toBe(true)
+        })
+
+        test('should reject empty feedback string', () => {
+            const res = submitFeedbackSchema.safeParse({ rating: 5, feedback: '' })
+            expect(res.success).toBe(false)
+        })
+
+        test('should reject feedback string exceeding 2000 characters', () => {
+            const res = submitFeedbackSchema.safeParse({ rating: 5, feedback: 'a'.repeat(2001) })
+            expect(res.success).toBe(false)
+        })
+
+        test('should reject missing feedback', () => {
+            const res = submitFeedbackSchema.safeParse({ rating: 5 })
+            expect(res.success).toBe(false)
         })
     })
 })
 
-describe('profile utils', () => {
-    test('sanitizeMarkdown replaces newlines with space and escapes special markdown characters', () => {
-        const input = 'Hello\nWorld! *bold* _italic_'
-        const output = sanitizeMarkdown(input)
-        expect(output).toBe('Hello World\\! \\*bold\\* \\_italic\\_')
+describe('profile utils unit tests', () => {
+    describe('sanitizeMarkdown', () => {
+        test('should keep normal text unchanged', () => {
+            const result = sanitizeMarkdown('Hello World')
+            expect(result).toBe('Hello World')
+        })
+
+        test('should replace newlines with spaces', () => {
+            const result = sanitizeMarkdown('Line1\nLine2\r\nLine3')
+            expect(result).toBe('Line1 Line2 Line3')
+        })
+
+        test('should escape markdown special characters', () => {
+            const result = sanitizeMarkdown('# Header *bold* [link](url)')
+            expect(result).toBe('\\# Header \\*bold\\* \\[link\\]\\(url\\)')
+        })
     })
 })
