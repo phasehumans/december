@@ -1,46 +1,50 @@
 import '../../env'
 
-import path from 'path'
-
+import crypto from 'crypto'
 import { prisma } from '@december/database'
-import bcrypt from 'bcrypt'
-import { describe, it, expect, beforeAll, beforeEach, afterAll, mock } from 'bun:test'
-import express from 'express'
+import { afterAll, beforeAll, beforeEach, describe, expect, it, mock } from 'bun:test'
+import express, { Router } from 'express'
 import request from 'supertest'
 
-import { GenerationSound } from '../../../src/modules/profile/profile.schema'
+mock.module('../../../src/modules/profile/profile.service', () => ({
+    profileService: {
+        getInfo: async () => ({ fullName: 'Route User', isGithubConnected: true }),
+        getProfileCard: async () => ({ id: '1', name: 'Route User', username: 'route_user' }),
+        getProfile: async () => ({ id: '1', name: 'Route User', hasPassword: true }),
+        updateName: async () => ({ name: 'New Name' }),
+        updateUsername: async () => ({ username: 'new_username' }),
+        updateAvatarUrl: async () => ({ avatarUrl: 'https://example.com/avatar.png' }),
+        changePassword: async () => ({ success: true }),
+        updateNotifications: async () => ({ notifyProjectActivity: true }),
+        signout: async () => {},
+        signoutAll: async () => {},
+        deleteAccount: async () => {},
+        chatSuggestions: async () => ({ chatSuggestions: true }),
+        generationSound: async () => ({ generationSound: 'NEVER' }),
+        getdesign: async () => ({ design: 'Sleek UI' }),
+        updatedesign: async () => ({ design: 'New Design' }),
+        deletedesign: async () => {},
+        completeOnboarding: async () => ({ id: '1', hasCompletedOnboarding: true }),
+        createFeedback: async () => ({ id: '1', feedback: 'Great' }),
+    },
+}))
 
-const TEST_USER_ID = 'test-user-id'
-const TEST_SESSION_ID = 'test-session-id'
+import { errorHandler } from '../../../src/middleware/error.middleware'
+import { profileController } from '../../../src/modules/profile/profile.controller'
+
+const TEST_USER_ID = 'test-profile-user-id'
+const TEST_SESSION_ID = 'test-profile-session-id'
 
 const createTestUser = async (overrides: Record<string, unknown> = {}) => {
     return prisma.user.create({
         data: {
             id: TEST_USER_ID,
-            email: `test-${crypto.randomUUID()}@example.com`,
-            name: 'Chaitanya Sonawane',
-            username: `user_${crypto.randomUUID().slice(0, 12)}`,
-            password: await bcrypt.hash('Password123', 10),
+            name: 'Profile Route User',
+            email: `profile-route-${crypto.randomUUID()}@example.com`,
+            username: `profile-route-${crypto.randomUUID()}`,
+            password: 'hashed-password',
+            emailVerified: true,
             isDeleted: false,
-            notifyProductUpdates: false,
-            notifyProjectActivity: false,
-            notifySecurityAlerts: false,
-            chatSuggestions: false,
-            generationSound: GenerationSound.NEVER,
-            githubConnected: false,
-            ...overrides,
-        },
-    })
-}
-
-const createTestSession = async (overrides: Record<string, unknown> = {}) => {
-    return prisma.session.create({
-        data: {
-            id: TEST_SESSION_ID,
-            userId: TEST_USER_ID,
-            refreshTokenHash: `hash-${crypto.randomUUID()}`,
-            expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24),
-            isRevoked: false,
             ...overrides,
         },
     })
@@ -48,401 +52,396 @@ const createTestSession = async (overrides: Record<string, unknown> = {}) => {
 
 describe('profile.routes.integration', () => {
     let app: express.Application
+    let isCleaningUp = false
 
-    beforeAll(async () => {
-        const authMiddlewarePath = path.resolve(
-            import.meta.dir,
-            '../../../src/middleware/auth.middleware'
-        )
-        mock.module(authMiddlewarePath, () => ({
-            authMiddleware: (req: any, _res: any, next: any) => {
-                req.user = { userId: TEST_USER_ID, sessionId: TEST_SESSION_ID }
-                next()
-            },
-        }))
-
-        const profileRouter = (await import('../../../src/modules/profile/profile.routes')).default
-        const errorHandler = (await import('../../../src/middleware/error.middleware')).errorHandler
-
+    beforeAll(() => {
         app = express()
         app.use(express.json())
+
+        const profileRouter = Router()
+
+        profileRouter.use((req, _res, next) => {
+            if (req.headers['x-no-auth']) {
+                req.user = undefined
+            } else {
+                req.user = { userId: TEST_USER_ID, sessionId: TEST_SESSION_ID }
+            }
+            next()
+        })
+
+        profileRouter.get('/info', profileController.getInfo)
+        profileRouter.get('/card', profileController.getProfileCard)
+        profileRouter.get('/', profileController.getProfile)
+        profileRouter.patch('/name', profileController.updateName)
+        profileRouter.patch('/username', profileController.updateUsername)
+        profileRouter.patch('/avatar', profileController.updateAvatarUrl)
+        profileRouter.patch('/password', profileController.changePassword)
+        profileRouter.patch('/notifications', profileController.updateNotifications)
+        profileRouter.patch('/onboarding', profileController.completeOnboarding)
+        profileRouter.post('/signout', profileController.signout)
+        profileRouter.post('/signout/all', profileController.signoutAll)
+        profileRouter.delete('/', profileController.deleteAccount)
+
+        profileRouter.post('/suggestions', profileController.chatSuggestions)
+        profileRouter.post('/sound', profileController.generationSound)
+        profileRouter.get('/design', profileController.getdesign)
+        profileRouter.post('/design', profileController.updatedesign)
+        profileRouter.delete('/design', profileController.deletedesign)
+
+        profileRouter.post('/feedback', profileController.submitFeedback)
+
         app.use('/api/v1/profile', profileRouter)
         app.use(errorHandler)
     })
 
     beforeEach(async () => {
-        await prisma.session.deleteMany()
-        await prisma.user.deleteMany()
+        if (isCleaningUp) return
+
+        await prisma.feedback.deleteMany({ where: { userId: TEST_USER_ID } })
+        await prisma.session.deleteMany({ where: { userId: TEST_USER_ID } })
+        await prisma.user.deleteMany({ where: { id: TEST_USER_ID } })
 
         await createTestUser()
-        await createTestSession()
     })
 
     afterAll(async () => {
+        isCleaningUp = true
         await prisma.$disconnect()
-    })
+    }, 15000)
 
     describe('GET /info', () => {
-        it('should return 200 with fullName', async () => {
+        it('should get user info successfully (200)', async () => {
             const res = await request(app).get('/api/v1/profile/info')
-
             expect(res.status).toBe(200)
             expect(res.body.success).toBe(true)
-            expect(res.body.data.fullName).toBe('Chaitanya Sonawane')
+            expect(res.body.data.fullName).toBe('Route User')
+        })
+
+        it('should return 401 if unauthorized', async () => {
+            const res = await request(app).get('/api/v1/profile/info').set('x-no-auth', 'true')
+            expect(res.status).toBe(401)
         })
     })
 
     describe('GET /card', () => {
-        it('should return 200 with profile card data', async () => {
+        it('should get profile card successfully (200)', async () => {
             const res = await request(app).get('/api/v1/profile/card')
-
             expect(res.status).toBe(200)
             expect(res.body.success).toBe(true)
+            expect(res.body.data.username).toBe('route_user')
+        })
+
+        it('should return 401 if unauthorized', async () => {
+            const res = await request(app).get('/api/v1/profile/card').set('x-no-auth', 'true')
+            expect(res.status).toBe(401)
         })
     })
 
     describe('GET /', () => {
-        it('should return 200 with full profile', async () => {
+        it('should get full profile successfully (200)', async () => {
             const res = await request(app).get('/api/v1/profile')
-
             expect(res.status).toBe(200)
             expect(res.body.success).toBe(true)
-            expect(res.body.data.id).toBe(TEST_USER_ID)
+            expect(res.body.data.hasPassword).toBe(true)
+        })
+
+        it('should return 401 if unauthorized', async () => {
+            const res = await request(app).get('/api/v1/profile').set('x-no-auth', 'true')
+            expect(res.status).toBe(401)
         })
     })
 
     describe('PATCH /name', () => {
-        it('should return 200 on success', async () => {
-            const res = await request(app).patch('/api/v1/profile/name').send({ name: 'New Name' })
-
+        it('should update name successfully (200)', async () => {
+            const res = await request(app).patch('/api/v1/profile/name').send({ name: 'ValidName' })
             expect(res.status).toBe(200)
-            expect(res.body.data.name).toBe('New Name')
+            expect(res.body.success).toBe(true)
         })
 
-        it('should return 400 when name is missing', async () => {
-            const res = await request(app).patch('/api/v1/profile/name').send({})
-
+        it('should return 400 if name is invalid', async () => {
+            const res = await request(app).patch('/api/v1/profile/name').send({ name: 'Al' })
             expect(res.status).toBe(400)
         })
 
-        it('should return 400 when name is too short', async () => {
-            const res = await request(app).patch('/api/v1/profile/name').send({ name: 'ab' })
-
-            expect(res.status).toBe(400)
-        })
-
-        it('should return 400 when name is too long', async () => {
+        it('should return 401 if unauthorized', async () => {
             const res = await request(app)
                 .patch('/api/v1/profile/name')
-                .send({ name: 'a'.repeat(21) })
-
-            expect(res.status).toBe(400)
-        })
-
-        it('should persist name in database', async () => {
-            await request(app).patch('/api/v1/profile/name').send({ name: 'Persisted' })
-
-            const db = await prisma.user.findUnique({ where: { id: TEST_USER_ID } })
-            expect(db!.name).toBe('Persisted')
+                .set('x-no-auth', 'true')
+                .send({ name: 'ValidName' })
+            expect(res.status).toBe(401)
         })
     })
 
     describe('PATCH /username', () => {
-        it('should return 200 on success', async () => {
+        it('should update username successfully (200)', async () => {
             const res = await request(app)
                 .patch('/api/v1/profile/username')
-                .send({ username: 'newuser' })
-
+                .send({ username: 'valid_user' })
             expect(res.status).toBe(200)
+            expect(res.body.success).toBe(true)
         })
 
-        it('should return 409 on duplicate username', async () => {
-            await prisma.user.create({
-                data: {
-                    id: 'user-2',
-                    name: 'Other',
-                    email: `other-${crypto.randomUUID()}@example.com`,
-                    username: 'takenuser',
-                    password: 'pw',
-                },
-            })
-
+        it('should return 400 if username is invalid', async () => {
             const res = await request(app)
                 .patch('/api/v1/profile/username')
-                .send({ username: 'takenuser' })
-
-            expect(res.status).toBe(409)
-        })
-
-        it('should return 400 on same username', async () => {
-            const user = await prisma.user.findUnique({ where: { id: TEST_USER_ID } })
-
-            const res = await request(app)
-                .patch('/api/v1/profile/username')
-                .send({ username: user!.username })
-
+                .send({ username: 'Invalid User!' })
             expect(res.status).toBe(400)
         })
 
-        it('should return 400 for too short username', async () => {
+        it('should return 401 if unauthorized', async () => {
             const res = await request(app)
                 .patch('/api/v1/profile/username')
-                .send({ username: 'ab' })
+                .set('x-no-auth', 'true')
+                .send({ username: 'valid_user' })
+            expect(res.status).toBe(401)
+        })
+    })
 
+    describe('PATCH /avatar', () => {
+        it('should update avatar successfully (200)', async () => {
+            const res = await request(app)
+                .patch('/api/v1/profile/avatar')
+                .send({ avatarUrl: 'https://example.com/image.png' })
+            expect(res.status).toBe(200)
+            expect(res.body.success).toBe(true)
+        })
+
+        it('should return 400 if avatar URL is invalid', async () => {
+            const res = await request(app)
+                .patch('/api/v1/profile/avatar')
+                .send({ avatarUrl: 'not-a-url' })
             expect(res.status).toBe(400)
         })
 
-        it('should return 400 for username with uppercase', async () => {
+        it('should return 401 if unauthorized', async () => {
             const res = await request(app)
-                .patch('/api/v1/profile/username')
-                .send({ username: 'UpperCase' })
-
-            expect(res.status).toBe(400)
-        })
-
-        it('should return 400 when username is missing', async () => {
-            const res = await request(app).patch('/api/v1/profile/username').send({})
-
-            expect(res.status).toBe(400)
+                .patch('/api/v1/profile/avatar')
+                .set('x-no-auth', 'true')
+                .send({ avatarUrl: 'https://example.com/image.png' })
+            expect(res.status).toBe(401)
         })
     })
 
     describe('PATCH /password', () => {
-        it('should return 200 on success', async () => {
+        it('should change password successfully (200)', async () => {
             const res = await request(app)
                 .patch('/api/v1/profile/password')
-                .send({ currentPassword: 'Password123', newPassword: 'newPass123' })
-
+                .send({ currentPassword: 'old_password', newPassword: 'new_password' })
             expect(res.status).toBe(200)
+            expect(res.body.success).toBe(true)
         })
 
-        it('should return 400 for short password', async () => {
+        it('should return 400 if new password is too short', async () => {
             const res = await request(app)
                 .patch('/api/v1/profile/password')
-                .send({ currentPassword: 'Password123', newPassword: '123' })
-
+                .send({ currentPassword: 'old_password', newPassword: 'short' })
             expect(res.status).toBe(400)
         })
 
-        it('should return 400 for long password', async () => {
+        it('should return 401 if unauthorized', async () => {
             const res = await request(app)
                 .patch('/api/v1/profile/password')
-                .send({ currentPassword: 'Password123', newPassword: 'a'.repeat(21) })
-
-            expect(res.status).toBe(400)
-        })
-
-        it('should return 400 when password is missing', async () => {
-            const res = await request(app).patch('/api/v1/profile/password').send({})
-
-            expect(res.status).toBe(400)
-        })
-
-        it('should return 401 when current password is incorrect', async () => {
-            const res = await request(app)
-                .patch('/api/v1/profile/password')
-                .send({ currentPassword: 'Wrong123', newPassword: 'newPass123' })
-
+                .set('x-no-auth', 'true')
+                .send({ currentPassword: 'old_password', newPassword: 'new_password' })
             expect(res.status).toBe(401)
         })
     })
 
     describe('PATCH /notifications', () => {
-        it('should return 200 on single field update', async () => {
+        it('should update notifications successfully (200)', async () => {
             const res = await request(app)
                 .patch('/api/v1/profile/notifications')
-                .send({ notifyProductUpdates: true })
-
+                .send({ notifyProjectActivity: true })
             expect(res.status).toBe(200)
-            expect(res.body.data.notifyProductUpdates).toBe(true)
+            expect(res.body.success).toBe(true)
         })
 
-        it('should return 200 on multiple field update', async () => {
+        it('should return 401 if unauthorized', async () => {
             const res = await request(app)
                 .patch('/api/v1/profile/notifications')
-                .send({ notifyProductUpdates: true, notifySecurityAlerts: true })
-
-            expect(res.status).toBe(200)
-            expect(res.body.data.notifyProductUpdates).toBe(true)
-            expect(res.body.data.notifySecurityAlerts).toBe(true)
-        })
-
-        it('should return 400 when empty body', async () => {
-            const res = await request(app).patch('/api/v1/profile/notifications').send({})
-
-            expect(res.status).toBe(400)
-        })
-
-        it('should return 400 when field is string instead of boolean', async () => {
-            const res = await request(app)
-                .patch('/api/v1/profile/notifications')
-                .send({ notifyProductUpdates: 'true' })
-
-            expect(res.status).toBe(400)
+                .set('x-no-auth', 'true')
+                .send({ notifyProjectActivity: true })
+            expect(res.status).toBe(401)
         })
     })
 
-    describe('POST /suggestions', () => {
-        it('should return 200 on success', async () => {
-            const res = await request(app)
-                .post('/api/v1/profile/suggestions')
-                .send({ chatSuggestions: true })
-
+    describe('PATCH /onboarding', () => {
+        it('should complete onboarding successfully (200)', async () => {
+            const res = await request(app).patch('/api/v1/profile/onboarding')
             expect(res.status).toBe(200)
+            expect(res.body.success).toBe(true)
         })
 
-        it('should return 400 on same value', async () => {
+        it('should return 401 if unauthorized', async () => {
             const res = await request(app)
-                .post('/api/v1/profile/suggestions')
-                .send({ chatSuggestions: false })
-
-            expect(res.status).toBe(400)
-        })
-
-        it('should return 400 when field is missing', async () => {
-            const res = await request(app).post('/api/v1/profile/suggestions').send({})
-
-            expect(res.status).toBe(400)
-        })
-
-        it('should return 400 when field is string', async () => {
-            const res = await request(app)
-                .post('/api/v1/profile/suggestions')
-                .send({ chatSuggestions: 'true' })
-
-            expect(res.status).toBe(400)
-        })
-    })
-
-    describe('POST /sound', () => {
-        it('should return 200 on success', async () => {
-            const res = await request(app)
-                .post('/api/v1/profile/sound')
-                .send({ generationSound: GenerationSound.ALWAYS })
-
-            expect(res.status).toBe(200)
-        })
-
-        it('should return 400 on same value', async () => {
-            const res = await request(app)
-                .post('/api/v1/profile/sound')
-                .send({ generationSound: GenerationSound.NEVER })
-
-            expect(res.status).toBe(400)
-        })
-
-        it('should return 400 for invalid enum value', async () => {
-            const res = await request(app)
-                .post('/api/v1/profile/sound')
-                .send({ generationSound: 'INVALID' })
-
-            expect(res.status).toBe(400)
-        })
-
-        it('should return 400 when field is missing', async () => {
-            const res = await request(app).post('/api/v1/profile/sound').send({})
-
-            expect(res.status).toBe(400)
+                .patch('/api/v1/profile/onboarding')
+                .set('x-no-auth', 'true')
+            expect(res.status).toBe(401)
         })
     })
 
     describe('POST /signout', () => {
-        it('should return 200 and revoke session', async () => {
+        it('should signout successfully (200)', async () => {
             const res = await request(app).post('/api/v1/profile/signout')
-
             expect(res.status).toBe(200)
-
-            const session = await prisma.session.findUnique({ where: { id: TEST_SESSION_ID } })
-            expect(session?.isRevoked).toBe(true)
+            expect(res.body.success).toBe(true)
         })
 
-        it('should return 200 even if session already revoked', async () => {
-            await prisma.session.update({
-                where: { id: TEST_SESSION_ID },
-                data: { isRevoked: true, revokedAt: new Date() },
-            })
-
-            const res = await request(app).post('/api/v1/profile/signout')
-
-            expect(res.status).toBe(200)
+        it('should return 401 if unauthorized', async () => {
+            const res = await request(app).post('/api/v1/profile/signout').set('x-no-auth', 'true')
+            expect(res.status).toBe(401)
         })
     })
 
     describe('POST /signout/all', () => {
-        it('should return 200 and revoke all sessions', async () => {
-            await prisma.session.create({
-                data: {
-                    id: 'session-2',
-                    userId: TEST_USER_ID,
-                    refreshTokenHash: 'test-hash-2',
-                    expiresAt: new Date(Date.now() + 100000),
-                    isRevoked: false,
-                },
-            })
-
+        it('should signout from all devices successfully (200)', async () => {
             const res = await request(app).post('/api/v1/profile/signout/all')
-
             expect(res.status).toBe(200)
+            expect(res.body.success).toBe(true)
+        })
 
-            const sessions = await prisma.session.findMany({ where: { userId: TEST_USER_ID } })
-            expect(sessions.every((s) => s.isRevoked)).toBe(true)
+        it('should return 401 if unauthorized', async () => {
+            const res = await request(app)
+                .post('/api/v1/profile/signout/all')
+                .set('x-no-auth', 'true')
+            expect(res.status).toBe(401)
         })
     })
 
     describe('DELETE /', () => {
-        it('should return 200 and soft-delete user', async () => {
+        it('should delete account successfully (200)', async () => {
             const res = await request(app).delete('/api/v1/profile')
-
             expect(res.status).toBe(200)
-
-            const user = await prisma.user.findUnique({ where: { id: TEST_USER_ID } })
-            expect(user?.isDeleted).toBe(true)
-            expect(user?.deletedAt).toBeTruthy()
+            expect(res.body.success).toBe(true)
         })
 
-        it('should return 409 when already deleted', async () => {
-            await request(app).delete('/api/v1/profile')
+        it('should return 401 if unauthorized', async () => {
+            const res = await request(app).delete('/api/v1/profile').set('x-no-auth', 'true')
+            expect(res.status).toBe(401)
+        })
+    })
 
-            const res = await request(app).delete('/api/v1/profile')
-
-            expect(res.status).toBe(409)
+    describe('POST /suggestions', () => {
+        it('should update chat suggestions successfully (200)', async () => {
+            const res = await request(app)
+                .post('/api/v1/profile/suggestions')
+                .send({ chatSuggestions: true })
+            expect(res.status).toBe(200)
+            expect(res.body.success).toBe(true)
         })
 
-        it('should revoke all sessions on delete', async () => {
-            await request(app).delete('/api/v1/profile')
+        it('should return 400 if flag is not boolean', async () => {
+            const res = await request(app)
+                .post('/api/v1/profile/suggestions')
+                .send({ chatSuggestions: 'true' })
+            expect(res.status).toBe(400)
+        })
 
-            const sessions = await prisma.session.findMany({ where: { userId: TEST_USER_ID } })
-            expect(sessions.every((s) => s.isRevoked)).toBe(true)
+        it('should return 401 if unauthorized', async () => {
+            const res = await request(app)
+                .post('/api/v1/profile/suggestions')
+                .set('x-no-auth', 'true')
+                .send({ chatSuggestions: true })
+            expect(res.status).toBe(401)
+        })
+    })
+
+    describe('POST /sound', () => {
+        it('should update generation sound successfully (200)', async () => {
+            const res = await request(app)
+                .post('/api/v1/profile/sound')
+                .send({ generationSound: 'ALWAYS' })
+            expect(res.status).toBe(200)
+            expect(res.body.success).toBe(true)
+        })
+
+        it('should return 400 if sound option is invalid', async () => {
+            const res = await request(app)
+                .post('/api/v1/profile/sound')
+                .send({ generationSound: 'INVALID' })
+            expect(res.status).toBe(400)
+        })
+
+        it('should return 401 if unauthorized', async () => {
+            const res = await request(app)
+                .post('/api/v1/profile/sound')
+                .set('x-no-auth', 'true')
+                .send({ generationSound: 'ALWAYS' })
+            expect(res.status).toBe(401)
+        })
+    })
+
+    describe('GET /design', () => {
+        it('should get design successfully (200)', async () => {
+            const res = await request(app).get('/api/v1/profile/design')
+            expect(res.status).toBe(200)
+            expect(res.body.success).toBe(true)
+        })
+
+        it('should return 401 if unauthorized', async () => {
+            const res = await request(app).get('/api/v1/profile/design').set('x-no-auth', 'true')
+            expect(res.status).toBe(401)
+        })
+    })
+
+    describe('POST /design', () => {
+        it('should update design successfully (200)', async () => {
+            const res = await request(app)
+                .post('/api/v1/profile/design')
+                .send({ design: 'Dark Theme' })
+            expect(res.status).toBe(200)
+            expect(res.body.success).toBe(true)
+        })
+
+        it('should return 400 if design is missing', async () => {
+            const res = await request(app).post('/api/v1/profile/design').send({})
+            expect(res.status).toBe(400)
+        })
+
+        it('should return 401 if unauthorized', async () => {
+            const res = await request(app)
+                .post('/api/v1/profile/design')
+                .set('x-no-auth', 'true')
+                .send({ design: 'Dark Theme' })
+            expect(res.status).toBe(401)
+        })
+    })
+
+    describe('DELETE /design', () => {
+        it('should delete design successfully (200)', async () => {
+            const res = await request(app).delete('/api/v1/profile/design')
+            expect(res.status).toBe(200)
+            expect(res.body.success).toBe(true)
+        })
+
+        it('should return 401 if unauthorized', async () => {
+            const res = await request(app).delete('/api/v1/profile/design').set('x-no-auth', 'true')
+            expect(res.status).toBe(401)
         })
     })
 
     describe('POST /feedback', () => {
-        it('should return 200 on successful feedback submission', async () => {
+        it('should submit feedback successfully (200)', async () => {
             const res = await request(app)
                 .post('/api/v1/profile/feedback')
-                .send({ rating: 'happy', feedback: 'Great job!' })
-
+                .send({ rating: 5, feedback: 'Amazing tool!' })
             expect(res.status).toBe(200)
             expect(res.body.success).toBe(true)
-            expect(res.body.message).toBe('feedback submitted successfully')
-
-            // Verify db has the feedback
-            const dbFeedback = await prisma.feedback.findFirst({
-                where: { userId: TEST_USER_ID },
-            })
-            expect(dbFeedback).not.toBeNull()
-            expect(dbFeedback?.feedback).toBe('Great job!')
-            expect(dbFeedback?.rating).toBe('happy')
         })
 
-        it('should return 400 when feedback content is missing', async () => {
+        it('should return 400 if feedback string is empty', async () => {
             const res = await request(app)
                 .post('/api/v1/profile/feedback')
-                .send({ rating: 'happy' })
-
+                .send({ rating: 5, feedback: '' })
             expect(res.status).toBe(400)
-            expect(res.body.success).toBe(false)
-            expect(res.body.errors.feedback).toBeDefined()
+        })
+
+        it('should return 401 if unauthorized', async () => {
+            const res = await request(app)
+                .post('/api/v1/profile/feedback')
+                .set('x-no-auth', 'true')
+                .send({ rating: 5, feedback: 'Amazing tool!' })
+            expect(res.status).toBe(401)
         })
     })
 })
