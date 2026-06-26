@@ -68,3 +68,9 @@ export const shareProjectAsTemplateSchema = z.object({
         .enum(['LANDING_PAGE', 'DASHBOARD', 'PORTFOLIO_BLOG', 'SAAS_APP', 'ECOMMERCE', 'NONE'])
         .optional(),
 })
+
+export const addCollaboratorSchema = z.object({
+    email: z
+        .string({ message: 'username or email is required' })
+        .min(1, 'username or email cannot be empty'),
+})

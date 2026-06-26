@@ -56,3 +56,7 @@ NODE_ENV=test bun test --preload ./test/env.ts ./test/integration/platform/platf
 NODE_ENV=test bun test --preload ./test/env.ts ./test/unit/profile.unit.test.ts
 NODE_ENV=test bun test --preload ./test/env.ts ./test/integration/profile/profile.routes.test.ts
 NODE_ENV=test bun test --preload ./test/env.ts ./test/integration/profile/profile.service.test.ts
+
+NODE_ENV=test bun test --preload ./test/env.ts ./test/unit/project.unit.test.ts
+NODE_ENV=test bun test --preload ./test/env.ts ./test/integration/project/project.routes.test.ts
+NODE_ENV=test bun test --preload ./test/env.ts ./test/integration/project/project.service.test.ts

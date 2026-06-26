@@ -106,3 +106,20 @@ export type ProjectVersionSummary = {
     createdAt: Date
     updatedAt: Date
 }
+
+export type GetCollaborators = {
+    userId: string
+    projectId: string
+}
+
+export type AddCollaborator = {
+    userId: string
+    projectId: string
+    email: string
+}
+
+export type RemoveCollaborator = {
+    userId: string
+    projectId: string
+    email: string
+}

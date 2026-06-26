@@ -39,7 +39,7 @@ export const projectRepository = {
     async findManyProjects(userId: string) {
         return prisma.project.findMany({
             where: {
-                userId,
+                OR: [{ userId }, { collaborators: { some: { userId } } }],
             },
             select: {
                 id: true,
@@ -59,6 +59,22 @@ export const projectRepository = {
                         username: true,
                     },
                 },
+                collaborators: {
+                    select: {
+                        id: true,
+                        userId: true,
+                        email: true,
+                        user: {
+                            select: {
+                                id: true,
+                                username: true,
+                                email: true,
+                                name: true,
+                                avatarUrl: true,
+                            },
+                        },
+                    },
+                },
             },
         })
     },
@@ -67,7 +83,7 @@ export const projectRepository = {
         return prisma.project.findFirst({
             where: {
                 id: projectId,
-                userId,
+                OR: [{ userId }, { collaborators: { some: { userId } } }],
             },
             select: {
                 id: true,
@@ -93,6 +109,22 @@ export const projectRepository = {
                 user: {
                     select: {
                         username: true,
+                    },
+                },
+                collaborators: {
+                    select: {
+                        id: true,
+                        userId: true,
+                        email: true,
+                        user: {
+                            select: {
+                                id: true,
+                                username: true,
+                                email: true,
+                                name: true,
+                                avatarUrl: true,
+                            },
+                        },
                     },
                 },
             },
@@ -204,6 +236,127 @@ export const projectRepository = {
     async deleteProject(id: string) {
         return prisma.project.delete({
             where: { id },
+        })
+    },
+
+    async searchUsers(query: string, excludeUserId: string) {
+        return prisma.user.findMany({
+            where: {
+                id: { not: excludeUserId },
+                OR: [
+                    { username: { contains: query, mode: 'insensitive' } },
+                    { email: { contains: query, mode: 'insensitive' } },
+                ],
+                isDeleted: false,
+            },
+            select: {
+                id: true,
+                username: true,
+                email: true,
+                name: true,
+                avatarUrl: true,
+            },
+            take: 10,
+        })
+    },
+
+    async findUserByEmailOrUsername(input: string) {
+        return prisma.user.findFirst({
+            where: {
+                OR: [{ email: input }, { username: input }],
+                isDeleted: false,
+            },
+            select: {
+                id: true,
+                email: true,
+                username: true,
+                name: true,
+                isDeleted: true,
+            },
+        })
+    },
+
+    async findProjectOwner(projectId: string) {
+        return prisma.project.findUnique({
+            where: { id: projectId },
+            select: {
+                id: true,
+                userId: true,
+            },
+        })
+    },
+
+    async countCollaborators(projectId: string) {
+        return prisma.projectCollaborator.count({
+            where: { projectId },
+        })
+    },
+
+    async findCollaborator(projectId: string, email: string) {
+        return prisma.projectCollaborator.findUnique({
+            where: {
+                projectId_email: {
+                    projectId,
+                    email,
+                },
+            },
+        })
+    },
+
+    async findCollaboratorsByProjectId(projectId: string) {
+        return prisma.projectCollaborator.findMany({
+            where: { projectId },
+            select: {
+                id: true,
+                userId: true,
+                email: true,
+                createdAt: true,
+                user: {
+                    select: {
+                        id: true,
+                        username: true,
+                        email: true,
+                        name: true,
+                        avatarUrl: true,
+                    },
+                },
+            },
+        })
+    },
+
+    async addCollaborator(projectId: string, userId: string, email: string) {
+        return prisma.projectCollaborator.create({
+            data: {
+                projectId,
+                userId,
+                email,
+            },
+            select: {
+                id: true,
+                userId: true,
+                email: true,
+                createdAt: true,
+                user: {
+                    select: {
+                        id: true,
+                        username: true,
+                        email: true,
+                        name: true,
+                        avatarUrl: true,
+                    },
+                },
+            },
+        })
+    },
+
+    async removeCollaborator(projectId: string, email: string) {
+        return prisma.projectCollaborator.delete({
+            where: {
+                projectId_email: {
+                    projectId,
+                    email,
+                },
+            },
         })
     },
 }

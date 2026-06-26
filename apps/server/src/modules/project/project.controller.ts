@@ -10,6 +10,7 @@ import {
     shareProjectAsTemplateSchema,
     toggleStarProjectSchema,
     duplicateProjectSchema,
+    addCollaboratorSchema,
 } from './project.schema'
 import { projectService } from './project.service'
 
@@ -196,6 +197,62 @@ const toggleStarProject = asyncHandler(async (req: Request, res: Response) => {
     return sendSuccess(res, 'project isstarred state updated successfully', result)
 })
 
+const getCollaborators = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
+    const projectId = req.params.projectId as string | undefined
+
+    if (!userId) {
+        throw new AppError('unauthorized', 400)
+    }
+
+    if (!projectId) {
+        throw new AppError('project id is required', 400)
+    }
+
+    const result = await projectService.getCollaborators({ userId, projectId })
+    return sendSuccess(res, 'collaborators fetched successfully', result)
+})
+
+const addCollaborator = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
+    const projectId = req.params.projectId as string | undefined
+
+    if (!userId) {
+        throw new AppError('unauthorized', 400)
+    }
+
+    if (!projectId) {
+        throw new AppError('project id is required', 400)
+    }
+
+    const parseData = addCollaboratorSchema.parse(req.body)
+    const { email } = parseData
+
+    const result = await projectService.addCollaborator({ userId, projectId, email })
+    return sendSuccess(res, 'collaborator added successfully', result, 201)
+})
+
+const removeCollaborator = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
+    const projectId = req.params.projectId as string | undefined
+    const email = req.params.email as string | undefined
+
+    if (!userId) {
+        throw new AppError('unauthorized', 400)
+    }
+
+    if (!projectId) {
+        throw new AppError('project id is required', 400)
+    }
+
+    if (!email) {
+        throw new AppError('email is required', 400)
+    }
+
+    const result = await projectService.removeCollaborator({ userId, projectId, email })
+    return sendSuccess(res, 'collaborator removed successfully', result)
+})
+
 export const projectController = {
     getAllProjects,
     getProjectById,
@@ -206,4 +263,7 @@ export const projectController = {
     duplicateProject,
     shareProjectAsTemplate,
     toggleStarProject,
+    getCollaborators,
+    addCollaborator,
+    removeCollaborator,
 }

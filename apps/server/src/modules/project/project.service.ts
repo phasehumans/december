@@ -26,6 +26,9 @@ import type {
     ToggleStarProject,
     StoredProjectFile,
     CopyProjectVersionsAndMessages,
+    GetCollaborators,
+    AddCollaborator,
+    RemoveCollaborator,
 } from './project.types'
 
 // loads code files from objstore to memeory
@@ -346,6 +349,71 @@ const toggleStarProject = async (data: ToggleStarProject) => {
     }
 }
 
+const getCollaborators = async (data: GetCollaborators) => {
+    const { userId, projectId } = data
+    const project = await projectRepository.findProjectById(projectId, userId)
+    if (!project) {
+        throw new AppError('project not found', 404)
+    }
+    const collaborators = await projectRepository.findCollaboratorsByProjectId(projectId)
+    return collaborators
+}
+
+const addCollaborator = async (data: AddCollaborator) => {
+    const { userId, projectId, email } = data
+
+    const owner = await projectRepository.findProjectOwner(projectId)
+    if (!owner || owner.userId !== userId) {
+        throw new AppError('only the project creator can add collaborators', 403)
+    }
+
+    const targetUser = await projectRepository.findUserByEmailOrUsername(email)
+    if (!targetUser || targetUser.isDeleted) {
+        throw new AppError('user not found', 404)
+    }
+
+    if (targetUser.id === userId) {
+        throw new AppError('you cannot add yourself as a collaborator', 400)
+    }
+
+    const existingCollaborator = await projectRepository.findCollaborator(
+        projectId,
+        targetUser.email
+    )
+    if (existingCollaborator) {
+        throw new AppError('user is already a collaborator on this project', 400)
+    }
+
+    const count = await projectRepository.countCollaborators(projectId)
+    if (count >= 3) {
+        throw new AppError('maximum limit of 3 collaborators reached', 400)
+    }
+
+    const collaborator = await projectRepository.addCollaborator(
+        projectId,
+        targetUser.id,
+        targetUser.email
+    )
+    return collaborator
+}
+
+const removeCollaborator = async (data: RemoveCollaborator) => {
+    const { userId, projectId, email } = data
+
+    const owner = await projectRepository.findProjectOwner(projectId)
+    if (!owner || owner.userId !== userId) {
+        throw new AppError('only the project creator can remove collaborators', 403)
+    }
+
+    const existingCollaborator = await projectRepository.findCollaborator(projectId, email)
+    if (!existingCollaborator) {
+        throw new AppError('collaborator not found', 404)
+    }
+
+    await projectRepository.removeCollaborator(projectId, email)
+    return { message: 'collaborator removed successfully' }
+}
+
 export const projectService = {
     getAllProjects,
     getProjectById,
@@ -356,4 +424,7 @@ export const projectService = {
     duplicateProject,
     shareProjectAsTemplate,
     toggleStarProject,
+    getCollaborators,
+    addCollaborator,
+    removeCollaborator,
 }
