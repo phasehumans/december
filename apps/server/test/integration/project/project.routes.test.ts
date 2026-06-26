@@ -78,6 +78,9 @@ describe('project.routes.integration', () => {
         testRouter.post('/:projectId/duplicate', projectController.duplicateProject)
         testRouter.post('/:projectId/share', projectController.shareProjectAsTemplate)
         testRouter.post('/:projectId/star', projectController.toggleStarProject)
+        testRouter.get('/:projectId/collaborators', projectController.getCollaborators)
+        testRouter.post('/:projectId/collaborators', projectController.addCollaborator)
+        testRouter.delete('/:projectId/collaborators/:email', projectController.removeCollaborator)
 
         app.use('/api/v1/projects', testRouter)
 
@@ -785,6 +788,131 @@ describe('project.routes.integration', () => {
                 .send({ name: 'Attempts settings' })
 
             expect(res.status).toBe(404)
+        })
+    })
+
+    describe('Collaboration Routes', () => {
+        describe('GET /:projectId/collaborators', () => {
+            it('should return 200 and empty list when no collaborators exist', async () => {
+                const project = await createTestProject()
+
+                const res = await request(app).get(`/api/v1/projects/${project.id}/collaborators`)
+
+                expect(res.status).toBe(200)
+                expect(res.body.success).toBe(true)
+                expect(res.body.data).toEqual([])
+            })
+
+            it('should return 404 for non-existent project', async () => {
+                const res = await request(app).get('/api/v1/projects/non-existent-id/collaborators')
+
+                expect(res.status).toBe(404)
+                expect(res.body.success).toBe(false)
+            })
+        })
+
+        describe('POST /:projectId/collaborators', () => {
+            it('should return 201 and added collaborator data on success', async () => {
+                const project = await createTestProject()
+                const collabUser = await prisma.user.create({
+                    data: {
+                        name: 'Collab User',
+                        email: `collab-${crypto.randomUUID()}@example.com`,
+                        username: `collabuser-${crypto.randomUUID()}`,
+                        password: 'pw',
+                    },
+                })
+
+                const res = await request(app)
+                    .post(`/api/v1/projects/${project.id}/collaborators`)
+                    .send({ email: collabUser.email })
+
+                expect(res.status).toBe(201)
+                expect(res.body.success).toBe(true)
+                expect(res.body.data.email).toBe(collabUser.email)
+            })
+
+            it('should return 400 when email/username is missing or empty', async () => {
+                const project = await createTestProject()
+
+                const res = await request(app)
+                    .post(`/api/v1/projects/${project.id}/collaborators`)
+                    .send({ email: '' })
+
+                expect(res.status).toBe(400)
+                expect(res.body.success).toBe(false)
+            })
+
+            it('should return 404 when target user does not exist', async () => {
+                const project = await createTestProject()
+
+                const res = await request(app)
+                    .post(`/api/v1/projects/${project.id}/collaborators`)
+                    .send({ email: 'nobody@example.com' })
+
+                expect(res.status).toBe(404)
+                expect(res.body.success).toBe(false)
+            })
+
+            it('should return 400 when adding already existing collaborator', async () => {
+                const project = await createTestProject()
+                const collabUser = await prisma.user.create({
+                    data: {
+                        name: 'Collab User 2',
+                        email: `collab2-${crypto.randomUUID()}@example.com`,
+                        username: `collabuser2-${crypto.randomUUID()}`,
+                        password: 'pw',
+                    },
+                })
+
+                await request(app)
+                    .post(`/api/v1/projects/${project.id}/collaborators`)
+                    .send({ email: collabUser.email })
+
+                const res = await request(app)
+                    .post(`/api/v1/projects/${project.id}/collaborators`)
+                    .send({ email: collabUser.email })
+
+                expect(res.status).toBe(400)
+                expect(res.body.success).toBe(false)
+            })
+        })
+
+        describe('DELETE /:projectId/collaborators/:email', () => {
+            it('should return 200 on successful collaborator removal', async () => {
+                const project = await createTestProject()
+                const collabUser = await prisma.user.create({
+                    data: {
+                        name: 'Collab User 3',
+                        email: `collab3-${crypto.randomUUID()}@example.com`,
+                        username: `collabuser3-${crypto.randomUUID()}`,
+                        password: 'pw',
+                    },
+                })
+
+                await request(app)
+                    .post(`/api/v1/projects/${project.id}/collaborators`)
+                    .send({ email: collabUser.email })
+
+                const res = await request(app).delete(
+                    `/api/v1/projects/${project.id}/collaborators/${collabUser.email}`
+                )
+
+                expect(res.status).toBe(200)
+                expect(res.body.success).toBe(true)
+                expect(res.body.data.message).toBe('collaborator removed successfully')
+            })
+
+            it('should return 404 when attempting to remove non-existent collaborator', async () => {
+                const project = await createTestProject()
+
+                const res = await request(app).delete(
+                    `/api/v1/projects/${project.id}/collaborators/notacollab@example.com`
+                )
+
+                expect(res.status).toBe(404)
+                expect(res.body.success).toBe(false)
+            })
         })
     })
 })

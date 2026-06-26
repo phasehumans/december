@@ -199,6 +199,47 @@ const getVercelDeploymentStatus = (deploymentId: string) => {
     }>(`/platform/deployments/${deploymentId}/status`)
 }
 
+const searchUsers = (query: string) => {
+    return apiRequest<{ id: string; username: string; email: string; name?: string | null }[]>(
+        `/project/users/search?query=${encodeURIComponent(query)}`
+    )
+}
+
+const getCollaborators = (projectId: string) => {
+    return apiRequest<
+        {
+            id: string
+            projectId: string
+            userId: string
+            email: string
+            createdAt: string
+            user?: { username: string; name?: string | null }
+        }[]
+    >(`/project/${projectId}/collaborators`)
+}
+
+const addCollaborator = (projectId: string, email: string) => {
+    return apiRequest<{
+        id: string
+        projectId: string
+        userId: string
+        email: string
+        createdAt: string
+    }>(`/project/${projectId}/collaborators`, {
+        method: 'POST',
+        body: JSON.stringify({ email }),
+    })
+}
+
+const removeCollaborator = (projectId: string, email: string) => {
+    return apiRequest<{ message: string }>(
+        `/project/${projectId}/collaborators/${encodeURIComponent(email)}`,
+        {
+            method: 'DELETE',
+        }
+    )
+}
+
 export const projectAPI = {
     getProjects,
     getProject,
@@ -212,4 +253,8 @@ export const projectAPI = {
     downloadProject,
     deployToVercel,
     getVercelDeploymentStatus,
+    searchUsers,
+    getCollaborators,
+    addCollaborator,
+    removeCollaborator,
 }

@@ -10,6 +10,7 @@ import {
     ExternalLink,
     CheckCircle,
     Loader2,
+    Share2,
 } from 'lucide-react'
 import React, { useState, useEffect } from 'react'
 
@@ -42,6 +43,7 @@ interface SettingsModalProps {
         | 'domains'
         | 'analytics'
         | 'publish'
+        | 'vercel'
     projectName: string
     projectId?: string | null
 }
@@ -357,10 +359,11 @@ export const SettingsBigModal: React.FC<SettingsModalProps> = ({
 
     const tabs = [
         { id: 'general', label: 'General', icon: <Sliders size={15} /> },
+        { id: 'share', label: 'Share', icon: <Share2 size={15} /> },
         { id: 'integrations', label: 'GitHub', icon: <Github size={15} /> },
-        { id: 'publish', label: 'Vercel', icon: <VercelIcon className="w-[15px] h-[15px]" /> },
-        { id: 'share', label: 'Publish', icon: <Cloud size={15} /> },
+        { id: 'vercel', label: 'Vercel', icon: <VercelIcon className="w-[15px] h-[15px]" /> },
         { id: 'variables', label: 'Env Variables', icon: <Terminal size={15} /> },
+        { id: 'publish', label: 'Publish', icon: <Cloud size={15} /> },
     ]
 
     return (
@@ -435,7 +438,7 @@ export const SettingsBigModal: React.FC<SettingsModalProps> = ({
                                 />
                             )}
 
-                            {activeTab === 'publish' && (
+                            {activeTab === 'vercel' && (
                                 <PublishTab
                                     deploying={deploying}
                                     deployed={deployed}
@@ -453,6 +456,29 @@ export const SettingsBigModal: React.FC<SettingsModalProps> = ({
                                 />
                             )}
 
+                            {activeTab === 'publish' && (
+                                <div className="max-w-2xl animate-in fade-in duration-200">
+                                    <div className="border-b border-[#242323] pb-6 mb-8">
+                                        <h2 className="text-[20px] font-semibold text-[#D6D5C9] tracking-tight mb-1">
+                                            Publish
+                                        </h2>
+                                        <p className="text-[13px] text-[#7B7A79]">
+                                            Deploy and manage your project publications.
+                                        </p>
+                                    </div>
+                                    <div className="border border-[#242323] rounded-2xl p-12 text-center bg-[#1E1D1B]/50 flex flex-col items-center justify-center">
+                                        <Cloud className="w-8 h-8 text-[#7B7A79] mb-3" />
+                                        <h3 className="text-[14px] font-medium text-[#D6D5C9] mb-1">
+                                            No publications yet
+                                        </h3>
+                                        <p className="text-[13px] text-[#7B7A79] max-w-sm">
+                                            Your published projects will appear here once
+                                            configured.
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+
                             {activeTab === 'share' && (
                                 <ShareTab
                                     visibility={visibility}
@@ -461,6 +487,9 @@ export const SettingsBigModal: React.FC<SettingsModalProps> = ({
                                     setEmail={setEmail}
                                     inviteRole={inviteRole}
                                     setInviteRole={setInviteRole}
+                                    projectId={projectId}
+                                    project={project}
+                                    profile={profile}
                                 />
                             )}
 
