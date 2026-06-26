@@ -49,10 +49,10 @@ NODE_ENV=test bun test --preload ./test/env.ts ./test/unit/notification.unit.tes
 NODE_ENV=test bun test --preload ./test/env.ts ./test/integration/notification/notification.routes.test.ts
 NODE_ENV=test bun test --preload ./test/env.ts ./test/integration/notification/notification.service.test.ts
 
-# NODE_ENV=test bun test --preload ./test/env.ts ./test/unit/platform.unit.test.ts
-# NODE_ENV=test bun test --preload ./test/env.ts ./test/integration/platform/platform.routes.test.ts
-# NODE_ENV=test bun test --preload ./test/env.ts ./test/integration/platform/platform.service.test.ts
+NODE_ENV=test bun test --preload ./test/env.ts ./test/unit/platform.unit.test.ts
+NODE_ENV=test bun test --preload ./test/env.ts ./test/integration/platform/platform.routes.test.ts
+NODE_ENV=test bun test --preload ./test/env.ts ./test/integration/platform/platform.service.test.ts
 
-# NODE_ENV=test bun test --preload ./test/env.ts ./test/unit/profile.unit.test.ts
-# NODE_ENV=test bun test --preload ./test/env.ts ./test/integration/profile/profile.routes.test.ts
-# NODE_ENV=test bun test --preload ./test/env.ts ./test/integration/profile/profile.service.test.ts
+NODE_ENV=test bun test --preload ./test/env.ts ./test/unit/profile.unit.test.ts
+NODE_ENV=test bun test --preload ./test/env.ts ./test/integration/profile/profile.routes.test.ts
+NODE_ENV=test bun test --preload ./test/env.ts ./test/integration/profile/profile.service.test.ts
