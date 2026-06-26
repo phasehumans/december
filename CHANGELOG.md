@@ -1,9 +1,32 @@
 ## [unreleased]
 
+### Features
+
+- Add payments via razorpay and coinbase
+- _(billing)_ Add wallet based credits instead of subscription based #117
+- Direct deploy via vercel
+- _(platform)_ Direct deploy via vercel and fix github + vercel deploy flow
+- Implement project collaboration, runtime fixes, publish tab, and extensive tests #149
+
+### Bug Fixes
+
+- _(generattion)_ Fix scaffold paths; mv to runtime #113
+
+### Testing
+
+- _(canavas/notification/import/profile)_ Add test unit and integration #110
+- Billing module
+
+## [0.1.5] - 2026-06-22
+
 ### Testing
 
 - _(auth)_ Add auth tests #103
 - _(canvas)_ Added tests #105
+
+### Miscellaneous Tasks
+
+- _(release)_ V0.1.5
 
 ## [0.1.4] - 2026-06-17
 
