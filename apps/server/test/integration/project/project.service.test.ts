@@ -657,4 +657,255 @@ describe('project.service.integration', () => {
             expect(threw).toBe(true)
         })
     })
+
+    describe('collaboration integration', () => {
+        describe('addCollaborator', () => {
+            it('should add a collaborator successfully by email', async () => {
+                const collabUser = await createUser()
+                const result = await projectService.addCollaborator({
+                    userId,
+                    projectId,
+                    email: collabUser.email,
+                })
+
+                expect(result.userId).toBe(collabUser.id)
+                expect(result.email).toBe(collabUser.email)
+                expect(result.user.username).toBe(collabUser.username)
+            })
+
+            it('should add a collaborator successfully by username', async () => {
+                const collabUser = await createUser()
+                const result = await projectService.addCollaborator({
+                    userId,
+                    projectId,
+                    email: collabUser.username,
+                })
+
+                expect(result.userId).toBe(collabUser.id)
+                expect(result.email).toBe(collabUser.email)
+            })
+
+            it('should throw 403 if a non-owner tries to add a collaborator', async () => {
+                const otherUser = await createUser()
+                const collabUser = await createUser()
+
+                let threw = false
+                try {
+                    await projectService.addCollaborator({
+                        userId: otherUser.id,
+                        projectId,
+                        email: collabUser.email,
+                    })
+                } catch (err: any) {
+                    threw = true
+                    expect(err.statusCode).toBe(403)
+                    expect(err.message).toBe('only the project creator can add collaborators')
+                }
+                expect(threw).toBe(true)
+            })
+
+            it('should throw 404 if target user does not exist', async () => {
+                let threw = false
+                try {
+                    await projectService.addCollaborator({
+                        userId,
+                        projectId,
+                        email: 'nonexistent@example.com',
+                    })
+                } catch (err: any) {
+                    threw = true
+                    expect(err.statusCode).toBe(404)
+                    expect(err.message).toBe('user not found')
+                }
+                expect(threw).toBe(true)
+            })
+
+            it('should throw 404 if target user is soft deleted', async () => {
+                const deletedUser = await createSoftDeletedUser()
+
+                let threw = false
+                try {
+                    await projectService.addCollaborator({
+                        userId,
+                        projectId,
+                        email: deletedUser.email,
+                    })
+                } catch (err: any) {
+                    threw = true
+                    expect(err.statusCode).toBe(404)
+                    expect(err.message).toBe('user not found')
+                }
+                expect(threw).toBe(true)
+            })
+
+            it('should throw 400 if owner tries to add themselves', async () => {
+                const owner = await prisma.user.findUnique({ where: { id: userId } })
+                let threw = false
+                try {
+                    await projectService.addCollaborator({
+                        userId,
+                        projectId,
+                        email: owner!.email,
+                    })
+                } catch (err: any) {
+                    threw = true
+                    expect(err.statusCode).toBe(400)
+                    expect(err.message).toBe('you cannot add yourself as a collaborator')
+                }
+                expect(threw).toBe(true)
+            })
+
+            it('should throw 400 if user is already a collaborator', async () => {
+                const collabUser = await createUser()
+                await projectService.addCollaborator({
+                    userId,
+                    projectId,
+                    email: collabUser.email,
+                })
+
+                let threw = false
+                try {
+                    await projectService.addCollaborator({
+                        userId,
+                        projectId,
+                        email: collabUser.email,
+                    })
+                } catch (err: any) {
+                    threw = true
+                    expect(err.statusCode).toBe(400)
+                    expect(err.message).toBe('user is already a collaborator on this project')
+                }
+                expect(threw).toBe(true)
+            })
+
+            it('should enforce the maximum limit of 3 collaborators', async () => {
+                const user1 = await createUser()
+                const user2 = await createUser()
+                const user3 = await createUser()
+                const user4 = await createUser()
+
+                await projectService.addCollaborator({ userId, projectId, email: user1.email })
+                await projectService.addCollaborator({ userId, projectId, email: user2.email })
+                await projectService.addCollaborator({ userId, projectId, email: user3.email })
+
+                let threw = false
+                try {
+                    await projectService.addCollaborator({ userId, projectId, email: user4.email })
+                } catch (err: any) {
+                    threw = true
+                    expect(err.statusCode).toBe(400)
+                    expect(err.message).toBe('maximum limit of 3 collaborators reached')
+                }
+                expect(threw).toBe(true)
+            })
+        })
+
+        describe('getCollaborators and collaborator project access', () => {
+            it('should allow owner to list collaborators', async () => {
+                const collabUser = await createUser()
+                await projectService.addCollaborator({ userId, projectId, email: collabUser.email })
+
+                const list = await projectService.getCollaborators({ userId, projectId })
+                expect(list.length).toBe(1)
+                expect(list[0]!.email).toBe(collabUser.email)
+            })
+
+            it('should allow collaborator to list collaborators', async () => {
+                const collabUser = await createUser()
+                await projectService.addCollaborator({ userId, projectId, email: collabUser.email })
+
+                const list = await projectService.getCollaborators({
+                    userId: collabUser.id,
+                    projectId,
+                })
+                expect(list.length).toBe(1)
+                expect(list[0]!.email).toBe(collabUser.email)
+            })
+
+            it('should throw 404 for getCollaborators if requesting user has no access', async () => {
+                const otherUser = await createUser()
+                let threw = false
+                try {
+                    await projectService.getCollaborators({ userId: otherUser.id, projectId })
+                } catch (err: any) {
+                    threw = true
+                    expect(err.statusCode).toBe(404)
+                    expect(err.message).toBe('project not found')
+                }
+                expect(threw).toBe(true)
+            })
+
+            it('should include project in getAllProjects for a collaborator', async () => {
+                const collabUser = await createUser()
+                await projectService.addCollaborator({ userId, projectId, email: collabUser.email })
+
+                const projects = await projectService.getAllProjects({ userId: collabUser.id })
+                expect(projects.length).toBe(1)
+                expect(projects[0]!.id).toBe(projectId)
+            })
+
+            it('should allow collaborator to fetch project via getProjectById', async () => {
+                const collabUser = await createUser()
+                await projectService.addCollaborator({ userId, projectId, email: collabUser.email })
+
+                const result = await projectService.getProjectById({
+                    userId: collabUser.id,
+                    projectId,
+                })
+                expect(result.project.id).toBe(projectId)
+            })
+        })
+
+        describe('removeCollaborator', () => {
+            it('should remove a collaborator successfully as owner', async () => {
+                const collabUser = await createUser()
+                await projectService.addCollaborator({ userId, projectId, email: collabUser.email })
+
+                const res = await projectService.removeCollaborator({
+                    userId,
+                    projectId,
+                    email: collabUser.email,
+                })
+                expect(res.message).toBe('collaborator removed successfully')
+
+                const list = await projectService.getCollaborators({ userId, projectId })
+                expect(list.length).toBe(0)
+            })
+
+            it('should throw 403 if a non-owner tries to remove a collaborator', async () => {
+                const collabUser = await createUser()
+                await projectService.addCollaborator({ userId, projectId, email: collabUser.email })
+
+                let threw = false
+                try {
+                    await projectService.removeCollaborator({
+                        userId: collabUser.id,
+                        projectId,
+                        email: collabUser.email,
+                    })
+                } catch (err: any) {
+                    threw = true
+                    expect(err.statusCode).toBe(403)
+                    expect(err.message).toBe('only the project creator can remove collaborators')
+                }
+                expect(threw).toBe(true)
+            })
+
+            it('should throw 404 if trying to remove an email that is not a collaborator', async () => {
+                let threw = false
+                try {
+                    await projectService.removeCollaborator({
+                        userId,
+                        projectId,
+                        email: 'notacollab@example.com',
+                    })
+                } catch (err: any) {
+                    threw = true
+                    expect(err.statusCode).toBe(404)
+                    expect(err.message).toBe('collaborator not found')
+                }
+                expect(threw).toBe(true)
+            })
+        })
+    })
 })

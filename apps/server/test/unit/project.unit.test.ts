@@ -339,6 +339,11 @@ import {
     createProjectSchema,
     renameProjectSchema,
     updateGeneralSettingsSchema,
+    getProjectByIdSchema,
+    duplicateProjectSchema,
+    toggleStarProjectSchema,
+    shareProjectAsTemplateSchema,
+    addCollaboratorSchema,
 } from '../../src/modules/project/project.schema'
 
 describe('project schemas', () => {
@@ -395,6 +400,91 @@ describe('project schemas', () => {
             const res = updateGeneralSettingsSchema.safeParse({
                 projectCategory: 'INVALID_CATEGORY',
             })
+            expect(res.success).toBe(false)
+        })
+    })
+
+    describe('getProjectByIdSchema', () => {
+        test('validates valid uuid versionId', () => {
+            const res = getProjectByIdSchema.safeParse({
+                versionId: '123e4567-e89b-12d3-a456-426614174000',
+            })
+            expect(res.success).toBe(true)
+        })
+
+        test('fails if versionId is invalid uuid', () => {
+            const res = getProjectByIdSchema.safeParse({ versionId: 'invalid-uuid' })
+            expect(res.success).toBe(false)
+        })
+
+        test('validates empty object since versionId is optional', () => {
+            const res = getProjectByIdSchema.safeParse({})
+            expect(res.success).toBe(true)
+        })
+    })
+
+    describe('duplicateProjectSchema', () => {
+        test('validates valid name', () => {
+            const res = duplicateProjectSchema.safeParse({ name: 'Valid Duplicate Name' })
+            expect(res.success).toBe(true)
+        })
+
+        test('fails if name is too short', () => {
+            const res = duplicateProjectSchema.safeParse({ name: 'a' })
+            expect(res.success).toBe(false)
+        })
+
+        test('validates empty object since name is optional', () => {
+            const res = duplicateProjectSchema.safeParse({})
+            expect(res.success).toBe(true)
+        })
+    })
+
+    describe('toggleStarProjectSchema', () => {
+        test('validates boolean isStarred', () => {
+            const res = toggleStarProjectSchema.safeParse({ isStarred: true })
+            expect(res.success).toBe(true)
+        })
+
+        test('fails if isStarred is missing or not a boolean', () => {
+            const res = toggleStarProjectSchema.safeParse({ isStarred: 'true' })
+            expect(res.success).toBe(false)
+        })
+    })
+
+    describe('shareProjectAsTemplateSchema', () => {
+        test('validates boolean isSharedAsTemplate and valid projectCategory', () => {
+            const res = shareProjectAsTemplateSchema.safeParse({
+                isSharedAsTemplate: true,
+                projectCategory: 'LANDING_PAGE',
+            })
+            expect(res.success).toBe(true)
+        })
+
+        test('fails if isSharedAsTemplate is missing', () => {
+            const res = shareProjectAsTemplateSchema.safeParse({ projectCategory: 'LANDING_PAGE' })
+            expect(res.success).toBe(false)
+        })
+    })
+
+    describe('addCollaboratorSchema', () => {
+        test('validates valid email address', () => {
+            const res = addCollaboratorSchema.safeParse({ email: 'collaborator@example.com' })
+            expect(res.success).toBe(true)
+        })
+
+        test('validates valid username', () => {
+            const res = addCollaboratorSchema.safeParse({ email: 'chaitanya' })
+            expect(res.success).toBe(true)
+        })
+
+        test('fails if email/username is empty string', () => {
+            const res = addCollaboratorSchema.safeParse({ email: '' })
+            expect(res.success).toBe(false)
+        })
+
+        test('fails if email/username is missing', () => {
+            const res = addCollaboratorSchema.safeParse({})
             expect(res.success).toBe(false)
         })
     })
