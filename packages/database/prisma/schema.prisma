@@ -58,6 +58,7 @@ model User {
   sessions               Session[]
   walletTransactions     WalletTransaction[]
   usageEvents            UsageEvent[]
+  collaborations         ProjectCollaborator[]
 }
 
 model Notification {
@@ -129,6 +130,7 @@ model Project {
   messages               ProjectMessage[]
   versions               ProjectVersion[]     @relation("ProjectVersions")
   usageEvents            UsageEvent[]
+  collaborators          ProjectCollaborator[]
 
   @@index([userId, updatedAt])
   @@index([isSharedAsTemplate, updatedAt])
@@ -244,6 +246,23 @@ model ProjectLike {
   @@index([userId])
   @@index([projectId])
   @@index([projectId, isLiked])
+}
+
+model ProjectCollaborator {
+  id        String   @id @default(uuid())
+  projectId String
+  userId    String
+  email     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, userId])
+  @@unique([projectId, email])
+  @@index([projectId])
+  @@index([userId])
+  @@index([email])
 }
 
 model WalletTransaction {

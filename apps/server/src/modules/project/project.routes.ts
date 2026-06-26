@@ -17,5 +17,8 @@ projectRouter.delete('/:projectId', projectController.deleteProject)
 projectRouter.post('/:projectId/duplicate', projectController.duplicateProject)
 projectRouter.post('/:projectId/share', projectController.shareProjectAsTemplate)
 projectRouter.post('/:projectId/star', projectController.toggleStarProject)
+projectRouter.get('/:projectId/collaborators', projectController.getCollaborators)
+projectRouter.post('/:projectId/collaborators', projectController.addCollaborator)
+projectRouter.delete('/:projectId/collaborators/:email', projectController.removeCollaborator)
 
 export default projectRouter
