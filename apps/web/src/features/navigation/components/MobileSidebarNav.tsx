@@ -4,21 +4,6 @@ import { SidebarNavItem } from './SidebarNavItem'
 
 import { Icons } from '@/shared/components/ui/Icons'
 
-const HeavyAsteriskIcon = (props: React.SVGProps<SVGSVGElement>) => (
-    <svg
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="3.5"
-        strokeLinecap="round"
-        {...props}
-    >
-        <line x1="12" y1="5" x2="12" y2="19" />
-        <line x1="12" y1="5" x2="12" y2="19" transform="rotate(60 12 12)" />
-        <line x1="12" y1="5" x2="12" y2="19" transform="rotate(120 12 12)" />
-    </svg>
-)
-
 interface MobileSidebarNavProps {
     onClose: () => void
     onNewThread: () => void
@@ -85,8 +70,8 @@ export const MobileSidebarNav: React.FC<MobileSidebarNavProps> = ({
                 }}
             />
             <SidebarNavItem
-                icon={<HeavyAsteriskIcon className="w-[18px] h-[18px]" />}
-                label="December CLI"
+                icon={<Icons.DocsBook className="w-[18px] h-[18px]" />}
+                label="Documentation"
                 collapsed={false}
                 onClick={() => {
                     onDocs()

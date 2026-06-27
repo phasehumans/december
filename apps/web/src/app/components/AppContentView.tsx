@@ -15,6 +15,7 @@ import type { BackendProjectVersionSummary } from '@/features/projects/api/proje
 import type { Project } from '@/features/projects/types'
 
 import { CliPage } from '@/features/docs/components/CliPage'
+import { DocsPage } from '@/features/docs/components/DocsPage'
 import { HomeHero } from '@/features/home/components/HomeHero'
 import { OutputScreen } from '@/features/preview/components/OutputScreen'
 import { ProfileSettings } from '@/features/profile/components/ProfileSettings'
@@ -175,9 +176,15 @@ export const AppContentView: React.FC<AppContentViewProps> = ({
                 </AnimatedPage>
             )}
 
+            {view === 'cli' && (
+                <AnimatedPage pageKey="cli">
+                    <CliPage onBack={onNewProject} />
+                </AnimatedPage>
+            )}
+
             {view === 'docs' && (
                 <AnimatedPage pageKey="docs">
-                    <CliPage onBack={onNewProject} />
+                    <DocsPage onBack={onNewProject} />
                 </AnimatedPage>
             )}
 
