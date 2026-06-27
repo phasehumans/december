@@ -25,13 +25,13 @@ export const ScrollableSection: React.FC<ScrollableSectionProps> = ({ title, chi
                 <div className="flex items-center gap-2">
                     <button
                         onClick={() => scroll('left')}
-                        className="w-7 h-7 rounded-full border border-[#383736] bg-[#171615] flex items-center justify-center text-[#D6D5C9] hover:bg-[#1E1D1B] transition-all active:scale-95"
+                        className="w-7 h-7 rounded-full border border-[#383736] bg-[#141414] flex items-center justify-center text-[#D6D5C9] hover:bg-[#191919] transition-all active:scale-95"
                     >
                         <Icons.ChevronRight className="w-3.5 h-3.5 rotate-180" />
                     </button>
                     <button
                         onClick={() => scroll('right')}
-                        className="w-7 h-7 rounded-full border border-[#383736] bg-[#171615] flex items-center justify-center text-[#D6D5C9] hover:bg-[#1E1D1B] transition-all active:scale-95"
+                        className="w-7 h-7 rounded-full border border-[#383736] bg-[#141414] flex items-center justify-center text-[#D6D5C9] hover:bg-[#191919] transition-all active:scale-95"
                     >
                         <Icons.ChevronRight className="w-3.5 h-3.5" />
                     </button>

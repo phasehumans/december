@@ -117,7 +117,7 @@ export const CanvasToolbarTopBar = React.forwardRef<HTMLDivElement, CanvasToolba
         return (
             <div
                 ref={ref}
-                className="pointer-events-auto flex items-center gap-1 p-1 bg-[#171615] border border-white/10 rounded-lg ring-1 ring-white/5 max-w-full overflow-x-auto no-scrollbar"
+                className="pointer-events-auto flex items-center gap-1 p-1 bg-[#141414] border border-white/10 rounded-lg ring-1 ring-white/5 max-w-full overflow-x-auto no-scrollbar"
             >
                 {renderGroup(navigationActions, 'flex items-center gap-0.5 pl-0.5')}
                 <div className="w-px h-5 bg-white/10 mx-1" />

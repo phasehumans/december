@@ -126,7 +126,7 @@ const Sidebar: React.FC<
                                     <button
                                         key={project.id}
                                         onClick={() => onOpenProject?.(project.id)}
-                                        className="flex items-center px-3 py-0.5 w-full text-left rounded-lg hover:bg-[#252422] transition-colors group"
+                                        className="flex items-center px-3 py-0.5 w-full text-left rounded-lg hover:bg-[#252525] transition-colors group"
                                     >
                                         <span className="font-medium text-[12px] lowercase transition-colors tracking-tight text-[#8F8E8D] group-hover:text-[#CBCACA] truncate">
                                             {/* @ts-expect-error */}

@@ -90,7 +90,7 @@ export const UploadProjectForm: React.FC<UploadProjectFormProps> = ({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -8, scale: 0.98 }}
             transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-            className="w-full max-w-[638px] mt-3 rounded-[14px] bg-[#171615] border border-[#242322]"
+            className="w-full max-w-[638px] mt-3 rounded-[14px] bg-[#141414] border border-[#242322]"
         >
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-2.5 bg-[#242322] rounded-t-[13px]">
@@ -127,7 +127,7 @@ export const UploadProjectForm: React.FC<UploadProjectFormProps> = ({
                         `}
                     >
                         <div
-                            className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors ${isDragOver ? 'bg-white/10' : 'bg-[#252422]'}`}
+                            className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors ${isDragOver ? 'bg-white/10' : 'bg-[#252525]'}`}
                         >
                             <Icons.FolderUp
                                 className={`w-[17px] h-[17px] transition-colors ${isDragOver ? 'text-[#D6D5D4]' : 'text-[#656565]'}`}
@@ -178,7 +178,7 @@ export const UploadProjectForm: React.FC<UploadProjectFormProps> = ({
                                 <button
                                     onClick={removeFile}
                                     disabled={isImporting}
-                                    className="h-[36px] px-4 rounded-[10px] bg-[#252422] hover:bg-[#2E2D2C] text-[#A1A1AA] text-[13px] font-medium transition-colors"
+                                    className="h-[36px] px-4 rounded-[10px] bg-[#252525] hover:bg-[#2E2D2C] text-[#A1A1AA] text-[13px] font-medium transition-colors"
                                 >
                                     Cancel
                                 </button>

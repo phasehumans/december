@@ -373,12 +373,12 @@ export const SettingsBigModal: React.FC<SettingsModalProps> = ({
             onClose={handleClose}
         >
             {/* Sidebar */}
-            <div className="w-[220px] shrink-0 border-r border-[#242323] flex flex-col py-4 bg-[#171615]">
+            <div className="w-[220px] shrink-0 border-r border-[#242323] flex flex-col py-4 bg-[#141414]">
                 <div className="px-4 mb-6">
                     <button
                         type="button"
                         onClick={handleClose}
-                        className="flex items-center text-[#7B7A79] hover:text-[#D6D5D4] hover:bg-[#1E1D1B] px-2 py-1 -ml-2 rounded-lg text-[13px] font-medium transition-colors cursor-pointer"
+                        className="flex items-center text-[#7B7A79] hover:text-[#D6D5D4] hover:bg-[#191919] px-2 py-1 -ml-2 rounded-lg text-[13px] font-medium transition-colors cursor-pointer"
                     >
                         <ChevronLeft className="w-4 h-4 mr-2" />
                         Back
@@ -397,7 +397,7 @@ export const SettingsBigModal: React.FC<SettingsModalProps> = ({
                             className={`flex items-center gap-3 px-3 py-1.5 rounded-xl text-[13px] font-medium transition-colors text-left outline-none w-full cursor-pointer ${
                                 activeTab === t.id
                                     ? 'bg-[#242323] text-[#D6D5C9]'
-                                    : 'text-[#D6D5C9] hover:bg-[#1E1D1B]'
+                                    : 'text-[#D6D5C9] hover:bg-[#191919]'
                             }`}
                         >
                             <span className="flex items-center justify-center">
@@ -413,7 +413,7 @@ export const SettingsBigModal: React.FC<SettingsModalProps> = ({
             </div>
 
             {/* Right Pane */}
-            <div className="flex-1 flex flex-col min-w-0 h-full bg-[#171615] relative">
+            <div className="flex-1 flex flex-col min-w-0 h-full bg-[#141414] relative">
                 {/* Content Area */}
                 <div className="flex-1 overflow-y-auto [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/10 hover:[&::-webkit-scrollbar-thumb]:bg-white/20 p-8 pr-16">
                     {isLoading ? (
@@ -466,7 +466,7 @@ export const SettingsBigModal: React.FC<SettingsModalProps> = ({
                                             Deploy and manage your project publications.
                                         </p>
                                     </div>
-                                    <div className="border border-[#242323] rounded-2xl p-12 text-center bg-[#1E1D1B]/50 flex flex-col items-center justify-center">
+                                    <div className="border border-[#242323] rounded-2xl p-12 text-center bg-[#191919]/50 flex flex-col items-center justify-center">
                                         <Cloud className="w-8 h-8 text-[#7B7A79] mb-3" />
                                         <h3 className="text-[14px] font-medium text-[#D6D5C9] mb-1">
                                             No publications yet
@@ -506,7 +506,7 @@ export const SettingsBigModal: React.FC<SettingsModalProps> = ({
                                             </div>
                                         ) : !profile.githubConnected ? (
                                             <div className="border border-dashed border-[#383736] rounded-xl py-14 flex flex-col items-center justify-center gap-4 bg-[#100E12]/30 hover:border-[#4A4948] transition-colors w-full">
-                                                <div className="w-14 h-14 rounded-2xl bg-[#1E1D1B] border border-[#383736] flex items-center justify-center shadow-md">
+                                                <div className="w-14 h-14 rounded-2xl bg-[#191919] border border-[#383736] flex items-center justify-center shadow-md">
                                                     <Github className="w-7 h-7 text-[#D6D5C9]" />
                                                 </div>
                                                 <div className="flex flex-col items-center gap-1.5 text-center px-4">
@@ -522,7 +522,7 @@ export const SettingsBigModal: React.FC<SettingsModalProps> = ({
                                                 <button
                                                     type="button"
                                                     onClick={handleConnectGithub}
-                                                    className="flex items-center gap-2 px-5 py-2 rounded-lg border border-[#383736] bg-[#171615] hover:bg-[#1E1D1B] text-[13px] font-medium text-[#D6D5C9] hover:text-white transition-all cursor-pointer mt-1"
+                                                    className="flex items-center gap-2 px-5 py-2 rounded-lg border border-[#383736] bg-[#141414] hover:bg-[#191919] text-[13px] font-medium text-[#D6D5C9] hover:text-white transition-all cursor-pointer mt-1"
                                                 >
                                                     <Github className="w-4 h-4" />
                                                     Connect GitHub
@@ -531,7 +531,7 @@ export const SettingsBigModal: React.FC<SettingsModalProps> = ({
                                         ) : project && !project.githubRepoName ? (
                                             <div className="flex flex-col w-full animate-in fade-in duration-200">
                                                 <div className="flex items-center gap-4 mb-6 text-left">
-                                                    <div className="w-10 h-10 rounded-lg bg-[#1E1D1B] border border-[#383736] flex items-center justify-center shrink-0">
+                                                    <div className="w-10 h-10 rounded-lg bg-[#191919] border border-[#383736] flex items-center justify-center shrink-0">
                                                         <Github className="w-5 h-5 text-[#D6D5C9]" />
                                                     </div>
                                                     <div className="flex flex-col gap-0.5">
@@ -617,11 +617,11 @@ export const SettingsBigModal: React.FC<SettingsModalProps> = ({
                                                         disabled={
                                                             isCreatingRepo || !githubRepoName.trim()
                                                         }
-                                                        className="w-fit flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#E8E7E4] text-[#171615] hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed text-[13px] font-semibold transition-colors cursor-pointer"
+                                                        className="w-fit flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#E8E7E4] text-[#141414] hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed text-[13px] font-semibold transition-colors cursor-pointer"
                                                     >
                                                         {isCreatingRepo ? (
                                                             <>
-                                                                <Loader2 className="w-4 h-4 animate-spin text-[#171615]" />
+                                                                <Loader2 className="w-4 h-4 animate-spin text-[#141414]" />
                                                                 Creating...
                                                             </>
                                                         ) : (
@@ -634,7 +634,7 @@ export const SettingsBigModal: React.FC<SettingsModalProps> = ({
                                             <div className="flex flex-col w-full animate-in fade-in duration-200">
                                                 <div className="flex items-center justify-between mb-6 w-full">
                                                     <div className="flex items-center gap-4 text-left font-medium">
-                                                        <div className="w-10 h-10 rounded-lg bg-[#1E1D1B] border border-[#383736] flex items-center justify-center shrink-0">
+                                                        <div className="w-10 h-10 rounded-lg bg-[#191919] border border-[#383736] flex items-center justify-center shrink-0">
                                                             <Github className="w-5 h-5 text-[#D6D5C9]" />
                                                         </div>
                                                         <div className="flex flex-col gap-0.5">
@@ -647,7 +647,7 @@ export const SettingsBigModal: React.FC<SettingsModalProps> = ({
                                                             </span>
                                                         </div>
                                                     </div>
-                                                    <span className="text-[11px] font-medium px-2 py-0.5 rounded border border-[#2B2A29] bg-[#1E1D1B] text-[#D6D5C9]">
+                                                    <span className="text-[11px] font-medium px-2 py-0.5 rounded border border-[#2B2A29] bg-[#191919] text-[#D6D5C9]">
                                                         Active
                                                     </span>
                                                 </div>
@@ -658,12 +658,12 @@ export const SettingsBigModal: React.FC<SettingsModalProps> = ({
                                                             Linked Repository
                                                         </span>
                                                         {githubIsPrivate ? (
-                                                            <span className="flex items-center gap-1 px-2 py-0.5 rounded border border-[#2B2A29] bg-[#1E1D1B] text-[11px] text-[#7B7A79]">
+                                                            <span className="flex items-center gap-1 px-2 py-0.5 rounded border border-[#2B2A29] bg-[#191919] text-[11px] text-[#7B7A79]">
                                                                 <Lock className="w-3 h-3" />
                                                                 Private
                                                             </span>
                                                         ) : (
-                                                            <span className="flex items-center gap-1 px-2 py-0.5 rounded border border-[#2B2A29] bg-[#1E1D1B] text-[11px] text-[#7B7A79]">
+                                                            <span className="flex items-center gap-1 px-2 py-0.5 rounded border border-[#2B2A29] bg-[#191919] text-[11px] text-[#7B7A79]">
                                                                 <Globe className="w-3 h-3" />
                                                                 Public
                                                             </span>
@@ -718,7 +718,7 @@ export const SettingsBigModal: React.FC<SettingsModalProps> = ({
                                                     )}
 
                                                     {githubSyncSuccess && (
-                                                        <div className="text-[12.5px] text-[#D6D5C9] bg-[#1E1D1B] border border-[#383736] px-3.5 py-2.5 rounded-xl flex items-center gap-2 text-left w-full">
+                                                        <div className="text-[12.5px] text-[#D6D5C9] bg-[#191919] border border-[#383736] px-3.5 py-2.5 rounded-xl flex items-center gap-2 text-left w-full">
                                                             <CheckCircle className="w-4 h-4 shrink-0 text-[#7B7A79]" />
                                                             Latest changes pushed successfully!
                                                         </div>
@@ -728,16 +728,16 @@ export const SettingsBigModal: React.FC<SettingsModalProps> = ({
                                                         type="button"
                                                         onClick={handleSyncGithubRepo}
                                                         disabled={isSyncingRepo}
-                                                        className="w-fit flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#E8E7E4] text-[#171615] hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed text-[13px] font-semibold transition-colors cursor-pointer"
+                                                        className="w-fit flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#E8E7E4] text-[#141414] hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed text-[13px] font-semibold transition-colors cursor-pointer"
                                                     >
                                                         {isSyncingRepo ? (
                                                             <>
-                                                                <Loader2 className="w-4 h-4 animate-spin text-[#171615]" />
+                                                                <Loader2 className="w-4 h-4 animate-spin text-[#141414]" />
                                                                 Pushing...
                                                             </>
                                                         ) : (
                                                             <>
-                                                                <Github className="w-4 h-4 text-[#171615]" />
+                                                                <Github className="w-4 h-4 text-[#141414]" />
                                                                 Push Changes
                                                             </>
                                                         )}

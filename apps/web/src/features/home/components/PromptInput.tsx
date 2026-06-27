@@ -98,8 +98,8 @@ const PromptInput: React.FC<PromptInputProps> = ({
         >
             <div
                 className={`
-        relative group rounded-[17px] bg-[#1E1D1C] border border-[#363534]
-        focus-within:border-white/10 focus-within:bg-[#1E1D1C]
+        relative group rounded-[17px] bg-[#1F1F1F] border border-[#363534]
+        focus-within:border-white/10 focus-within:bg-[#1F1F1F]
         transition-all duration-300 ease-out flex flex-col
       `}
             >

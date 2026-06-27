@@ -110,7 +110,7 @@ export const GitHubRepoForm: React.FC<GitHubRepoFormProps> = ({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -8, scale: 0.98 }}
             transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-            className="w-full max-w-[638px] mt-3 rounded-[14px] bg-[#171615] border border-[#242322]"
+            className="w-full max-w-[638px] mt-3 rounded-[14px] bg-[#141414] border border-[#242322]"
         >
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-2.5 bg-[#242322] rounded-t-[13px]">
@@ -141,7 +141,7 @@ export const GitHubRepoForm: React.FC<GitHubRepoFormProps> = ({
                         onClick={handleConnectGithub}
                         className="relative flex flex-col items-center justify-center gap-2.5 px-6 rounded-[12px] border-2 border-dashed border-[#2E2D2C] hover:border-[#454443] hover:bg-white/[0.015] cursor-pointer transition-all duration-200 ease-out h-[160px]"
                     >
-                        <div className="w-9 h-9 rounded-full bg-[#252422] flex items-center justify-center">
+                        <div className="w-9 h-9 rounded-full bg-[#252525] flex items-center justify-center">
                             <Icons.Github className="w-[17px] h-[17px] text-[#656565]" />
                         </div>
                         <div className="text-center">

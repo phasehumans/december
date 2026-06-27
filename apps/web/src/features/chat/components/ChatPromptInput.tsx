@@ -142,10 +142,10 @@ export const ChatPromptInput: React.FC<ChatPromptInputProps> = ({
     }
 
     return (
-        <div className="w-full bg-[#171615] shrink-0 z-30 flex justify-end">
+        <div className="w-full bg-[#141414] shrink-0 z-30 flex justify-end">
             <div
                 className={cn(
-                    'w-full bg-[#1E1D1C] rounded-[17px] border border-[#363534] transition-all relative group flex flex-col'
+                    'w-full bg-[#1F1F1F] rounded-[17px] border border-[#363534] transition-all relative group flex flex-col'
                 )}
             >
                 {/* Integrated Selected Element Display */}
@@ -215,7 +215,7 @@ export const ChatPromptInput: React.FC<ChatPromptInputProps> = ({
                             </button>
 
                             {isModelSelectorOpen && (
-                                <div className="absolute bottom-[calc(100%+8px)] left-0 w-[200px] bg-[#1E1D1C] border border-white/[0.08] rounded-xl p-1.5 shadow-2xl z-50 flex flex-col gap-[4px]">
+                                <div className="absolute bottom-[calc(100%+8px)] left-0 w-[200px] bg-[#1F1F1F] border border-white/[0.08] rounded-xl p-1.5 shadow-2xl z-50 flex flex-col gap-[4px]">
                                     {models.map((model) => {
                                         const isSelected = selectedModel === model.id
                                         const isFreeModel = model.id === 'Auto'
@@ -239,8 +239,8 @@ export const ChatPromptInput: React.FC<ChatPromptInputProps> = ({
                                                 className={cn(
                                                     'flex items-center justify-between px-3 py-1.5 rounded-lg text-left transition-colors outline-none',
                                                     isSelected
-                                                        ? 'bg-[#252422] text-[#D6D5D4]'
-                                                        : 'text-[#8F8E8D] hover:bg-[#252422] hover:text-[#D6D5D4]'
+                                                        ? 'bg-[#252525] text-[#D6D5D4]'
+                                                        : 'text-[#8F8E8D] hover:bg-[#252525] hover:text-[#D6D5D4]'
                                                 )}
                                             >
                                                 <div className="flex items-center gap-1.5 min-w-0">

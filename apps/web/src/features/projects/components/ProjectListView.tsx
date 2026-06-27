@@ -45,7 +45,7 @@ const ProjectListAreaSkeleton: React.FC = () => {
             {Array.from({ length: 6 }).map((_, index) => (
                 <div
                     key={`project-list-skeleton-${index}`}
-                    className="grid grid-cols-[minmax(0,2fr)_minmax(100px,1fr)_minmax(150px,1fr)_minmax(150px,1fr)_8rem_2.5rem] items-center gap-3 rounded-xl border border-[#242323]/10 bg-[#1E1D1B]/5 px-5 py-3 md:gap-4"
+                    className="grid grid-cols-[minmax(0,2fr)_minmax(100px,1fr)_minmax(150px,1fr)_minmax(150px,1fr)_8rem_2.5rem] items-center gap-3 rounded-xl border border-[#242323]/10 bg-[#191919]/5 px-5 py-3 md:gap-4"
                 >
                     <div className="flex flex-col gap-1.5 w-full max-w-xs pr-4">
                         <Skeleton className="h-4 w-[85%] bg-white/[0.06]" />
@@ -235,7 +235,7 @@ export const ProjectListView: React.FC<ProjectListViewProps> = ({
                         placeholder="Search projects..."
                         value={searchQuery}
                         onChange={(e) => onSearchChange(e.target.value)}
-                        className="w-full rounded-lg border border-[#383736] bg-[#171615] py-1.5 pl-9 pr-4 text-[13px] text-[#D6D5C9] transition-colors placeholder:text-[#7B7A79] hover:bg-[#1E1D1B] focus:border-[#7B7A79] focus:bg-[#1E1D1B] focus:outline-none"
+                        className="w-full rounded-lg border border-[#383736] bg-[#141414] py-1.5 pl-9 pr-4 text-[13px] text-[#D6D5C9] transition-colors placeholder:text-[#7B7A79] hover:bg-[#191919] focus:border-[#7B7A79] focus:bg-[#191919] focus:outline-none"
                     />
                 </div>
 
@@ -247,13 +247,13 @@ export const ProjectListView: React.FC<ProjectListViewProps> = ({
                             onClick={() =>
                                 setActiveDropdown(activeDropdown === 'sort' ? null : 'sort')
                             }
-                            className="flex items-center gap-2 rounded-full border border-[#383736] bg-[#171615] px-4 py-1.5 text-[13px] text-[#D6D5C9] transition-colors hover:bg-[#1E1D1B]"
+                            className="flex items-center gap-2 rounded-full border border-[#383736] bg-[#141414] px-4 py-1.5 text-[13px] text-[#D6D5C9] transition-colors hover:bg-[#191919]"
                         >
                             Sort: {SORT_LABELS[sortOption]}{' '}
                             <Icons.ChevronDown className="h-3.5 w-3.5 text-[#7B7A79]" />
                         </button>
                         {activeDropdown === 'sort' && (
-                            <div className="absolute right-0 top-full z-50 mt-2 w-48 rounded-xl border border-[#383736] bg-[#1E1D1C] py-2 shadow-xl">
+                            <div className="absolute right-0 top-full z-50 mt-2 w-48 rounded-xl border border-[#383736] bg-[#1F1F1F] py-2 shadow-xl">
                                 <div className="mb-1 border-b border-[#383736] px-3 pb-2 text-[12px] font-medium text-[#7B7A79]">
                                     Sort by
                                 </div>
@@ -286,13 +286,13 @@ export const ProjectListView: React.FC<ProjectListViewProps> = ({
                             onClick={() =>
                                 setActiveDropdown(activeDropdown === 'status' ? null : 'status')
                             }
-                            className="flex items-center gap-2 rounded-full border border-[#383736] bg-[#171615] px-4 py-1.5 text-[13px] text-[#D6D5C9] transition-colors hover:bg-[#1E1D1B]"
+                            className="flex items-center gap-2 rounded-full border border-[#383736] bg-[#141414] px-4 py-1.5 text-[13px] text-[#D6D5C9] transition-colors hover:bg-[#191919]"
                         >
                             Status: {STATUS_LABELS[statusFilter]}{' '}
                             <Icons.ChevronDown className="h-3.5 w-3.5 text-[#7B7A79]" />
                         </button>
                         {activeDropdown === 'status' && (
-                            <div className="absolute right-0 top-full z-50 mt-2 w-48 rounded-xl border border-[#383736] bg-[#1E1D1C] py-2 shadow-xl">
+                            <div className="absolute right-0 top-full z-50 mt-2 w-48 rounded-xl border border-[#383736] bg-[#1F1F1F] py-2 shadow-xl">
                                 <div className="mb-1 border-b border-[#383736] px-3 pb-2 text-[12px] font-medium text-[#7B7A79]">
                                     Publish status
                                 </div>
@@ -324,7 +324,7 @@ export const ProjectListView: React.FC<ProjectListViewProps> = ({
                         )}
                     </div>
 
-                    <div className="flex items-center rounded-lg border border-[#383736] bg-[#171615] p-0.5 ml-1">
+                    <div className="flex items-center rounded-lg border border-[#383736] bg-[#141414] p-0.5 ml-1">
                         <button
                             onClick={() => setViewMode('list')}
                             className={`p-1.5 rounded-md transition-colors ${
@@ -402,7 +402,7 @@ export const ProjectListView: React.FC<ProjectListViewProps> = ({
                                             Math.min(prev + 10, projects.length)
                                         )
                                     }
-                                    className="px-4 py-1.5 rounded-md border border-[#383736] text-[13px] text-[#D6D5C9] hover:bg-[#1E1D1B] transition-colors"
+                                    className="px-4 py-1.5 rounded-md border border-[#383736] text-[13px] text-[#D6D5C9] hover:bg-[#191919] transition-colors"
                                 >
                                     Load more
                                 </button>
@@ -441,7 +441,7 @@ export const ProjectListView: React.FC<ProjectListViewProps> = ({
                                 onClick={() =>
                                     setVisibleCount((prev) => Math.min(prev + 10, projects.length))
                                 }
-                                className="px-4 py-1.5 rounded-md border border-[#383736] text-[13px] text-[#D6D5C9] hover:bg-[#1E1D1B] transition-colors"
+                                className="px-4 py-1.5 rounded-md border border-[#383736] text-[13px] text-[#D6D5C9] hover:bg-[#191919] transition-colors"
                             >
                                 Load more
                             </button>

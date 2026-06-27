@@ -15,9 +15,9 @@ export const SidebarNavItem: React.FC<
                 'flex items-center gap-3 px-3 py-[7px] rounded-lg transition-colors group w-full font-sans outline-none border-none ring-0 focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 active:outline-none active:ring-0',
                 active
                     ? isHome
-                        ? 'bg-transparent text-[#8F8E8D] hover:bg-[#252422] hover:text-[#CBCACA]'
-                        : 'bg-[#252422] text-[#CBCACA]'
-                    : 'hover:bg-[#252422] text-[#8F8E8D] hover:text-[#CBCACA]'
+                        ? 'bg-transparent text-[#8F8E8D] hover:bg-[#252525] hover:text-[#CBCACA]'
+                        : 'bg-[#252525] text-[#CBCACA]'
+                    : 'hover:bg-[#252525] text-[#8F8E8D] hover:text-[#CBCACA]'
             )}
         >
             <div

@@ -46,7 +46,7 @@ export const ProfileSettingsSkeleton: React.FC<ProfileSettingsSkeletonProps> = (
                 {/* Custom design Section */}
                 <div className="flex flex-col mb-10">
                     <Skeleton className="h-[18px] w-32 mb-4 bg-white/[0.06]" />
-                    <div className="flex flex-col gap-4 border border-[#242323] rounded-xl p-5 bg-[#171615]">
+                    <div className="flex flex-col gap-4 border border-[#242323] rounded-xl p-5 bg-[#141414]">
                         <Skeleton className="h-3.5 w-[90%] bg-white/[0.04]" />
                         <Skeleton className="h-3.5 w-3/4 mb-4 bg-white/[0.04]" />
 
@@ -93,7 +93,7 @@ export const ProfileSettingsSkeleton: React.FC<ProfileSettingsSkeletonProps> = (
                         {[1, 2].map((i) => (
                             <div
                                 key={i}
-                                className="rounded-xl border border-[#242323] bg-[#1E1D1B]/5 p-5 flex flex-col justify-between h-[220px]"
+                                className="rounded-xl border border-[#242323] bg-[#191919]/5 p-5 flex flex-col justify-between h-[220px]"
                             >
                                 <div className="space-y-4">
                                     <div className="flex justify-between">
@@ -191,7 +191,7 @@ export const ProfileSettingsSkeleton: React.FC<ProfileSettingsSkeletonProps> = (
 
                         <div className="flex flex-col border border-[#242323] rounded-xl overflow-hidden bg-[#100E12] shadow-sm">
                             {/* Table Header skeleton */}
-                            <div className="grid grid-cols-[130px_1fr_140px_100px_70px] items-center py-3.5 px-5 border-b border-[#242323] bg-[#171615] text-[12px] text-[#7B7A79] font-medium">
+                            <div className="grid grid-cols-[130px_1fr_140px_100px_70px] items-center py-3.5 px-5 border-b border-[#242323] bg-[#141414] text-[12px] text-[#7B7A79] font-medium">
                                 <div>Date</div>
                                 <div>Project</div>
                                 <div>Model</div>
@@ -275,14 +275,14 @@ export const ProfileSettingsSkeleton: React.FC<ProfileSettingsSkeletonProps> = (
                     <Skeleton className="h-[18px] w-48 mb-4 bg-white/[0.06]" />
                     <div className="flex flex-col border border-[#2B2A29] rounded-xl overflow-hidden bg-[#131211]">
                         {/* Header skeleton */}
-                        <div className="flex items-center px-5 py-3 bg-[#171615] border-b border-[#2B2A29]">
+                        <div className="flex items-center px-5 py-3 bg-[#141414] border-b border-[#2B2A29]">
                             <Skeleton className="h-4 w-40 bg-white/[0.06] rounded" />
                         </div>
                         {/* Repo list skeleton */}
                         {[1, 2, 3, 4, 5].map((i) => (
                             <div
                                 key={i}
-                                className="flex items-center justify-between px-5 py-4 border-b border-[#1E1D1B] last:border-b-0"
+                                className="flex items-center justify-between px-5 py-4 border-b border-[#191919] last:border-b-0"
                             >
                                 <div className="flex flex-col gap-2 min-w-0 flex-1">
                                     <div className="flex items-center gap-2">
