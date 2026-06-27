@@ -77,7 +77,7 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
         const canvasEl = document.getElementById('hero-canvas-container')
         if (canvasEl) observer.observe(canvasEl)
         return () => observer.disconnect()
-    }, [])
+    }, [isAuthenticated])
 
     const toggleImportForm = (form: 'github') => {
         if (!isAuthenticated) {
@@ -100,11 +100,13 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
     return (
         <main
             id="main-scroll-container"
-            className="h-full min-h-0 overflow-y-auto no-scrollbar scroll-smooth relative flex flex-col"
+            className={`h-full min-h-0 ${isAuthenticated ? 'overflow-y-auto' : 'overflow-hidden'} no-scrollbar scroll-smooth relative flex flex-col`}
         >
             <HomeHeader />
 
-            <div className="flex flex-col items-center justify-start pt-[25vh] md:pt-[30vh] min-h-[105vh] md:min-h-[105vh] gap-6 animate-in fade-in duration-500 max-w-4xl mx-auto px-4 w-full shrink-0 relative">
+            <div
+                className={`flex flex-col items-center justify-start pt-[25vh] md:pt-[30vh] ${isAuthenticated ? 'min-h-[105vh] md:min-h-[105vh]' : 'h-full flex-1'} gap-6 animate-in fade-in duration-500 max-w-4xl mx-auto px-4 w-full shrink-0 relative`}
+            >
                 <div className="flex flex-col items-center gap-4 text-center mb-2">
                     <h1 className="text-2xl md:text-4xl font-sohne font-medium tracking-tight text-[#D6D5D4] px-4">
                         What are we building today?
@@ -174,26 +176,28 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
                 </div>
             </div>
 
-            <div
-                id="hero-canvas-container"
-                className="w-full h-screen bg-background relative shrink-0 p-2 -mt-[20px]"
-            >
-                <div className="md:hidden w-full text-center pb-4 pt-2">
-                    <span className="text-[10px] uppercase tracking-widest text-neutral-500 font-medium bg-white/5 px-3 py-1.5 rounded-full border border-white/5">
-                        Best on Desktop
-                    </span>
+            {isAuthenticated && (
+                <div
+                    id="hero-canvas-container"
+                    className="w-full h-screen bg-background relative shrink-0 p-2 -mt-[20px]"
+                >
+                    <div className="md:hidden w-full text-center pb-4 pt-2">
+                        <span className="text-[10px] uppercase tracking-widest text-neutral-500 font-medium bg-white/5 px-3 py-1.5 rounded-full border border-white/5">
+                            Best on Desktop
+                        </span>
+                    </div>
+                    <div className="w-full h-full rounded-3xl overflow-hidden border border-white/10 relative">
+                        <Canvas
+                            ref={canvasRef}
+                            isAuthenticated={isAuthenticated}
+                            onOpenAuth={onOpenAuth}
+                            document={canvasState}
+                            onDocumentChange={onCanvasStateChange}
+                            projectId={projectId}
+                        />
+                    </div>
                 </div>
-                <div className="w-full h-full rounded-3xl overflow-hidden border border-white/10 relative">
-                    <Canvas
-                        ref={canvasRef}
-                        isAuthenticated={isAuthenticated}
-                        onOpenAuth={onOpenAuth}
-                        document={canvasState}
-                        onDocumentChange={onCanvasStateChange}
-                        projectId={projectId}
-                    />
-                </div>
-            </div>
+            )}
 
             <OnboardingModal
                 isOpen={showOnboarding}

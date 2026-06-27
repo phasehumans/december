@@ -3,10 +3,12 @@ import React, { useState, useEffect } from 'react'
 import { Icons } from '@/shared/components/ui/Icons'
 import { cn } from '@/shared/lib/utils'
 
-export const SidebarHeader: React.FC<{ onNewThread?: () => void; onHomeClick?: () => void }> = ({
-    onNewThread,
-    onHomeClick,
-}) => {
+export const SidebarHeader: React.FC<{
+    onNewThread?: () => void
+    onHomeClick?: () => void
+    isAuthenticated?: boolean
+    onOpenAuth?: () => void
+}> = ({ onNewThread, onHomeClick, isAuthenticated, onOpenAuth }) => {
     const [activeTab, setActiveTab] = useState<'home' | 'canvas'>('home')
 
     useEffect(() => {
@@ -61,6 +63,10 @@ export const SidebarHeader: React.FC<{ onNewThread?: () => void; onHomeClick?: (
                 </button>
                 <button
                     onClick={() => {
+                        if (!isAuthenticated) {
+                            if (onOpenAuth) onOpenAuth()
+                            return
+                        }
                         window.dispatchEvent(
                             new CustomEvent('hero-canvas-intersect', { detail: true })
                         )
