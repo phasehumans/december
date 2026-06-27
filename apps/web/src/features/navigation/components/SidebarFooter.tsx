@@ -56,6 +56,20 @@ export const SidebarFooter: React.FC<
 
     return (
         <div className="mt-auto flex flex-col w-full">
+            {isAuthenticated && (
+                <div className="px-3 py-1.5 flex justify-center">
+                    <button
+                        onClick={() => navigate('/cli')}
+                        className="upgrade-plan-btn flex items-center gap-1 px-2.5 py-[3px] rounded-full hover:bg-white/[0.06] transition-all text-[#CBCACA] hover:text-white text-[11px] font-medium outline-none w-fit mx-auto cursor-pointer"
+                        style={{
+                            border: '1px solid #383735',
+                        }}
+                    >
+                        <span className="text-[12px]">✱</span>
+                        <span>Try December CLI</span>
+                    </button>
+                </div>
+            )}
             {isAuthenticated && <div className="w-full border-t border-white/[0.04]"></div>}
 
             <div className="pl-[6px] pr-[6px] pt-1 pb-1.5">

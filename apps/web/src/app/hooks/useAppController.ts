@@ -1656,7 +1656,8 @@ export const useAppController = () => {
     const showSidebar =
         !(!isHome && (view === 'chat' || view === 'project')) &&
         view !== 'profile' &&
-        view !== 'docs'
+        view !== 'docs' &&
+        view !== 'cli'
     const isProjectsInitialLoading = isProjectsLoading && projects.length === 0
     const projectsErrorMessage = projectsError instanceof Error ? projectsError.message : null
 

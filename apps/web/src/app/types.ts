@@ -1,4 +1,11 @@
-export type ViewState = 'chat' | 'all-projects' | 'profile' | 'templates' | 'docs' | 'project'
+export type ViewState =
+    | 'chat'
+    | 'all-projects'
+    | 'profile'
+    | 'templates'
+    | 'docs'
+    | 'cli'
+    | 'project'
 
 export type ProfileTab =
     | 'Account'
@@ -36,7 +43,8 @@ const simpleViewToPath: Record<string, string> = {
     chat: '/',
     'all-projects': '/projects',
     templates: '/templates',
-    docs: '/cli',
+    docs: '/docs',
+    cli: '/cli',
 }
 
 const simplePathToView: Record<string, ViewState> = Object.fromEntries(
