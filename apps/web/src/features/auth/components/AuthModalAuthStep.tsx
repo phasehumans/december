@@ -26,16 +26,11 @@ export const AuthModalAuthStep: React.FC<AuthModalAuthStepProps> = ({
 
     return (
         <div className="flex flex-col">
-            <div className="flex flex-col items-center mb-7">
-                <div className="mb-5 opacity-95 hover:opacity-100 transition-opacity text-white">
-                    <Icons.DecemberLogo className="w-[44px] h-[44px]" />
-                </div>
-                <h2 className="text-[24px] font-semibold text-white text-center tracking-tight mb-2">
+            <div className="flex flex-col mb-8">
+                <h2 className="text-[28px] font-medium text-white tracking-tight mb-2">
                     {authMode === 'login' ? 'Sign in to continue building' : 'Create an account'}
                 </h2>
-                <p className="text-[15px] text-[#A3A3A3] text-center max-w-[280px] mx-auto">
-                    Turn an idea into a working website
-                </p>
+                <p className="text-[15px] text-[#A3A3A3]">Turn ideas into reality.</p>
             </div>
 
             <div className="flex flex-col mb-2">
@@ -52,13 +47,13 @@ export const AuthModalAuthStep: React.FC<AuthModalAuthStepProps> = ({
 
             <div className="flex items-center my-6">
                 <div className="flex-1 border-t border-[#2A2A2A]"></div>
-                <span className="px-4 text-[13px] text-[#737373] font-medium uppercase tracking-wider">
+                <span className="px-4 text-[12px] text-[#737373] font-medium uppercase tracking-wider">
                     or continue with email
                 </span>
                 <div className="flex-1 border-t border-[#2A2A2A]"></div>
             </div>
 
-            <form onSubmit={onSubmit} className="flex flex-col gap-3.5">
+            <form onSubmit={onSubmit} className="flex flex-col gap-4">
                 <input
                     type="email"
                     required
@@ -66,7 +61,7 @@ export const AuthModalAuthStep: React.FC<AuthModalAuthStepProps> = ({
                     value={email}
                     onChange={(event) => onEmailChange(event.target.value)}
                     disabled={isAuthPending}
-                    className="w-full bg-[#141414] border border-[#2A2A2A] hover:border-[#3A3A3A] focus:border-[#5A4A3A] focus:shadow-[0_0_12px_rgba(90,74,58,0.15)] focus:bg-[#1A1A1A] rounded-[12px] h-[46px] px-4 text-[15px] text-white placeholder-[#666666] focus:outline-none transition-all duration-200"
+                    className="w-full bg-[#141414] border border-[#2A2A2A] hover:border-[#3A3A3A] focus:border-[#4A4A4A] focus:bg-[#1A1A1A] rounded-[12px] h-[46px] px-4 text-[15px] text-white placeholder-[#666666] focus:outline-none transition-all duration-200"
                 />
 
                 <div className="relative w-full">
@@ -77,7 +72,7 @@ export const AuthModalAuthStep: React.FC<AuthModalAuthStepProps> = ({
                         value={password}
                         onChange={(event) => onPasswordChange(event.target.value)}
                         disabled={isAuthPending}
-                        className="w-full bg-[#141414] border border-[#2A2A2A] hover:border-[#3A3A3A] focus:border-[#5A4A3A] focus:shadow-[0_0_12px_rgba(90,74,58,0.15)] focus:bg-[#1A1A1A] rounded-[12px] h-[46px] pl-4 pr-11 text-[15px] text-white placeholder-[#666666] focus:outline-none transition-all duration-200"
+                        className="w-full bg-[#141414] border border-[#2A2A2A] hover:border-[#3A3A3A] focus:border-[#4A4A4A] focus:bg-[#1A1A1A] rounded-[12px] h-[46px] pl-4 pr-11 text-[15px] text-white placeholder-[#666666] focus:outline-none transition-all duration-200"
                     />
                     <button
                         type="button"

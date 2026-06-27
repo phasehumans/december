@@ -20,24 +20,21 @@ export const AuthModalGoogleMergeStep: React.FC<AuthModalGoogleMergeStepProps> =
     onBack,
 }) => (
     <div className="flex flex-col animate-in fade-in duration-200">
-        <div className="flex flex-col items-center mb-[22px]">
-            <div className="mb-[18px] text-[#D6D5D4]">
-                <Icons.DecemberLogo className="w-[32px] h-[32px]" />
-            </div>
-            <h2 className="text-[20px] font-medium text-[#f5f5f5] text-center tracking-tight mb-1.5">
+        <div className="flex flex-col items-start mb-8">
+            <h2 className="text-[28px] font-medium text-white tracking-tight mb-2">
                 Google sign-in active
             </h2>
-            <p className="text-[13.5px] text-[#A3A3A3] text-center leading-relaxed">
+            <p className="text-[15px] text-[#A3A3A3] leading-relaxed">
                 This email already uses Google sign-in. Choose how you&apos;d like to continue.
             </p>
         </div>
 
-        <div className="flex flex-col gap-2.5">
+        <div className="flex flex-col gap-4">
             <button
                 type="button"
                 onClick={onGoogleLogin}
                 disabled={isPending}
-                className="w-full bg-[#E5E5E5] hover:bg-white text-black font-medium h-[44px] rounded-[10px] flex items-center justify-center gap-2.5 transition-colors disabled:opacity-50"
+                className="w-full bg-[#EDEDED] hover:bg-white text-[#111111] font-medium h-[46px] rounded-[12px] flex items-center justify-center gap-3 transition-all duration-200 active:scale-[0.98] shadow-sm disabled:opacity-50"
             >
                 <AuthModalGoogleIcon />
                 <span className="text-[15px]">Continue with Google</span>
@@ -47,7 +44,7 @@ export const AuthModalGoogleMergeStep: React.FC<AuthModalGoogleMergeStepProps> =
                 type="button"
                 onClick={onCreatePassword}
                 disabled={isPending}
-                className="w-full bg-[#2A2A2A] hover:bg-[#333333] text-[#E5E5E5] font-medium h-[44px] rounded-[10px] flex items-center justify-center transition-colors disabled:opacity-50"
+                className="w-full bg-[#141414] border border-[#2A2A2A] hover:border-[#3A3A3A] text-white font-medium h-[46px] rounded-[12px] flex items-center justify-center transition-all duration-200 active:scale-[0.98] disabled:opacity-50 shadow-sm"
             >
                 {isPending ? 'Please wait...' : 'Create Password'}
             </button>
@@ -56,7 +53,7 @@ export const AuthModalGoogleMergeStep: React.FC<AuthModalGoogleMergeStepProps> =
                 type="button"
                 onClick={onBack}
                 disabled={isPending}
-                className="mt-[8px] text-[13px] text-[#A3A3A3] hover:text-white transition-colors"
+                className="self-start mt-4 text-[14px] text-[#888888] hover:text-white transition-colors underline decoration-transparent hover:decoration-white/50 underline-offset-4"
             >
                 Back to login
             </button>

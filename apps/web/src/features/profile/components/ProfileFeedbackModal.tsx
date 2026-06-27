@@ -1,4 +1,4 @@
-import { Frown, Meh, Smile } from 'lucide-react'
+import { Smile } from 'lucide-react'
 import React, { useState, useEffect } from 'react'
 
 import { profileAPI } from '@/features/profile/api/profile'
@@ -10,7 +10,6 @@ interface ProfileFeedbackModalProps {
 }
 
 export const ProfileFeedbackModal: React.FC<ProfileFeedbackModalProps> = ({ isOpen, onClose }) => {
-    const [rating, setRating] = useState<'sad' | 'neutral' | 'happy' | null>(null)
     const [feedback, setFeedback] = useState('')
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [showThankYou, setShowThankYou] = useState(false)
@@ -28,11 +27,11 @@ export const ProfileFeedbackModal: React.FC<ProfileFeedbackModalProps> = ({ isOp
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
-        if (!feedback.trim() && !rating) return
+        if (!feedback.trim()) return
 
         setIsSubmitting(true)
         try {
-            await profileAPI.submitFeedback({ rating, feedback: feedback.trim() })
+            await profileAPI.submitFeedback({ rating: null, feedback: feedback.trim() })
         } catch {
             setIsSubmitting(false)
             return
@@ -46,7 +45,6 @@ export const ProfileFeedbackModal: React.FC<ProfileFeedbackModalProps> = ({ isOp
             // Reset state after transition finishes
             setTimeout(() => {
                 setFeedback('')
-                setRating(null)
                 setShowThankYou(false)
             }, 200)
         }, 2200)
@@ -57,7 +55,6 @@ export const ProfileFeedbackModal: React.FC<ProfileFeedbackModalProps> = ({ isOp
             onClose()
             // Reset state in case they close it
             setFeedback('')
-            setRating(null)
             setShowThankYou(false)
         }
     }
@@ -93,57 +90,21 @@ export const ProfileFeedbackModal: React.FC<ProfileFeedbackModalProps> = ({ isOp
                         disabled={isSubmitting}
                     />
 
-                    <div className="flex items-center justify-between mt-1">
-                        {/* Ratings */}
-                        <div className="flex gap-2">
-                            <button
-                                type="button"
-                                onClick={() => setRating('sad')}
-                                disabled={isSubmitting}
-                                className={`p-2 rounded-lg border transition-[transform,background-color,border-color,color,box-shadow] duration-200 ${
-                                    rating === 'sad'
-                                        ? 'bg-[#242323] border-[#7B7A79] text-white scale-105 shadow-sm'
-                                        : 'border-[#2B2A27] bg-[#181817]/50 text-[#7B7A79] hover:bg-[#1E1D1B] hover:text-[#D6D5C9]'
-                                } disabled:opacity-50`}
+                    <div className="flex items-center justify-between mt-1 gap-4">
+                        <div className="text-[13px] text-[#7B7A79]">
+                            Want to report an issue or request a feature?{' '}
+                            <a
+                                href="https://github.com/phasehumans/december/issues/new/choose"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-[#D6D5C9] underline hover:text-white transition-colors font-medium"
                             >
-                                <Frown className="w-4 h-4" strokeWidth={1.8} />
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setRating('neutral')}
-                                disabled={isSubmitting}
-                                className={`p-2 rounded-lg border transition-[transform,background-color,border-color,color,box-shadow] duration-200 ${
-                                    rating === 'neutral'
-                                        ? 'bg-[#242323] border-[#7B7A79] text-white scale-105 shadow-sm'
-                                        : 'border-[#2B2A27] bg-[#181817]/50 text-[#7B7A79] hover:bg-[#1E1D1B] hover:text-[#D6D5C9]'
-                                } disabled:opacity-50`}
-                            >
-                                <Meh className="w-4 h-4" strokeWidth={1.8} />
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setRating('happy')}
-                                disabled={isSubmitting}
-                                className={`p-2 rounded-lg border transition-[transform,background-color,border-color,color,box-shadow] duration-200 ${
-                                    rating === 'happy'
-                                        ? 'bg-[#242323] border-[#7B7A79] text-white scale-105 shadow-sm'
-                                        : 'border-[#2B2A27] bg-[#181817]/50 text-[#7B7A79] hover:bg-[#1E1D1B] hover:text-[#D6D5C9]'
-                                } disabled:opacity-50`}
-                            >
-                                <Smile className="w-4 h-4" strokeWidth={1.8} />
-                            </button>
+                                Open GitHub Issue
+                            </a>
                         </div>
 
                         {/* Actions */}
-                        <div className="flex items-center gap-2.5">
-                            <button
-                                type="button"
-                                onClick={handleClose}
-                                disabled={isSubmitting}
-                                className="border border-[#2B2A27] bg-transparent text-white hover:bg-white/5 active:scale-95 transition-[transform,background-color,border-color,color] duration-200 text-[13px] font-medium px-4 py-2 rounded-lg focus:outline-none disabled:opacity-50"
-                            >
-                                Cancel
-                            </button>
+                        <div className="flex items-center gap-2.5 shrink-0">
                             <button
                                 type="submit"
                                 disabled={isSubmitting || !feedback.trim()}

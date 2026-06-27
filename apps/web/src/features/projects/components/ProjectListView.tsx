@@ -1,6 +1,8 @@
 import React from 'react'
+import { LayoutGrid, List } from 'lucide-react'
 
 import { ProjectListRow } from './ProjectListRow'
+import { ProjectGridCard } from './ProjectGridCard'
 
 import type { SortOption, StatusFilter } from './ProjectList'
 import type { Project } from '@/features/projects/types'
@@ -184,6 +186,7 @@ export const ProjectListView: React.FC<ProjectListViewProps> = ({
 }) => {
     const [activeDropdown, setActiveDropdown] = React.useState<string | null>(null)
     const [visibleCount, setVisibleCount] = React.useState(10)
+    const [viewMode, setViewMode] = React.useState<'list' | 'grid'>('list')
     const dropdownRef = React.useRef<HTMLDivElement>(null)
 
     React.useEffect(() => {
@@ -224,151 +227,212 @@ export const ProjectListView: React.FC<ProjectListViewProps> = ({
                 </div>
             </div>
 
-            {hasUnfilteredProjects && (
-                <>
-                    <div className="relative z-10 mb-4 flex w-full items-center">
-                        <div className="relative w-full max-w-[480px]">
-                            <Icons.Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#7B7A79]" />
-                            <input
-                                type="text"
-                                placeholder="Search projects..."
-                                value={searchQuery}
-                                onChange={(e) => onSearchChange(e.target.value)}
-                                className="w-full rounded-lg border border-[#383736] bg-[#171615] py-1.5 pl-9 pr-4 text-[13px] text-[#D6D5C9] transition-colors placeholder:text-[#7B7A79] hover:bg-[#1E1D1B] focus:border-[#7B7A79] focus:bg-[#1E1D1B] focus:outline-none"
-                            />
-                        </div>
+            <div className="relative z-10 mb-4 flex w-full items-center">
+                <div className="relative w-full max-w-[480px]">
+                    <Icons.Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#7B7A79]" />
+                    <input
+                        type="text"
+                        placeholder="Search projects..."
+                        value={searchQuery}
+                        onChange={(e) => onSearchChange(e.target.value)}
+                        className="w-full rounded-lg border border-[#383736] bg-[#171615] py-1.5 pl-9 pr-4 text-[13px] text-[#D6D5C9] transition-colors placeholder:text-[#7B7A79] hover:bg-[#1E1D1B] focus:border-[#7B7A79] focus:bg-[#1E1D1B] focus:outline-none"
+                    />
+                </div>
 
-                        <div className="flex-1" />
+                <div className="flex-1" />
 
-                        <div className="flex items-center gap-2" ref={dropdownRef}>
-                            <div className="relative">
+                <div className="flex items-center gap-2" ref={dropdownRef}>
+                    <div className="relative">
+                        <button
+                            onClick={() =>
+                                setActiveDropdown(activeDropdown === 'sort' ? null : 'sort')
+                            }
+                            className="flex items-center gap-2 rounded-full border border-[#383736] bg-[#171615] px-4 py-1.5 text-[13px] text-[#D6D5C9] transition-colors hover:bg-[#1E1D1B]"
+                        >
+                            Sort: {SORT_LABELS[sortOption]}{' '}
+                            <Icons.ChevronDown className="h-3.5 w-3.5 text-[#7B7A79]" />
+                        </button>
+                        {activeDropdown === 'sort' && (
+                            <div className="absolute right-0 top-full z-50 mt-2 w-48 rounded-xl border border-[#383736] bg-[#1E1D1C] py-2 shadow-xl">
+                                <div className="mb-1 border-b border-[#383736] px-3 pb-2 text-[12px] font-medium text-[#7B7A79]">
+                                    Sort by
+                                </div>
                                 <button
-                                    onClick={() =>
-                                        setActiveDropdown(activeDropdown === 'sort' ? null : 'sort')
-                                    }
-                                    className="flex items-center gap-2 rounded-full border border-[#383736] bg-[#171615] px-4 py-1.5 text-[13px] text-[#D6D5C9] transition-colors hover:bg-[#1E1D1B]"
+                                    onClick={() => {
+                                        onSortChange('newest')
+                                        setActiveDropdown(null)
+                                    }}
+                                    className="flex w-full items-center justify-between px-3 py-1.5 text-[13px] text-[#D6D5C9] hover:bg-[#242323]"
                                 >
-                                    Sort: {SORT_LABELS[sortOption]}{' '}
-                                    <Icons.ChevronDown className="h-3.5 w-3.5 text-[#7B7A79]" />
+                                    Newest first{' '}
+                                    {sortOption === 'newest' && <Icons.Check className="h-4 w-4" />}
                                 </button>
-                                {activeDropdown === 'sort' && (
-                                    <div className="absolute right-0 top-full z-50 mt-2 w-48 rounded-xl border border-[#383736] bg-[#1E1D1C] py-2 shadow-xl">
-                                        <div className="mb-1 border-b border-[#383736] px-3 pb-2 text-[12px] font-medium text-[#7B7A79]">
-                                            Sort by
-                                        </div>
-                                        <button
-                                            onClick={() => {
-                                                onSortChange('newest')
-                                                setActiveDropdown(null)
-                                            }}
-                                            className="flex w-full items-center justify-between px-3 py-1.5 text-[13px] text-[#D6D5C9] hover:bg-[#242323]"
-                                        >
-                                            Newest first{' '}
-                                            {sortOption === 'newest' && (
-                                                <Icons.Check className="h-4 w-4" />
-                                            )}
-                                        </button>
-                                        <button
-                                            onClick={() => {
-                                                onSortChange('oldest')
-                                                setActiveDropdown(null)
-                                            }}
-                                            className="flex w-full items-center justify-between px-3 py-1.5 text-[13px] text-[#D6D5C9] hover:bg-[#242323]"
-                                        >
-                                            Oldest first{' '}
-                                            {sortOption === 'oldest' && (
-                                                <Icons.Check className="h-4 w-4" />
-                                            )}
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
-
-                            <div className="relative">
                                 <button
-                                    onClick={() =>
-                                        setActiveDropdown(
-                                            activeDropdown === 'status' ? null : 'status'
-                                        )
-                                    }
-                                    className="flex items-center gap-2 rounded-full border border-[#383736] bg-[#171615] px-4 py-1.5 text-[13px] text-[#D6D5C9] transition-colors hover:bg-[#1E1D1B]"
+                                    onClick={() => {
+                                        onSortChange('oldest')
+                                        setActiveDropdown(null)
+                                    }}
+                                    className="flex w-full items-center justify-between px-3 py-1.5 text-[13px] text-[#D6D5C9] hover:bg-[#242323]"
                                 >
-                                    Status: {STATUS_LABELS[statusFilter]}{' '}
-                                    <Icons.ChevronDown className="h-3.5 w-3.5 text-[#7B7A79]" />
+                                    Oldest first{' '}
+                                    {sortOption === 'oldest' && <Icons.Check className="h-4 w-4" />}
                                 </button>
-                                {activeDropdown === 'status' && (
-                                    <div className="absolute right-0 top-full z-50 mt-2 w-48 rounded-xl border border-[#383736] bg-[#1E1D1C] py-2 shadow-xl">
-                                        <div className="mb-1 border-b border-[#383736] px-3 pb-2 text-[12px] font-medium text-[#7B7A79]">
-                                            Publish status
-                                        </div>
-                                        {(
-                                            [
-                                                'any',
-                                                'Draft',
-                                                'Generating',
-                                                'Generated',
-                                                'Deployed',
-                                                'Failed',
-                                            ] as const
-                                        ).map((option) => (
-                                            <button
-                                                key={option}
-                                                onClick={() => {
-                                                    onStatusFilterChange(option)
-                                                    setActiveDropdown(null)
-                                                }}
-                                                className="flex w-full items-center justify-between px-3 py-1.5 text-[13px] text-[#D6D5C9] hover:bg-[#242323]"
-                                            >
-                                                {STATUS_LABELS[option]}{' '}
-                                                {statusFilter === option && (
-                                                    <Icons.Check className="h-4 w-4" />
-                                                )}
-                                            </button>
-                                        ))}
-                                    </div>
-                                )}
                             </div>
-                        </div>
+                        )}
                     </div>
 
-                    <div className="mb-2 grid grid-cols-[minmax(0,2fr)_minmax(100px,1fr)_minmax(150px,1fr)_minmax(150px,1fr)_8rem_2.5rem] gap-3 border-b border-[#242323] px-5 py-3 text-[13px] font-medium text-[#D6D5C9] select-none md:gap-4">
-                        <div>Name</div>
-                        <div>Status</div>
-                        <div>Created at</div>
-                        <div>Created by</div>
-                        <div className="text-center">Starred projects</div>
-                        <div></div>
+                    <div className="relative">
+                        <button
+                            onClick={() =>
+                                setActiveDropdown(activeDropdown === 'status' ? null : 'status')
+                            }
+                            className="flex items-center gap-2 rounded-full border border-[#383736] bg-[#171615] px-4 py-1.5 text-[13px] text-[#D6D5C9] transition-colors hover:bg-[#1E1D1B]"
+                        >
+                            Status: {STATUS_LABELS[statusFilter]}{' '}
+                            <Icons.ChevronDown className="h-3.5 w-3.5 text-[#7B7A79]" />
+                        </button>
+                        {activeDropdown === 'status' && (
+                            <div className="absolute right-0 top-full z-50 mt-2 w-48 rounded-xl border border-[#383736] bg-[#1E1D1C] py-2 shadow-xl">
+                                <div className="mb-1 border-b border-[#383736] px-3 pb-2 text-[12px] font-medium text-[#7B7A79]">
+                                    Publish status
+                                </div>
+                                {(
+                                    [
+                                        'any',
+                                        'Draft',
+                                        'Generating',
+                                        'Generated',
+                                        'Deployed',
+                                        'Failed',
+                                    ] as const
+                                ).map((option) => (
+                                    <button
+                                        key={option}
+                                        onClick={() => {
+                                            onStatusFilterChange(option)
+                                            setActiveDropdown(null)
+                                        }}
+                                        className="flex w-full items-center justify-between px-3 py-1.5 text-[13px] text-[#D6D5C9] hover:bg-[#242323]"
+                                    >
+                                        {STATUS_LABELS[option]}{' '}
+                                        {statusFilter === option && (
+                                            <Icons.Check className="h-4 w-4" />
+                                        )}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
                     </div>
-                </>
+
+                    <div className="flex items-center rounded-lg border border-[#383736] bg-[#171615] p-0.5 ml-1">
+                        <button
+                            onClick={() => setViewMode('list')}
+                            className={`p-1.5 rounded-md transition-colors ${
+                                viewMode === 'list'
+                                    ? 'bg-[#EDEDED] text-[#111111]'
+                                    : 'text-[#7B7A79] hover:text-[#D6D5C9]'
+                            }`}
+                            title="List view"
+                        >
+                            <List className="w-4 h-4" />
+                        </button>
+                        <button
+                            onClick={() => setViewMode('grid')}
+                            className={`p-1.5 rounded-md transition-colors ${
+                                viewMode === 'grid'
+                                    ? 'bg-[#EDEDED] text-[#111111]'
+                                    : 'text-[#7B7A79] hover:text-[#D6D5C9]'
+                            }`}
+                            title="Grid view"
+                        >
+                            <LayoutGrid className="w-4 h-4" />
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            {viewMode === 'list' && hasProjects && (
+                <div className="mb-2 grid grid-cols-[minmax(0,2fr)_minmax(100px,1fr)_minmax(150px,1fr)_minmax(150px,1fr)_8rem_2.5rem] gap-3 border-b border-[#242323] px-5 py-3 text-[13px] font-medium text-[#D6D5C9] select-none md:gap-4">
+                    <div>Name</div>
+                    <div>Status</div>
+                    <div>Created at</div>
+                    <div>Created by</div>
+                    <div className="text-center">Starred projects</div>
+                    <div></div>
+                </div>
             )}
 
             {isInitialLoading ? (
                 <ProjectListAreaSkeleton />
-            ) : !hasUnfilteredProjects ? (
-                <EmptyProjectsState onNewProject={onNewProject} />
-            ) : !hasProjects ? (
-                <NoResultsState />
+            ) : viewMode === 'list' ? (
+                !hasUnfilteredProjects ? (
+                    <EmptyProjectsState onNewProject={onNewProject} />
+                ) : !hasProjects ? (
+                    <NoResultsState />
+                ) : (
+                    <div className="flex flex-col">
+                        <div className="min-h-[420px] pb-4">
+                            <div className="flex flex-col gap-1">
+                                {projects.slice(0, visibleCount).map((project) => (
+                                    <ProjectListRow
+                                        key={project.id}
+                                        project={project}
+                                        isMenuOpen={menuOpenId === project.id}
+                                        isTogglePending={isTogglePending}
+                                        onOpenProject={onOpenProject}
+                                        onToggleStar={onToggleStar}
+                                        onToggleMenu={onToggleMenu}
+                                        onOpenProjectFromMenu={onOpenProjectFromMenu}
+                                        onToggleStarFromMenu={onToggleStarFromMenu}
+                                        onOpenRename={onOpenRename}
+                                        onOpenDuplicate={onOpenDuplicate}
+                                        onOpenShare={onOpenShare}
+                                        onOpenDelete={onOpenDelete}
+                                        onOpenSettings={onOpenSettings}
+                                    />
+                                ))}
+                            </div>
+                        </div>
+
+                        {visibleCount < projects.length && (
+                            <div className="flex justify-center pt-2 mb-8">
+                                <button
+                                    onClick={() =>
+                                        setVisibleCount((prev) =>
+                                            Math.min(prev + 10, projects.length)
+                                        )
+                                    }
+                                    className="px-4 py-1.5 rounded-md border border-[#383736] text-[13px] text-[#D6D5C9] hover:bg-[#1E1D1B] transition-colors"
+                                >
+                                    Load more
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                )
             ) : (
                 <div className="flex flex-col">
-                    <div className="min-h-[420px] flex flex-col gap-1 pb-4">
-                        {projects.slice(0, visibleCount).map((project) => (
-                            <ProjectListRow
-                                key={project.id}
-                                project={project}
-                                isMenuOpen={menuOpenId === project.id}
-                                isTogglePending={isTogglePending}
-                                onOpenProject={onOpenProject}
-                                onToggleStar={onToggleStar}
-                                onToggleMenu={onToggleMenu}
-                                onOpenProjectFromMenu={onOpenProjectFromMenu}
-                                onToggleStarFromMenu={onToggleStarFromMenu}
-                                onOpenRename={onOpenRename}
-                                onOpenDuplicate={onOpenDuplicate}
-                                onOpenShare={onOpenShare}
-                                onOpenDelete={onOpenDelete}
-                                onOpenSettings={onOpenSettings}
-                            />
-                        ))}
+                    <div className="min-h-[420px] pb-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 pt-2">
+                            {projects.slice(0, visibleCount).map((project) => (
+                                <ProjectGridCard
+                                    key={project.id}
+                                    project={project}
+                                    isMenuOpen={menuOpenId === project.id}
+                                    isTogglePending={isTogglePending}
+                                    onOpenProject={onOpenProject}
+                                    onToggleStar={onToggleStar}
+                                    onToggleMenu={onToggleMenu}
+                                    onOpenProjectFromMenu={onOpenProjectFromMenu}
+                                    onToggleStarFromMenu={onToggleStarFromMenu}
+                                    onOpenRename={onOpenRename}
+                                    onOpenDuplicate={onOpenDuplicate}
+                                    onOpenShare={onOpenShare}
+                                    onOpenDelete={onOpenDelete}
+                                    onOpenSettings={onOpenSettings}
+                                />
+                            ))}
+                        </div>
                     </div>
 
                     {visibleCount < projects.length && (

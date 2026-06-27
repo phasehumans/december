@@ -1,5 +1,5 @@
 import { Folder, Loader2, Terminal, Cloud, AlertCircle } from 'lucide-react'
-import React from 'react'
+import React, { useState } from 'react'
 
 import type { ProjectListRowProps } from '@/features/projects/types'
 
@@ -20,6 +20,8 @@ export const ProjectListRow: React.FC<ProjectListRowProps> = ({
     onOpenDelete,
     onOpenSettings,
 }) => {
+    const [menuDirection, setMenuDirection] = useState<'down' | 'up'>('down')
+
     return (
         <div
             className="group relative grid cursor-pointer grid-cols-[minmax(0,2fr)_minmax(100px,1fr)_minmax(150px,1fr)_minmax(150px,1fr)_8rem_2.5rem] items-center gap-3 rounded-xl border border-transparent px-5 py-3 transition-all duration-200 hover:bg-[#1E1D1B] md:gap-4"
@@ -81,14 +83,22 @@ export const ProjectListRow: React.FC<ProjectListRowProps> = ({
                 className={`relative flex justify-center ${isMenuOpen ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 transition-opacity'}`}
             >
                 <button
-                    onClick={(e) => onToggleMenu(project.id, e)}
+                    onClick={(e) => {
+                        const rect = e.currentTarget.getBoundingClientRect()
+                        if (window.innerHeight - rect.bottom < 300 && rect.top > 300) {
+                            setMenuDirection('up')
+                        } else {
+                            setMenuDirection('down')
+                        }
+                        onToggleMenu(project.id, e)
+                    }}
                     className={`rounded-lg p-2 text-[#7B7A79] transition-all hover:bg-[#242323] hover:text-[#D6D5C9] ${isMenuOpen ? 'bg-[#242323] text-[#D6D5C9]' : ''}`}
                 >
                     <Icons.MoreHorizontal className="h-4 w-4" />
                 </button>
                 {isMenuOpen && (
                     <div
-                        className="absolute right-0 top-9 z-30 flex w-56 flex-col rounded-xl border border-[#383736] bg-[#1E1D1C] p-1.5 shadow-xl"
+                        className={`absolute right-0 ${menuDirection === 'up' ? 'bottom-9' : 'top-9'} z-30 flex w-56 flex-col rounded-xl border border-[#383736] bg-[#1E1D1C] p-1.5 shadow-xl`}
                         onClick={(e) => e.stopPropagation()}
                     >
                         <button

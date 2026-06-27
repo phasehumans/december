@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 
 import { SidebarFooter } from './SidebarFooter'
@@ -39,7 +39,6 @@ const Sidebar: React.FC<
 
     // Keep exact same size (was 200px when open)
     // No collapse option
-    const [recentOpen, setRecentOpen] = useState(true)
 
     const { data: overview } = useBillingOverview()
     const isPro = overview?.plan === 'PRO'
@@ -97,45 +96,55 @@ const Sidebar: React.FC<
                 <div className="mb-3 border-t border-white/5" />
 
                 <div className="flex flex-col mb-2">
-                    <button
-                        onClick={() => setRecentOpen(!recentOpen)}
-                        className="flex items-center justify-between px-3 py-1.5 w-full text-left group outline-none"
-                    >
+                    <div className="flex items-center justify-between px-3 py-1.5 w-full text-left group">
                         <span className="font-medium text-[13px] whitespace-nowrap transition-colors tracking-tight text-[#8F8E8D] group-hover:text-[#CBCACA]">
-                            Recent Projects
+                            Recent
                         </span>
-                        <div
-                            className={cn(
-                                'text-[#8F8E8D] group-hover:text-[#D6D5D4] transition-all opacity-0 group-hover:opacity-100',
-                                recentOpen ? 'rotate-0' : '-rotate-90'
-                            )}
-                        >
-                            <Icons.ChevronDown className="w-3 h-3" />
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={() =>
+                                    isAuthenticated ? onAllProjects?.() : onOpenAuth?.()
+                                }
+                                className="text-[#8F8E8D] hover:text-[#D6D5D4] transition-all outline-none"
+                                title="Search projects"
+                            >
+                                <Icons.Search className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                                type="button"
+                                className="text-[#8F8E8D] hover:text-[#D6D5D4] transition-all outline-none"
+                            >
+                                <Icons.MoreHorizontal className="w-3.5 h-3.5" />
+                            </button>
                         </div>
-                    </button>
+                    </div>
 
-                    {recentOpen && (
-                        <div className="flex flex-col gap-[1px] mt-1 pr-1">
-                            {isAuthenticated
-                                ? isProjectsLoading
-                                    ? null
-                                    : recentProjects.length > 0
-                                      ? recentProjects.map((project) => (
-                                            <button
-                                                key={project.id}
-                                                onClick={() => onOpenProject?.(project.id)}
-                                                className="flex items-center px-3 py-0.5 w-full text-left rounded-lg hover:bg-[#252422] transition-colors group"
-                                            >
-                                                <span className="font-medium text-[12px] lowercase transition-colors tracking-tight text-[#8F8E8D] group-hover:text-[#CBCACA] truncate">
-                                                    {/* @ts-expect-error */}
-                                                    {project.name || project.title}
-                                                </span>
-                                            </button>
-                                        ))
-                                      : null
-                                : null}
-                        </div>
-                    )}
+                    <div className="flex flex-col gap-[1px] mt-1 pr-1">
+                        {isAuthenticated ? (
+                            isProjectsLoading ? null : recentProjects.length > 0 ? (
+                                recentProjects.map((project) => (
+                                    <button
+                                        key={project.id}
+                                        onClick={() => onOpenProject?.(project.id)}
+                                        className="flex items-center px-3 py-0.5 w-full text-left rounded-lg hover:bg-[#252422] transition-colors group"
+                                    >
+                                        <span className="font-medium text-[12px] lowercase transition-colors tracking-tight text-[#8F8E8D] group-hover:text-[#CBCACA] truncate">
+                                            {/* @ts-expect-error */}
+                                            {project.name || project.title}
+                                        </span>
+                                    </button>
+                                ))
+                            ) : (
+                                <div className="px-3 py-1.5 text-[12px] font-medium text-[#6B6A69] tracking-tight">
+                                    No recent projects
+                                </div>
+                            )
+                        ) : (
+                            <div className="px-3 py-1.5 text-[12px] font-medium text-[#6B6A69] tracking-tight">
+                                No recent projects
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
 
