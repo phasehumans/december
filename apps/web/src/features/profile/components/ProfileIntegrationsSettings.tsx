@@ -5,7 +5,18 @@ import React, { useState } from 'react'
 import { profileAPI, type GithubRepo } from '@/features/profile/api/profile'
 import { Skeleton } from '@/shared/components/ui/Skeleton'
 
-type IntegrationId = 'github' | 'vercel' | 'supabase' | 'notion'
+type IntegrationId =
+    | 'github'
+    | 'vercel'
+    | 'supabase'
+    | 'notion'
+    | 'figma'
+    | 'railway'
+    | 'render'
+    | 'mongodb'
+    | 'razorpay'
+    | 'framer'
+    | 'spline'
 
 interface ProfileIntegrationsSettingsProps {
     isGithubConnected: boolean
@@ -40,6 +51,73 @@ const NotionIcon = () => (
 const SupabaseIcon = () => (
     <svg viewBox="0 0 24 24" fill="#3ECF8E" className="w-5 h-5">
         <path d="M11.9 1.036c-.015-.986-1.26-1.41-1.874-.637L.764 12.05C-.33 13.427.65 15.455 2.409 15.455h9.579l.113 7.51c.014.985 1.259 1.408 1.873.636l9.262-11.653c1.093-1.375.113-3.403-1.645-3.403h-9.642z" />
+    </svg>
+)
+
+const FigmaIcon = () => (
+    <svg viewBox="0 0 38 57" fill="none" className="w-5 h-5">
+        <path
+            d="M19 28.5C19 33.7467 14.7467 38 9.5 38C4.25329 38 0 33.7467 0 28.5C0 23.2533 4.25329 19 9.5 19H19V28.5Z"
+            fill="#A259FF"
+        />
+        <path
+            d="M9.5 0H19V19H9.5C4.25329 19 0 14.7467 0 9.5C0 4.2533 4.25329 0 9.5 0Z"
+            fill="#F24E1E"
+        />
+        <path
+            d="M28.5 0H19V19H28.5C33.7467 19 38 14.7467 38 9.5C38 4.2533 33.7467 0 28.5 0Z"
+            fill="#FF7262"
+        />
+        <path
+            d="M38 28.5C38 33.7467 33.7467 38 28.5 38C23.2533 38 19 33.7467 19 28.5C19 23.2533 23.2533 19 28.5 19C33.7467 19 38 23.2533 38 28.5Z"
+            fill="#1ABCFE"
+        />
+        <path
+            d="M9.5 57C14.7467 57 19 52.7467 19 47.5V38H9.5C4.25329 38 0 42.2533 0 47.5C0 52.7467 4.25329 57 9.5 57Z"
+            fill="#0ACF83"
+        />
+    </svg>
+)
+
+const RailwayIcon = () => (
+    <svg viewBox="0 0 512 512" fill="currentColor" className="w-5 h-5 text-white">
+        <path d="M375.7 64h-239.4c-22.6 0-41.2 18.2-41.7 40.8-.8 33.7-.8 268.6 0 302.3.6 22.7 19.1 40.9 41.7 40.9h239.4c22.6 0 41.2-18.2 41.7-40.8.8-33.7.8-268.6 0-302.3-.5-22.7-19-40.9-41.7-40.9zm-192.1 63.9h144.9v56.5H183.6v-56.5zm0 110.1h144.9v56.5H183.6v-56.5zm0 110h144.9v56.5H183.6v-56.5z" />
+    </svg>
+)
+
+const RenderIcon = () => (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 text-[#46E3B7]">
+        <path d="M12 1L21 6V18L12 23L3 18V6L12 1ZM12 4.1L6.1 7.4V14.1L12 17.4L17.9 14.1V7.4L12 4.1Z" />
+    </svg>
+)
+
+const MongodbIcon = () => (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 text-[#47A248]">
+        <path d="M17.14 8.24c.05-1.1-.38-2.31-1.32-3.64C14.7 3.01 13.04 1 12 1s-2.7 2.01-3.82 3.6c-.94 1.33-1.37 2.54-1.32 3.64.09 1.7.97 4.1 3.52 7.02l.74.83v2.81s-.01 1.05.88 1.1c.9 0 .88-1.1.88-1.1v-2.81l.74-.83c2.55-2.92 3.43-5.32 3.52-7.02z" />
+    </svg>
+)
+
+const RazorpayIcon = () => (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 text-[#0274EB]">
+        <path d="M2.047 18.064h4.482l3.414-12.128h-4.482L2.047 18.064zm15.422-5.462c1.787 0 2.923-1.077 3.257-2.981.282-1.635-.455-3.04-2.123-3.04h-7.142l-3.328 11.483h4.44l1.328-4.582h3.568zm-2.097-2.611c-.083.564-.595.961-1.229.961h-2.203l.551-1.921h2.158c.456 0 .807.396.723.96z" />
+    </svg>
+)
+
+const FramerIcon = () => (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 text-white">
+        <path d="M4 2h16v8h-8l8 8H12v6l-8-8h8l-8-8V2z" />
+    </svg>
+)
+
+const SplineIcon = () => (
+    <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        className="w-5 h-5 text-[#FF3366]"
+    >
+        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
     </svg>
 )
 
@@ -94,6 +172,60 @@ const integrations = [
         name: 'Notion',
         description: 'Pull in pages and databases from Notion as project context.',
         Icon: NotionIcon,
+        iconColor: '#D6D5C9',
+    },
+    {
+        id: 'figma' as const,
+        name: 'Figma',
+        description: 'Import styles, components, and design tokens directly from your Figma files.',
+        Icon: FigmaIcon,
+        iconColor: '#D6D5C9',
+    },
+    {
+        id: 'railway' as const,
+        name: 'Railway',
+        description: 'Deploy backend services, databases, and microservices instantly on Railway.',
+        Icon: RailwayIcon,
+        iconColor: '#D6D5C9',
+    },
+    {
+        id: 'render' as const,
+        name: 'Render',
+        description:
+            'Host your cloud infrastructure, static sites, and cron jobs seamlessly with Render.',
+        Icon: RenderIcon,
+        iconColor: '#D6D5C9',
+    },
+    {
+        id: 'mongodb' as const,
+        name: 'MongoDB',
+        description:
+            'Connect your MongoDB Atlas clusters to inspect and manage your cloud databases.',
+        Icon: MongodbIcon,
+        iconColor: '#D6D5C9',
+    },
+    {
+        id: 'razorpay' as const,
+        name: 'Razorpay',
+        description:
+            'Integrate payment gateways, subscriptions, and webhooks effortlessly with Razorpay.',
+        Icon: RazorpayIcon,
+        iconColor: '#D6D5C9',
+    },
+    {
+        id: 'framer' as const,
+        name: 'Framer',
+        description:
+            'Export motion animations, interactive prototypes, and production-ready components.',
+        Icon: FramerIcon,
+        iconColor: '#D6D5C9',
+    },
+    {
+        id: 'spline' as const,
+        name: 'Spline',
+        description:
+            'Embed interactive 3D scenes, immersive animations, and real-time 3D web assets.',
+        Icon: SplineIcon,
         iconColor: '#D6D5C9',
     },
 ]

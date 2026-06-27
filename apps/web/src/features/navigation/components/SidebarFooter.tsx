@@ -116,7 +116,7 @@ export const SidebarFooter: React.FC<
                                     December CLI
                                 </span>
                                 <span className="text-[11px] text-[#8F8E8D] mt-0.5 leading-tight truncate w-full">
-                                    Build apps from your terminal.
+                                    Turn ideas into reality.
                                 </span>
                             </button>
                         </div>

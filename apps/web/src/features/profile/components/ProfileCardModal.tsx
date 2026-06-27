@@ -137,18 +137,8 @@ export const ProfileCardModal: React.FC<ProfileCardModalProps> = ({
                     <img
                         src={bannerImg}
                         alt="Profile Banner"
-                        className="absolute inset-0 w-full h-full object-cover scale-[1.35] object-center"
+                        className="absolute inset-0 w-full h-full object-cover object-bottom"
                     />
-                    {/* Subtle Gradient Overlays */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#171615] via-[#171615]/40 to-transparent opacity-90" />
-
-                    {/* Banner Text */}
-                    <h1
-                        className="relative z-10 text-[#D6D5C9] font-mono text-[24px] md:text-[28px] tracking-tight opacity-90"
-                        style={{ textShadow: '0 4px 12px rgba(0,0,0,0.8)' }}
-                    >
-                        december.com/@{displayUsername}
-                    </h1>
 
                     <button
                         className="absolute top-4 right-4 z-20 p-2 bg-black/40 hover:bg-black/60 rounded-full text-white/70 hover:text-white transition-colors"
