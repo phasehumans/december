@@ -57,6 +57,8 @@ const Sidebar: React.FC<
             <SidebarHeader
                 onNewThread={isAuthenticated ? onNewThread : onOpenAuth}
                 onHomeClick={isAuthenticated ? onHomeClick : onOpenAuth}
+                isAuthenticated={isAuthenticated}
+                onOpenAuth={onOpenAuth}
             />
 
             <div className="flex flex-col gap-[2px] pl-[10px] pr-3">

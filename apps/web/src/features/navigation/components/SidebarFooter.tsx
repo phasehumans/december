@@ -3,6 +3,8 @@ import { Bell } from 'lucide-react'
 import React, { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 
+import sidebarPng from '../../../../public/sidebar.png'
+
 import { NotificationsPopover } from './NotificationsPopover'
 import { UserProfilePopover } from './UserProfilePopover'
 
@@ -23,8 +25,27 @@ export const SidebarFooter: React.FC<
     const [isNotifPopoverOpen, setIsNotifPopoverOpen] = useState(false)
     const [isProfileModalOpen, setIsProfileModalOpen] = useState(false)
     const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false)
+    const [showCliCard, setShowCliCard] = useState(false)
     const anchorRef = useRef<HTMLButtonElement>(null)
     const notifAnchorRef = useRef<HTMLButtonElement>(null)
+
+    React.useEffect(() => {
+        const handler = () => setShowCliCard((prev) => !prev)
+        window.addEventListener('open-cli-card', handler)
+        return () => window.removeEventListener('open-cli-card', handler)
+    }, [])
+
+    React.useEffect(() => {
+        const handleClickOutside = (e: MouseEvent) => {
+            const el = document.getElementById('cli-popover-card')
+            const btn = document.getElementById('try-cli-btn')
+            if (el && !el.contains(e.target as Node) && btn && !btn.contains(e.target as Node)) {
+                setShowCliCard(false)
+            }
+        }
+        document.addEventListener('mousedown', handleClickOutside)
+        return () => document.removeEventListener('mousedown', handleClickOutside)
+    }, [])
 
     const { data: quickInfo } = useQuery({
         queryKey: ['quickinfo'],
@@ -55,21 +76,53 @@ export const SidebarFooter: React.FC<
     const hasUnread = notifications.some((n: any) => !n.isRead)
 
     return (
-        <div className="mt-auto flex flex-col w-full">
-            {isAuthenticated && (
-                <div className="px-3 py-1.5 flex justify-center">
-                    <button
-                        onClick={() => navigate('/cli')}
-                        className="upgrade-plan-btn flex items-center gap-1 px-2.5 py-[3px] rounded-full hover:bg-white/[0.06] transition-all text-[#CBCACA] hover:text-white text-[11px] font-medium outline-none w-fit mx-auto cursor-pointer"
-                        style={{
-                            border: '1px solid #383735',
-                        }}
+        <div className="mt-auto flex flex-col w-full relative">
+            <div className="px-3 py-1.5 flex justify-center relative">
+                <button
+                    id="try-cli-btn"
+                    onClick={() => setShowCliCard(!showCliCard)}
+                    className="upgrade-plan-btn flex items-center gap-1 px-2.5 py-[3px] rounded-full hover:bg-white/[0.06] transition-all text-[#CBCACA] hover:text-white text-[11px] font-medium outline-none w-fit mx-auto cursor-pointer"
+                    style={{
+                        border: '1px solid #383735',
+                    }}
+                >
+                    <span className="text-[12px]">✱</span>
+                    <span>Try December CLI</span>
+                </button>
+
+                {showCliCard && (
+                    <div
+                        id="cli-popover-card"
+                        className="absolute bottom-11 left-3 w-[260px] z-[100] bg-[#1C1B1A] border border-[#2A2928] rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200"
                     >
-                        <span className="text-[12px]">✱</span>
-                        <span>Try December CLI</span>
-                    </button>
-                </div>
-            )}
+                        <div className="w-full h-[165px] bg-[#1C1B1A] relative overflow-hidden flex items-center justify-center p-1.5 pb-0">
+                            <div className="w-full h-full relative overflow-hidden rounded-xl border border-[#2A2928]">
+                                <img
+                                    src={sidebarPng}
+                                    alt="December CLI preview"
+                                    className="w-full h-full object-cover object-center scale-[1.35] absolute inset-0"
+                                />
+                            </div>
+                        </div>
+                        <div className="flex flex-col px-1.5 pt-1.5 pb-2.5 bg-[#1C1B1A]">
+                            <button
+                                onClick={() => {
+                                    setShowCliCard(false)
+                                    navigate('/cli')
+                                }}
+                                className="flex flex-col px-1.5 py-0.5 w-full text-left cursor-pointer outline-none overflow-hidden"
+                            >
+                                <span className="text-[12px] font-medium text-[#D6D5D4]">
+                                    December CLI
+                                </span>
+                                <span className="text-[11px] text-[#8F8E8D] mt-0.5 leading-tight truncate w-full">
+                                    Build apps from your terminal.
+                                </span>
+                            </button>
+                        </div>
+                    </div>
+                )}
+            </div>
             {isAuthenticated && <div className="w-full border-t border-white/[0.04]"></div>}
 
             <div className="pl-[6px] pr-[6px] pt-1 pb-1.5">
