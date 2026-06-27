@@ -171,7 +171,7 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
         return createPortal(
             <div
                 ref={popoverRef}
-                className="fixed z-[100] rounded-2xl border border-[#2E2D2C] bg-[#1E1D1C] shadow-2xl p-2 pointer-events-auto animate-in fade-in zoom-in-95 duration-200 flex flex-col font-sans"
+                className="fixed z-[100] rounded-2xl border border-[#2E2D2C] bg-[#1F1F1F] shadow-2xl p-2 pointer-events-auto animate-in fade-in zoom-in-95 duration-200 flex flex-col font-sans"
                 style={{
                     bottom: position.bottom,
                     left: Math.max(10, position.left),
@@ -182,7 +182,7 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
                 <div className="flex items-center gap-2 px-2 py-1.5 shrink-0">
                     <button
                         onClick={() => setSelectedNotification(null)}
-                        className="text-[#CBCACA] hover:text-white transition-colors p-1.5 rounded-xl hover:bg-[#252422] outline-none"
+                        className="text-[#CBCACA] hover:text-white transition-colors p-1.5 rounded-xl hover:bg-[#252525] outline-none"
                     >
                         <ArrowLeft className="w-[15px] h-[15px]" />
                     </button>
@@ -221,7 +221,7 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
                             href={selectedNotification.link}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-[#2E2D2C] bg-[#252422]/50 hover:bg-[#252422] rounded-xl text-[12px] font-medium text-[#CBCACA] hover:text-white transition-colors w-fit shadow-sm mt-2"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-[#2E2D2C] bg-[#252525]/50 hover:bg-[#252525] rounded-xl text-[12px] font-medium text-[#CBCACA] hover:text-white transition-colors w-fit shadow-sm mt-2"
                         >
                             View Details →
                         </a>
@@ -236,7 +236,7 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
     return createPortal(
         <div
             ref={popoverRef}
-            className="fixed z-[100] rounded-2xl border border-[#2E2D2C] bg-[#1E1D1C] shadow-2xl p-2 pointer-events-auto animate-in fade-in zoom-in-95 duration-200 flex flex-col font-sans"
+            className="fixed z-[100] rounded-2xl border border-[#2E2D2C] bg-[#1F1F1F] shadow-2xl p-2 pointer-events-auto animate-in fade-in zoom-in-95 duration-200 flex flex-col font-sans"
             style={{
                 bottom: position.bottom,
                 left: Math.max(10, position.left),
@@ -256,7 +256,7 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
                             e.stopPropagation()
                             setIsMenuOpen(!isMenuOpen)
                         }}
-                        className="flex items-center justify-center w-7 h-7 rounded-lg hover:bg-[#252422] text-[#8F8E8D] hover:text-[#CBCACA] transition-colors outline-none cursor-pointer"
+                        className="flex items-center justify-center w-7 h-7 rounded-lg hover:bg-[#252525] text-[#8F8E8D] hover:text-[#CBCACA] transition-colors outline-none cursor-pointer"
                         title="More options"
                     >
                         <MoreHorizontal className="w-[15px] h-[15px]" />
@@ -264,7 +264,7 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
                     {isMenuOpen && (
                         <div
                             ref={menuRef}
-                            className="absolute right-[-144px] top-8 z-[110] w-[180px] rounded-2xl border border-[#2E2D2C] bg-[#1E1D1C] shadow-2xl p-2 flex flex-col gap-0.5 animate-in fade-in zoom-in-95 duration-100"
+                            className="absolute right-[-144px] top-8 z-[110] w-[180px] rounded-2xl border border-[#2E2D2C] bg-[#1F1F1F] shadow-2xl p-2 flex flex-col gap-0.5 animate-in fade-in zoom-in-95 duration-100"
                         >
                             <button
                                 onClick={() => {
@@ -272,7 +272,7 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
                                     onClose()
                                     setIsMenuOpen(false)
                                 }}
-                                className="flex items-center gap-3 w-full px-3 py-1.5 rounded-xl hover:bg-[#252422] text-[#CBCACA] hover:text-white transition-colors text-left text-[14px] cursor-pointer outline-none group"
+                                className="flex items-center gap-3 w-full px-3 py-1.5 rounded-xl hover:bg-[#252525] text-[#CBCACA] hover:text-white transition-colors text-left text-[14px] cursor-pointer outline-none group"
                             >
                                 <Settings
                                     className="w-[18px] h-[18px] text-[#CBCACA] group-hover:text-white transition-colors"
@@ -284,7 +284,7 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
                                 onClick={() => {
                                     deleteAllReadMutation.mutate()
                                 }}
-                                className="flex items-center gap-3 w-full px-3 py-1.5 rounded-xl hover:bg-[#252422] text-[#CBCACA] hover:text-white transition-colors text-left text-[14px] cursor-pointer outline-none group"
+                                className="flex items-center gap-3 w-full px-3 py-1.5 rounded-xl hover:bg-[#252525] text-[#CBCACA] hover:text-white transition-colors text-left text-[14px] cursor-pointer outline-none group"
                             >
                                 <Trash2
                                     className="w-[18px] h-[18px] text-[#CBCACA] group-hover:text-white transition-colors"
@@ -338,8 +338,8 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
                                 onClick={() => handleNotificationClick(notification)}
                                 className={`relative group/notif flex flex-col gap-0.5 px-3 py-2.5 rounded-xl cursor-pointer transition-colors ${
                                     notification.isRead
-                                        ? 'text-[#8F8E8D] hover:bg-[#252422]'
-                                        : 'bg-[#252422]/30 hover:bg-[#252422]/60 text-white'
+                                        ? 'text-[#8F8E8D] hover:bg-[#252525]'
+                                        : 'bg-[#252525]/30 hover:bg-[#252525]/60 text-white'
                                 }`}
                             >
                                 <div className="flex items-center justify-between gap-2 pr-6">
@@ -376,7 +376,7 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
                                         e.stopPropagation()
                                         deleteMutation.mutate(notification.id)
                                     }}
-                                    className="absolute top-2.5 right-2.5 p-1.5 rounded-lg bg-[#171615] border border-[#2B2A27] text-[#969593] hover:text-white hover:border-white/20 opacity-0 group-hover/notif:opacity-100 transition-all duration-200 hover:bg-white/[0.06] outline-none shadow-sm"
+                                    className="absolute top-2.5 right-2.5 p-1.5 rounded-lg bg-[#141414] border border-[#2B2A27] text-[#969593] hover:text-white hover:border-white/20 opacity-0 group-hover/notif:opacity-100 transition-all duration-200 hover:bg-white/[0.06] outline-none shadow-sm"
                                     title="Delete notification"
                                 >
                                     <Trash2 className="w-3.5 h-3.5" strokeWidth={1.5} />

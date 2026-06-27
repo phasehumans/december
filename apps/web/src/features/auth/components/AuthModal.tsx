@@ -70,9 +70,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: 15 }}
                     transition={{ duration: 0.3, ease: 'easeOut' }}
-                    className="fixed inset-0 z-[100] bg-[#171615] flex flex-col md:flex-row font-roboto overflow-y-auto"
+                    className="fixed inset-0 z-[100] bg-[#141414] flex flex-col md:flex-row font-roboto overflow-y-auto"
                 >
-                    <div className="w-full md:w-[60%] flex items-center justify-center min-h-[300px] md:min-h-screen relative bg-[#171615] md:border-r border-[#232323] overflow-hidden">
+                    <div className="w-full md:w-[60%] flex items-center justify-center min-h-[300px] md:min-h-screen relative bg-[#141414] md:border-r border-[#232323] overflow-hidden">
                         <img
                             src={authPng}
                             alt="Authentication background"
@@ -80,7 +80,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                         />
                     </div>
 
-                    <div className="w-full md:w-[40%] flex items-center justify-center p-6 md:p-12 lg:p-16 relative bg-[#171615]">
+                    <div className="w-full md:w-[40%] flex items-center justify-center p-6 md:p-12 lg:p-16 relative bg-[#141414]">
                         <button
                             onClick={onClose}
                             className="absolute top-6 right-6 text-[#737373] hover:text-[#E5E5E5] transition-colors p-2 rounded-full hover:bg-white/10 z-20"

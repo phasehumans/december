@@ -8,7 +8,7 @@ interface DocsPageProps {
 export const DocsPage: React.FC<DocsPageProps> = ({ onBack }) => {
     return (
         <div className="flex w-full h-full bg-[#100E12] overflow-hidden p-1.5 md:p-[8px] font-sans">
-            <div className="flex w-full h-full bg-[#171615] rounded-lg border border-[#242323] overflow-y-auto lg:overflow-hidden relative">
+            <div className="flex w-full h-full bg-[#141414] rounded-lg border border-[#242323] overflow-y-auto lg:overflow-hidden relative">
                 {/* Minimal Back Button */}
                 {onBack && (
                     <button

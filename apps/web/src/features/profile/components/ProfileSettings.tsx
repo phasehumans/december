@@ -113,13 +113,13 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
 
     return (
         <div className="flex w-full h-full bg-[#100E12] overflow-hidden p-1.5 md:p-[8px]">
-            <div className="flex w-full h-full bg-[#171615] rounded-lg border border-[#242323] overflow-hidden">
+            <div className="flex w-full h-full bg-[#141414] rounded-lg border border-[#242323] overflow-hidden">
                 {/* Settings Sidebar */}
                 <div className="w-[220px] shrink-0 border-r border-[#242323] flex flex-col py-4">
                     <div className="px-4 mb-6">
                         <button
                             onClick={onBack}
-                            className="flex items-center text-[#7B7A79] hover:text-[#D6D5D4] hover:bg-[#1E1D1B] px-2 py-1 -ml-2 rounded-lg text-[13px] font-medium transition-colors"
+                            className="flex items-center text-[#7B7A79] hover:text-[#D6D5D4] hover:bg-[#191919] px-2 py-1 -ml-2 rounded-lg text-[13px] font-medium transition-colors"
                         >
                             <ChevronLeft className="w-4 h-4 mr-2" />
                             Home
@@ -136,7 +136,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                             className={`flex items-center gap-3 px-3 py-1.5 rounded-xl text-[13px] font-medium transition-colors ${
                                 activeTab === 'Account'
                                     ? 'bg-[#242323] text-[#D6D5C9]'
-                                    : 'text-[#D6D5C9] hover:bg-[#1E1D1B]'
+                                    : 'text-[#D6D5C9] hover:bg-[#191919]'
                             }`}
                         >
                             <UserCircle className="w-[18px] h-[18px]" strokeWidth={1.5} />
@@ -149,7 +149,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                             className={`flex items-center gap-3 px-3 py-1.5 rounded-xl text-[13px] font-medium transition-colors ${
                                 activeTab === 'Preferences'
                                     ? 'bg-[#242323] text-[#D6D5C9]'
-                                    : 'text-[#D6D5C9] hover:bg-[#1E1D1B]'
+                                    : 'text-[#D6D5C9] hover:bg-[#191919]'
                             }`}
                         >
                             <SlidersHorizontal className="w-[18px] h-[18px]" strokeWidth={1.5} />
@@ -162,7 +162,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                             className={`flex items-center gap-3 px-3 py-1.5 rounded-xl text-[13px] font-medium transition-colors ${
                                 activeTab === 'Integrations'
                                     ? 'bg-[#242323] text-[#D6D5C9]'
-                                    : 'text-[#D6D5C9] hover:bg-[#1E1D1B]'
+                                    : 'text-[#D6D5C9] hover:bg-[#191919]'
                             }`}
                         >
                             <Plug className="w-[18px] h-[18px] rotate-45" strokeWidth={1.5} />
@@ -173,7 +173,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                             className={`flex items-center gap-3 px-3 py-1.5 rounded-xl text-[13px] font-medium transition-colors ${
                                 activeTab === 'Billing'
                                     ? 'bg-[#242323] text-[#D6D5C9]'
-                                    : 'text-[#D6D5C9] hover:bg-[#1E1D1B]'
+                                    : 'text-[#D6D5C9] hover:bg-[#191919]'
                             }`}
                         >
                             <CreditCard className="w-[18px] h-[18px]" strokeWidth={1.5} />
@@ -184,7 +184,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                             className={`flex items-center gap-3 px-3 py-1.5 rounded-xl text-[13px] font-medium transition-colors ${
                                 activeTab === 'Usage'
                                     ? 'bg-[#242323] text-[#D6D5C9]'
-                                    : 'text-[#D6D5C9] hover:bg-[#1E1D1B]'
+                                    : 'text-[#D6D5C9] hover:bg-[#191919]'
                             }`}
                         >
                             <Activity className="w-[18px] h-[18px]" strokeWidth={1.5} />
@@ -195,7 +195,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                             className={`flex items-center gap-3 px-3 py-1.5 rounded-xl text-[13px] font-medium transition-colors ${
                                 activeTab === 'API Keys'
                                     ? 'bg-[#242323] text-[#D6D5C9]'
-                                    : 'text-[#D6D5C9] hover:bg-[#1E1D1B]'
+                                    : 'text-[#D6D5C9] hover:bg-[#191919]'
                             }`}
                         >
                             <KeyRound className="w-[18px] h-[18px]" strokeWidth={1.5} />
@@ -209,7 +209,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                             href="https://github.com/phasehumans/december/tree/main/docs"
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="flex items-center justify-between px-3 py-1.5 rounded-xl text-[#D6D5C9] hover:bg-[#1E1D1B] text-[13px] font-medium transition-colors group"
+                            className="flex items-center justify-between px-3 py-1.5 rounded-xl text-[#D6D5C9] hover:bg-[#191919] text-[13px] font-medium transition-colors group"
                         >
                             <div className="flex items-center gap-3">
                                 <Icons.DocsBook className="w-[18px] h-[18px]" strokeWidth={1.5} />
@@ -224,7 +224,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                             href="https://github.com/phasehumans/december/blob/main/CHANGELOG.md"
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="flex items-center justify-between px-3 py-1.5 rounded-xl text-[#D6D5C9] hover:bg-[#1E1D1B] text-[13px] font-medium transition-colors group"
+                            className="flex items-center justify-between px-3 py-1.5 rounded-xl text-[#D6D5C9] hover:bg-[#191919] text-[13px] font-medium transition-colors group"
                         >
                             <div className="flex items-center gap-3">
                                 <FileClock className="w-[18px] h-[18px]" strokeWidth={1.5} />
@@ -239,7 +239,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                 </div>
 
                 {/* Main Content */}
-                <div className="flex-1 overflow-y-auto [&::-webkit-scrollbar]:w-[12px] [&::-webkit-scrollbar-track]:bg-[#171615] [&::-webkit-scrollbar-thumb]:bg-[#383736] [&::-webkit-scrollbar-thumb]:bg-clip-padding [&::-webkit-scrollbar-thumb]:border-[4px] [&::-webkit-scrollbar-thumb]:border-solid [&::-webkit-scrollbar-thumb]:border-transparent [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-[#4A4948]">
+                <div className="flex-1 overflow-y-auto [&::-webkit-scrollbar]:w-[12px] [&::-webkit-scrollbar-track]:bg-[#141414] [&::-webkit-scrollbar-thumb]:bg-[#383736] [&::-webkit-scrollbar-thumb]:bg-clip-padding [&::-webkit-scrollbar-thumb]:border-[4px] [&::-webkit-scrollbar-thumb]:border-solid [&::-webkit-scrollbar-thumb]:border-transparent [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-[#4A4948]">
                     <div className="w-full flex justify-center px-8 md:px-16 py-8 md:py-12 relative z-10">
                         <div className="flex flex-col items-end gap-2 absolute top-12 right-16">
                             {profileErrorMessage && (

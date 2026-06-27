@@ -45,10 +45,10 @@ export const PublishTab: React.FC<PublishTabProps> = ({
                 {showBothNotConnected ? (
                     <div className="border border-dashed border-[#383736] rounded-xl py-14 flex flex-col items-center justify-center gap-4 bg-[#100E12]/30 hover:border-[#4A4948] transition-colors w-full">
                         <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 rounded-2xl bg-[#1E1D1B] border border-[#383736] flex items-center justify-center shadow-md">
-                                <Github className="w-6 h-6 text-[#D6D5C9]" />
+                            <div className="w-12 h-12 rounded-2xl bg-[#191919] border border-[#383736] flex items-center justify-center shadow-md">
+                                <Globe className="w-6 h-6 text-[#D6D5C9]" />
                             </div>
-                            <div className="w-12 h-12 rounded-2xl bg-[#1E1D1B] border border-[#383736] flex items-center justify-center shadow-md">
+                            <div className="w-12 h-12 rounded-2xl bg-[#191919] border border-[#383736] flex items-center justify-center shadow-md">
                                 <Rocket className="w-6 h-6 text-[#D6D5C9]" />
                             </div>
                         </div>
@@ -65,7 +65,7 @@ export const PublishTab: React.FC<PublishTabProps> = ({
                             <button
                                 type="button"
                                 onClick={handleConnectGithub}
-                                className="flex items-center gap-2 px-5 py-2 rounded-lg border border-[#383736] bg-[#171615] hover:bg-[#1E1D1B] text-[13px] font-medium text-[#D6D5C9] hover:text-white transition-all cursor-pointer"
+                                className="flex items-center gap-2 px-5 py-2 rounded-lg border border-[#383736] bg-[#141414] hover:bg-[#191919] text-[13px] font-medium text-[#D6D5C9] hover:text-white transition-all cursor-pointer"
                             >
                                 <Github className="w-4 h-4" />
                                 Connect GitHub
@@ -73,7 +73,7 @@ export const PublishTab: React.FC<PublishTabProps> = ({
                             <button
                                 type="button"
                                 onClick={handleConnectVercel}
-                                className="flex items-center gap-2 px-5 py-2 rounded-lg border border-[#383736] bg-[#171615] hover:bg-[#1E1D1B] text-[13px] font-medium text-[#D6D5C9] hover:text-white transition-all cursor-pointer"
+                                className="flex items-center gap-2 px-5 py-2 rounded-lg border border-[#383736] bg-[#141414] hover:bg-[#191919] text-[13px] font-medium text-[#D6D5C9] hover:text-white transition-all cursor-pointer"
                             >
                                 <Rocket className="w-4 h-4" />
                                 Connect Vercel
@@ -82,7 +82,7 @@ export const PublishTab: React.FC<PublishTabProps> = ({
                     </div>
                 ) : showGithubNotConnected ? (
                     <div className="border border-dashed border-[#383736] rounded-xl py-14 flex flex-col items-center justify-center gap-4 bg-[#100E12]/30 hover:border-[#4A4948] transition-colors w-full">
-                        <div className="w-12 h-12 rounded-2xl bg-[#1E1D1B] border border-[#383736] flex items-center justify-center shadow-md">
+                        <div className="w-12 h-12 rounded-2xl bg-[#191919] border border-[#383736] flex items-center justify-center shadow-md">
                             <Github className="w-6 h-6 text-[#D6D5C9]" />
                         </div>
                         <div className="flex flex-col items-center gap-1.5 text-center px-4">
@@ -97,7 +97,7 @@ export const PublishTab: React.FC<PublishTabProps> = ({
                         <button
                             type="button"
                             onClick={handleConnectGithub}
-                            className="flex items-center gap-2 px-5 py-2 rounded-lg border border-[#383736] bg-[#171615] hover:bg-[#1E1D1B] text-[13px] font-medium text-[#D6D5C9] hover:text-white transition-all cursor-pointer mt-1"
+                            className="flex items-center gap-2 px-5 py-2 rounded-lg border border-[#383736] bg-[#141414] hover:bg-[#191919] text-[13px] font-medium text-[#D6D5C9] hover:text-white transition-all cursor-pointer mt-1"
                         >
                             <Github className="w-4 h-4" />
                             Connect GitHub
@@ -105,7 +105,7 @@ export const PublishTab: React.FC<PublishTabProps> = ({
                     </div>
                 ) : showVercelNotConnected ? (
                     <div className="border border-dashed border-[#383736] rounded-xl py-14 flex flex-col items-center justify-center gap-4 bg-[#100E12]/30 hover:border-[#4A4948] transition-colors w-full">
-                        <div className="w-12 h-12 rounded-2xl bg-[#1E1D1B] border border-[#383736] flex items-center justify-center shadow-md">
+                        <div className="w-12 h-12 rounded-2xl bg-[#191919] border border-[#383736] flex items-center justify-center shadow-md">
                             <Rocket className="w-6 h-6 text-[#D6D5C9]" />
                         </div>
                         <div className="flex flex-col items-center gap-1.5 text-center px-4">
@@ -120,7 +120,7 @@ export const PublishTab: React.FC<PublishTabProps> = ({
                         <button
                             type="button"
                             onClick={handleConnectVercel}
-                            className="flex items-center gap-2 px-5 py-2 rounded-lg border border-[#383736] bg-[#171615] hover:bg-[#1E1D1B] text-[13px] font-medium text-[#D6D5C9] hover:text-white transition-all cursor-pointer mt-1"
+                            className="flex items-center gap-2 px-5 py-2 rounded-lg border border-[#383736] bg-[#141414] hover:bg-[#191919] text-[13px] font-medium text-[#D6D5C9] hover:text-white transition-all cursor-pointer mt-1"
                         >
                             <Rocket className="w-4 h-4" />
                             Connect Vercel
@@ -131,7 +131,7 @@ export const PublishTab: React.FC<PublishTabProps> = ({
                         {/* Connected Header */}
                         <div className="flex items-center justify-between mb-6 w-full">
                             <div className="flex items-center gap-4 text-left">
-                                <div className="w-10 h-10 rounded-lg bg-[#1E1D1B] border border-[#383736] flex items-center justify-center shrink-0">
+                                <div className="w-10 h-10 rounded-lg bg-[#191919] border border-[#383736] flex items-center justify-center shrink-0">
                                     <Rocket className="w-5 h-5 text-[#D6D5C9]" />
                                 </div>
                                 <div className="flex flex-col gap-0.5">
@@ -144,7 +144,7 @@ export const PublishTab: React.FC<PublishTabProps> = ({
                                     </span>
                                 </div>
                             </div>
-                            <span className="text-[11px] font-medium px-2 py-0.5 rounded border border-[#2B2A29] bg-[#1E1D1B] text-[#D6D5C9]">
+                            <span className="text-[11px] font-medium px-2 py-0.5 rounded border border-[#2B2A29] bg-[#191919] text-[#D6D5C9]">
                                 Connected
                             </span>
                         </div>
@@ -156,12 +156,12 @@ export const PublishTab: React.FC<PublishTabProps> = ({
                                     Production URL
                                 </span>
                                 {vercelDeploymentUrl ? (
-                                    <span className="text-[10px] font-bold uppercase bg-[#1E1D1B] border border-[#383736] text-[#D6D5C9] rounded-xl px-2.5 py-0.5 select-none flex items-center gap-1">
+                                    <span className="text-[10px] font-bold uppercase bg-[#191919] border border-[#383736] text-[#D6D5C9] rounded-xl px-2.5 py-0.5 select-none flex items-center gap-1">
                                         <span className="w-1.5 h-1.5 rounded-full bg-[#D6D5C9]" />
                                         Success
                                     </span>
                                 ) : (
-                                    <span className="text-[10px] font-bold uppercase bg-[#1E1D1B] border border-[#383736] text-[#7B7A79] rounded-xl px-2.5 py-0.5 select-none">
+                                    <span className="text-[10px] font-bold uppercase bg-[#191919] border border-[#383736] text-[#7B7A79] rounded-xl px-2.5 py-0.5 select-none">
                                         No Deployment
                                     </span>
                                 )}
@@ -206,7 +206,7 @@ export const PublishTab: React.FC<PublishTabProps> = ({
                                             ? 'bg-[#242323] border border-[#383736] text-[#7B7A79] cursor-not-allowed'
                                             : !githubRepoName
                                               ? 'bg-[#242323] border border-[#383736] text-[#7B7A79] cursor-not-allowed'
-                                              : 'bg-[#E8E7E4] text-[#171615] hover:bg-white'
+                                              : 'bg-[#E8E7E4] text-[#141414] hover:bg-white'
                                     }`}
                                 >
                                     {deploying ? (
@@ -216,7 +216,7 @@ export const PublishTab: React.FC<PublishTabProps> = ({
                                         </>
                                     ) : (
                                         <>
-                                            <Rocket className="w-4 h-4 text-[#171615]" />
+                                            <Rocket className="w-4 h-4 text-[#141414]" />
                                             Deploy to Production
                                         </>
                                     )}

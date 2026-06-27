@@ -181,7 +181,7 @@ export const ShareTab: React.FC<ShareTabProps> = ({
                     <span className="text-[14px] font-medium text-[#D6D5C9]">
                         Active Collaborators
                     </span>
-                    <div className="flex flex-col divide-y divide-[#242323] border border-[#242323] rounded-xl bg-[#171615] overflow-hidden">
+                    <div className="flex flex-col divide-y divide-[#242323] border border-[#242323] rounded-xl bg-[#141414] overflow-hidden">
                         {/* Project Owner Row */}
                         {project?.user && (
                             <div className="flex items-center justify-between px-4 py-3.5 hover:bg-[#1A1918] transition-colors">

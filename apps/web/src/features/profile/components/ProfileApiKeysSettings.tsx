@@ -34,7 +34,7 @@ export const ProfileApiKeysSettings: React.FC = () => {
 
                     <div className="w-full rounded-xl border border-dashed border-[#383736] py-20 flex flex-col items-center justify-center gap-4 transition-colors hover:border-[#4A4948] bg-[#100E12]/30">
                         <span className="text-[14px] text-[#7B7A79]">No API keys added</span>
-                        <button className="px-4 py-1.5 rounded-lg border border-[#383736] text-[13px] text-[#D6D5C9] hover:bg-[#1E1D1B] transition-colors mt-1">
+                        <button className="px-4 py-1.5 rounded-lg border border-[#383736] text-[13px] text-[#D6D5C9] hover:bg-[#191919] transition-colors mt-1">
                             New Key
                         </button>
                     </div>

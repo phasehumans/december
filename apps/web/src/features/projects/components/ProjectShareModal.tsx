@@ -92,7 +92,7 @@ export const ProjectShareModal: React.FC<ProjectShareModalProps> = ({
                             type="button"
                             onClick={() => !isDisabled && setIsDropdownOpen(!isDropdownOpen)}
                             disabled={isDisabled}
-                            className="w-full flex items-center justify-between bg-[#181817] hover:bg-[#1E1D1B] border border-[#2B2A27] hover:border-[#383736] rounded-lg px-3.5 py-2.5 text-white text-[13px] transition-[border-color,background-color] duration-200 focus:outline-none disabled:opacity-50 text-left"
+                            className="w-full flex items-center justify-between bg-[#181817] hover:bg-[#191919] border border-[#2B2A27] hover:border-[#383736] rounded-lg px-3.5 py-2.5 text-white text-[13px] transition-[border-color,background-color] duration-200 focus:outline-none disabled:opacity-50 text-left"
                         >
                             <span className={category === 'NONE' ? 'text-[#7B7A79]' : 'text-white'}>
                                 {selectedCategoryLabel}
@@ -111,7 +111,7 @@ export const ProjectShareModal: React.FC<ProjectShareModalProps> = ({
                                     animate={{ opacity: 1, y: 0, scale: 1 }}
                                     exit={{ opacity: 0, y: -6, scale: 0.98 }}
                                     transition={{ duration: 0.15 }}
-                                    className="absolute left-0 right-0 top-full mt-2 rounded-xl border border-[#383736] bg-[#1E1D1C] py-2 shadow-2xl z-50 max-h-[220px] overflow-y-auto no-scrollbar"
+                                    className="absolute left-0 right-0 top-full mt-2 rounded-xl border border-[#383736] bg-[#1F1F1F] py-2 shadow-2xl z-50 max-h-[220px] overflow-y-auto no-scrollbar"
                                 >
                                     {CATEGORIES.map((cat) => (
                                         <button

@@ -139,7 +139,7 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
                     </button>
 
                     {isModelSelectorOpen && (
-                        <div className="absolute top-[calc(100%+8px)] left-0 w-[240px] bg-[#1E1D1C] border border-white/[0.08] rounded-xl p-1 shadow-2xl z-50 flex flex-col gap-[2px]">
+                        <div className="absolute top-[calc(100%+8px)] left-0 w-[240px] bg-[#1F1F1F] border border-white/[0.08] rounded-xl p-1 shadow-2xl z-50 flex flex-col gap-[2px]">
                             {models.map((model) => {
                                 const isSelected = selectedModel === model.id
                                 return (
@@ -162,8 +162,8 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
                                         className={cn(
                                             'flex items-center justify-between px-3 py-1.5 rounded-lg text-left transition-colors outline-none',
                                             isSelected
-                                                ? 'bg-[#252422] text-[#D6D5D4]'
-                                                : 'text-[#8F8E8D] hover:bg-[#252422] hover:text-[#D6D5D4]'
+                                                ? 'bg-[#252525] text-[#D6D5D4]'
+                                                : 'text-[#8F8E8D] hover:bg-[#252525] hover:text-[#D6D5D4]'
                                         )}
                                     >
                                         <span className="truncate">{model.name}</span>

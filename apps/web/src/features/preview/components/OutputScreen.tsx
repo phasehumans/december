@@ -618,7 +618,7 @@ You can now ask me to explain specific files, add new features, or debug any iss
 
     return (
         <div className="w-full h-full bg-black text-white font-sans overflow-hidden relative">
-            <div className="md:hidden flex h-full min-h-0 flex-col bg-[#171615]">
+            <div className="md:hidden flex h-full min-h-0 flex-col bg-[#141414]">
                 <div className="flex-1 min-h-0 px-2 pt-2 pb-2 overflow-hidden">
                     <div
                         className={
@@ -686,7 +686,7 @@ You can now ask me to explain specific files, add new features, or debug any iss
                 </div>
 
                 <div className="shrink-0 px-2 pb-2">
-                    <div className="grid grid-cols-2 gap-1 rounded-2xl border border-white/10 bg-[#171615] p-1">
+                    <div className="grid grid-cols-2 gap-1 rounded-2xl border border-white/10 bg-[#141414] p-1">
                         <button
                             onClick={() => setMobileActiveTab('chat')}
                             className={`rounded-xl px-3 py-2 text-sm font-medium transition-colors ${

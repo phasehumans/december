@@ -130,7 +130,7 @@ export const ProfileCardModal: React.FC<ProfileCardModalProps> = ({
         >
             <div
                 ref={modalRef}
-                className="w-full max-w-[760px] bg-[#171615] rounded-2xl shadow-2xl relative overflow-hidden flex flex-col animate-in zoom-in-95 duration-200 border border-[#2B2A29]"
+                className="w-full max-w-[760px] bg-[#141414] rounded-2xl shadow-2xl relative overflow-hidden flex flex-col animate-in zoom-in-95 duration-200 border border-[#2B2A29]"
             >
                 {/* Banner with Image */}
                 <div className="relative h-[160px] w-full bg-[#100E12] flex items-center justify-center overflow-hidden">
@@ -154,7 +154,7 @@ export const ProfileCardModal: React.FC<ProfileCardModalProps> = ({
                     <button
                         onClick={handleChangeAvatar}
                         disabled={isLoading}
-                        className="absolute -top-[48px] left-8 w-[96px] h-[96px] rounded-full border-[5px] border-[#171615] bg-[#2B2A29] overflow-hidden flex items-center justify-center shadow-xl hover:scale-105 hover:border-[#242323] transition-all cursor-pointer group"
+                        className="absolute -top-[48px] left-8 w-[96px] h-[96px] rounded-full border-[5px] border-[#141414] bg-[#2B2A29] overflow-hidden flex items-center justify-center shadow-xl hover:scale-105 hover:border-[#242323] transition-all cursor-pointer group"
                         title="Change Avatar"
                     >
                         {isLoading ? (
@@ -175,7 +175,7 @@ export const ProfileCardModal: React.FC<ProfileCardModalProps> = ({
                         ) : (
                             <button
                                 onClick={handleSettingsClick}
-                                className="flex items-center gap-1.5 px-4 py-1.5 rounded-full border border-[#383736] text-[13px] font-medium text-[#D6D5C9] hover:bg-[#1E1D1B] transition-colors"
+                                className="flex items-center gap-1.5 px-4 py-1.5 rounded-full border border-[#383736] text-[13px] font-medium text-[#D6D5C9] hover:bg-[#191919] transition-colors"
                             >
                                 Account settings
                                 <Settings className="w-3.5 h-3.5 text-[#7B7A79]" />
@@ -253,9 +253,9 @@ export const ProfileCardModal: React.FC<ProfileCardModalProps> = ({
                                 {sharedTemplates.map((project) => (
                                     <div
                                         key={project.id}
-                                        className="flex items-center gap-3 px-4 py-3 rounded-xl bg-[#100E12]/50 border border-[#242323] hover:bg-[#1E1D1B] transition-colors"
+                                        className="flex items-center gap-3 px-4 py-3 rounded-xl bg-[#100E12]/50 border border-[#242323] hover:bg-[#191919] transition-colors"
                                     >
-                                        <div className="w-9 h-9 rounded-lg bg-[#1E1D1B] border border-[#2B2A29] flex items-center justify-center shrink-0">
+                                        <div className="w-9 h-9 rounded-lg bg-[#191919] border border-[#2B2A29] flex items-center justify-center shrink-0">
                                             <Icons.Bookmark
                                                 className="w-4 h-4 text-[#7B7A79]"
                                                 strokeWidth={1.5}
@@ -276,7 +276,7 @@ export const ProfileCardModal: React.FC<ProfileCardModalProps> = ({
                             </div>
                         ) : (
                             <div className="w-full h-[240px] rounded-2xl bg-[#100E12]/50 border border-[#242323] flex flex-col items-center justify-center gap-3">
-                                <div className="w-12 h-12 rounded-2xl bg-[#1E1D1B] border border-[#2B2A29] flex items-center justify-center shadow-sm">
+                                <div className="w-12 h-12 rounded-2xl bg-[#191919] border border-[#2B2A29] flex items-center justify-center shadow-sm">
                                     <Icons.Bookmark
                                         className="w-6 h-6 text-[#7B7A79]"
                                         strokeWidth={1.5}
@@ -295,9 +295,9 @@ export const ProfileCardModal: React.FC<ProfileCardModalProps> = ({
                             {likedTemplates.map((template) => (
                                 <div
                                     key={template.id}
-                                    className="flex items-center gap-3 px-4 py-3 rounded-xl bg-[#100E12]/50 border border-[#242323] hover:bg-[#1E1D1B] transition-colors"
+                                    className="flex items-center gap-3 px-4 py-3 rounded-xl bg-[#100E12]/50 border border-[#242323] hover:bg-[#191919] transition-colors"
                                 >
-                                    <div className="w-9 h-9 rounded-lg bg-[#1E1D1B] border border-[#2B2A29] flex items-center justify-center shrink-0">
+                                    <div className="w-9 h-9 rounded-lg bg-[#191919] border border-[#2B2A29] flex items-center justify-center shrink-0">
                                         <Heart
                                             className="w-4 h-4 text-[#7B7A79]"
                                             strokeWidth={1.5}
@@ -318,7 +318,7 @@ export const ProfileCardModal: React.FC<ProfileCardModalProps> = ({
                         </div>
                     ) : (
                         <div className="w-full h-[240px] rounded-2xl bg-[#100E12]/50 border border-[#242323] flex flex-col items-center justify-center gap-3">
-                            <div className="w-12 h-12 rounded-2xl bg-[#1E1D1B] border border-[#2B2A29] flex items-center justify-center shadow-sm">
+                            <div className="w-12 h-12 rounded-2xl bg-[#191919] border border-[#2B2A29] flex items-center justify-center shadow-sm">
                                 <Heart className="w-6 h-6 text-[#7B7A79]" strokeWidth={1.5} />
                             </div>
                             <h3 className="text-[15px] font-medium text-[#D6D5C9]">

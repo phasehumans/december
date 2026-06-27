@@ -14,7 +14,7 @@ import type {
     CodeFileTreeNode,
 } from '@/features/preview/types'
 
-const VSCODE_DARK_PLUS_BACKGROUND = '#171615'
+const VSCODE_DARK_PLUS_BACKGROUND = '#141414'
 const VSCODE_DARK_PLUS_TEXT = '#d4d4d4'
 const VSCODE_DARK_PLUS_ACTIVE_LINE = '#2a2d2e'
 const VSCODE_DARK_PLUS_SELECTION = '#264f78'
