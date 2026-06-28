@@ -8,8 +8,10 @@ interface MobileSidebarNavProps {
     onClose: () => void
     onNewThread: () => void
     onAllProjects: () => void
+    onSessions?: () => void
     onTemplates: () => void
     onDocs: () => void
+    onProfile?: () => void
     isAuthenticated?: boolean
     onOpenAuth?: () => void
 }
@@ -18,36 +20,27 @@ export const MobileSidebarNav: React.FC<MobileSidebarNavProps> = ({
     onClose,
     onNewThread,
     onAllProjects,
+    onSessions,
     onTemplates,
     onDocs,
+    onProfile,
     isAuthenticated,
     onOpenAuth,
 }) => {
     return (
         <div className="flex flex-col gap-1 px-3">
             <SidebarNavItem
-                icon={<Icons.Home />}
-                label="Home"
+                icon={<Icons.Search className="w-[18px] h-[18px]" />}
+                label="Search"
                 collapsed={false}
-                onClick={() => {
-                    if (!isAuthenticated) {
-                        onOpenAuth?.()
-                    } else {
-                        onNewThread()
-                    }
-                    onClose()
-                }}
+                onClick={() => {}}
             />
             <SidebarNavItem
-                icon={<Icons.NewProject />}
-                label="New Project"
+                icon={<Icons.SessionsIcon className="w-[18px] h-[18px]" />}
+                label="Sessions"
                 collapsed={false}
                 onClick={() => {
-                    if (!isAuthenticated) {
-                        onOpenAuth?.()
-                    } else {
-                        onNewThread()
-                    }
+                    onSessions?.()
                     onClose()
                 }}
             />
@@ -66,6 +59,15 @@ export const MobileSidebarNav: React.FC<MobileSidebarNavProps> = ({
                 collapsed={false}
                 onClick={() => {
                     onTemplates()
+                    onClose()
+                }}
+            />
+            <SidebarNavItem
+                icon={<Icons.Settings className="w-[18px] h-[18px]" />}
+                label="Settings"
+                collapsed={false}
+                onClick={() => {
+                    onProfile?.()
                     onClose()
                 }}
             />

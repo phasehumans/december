@@ -21,10 +21,10 @@ export const SidebarHeader: React.FC<{
 
     return (
         <div className="px-3 mb-2 mt-0">
-            <div className="bg-[#2B2A29] rounded-[14px] p-1 flex flex-col gap-0.5 -mx-1 relative">
+            <div className="bg-[#1F1F1F] rounded-[14px] p-1 flex flex-col gap-0.5 -mx-1 relative">
                 {/* Sliding Background */}
                 <div
-                    className={`absolute left-1 right-1 h-[32px] bg-[#171717] rounded-[10px] transition-transform duration-300 ease-[cubic-bezier(0.2,1,0.2,1)] ${
+                    className={`absolute left-1 right-1 h-[32px] bg-[#141414] border border-white/5 shadow-sm rounded-[10px] transition-transform duration-300 ease-[cubic-bezier(0.2,1,0.2,1)] ${
                         activeTab === 'canvas' ? 'translate-y-[34px]' : 'translate-y-0'
                     }`}
                 />
@@ -38,7 +38,10 @@ export const SidebarHeader: React.FC<{
                         el?.scrollTo({ top: 0, behavior: 'smooth' })
                         if (onHomeClick) onHomeClick()
                     }}
-                    className="relative flex items-center gap-2.5 w-full px-2.5 h-[32px] rounded-[10px] transition-colors group outline-none hover:bg-white/[0.02]"
+                    className={cn(
+                        'relative flex items-center gap-2.5 w-full px-2.5 h-[32px] rounded-[10px] transition-all group outline-none',
+                        activeTab === 'home' ? '' : 'hover:bg-[#272727]'
+                    )}
                 >
                     <div
                         className={cn(
@@ -67,13 +70,12 @@ export const SidebarHeader: React.FC<{
                             if (onOpenAuth) onOpenAuth()
                             return
                         }
-                        window.dispatchEvent(
-                            new CustomEvent('hero-canvas-intersect', { detail: true })
-                        )
-                        const el = document.getElementById('hero-canvas-container')
-                        el?.scrollIntoView({ behavior: 'smooth' })
+                        if (onNewThread) onNewThread()
                     }}
-                    className="relative flex items-center gap-2.5 w-full px-2.5 h-[32px] rounded-[10px] transition-colors group outline-none hover:bg-white/[0.02]"
+                    className={cn(
+                        'relative flex items-center gap-2.5 w-full px-2.5 h-[32px] rounded-[10px] transition-all group outline-none',
+                        activeTab === 'canvas' ? '' : 'hover:bg-[#272727]'
+                    )}
                 >
                     <div
                         className={cn(
@@ -83,7 +85,7 @@ export const SidebarHeader: React.FC<{
                                 : 'text-[#8F8E8D] group-hover:text-[#D6D5D4]'
                         )}
                     >
-                        <Icons.CanvasIcon className="w-[18px] h-[18px]" />
+                        <Icons.Plus className="w-[18px] h-[18px]" />
                     </div>
                     <span
                         className={cn(
@@ -93,7 +95,7 @@ export const SidebarHeader: React.FC<{
                                 : 'text-[#8F8E8D] group-hover:text-[#D6D5D4]'
                         )}
                     >
-                        Canvas
+                        New Project
                     </span>
                 </button>
             </div>

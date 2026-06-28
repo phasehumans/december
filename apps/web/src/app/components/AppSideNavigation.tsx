@@ -45,6 +45,7 @@ export const AppSideNavigation: React.FC<AppSideNavigationProps> = ({
             <Sidebar
                 onNewThread={onNewThread}
                 onAllProjects={() => onNavigate('all-projects')}
+                onSessions={() => onNavigate('sessions')}
                 onTemplates={() => onNavigate('templates')}
                 onDocs={() => onNavigate('docs')}
                 onProfile={() => onNavigate('profile')}
@@ -71,6 +72,7 @@ export const AppSideNavigation: React.FC<AppSideNavigationProps> = ({
                 onClose={() => setIsMobileSidebarOpen(false)}
                 onNewThread={onNewThread}
                 onAllProjects={() => onNavigate('all-projects')}
+                onSessions={() => onNavigate('sessions')}
                 onTemplates={() => onNavigate('templates')}
                 onDocs={() => onNavigate('docs')}
                 onProfile={() => onNavigate('profile')}

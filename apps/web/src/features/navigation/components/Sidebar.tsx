@@ -16,6 +16,7 @@ const Sidebar: React.FC<
 > = ({
     onNewThread,
     onAllProjects,
+    onSessions,
     onTemplates,
     onDocs,
     onProfile,
@@ -34,8 +35,10 @@ const Sidebar: React.FC<
 
     const isHomeActive = path === '/'
     const isProjectsActive = path.startsWith('/projects')
+    const isSessionsActive = path.startsWith('/sessions')
     const isTemplatesActive = path.startsWith('/templates')
     const isDocsActive = path.startsWith('/docs')
+    const isSettingsActive = path.startsWith('/profile')
 
     // Keep exact same size (was 200px when open)
     // No collapse option
@@ -62,15 +65,15 @@ const Sidebar: React.FC<
 
             <div className="flex flex-col gap-[2px] pl-[10px] pr-3">
                 <SidebarNavItem
-                    icon={<Icons.Home />}
-                    label="Home"
-                    active={isHomeActive}
-                    onClick={isAuthenticated ? onNewThread : onOpenAuth}
+                    icon={<Icons.Search className="w-[18px] h-[18px]" />}
+                    label="Search"
+                    onClick={() => {}}
                 />
                 <SidebarNavItem
-                    icon={<Icons.Plus />}
-                    label="New Project"
-                    onClick={isAuthenticated ? onNewThread : onOpenAuth}
+                    icon={<Icons.SessionsIcon className="w-[18px] h-[18px]" />}
+                    label="Sessions"
+                    active={isSessionsActive}
+                    onClick={onSessions}
                 />
                 <SidebarNavItem
                     icon={<Icons.Folder />}
@@ -85,6 +88,12 @@ const Sidebar: React.FC<
                     onClick={onTemplates}
                 />
                 <SidebarNavItem
+                    icon={<Icons.Settings className="w-[18px] h-[18px]" />}
+                    label="Settings"
+                    active={isSettingsActive}
+                    onClick={onProfile}
+                />
+                <SidebarNavItem
                     icon={<Icons.DocsBook className="w-[18px] h-[18px]" />}
                     label="Documentation"
                     active={isDocsActive}
@@ -93,8 +102,6 @@ const Sidebar: React.FC<
             </div>
 
             <div className="flex-1 flex flex-col pl-[10px] pr-3 mt-4 mb-2 overflow-y-auto no-scrollbar font-sans">
-                <div className="mb-3 border-t border-white/5" />
-
                 <div className="flex flex-col mb-2">
                     <div className="flex items-center justify-between px-3 py-1.5 w-full text-left group">
                         <span className="font-medium text-[13px] whitespace-nowrap transition-colors tracking-tight text-[#8F8E8D] group-hover:text-[#CBCACA]">
@@ -109,6 +116,13 @@ const Sidebar: React.FC<
                                 title="Search projects"
                             >
                                 <Icons.Search className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                                onClick={() => (isAuthenticated ? onNewThread?.() : onOpenAuth?.())}
+                                className="text-[#8F8E8D] hover:text-[#D6D5D4] transition-all outline-none"
+                                title="New project"
+                            >
+                                <Icons.Plus className="w-3.5 h-3.5" />
                             </button>
                             <button
                                 type="button"
