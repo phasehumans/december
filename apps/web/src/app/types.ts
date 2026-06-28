@@ -2,16 +2,19 @@ export type ViewState =
     | 'chat'
     | 'all-projects'
     | 'sessions'
+    | 'review'
     | 'profile'
     | 'templates'
     | 'docs'
     | 'cli'
     | 'project'
+    | 'canvas'
 
 export type ProfileTab =
     | 'Account'
     | 'Preferences'
     | 'Integrations'
+    | 'Repositories'
     | 'Billing'
     | 'Usage'
     | 'API Keys'
@@ -20,6 +23,7 @@ const profileTabToSlug: Record<string, string> = {
     Account: 'account',
     Preferences: 'preferences',
     Integrations: 'integrations',
+    Repositories: 'repositories',
     Billing: 'billing',
     Usage: 'usage',
     'API Keys': 'api-keys',
@@ -44,9 +48,11 @@ const simpleViewToPath: Record<string, string> = {
     chat: '/',
     'all-projects': '/projects',
     sessions: '/sessions',
+    review: '/review',
     templates: '/templates',
     docs: '/docs',
     cli: '/cli',
+    canvas: '/canvas',
 }
 
 const simplePathToView: Record<string, ViewState> = Object.fromEntries(

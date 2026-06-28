@@ -113,9 +113,13 @@ export const SidebarFooter: React.FC<
                 {showCliCard && (
                     <div
                         id="cli-popover-card"
-                        className="absolute bottom-11 left-3 w-[260px] z-[100] bg-[#1C1B1A] border border-[#2A2928] rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200"
+                        onClick={() => {
+                            setShowCliCard(false)
+                            navigate('/cli')
+                        }}
+                        className="absolute bottom-11 left-3 w-[260px] z-[100] bg-[#1C1B1A] border border-[#2A2928] rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200 cursor-pointer"
                     >
-                        <div className="w-full h-[165px] bg-[#1C1B1A] relative overflow-hidden flex items-center justify-center p-1.5 pb-0">
+                        <div className="w-full h-[165px] bg-[#1C1B1A] relative overflow-hidden flex items-center justify-center p-1.5 pb-0 pointer-events-none">
                             <div className="w-full h-full relative overflow-hidden rounded-xl border border-[#2A2928]">
                                 <img
                                     src={sidebarPng}
@@ -124,21 +128,15 @@ export const SidebarFooter: React.FC<
                                 />
                             </div>
                         </div>
-                        <div className="flex flex-col px-1.5 pt-1.5 pb-2.5 bg-[#1C1B1A]">
-                            <button
-                                onClick={() => {
-                                    setShowCliCard(false)
-                                    navigate('/cli')
-                                }}
-                                className="flex flex-col px-1.5 py-0.5 w-full text-left cursor-pointer outline-none overflow-hidden"
-                            >
+                        <div className="flex flex-col px-1.5 pt-1.5 pb-2.5 bg-[#1C1B1A] pointer-events-none">
+                            <div className="flex flex-col px-1.5 py-0.5 w-full text-left overflow-hidden">
                                 <span className="text-[12px] font-medium text-[#D6D5D4]">
                                     December CLI
                                 </span>
                                 <span className="text-[11px] text-[#8F8E8D] mt-0.5 leading-tight truncate w-full">
                                     Turn ideas into reality.
                                 </span>
-                            </button>
+                            </div>
                         </div>
                     </div>
                 )}

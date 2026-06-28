@@ -1237,4 +1237,34 @@ export const Icons = {
             <line x1="10" y1="14" x2="21" y2="3" />
         </svg>
     ),
+    Ubuntu: (props: any) => (
+        <svg
+            {...props}
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            <circle cx="12" cy="12" r="7" />
+            <circle cx="12" cy="5" r="2" fill="currentColor" />
+            <circle cx="18.06" cy="15.5" r="2" fill="currentColor" />
+            <circle cx="5.94" cy="15.5" r="2" fill="currentColor" />
+        </svg>
+    ),
+    Windows: (props: any) => (
+        <svg
+            {...props}
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="currentColor"
+            stroke="none"
+        >
+            <path d="M3 5.55 L11 4.45 V11.5 H3 Z M12.5 4.25 L21 3 V11.5 H12.5 Z M3 12.5 H11 V19.55 L3 18.45 Z M12.5 12.5 H21 V21 L12.5 19.75 Z" />
+        </svg>
+    ),
 }

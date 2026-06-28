@@ -20,8 +20,10 @@ import { HomeHero } from '@/features/home/components/HomeHero'
 import { OutputScreen } from '@/features/preview/components/OutputScreen'
 import { ProfileSettings } from '@/features/profile/components/ProfileSettings'
 import { ProjectList } from '@/features/projects/components/ProjectList'
+import { ReviewPage } from '../../features/projects/components/ReviewPage'
 import { SessionList } from '@/features/projects/components/SessionList'
 import { TemplatesView } from '@/features/templates/components/TemplatesView'
+import { CanvasPage } from '../../features/canvas/components/CanvasPage'
 
 interface AppContentViewProps {
     view: ViewState
@@ -180,6 +182,12 @@ export const AppContentView: React.FC<AppContentViewProps> = ({
                 </AnimatedPage>
             )}
 
+            {view === 'review' && (
+                <AnimatedPage pageKey="review">
+                    <ReviewPage onNewProject={onNewProject} />
+                </AnimatedPage>
+            )}
+
             {view === 'profile' && (
                 <AnimatedPage pageKey="profile">
                     <ProfileSettings onSignOut={onSignOut} onBack={onNewProject} onDocs={onDocs} />
@@ -201,6 +209,19 @@ export const AppContentView: React.FC<AppContentViewProps> = ({
             {view === 'docs' && (
                 <AnimatedPage pageKey="docs">
                     <DocsPage onBack={onNewProject} />
+                </AnimatedPage>
+            )}
+
+            {view === 'canvas' && (
+                <AnimatedPage pageKey="canvas">
+                    <CanvasPage
+                        onBack={onNewProject}
+                        canvasState={canvasState}
+                        onCanvasStateChange={onCanvasStateChange}
+                        isAuthenticated={isAuthenticated}
+                        onOpenAuth={onOpenAuth}
+                        projectId={activeProjectId}
+                    />
                 </AnimatedPage>
             )}
 

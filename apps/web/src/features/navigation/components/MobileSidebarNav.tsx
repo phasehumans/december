@@ -1,4 +1,5 @@
 import React from 'react'
+import { GitPullRequest } from 'lucide-react'
 
 import { SidebarNavItem } from './SidebarNavItem'
 
@@ -9,6 +10,7 @@ interface MobileSidebarNavProps {
     onNewThread: () => void
     onAllProjects: () => void
     onSessions?: () => void
+    onReview?: () => void
     onTemplates: () => void
     onDocs: () => void
     onProfile?: () => void
@@ -21,6 +23,7 @@ export const MobileSidebarNav: React.FC<MobileSidebarNavProps> = ({
     onNewThread,
     onAllProjects,
     onSessions,
+    onReview,
     onTemplates,
     onDocs,
     onProfile,
@@ -30,17 +33,20 @@ export const MobileSidebarNav: React.FC<MobileSidebarNavProps> = ({
     return (
         <div className="flex flex-col gap-1 px-3">
             <SidebarNavItem
-                icon={<Icons.Search className="w-[18px] h-[18px]" />}
-                label="Search"
-                collapsed={false}
-                onClick={() => {}}
-            />
-            <SidebarNavItem
                 icon={<Icons.SessionsIcon className="w-[18px] h-[18px]" />}
                 label="Sessions"
                 collapsed={false}
                 onClick={() => {
                     onSessions?.()
+                    onClose()
+                }}
+            />
+            <SidebarNavItem
+                icon={<GitPullRequest className="w-[18px] h-[18px]" />}
+                label="Review"
+                collapsed={false}
+                onClick={() => {
+                    onReview?.()
                     onClose()
                 }}
             />
@@ -68,15 +74,6 @@ export const MobileSidebarNav: React.FC<MobileSidebarNavProps> = ({
                 collapsed={false}
                 onClick={() => {
                     onProfile?.()
-                    onClose()
-                }}
-            />
-            <SidebarNavItem
-                icon={<Icons.DocsBook className="w-[18px] h-[18px]" />}
-                label="Documentation"
-                collapsed={false}
-                onClick={() => {
-                    onDocs()
                     onClose()
                 }}
             />

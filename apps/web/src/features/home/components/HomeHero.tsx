@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { AnimatePresence } from 'framer-motion'
 import React, { useRef, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { Paperclip } from 'lucide-react'
 
 import { GitHubRepoForm } from './GitHubRepoForm'
 import { HomeHeader } from './HomeHeader'
@@ -33,6 +34,7 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
     const [prompt, setPrompt] = React.useState('')
     const [activeImportForm, setActiveImportForm] = useState<'github' | null>(null)
     const [showUpgradeModal, setShowUpgradeModal] = useState(false)
+    const [isUbuntuMenuOpen, setIsUbuntuMenuOpen] = useState(false)
 
     const queryClient = useQueryClient()
     const { data: profile } = useQuery({
@@ -100,13 +102,11 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
     return (
         <main
             id="main-scroll-container"
-            className={`h-full min-h-0 ${isAuthenticated ? 'overflow-y-auto' : 'overflow-hidden'} no-scrollbar scroll-smooth relative flex flex-col`}
+            className="h-full min-h-0 overflow-y-auto no-scrollbar scroll-smooth relative flex flex-col"
         >
             <HomeHeader />
 
-            <div
-                className={`flex flex-col items-center justify-start pt-[25vh] md:pt-[30vh] ${isAuthenticated ? 'min-h-[105vh] md:min-h-[105vh]' : 'h-full flex-1'} gap-6 animate-in fade-in duration-500 max-w-4xl mx-auto px-4 w-full shrink-0 relative`}
-            >
+            <div className="flex flex-col items-center justify-start pt-[25vh] md:pt-[30vh] h-full flex-1 gap-6 animate-in fade-in duration-500 max-w-4xl mx-auto px-4 w-full shrink-0 relative">
                 <div className="flex flex-col items-center gap-4 text-center mb-2">
                     <h1 className="text-2xl md:text-4xl font-sohne font-medium tracking-tight text-[#D6D5D4] px-4">
                         What are we building today?
@@ -124,30 +124,28 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
                     />
 
                     {/* Import Integration */}
-                    <div className="flex items-center justify-center gap-3 mt-8 animate-in fade-in duration-300 whitespace-nowrap">
-                        <span className="text-[#656565] text-[14px] font-medium tracking-wide">
-                            or start with
-                        </span>
-                        <div className="flex items-center gap-2">
-                            <button
-                                onClick={() => toggleImportForm('github')}
-                                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-dashed transition-all group ${
-                                    activeImportForm === 'github'
-                                        ? 'border-[#5A5A5A] bg-white/5 text-white'
-                                        : 'border-[#404040] bg-transparent hover:bg-white/5 hover:border-[#5A5A5A] text-[#A1A1AA] hover:text-white'
-                                }`}
-                            >
-                                <Icons.Github className="w-[12px] h-[12px] group-hover:text-white transition-colors" />
-                                <span className="text-[11px]">GitHub Repo</span>
-                            </button>
-                            <button
-                                onClick={handleTemplateClick}
-                                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-dashed border-[#404040] bg-transparent hover:bg-white/5 hover:border-[#5A5A5A] text-[#A1A1AA] hover:text-white transition-all group"
-                            >
-                                <Icons.Bookmark className="w-[12px] h-[12px] group-hover:text-white transition-colors" />
-                                <span className="text-[11px]">Template</span>
-                            </button>
-                        </div>
+                    <div className="flex items-center justify-start gap-6 mt-3.5 pl-2 animate-in fade-in duration-300 whitespace-nowrap select-none">
+                        <button
+                            onClick={() => {}}
+                            className="flex items-center gap-2 text-[#A1A1AA] hover:text-white transition-colors outline-none cursor-pointer group bg-transparent border-none p-0"
+                        >
+                            <Icons.Github className="w-[16px] h-[16px] text-[#D6D5D4] group-hover:text-white transition-colors" />
+                            <span className="text-[13px] font-medium">3 repositories</span>
+                        </button>
+
+                        <button
+                            onClick={() => {
+                                if (!isAuthenticated && onOpenAuth) {
+                                    onOpenAuth()
+                                    return
+                                }
+                                window.open('/canvas', '_blank')
+                            }}
+                            className="flex items-center gap-1.5 text-[#A1A1AA] hover:text-white transition-colors outline-none cursor-pointer group bg-transparent border-none p-0"
+                        >
+                            <Paperclip className="w-[15px] h-[15px] text-[#D6D5D4] group-hover:text-white transition-colors" />
+                            <span className="text-[13px] font-medium">Canvas</span>
+                        </button>
                     </div>
 
                     {/* Import Forms */}
@@ -175,29 +173,6 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
                     </div>
                 </div>
             </div>
-
-            {isAuthenticated && (
-                <div
-                    id="hero-canvas-container"
-                    className="w-full h-screen bg-background relative shrink-0 p-2 -mt-[20px]"
-                >
-                    <div className="md:hidden w-full text-center pb-4 pt-2">
-                        <span className="text-[10px] uppercase tracking-widest text-neutral-500 font-medium bg-white/5 px-3 py-1.5 rounded-full border border-white/5">
-                            Best on Desktop
-                        </span>
-                    </div>
-                    <div className="w-full h-full rounded-3xl overflow-hidden border border-white/10 relative">
-                        <Canvas
-                            ref={canvasRef}
-                            isAuthenticated={isAuthenticated}
-                            onOpenAuth={onOpenAuth}
-                            document={canvasState}
-                            onDocumentChange={onCanvasStateChange}
-                            projectId={projectId}
-                        />
-                    </div>
-                </div>
-            )}
 
             <OnboardingModal
                 isOpen={showOnboarding}

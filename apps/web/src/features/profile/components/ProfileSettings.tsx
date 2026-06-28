@@ -7,6 +7,7 @@ import {
     FileClock,
     ArrowUpRight,
     Plug,
+    FolderGit2,
 } from 'lucide-react'
 import React from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
@@ -19,6 +20,7 @@ import { ProfileBillingSettings } from './ProfileBillingSettings'
 import { ProfileDeleteAccountModal } from './ProfileDeleteAccountModal'
 import { ProfileGeneralSettings } from './ProfileGeneralSettings'
 import { ProfileIntegrationsSettings } from './ProfileIntegrationsSettings'
+import { ProfileRepositoriesSettings } from './ProfileRepositoriesSettings'
 import { ProfileNameModal } from './ProfileNameModal'
 import { ProfilePasswordModal } from './ProfilePasswordModal'
 import { ProfileSettingsContent } from './ProfileSettingsContent'
@@ -169,6 +171,19 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                             Integrations
                         </button>
                         <button
+                            onClick={() =>
+                                navigate(`/settings/${getSlugForProfileTab('Repositories')}`)
+                            }
+                            className={`flex items-center gap-3 px-3 py-1.5 rounded-xl text-[13px] font-medium transition-colors ${
+                                activeTab === 'Repositories'
+                                    ? 'bg-[#242323] text-[#D6D5C9]'
+                                    : 'text-[#D6D5C9] hover:bg-[#191919]'
+                            }`}
+                        >
+                            <FolderGit2 className="w-[18px] h-[18px]" strokeWidth={1.5} />
+                            Repositories
+                        </button>
+                        <button
                             onClick={() => navigate(`/settings/${getSlugForProfileTab('Billing')}`)}
                             className={`flex items-center gap-3 px-3 py-1.5 rounded-xl text-[13px] font-medium transition-colors ${
                                 activeTab === 'Billing'
@@ -299,6 +314,11 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                                 onConnectVercel={connectVercel}
                                 onConnectSupabase={connectSupabase}
                                 onConnectNotion={connectNotion}
+                            />
+                        ) : activeTab === 'Repositories' ? (
+                            <ProfileRepositoriesSettings
+                                isGithubConnected={isGithubConnected}
+                                onConnectGithub={connectGithub}
                             />
                         ) : (
                             <div className="flex flex-col gap-6">
