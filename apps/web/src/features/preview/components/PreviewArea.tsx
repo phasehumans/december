@@ -372,7 +372,7 @@ export const PreviewArea: React.FC<PreviewAreaProps> = ({
     return (
         <div
             className={cn(
-                'overflow-auto relative bg-[#171615] [&::-webkit-scrollbar]:w-[4px] [&::-webkit-scrollbar-thumb]:bg-[#383736]/60 hover:[&::-webkit-scrollbar-thumb]:bg-[#4A4948]/80 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent',
+                'overflow-auto relative bg-[#141414] [&::-webkit-scrollbar]:w-[4px] [&::-webkit-scrollbar-thumb]:bg-[#383736]/60 hover:[&::-webkit-scrollbar-thumb]:bg-[#4A4948]/80 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent',
                 fullscreen
                     ? 'h-full w-full min-h-0'
                     : 'flex-1 flex items-center justify-center p-0.5 pb-2'
@@ -390,7 +390,7 @@ export const PreviewArea: React.FC<PreviewAreaProps> = ({
 
             <div
                 className={cn(
-                    'relative bg-[#171615] shadow-2xl overflow-hidden group w-full h-full',
+                    'relative bg-[#141414] shadow-2xl overflow-hidden group w-full h-full',
                     isMounted && 'transition-all duration-500',
                     fullscreen
                         ? 'rounded-2xl border border-white/10'
@@ -458,11 +458,11 @@ export const PreviewArea: React.FC<PreviewAreaProps> = ({
                     </div>
                 ) : showFullscreenFailed ? (
                     /* 1.5. Solid dark background for failed state to hide iframe fallback */
-                    <div className="absolute inset-0 z-50 bg-[#171615]" />
+                    <div className="absolute inset-0 z-50 bg-[#141414]" />
                 ) : showStructurePlaceholder ? (
                     /* 2. Structure Placeholder */
                     <div className="absolute inset-0 z-40 bg-[#171716] p-5">
-                        <div className="h-full w-full rounded-xl border border-white/10 bg-[#171615] p-4 md:p-5 flex flex-col gap-3">
+                        <div className="h-full w-full rounded-xl border border-white/10 bg-[#141414] p-4 md:p-5 flex flex-col gap-3">
                             <div className="h-8 w-40 rounded-md bg-white/10" />
                             <div className="h-3 w-72 rounded-md bg-white/5 max-w-full" />
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">

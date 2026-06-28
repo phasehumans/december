@@ -235,7 +235,7 @@ export const ProfileBillingSettings: React.FC<ProfileBillingSettingsProps> = (pr
                         </div>
                         <button
                             type="button"
-                            onClick={() => navigate('/profile/usage')}
+                            onClick={() => navigate('/settings/usage')}
                             className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg border border-[#383736] text-[13px] text-[#D6D5C9] hover:bg-[#242323] transition-colors cursor-pointer"
                         >
                             View Usage

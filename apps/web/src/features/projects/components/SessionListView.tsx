@@ -4,14 +4,14 @@ import { LayoutGrid, List } from 'lucide-react'
 import { ProjectListRow } from './ProjectListRow'
 import { ProjectGridCard } from './ProjectGridCard'
 
-import type { SortOption, StatusFilter } from './ProjectList'
+import type { SortOption, StatusFilter } from './SessionList'
 import type { Project } from '@/features/projects/types'
 
 import { ErrorAlert } from '@/shared/components/ui/ErrorAlert'
 import { Icons } from '@/shared/components/ui/Icons'
 import { Skeleton } from '@/shared/components/ui/Skeleton'
 
-interface ProjectListViewProps {
+interface SessionListViewProps {
     projects: Project[]
     onNewProject: () => void
     onOpenProject: (projectId: string) => void
@@ -39,12 +39,12 @@ interface ProjectListViewProps {
     hasUnfilteredProjects: boolean
 }
 
-const ProjectListAreaSkeleton: React.FC = () => {
+const SessionListAreaSkeleton: React.FC = () => {
     return (
         <div className="min-h-[420px] flex flex-col gap-1 pb-4">
             {Array.from({ length: 6 }).map((_, index) => (
                 <div
-                    key={`project-list-skeleton-${index}`}
+                    key={`session-list-skeleton-${index}`}
                     className="grid grid-cols-[minmax(0,2fr)_minmax(100px,1fr)_minmax(150px,1fr)_minmax(150px,1fr)_8rem_2.5rem] items-center gap-3 rounded-xl border border-[#242323]/10 bg-[#191919]/5 px-5 py-3 md:gap-4"
                 >
                     <div className="flex flex-col gap-1.5 w-full max-w-xs pr-4">
@@ -70,7 +70,7 @@ const ProjectListAreaSkeleton: React.FC = () => {
     )
 }
 
-const EmptyProjectsState: React.FC<{ onNewProject: () => void }> = ({ onNewProject }) => {
+const EmptySessionsState: React.FC<{ onNewProject: () => void }> = ({ onNewProject }) => {
     return (
         <div className="flex min-h-[420px] flex-col items-center justify-center px-6 py-16 text-center">
             <div className="relative mb-6 h-28 w-32">
@@ -96,15 +96,15 @@ const EmptyProjectsState: React.FC<{ onNewProject: () => void }> = ({ onNewProje
                 </svg>
             </div>
 
-            <h2 className="text-[17px] font-medium text-[#D6D5C9]">No projects</h2>
+            <h2 className="text-[17px] font-medium text-[#D6D5C9]">No sessions</h2>
             <p className="mt-2 max-w-sm text-[13px] leading-6 text-[#7B7A79]">
-                Projects you create or import will appear here.
+                Sessions you create or start will appear here.
             </p>
             <button
                 onClick={onNewProject}
                 className="mt-5 rounded-lg border border-[#383736] bg-[#1A1918] px-4 py-2 text-[13px] font-medium text-[#D6D5C9] transition-colors hover:bg-[#242323]"
             >
-                New project
+                New session
             </button>
         </div>
     )
@@ -135,7 +135,7 @@ const NoResultsState: React.FC = () => {
                     />
                 </svg>
             </div>
-            <h2 className="text-[17px] font-medium text-[#D6D5C9]">No Projects Found</h2>
+            <h2 className="text-[17px] font-medium text-[#D6D5C9]">No Sessions Found</h2>
             <p className="mt-2 max-w-sm text-[13px] leading-6 text-[#7B7A79]">
                 Try adjusting your search or filters.
             </p>
@@ -157,7 +157,7 @@ const STATUS_LABELS: Record<StatusFilter, string> = {
     Failed: 'Failed',
 }
 
-export const ProjectListView: React.FC<ProjectListViewProps> = ({
+export const SessionListView: React.FC<SessionListViewProps> = ({
     projects,
     onNewProject,
     onOpenProject,
@@ -210,14 +210,14 @@ export const ProjectListView: React.FC<ProjectListViewProps> = ({
         <>
             <div className="mb-6 flex items-start justify-between gap-4">
                 <div className="flex flex-col">
-                    <h1 className="text-[24px] font-medium text-[#D6D5C9] mb-1">Projects</h1>
+                    <h1 className="text-[24px] font-medium text-[#D6D5C9] mb-1">Sessions</h1>
                     <p className="text-[13px] text-[#7B7A79]">
-                        Manage and view all your workspaces and items.
+                        Manage and view all your active sessions and past agent workflows.
                     </p>
                 </div>
                 <div className="flex flex-col items-end gap-2">
                     {isFetching && !isInitialLoading && (
-                        <div className="text-[12px] text-neutral-500 mt-1">Syncing projects...</div>
+                        <div className="text-[12px] text-neutral-500 mt-1">Syncing sessions...</div>
                     )}
                     {displayedError && (
                         <div className="mt-1 w-full flex justify-end">
@@ -232,7 +232,7 @@ export const ProjectListView: React.FC<ProjectListViewProps> = ({
                     <Icons.Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#7B7A79]" />
                     <input
                         type="text"
-                        placeholder="Search projects..."
+                        placeholder="Search sessions..."
                         value={searchQuery}
                         onChange={(e) => onSearchChange(e.target.value)}
                         className="w-full rounded-lg border border-[#383736] bg-[#141414] py-1.5 pl-9 pr-4 text-[13px] text-[#D6D5C9] transition-colors placeholder:text-[#7B7A79] hover:bg-[#191919] focus:border-[#7B7A79] focus:bg-[#191919] focus:outline-none"
@@ -357,16 +357,16 @@ export const ProjectListView: React.FC<ProjectListViewProps> = ({
                     <div>Status</div>
                     <div>Created at</div>
                     <div>Created by</div>
-                    <div className="text-center">Starred projects</div>
+                    <div className="text-center">Starred sessions</div>
                     <div></div>
                 </div>
             )}
 
             {isInitialLoading ? (
-                <ProjectListAreaSkeleton />
+                <SessionListAreaSkeleton />
             ) : viewMode === 'list' ? (
                 !hasUnfilteredProjects ? (
-                    <EmptyProjectsState onNewProject={onNewProject} />
+                    <EmptySessionsState onNewProject={onNewProject} />
                 ) : !hasProjects ? (
                     <NoResultsState />
                 ) : (

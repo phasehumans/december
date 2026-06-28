@@ -110,7 +110,7 @@ export const TemplateCard: React.FC<TemplateCardProps> = ({
                             onRemix(template)
                         }}
                         disabled={isRemixPending}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-[#383736] bg-[#171615] text-[11px] font-medium text-[#D6D5C9] hover:bg-[#1E1D1B] hover:border-[#4B4A49] transition-all active:scale-[0.98] group/remix disabled:opacity-70"
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-[#383736] bg-[#141414] text-[11px] font-medium text-[#D6D5C9] hover:bg-[#191919] hover:border-[#4B4A49] transition-all active:scale-[0.98] group/remix disabled:opacity-70"
                     >
                         <Icons.Remix className="w-3 h-3 opacity-70 group-hover/remix:opacity-100 transition-opacity" />
                         Remix

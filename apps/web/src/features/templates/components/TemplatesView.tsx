@@ -330,7 +330,7 @@ export const TemplatesView: React.FC<TemplatesViewProps> = ({ onOpenProject }) =
                             <Icons.Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#7B7A79]" />
                             <input
                                 type="text"
-                                className="w-full bg-[#171615] hover:bg-[#1E1D1B] focus:bg-[#1E1D1B] border border-[#383736] rounded-lg pl-9 pr-8 py-1.5 text-[13px] text-[#D6D5C9] placeholder:text-[#7B7A79] focus:outline-none focus:border-[#7B7A79] transition-colors"
+                                className="w-full bg-[#141414] hover:bg-[#191919] focus:bg-[#191919] border border-[#383736] rounded-lg pl-9 pr-8 py-1.5 text-[13px] text-[#D6D5C9] placeholder:text-[#7B7A79] focus:outline-none focus:border-[#7B7A79] transition-colors"
                                 placeholder="Search templates..."
                                 value={searchQuery}
                                 onChange={(e) => {
@@ -400,7 +400,7 @@ export const TemplatesView: React.FC<TemplatesViewProps> = ({ onOpenProject }) =
                                                         activeDropdown === 'sort' ? null : 'sort'
                                                     )
                                                 }
-                                                className="flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-[#383736] bg-[#171615] text-[13px] text-[#D6D5C9] hover:bg-[#1E1D1B] transition-colors"
+                                                className="flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-[#383736] bg-[#141414] text-[13px] text-[#D6D5C9] hover:bg-[#191919] transition-colors"
                                             >
                                                 Sort: {selectedSort.label}
                                                 <Icons.ChevronDown className="h-3 w-3 text-[#7B7A79]" />
@@ -412,7 +412,7 @@ export const TemplatesView: React.FC<TemplatesViewProps> = ({ onOpenProject }) =
                                                         animate={{ opacity: 1, y: 0, scale: 1 }}
                                                         exit={{ opacity: 0, y: -6, scale: 0.97 }}
                                                         transition={{ duration: 0.15 }}
-                                                        className="absolute right-0 top-full mt-2 w-44 rounded-xl border border-[#383736] bg-[#1E1D1C] py-2 shadow-xl z-50"
+                                                        className="absolute right-0 top-full mt-2 w-44 rounded-xl border border-[#383736] bg-[#1F1F1F] py-2 shadow-xl z-50"
                                                     >
                                                         <div className="px-3 pb-2 text-[11px] font-medium text-[#7B7A79] border-b border-[#383736] mb-1 uppercase tracking-wider">
                                                             Sort by
@@ -448,7 +448,7 @@ export const TemplatesView: React.FC<TemplatesViewProps> = ({ onOpenProject }) =
                                                             : 'category'
                                                     )
                                                 }
-                                                className="flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-[#383736] bg-[#171615] text-[13px] text-[#D6D5C9] hover:bg-[#1E1D1B] transition-colors"
+                                                className="flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-[#383736] bg-[#141414] text-[13px] text-[#D6D5C9] hover:bg-[#191919] transition-colors"
                                             >
                                                 Category:{' '}
                                                 {selectedCategory ? selectedCategory.label : 'All'}
@@ -461,7 +461,7 @@ export const TemplatesView: React.FC<TemplatesViewProps> = ({ onOpenProject }) =
                                                         animate={{ opacity: 1, y: 0, scale: 1 }}
                                                         exit={{ opacity: 0, y: -6, scale: 0.97 }}
                                                         transition={{ duration: 0.15 }}
-                                                        className="absolute right-0 top-full mt-2 w-48 rounded-xl border border-[#383736] bg-[#1E1D1C] py-2 shadow-xl z-50"
+                                                        className="absolute right-0 top-full mt-2 w-48 rounded-xl border border-[#383736] bg-[#1F1F1F] py-2 shadow-xl z-50"
                                                     >
                                                         <div className="px-3 pb-2 text-[11px] font-medium text-[#7B7A79] border-b border-[#383736] mb-1 uppercase tracking-wider">
                                                             Filter by
@@ -546,7 +546,7 @@ export const TemplatesView: React.FC<TemplatesViewProps> = ({ onOpenProject }) =
                                                     onClick={() =>
                                                         setVisibleCount((prev) => prev + 9)
                                                     }
-                                                    className="px-4 py-1.5 rounded-md border border-[#383736] text-[13px] text-[#D6D5C9] hover:bg-[#1E1D1B] transition-colors"
+                                                    className="px-4 py-1.5 rounded-md border border-[#383736] text-[13px] text-[#D6D5C9] hover:bg-[#191919] transition-colors"
                                                 >
                                                     Load more
                                                 </button>

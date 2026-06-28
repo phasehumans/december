@@ -119,7 +119,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
                         type="button"
                         onClick={handleSaveChanges}
                         disabled={isSaving}
-                        className="px-4 py-1.5 rounded-lg bg-[#E8E7E4] text-[#171615] hover:bg-white font-medium text-[13px] transition-colors disabled:opacity-50 flex items-center gap-2 cursor-pointer"
+                        className="px-4 py-1.5 rounded-lg bg-[#E8E7E4] text-[#141414] hover:bg-white font-medium text-[13px] transition-colors disabled:opacity-50 flex items-center gap-2 cursor-pointer"
                     >
                         {isSaving ? 'Saving...' : 'Save Changes'}
                     </button>
