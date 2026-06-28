@@ -138,7 +138,7 @@ export const UserProfilePopover: React.FC<UserProfilePopoverProps> = ({
         rightElement?: React.ReactNode
         shortcut?: string
     }> = [
-        { icon: User, label: 'Profile', action: onProfileModal },
+        { icon: SettingsIcon, label: 'Settings', action: onSettings },
         { icon: MessageSquare, label: 'Feedback', action: onFeedbackModal },
         {
             icon: Icons.DocsBook,
@@ -163,7 +163,7 @@ export const UserProfilePopover: React.FC<UserProfilePopoverProps> = ({
             icon: CircleDollarSign,
             label: 'Credits',
             action: () => {
-                navigate('/profile/billing')
+                navigate('/settings/billing')
             },
             rightElement: renderCreditsValue(),
         },

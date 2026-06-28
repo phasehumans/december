@@ -828,7 +828,7 @@ You can now ask me to explain specific files, add new features, or debug any iss
                     <div className="flex flex-col gap-2 mt-2">
                         <button
                             onClick={() => {
-                                navigate('/profile/billing')
+                                navigate('/settings/billing')
                             }}
                             className="w-full py-2.5 rounded-lg bg-white text-black text-[13px] font-semibold hover:bg-[#E5E5E5] transition-colors focus:outline-none"
                         >

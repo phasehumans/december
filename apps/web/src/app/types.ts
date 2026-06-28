@@ -62,7 +62,7 @@ export const getPathForView = (
     }
     if (view === 'profile') {
         const tabSlug = context?.profileTab ? getSlugForProfileTab(context.profileTab) : 'account'
-        return `/profile/${tabSlug}`
+        return `/settings/${tabSlug}`
     }
     return simpleViewToPath[view] ?? '/'
 }
@@ -72,8 +72,14 @@ export const getViewForPath = (pathname: string): ViewState => {
     const simple = simplePathToView[pathname]
     if (simple) return simple
 
-    // /profile or /profile/* → profile
-    if (pathname === '/profile' || pathname.startsWith('/profile/')) return 'profile'
+    // /settings or /settings/* → profile
+    if (
+        pathname === '/settings' ||
+        pathname.startsWith('/settings/') ||
+        pathname === '/profile' ||
+        pathname.startsWith('/profile/')
+    )
+        return 'profile'
 
     // /project/* → project (output screen)
     if (pathname.startsWith('/project/')) return 'project'

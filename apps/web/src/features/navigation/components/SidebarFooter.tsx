@@ -28,6 +28,7 @@ export const SidebarFooter: React.FC<
     const [showCliCard, setShowCliCard] = useState(false)
     const anchorRef = useRef<HTMLButtonElement>(null)
     const notifAnchorRef = useRef<HTMLButtonElement>(null)
+    const hideTimeoutRef = useRef<any>(null)
 
     React.useEffect(() => {
         const handler = () => setShowCliCard((prev) => !prev)
@@ -75,9 +76,28 @@ export const SidebarFooter: React.FC<
     const isPro = overview?.plan === 'PRO'
     const hasUnread = notifications.some((n: any) => !n.isRead)
 
+    const handleMouseEnter = () => {
+        if (hideTimeoutRef.current) {
+            clearTimeout(hideTimeoutRef.current)
+            hideTimeoutRef.current = null
+        }
+        setShowCliCard(true)
+    }
+
+    const handleMouseLeave = () => {
+        hideTimeoutRef.current = setTimeout(() => {
+            setShowCliCard(false)
+            hideTimeoutRef.current = null
+        }, 300)
+    }
+
     return (
         <div className="mt-auto flex flex-col w-full relative">
-            <div className="px-3 py-1.5 flex justify-center relative">
+            <div
+                className="px-3 py-1.5 flex justify-center relative"
+                onMouseEnter={handleMouseEnter}
+                onMouseLeave={handleMouseLeave}
+            >
                 <button
                     id="try-cli-btn"
                     onClick={() => setShowCliCard(!showCliCard)}
@@ -148,12 +168,17 @@ export const SidebarFooter: React.FC<
                             <button
                                 ref={notifAnchorRef}
                                 onClick={() => setIsNotifPopoverOpen(!isNotifPopoverOpen)}
-                                className="flex items-center justify-center w-7 h-7 rounded-lg hover:bg-[#252525] text-[#8F8E8D] hover:text-[#CBCACA] transition-colors shrink-0 outline-none -ml-1 relative"
+                                className="flex items-center justify-center w-7 h-7 rounded-lg hover:bg-[#252525] text-[#8F8E8D] hover:text-[#CBCACA] transition-colors shrink-0 outline-none -ml-1 relative group/notif"
                             >
                                 <Bell className="w-[13px] h-[13px]" strokeWidth={2} />
                                 {hasUnread && (
                                     <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-white rounded-full border border-[#141414]" />
                                 )}
+                                <div className="absolute bottom-[calc(100%+6px)] right-0 z-50 hidden group-hover/notif:flex items-center gap-1.5 bg-[#1C1B1A] border border-[#2A2928] px-2.5 py-1 rounded-lg shadow-xl whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
+                                    <span className="text-[12px] font-medium text-[#EDEDEF]">
+                                        Notifications
+                                    </span>
+                                </div>
                             </button>
                         </div>
 
@@ -174,14 +199,6 @@ export const SidebarFooter: React.FC<
                             isOpen={isNotifPopoverOpen}
                             anchorRef={notifAnchorRef}
                             onClose={() => setIsNotifPopoverOpen(false)}
-                            onSettings={onProfile}
-                        />
-
-                        <ProfileCardModal
-                            isOpen={isProfileModalOpen}
-                            onClose={() => setIsProfileModalOpen(false)}
-                            userName={profile?.name || quickInfo?.fullName || 'phasehuman'}
-                            userUsername={profile?.username || ''}
                             onSettings={onProfile}
                         />
 

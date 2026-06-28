@@ -1,6 +1,7 @@
 import React from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 
+import { SearchModal } from './SearchModal'
 import { SidebarFooter } from './SidebarFooter'
 import { SidebarHeader } from './SidebarHeader'
 import { SidebarNavItem } from './SidebarNavItem'
@@ -33,12 +34,25 @@ const Sidebar: React.FC<
     const location = useLocation()
     const path = location.pathname
 
+    const [isSearchOpen, setIsSearchOpen] = React.useState(false)
+
+    React.useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+                e.preventDefault()
+                setIsSearchOpen((prev) => !prev)
+            }
+        }
+        window.addEventListener('keydown', handleKeyDown)
+        return () => window.removeEventListener('keydown', handleKeyDown)
+    }, [])
+
     const isHomeActive = path === '/'
     const isProjectsActive = path.startsWith('/projects')
     const isSessionsActive = path.startsWith('/sessions')
     const isTemplatesActive = path.startsWith('/templates')
     const isDocsActive = path.startsWith('/docs')
-    const isSettingsActive = path.startsWith('/profile')
+    const isSettingsActive = path.startsWith('/settings')
 
     // Keep exact same size (was 200px when open)
     // No collapse option
@@ -67,7 +81,9 @@ const Sidebar: React.FC<
                 <SidebarNavItem
                     icon={<Icons.Search className="w-[18px] h-[18px]" />}
                     label="Search"
-                    onClick={() => {}}
+                    onClick={() => setIsSearchOpen(true)}
+                    tooltipLabel="Search"
+                    tooltipShortcut={['Control', 'K']}
                 />
                 <SidebarNavItem
                     icon={<Icons.SessionsIcon className="w-[18px] h-[18px]" />}
@@ -104,7 +120,7 @@ const Sidebar: React.FC<
             <div className="flex-1 flex flex-col pl-[10px] pr-3 mt-4 mb-2 overflow-y-auto no-scrollbar font-sans">
                 <div className="flex flex-col mb-2">
                     <div className="flex items-center justify-between px-3 py-1.5 w-full text-left group">
-                        <span className="font-medium text-[13px] whitespace-nowrap transition-colors tracking-tight text-[#8F8E8D] group-hover:text-[#CBCACA]">
+                        <span className="font-medium text-[13px] whitespace-nowrap transition-colors tracking-tight text-[#919191]">
                             Recent
                         </span>
                         <div className="flex items-center gap-2">
@@ -112,23 +128,36 @@ const Sidebar: React.FC<
                                 onClick={() =>
                                     isAuthenticated ? onAllProjects?.() : onOpenAuth?.()
                                 }
-                                className="text-[#8F8E8D] hover:text-[#D6D5D4] transition-all outline-none"
-                                title="Search projects"
+                                className="relative text-[#919191] hover:text-[#B5B5B7] transition-all outline-none group/btn"
                             >
                                 <Icons.Search className="w-3.5 h-3.5" />
+                                <div className="absolute top-[calc(100%+6px)] right-0 z-50 hidden group-hover/btn:flex items-center gap-1.5 bg-[#1C1B1A] border border-[#2A2928] px-2.5 py-1 rounded-lg shadow-xl whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
+                                    <span className="text-[12px] font-medium text-[#EDEDEF]">
+                                        Search
+                                    </span>
+                                </div>
                             </button>
                             <button
                                 onClick={() => (isAuthenticated ? onNewThread?.() : onOpenAuth?.())}
-                                className="text-[#8F8E8D] hover:text-[#D6D5D4] transition-all outline-none"
-                                title="New project"
+                                className="relative text-[#919191] hover:text-[#B5B5B7] transition-all outline-none group/btn"
                             >
                                 <Icons.Plus className="w-3.5 h-3.5" />
+                                <div className="absolute top-[calc(100%+6px)] right-0 z-50 hidden group-hover/btn:flex items-center gap-1.5 bg-[#1C1B1A] border border-[#2A2928] px-2.5 py-1 rounded-lg shadow-xl whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
+                                    <span className="text-[12px] font-medium text-[#EDEDEF]">
+                                        New
+                                    </span>
+                                </div>
                             </button>
                             <button
                                 type="button"
-                                className="text-[#8F8E8D] hover:text-[#D6D5D4] transition-all outline-none"
+                                className="relative text-[#919191] hover:text-[#B5B5B7] transition-all outline-none group/btn"
                             >
                                 <Icons.MoreHorizontal className="w-3.5 h-3.5" />
+                                <div className="absolute top-[calc(100%+6px)] right-0 z-50 hidden group-hover/btn:flex items-center gap-1.5 bg-[#1C1B1A] border border-[#2A2928] px-2.5 py-1 rounded-lg shadow-xl whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
+                                    <span className="text-[12px] font-medium text-[#EDEDEF]">
+                                        More options
+                                    </span>
+                                </div>
                             </button>
                         </div>
                     </div>
@@ -142,7 +171,7 @@ const Sidebar: React.FC<
                                         onClick={() => onOpenProject?.(project.id)}
                                         className="flex items-center px-3 py-0.5 w-full text-left rounded-lg hover:bg-[#252525] transition-colors group"
                                     >
-                                        <span className="font-medium text-[12px] lowercase transition-colors tracking-tight text-[#8F8E8D] group-hover:text-[#CBCACA] truncate">
+                                        <span className="font-medium text-[12px] lowercase transition-colors tracking-tight text-[#949496] group-hover:text-[#E1E1E2] truncate">
                                             {/* @ts-expect-error */}
                                             {project.name || project.title}
                                         </span>
@@ -170,6 +199,13 @@ const Sidebar: React.FC<
                 onOpenAuth={onOpenAuth}
                 user={user}
                 onSignOut={onSignOut}
+            />
+
+            <SearchModal
+                isOpen={isSearchOpen}
+                onClose={() => setIsSearchOpen(false)}
+                onNewThread={isAuthenticated ? onNewThread : onOpenAuth}
+                isAuthenticated={isAuthenticated}
             />
         </div>
     )
