@@ -9,6 +9,7 @@ export interface SidebarProps {
     onNewThread: () => void
     onAllProjects: () => void
     onSessions?: () => void
+    onReview?: () => void
     onTemplates: () => void
     onDocs: () => void
     onProfile: () => void
@@ -27,6 +28,7 @@ export interface MobileSidebarProps {
     onNewThread: () => void
     onAllProjects: () => void
     onSessions?: () => void
+    onReview?: () => void
     onTemplates: () => void
     onDocs: () => void
     onProfile: () => void

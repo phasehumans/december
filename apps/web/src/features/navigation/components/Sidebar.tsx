@@ -1,5 +1,6 @@
 import React from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
+import { GitPullRequest } from 'lucide-react'
 
 import { SearchModal } from './SearchModal'
 import { SidebarFooter } from './SidebarFooter'
@@ -18,6 +19,7 @@ const Sidebar: React.FC<
     onNewThread,
     onAllProjects,
     onSessions,
+    onReview,
     onTemplates,
     onDocs,
     onProfile,
@@ -50,6 +52,7 @@ const Sidebar: React.FC<
     const isHomeActive = path === '/'
     const isProjectsActive = path.startsWith('/projects')
     const isSessionsActive = path.startsWith('/sessions')
+    const isReviewActive = path.startsWith('/review')
     const isTemplatesActive = path.startsWith('/templates')
     const isDocsActive = path.startsWith('/docs')
     const isSettingsActive = path.startsWith('/settings')
@@ -79,17 +82,16 @@ const Sidebar: React.FC<
 
             <div className="flex flex-col gap-[2px] pl-[10px] pr-3">
                 <SidebarNavItem
-                    icon={<Icons.Search className="w-[18px] h-[18px]" />}
-                    label="Search"
-                    onClick={() => setIsSearchOpen(true)}
-                    tooltipLabel="Search"
-                    tooltipShortcut={['Control', 'K']}
-                />
-                <SidebarNavItem
                     icon={<Icons.SessionsIcon className="w-[18px] h-[18px]" />}
                     label="Sessions"
                     active={isSessionsActive}
                     onClick={onSessions}
+                />
+                <SidebarNavItem
+                    icon={<GitPullRequest className="w-[18px] h-[18px]" />}
+                    label="Review"
+                    active={isReviewActive}
+                    onClick={onReview}
                 />
                 <SidebarNavItem
                     icon={<Icons.Folder />}
@@ -109,12 +111,6 @@ const Sidebar: React.FC<
                     active={isSettingsActive}
                     onClick={onProfile}
                 />
-                <SidebarNavItem
-                    icon={<Icons.DocsBook className="w-[18px] h-[18px]" />}
-                    label="Documentation"
-                    active={isDocsActive}
-                    onClick={onDocs}
-                />
             </div>
 
             <div className="flex-1 flex flex-col pl-[10px] pr-3 mt-4 mb-2 overflow-y-auto no-scrollbar font-sans">
@@ -125,9 +121,7 @@ const Sidebar: React.FC<
                         </span>
                         <div className="flex items-center gap-2">
                             <button
-                                onClick={() =>
-                                    isAuthenticated ? onAllProjects?.() : onOpenAuth?.()
-                                }
+                                onClick={() => setIsSearchOpen(true)}
                                 className="relative text-[#919191] hover:text-[#B5B5B7] transition-all outline-none group/btn"
                             >
                                 <Icons.Search className="w-3.5 h-3.5" />

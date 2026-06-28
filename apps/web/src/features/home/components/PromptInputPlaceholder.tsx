@@ -20,7 +20,7 @@ export const PromptInputPlaceholder: React.FC<PromptInputPlaceholderProps> = ({
             <div className="hidden md:block">
                 <PromptPlaceholder displayText={displayText} />
             </div>
-            <div className="md:hidden absolute left-5 top-[18px] text-[#6C6A69] pointer-events-none select-none truncate max-w-[calc(100%-60px)] text-[15px] font-medium">
+            <div className="md:hidden absolute left-5 top-[18px] text-[#949494] pointer-events-none select-none truncate max-w-[calc(100%-60px)] text-[15px] font-medium">
                 Ask December to create...
             </div>
         </>

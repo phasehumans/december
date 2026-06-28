@@ -17,7 +17,6 @@ interface SearchItem {
     subtitle?: string
     category: 'Actions' | 'Navigation' | 'Settings'
     icon: React.ReactNode
-    shortcut?: string[]
     action: () => void
 }
 
@@ -55,42 +54,11 @@ export const SearchModal: React.FC<SearchModalProps> = ({
                 else navigate('/')
             },
         },
-        {
-            id: 'copy-org',
-            label: 'Copy organization ID',
-            category: 'Actions',
-            icon: <Icons.Copy className="w-4 h-4 text-neutral-400" />,
-            action: () => {
-                navigator.clipboard.writeText('org_december_phasehumans_2026')
-                onClose()
-            },
-        },
         // Navigation
         {
-            id: 'go-new-session',
-            label: 'Go to new session',
-            category: 'Navigation',
-            icon: <Icons.SessionsIcon className="w-4 h-4 text-neutral-400" />,
-            shortcut: ['Control', 'shift', 'O'],
-            action: () => {
-                onClose()
-                if (onNewThread) onNewThread()
-                else navigate('/')
-            },
-        },
-        {
-            id: 'go-new-ask',
-            label: 'Go to new ask',
-            category: 'Navigation',
-            icon: <Icons.Search className="w-4 h-4 text-neutral-400" />,
-            action: () => {
-                onClose()
-                navigate('/')
-            },
-        },
-        {
-            id: 'go-all-sessions',
-            label: 'Go to all sessions',
+            id: 'go-sessions',
+            label: 'Sessions',
+            subtitle: 'Go to all sessions',
             category: 'Navigation',
             icon: <Icons.SessionsIcon className="w-4 h-4 text-neutral-400" />,
             action: () => {
@@ -99,18 +67,9 @@ export const SearchModal: React.FC<SearchModalProps> = ({
             },
         },
         {
-            id: 'go-wiki',
-            label: 'Go to Wiki',
-            category: 'Navigation',
-            icon: <Icons.DocsBook className="w-4 h-4 text-neutral-400" />,
-            action: () => {
-                onClose()
-                navigate('/docs')
-            },
-        },
-        {
-            id: 'go-review',
-            label: 'Go to Review',
+            id: 'go-projects',
+            label: 'Projects',
+            subtitle: 'Go to projects & repositories',
             category: 'Navigation',
             icon: <Icons.Layers className="w-4 h-4 text-neutral-400" />,
             action: () => {
@@ -119,19 +78,32 @@ export const SearchModal: React.FC<SearchModalProps> = ({
             },
         },
         {
-            id: 'go-automations',
-            label: 'Go to Automations',
+            id: 'go-templates',
+            label: 'Templates',
+            subtitle: 'Go to custom templates',
             category: 'Navigation',
-            icon: <Icons.Clock className="w-4 h-4 text-neutral-400" />,
+            icon: <Icons.Bookmark className="w-4 h-4 text-neutral-400" />,
             action: () => {
                 onClose()
                 navigate('/templates')
             },
         },
+        {
+            id: 'go-docs',
+            label: 'Documentation',
+            subtitle: 'Go to December documentation',
+            category: 'Navigation',
+            icon: <Icons.DocsBook className="w-4 h-4 text-neutral-400" />,
+            action: () => {
+                onClose()
+                navigate('/docs')
+            },
+        },
         // Settings
         {
-            id: 'go-settings',
-            label: 'Go to settings',
+            id: 'go-settings-account',
+            label: 'Account Settings',
+            subtitle: 'Manage profile & account details',
             category: 'Settings',
             icon: <Icons.Settings className="w-4 h-4 text-neutral-400" />,
             action: () => {
@@ -140,23 +112,47 @@ export const SearchModal: React.FC<SearchModalProps> = ({
             },
         },
         {
-            id: 'change-language',
-            label: 'Change language...',
+            id: 'go-settings-preferences',
+            label: 'Preferences',
+            subtitle: 'Manage theme & app preferences',
             category: 'Settings',
-            icon: <Icons.Globe className="w-4 h-4 text-neutral-400" />,
+            icon: <Icons.DesignSystems className="w-4 h-4 text-neutral-400" />,
             action: () => {
                 onClose()
                 navigate('/settings/preferences')
             },
         },
         {
-            id: 'change-theme',
-            label: 'Change theme...',
+            id: 'go-settings-integrations',
+            label: 'Integrations',
+            subtitle: 'Manage connected services & API keys',
             category: 'Settings',
-            icon: <Icons.DesignSystems className="w-4 h-4 text-neutral-400" />,
+            icon: <Icons.Globe className="w-4 h-4 text-neutral-400" />,
             action: () => {
                 onClose()
-                navigate('/settings/preferences')
+                navigate('/settings/integrations')
+            },
+        },
+        {
+            id: 'go-settings-billing',
+            label: 'Billing & Credits',
+            subtitle: 'Manage subscription & credit balance',
+            category: 'Settings',
+            icon: <Icons.Clock className="w-4 h-4 text-neutral-400" />,
+            action: () => {
+                onClose()
+                navigate('/settings/billing')
+            },
+        },
+        {
+            id: 'go-settings-usage',
+            label: 'Usage',
+            subtitle: 'View AI generation & model usage',
+            category: 'Settings',
+            icon: <Icons.Clock className="w-4 h-4 text-neutral-400" />,
+            action: () => {
+                onClose()
+                navigate('/settings/usage')
             },
         },
     ]
@@ -216,11 +212,11 @@ export const SearchModal: React.FC<SearchModalProps> = ({
 
     return (
         <div
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[200] flex items-start justify-center pt-[15vh] p-4 animate-in fade-in duration-150"
+            className="fixed inset-0 bg-black/60 backdrop-blur-[2px] z-[200] flex items-start justify-center pt-[15vh] p-4 animate-in fade-in duration-150"
             onClick={onClose}
         >
             <div
-                className="w-full max-w-[640px] bg-[#1C1B1A] border border-[#2A2928] rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150 font-sans"
+                className="w-full max-w-[640px] bg-[#1E1E1E] border border-[#2A2928] rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150 font-sans"
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Search Input */}
@@ -280,18 +276,6 @@ export const SearchModal: React.FC<SearchModalProps> = ({
                                                         )}
                                                     </div>
                                                 </div>
-                                                {item.shortcut && (
-                                                    <div className="flex items-center gap-1 shrink-0 ml-4">
-                                                        {item.shortcut.map((key) => (
-                                                            <kbd
-                                                                key={key}
-                                                                className="px-1.5 py-0.5 text-[11px] font-medium text-[#A6A6A8] bg-[#222120] border border-[#323130] rounded-[4px] shadow-sm leading-none"
-                                                            >
-                                                                {key}
-                                                            </kbd>
-                                                        ))}
-                                                    </div>
-                                                )}
                                             </button>
                                         )
                                     })}
@@ -307,40 +291,14 @@ export const SearchModal: React.FC<SearchModalProps> = ({
                 </div>
 
                 {/* Footer */}
-                <div className="flex items-center justify-between px-5 py-3 bg-[#1C1B1A] border-t border-[#2A2928] text-[11px] text-[#7B7A79] select-none font-sans">
+                <div className="flex items-center justify-between px-5 py-3 bg-[#1E1E1E] border-t border-[#2A2928] text-[12px] text-[#7B7A79] select-none font-sans">
                     <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-1.5">
-                            <kbd className="px-1.5 py-0.5 bg-[#2A2928] border border-[#3A3938] rounded text-[#A6A6A8] leading-none font-sans">
-                                ↑
-                            </kbd>
-                            <kbd className="px-1.5 py-0.5 bg-[#2A2928] border border-[#3A3938] rounded text-[#A6A6A8] leading-none font-sans">
-                                ↓
-                            </kbd>
-                            <span className="ml-0.5">Navigate</span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                            <kbd className="px-1.5 py-0.5 bg-[#2A2928] border border-[#3A3938] rounded text-[#A6A6A8] leading-none font-sans">
-                                esc
-                            </kbd>
-                            <span className="ml-0.5">Close</span>
-                        </div>
+                        <span>Navigate</span>
+                        <span>Close</span>
                     </div>
                     <div className="flex items-center gap-6">
-                        <div className="flex items-center gap-1.5">
-                            <kbd className="px-1.5 py-0.5 bg-[#2A2928] border border-[#3A3938] rounded text-[#A6A6A8] leading-none font-sans">
-                                Control
-                            </kbd>
-                            <kbd className="px-1.5 py-0.5 bg-[#2A2928] border border-[#3A3938] rounded text-[#A6A6A8] leading-none font-sans">
-                                ↵
-                            </kbd>
-                            <span className="ml-0.5">Open in new tab</span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                            <kbd className="px-1.5 py-0.5 bg-[#2A2928] border border-[#3A3938] rounded text-[#A6A6A8] leading-none font-sans">
-                                ↵
-                            </kbd>
-                            <span className="ml-0.5">Select</span>
-                        </div>
+                        <span>Open in new tab</span>
+                        <span>Select</span>
                     </div>
                 </div>
             </div>

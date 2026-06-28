@@ -1657,7 +1657,8 @@ export const useAppController = () => {
         !(!isHome && (view === 'chat' || view === 'project')) &&
         view !== 'profile' &&
         view !== 'docs' &&
-        view !== 'cli'
+        view !== 'cli' &&
+        view !== 'canvas'
     const isProjectsInitialLoading = isProjectsLoading && projects.length === 0
     const projectsErrorMessage = projectsError instanceof Error ? projectsError.message : null
 

@@ -143,10 +143,7 @@ export const UserProfilePopover: React.FC<UserProfilePopoverProps> = ({
         {
             icon: Icons.DocsBook,
             label: 'Documentation',
-            action: () => {
-                window.open(docsUrl, '_blank')
-            },
-            external: true,
+            action: onDocs,
         },
         {
             icon: FileClock,

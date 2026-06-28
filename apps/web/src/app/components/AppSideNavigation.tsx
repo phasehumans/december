@@ -46,6 +46,7 @@ export const AppSideNavigation: React.FC<AppSideNavigationProps> = ({
                 onNewThread={onNewThread}
                 onAllProjects={() => onNavigate('all-projects')}
                 onSessions={() => onNavigate('sessions')}
+                onReview={() => onNavigate('review')}
                 onTemplates={() => onNavigate('templates')}
                 onDocs={() => onNavigate('docs')}
                 onProfile={() => onNavigate('profile')}
@@ -73,6 +74,7 @@ export const AppSideNavigation: React.FC<AppSideNavigationProps> = ({
                 onNewThread={onNewThread}
                 onAllProjects={() => onNavigate('all-projects')}
                 onSessions={() => onNavigate('sessions')}
+                onReview={() => onNavigate('review')}
                 onTemplates={() => onNavigate('templates')}
                 onDocs={() => onNavigate('docs')}
                 onProfile={() => onNavigate('profile')}

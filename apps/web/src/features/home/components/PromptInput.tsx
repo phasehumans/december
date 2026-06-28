@@ -118,7 +118,7 @@ const PromptInput: React.FC<PromptInputProps> = ({
                             minimized || placeholder ? placeholder || 'Ask a follow-up...' : ''
                         }
                         className={`
-                w-full bg-transparent text-[#D6D5D4] caret-white
+                w-full bg-transparent text-[#D6D5D4] placeholder-[#949494] caret-white
                 resize-none focus:outline-none z-10 font-sans font-medium leading-relaxed
                 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/10 hover:[&::-webkit-scrollbar-thumb]:bg-white/20
                 ${minimized ? 'py-4 pl-5 pr-12 min-h-[54px]' : 'pt-[17px] pl-5 pr-12 pb-3 min-h-[93px] text-[15px]'}
