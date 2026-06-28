@@ -176,7 +176,7 @@ export const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({
 
     return (
         <div className="flex-1 min-h-0 flex overflow-hidden p-0.5 pb-2 justify-center items-center">
-            <div className="w-full h-full flex overflow-hidden rounded-xl border border-[#262626] shadow-2xl bg-[#171615]">
+            <div className="w-full h-full flex overflow-hidden rounded-xl border border-[#262626] shadow-2xl bg-[#141414]">
                 <CodeWorkspaceFileSidebar
                     tree={workspaceTree}
                     selectedFile={selectedFile ?? ''}

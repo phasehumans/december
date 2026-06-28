@@ -457,7 +457,7 @@ export const CanvasItemComponent: React.FC<CanvasItemComponentProps> = ({
                     ))}
 
                 {item.type === 'image' && (
-                    <div className="flex h-full flex-col overflow-hidden rounded-[14px] border border-[#2E2D2C] bg-[#171615] transition-colors group-hover:border-[#454443]">
+                    <div className="flex h-full flex-col overflow-hidden rounded-[14px] border border-[#2E2D2C] bg-[#141414] transition-colors group-hover:border-[#454443]">
                         {!isChild && <CanvasDeleteButton onRemove={onRemove} />}
                         <div className="relative h-[65%] w-full overflow-hidden border-b border-[#2E2D2C] bg-[#141312] group/img">
                             <img
@@ -468,7 +468,7 @@ export const CanvasItemComponent: React.FC<CanvasItemComponentProps> = ({
                             />
                             {isChild && <div className="absolute inset-0 bg-transparent" />}
                         </div>
-                        <div className="flex flex-1 flex-col bg-[#171615] p-3.5">
+                        <div className="flex flex-1 flex-col bg-[#141414] p-3.5">
                             <textarea
                                 className="h-full w-full resize-none bg-transparent text-[13px] leading-relaxed text-[#D6D5D4] placeholder-[#656565] focus:outline-none font-medium"
                                 placeholder="Describe how to use this image..."

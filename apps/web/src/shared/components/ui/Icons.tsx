@@ -2,6 +2,39 @@ import React from 'react'
 
 // Using SVG components for icons
 export const Icons = {
+    SearchNavIcon: (props: any) => (
+        <svg
+            {...props}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            <circle cx="10" cy="11" r="6" />
+            <line x1="20" y1="21" x2="14.24" y2="15.24" />
+            <path d="M18 3l1 2 2 1-2 1-1 2-1-2-2-1 2-1z" stroke="none" fill="currentColor" />
+        </svg>
+    ),
+    SessionsIcon: (props: any) => (
+        <svg
+            {...props}
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            <circle cx="6" cy="8" r="2" />
+            <line x1="11" y1="8" x2="19" y2="8" />
+            <circle cx="6" cy="16" r="2" />
+            <line x1="11" y1="16" x2="19" y2="16" />
+        </svg>
+    ),
     PhaseLogo: (props: any) => (
         <svg {...props} viewBox="0 0 24 24" fill="currentColor" stroke="none">
             <circle cx="12" cy="12" r="10" />

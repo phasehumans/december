@@ -181,7 +181,7 @@ export const ProfileUsageSettings: React.FC = () => {
                             {/* Table skeleton */}
                             <div className="flex flex-col border border-[#242323] rounded-xl overflow-hidden bg-[#100E12] shadow-sm">
                                 {/* Table Header skeleton */}
-                                <div className="grid grid-cols-[130px_200px_1fr_100px_70px] items-center py-3.5 px-5 border-b border-[#242323] bg-[#171615] text-[12px] text-[#7B7A79] font-medium">
+                                <div className="grid grid-cols-[130px_200px_1fr_100px_70px] items-center py-3.5 px-5 border-b border-[#242323] bg-[#141414] text-[12px] text-[#7B7A79] font-medium">
                                     <div>Date</div>
                                     <div>Project</div>
                                     <div>Model</div>
@@ -222,7 +222,7 @@ export const ProfileUsageSettings: React.FC = () => {
                             {/* Table */}
                             <div className="flex flex-col border border-[#242323] rounded-xl overflow-hidden bg-[#100E12] shadow-sm">
                                 {/* Header */}
-                                <div className="grid grid-cols-[130px_200px_1fr_100px_70px] items-center py-3.5 px-5 border-b border-[#242323] bg-[#171615] text-[12px] text-[#7B7A79] font-medium">
+                                <div className="grid grid-cols-[130px_200px_1fr_100px_70px] items-center py-3.5 px-5 border-b border-[#242323] bg-[#141414] text-[12px] text-[#7B7A79] font-medium">
                                     <div>Date</div>
                                     <div>Project</div>
                                     <div>Model</div>
@@ -357,7 +357,7 @@ export const ProfileUsageSettings: React.FC = () => {
                                     <button
                                         type="button"
                                         onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                                        className="flex items-center justify-between w-[70px] bg-[#100E12] border border-[#383736] rounded-lg px-2.5 py-1 text-[12.5px] text-[#D6D5C9] hover:bg-[#1E1D1B] transition-colors focus:outline-none focus:border-[#7B7A79] font-medium"
+                                        className="flex items-center justify-between w-[70px] bg-[#100E12] border border-[#383736] rounded-lg px-2.5 py-1 text-[12.5px] text-[#D6D5C9] hover:bg-[#191919] transition-colors focus:outline-none focus:border-[#7B7A79] font-medium"
                                     >
                                         <span>{limit}</span>
                                         <ChevronDown className="w-3.5 h-3.5 text-[#7B7A79]" />
@@ -382,7 +382,7 @@ export const ProfileUsageSettings: React.FC = () => {
                                                         className={`w-full text-left px-2.5 py-1 text-[12.5px] transition-colors ${
                                                             num === limit
                                                                 ? 'bg-[#2B2A29] text-[#D6D5C9] font-semibold'
-                                                                : 'text-[#7B7A79] hover:text-[#D6D5C9] hover:bg-[#1E1D1B]'
+                                                                : 'text-[#7B7A79] hover:text-[#D6D5C9] hover:bg-[#191919]'
                                                         }`}
                                                     >
                                                         {num}
@@ -403,14 +403,14 @@ export const ProfileUsageSettings: React.FC = () => {
                                     <button
                                         onClick={handlePreviousPage}
                                         disabled={offset === 0}
-                                        className="p-1.5 rounded-lg border border-[#383736] disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[#1E1D1B] transition-colors bg-[#171615] text-[#D6D5C9]"
+                                        className="p-1.5 rounded-lg border border-[#383736] disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[#191919] transition-colors bg-[#141414] text-[#D6D5C9]"
                                     >
                                         <ChevronLeft className="w-4 h-4" />
                                     </button>
                                     <button
                                         onClick={handleNextPage}
                                         disabled={offset + limit >= totalEvents}
-                                        className="p-1.5 rounded-lg border border-[#383736] disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[#1E1D1B] transition-colors bg-[#171615] text-[#D6D5C9]"
+                                        className="p-1.5 rounded-lg border border-[#383736] disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[#191919] transition-colors bg-[#141414] text-[#D6D5C9]"
                                     >
                                         <ChevronRight className="w-4 h-4" />
                                     </button>

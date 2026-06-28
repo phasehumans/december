@@ -138,7 +138,6 @@ export const UserProfilePopover: React.FC<UserProfilePopoverProps> = ({
         rightElement?: React.ReactNode
         shortcut?: string
     }> = [
-        { icon: User, label: 'Profile', action: onProfileModal },
         { icon: SettingsIcon, label: 'Settings', action: onSettings },
         { icon: MessageSquare, label: 'Feedback', action: onFeedbackModal },
         {
@@ -164,7 +163,7 @@ export const UserProfilePopover: React.FC<UserProfilePopoverProps> = ({
             icon: CircleDollarSign,
             label: 'Credits',
             action: () => {
-                navigate('/profile/billing')
+                navigate('/settings/billing')
             },
             rightElement: renderCreditsValue(),
         },
@@ -173,7 +172,7 @@ export const UserProfilePopover: React.FC<UserProfilePopoverProps> = ({
     return createPortal(
         <div
             ref={popoverRef}
-            className="fixed z-[100] rounded-2xl border border-[#2E2D2C] bg-[#1E1D1C] shadow-2xl p-2 pointer-events-auto animate-in fade-in zoom-in-95 duration-200"
+            className="fixed z-[100] rounded-2xl border border-[#2E2D2C] bg-[#1F1F1F] shadow-2xl p-2 pointer-events-auto animate-in fade-in zoom-in-95 duration-200"
             style={{
                 bottom: position.bottom,
                 left: position.left,
@@ -208,7 +207,7 @@ export const UserProfilePopover: React.FC<UserProfilePopoverProps> = ({
                             }
                             onClose()
                         }}
-                        className="flex items-center justify-between w-full px-3 py-1.5 rounded-xl hover:bg-[#252422] transition-colors group text-left"
+                        className="flex items-center justify-between w-full px-3 py-1.5 rounded-xl hover:bg-[#252525] transition-colors group text-left"
                     >
                         <div className="flex items-center gap-3">
                             <item.icon
@@ -238,7 +237,7 @@ export const UserProfilePopover: React.FC<UserProfilePopoverProps> = ({
                     onSignOut?.()
                     onClose()
                 }}
-                className="flex items-center gap-3 w-full px-3 py-1.5 rounded-xl hover:bg-[#252422] transition-colors group text-left mb-0.5"
+                className="flex items-center gap-3 w-full px-3 py-1.5 rounded-xl hover:bg-[#252525] transition-colors group text-left mb-0.5"
             >
                 <LogOut
                     className="w-[18px] h-[18px] text-[#CBCACA] group-hover:text-white transition-colors"

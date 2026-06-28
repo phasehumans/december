@@ -21,7 +21,7 @@ export const CanvasToolbarLinkPopover: React.FC<CanvasToolbarLinkPopoverProps> =
     }
 
     return (
-        <div className="bg-[#171615] border border-white/10 rounded-lg p-1.5 shadow-2xl flex items-center gap-2 pointer-events-auto min-w-[320px] animate-in fade-in slide-in-from-top-2 ring-1 ring-white/5">
+        <div className="bg-[#141414] border border-white/10 rounded-lg p-1.5 shadow-2xl flex items-center gap-2 pointer-events-auto min-w-[320px] animate-in fade-in slide-in-from-top-2 ring-1 ring-white/5">
             <div className="pl-3 pr-2 flex items-center justify-center text-neutral-400">
                 <Globe size={14} />
             </div>

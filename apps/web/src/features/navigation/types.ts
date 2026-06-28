@@ -8,6 +8,7 @@ export interface NavigationState {
 export interface SidebarProps {
     onNewThread: () => void
     onAllProjects: () => void
+    onSessions?: () => void
     onTemplates: () => void
     onDocs: () => void
     onProfile: () => void
@@ -16,6 +17,8 @@ export interface SidebarProps {
     onOpenAuth: () => void
     projects: Project[]
     isProjectsLoading: boolean
+    onSignOut?: () => void
+    onHomeClick?: () => void
 }
 
 export interface MobileSidebarProps {
@@ -23,6 +26,7 @@ export interface MobileSidebarProps {
     onClose: () => void
     onNewThread: () => void
     onAllProjects: () => void
+    onSessions?: () => void
     onTemplates: () => void
     onDocs: () => void
     onProfile: () => void
@@ -31,6 +35,7 @@ export interface MobileSidebarProps {
     onOpenAuth: () => void
     projects: Project[]
     isProjectsLoading: boolean
+    onSignOut?: () => void
 }
 
 export interface SidebarHeaderProps {

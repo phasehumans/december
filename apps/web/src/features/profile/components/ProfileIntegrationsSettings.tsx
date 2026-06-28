@@ -304,7 +304,7 @@ export const ProfileIntegrationsSettings: React.FC<ProfileIntegrationsSettingsPr
                             <div key={id} className="flex items-center justify-between">
                                 <div className="flex items-center gap-4">
                                     <div
-                                        className="w-10 h-10 rounded-lg bg-[#1E1D1B] border border-[#383736] flex items-center justify-center shrink-0"
+                                        className="w-10 h-10 rounded-lg bg-[#191919] border border-[#383736] flex items-center justify-center shrink-0"
                                         style={{ color: iconColor }}
                                     >
                                         <Icon />
@@ -323,10 +323,10 @@ export const ProfileIntegrationsSettings: React.FC<ProfileIntegrationsSettingsPr
                                     disabled={isConnected || isUnavailable}
                                     className={`px-4 py-1.5 rounded-lg border text-[13px] font-medium transition-all shrink-0 ${
                                         isConnected
-                                            ? 'border-[#383736] bg-[#1E1D1B] text-[#6A6968] cursor-default'
+                                            ? 'border-[#383736] bg-[#191919] text-[#6A6968] cursor-default'
                                             : isUnavailable
                                               ? 'border-[#2B2A29] text-[#4A4948] cursor-not-allowed'
-                                              : 'border-[#383736] text-[#D6D5C9] hover:bg-[#1E1D1B]'
+                                              : 'border-[#383736] text-[#D6D5C9] hover:bg-[#191919]'
                                     }`}
                                 >
                                     {isConnected ? 'Connected' : isUnavailable ? 'Soon' : 'Connect'}
@@ -343,7 +343,7 @@ export const ProfileIntegrationsSettings: React.FC<ProfileIntegrationsSettingsPr
 
                 {!githubConnected ? (
                     <div className="border border-dashed border-[#383736] rounded-xl py-16 flex flex-col items-center justify-center gap-4 bg-[#100E12]/30 hover:border-[#4A4948] transition-colors">
-                        <div className="w-12 h-12 rounded-xl bg-[#1E1D1B] border border-[#383736] flex items-center justify-center">
+                        <div className="w-12 h-12 rounded-xl bg-[#191919] border border-[#383736] flex items-center justify-center">
                             <Github className="w-6 h-6 text-[#7B7A79]" />
                         </div>
                         <div className="flex flex-col items-center gap-1 text-center">
@@ -356,7 +356,7 @@ export const ProfileIntegrationsSettings: React.FC<ProfileIntegrationsSettingsPr
                         </div>
                         <button
                             onClick={onConnectGithub}
-                            className="flex items-center gap-2 px-5 py-2 rounded-lg border border-[#383736] text-[13px] font-medium text-[#D6D5C9] hover:bg-[#1E1D1B] transition-colors mt-1"
+                            className="flex items-center gap-2 px-5 py-2 rounded-lg border border-[#383736] text-[13px] font-medium text-[#D6D5C9] hover:bg-[#191919] transition-colors mt-1"
                         >
                             <Github className="w-4 h-4" />
                             Connect GitHub
@@ -365,14 +365,14 @@ export const ProfileIntegrationsSettings: React.FC<ProfileIntegrationsSettingsPr
                 ) : reposQuery.isLoading ? (
                     <div className="flex flex-col border border-[#2B2A29] rounded-xl overflow-hidden bg-[#131211]">
                         {/* Header skeleton */}
-                        <div className="flex items-center px-5 py-3 bg-[#171615] border-b border-[#2B2A29]">
+                        <div className="flex items-center px-5 py-3 bg-[#141414] border-b border-[#2B2A29]">
                             <Skeleton className="h-4.5 w-40 bg-white/[0.06] rounded" />
                         </div>
                         {/* Repo list skeleton */}
                         {Array.from({ length: INITIAL_REPOS_COUNT }).map((_, i) => (
                             <div
                                 key={i}
-                                className="flex items-center justify-between px-5 py-4 border-b border-[#1E1D1B] last:border-b-0"
+                                className="flex items-center justify-between px-5 py-4 border-b border-[#191919] last:border-b-0"
                             >
                                 <div className="flex flex-col gap-2 min-w-0 flex-1">
                                     <div className="flex items-center gap-2">
@@ -411,7 +411,7 @@ export const ProfileIntegrationsSettings: React.FC<ProfileIntegrationsSettingsPr
                 ) : (
                     <div className="flex flex-col border border-[#2B2A29] rounded-xl overflow-hidden bg-[#131211]">
                         {/* Header */}
-                        <div className="flex items-center px-5 py-3 bg-[#171615] border-b border-[#2B2A29]">
+                        <div className="flex items-center px-5 py-3 bg-[#141414] border-b border-[#2B2A29]">
                             <span className="text-[12px] text-[#7B7A79] font-medium">
                                 {showAllRepos
                                     ? `All repositories · ${allRepos.length}`
@@ -423,7 +423,7 @@ export const ProfileIntegrationsSettings: React.FC<ProfileIntegrationsSettingsPr
                         {displayedRepos.map((repo: GithubRepo) => (
                             <div
                                 key={repo.id}
-                                className="flex items-center justify-between px-5 py-3.5 border-b border-[#1E1D1B] last:border-b-0 hover:bg-[#1A1918] transition-colors group"
+                                className="flex items-center justify-between px-5 py-3.5 border-b border-[#191919] last:border-b-0 hover:bg-[#1A1918] transition-colors group"
                             >
                                 <div className="flex flex-col gap-1 min-w-0 flex-1">
                                     <div className="flex items-center gap-2">
@@ -486,7 +486,7 @@ export const ProfileIntegrationsSettings: React.FC<ProfileIntegrationsSettingsPr
 
                         {/* Footer - Browse all repos */}
                         {hasMoreRepos && (
-                            <div className="px-5 py-3.5 bg-[#171615] border-t border-[#2B2A29] flex items-center justify-between">
+                            <div className="px-5 py-3.5 bg-[#141414] border-t border-[#2B2A29] flex items-center justify-between">
                                 <span className="text-[12px] text-[#5A5958]">
                                     {showAllRepos
                                         ? `Showing all ${allRepos.length} repositories`

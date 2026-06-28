@@ -35,7 +35,7 @@ export const CodeWorkspaceEditorPane: React.FC<CodeWorkspaceEditorPaneProps> = (
     onCursorPosChange,
 }) => {
     return (
-        <div className="flex-1 min-w-0 min-h-0 bg-[#171615] flex flex-col justify-between">
+        <div className="flex-1 min-w-0 min-h-0 bg-[#141414] flex flex-col justify-between">
             <div className="flex-1 min-w-0 min-h-0 flex flex-col">
                 <CodeWorkspaceEditorHeader
                     activeFile={activeFile}

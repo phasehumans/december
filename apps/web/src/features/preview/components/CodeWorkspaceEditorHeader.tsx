@@ -49,7 +49,7 @@ export const CodeWorkspaceEditorHeader: React.FC<CodeWorkspaceEditorHeaderProps>
     const tabs = React.useMemo(() => getTabs(activeFile, openFiles), [activeFile, openFiles])
 
     return (
-        <div className="h-10 shrink-0 border-b border-[#2d2d2d] bg-[#171615] flex items-center justify-between px-3">
+        <div className="h-10 shrink-0 border-b border-[#2d2d2d] bg-[#141414] flex items-center justify-between px-3">
             <div className="flex-1 h-full flex items-center gap-1 overflow-x-auto no-scrollbar">
                 {tabs.length === 0 ? (
                     <span className="text-[12px] text-[#7a7a7a] px-2">No files yet</span>

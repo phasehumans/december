@@ -54,7 +54,7 @@ export const ProUpgradeModal: React.FC<ProUpgradeModalProps> = ({ isOpen, onClos
                     <button
                         onClick={() => {
                             onClose()
-                            navigate('/profile/billing')
+                            navigate('/settings/billing')
                         }}
                         className="w-full py-2.5 rounded-lg bg-white text-black text-[13px] font-semibold hover:bg-[#E5E5E5] transition-colors focus:outline-none"
                     >

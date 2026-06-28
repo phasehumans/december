@@ -172,7 +172,7 @@ export const ChatThread: React.FC<ChatSidebarProps> = ({
 
     if (mode === 'mobile') {
         return (
-            <div className="h-full bg-[#171615] rounded-2xl border border-white/10 flex flex-col overflow-hidden font-sans min-h-0">
+            <div className="h-full bg-[#141414] rounded-2xl border border-white/10 flex flex-col overflow-hidden font-sans min-h-0">
                 <div
                     ref={scrollContainerRef}
                     onScroll={handleScroll}
@@ -181,7 +181,7 @@ export const ChatThread: React.FC<ChatSidebarProps> = ({
                     {messagesList}
                 </div>
 
-                <div className="shrink-0 bg-[#171615] pt-3 pl-2.5 pr-2.5 pb-2.5">{promptInput}</div>
+                <div className="shrink-0 bg-[#141414] pt-3 pl-2.5 pr-2.5 pb-2.5">{promptInput}</div>
             </div>
         )
     }
@@ -189,7 +189,7 @@ export const ChatThread: React.FC<ChatSidebarProps> = ({
     return (
         <aside
             className={cn(
-                'h-full bg-[#171615] flex flex-col overflow-hidden shrink-0 z-20 font-sans',
+                'h-full bg-[#141414] flex flex-col overflow-hidden shrink-0 z-20 font-sans',
                 isMounted && 'transition-all duration-300 ease-in-out',
                 isCollapsed
                     ? 'w-0 border-r-0'
@@ -236,7 +236,7 @@ export const ChatThread: React.FC<ChatSidebarProps> = ({
                     {messagesList}
                 </div>
 
-                <div className="shrink-0 bg-[#171615] pt-3 pl-2.5 pr-2.5 pb-2.5">{promptInput}</div>
+                <div className="shrink-0 bg-[#141414] pt-3 pl-2.5 pr-2.5 pb-2.5">{promptInput}</div>
             </div>
         </aside>
     )

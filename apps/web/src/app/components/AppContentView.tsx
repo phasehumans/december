@@ -20,6 +20,7 @@ import { HomeHero } from '@/features/home/components/HomeHero'
 import { OutputScreen } from '@/features/preview/components/OutputScreen'
 import { ProfileSettings } from '@/features/profile/components/ProfileSettings'
 import { ProjectList } from '@/features/projects/components/ProjectList'
+import { SessionList } from '@/features/projects/components/SessionList'
 import { TemplatesView } from '@/features/templates/components/TemplatesView'
 
 interface AppContentViewProps {
@@ -152,6 +153,21 @@ export const AppContentView: React.FC<AppContentViewProps> = ({
             {view === 'all-projects' && (
                 <AnimatedPage pageKey="all-projects">
                     <ProjectList
+                        onNewProject={onNewProject}
+                        onOpenProject={onOpenProject}
+                        projects={projects}
+                        isLoading={isProjectsInitialLoading}
+                        isFetching={isProjectsFetching}
+                        errorMessage={projectsErrorMessage}
+                        selectedModel={selectedModel}
+                        setSelectedModel={setSelectedModel}
+                    />
+                </AnimatedPage>
+            )}
+
+            {view === 'sessions' && (
+                <AnimatedPage pageKey="sessions">
+                    <SessionList
                         onNewProject={onNewProject}
                         onOpenProject={onOpenProject}
                         projects={projects}

@@ -9,7 +9,7 @@ export const PREVIEW_HTML = `
         body {
             margin: 0;
             min-height: 100vh;
-            background: #171615;
+            background: #141414;
             color: #EDEDED;
             font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
             display: grid;
