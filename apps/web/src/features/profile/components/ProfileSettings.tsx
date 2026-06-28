@@ -36,7 +36,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
     const location = useLocation()
     const navigate = useNavigate()
 
-    const activeTabMatch = location.pathname.match(/^\/profile\/([^/]+)/)
+    const activeTabMatch = location.pathname.match(/^\/(?:profile|settings)\/([^/]+)/)
     const activeTabSlug = activeTabMatch ? activeTabMatch[1] : undefined
     const activeTab = getProfileTabFromSlug(activeTabSlug)
 
@@ -44,7 +44,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
     React.useEffect(() => {
         if (typeof window !== 'undefined' && window.location.hash === '#billing') {
             window.history.replaceState(null, '', window.location.pathname)
-            navigate(`/profile/${getSlugForProfileTab('Billing')}`, { replace: true })
+            navigate(`/settings/${getSlugForProfileTab('Billing')}`, { replace: true })
         }
     }, [navigate])
     const [usernameModalOpen, setUsernameModalOpen] = React.useState(false)
@@ -132,7 +132,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                         </div>
 
                         <button
-                            onClick={() => navigate(`/profile/${getSlugForProfileTab('Account')}`)}
+                            onClick={() => navigate(`/settings/${getSlugForProfileTab('Account')}`)}
                             className={`flex items-center gap-3 px-3 py-1.5 rounded-xl text-[13px] font-medium transition-colors ${
                                 activeTab === 'Account'
                                     ? 'bg-[#242323] text-[#D6D5C9]'
@@ -144,7 +144,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                         </button>
                         <button
                             onClick={() =>
-                                navigate(`/profile/${getSlugForProfileTab('Preferences')}`)
+                                navigate(`/settings/${getSlugForProfileTab('Preferences')}`)
                             }
                             className={`flex items-center gap-3 px-3 py-1.5 rounded-xl text-[13px] font-medium transition-colors ${
                                 activeTab === 'Preferences'
@@ -157,7 +157,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                         </button>
                         <button
                             onClick={() =>
-                                navigate(`/profile/${getSlugForProfileTab('Integrations')}`)
+                                navigate(`/settings/${getSlugForProfileTab('Integrations')}`)
                             }
                             className={`flex items-center gap-3 px-3 py-1.5 rounded-xl text-[13px] font-medium transition-colors ${
                                 activeTab === 'Integrations'
@@ -169,7 +169,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                             Integrations
                         </button>
                         <button
-                            onClick={() => navigate(`/profile/${getSlugForProfileTab('Billing')}`)}
+                            onClick={() => navigate(`/settings/${getSlugForProfileTab('Billing')}`)}
                             className={`flex items-center gap-3 px-3 py-1.5 rounded-xl text-[13px] font-medium transition-colors ${
                                 activeTab === 'Billing'
                                     ? 'bg-[#242323] text-[#D6D5C9]'
@@ -180,7 +180,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                             Credits
                         </button>
                         <button
-                            onClick={() => navigate(`/profile/${getSlugForProfileTab('Usage')}`)}
+                            onClick={() => navigate(`/settings/${getSlugForProfileTab('Usage')}`)}
                             className={`flex items-center gap-3 px-3 py-1.5 rounded-xl text-[13px] font-medium transition-colors ${
                                 activeTab === 'Usage'
                                     ? 'bg-[#242323] text-[#D6D5C9]'

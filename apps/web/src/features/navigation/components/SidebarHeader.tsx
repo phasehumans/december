@@ -20,7 +20,7 @@ export const SidebarHeader: React.FC<{
     }, [])
 
     return (
-        <div className="px-3 mb-2 mt-0">
+        <div className="px-3 mb-2 mt-0 z-30 relative">
             <div className="bg-[#1F1F1F] rounded-[14px] p-1 flex flex-col gap-0.5 -mx-1 relative">
                 {/* Sliding Background */}
                 <div
@@ -48,7 +48,7 @@ export const SidebarHeader: React.FC<{
                             'transition-all flex items-center justify-center',
                             activeTab === 'home'
                                 ? 'text-[#D6D5D4]'
-                                : 'text-[#8F8E8D] group-hover:text-[#D6D5D4]'
+                                : 'text-[#919191] group-hover:text-[#D6D5D4]'
                         )}
                     >
                         <Icons.DecemberLogo className="w-[18px] h-[18px]" />
@@ -58,7 +58,7 @@ export const SidebarHeader: React.FC<{
                             'font-medium text-[14px] tracking-wide transition-colors',
                             activeTab === 'home'
                                 ? 'text-[#D6D5D4]'
-                                : 'text-[#8F8E8D] group-hover:text-[#D6D5D4]'
+                                : 'text-[#919191] group-hover:text-[#D6D5D4]'
                         )}
                     >
                         December
@@ -82,7 +82,7 @@ export const SidebarHeader: React.FC<{
                             'transition-colors flex items-center justify-center',
                             activeTab === 'canvas'
                                 ? 'text-[#D6D5D4]'
-                                : 'text-[#8F8E8D] group-hover:text-[#D6D5D4]'
+                                : 'text-[#919191] group-hover:text-[#D6D5D4]'
                         )}
                     >
                         <Icons.Plus className="w-[18px] h-[18px]" />
@@ -92,11 +92,16 @@ export const SidebarHeader: React.FC<{
                             'font-medium text-[14px] transition-colors',
                             activeTab === 'canvas'
                                 ? 'text-[#D6D5D4]'
-                                : 'text-[#8F8E8D] group-hover:text-[#D6D5D4]'
+                                : 'text-[#919191] group-hover:text-[#D6D5D4]'
                         )}
                     >
                         New Project
                     </span>
+                    <div className="absolute top-[calc(100%+4px)] left-1/2 -translate-x-1/2 z-50 hidden group-hover:flex items-center gap-1.5 bg-[#1C1B1A] border border-[#2A2928] px-2.5 py-1 rounded-lg shadow-xl whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
+                        <span className="text-[12px] font-medium text-[#EDEDEF]">
+                            Create new project
+                        </span>
+                    </div>
                 </button>
             </div>
         </div>
