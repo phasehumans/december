@@ -6,7 +6,6 @@ export type ViewState =
     | 'profile'
     | 'templates'
     | 'docs'
-    | 'cli'
     | 'project'
     | 'canvas'
 
@@ -51,7 +50,6 @@ const simpleViewToPath: Record<string, string> = {
     review: '/review',
     templates: '/templates',
     docs: '/docs',
-    cli: '/cli',
     canvas: '/canvas',
 }
 

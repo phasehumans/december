@@ -1,8 +1,6 @@
 import React from 'react'
-import { LayoutGrid, List } from 'lucide-react'
 
 import { ProjectListRow } from './ProjectListRow'
-import { ProjectGridCard } from './ProjectGridCard'
 
 import type { SortOption, StatusFilter } from './ProjectList'
 import type { Project } from '@/features/projects/types'
@@ -186,7 +184,6 @@ export const ProjectListView: React.FC<ProjectListViewProps> = ({
 }) => {
     const [activeDropdown, setActiveDropdown] = React.useState<string | null>(null)
     const [visibleCount, setVisibleCount] = React.useState(10)
-    const [viewMode, setViewMode] = React.useState<'list' | 'grid'>('list')
     const dropdownRef = React.useRef<HTMLDivElement>(null)
 
     React.useEffect(() => {
@@ -323,35 +320,10 @@ export const ProjectListView: React.FC<ProjectListViewProps> = ({
                             </div>
                         )}
                     </div>
-
-                    <div className="flex items-center rounded-lg border border-[#383736] bg-[#141414] p-0.5 ml-1">
-                        <button
-                            onClick={() => setViewMode('list')}
-                            className={`p-1.5 rounded-md transition-colors ${
-                                viewMode === 'list'
-                                    ? 'bg-[#EDEDED] text-[#111111]'
-                                    : 'text-[#7B7A79] hover:text-[#D6D5C9]'
-                            }`}
-                            title="List view"
-                        >
-                            <List className="w-4 h-4" />
-                        </button>
-                        <button
-                            onClick={() => setViewMode('grid')}
-                            className={`p-1.5 rounded-md transition-colors ${
-                                viewMode === 'grid'
-                                    ? 'bg-[#EDEDED] text-[#111111]'
-                                    : 'text-[#7B7A79] hover:text-[#D6D5C9]'
-                            }`}
-                            title="Grid view"
-                        >
-                            <LayoutGrid className="w-4 h-4" />
-                        </button>
-                    </div>
                 </div>
             </div>
 
-            {viewMode === 'list' && hasProjects && (
+            {hasProjects && (
                 <div className="mb-2 grid grid-cols-[minmax(0,2fr)_minmax(100px,1fr)_minmax(150px,1fr)_minmax(150px,1fr)_8rem_2.5rem] gap-3 border-b border-[#242323] px-5 py-3 text-[13px] font-medium text-[#D6D5C9] select-none md:gap-4">
                     <div>Name</div>
                     <div>Status</div>
@@ -364,58 +336,16 @@ export const ProjectListView: React.FC<ProjectListViewProps> = ({
 
             {isInitialLoading ? (
                 <ProjectListAreaSkeleton />
-            ) : viewMode === 'list' ? (
-                !hasUnfilteredProjects ? (
-                    <EmptyProjectsState onNewProject={onNewProject} />
-                ) : !hasProjects ? (
-                    <NoResultsState />
-                ) : (
-                    <div className="flex flex-col">
-                        <div className="min-h-[420px] pb-4">
-                            <div className="flex flex-col gap-1">
-                                {projects.slice(0, visibleCount).map((project) => (
-                                    <ProjectListRow
-                                        key={project.id}
-                                        project={project}
-                                        isMenuOpen={menuOpenId === project.id}
-                                        isTogglePending={isTogglePending}
-                                        onOpenProject={onOpenProject}
-                                        onToggleStar={onToggleStar}
-                                        onToggleMenu={onToggleMenu}
-                                        onOpenProjectFromMenu={onOpenProjectFromMenu}
-                                        onToggleStarFromMenu={onToggleStarFromMenu}
-                                        onOpenRename={onOpenRename}
-                                        onOpenDuplicate={onOpenDuplicate}
-                                        onOpenShare={onOpenShare}
-                                        onOpenDelete={onOpenDelete}
-                                        onOpenSettings={onOpenSettings}
-                                    />
-                                ))}
-                            </div>
-                        </div>
-
-                        {visibleCount < projects.length && (
-                            <div className="flex justify-center pt-2 mb-8">
-                                <button
-                                    onClick={() =>
-                                        setVisibleCount((prev) =>
-                                            Math.min(prev + 10, projects.length)
-                                        )
-                                    }
-                                    className="px-4 py-1.5 rounded-md border border-[#383736] text-[13px] text-[#D6D5C9] hover:bg-[#191919] transition-colors"
-                                >
-                                    Load more
-                                </button>
-                            </div>
-                        )}
-                    </div>
-                )
+            ) : !hasUnfilteredProjects ? (
+                <EmptyProjectsState onNewProject={onNewProject} />
+            ) : !hasProjects ? (
+                <NoResultsState />
             ) : (
                 <div className="flex flex-col">
                     <div className="min-h-[420px] pb-4">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 pt-2">
+                        <div className="flex flex-col gap-1">
                             {projects.slice(0, visibleCount).map((project) => (
-                                <ProjectGridCard
+                                <ProjectListRow
                                     key={project.id}
                                     project={project}
                                     isMenuOpen={menuOpenId === project.id}
