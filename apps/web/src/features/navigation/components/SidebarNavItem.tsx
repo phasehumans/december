@@ -21,27 +21,27 @@ export const SidebarNavItem: React.FC<
                 active
                     ? isSearch
                         ? 'bg-transparent text-[#A6A6A8] hover:bg-[#252525] hover:text-[#EDEDEF]'
-                        : 'bg-[#252525] text-[#EDEDEF]'
-                    : 'hover:bg-[#252525] text-[#A6A6A8] hover:text-[#EDEDEF]'
+                        : 'bg-[#252525] text-[#E8E8E8]'
+                    : 'hover:bg-[#252525] text-[#E8E8E8] hover:text-[#E8E8E8]'
             )}
         >
             <div className="flex items-center gap-3 min-w-0 flex-1">
                 <div
                     className={cn(
-                        'w-[18px] h-[18px] flex items-center justify-center transition-colors shrink-0',
+                        'w-[18px] h-[18px] flex items-center justify-center transition-colors shrink-0 [&>svg]:stroke-[1.75px]',
                         active && !isSearch
-                            ? 'text-[#EDEDEF]'
-                            : 'text-[#A6A6A8] group-hover:text-[#EDEDEF]'
+                            ? 'text-[#E8E8E8]'
+                            : 'text-[#E8E8E8] group-hover:text-[#E8E8E8]'
                     )}
                 >
                     {icon}
                 </div>
                 <span
                     className={cn(
-                        'font-medium text-[14px] whitespace-nowrap transition-colors tracking-tight truncate',
+                        'font-normal text-[14px] whitespace-nowrap transition-colors tracking-tight truncate',
                         active && !isSearch
-                            ? 'text-[#EDEDEF]'
-                            : 'text-[#A6A6A8] group-hover:text-[#EDEDEF]'
+                            ? 'text-[#E8E8E8]'
+                            : 'text-[#E8E8E8] group-hover:text-[#E8E8E8]'
                     )}
                 >
                     {label}

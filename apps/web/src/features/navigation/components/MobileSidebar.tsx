@@ -76,7 +76,7 @@ export const MobileSidebar: React.FC<MobileSidebarProps & { onSignOut?: () => vo
                         projects={recentProjects}
                         isLoading={isAuthenticated && isProjectsLoading}
                         loadingCount={3}
-                        emptyText="No recent projects"
+                        emptyText="No recent sessions"
                         onOpenProject={(projectId) => {
                             onOpenProject(projectId)
                             onClose()
