@@ -1,31 +1,25 @@
 import { useQuery } from '@tanstack/react-query'
-import { Bell } from 'lucide-react'
+import { Bell, Copy, Check } from 'lucide-react'
 import React, { useState, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
 
 import sidebarPng from '../../../../public/sidebar.png'
 
 import { NotificationsPopover } from './NotificationsPopover'
-import { UserProfilePopover } from './UserProfilePopover'
 
 import type { SidebarFooterProps } from '@/features/navigation/types'
 
 import { billingAPI } from '@/features/billing/api/billing'
 import { notificationAPI } from '@/features/notification/api/notification'
 import { profileAPI } from '@/features/profile/api/profile'
-import { ProfileCardModal } from '@/features/profile/components/ProfileCardModal'
-import { ProfileFeedbackModal } from '@/features/profile/components/ProfileFeedbackModal'
 import { Icons } from '@/shared/components/ui/Icons'
 
 export const SidebarFooter: React.FC<
     SidebarFooterProps & { user?: { name?: string }; onSignOut?: () => void }
 > = ({ isAuthenticated, isCollapsed, onProfile, onDocs, onOpenAuth, user, onSignOut }) => {
-    const navigate = useNavigate()
-    const [isPopoverOpen, setIsPopoverOpen] = useState(false)
+    const [isPopoverOpen] = useState(false)
     const [isNotifPopoverOpen, setIsNotifPopoverOpen] = useState(false)
-    const [isProfileModalOpen, setIsProfileModalOpen] = useState(false)
-    const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false)
     const [showCliCard, setShowCliCard] = useState(false)
+    const [isCopied, setIsCopied] = useState(false)
     const anchorRef = useRef<HTMLButtonElement>(null)
     const notifAnchorRef = useRef<HTMLButtonElement>(null)
     const hideTimeoutRef = useRef<any>(null)
@@ -91,6 +85,13 @@ export const SidebarFooter: React.FC<
         }, 300)
     }
 
+    const handleCopy = (e: React.MouseEvent) => {
+        e.stopPropagation()
+        navigator.clipboard.writeText('bun install -g @december/cli')
+        setIsCopied(true)
+        setTimeout(() => setIsCopied(false), 2000)
+    }
+
     return (
         <div className="mt-auto flex flex-col w-full relative">
             <div
@@ -113,11 +114,7 @@ export const SidebarFooter: React.FC<
                 {showCliCard && (
                     <div
                         id="cli-popover-card"
-                        onClick={() => {
-                            setShowCliCard(false)
-                            navigate('/cli')
-                        }}
-                        className="absolute bottom-11 left-3 w-[260px] z-[100] bg-[#1E1E1E] border border-[#2A2928] rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200 cursor-pointer"
+                        className="absolute bottom-11 left-3 w-[300px] z-[100] bg-[#1E1E1E] border border-[#2A2928] rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200"
                     >
                         <div className="w-full h-[165px] bg-[#1E1E1E] relative overflow-hidden flex items-center justify-center p-1.5 pb-0 pointer-events-none">
                             <div className="w-full h-full relative overflow-hidden rounded-xl border border-[#2A2928]">
@@ -128,14 +125,36 @@ export const SidebarFooter: React.FC<
                                 />
                             </div>
                         </div>
-                        <div className="flex flex-col px-1.5 pt-1.5 pb-2.5 bg-[#1E1E1E] pointer-events-none">
-                            <div className="flex flex-col px-1.5 py-0.5 w-full text-left overflow-hidden">
-                                <span className="text-[12px] font-medium text-[#D6D5D4]">
+                        <div className="flex flex-col px-2 pt-2 pb-3 bg-[#1E1E1E] gap-2.5">
+                            <div className="flex flex-col px-1 w-full text-left overflow-hidden pointer-events-none">
+                                <span className="text-[13px] font-medium text-[#D6D5D4]">
                                     December CLI
                                 </span>
                                 <span className="text-[11px] text-[#8F8E8D] mt-0.5 leading-tight truncate w-full">
                                     Turn ideas into reality.
                                 </span>
+                            </div>
+                            <div className="flex items-center justify-between mx-1 px-3 py-2 bg-[#1E1E1E] border border-[#2A2928] rounded-xl group/cmd">
+                                <div className="flex items-center truncate mr-2">
+                                    <span className="text-[#7B7A79] mr-2 text-[12px] font-mono select-none">
+                                        $
+                                    </span>
+                                    <span className="text-[#D6D5C9] text-[12px] font-mono truncate">
+                                        bun install -g @december/cli
+                                    </span>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={handleCopy}
+                                    className="text-[#7B7A79] hover:text-[#D6D5C9] transition-colors p-1 rounded-md hover:bg-[#2A2928] outline-none shrink-0 cursor-pointer"
+                                    title="Copy command"
+                                >
+                                    {isCopied ? (
+                                        <Check className="w-3.5 h-3.5 text-emerald-500" />
+                                    ) : (
+                                        <Copy className="w-3.5 h-3.5" />
+                                    )}
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -149,7 +168,7 @@ export const SidebarFooter: React.FC<
                         <div className="flex items-center gap-0 w-full justify-between">
                             <button
                                 ref={anchorRef}
-                                onClick={() => setIsPopoverOpen(!isPopoverOpen)}
+                                onClick={onProfile}
                                 className="flex items-center gap-2 px-1.5 py-[7px] rounded-lg hover:bg-[#252525] transition-colors group outline-none min-w-0"
                                 style={{ maxWidth: 'calc(100% - 28px)' }}
                             >
@@ -180,29 +199,11 @@ export const SidebarFooter: React.FC<
                             </button>
                         </div>
 
-                        <UserProfilePopover
-                            isOpen={isPopoverOpen}
-                            anchorRef={anchorRef}
-                            onClose={() => setIsPopoverOpen(false)}
-                            userName={profile?.name || quickInfo?.fullName || 'phasehuman'}
-                            userEmail={profile?.email || 'dev.chaitanyasonawane@gmail.com'}
-                            onSettings={onProfile}
-                            onProfileModal={() => setIsProfileModalOpen(true)}
-                            onFeedbackModal={() => setIsFeedbackModalOpen(true)}
-                            onDocs={onDocs}
-                            onSignOut={onSignOut}
-                        />
-
                         <NotificationsPopover
                             isOpen={isNotifPopoverOpen}
                             anchorRef={notifAnchorRef}
                             onClose={() => setIsNotifPopoverOpen(false)}
                             onSettings={onProfile}
-                        />
-
-                        <ProfileFeedbackModal
-                            isOpen={isFeedbackModalOpen}
-                            onClose={() => setIsFeedbackModalOpen(false)}
                         />
                     </>
                 )}
