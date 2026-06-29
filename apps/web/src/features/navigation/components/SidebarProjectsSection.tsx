@@ -64,7 +64,7 @@ export const SidebarProjectsSection: React.FC<SidebarProjectsSectionProps> = ({
                             />
                         ))
                     ) : (
-                        <div className="px-2 py-1.5 text-[13px] text-[#91908F]/50 italic font-['Segoe_UI']">
+                        <div className="px-2 py-1.5 text-[13px] text-[#616161] italic font-['Segoe_UI']">
                             {emptyText}
                         </div>
                     )}

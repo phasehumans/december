@@ -47,8 +47,8 @@ export const SidebarHeader: React.FC<{
                         className={cn(
                             'transition-all flex items-center justify-center',
                             activeTab === 'home'
-                                ? 'text-[#D6D5D4]'
-                                : 'text-[#919191] group-hover:text-[#D6D5D4]'
+                                ? 'text-white'
+                                : 'text-white group-hover:text-white'
                         )}
                     >
                         <Icons.DecemberLogo className="w-[18px] h-[18px]" />
@@ -57,8 +57,8 @@ export const SidebarHeader: React.FC<{
                         className={cn(
                             'font-medium text-[14px] tracking-wide transition-colors',
                             activeTab === 'home'
-                                ? 'text-[#D6D5D4]'
-                                : 'text-[#919191] group-hover:text-[#D6D5D4]'
+                                ? 'text-white'
+                                : 'text-white group-hover:text-white'
                         )}
                     >
                         December

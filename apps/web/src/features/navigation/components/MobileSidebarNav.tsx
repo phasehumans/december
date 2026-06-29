@@ -1,5 +1,4 @@
 import React from 'react'
-import { GitPullRequest } from 'lucide-react'
 
 import { SidebarNavItem } from './SidebarNavItem'
 
@@ -42,7 +41,7 @@ export const MobileSidebarNav: React.FC<MobileSidebarNavProps> = ({
                 }}
             />
             <SidebarNavItem
-                icon={<GitPullRequest className="w-[18px] h-[18px]" />}
+                icon={<Icons.GitPullRequest className="w-[18px] h-[18px]" />}
                 label="Review"
                 collapsed={false}
                 onClick={() => {

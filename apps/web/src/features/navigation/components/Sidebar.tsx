@@ -1,6 +1,5 @@
 import React from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { GitPullRequest } from 'lucide-react'
 
 import { SearchModal } from './SearchModal'
 import { SidebarFooter } from './SidebarFooter'
@@ -88,7 +87,7 @@ const Sidebar: React.FC<
                     onClick={onSessions}
                 />
                 <SidebarNavItem
-                    icon={<GitPullRequest className="w-[18px] h-[18px]" />}
+                    icon={<Icons.GitPullRequest className="w-[18px] h-[18px]" />}
                     label="Review"
                     active={isReviewActive}
                     onClick={onReview}
@@ -121,8 +120,10 @@ const Sidebar: React.FC<
                         </span>
                         <div className="flex items-center gap-2">
                             <button
-                                onClick={() => setIsSearchOpen(true)}
-                                className="relative text-[#919191] hover:text-[#B5B5B7] transition-all outline-none group/btn"
+                                onClick={() =>
+                                    isAuthenticated ? setIsSearchOpen(true) : onOpenAuth?.()
+                                }
+                                className="relative text-[#919191] hover:text-[#919191] transition-all outline-none group/btn"
                             >
                                 <Icons.Search className="w-3.5 h-3.5" />
                                 <div className="absolute top-[calc(100%+6px)] right-0 z-50 hidden group-hover/btn:flex items-center gap-1.5 bg-[#1C1B1A] border border-[#2A2928] px-2.5 py-1 rounded-lg shadow-xl whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
@@ -133,7 +134,7 @@ const Sidebar: React.FC<
                             </button>
                             <button
                                 onClick={() => (isAuthenticated ? onNewThread?.() : onOpenAuth?.())}
-                                className="relative text-[#919191] hover:text-[#B5B5B7] transition-all outline-none group/btn"
+                                className="relative text-[#919191] hover:text-[#919191] transition-all outline-none group/btn"
                             >
                                 <Icons.Plus className="w-3.5 h-3.5" />
                                 <div className="absolute top-[calc(100%+6px)] right-0 z-50 hidden group-hover/btn:flex items-center gap-1.5 bg-[#1C1B1A] border border-[#2A2928] px-2.5 py-1 rounded-lg shadow-xl whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
@@ -144,7 +145,8 @@ const Sidebar: React.FC<
                             </button>
                             <button
                                 type="button"
-                                className="relative text-[#919191] hover:text-[#B5B5B7] transition-all outline-none group/btn"
+                                onClick={() => (!isAuthenticated ? onOpenAuth?.() : undefined)}
+                                className="relative text-[#919191] hover:text-[#919191] transition-all outline-none group/btn"
                             >
                                 <Icons.MoreHorizontal className="w-3.5 h-3.5" />
                                 <div className="absolute top-[calc(100%+6px)] right-0 z-50 hidden group-hover/btn:flex items-center gap-1.5 bg-[#1C1B1A] border border-[#2A2928] px-2.5 py-1 rounded-lg shadow-xl whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
@@ -165,20 +167,20 @@ const Sidebar: React.FC<
                                         onClick={() => onOpenProject?.(project.id)}
                                         className="flex items-center px-3 py-0.5 w-full text-left rounded-lg hover:bg-[#252525] transition-colors group"
                                     >
-                                        <span className="font-medium text-[12px] lowercase transition-colors tracking-tight text-[#949496] group-hover:text-[#E1E1E2] truncate">
+                                        <span className="font-medium text-[12px] lowercase transition-colors tracking-tight text-[#E8E8E8] group-hover:text-[#E8E8E8] truncate">
                                             {/* @ts-expect-error */}
                                             {project.name || project.title}
                                         </span>
                                     </button>
                                 ))
                             ) : (
-                                <div className="px-3 py-1.5 text-[12px] font-medium text-[#6B6A69] tracking-tight">
-                                    No recent projects
+                                <div className="px-3 py-1.5 text-[12px] font-medium text-[#616161] tracking-tight">
+                                    No recent sessions
                                 </div>
                             )
                         ) : (
-                            <div className="px-3 py-1.5 text-[12px] font-medium text-[#6B6A69] tracking-tight">
-                                No recent projects
+                            <div className="px-3 py-1.5 text-[12px] font-medium text-[#616161] tracking-tight">
+                                No recent sessions
                             </div>
                         )}
                     </div>

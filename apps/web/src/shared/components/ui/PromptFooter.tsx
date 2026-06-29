@@ -117,8 +117,8 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
     const selectedModelData = models.find((m) => m.id === selectedModel) ?? models[0]!
 
     return (
-        <div className="flex items-center justify-between px-3 pb-3 mt-1 pl-3 relative">
-            <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between px-3 pb-3 mt-0 pl-3 relative">
+            <div className="flex items-center gap-1.5">
                 <div className="relative" ref={plusRef}>
                     <button
                         onClick={() => setIsPlusMenuOpen(!isPlusMenuOpen)}
@@ -163,12 +163,22 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
                     )}
                 </div>
 
+                <button
+                    onClick={() => {}}
+                    className="flex items-center justify-center w-8 h-8 rounded-full text-[#727272] transition-all hover:bg-white/5 hover:text-white outline-none cursor-pointer"
+                    title="More options"
+                >
+                    <Icons.SlidersVertical className="w-[18px] h-[18px]" />
+                </button>
+
                 <div className="relative" ref={selectorRef}>
                     <button
                         onClick={() => setIsModelSelectorOpen(!isModelSelectorOpen)}
                         className={cn(
-                            'flex items-center gap-1.5 transition-colors outline-none',
-                            isModelSelectorOpen ? 'text-white' : 'text-[#8F8E8D] hover:text-white'
+                            'flex items-center gap-1.5 transition-colors outline-none cursor-pointer px-2 py-1.5 rounded-lg hover:bg-white/5',
+                            isModelSelectorOpen
+                                ? 'text-white bg-white/5'
+                                : 'text-[#8F8E8D] hover:text-white'
                         )}
                     >
                         <span className="text-[13px] font-medium">{selectedModelData.name}</span>
@@ -221,6 +231,20 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
             </div>
 
             <div className="flex items-center gap-3">
+                <button
+                    onClick={() => {
+                        if (!isAuthenticated && onOpenAuth) {
+                            onOpenAuth()
+                            return
+                        }
+                        window.open('/canvas', '_blank')
+                    }}
+                    className="flex items-center gap-1.5 text-[#A1A1AA] hover:text-white hover:bg-[#27272A] px-2.5 py-1.5 rounded-lg transition-all duration-200 outline-none cursor-pointer group bg-transparent border-none"
+                >
+                    <Paperclip className="w-[15px] h-[15px] -rotate-45 transition-colors" />
+                    <span className="text-[13px] font-medium">Canvas</span>
+                </button>
+
                 {isSupported && (
                     <button
                         type="button"

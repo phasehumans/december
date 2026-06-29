@@ -1267,4 +1267,44 @@ export const Icons = {
             <path d="M3 5.55 L11 4.45 V11.5 H3 Z M12.5 4.25 L21 3 V11.5 H12.5 Z M3 12.5 H11 V19.55 L3 18.45 Z M12.5 12.5 H21 V21 L12.5 19.75 Z" />
         </svg>
     ),
+    SlidersVertical: (props: any) => (
+        <svg
+            {...props}
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            <line x1="9" y1="21" x2="9" y2="13"></line>
+            <line x1="9" y1="9" x2="9" y2="3"></line>
+            <circle cx="9" cy="11" r="2"></circle>
+            <line x1="15" y1="21" x2="15" y2="15"></line>
+            <line x1="15" y1="11" x2="15" y2="3"></line>
+            <circle cx="15" cy="13" r="2"></circle>
+        </svg>
+    ),
+    GitPullRequest: (props: any) => (
+        <svg
+            {...props}
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            <circle cx="6" cy="6" r="2.5"></circle>
+            <circle cx="6" cy="18" r="2.5"></circle>
+            <line x1="6" y1="8.5" x2="6" y2="15.5"></line>
+            <circle cx="18" cy="18" r="2.5"></circle>
+            <path d="M18 15.5V11.5C18 10 16.8 8.5 15 8.5H12"></path>
+            <polyline points="13.5 6 11 8.5 13.5 11"></polyline>
+        </svg>
+    ),
 }

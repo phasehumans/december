@@ -98,7 +98,7 @@ const PromptInput: React.FC<PromptInputProps> = ({
         >
             <div
                 className={`
-        relative group rounded-[17px] bg-[#1F1F1F] border border-[#363534]
+        relative group rounded-[17px] bg-[#1F1F1F] border border-[#313131]
         focus-within:border-white/10 focus-within:bg-[#1F1F1F]
         transition-all duration-300 ease-out flex flex-col
       `}
@@ -121,9 +121,9 @@ const PromptInput: React.FC<PromptInputProps> = ({
                 w-full bg-transparent text-[#D6D5D4] placeholder-[#949494] caret-white
                 resize-none focus:outline-none z-10 font-sans font-medium leading-relaxed
                 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/10 hover:[&::-webkit-scrollbar-thumb]:bg-white/20
-                ${minimized ? 'py-4 pl-5 pr-12 min-h-[54px]' : 'pt-[17px] pl-5 pr-12 pb-3 min-h-[93px] text-[15px]'}
+                ${minimized ? 'py-4 pl-5 pr-12 min-h-[54px]' : 'pt-[17px] pl-5 pr-12 pb-1 min-h-[116px] text-[15px]'}
               `}
-                        rows={minimized ? 1 : 2}
+                        rows={minimized ? 1 : 4}
                     />
                 </div>
 

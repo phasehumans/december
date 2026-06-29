@@ -106,9 +106,9 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
         >
             <HomeHeader />
 
-            <div className="flex flex-col items-center justify-start pt-[25vh] md:pt-[30vh] h-full flex-1 gap-6 animate-in fade-in duration-500 max-w-4xl mx-auto px-4 w-full shrink-0 relative">
+            <div className="flex flex-col items-center justify-start pt-[22vh] md:pt-[27vh] h-full flex-1 gap-6 animate-in fade-in duration-500 max-w-4xl mx-auto px-4 w-full shrink-0 relative">
                 <div className="flex flex-col items-center gap-4 text-center mb-2">
-                    <h1 className="text-2xl md:text-4xl font-sohne font-medium tracking-tight text-[#D6D5D4] px-4">
+                    <h1 className="text-[22px] md:text-[32px] font-sohne font-medium tracking-tight text-[#D6D5D4] px-4">
                         What are we building today?
                     </h1>
                 </div>
@@ -122,31 +122,6 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
                         isAuthenticated={isAuthenticated}
                         onOpenAuth={onOpenAuth}
                     />
-
-                    {/* Import Integration */}
-                    <div className="flex items-center justify-start gap-6 mt-3.5 pl-2 animate-in fade-in duration-300 whitespace-nowrap select-none">
-                        <button
-                            onClick={() => {}}
-                            className="flex items-center gap-2 text-[#A1A1AA] hover:text-white transition-colors outline-none cursor-pointer group bg-transparent border-none p-0"
-                        >
-                            <Icons.Github className="w-[16px] h-[16px] text-[#D6D5D4] group-hover:text-white transition-colors" />
-                            <span className="text-[13px] font-medium">3 repositories</span>
-                        </button>
-
-                        <button
-                            onClick={() => {
-                                if (!isAuthenticated && onOpenAuth) {
-                                    onOpenAuth()
-                                    return
-                                }
-                                window.open('/canvas', '_blank')
-                            }}
-                            className="flex items-center gap-1.5 text-[#A1A1AA] hover:text-white transition-colors outline-none cursor-pointer group bg-transparent border-none p-0"
-                        >
-                            <Paperclip className="w-[15px] h-[15px] text-[#D6D5D4] group-hover:text-white transition-colors" />
-                            <span className="text-[13px] font-medium">Canvas</span>
-                        </button>
-                    </div>
 
                     {/* Import Forms */}
                     <div className="flex justify-center">
