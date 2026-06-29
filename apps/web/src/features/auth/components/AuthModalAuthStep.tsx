@@ -20,40 +20,43 @@ export const AuthModalAuthStep: React.FC<AuthModalAuthStepProps> = ({
     onSubmit,
     onToggleAuthMode,
     onForgotPassword,
+    onClose,
 }) => {
     const [showPassword, setShowPassword] = React.useState(false)
     const isFormFilled = email.trim().length > 0 && password.length > 0
 
     return (
         <div className="flex flex-col">
-            <div className="flex flex-col mb-8">
-                <h2 className="text-[28px] font-medium text-white tracking-tight mb-2">
+            <div className="flex flex-col items-center text-center mb-6">
+                <h2 className="text-[22px] font-normal text-white tracking-tight mb-1">
                     {authMode === 'login' ? 'Sign in to continue building' : 'Create an account'}
                 </h2>
-                <p className="text-[15px] text-[#A3A3A3]">Turn ideas into reality.</p>
+                <p className="text-[13px] text-[#A3A3A3]">turn ideas into reality.</p>
             </div>
 
-            <div className="flex flex-col mb-2">
+            <div className="flex flex-col gap-2.5 mb-1">
                 <button
                     type="button"
                     onClick={onGoogleLogin}
                     disabled={isAuthPending}
-                    className="w-full bg-[#EDEDED] hover:bg-white text-[#111111] font-medium h-[46px] rounded-[12px] flex items-center justify-center gap-3 transition-all duration-200 active:scale-[0.98] shadow-sm disabled:opacity-50"
+                    className="w-full bg-[#EDEDED] hover:bg-white text-[#111111] font-medium h-[42px] rounded-full flex items-center justify-center gap-2.5 transition-all duration-200 active:scale-[0.98] shadow-none disabled:opacity-50"
                 >
-                    <AuthModalGoogleIcon />
-                    <span className="text-[15px]">Continue with Google</span>
+                    <div className="w-[18px] h-[18px] flex items-center justify-center">
+                        <AuthModalGoogleIcon />
+                    </div>
+                    <span className="text-[14px]">Continue with Google</span>
                 </button>
             </div>
 
-            <div className="flex items-center my-6">
+            <div className="flex items-center my-5">
                 <div className="flex-1 border-t border-[#2A2A2A]"></div>
-                <span className="px-4 text-[12px] text-[#737373] font-medium uppercase tracking-wider">
+                <span className="px-3 text-[11px] text-[#737373] font-medium uppercase tracking-wider">
                     or continue with email
                 </span>
                 <div className="flex-1 border-t border-[#2A2A2A]"></div>
             </div>
 
-            <form onSubmit={onSubmit} className="flex flex-col gap-4">
+            <form onSubmit={onSubmit} className="flex flex-col gap-3">
                 <input
                     type="email"
                     required
@@ -61,7 +64,7 @@ export const AuthModalAuthStep: React.FC<AuthModalAuthStepProps> = ({
                     value={email}
                     onChange={(event) => onEmailChange(event.target.value)}
                     disabled={isAuthPending}
-                    className="w-full bg-[#141414] border border-[#2A2A2A] hover:border-[#3A3A3A] focus:border-[#4A4A4A] focus:bg-[#1A1A1A] rounded-[12px] h-[46px] px-4 text-[15px] text-white placeholder-[#666666] focus:outline-none transition-all duration-200"
+                    className="w-full bg-[#141414] border border-[#2A2A2A] rounded-full h-[42px] px-4 text-[14px] text-white placeholder-[#666666] outline-none focus:outline-none focus:ring-0 focus:border-[#2A2A2A] focus:shadow-none shadow-none"
                 />
 
                 <div className="relative w-full">
@@ -72,15 +75,15 @@ export const AuthModalAuthStep: React.FC<AuthModalAuthStepProps> = ({
                         value={password}
                         onChange={(event) => onPasswordChange(event.target.value)}
                         disabled={isAuthPending}
-                        className="w-full bg-[#141414] border border-[#2A2A2A] hover:border-[#3A3A3A] focus:border-[#4A4A4A] focus:bg-[#1A1A1A] rounded-[12px] h-[46px] pl-4 pr-11 text-[15px] text-white placeholder-[#666666] focus:outline-none transition-all duration-200"
+                        className="w-full bg-[#141414] border border-[#2A2A2A] rounded-full h-[42px] pl-4 pr-11 text-[14px] text-white placeholder-[#666666] outline-none focus:outline-none focus:ring-0 focus:border-[#2A2A2A] focus:shadow-none shadow-none"
                     />
                     <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#666666] hover:text-[#EDEDED] transition-colors p-1 rounded-md hover:bg-white/5"
+                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#888888] hover:text-[#EDEDED] transition-colors p-1.5 rounded-full hover:bg-white/5"
                         tabIndex={-1}
                     >
-                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                        {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>
                 </div>
 
@@ -89,18 +92,20 @@ export const AuthModalAuthStep: React.FC<AuthModalAuthStepProps> = ({
                         type="button"
                         onClick={onForgotPassword}
                         disabled={isAuthPending}
-                        className="self-end text-[13px] text-[#A3A3A3] hover:text-white transition-colors underline decoration-transparent hover:decoration-white/50 underline-offset-2"
+                        className="self-end text-[13px] text-[#A3A3A3] hover:text-white transition-colors underline decoration-transparent hover:decoration-white/50 underline-offset-2 pr-1"
                     >
                         Forgot password?
                     </button>
                 )}
 
-                {errorMessage && <p className="text-[13px] text-red-500 px-1">{errorMessage}</p>}
+                {errorMessage && (
+                    <p className="text-[13px] text-red-500 px-1 text-center">{errorMessage}</p>
+                )}
 
                 <button
                     type="submit"
                     disabled={isAuthPending}
-                    className={`w-full font-medium h-[46px] rounded-[12px] flex items-center justify-center transition-all duration-200 active:scale-[0.98] disabled:opacity-50 mt-1 shadow-sm ${
+                    className={`w-full font-medium h-[42px] rounded-full flex items-center justify-center text-[14px] transition-all duration-200 active:scale-[0.98] disabled:opacity-50 mt-1 shadow-sm ${
                         isFormFilled
                             ? 'bg-[#EDEDED] hover:bg-white text-[#111111]'
                             : 'bg-[#222222] hover:bg-[#2A2A2A] text-[#888888]'
@@ -114,11 +119,11 @@ export const AuthModalAuthStep: React.FC<AuthModalAuthStepProps> = ({
                 </button>
             </form>
 
-            <div className="mt-8 flex justify-center">
+            <div className="mt-6 flex flex-col items-center gap-6">
                 <button
                     type="button"
                     onClick={onToggleAuthMode}
-                    className="text-[14px] text-[#888888] hover:text-white transition-colors"
+                    className="text-[13px] text-[#888888] hover:text-white transition-colors"
                 >
                     {authMode === 'login' ? (
                         <span>
@@ -135,6 +140,14 @@ export const AuthModalAuthStep: React.FC<AuthModalAuthStepProps> = ({
                             </span>
                         </span>
                     )}
+                </button>
+
+                <button
+                    type="button"
+                    onClick={onClose}
+                    className="text-[13px] text-[#737373] hover:text-[#E5E5E5] transition-colors"
+                >
+                    close
                 </button>
             </div>
         </div>

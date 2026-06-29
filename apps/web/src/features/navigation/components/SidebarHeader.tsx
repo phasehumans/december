@@ -65,13 +65,7 @@ export const SidebarHeader: React.FC<{
                     </span>
                 </button>
                 <button
-                    onClick={() => {
-                        if (!isAuthenticated) {
-                            if (onOpenAuth) onOpenAuth()
-                            return
-                        }
-                        if (onNewThread) onNewThread()
-                    }}
+                    onClick={() => {}}
                     className={cn(
                         'relative flex items-center gap-2.5 w-full px-2.5 h-[32px] rounded-[10px] transition-all group outline-none',
                         activeTab === 'canvas' ? '' : 'hover:bg-[#272727]'

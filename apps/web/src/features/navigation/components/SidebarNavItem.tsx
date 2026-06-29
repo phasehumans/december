@@ -1,4 +1,5 @@
 import React from 'react'
+import { ArrowUpRight } from 'lucide-react'
 
 import type { SidebarNavItemProps } from '@/features/navigation/types'
 
@@ -10,8 +11,9 @@ export const SidebarNavItem: React.FC<
         shortcut?: string
         tooltipLabel?: string
         tooltipShortcut?: string[]
+        external?: boolean
     }
-> = ({ icon, label, active, onClick, shortcut, tooltipLabel, tooltipShortcut }) => {
+> = ({ icon, label, active, onClick, shortcut, tooltipLabel, tooltipShortcut, external }) => {
     const isSearch = label.toLowerCase() === 'search'
     return (
         <button
@@ -47,6 +49,12 @@ export const SidebarNavItem: React.FC<
                     {label}
                 </span>
             </div>
+            {external && (
+                <ArrowUpRight
+                    className="w-[14px] h-[14px] text-[#7B7A79] group-hover:text-[#EDEDEF] transition-colors shrink-0"
+                    strokeWidth={1.5}
+                />
+            )}
             {shortcut && (
                 <kbd className="hidden md:inline-flex items-center justify-center px-1.5 py-0.5 text-[11px] font-medium text-[#7B7A79] bg-white/[0.04] border border-white/[0.06] rounded-[4px] group-hover:bg-white/[0.08] group-hover:text-[#EDEDEF] transition-all shrink-0">
                     {shortcut}

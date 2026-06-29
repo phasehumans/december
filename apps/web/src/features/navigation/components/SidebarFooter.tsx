@@ -117,9 +117,9 @@ export const SidebarFooter: React.FC<
                             setShowCliCard(false)
                             navigate('/cli')
                         }}
-                        className="absolute bottom-11 left-3 w-[260px] z-[100] bg-[#1C1B1A] border border-[#2A2928] rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200 cursor-pointer"
+                        className="absolute bottom-11 left-3 w-[260px] z-[100] bg-[#1E1E1E] border border-[#2A2928] rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200 cursor-pointer"
                     >
-                        <div className="w-full h-[165px] bg-[#1C1B1A] relative overflow-hidden flex items-center justify-center p-1.5 pb-0 pointer-events-none">
+                        <div className="w-full h-[165px] bg-[#1E1E1E] relative overflow-hidden flex items-center justify-center p-1.5 pb-0 pointer-events-none">
                             <div className="w-full h-full relative overflow-hidden rounded-xl border border-[#2A2928]">
                                 <img
                                     src={sidebarPng}
@@ -128,7 +128,7 @@ export const SidebarFooter: React.FC<
                                 />
                             </div>
                         </div>
-                        <div className="flex flex-col px-1.5 pt-1.5 pb-2.5 bg-[#1C1B1A] pointer-events-none">
+                        <div className="flex flex-col px-1.5 pt-1.5 pb-2.5 bg-[#1E1E1E] pointer-events-none">
                             <div className="flex flex-col px-1.5 py-0.5 w-full text-left overflow-hidden">
                                 <span className="text-[12px] font-medium text-[#D6D5D4]">
                                     December CLI

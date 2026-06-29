@@ -61,6 +61,7 @@ export interface AuthModalAuthStepProps {
     onSubmit: (event: FormEvent) => void
     onToggleAuthMode: () => void
     onForgotPassword: () => void
+    onClose: () => void
 }
 
 export interface AuthModalOtpStepProps {
