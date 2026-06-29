@@ -171,7 +171,7 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
         return createPortal(
             <div
                 ref={popoverRef}
-                className="fixed z-[100] rounded-2xl border border-[#2E2D2C] bg-[#1F1F1F] shadow-2xl p-2 pointer-events-auto animate-in fade-in zoom-in-95 duration-200 flex flex-col font-sans"
+                className="fixed z-[100] rounded-2xl border border-[#2E2D2C] bg-[#1E1E1E] shadow-2xl p-2 pointer-events-auto animate-in fade-in zoom-in-95 duration-200 flex flex-col font-sans"
                 style={{
                     bottom: position.bottom,
                     left: Math.max(10, position.left),
@@ -236,7 +236,7 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
     return createPortal(
         <div
             ref={popoverRef}
-            className="fixed z-[100] rounded-2xl border border-[#2E2D2C] bg-[#1F1F1F] shadow-2xl p-2 pointer-events-auto animate-in fade-in zoom-in-95 duration-200 flex flex-col font-sans"
+            className="fixed z-[100] rounded-2xl border border-[#2E2D2C] bg-[#1E1E1E] shadow-2xl p-2 pointer-events-auto animate-in fade-in zoom-in-95 duration-200 flex flex-col font-sans"
             style={{
                 bottom: position.bottom,
                 left: Math.max(10, position.left),
@@ -264,7 +264,7 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
                     {isMenuOpen && (
                         <div
                             ref={menuRef}
-                            className="absolute right-[-144px] top-8 z-[110] w-[180px] rounded-2xl border border-[#2E2D2C] bg-[#1F1F1F] shadow-2xl p-2 flex flex-col gap-0.5 animate-in fade-in zoom-in-95 duration-100"
+                            className="absolute right-[-144px] top-8 z-[110] w-[180px] rounded-2xl border border-[#2E2D2C] bg-[#1E1E1E] shadow-2xl p-2 flex flex-col gap-0.5 animate-in fade-in zoom-in-95 duration-100"
                         >
                             <button
                                 onClick={() => {
@@ -376,7 +376,7 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
                                         e.stopPropagation()
                                         deleteMutation.mutate(notification.id)
                                     }}
-                                    className="absolute top-2.5 right-2.5 p-1.5 rounded-lg bg-[#141414] border border-[#2B2A27] text-[#969593] hover:text-white hover:border-white/20 opacity-0 group-hover/notif:opacity-100 transition-all duration-200 hover:bg-white/[0.06] outline-none shadow-sm"
+                                    className="absolute top-2.5 right-2.5 p-1.5 rounded-lg bg-[#2A2A2A] border border-[#3A3A3A] text-[#969593] hover:text-white hover:border-white/20 opacity-0 group-hover/notif:opacity-100 transition-all duration-200 hover:bg-white/[0.06] outline-none shadow-sm"
                                     title="Delete notification"
                                 >
                                     <Trash2 className="w-3.5 h-3.5" strokeWidth={1.5} />

@@ -1,8 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion'
-import { X } from 'lucide-react'
 import React from 'react'
-
-import authPng from '../../../../public/auth.png'
 
 import { useAuthModalController } from '../hooks/useAuthModalController'
 
@@ -70,24 +67,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: 15 }}
                     transition={{ duration: 0.3, ease: 'easeOut' }}
-                    className="fixed inset-0 z-[100] bg-[#141414] flex flex-col md:flex-row font-roboto overflow-y-auto"
+                    className="fixed inset-0 z-[100] bg-[#141414] flex flex-col items-center justify-center font-roboto overflow-y-auto"
                 >
-                    <div className="w-full md:w-[60%] flex items-center justify-center min-h-[300px] md:min-h-screen relative bg-[#141414] md:border-r border-[#232323] overflow-hidden">
-                        <img
-                            src={authPng}
-                            alt="Authentication background"
-                            className="w-full h-full object-cover absolute inset-0 opacity-95"
-                        />
-                    </div>
-
-                    <div className="w-full md:w-[40%] flex items-center justify-center p-6 md:p-12 lg:p-16 relative bg-[#141414]">
-                        <button
-                            onClick={onClose}
-                            className="absolute top-6 right-6 text-[#737373] hover:text-[#E5E5E5] transition-colors p-2 rounded-full hover:bg-white/10 z-20"
-                        >
-                            <X size={20} />
-                        </button>
-                        <div className="w-full max-w-[420px] relative z-10">
+                    <div className="w-full flex items-center justify-center p-6 md:p-10 lg:p-12 relative bg-[#141414]">
+                        <div className="w-full max-w-[380px] relative z-10">
                             {step === 'auth' ? (
                                 <AuthModalAuthStep
                                     authMode={authMode}
@@ -102,6 +85,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                                     onSubmit={handleAuthSubmit}
                                     onToggleAuthMode={handleToggleAuthMode}
                                     onForgotPassword={handleForgotPasswordStart}
+                                    onClose={onClose}
                                 />
                             ) : step === 'google-merge' ? (
                                 <AuthModalGoogleMergeStep

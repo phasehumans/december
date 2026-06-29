@@ -1,5 +1,6 @@
 import React from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
+import { createPortal } from 'react-dom'
 
 import { SearchModal } from './SearchModal'
 import { SidebarFooter } from './SidebarFooter'
@@ -36,6 +37,34 @@ const Sidebar: React.FC<
     const path = location.pathname
 
     const [isSearchOpen, setIsSearchOpen] = React.useState(false)
+    const [isRecentMenuOpen, setIsRecentMenuOpen] = React.useState(false)
+    const [recentMenuPos, setRecentMenuPos] = React.useState<{ top: number; left: number } | null>(
+        null
+    )
+    const [sortBy, setSortBy] = React.useState<'created' | 'updated'>('updated')
+    const recentMenuRef = React.useRef<HTMLDivElement | null>(null)
+    const recentMenuTriggerRef = React.useRef<HTMLButtonElement | null>(null)
+
+    React.useEffect(() => {
+        if (!isRecentMenuOpen) return
+        const handleOutsideClick = (e: MouseEvent | TouchEvent) => {
+            const target = e.target as Node | null
+            if (
+                recentMenuRef.current &&
+                !recentMenuRef.current.contains(target) &&
+                recentMenuTriggerRef.current &&
+                !recentMenuTriggerRef.current.contains(target)
+            ) {
+                setIsRecentMenuOpen(false)
+            }
+        }
+        document.addEventListener('mousedown', handleOutsideClick)
+        document.addEventListener('touchstart', handleOutsideClick)
+        return () => {
+            document.removeEventListener('mousedown', handleOutsideClick)
+            document.removeEventListener('touchstart', handleOutsideClick)
+        }
+    }, [isRecentMenuOpen])
 
     React.useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -64,8 +93,10 @@ const Sidebar: React.FC<
 
     const recentProjects = isAuthenticated
         ? [...projects]
-              .sort(
-                  (a, b) => new Date(b.rawUpdatedAt).getTime() - new Date(a.rawUpdatedAt).getTime()
+              .sort((a, b) =>
+                  sortBy === 'created'
+                      ? new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+                      : new Date(b.rawUpdatedAt).getTime() - new Date(a.rawUpdatedAt).getTime()
               )
               .slice(0, 10)
         : []
@@ -110,6 +141,12 @@ const Sidebar: React.FC<
                     active={isSettingsActive}
                     onClick={onProfile}
                 />
+                <SidebarNavItem
+                    icon={<Icons.DocsBook className="w-[18px] h-[18px]" />}
+                    label="Documentation"
+                    active={isDocsActive}
+                    onClick={onDocs}
+                />
             </div>
 
             <div className="flex-1 flex flex-col pl-[10px] pr-3 mt-4 mb-2 overflow-y-auto no-scrollbar font-sans">
@@ -133,7 +170,7 @@ const Sidebar: React.FC<
                                 </div>
                             </button>
                             <button
-                                onClick={() => (isAuthenticated ? onNewThread?.() : onOpenAuth?.())}
+                                onClick={() => {}}
                                 className="relative text-[#919191] hover:text-[#919191] transition-all outline-none group/btn"
                             >
                                 <Icons.Plus className="w-3.5 h-3.5" />
@@ -143,18 +180,99 @@ const Sidebar: React.FC<
                                     </span>
                                 </div>
                             </button>
-                            <button
-                                type="button"
-                                onClick={() => (!isAuthenticated ? onOpenAuth?.() : undefined)}
-                                className="relative text-[#919191] hover:text-[#919191] transition-all outline-none group/btn"
-                            >
-                                <Icons.MoreHorizontal className="w-3.5 h-3.5" />
-                                <div className="absolute top-[calc(100%+6px)] right-0 z-50 hidden group-hover/btn:flex items-center gap-1.5 bg-[#1C1B1A] border border-[#2A2928] px-2.5 py-1 rounded-lg shadow-xl whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
-                                    <span className="text-[12px] font-medium text-[#EDEDEF]">
-                                        More options
-                                    </span>
-                                </div>
-                            </button>
+                            <div className="relative">
+                                <button
+                                    ref={recentMenuTriggerRef}
+                                    type="button"
+                                    onClick={(e) => {
+                                        e.stopPropagation()
+                                        if (!isAuthenticated) {
+                                            onOpenAuth?.()
+                                        } else {
+                                            if (!isRecentMenuOpen) {
+                                                const rect = e.currentTarget.getBoundingClientRect()
+                                                setRecentMenuPos({
+                                                    top: rect.top,
+                                                    left: rect.right + 8,
+                                                })
+                                            }
+                                            setIsRecentMenuOpen(!isRecentMenuOpen)
+                                        }
+                                    }}
+                                    className="relative text-[#919191] hover:text-[#919191] transition-all outline-none group/btn"
+                                >
+                                    <Icons.MoreHorizontal className="w-3.5 h-3.5" />
+                                    <div className="absolute top-[calc(100%+6px)] right-0 z-50 hidden group-hover/btn:flex items-center gap-1.5 bg-[#1C1B1A] border border-[#2A2928] px-2.5 py-1 rounded-lg shadow-xl whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
+                                        <span className="text-[12px] font-medium text-[#EDEDEF]">
+                                            More options
+                                        </span>
+                                    </div>
+                                </button>
+                                {isRecentMenuOpen &&
+                                    recentMenuPos &&
+                                    typeof document !== 'undefined' &&
+                                    createPortal(
+                                        <div
+                                            ref={recentMenuRef}
+                                            className="fixed z-[200] w-[220px] rounded-2xl border border-[#2E2D2C] bg-[#1E1E1E] shadow-2xl p-2 flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-100 font-sans text-left"
+                                            style={{
+                                                top: recentMenuPos.top,
+                                                left: recentMenuPos.left,
+                                            }}
+                                        >
+                                            <div className="px-3 py-1 text-[12px] font-medium text-[#8F8E8D]">
+                                                Sort by
+                                            </div>
+                                            <button
+                                                onClick={() => {
+                                                    setSortBy('created')
+                                                    setIsRecentMenuOpen(false)
+                                                }}
+                                                className="flex items-center justify-between w-full px-3 py-1.5 rounded-xl hover:bg-[#252525] text-[#CBCACA] hover:text-white transition-colors text-left text-[13px] cursor-pointer outline-none group"
+                                            >
+                                                <span>Created time</span>
+                                                {sortBy === 'created' && (
+                                                    <span className="text-white text-[14px]">
+                                                        ✓
+                                                    </span>
+                                                )}
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    setSortBy('updated')
+                                                    setIsRecentMenuOpen(false)
+                                                }}
+                                                className="flex items-center justify-between w-full px-3 py-1.5 rounded-xl hover:bg-[#252525] text-[#CBCACA] hover:text-white transition-colors text-left text-[13px] cursor-pointer outline-none group"
+                                            >
+                                                <span>Last updated</span>
+                                                {sortBy === 'updated' && (
+                                                    <span className="text-white text-[14px]">
+                                                        ✓
+                                                    </span>
+                                                )}
+                                            </button>
+                                            <div className="h-[1px] bg-[#2B2A29] mx-1 my-1" />
+                                            <button
+                                                onClick={() => {
+                                                    setIsRecentMenuOpen(false)
+                                                    onSessions?.()
+                                                }}
+                                                className="flex items-center gap-3 w-full px-3 py-1.5 rounded-xl hover:bg-[#252525] text-[#CBCACA] hover:text-white transition-colors text-left text-[13px] cursor-pointer outline-none group"
+                                            >
+                                                <span>View all sessions</span>
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    setIsRecentMenuOpen(false)
+                                                }}
+                                                className="flex items-center gap-3 w-full px-3 py-1.5 rounded-xl hover:bg-[#252525] text-[#CBCACA] hover:text-white transition-colors text-left text-[13px] cursor-pointer outline-none group"
+                                            >
+                                                <span>Archive all sessions</span>
+                                            </button>
+                                        </div>,
+                                        document.body
+                                    )}
+                            </div>
                         </div>
                     </div>
 

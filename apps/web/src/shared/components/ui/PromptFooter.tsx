@@ -118,15 +118,23 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
 
     return (
         <div className="flex items-center justify-between px-3 pb-3 mt-0 pl-3 relative">
-            <div className="flex items-center gap-1.5">
-                <div className="relative" ref={plusRef}>
+            <div className="flex items-center gap-0.5">
+                <div className="relative group/btn" ref={plusRef}>
                     <button
-                        onClick={() => setIsPlusMenuOpen(!isPlusMenuOpen)}
-                        className="flex items-center justify-center w-8 h-8 rounded-full text-[#727272] transition-all hover:bg-white/5 hover:text-white outline-none"
-                        title="Add attachment"
+                        onClick={() => {
+                            if (!isAuthenticated) {
+                                onOpenAuth?.()
+                                return
+                            }
+                            setIsPlusMenuOpen(!isPlusMenuOpen)
+                        }}
+                        className="flex items-center justify-center w-8 h-8 rounded-full text-[#8E8E8E] transition-all hover:bg-white/5 hover:text-white outline-none"
                     >
                         <Icons.Plus className="w-[18px] h-[18px] stroke-[2.5px]" />
                     </button>
+                    <div className="absolute top-[calc(100%+6px)] left-0 z-50 hidden group-hover/btn:flex items-center gap-1.5 bg-[#1C1B1A] border border-[#2A2928] px-2.5 py-1 rounded-lg shadow-xl whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
+                        <span className="text-[12px] font-medium text-[#EDEDEF]">More options</span>
+                    </div>
 
                     {isPlusMenuOpen && (
                         <div className="absolute top-[calc(100%+8px)] left-0 w-[230px] bg-[#1C1B1A] border border-[#2A2928] rounded-2xl p-2 shadow-2xl z-50 flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-150">
@@ -163,22 +171,42 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
                     )}
                 </div>
 
-                <button
-                    onClick={() => {}}
-                    className="flex items-center justify-center w-8 h-8 rounded-full text-[#727272] transition-all hover:bg-white/5 hover:text-white outline-none cursor-pointer"
-                    title="More options"
-                >
-                    <Icons.SlidersVertical className="w-[18px] h-[18px]" />
-                </button>
-
-                <div className="relative" ref={selectorRef}>
+                <div className="relative group/btn">
                     <button
-                        onClick={() => setIsModelSelectorOpen(!isModelSelectorOpen)}
+                        onClick={() => {
+                            if (!isAuthenticated && onOpenAuth) {
+                                onOpenAuth()
+                                return
+                            }
+                            window.open('/canvas', '_blank')
+                        }}
+                        className="flex items-center gap-1.5 text-[#8E8E8E] hover:text-white hover:bg-[#27272A] px-2 py-0.5 rounded-full transition-all duration-200 outline-none cursor-pointer bg-transparent border border-dashed border-white/20 hover:border-white/40"
+                    >
+                        <span className="text-[13px] font-medium">Canvas</span>
+                    </button>
+                    <div className="absolute top-[calc(100%+6px)] left-0 z-50 hidden group-hover/btn:flex items-center gap-1.5 bg-[#1C1B1A] border border-[#2A2928] px-2.5 py-1 rounded-lg shadow-xl whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
+                        <span className="text-[12px] font-medium text-[#EDEDEF]">
+                            Attach context canvas
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <div className="flex items-center gap-1.5">
+                <div className="relative group/btn" ref={selectorRef}>
+                    <button
+                        onClick={() => {
+                            if (!isAuthenticated) {
+                                onOpenAuth?.()
+                                return
+                            }
+                            setIsModelSelectorOpen(!isModelSelectorOpen)
+                        }}
                         className={cn(
-                            'flex items-center gap-1.5 transition-colors outline-none cursor-pointer px-2 py-1.5 rounded-lg hover:bg-white/5',
+                            'flex items-center gap-1.5 transition-all duration-200 outline-none cursor-pointer px-2 py-0.5 rounded-full bg-transparent border border-dashed border-white/20 hover:border-white/40 hover:bg-[#27272A]',
                             isModelSelectorOpen
-                                ? 'text-white bg-white/5'
-                                : 'text-[#8F8E8D] hover:text-white'
+                                ? 'text-white bg-[#27272A] border-white/40'
+                                : 'text-[#8E8E8E] hover:text-white'
                         )}
                     >
                         <span className="text-[13px] font-medium">{selectedModelData.name}</span>
@@ -189,9 +217,12 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
                             )}
                         />
                     </button>
+                    <div className="absolute top-[calc(100%+6px)] right-0 z-50 hidden group-hover/btn:flex items-center gap-1.5 bg-[#1C1B1A] border border-[#2A2928] px-2.5 py-1 rounded-lg shadow-xl whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
+                        <span className="text-[12px] font-medium text-[#EDEDEF]">Select model</span>
+                    </div>
 
                     {isModelSelectorOpen && (
-                        <div className="absolute top-[calc(100%+8px)] left-0 w-[200px] bg-[#1F1F1F] border border-white/[0.08] rounded-xl p-1 shadow-2xl z-50 flex flex-col gap-0.5">
+                        <div className="absolute top-[calc(100%+8px)] right-0 w-[200px] bg-[#1F1F1F] border border-white/[0.08] rounded-xl p-1 shadow-2xl z-50 flex flex-col gap-0.5">
                             {models.map((model) => {
                                 const isSelected = selectedModel === model.id
                                 return (
@@ -228,43 +259,33 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
                         </div>
                     )}
                 </div>
-            </div>
-
-            <div className="flex items-center gap-3">
-                <button
-                    onClick={() => {
-                        if (!isAuthenticated && onOpenAuth) {
-                            onOpenAuth()
-                            return
-                        }
-                        window.open('/canvas', '_blank')
-                    }}
-                    className="flex items-center gap-1.5 text-[#A1A1AA] hover:text-white hover:bg-[#27272A] px-2.5 py-1.5 rounded-lg transition-all duration-200 outline-none cursor-pointer group bg-transparent border-none"
-                >
-                    <Paperclip className="w-[15px] h-[15px] -rotate-45 transition-colors" />
-                    <span className="text-[13px] font-medium">Canvas</span>
-                </button>
 
                 {isSupported && (
-                    <button
-                        type="button"
-                        onClick={() => {
-                            if (!isAuthenticated) {
-                                onOpenAuth?.()
-                                return
-                            }
-                            toggleListening()
-                        }}
-                        className={cn(
-                            'flex items-center justify-center w-8 h-8 rounded-full transition-all',
-                            isListening
-                                ? 'bg-white/10 text-white'
-                                : 'text-[#727272] hover:bg-white/5 hover:text-white'
-                        )}
-                        title={isListening ? 'Stop listening' : 'Voice input'}
-                    >
-                        <Icons.Microphone className="w-[14px] h-[14px] stroke-[2.5px] relative z-10" />
-                    </button>
+                    <div className="relative group/btn">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                if (!isAuthenticated) {
+                                    onOpenAuth?.()
+                                    return
+                                }
+                                toggleListening()
+                            }}
+                            className={cn(
+                                'flex items-center justify-center w-8 h-8 rounded-full transition-all outline-none',
+                                isListening
+                                    ? 'bg-white/10 text-white'
+                                    : 'text-[#8E8E8E] hover:bg-white/5 hover:text-white'
+                            )}
+                        >
+                            <Icons.Microphone className="w-[14px] h-[14px] stroke-[2.5px] relative z-10" />
+                        </button>
+                        <div className="absolute top-[calc(100%+6px)] right-0 z-50 hidden group-hover/btn:flex items-center gap-1.5 bg-[#1C1B1A] border border-[#2A2928] px-2.5 py-1 rounded-lg shadow-xl whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
+                            <span className="text-[12px] font-medium text-[#EDEDEF]">
+                                {isListening ? 'Stop listening' : 'Record voice prompt'}
+                            </span>
+                        </div>
+                    </div>
                 )}
                 <button
                     onClick={onSubmit}

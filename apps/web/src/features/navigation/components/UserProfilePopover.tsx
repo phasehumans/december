@@ -144,6 +144,7 @@ export const UserProfilePopover: React.FC<UserProfilePopoverProps> = ({
             icon: Icons.DocsBook,
             label: 'Documentation',
             action: onDocs,
+            external: true,
         },
         {
             icon: FileClock,
@@ -169,7 +170,7 @@ export const UserProfilePopover: React.FC<UserProfilePopoverProps> = ({
     return createPortal(
         <div
             ref={popoverRef}
-            className="fixed z-[100] rounded-2xl border border-[#2E2D2C] bg-[#1F1F1F] shadow-2xl p-2 pointer-events-auto animate-in fade-in zoom-in-95 duration-200"
+            className="fixed z-[100] rounded-2xl border border-[#2E2D2C] bg-[#1E1E1E] shadow-2xl p-2 pointer-events-auto animate-in fade-in zoom-in-95 duration-200"
             style={{
                 bottom: position.bottom,
                 left: position.left,
