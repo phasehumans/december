@@ -57,7 +57,7 @@ export const CancellationFlowModal: React.FC<CancellationFlowModalProps> = ({
                         autoFocus
                         value={confirmText}
                         onChange={(e) => setConfirmText(e.target.value)}
-                        className="w-full bg-[#2A2A2A] border border-[#2B2A27] rounded-lg px-3.5 py-2.5 text-white text-[13px] focus:outline-none focus:border-[#4E4D49] focus:ring-1 focus:ring-[#4E4D49] transition-[border-color,box-shadow] duration-200 placeholder:text-[#4A4948]"
+                        className="w-full bg-white/[0.03] border border-[#2B2A27] rounded-lg px-3.5 py-2.5 text-white text-[13px] focus:outline-none focus:border-[#4E4D49] focus:ring-1 focus:ring-[#4E4D49] transition-[border-color,box-shadow] duration-200 placeholder:text-[#4A4948]"
                         placeholder="cancel"
                         disabled={isCancelling}
                         autoComplete="off"

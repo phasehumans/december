@@ -92,7 +92,7 @@ export const ProjectShareModal: React.FC<ProjectShareModalProps> = ({
                             type="button"
                             onClick={() => !isDisabled && setIsDropdownOpen(!isDropdownOpen)}
                             disabled={isDisabled}
-                            className="w-full flex items-center justify-between bg-[#2A2A2A] hover:bg-[#191919] border border-[#2B2A27] hover:border-[#383736] rounded-lg px-3.5 py-2.5 text-white text-[13px] transition-[border-color,background-color] duration-200 focus:outline-none disabled:opacity-50 text-left"
+                            className="w-full flex items-center justify-between bg-transparent hover:bg-[#191919] border border-[#2B2A27] hover:border-[#383736] rounded-lg px-3.5 py-2.5 text-white text-[13px] transition-[border-color,background-color] duration-200 focus:outline-none disabled:opacity-50 text-left"
                         >
                             <span className={category === 'NONE' ? 'text-[#7B7A79]' : 'text-white'}>
                                 {selectedCategoryLabel}

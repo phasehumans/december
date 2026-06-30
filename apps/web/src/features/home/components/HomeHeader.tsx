@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
-import { MessageSquare } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { MessageSquare, ArrowUpRight } from 'lucide-react'
 
 import { ProfileFeedbackModal } from '@/features/profile/components/ProfileFeedbackModal'
 import { Icons } from '@/shared/components/ui/Icons'
@@ -11,6 +12,7 @@ interface HomeHeaderProps {
 
 export const HomeHeader: React.FC<HomeHeaderProps> = ({ isAuthenticated, onOpenAuth }) => {
     const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false)
+    const navigate = useNavigate()
 
     return (
         <div className="absolute top-4 left-0 w-full px-4 md:px-6 z-50 flex justify-between items-start pointer-events-none">
@@ -18,7 +20,25 @@ export const HomeHeader: React.FC<HomeHeaderProps> = ({ isAuthenticated, onOpenA
             <div className="flex-1" />
 
             {/* Center Heading */}
-            <div className="flex-initial flex justify-center pointer-events-auto"></div>
+            <div className="flex-initial flex justify-center pointer-events-auto">
+                <div
+                    onClick={() => {
+                        window.dispatchEvent(new Event('open-cli-card'))
+                    }}
+                    className="home-header-badge flex items-center gap-2.5 bg-[#18181A] border border-white/5 rounded-full pl-1.5 pr-3 py-1 text-[13px] text-[#E8E8E6] shadow-sm transition-all duration-200 cursor-pointer hover:bg-[#202022] group whitespace-nowrap flex-shrink-0"
+                >
+                    <span className="bg-[#27272A] text-[#E8E8E6] rounded-full px-2 py-0.5 text-[11px] font-medium flex-shrink-0">
+                        New
+                    </span>
+                    <span className="font-medium text-[#D4D4D8] group-hover:text-white transition-colors whitespace-nowrap">
+                        December CLI is now available
+                    </span>
+                    <span className="text-[#3F3F46] font-light mx-0.5 flex-shrink-0">|</span>
+                    <div className="text-[#D4D4D8] font-medium flex items-center gap-1 group-hover:text-white transition-colors whitespace-nowrap flex-shrink-0">
+                        Try December CLI <ArrowUpRight className="w-3.5 h-3.5" />
+                    </div>
+                </div>
+            </div>
 
             {/* Right Icons */}
             <div className="flex-1 flex flex-col items-end gap-1 pointer-events-auto">

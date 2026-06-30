@@ -106,8 +106,8 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
         >
             <HomeHeader isAuthenticated={isAuthenticated} onOpenAuth={onOpenAuth} />
 
-            <div className="flex flex-col items-center justify-start pt-[22vh] md:pt-[27vh] h-full flex-1 gap-3 animate-in fade-in duration-500 max-w-4xl mx-auto px-4 w-full shrink-0 relative">
-                <div className="flex flex-col items-center gap-3 text-center">
+            <div className="flex flex-col items-center justify-start pt-[22vh] md:pt-[27vh] h-full flex-1 gap-6 animate-in fade-in duration-500 max-w-4xl mx-auto px-4 w-full shrink-0 relative">
+                <div className="flex flex-col items-center gap-3 text-center relative -left-[8px]">
                     <div className="flex items-center gap-2.5 select-none">
                         <Icons.DecemberLogo
                             className="w-7 h-7 md:w-9 md:h-9 text-white"
@@ -128,6 +128,33 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
                         isAuthenticated={isAuthenticated}
                         onOpenAuth={onOpenAuth}
                     />
+
+                    {/* Import Integration */}
+                    <div className="flex items-center justify-center gap-3 mt-6 animate-in fade-in duration-300 whitespace-nowrap">
+                        <span className="text-[#656565] text-[14px] font-medium tracking-wide">
+                            or start with
+                        </span>
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => toggleImportForm('github')}
+                                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-dashed transition-all group ${
+                                    activeImportForm === 'github'
+                                        ? 'border-[#5A5A5A] bg-white/5 text-white'
+                                        : 'border-[#404040] bg-transparent hover:bg-white/5 hover:border-[#5A5A5A] text-[#A1A1AA] hover:text-white'
+                                }`}
+                            >
+                                <Icons.Github className="w-[12px] h-[12px] group-hover:text-white transition-colors" />
+                                <span className="text-[11px]">GitHub Repo</span>
+                            </button>
+                            <button
+                                onClick={handleTemplateClick}
+                                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-dashed border-[#404040] bg-transparent hover:bg-white/5 hover:border-[#5A5A5A] text-[#A1A1AA] hover:text-white transition-all group"
+                            >
+                                <Icons.Bookmark className="w-[12px] h-[12px] group-hover:text-white transition-colors" />
+                                <span className="text-[11px]">Template</span>
+                            </button>
+                        </div>
+                    </div>
 
                     {/* Import Forms */}
                     <div className="flex justify-center">

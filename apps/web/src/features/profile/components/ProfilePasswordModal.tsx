@@ -55,7 +55,7 @@ export const ProfilePasswordModal: React.FC<ProfilePasswordModalProps> = ({
                                 type={showCurrentPass ? 'text' : 'password'}
                                 value={currentPassword}
                                 onChange={(e) => onCurrentPasswordChange(e.target.value)}
-                                className="w-full bg-[#2A2A2A] border border-[#2B2A27] rounded-lg px-3.5 py-2.5 text-white text-[13px] focus:outline-none focus:border-[#4E4D49] focus:ring-1 focus:ring-[#4E4D49] transition-[border-color,box-shadow] duration-200 pr-10"
+                                className="w-full bg-white/[0.03] border border-[#2B2A27] rounded-lg px-3.5 py-2.5 text-white text-[13px] focus:outline-none focus:border-[#4E4D49] focus:ring-1 focus:ring-[#4E4D49] transition-[border-color,box-shadow] duration-200 pr-10"
                                 placeholder="••••••••"
                                 disabled={isPending}
                             />
@@ -83,7 +83,7 @@ export const ProfilePasswordModal: React.FC<ProfilePasswordModalProps> = ({
                             type={showNewPass ? 'text' : 'password'}
                             value={newPassword}
                             onChange={(e) => onNewPasswordChange(e.target.value)}
-                            className="w-full bg-[#2A2A2A] border border-[#2B2A27] rounded-lg px-3.5 py-2.5 text-white text-[13px] focus:outline-none focus:border-[#4E4D49] focus:ring-1 focus:ring-[#4E4D49] transition-[border-color,box-shadow] duration-200 pr-10"
+                            className="w-full bg-white/[0.03] border border-[#2B2A27] rounded-lg px-3.5 py-2.5 text-white text-[13px] focus:outline-none focus:border-[#4E4D49] focus:ring-1 focus:ring-[#4E4D49] transition-[border-color,box-shadow] duration-200 pr-10"
                             placeholder="••••••••"
                             disabled={isPending}
                         />
@@ -109,7 +109,7 @@ export const ProfilePasswordModal: React.FC<ProfilePasswordModalProps> = ({
                         type="password"
                         value={confirmPassword}
                         onChange={(e) => onConfirmPasswordChange(e.target.value)}
-                        className="w-full bg-[#2A2A2A] border border-[#2B2A27] rounded-lg px-3.5 py-2.5 text-white text-[13px] focus:outline-none focus:border-[#4E4D49] focus:ring-1 focus:ring-[#4E4D49] transition-[border-color,box-shadow] duration-200"
+                        className="w-full bg-white/[0.03] border border-[#2B2A27] rounded-lg px-3.5 py-2.5 text-white text-[13px] focus:outline-none focus:border-[#4E4D49] focus:ring-1 focus:ring-[#4E4D49] transition-[border-color,box-shadow] duration-200"
                         placeholder="••••••••"
                         disabled={isPending}
                     />
