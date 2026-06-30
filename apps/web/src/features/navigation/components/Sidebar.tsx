@@ -79,8 +79,6 @@ const Sidebar: React.FC<
 
     const isHomeActive = path === '/'
     const isProjectsActive = path.startsWith('/projects')
-    const isSessionsActive = path.startsWith('/sessions')
-    const isReviewActive = path.startsWith('/review')
     const isTemplatesActive = path.startsWith('/templates')
     const isDocsActive = path.startsWith('/docs')
     const isSettingsActive = path.startsWith('/settings')
@@ -112,18 +110,6 @@ const Sidebar: React.FC<
 
             <div className="flex flex-col gap-[2px] pl-[10px] pr-3">
                 <SidebarNavItem
-                    icon={<Icons.SessionsIcon className="w-[18px] h-[18px]" />}
-                    label="Sessions"
-                    active={isSessionsActive}
-                    onClick={onSessions}
-                />
-                <SidebarNavItem
-                    icon={<Icons.GitPullRequest className="w-[18px] h-[18px]" />}
-                    label="Review"
-                    active={isReviewActive}
-                    onClick={onReview}
-                />
-                <SidebarNavItem
                     icon={<Icons.Folder />}
                     label="Projects"
                     active={isProjectsActive}
@@ -152,7 +138,7 @@ const Sidebar: React.FC<
             <div className="flex-1 flex flex-col pl-[10px] pr-3 mt-4 mb-2 overflow-y-auto no-scrollbar font-sans">
                 <div className="flex flex-col mb-2">
                     <div className="flex items-center justify-between px-3 py-1.5 w-full text-left group">
-                        <span className="font-medium text-[13px] whitespace-nowrap transition-colors tracking-tight text-[#919191]">
+                        <span className="font-normal text-[13px] whitespace-nowrap transition-colors tracking-tight text-[#919191]">
                             Recent
                         </span>
                         <div className="flex items-center gap-2">
@@ -255,19 +241,11 @@ const Sidebar: React.FC<
                                             <button
                                                 onClick={() => {
                                                     setIsRecentMenuOpen(false)
-                                                    onSessions?.()
+                                                    onAllProjects?.()
                                                 }}
                                                 className="flex items-center gap-3 w-full px-3 py-1.5 rounded-xl hover:bg-[#252525] text-[#CBCACA] hover:text-white transition-colors text-left text-[13px] cursor-pointer outline-none group"
                                             >
-                                                <span>View all sessions</span>
-                                            </button>
-                                            <button
-                                                onClick={() => {
-                                                    setIsRecentMenuOpen(false)
-                                                }}
-                                                className="flex items-center gap-3 w-full px-3 py-1.5 rounded-xl hover:bg-[#252525] text-[#CBCACA] hover:text-white transition-colors text-left text-[13px] cursor-pointer outline-none group"
-                                            >
-                                                <span>Archive all sessions</span>
+                                                <span>View all projects</span>
                                             </button>
                                         </div>,
                                         document.body
@@ -285,7 +263,7 @@ const Sidebar: React.FC<
                                         onClick={() => onOpenProject?.(project.id)}
                                         className="flex items-center px-3 py-0.5 w-full text-left rounded-lg hover:bg-[#252525] transition-colors group"
                                     >
-                                        <span className="font-medium text-[12px] lowercase transition-colors tracking-tight text-[#E8E8E8] group-hover:text-[#E8E8E8] truncate">
+                                        <span className="font-normal text-[12px] lowercase transition-colors tracking-tight text-[#E8E8E8] group-hover:text-[#E8E8E8] truncate">
                                             {/* @ts-expect-error */}
                                             {project.name || project.title}
                                         </span>

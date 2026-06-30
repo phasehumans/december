@@ -104,13 +104,19 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
             id="main-scroll-container"
             className="h-full min-h-0 overflow-y-auto no-scrollbar scroll-smooth relative flex flex-col"
         >
-            <HomeHeader />
+            <HomeHeader isAuthenticated={isAuthenticated} onOpenAuth={onOpenAuth} />
 
-            <div className="flex flex-col items-center justify-start pt-[22vh] md:pt-[27vh] h-full flex-1 gap-6 animate-in fade-in duration-500 max-w-4xl mx-auto px-4 w-full shrink-0 relative">
-                <div className="flex flex-col items-center gap-4 text-center mb-2">
-                    <h1 className="text-[22px] md:text-[32px] font-sohne font-medium tracking-tight text-[#D6D5D4] px-4">
-                        What are we building today?
-                    </h1>
+            <div className="flex flex-col items-center justify-start pt-[22vh] md:pt-[27vh] h-full flex-1 gap-3 animate-in fade-in duration-500 max-w-4xl mx-auto px-4 w-full shrink-0 relative">
+                <div className="flex flex-col items-center gap-3 text-center">
+                    <div className="flex items-center gap-2.5 select-none">
+                        <Icons.DecemberLogo
+                            className="w-7 h-7 md:w-9 md:h-9 text-white"
+                            strokeWidth={1}
+                        />
+                        <h1 className="text-[24px] md:text-[32px] font-sohne font-medium tracking-tight text-[#D6D5D4]">
+                            December
+                        </h1>
+                    </div>
                 </div>
                 <div className="w-full max-w-[638px] px-2 md:px-0 relative -top-[1px] -left-[4px]">
                     <PromptInput

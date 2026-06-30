@@ -105,31 +105,31 @@ export const ProjectGridCard: React.FC<ProjectListRowProps> = ({
                         </button>
                         {isMenuOpen && (
                             <div
-                                className={`absolute right-0 ${menuDirection === 'up' ? 'bottom-9' : 'top-9'} z-30 flex w-56 flex-col rounded-xl border border-[#383736] bg-[#1F1F1F] p-1.5 shadow-xl`}
+                                className={`absolute right-0 ${menuDirection === 'up' ? 'bottom-9' : 'top-9'} z-30 flex w-56 flex-col rounded-xl border border-[#383736] bg-[#1E1E1E] p-1.5 shadow-xl`}
                                 onClick={(e) => e.stopPropagation()}
                             >
                                 <button
                                     onClick={(e) => onOpenProjectFromMenu(project.id, e)}
-                                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-[14px] text-[#D6D5C9] transition-colors hover:bg-[#252525]"
+                                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-[14px] text-[#D6D5C9] transition-colors hover:bg-[#262626]"
                                 >
                                     <Icons.ExternalLink className="h-4 w-4 text-[#7B7A79]" /> Open
                                     in new tab
                                 </button>
                                 <button
                                     onClick={(e) => onOpenRename(project, e)}
-                                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-[14px] text-[#D6D5C9] transition-colors hover:bg-[#252525]"
+                                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-[14px] text-[#D6D5C9] transition-colors hover:bg-[#262626]"
                                 >
                                     <Icons.Edit className="h-4 w-4 text-[#7B7A79]" /> Rename
                                 </button>
                                 <button
                                     onClick={(e) => onOpenDuplicate(project, e)}
-                                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-[14px] text-[#D6D5C9] transition-colors hover:bg-[#252525]"
+                                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-[14px] text-[#D6D5C9] transition-colors hover:bg-[#262626]"
                                 >
                                     <Icons.Copy className="h-4 w-4 text-[#7B7A79]" /> Duplicate
                                 </button>
                                 <button
                                     onClick={(e) => onToggleStarFromMenu(project, e)}
-                                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-[14px] text-[#D6D5C9] transition-colors hover:bg-[#252525]"
+                                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-[14px] text-[#D6D5C9] transition-colors hover:bg-[#262626]"
                                 >
                                     <Icons.Star className="h-4 w-4 text-[#7B7A79]" />{' '}
                                     {project.isStarred
@@ -138,7 +138,7 @@ export const ProjectGridCard: React.FC<ProjectListRowProps> = ({
                                 </button>
                                 <button
                                     onClick={(e) => onOpenShare(project, e)}
-                                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-[14px] text-[#D6D5C9] transition-colors hover:bg-[#252525]"
+                                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-[14px] text-[#D6D5C9] transition-colors hover:bg-[#262626]"
                                 >
                                     <Icons.Bookmark className="h-4 w-4 text-[#7B7A79]" />{' '}
                                     {project.isSharedAsTemplate
@@ -147,14 +147,14 @@ export const ProjectGridCard: React.FC<ProjectListRowProps> = ({
                                 </button>
                                 <button
                                     onClick={(e) => onOpenSettings(project, e)}
-                                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-[14px] text-[#D6D5C9] transition-colors hover:bg-[#252525]"
+                                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-[14px] text-[#D6D5C9] transition-colors hover:bg-[#262626]"
                                 >
                                     <Icons.Settings className="h-4 w-4 text-[#7B7A79]" /> Settings
                                 </button>
                                 <div className="mx-2 my-1.5 h-px bg-[#383736]" />
                                 <button
                                     onClick={(e) => onOpenDelete(project, e)}
-                                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-[14px] text-red-400 transition-colors hover:bg-[#252525] hover:text-red-300"
+                                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-[14px] text-red-400 transition-colors hover:bg-[#262626] hover:text-red-300"
                                 >
                                     <Icons.Trash className="h-4 w-4" /> Delete
                                 </button>

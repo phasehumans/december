@@ -63,7 +63,7 @@ export const ConnectCliModal: React.FC<ConnectCliModalProps> = ({ isOpen, onClos
                 </div>
 
                 <div className="flex flex-col gap-2 mt-2">
-                    <div className="flex items-center justify-between border border-[#2B2A27] hover:border-[#383736] rounded-lg p-3 bg-[#181817] transition-all font-mono text-[12px] text-white">
+                    <div className="flex items-center justify-between border border-[#2B2A27] hover:border-[#383736] rounded-lg p-3 bg-[#2A2A2A] transition-all font-mono text-[12px] text-white">
                         <span className="select-all break-all pr-2 max-h-[80px] overflow-y-auto w-full leading-relaxed text-[#D6D5C9]">
                             {generatedToken}
                         </span>
