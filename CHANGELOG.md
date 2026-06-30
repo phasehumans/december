@@ -1,5 +1,11 @@
 ## [unreleased]
 
+### Bug Fixes
+
+- _(ui)_ Improve sidebar visuals with color change, tooltip, and search #157
+
+## [0.1.6] - 2026-06-26
+
 ### Features
 
 - Add payments via razorpay and coinbase
@@ -16,6 +22,10 @@
 
 - _(canavas/notification/import/profile)_ Add test unit and integration #110
 - Billing module
+
+### Miscellaneous Tasks
+
+- _(release)_ V0.1.6
 
 ## [0.1.5] - 2026-06-22
 
