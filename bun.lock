@@ -32,6 +32,16 @@
     },
     "apps/cli": {
       "name": "@december/cli",
+      "bin": {
+        "december": "./src/index.ts",
+      },
+      "dependencies": {
+        "@december/agent": "workspace:*",
+        "@december/tools": "workspace:*",
+        "@december/tui": "workspace:*",
+        "ink": "7.1.0",
+        "react": "19.2.7",
+      },
       "devDependencies": {
         "@types/bun": "latest",
       },
@@ -129,6 +139,9 @@
     },
     "packages/agent": {
       "name": "@december/agent",
+      "dependencies": {
+        "openai": "6.45.0",
+      },
       "devDependencies": {
         "@types/bun": "latest",
       },
@@ -154,9 +167,17 @@
         "typescript": "^5",
       },
     },
+    "packages/tools": {
+      "name": "@december/tools",
+      "version": "0.0.0",
+      "dependencies": {
+        "@december/agent": "workspace:*",
+      },
+    },
     "packages/tui": {
       "name": "@december/tui",
       "dependencies": {
+        "@december/agent": "workspace:*",
         "ink": "^7.0.5",
         "ink-spinner": "^5.0.0",
         "ink-text-input": "^6.0.0",
@@ -329,6 +350,8 @@
     "@december/runtime": ["@december/runtime@workspace:apps/runtime"],
 
     "@december/server": ["@december/server@workspace:apps/server"],
+
+    "@december/tools": ["@december/tools@workspace:packages/tools"],
 
     "@december/tui": ["@december/tui@workspace:packages/tui"],
 
@@ -1498,7 +1521,7 @@
 
     "onetime": ["onetime@5.1.2", "", { "dependencies": { "mimic-fn": "^2.1.0" } }, "sha512-kbpaSSGJTWdAY5KPVeMOKXSrPtr8C8C7wodJbcsd51jRnmD+GZu8Y0VoU6Dm5Z4vWr0Ig/1NKuWRKf7j5aaYSg=="],
 
-    "openai": ["openai@6.43.0", "", { "peerDependencies": { "ws": "^8.18.0", "zod": "^3.25 || ^4.0" }, "optionalPeers": ["ws", "zod"] }, "sha512-wVjioGjbnAZycj5mmkFVxbBxLEp+NkKpdMscCYP9LTbq+nbf1WTMVp+ovmD35jgyco4tldWZJkcqdmlh3O9yHQ=="],
+    "openai": ["openai@6.45.0", "", { "peerDependencies": { "@aws-sdk/credential-provider-node": ">=3.972.0 <4", "@smithy/hash-node": ">=4.3.0 <5", "@smithy/signature-v4": ">=5.4.0 <6", "ws": "^8.18.0", "zod": "^3.25 || ^4.0" }, "optionalPeers": ["@aws-sdk/credential-provider-node", "@smithy/hash-node", "@smithy/signature-v4", "ws", "zod"] }, "sha512-5DQVNErssk0afNpTTHUm/qZPU4iKR9OYdNid8Ib4puq4gHNNvGWZht2zY4h9a8JMF949Ik6m8gQutllVPbjdnw=="],
 
     "optionator": ["optionator@0.9.4", "", { "dependencies": { "deep-is": "^0.1.3", "fast-levenshtein": "^2.0.6", "levn": "^0.4.1", "prelude-ls": "^1.2.1", "type-check": "^0.4.0", "word-wrap": "^1.2.5" } }, "sha512-6IpQ7mKUxRcZNLIObR0hz7lxsapSSIYNZJwXPGeF0mTVqGKFIXj1DQcMoT22S3ROcLyY/rz0PWaWZ9ayWmad9g=="],
 
@@ -1876,6 +1899,8 @@
 
     "@conventional-changelog/git-client/semver": ["semver@7.8.4", "", { "bin": { "semver": "bin/semver.js" } }, "sha512-rUCObTnP32Q08R2uuIrt7r9PlEonuTmtuXYcW6s5kjdlj3xbnwe+21yXptAUYcMAABLkYYTtnmzb3w3EDZfueA=="],
 
+    "@december/server/openai": ["openai@6.43.0", "", { "peerDependencies": { "ws": "^8.18.0", "zod": "^3.25 || ^4.0" }, "optionalPeers": ["ws", "zod"] }, "sha512-wVjioGjbnAZycj5mmkFVxbBxLEp+NkKpdMscCYP9LTbq+nbf1WTMVp+ovmD35jgyco4tldWZJkcqdmlh3O9yHQ=="],
+
     "@december/web/@types/react": ["@types/react@18.3.31", "", { "dependencies": { "@types/prop-types": "*", "csstype": "^3.2.2" } }, "sha512-vfEqpXTvwT91yhmwdfouStN2hSKwTvyRs8qpLfADyrq/kxDw0hZM7Wk9Ug1FELj8hIby+S/+kQCSRFF32nv2Qw=="],
 
     "@december/web/@types/react-dom": ["@types/react-dom@18.3.7", "", { "peerDependencies": { "@types/react": "^18.0.0" } }, "sha512-MEe3UeoENYVFXzoXEWsvcpg6ZvlrFNlOQ7EOsvhI3CfAXwzPfO8Qwuxd40nepsYKqyyVQnTdEfv68q91yLcKrQ=="],
@@ -1889,6 +1914,12 @@
     "@eslint/eslintrc/strip-json-comments": ["strip-json-comments@3.1.1", "", {}, "sha512-6fPc+R4ihwqP6N/aIv2f1gMH8lOVtWQHoqC4yK6oSDVVocumAsfCqjkXnqiYMhmMwS/mEHLp7Vehlt3ql6lEig=="],
 
     "@modelcontextprotocol/sdk/ajv": ["ajv@8.20.0", "", { "dependencies": { "fast-deep-equal": "^3.1.3", "fast-uri": "^3.0.1", "json-schema-traverse": "^1.0.0", "require-from-string": "^2.0.2" } }, "sha512-Thbli+OlOj+iMPYFBVBfJ3OmCAnaSyNn4M1vz9T6Gka5Jt9ba/HIR56joy65tY6kx/FCF5VXNB819Y7/GUrBGA=="],
+
+    "@openai/agents/openai": ["openai@6.43.0", "", { "peerDependencies": { "ws": "^8.18.0", "zod": "^3.25 || ^4.0" }, "optionalPeers": ["ws", "zod"] }, "sha512-wVjioGjbnAZycj5mmkFVxbBxLEp+NkKpdMscCYP9LTbq+nbf1WTMVp+ovmD35jgyco4tldWZJkcqdmlh3O9yHQ=="],
+
+    "@openai/agents-core/openai": ["openai@6.43.0", "", { "peerDependencies": { "ws": "^8.18.0", "zod": "^3.25 || ^4.0" }, "optionalPeers": ["ws", "zod"] }, "sha512-wVjioGjbnAZycj5mmkFVxbBxLEp+NkKpdMscCYP9LTbq+nbf1WTMVp+ovmD35jgyco4tldWZJkcqdmlh3O9yHQ=="],
+
+    "@openai/agents-openai/openai": ["openai@6.43.0", "", { "peerDependencies": { "ws": "^8.18.0", "zod": "^3.25 || ^4.0" }, "optionalPeers": ["ws", "zod"] }, "sha512-wVjioGjbnAZycj5mmkFVxbBxLEp+NkKpdMscCYP9LTbq+nbf1WTMVp+ovmD35jgyco4tldWZJkcqdmlh3O9yHQ=="],
 
     "@oxc-resolver/binding-wasm32-wasi/@emnapi/core": ["@emnapi/core@1.11.0", "", { "dependencies": { "@emnapi/wasi-threads": "1.2.2", "tslib": "^2.4.0" } }, "sha512-l9Oo58x0HOP5znGzVhYW9U3e5wVuA4LAZU2AGezTmkhO1CgQRFDhDg4nneHsu/t3WniXg9QrG2nIXL/ZS8ln8Q=="],
 
