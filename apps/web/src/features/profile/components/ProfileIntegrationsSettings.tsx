@@ -261,7 +261,7 @@ export const ProfileIntegrationsSettings: React.FC<ProfileIntegrationsSettingsPr
     }
 
     return (
-        <div className="flex flex-col w-full max-w-[720px] text-[#D6D5C9]">
+        <div className="flex flex-col w-full max-w-[800px] text-[#D6D5C9]">
             {/* Integrations */}
             <div className="flex flex-col mb-10">
                 <h1 className="text-[16px] font-medium mb-4">Integrations</h1>

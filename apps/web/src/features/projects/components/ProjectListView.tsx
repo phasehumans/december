@@ -100,7 +100,7 @@ const EmptyProjectsState: React.FC<{ onNewProject: () => void }> = ({ onNewProje
             </p>
             <button
                 onClick={onNewProject}
-                className="mt-5 rounded-lg border border-[#383736] bg-[#1A1918] px-4 py-2 text-[13px] font-medium text-[#D6D5C9] transition-colors hover:bg-[#242323]"
+                className="mt-5 rounded-lg border border-[#383736] bg-[#1A1918] px-4 py-2 text-[13px] font-medium text-[#D6D5C9] transition-colors hover:bg-[#262626]"
             >
                 New project
             </button>
@@ -183,8 +183,24 @@ export const ProjectListView: React.FC<ProjectListViewProps> = ({
     hasUnfilteredProjects,
 }) => {
     const [activeDropdown, setActiveDropdown] = React.useState<string | null>(null)
+    const [dropdownDirection, setDropdownDirection] = React.useState<'down' | 'up'>('down')
     const [visibleCount, setVisibleCount] = React.useState(10)
     const dropdownRef = React.useRef<HTMLDivElement>(null)
+
+    const toggleDropdown = (type: string, event: React.MouseEvent<HTMLButtonElement>) => {
+        if (activeDropdown === type) {
+            setActiveDropdown(null)
+            return
+        }
+        const rect = event.currentTarget.getBoundingClientRect()
+        // Check if there is at least 250px below, if not and there's space above, open up
+        if (window.innerHeight - rect.bottom < 250 && rect.top > 250) {
+            setDropdownDirection('up')
+        } else {
+            setDropdownDirection('down')
+        }
+        setActiveDropdown(type)
+    }
 
     React.useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -209,7 +225,7 @@ export const ProjectListView: React.FC<ProjectListViewProps> = ({
                 <div className="flex flex-col">
                     <h1 className="text-[24px] font-medium text-[#D6D5C9] mb-1">Projects</h1>
                     <p className="text-[13px] text-[#7B7A79]">
-                        Manage and view all your workspaces and items.
+                        Manage and view all your projects and sessions.
                     </p>
                 </div>
                 <div className="flex flex-col items-end gap-2">
@@ -241,16 +257,16 @@ export const ProjectListView: React.FC<ProjectListViewProps> = ({
                 <div className="flex items-center gap-2" ref={dropdownRef}>
                     <div className="relative">
                         <button
-                            onClick={() =>
-                                setActiveDropdown(activeDropdown === 'sort' ? null : 'sort')
-                            }
+                            onClick={(e) => toggleDropdown('sort', e)}
                             className="flex items-center gap-2 rounded-full border border-[#383736] bg-[#141414] px-4 py-1.5 text-[13px] text-[#D6D5C9] transition-colors hover:bg-[#191919]"
                         >
                             Sort: {SORT_LABELS[sortOption]}{' '}
                             <Icons.ChevronDown className="h-3.5 w-3.5 text-[#7B7A79]" />
                         </button>
                         {activeDropdown === 'sort' && (
-                            <div className="absolute right-0 top-full z-50 mt-2 w-48 rounded-xl border border-[#383736] bg-[#1F1F1F] py-2 shadow-xl">
+                            <div
+                                className={`absolute right-0 ${dropdownDirection === 'up' ? 'bottom-full mb-2' : 'top-full mt-2'} z-50 w-48 rounded-xl border border-[#383736] bg-[#1E1E1E] py-2 shadow-xl`}
+                            >
                                 <div className="mb-1 border-b border-[#383736] px-3 pb-2 text-[12px] font-medium text-[#7B7A79]">
                                     Sort by
                                 </div>
@@ -280,16 +296,16 @@ export const ProjectListView: React.FC<ProjectListViewProps> = ({
 
                     <div className="relative">
                         <button
-                            onClick={() =>
-                                setActiveDropdown(activeDropdown === 'status' ? null : 'status')
-                            }
+                            onClick={(e) => toggleDropdown('status', e)}
                             className="flex items-center gap-2 rounded-full border border-[#383736] bg-[#141414] px-4 py-1.5 text-[13px] text-[#D6D5C9] transition-colors hover:bg-[#191919]"
                         >
                             Status: {STATUS_LABELS[statusFilter]}{' '}
                             <Icons.ChevronDown className="h-3.5 w-3.5 text-[#7B7A79]" />
                         </button>
                         {activeDropdown === 'status' && (
-                            <div className="absolute right-0 top-full z-50 mt-2 w-48 rounded-xl border border-[#383736] bg-[#1F1F1F] py-2 shadow-xl">
+                            <div
+                                className={`absolute right-0 ${dropdownDirection === 'up' ? 'bottom-full mb-2' : 'top-full mt-2'} z-50 w-48 rounded-xl border border-[#383736] bg-[#1E1E1E] py-2 shadow-xl`}
+                            >
                                 <div className="mb-1 border-b border-[#383736] px-3 pb-2 text-[12px] font-medium text-[#7B7A79]">
                                     Publish status
                                 </div>
@@ -341,8 +357,8 @@ export const ProjectListView: React.FC<ProjectListViewProps> = ({
             ) : !hasProjects ? (
                 <NoResultsState />
             ) : (
-                <div className="flex flex-col">
-                    <div className="min-h-[420px] pb-4">
+                <div className="flex flex-col h-full">
+                    <div className="pb-4">
                         <div className="flex flex-col gap-1">
                             {projects.slice(0, visibleCount).map((project) => (
                                 <ProjectListRow

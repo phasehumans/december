@@ -80,7 +80,7 @@ export const ProfileSettingsContent: React.FC<ProfileSettingsContentProps> = (pr
     const isLoading = !hasProfile && !resolvedName
 
     return (
-        <div className="flex flex-col w-full max-w-[680px] text-[#D6D5C9]">
+        <div className="flex flex-col w-full max-w-[800px] text-[#D6D5C9]">
             {/* Account */}
             <div className="flex flex-col mb-6">
                 <h1 className="text-[16px] font-medium mb-3">Account</h1>

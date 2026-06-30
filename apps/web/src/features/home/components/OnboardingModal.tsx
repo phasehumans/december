@@ -41,7 +41,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClos
                             allowFullScreen
                         />
                     ) : (
-                        <div className="w-full h-full bg-[#181817] flex items-center justify-center text-white/10">
+                        <div className="w-full h-full bg-[#2A2A2A] flex items-center justify-center text-white/10">
                             <span className="w-6 h-6 border-2 border-white/20 border-t-transparent rounded-full animate-spin" />
                         </div>
                     )}

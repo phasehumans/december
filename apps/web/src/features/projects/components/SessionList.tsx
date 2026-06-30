@@ -212,7 +212,7 @@ export const SessionList: React.FC<ProjectListProps> = ({
 
     return (
         <div className="relative h-full w-full flex-1 overflow-y-auto bg-background px-8 pb-8 pt-20 font-sans no-scrollbar md:p-16">
-            <div className="relative z-10 mx-auto min-h-[520px] max-w-6xl">
+            <div className="relative z-10 mx-auto max-w-6xl">
                 <SessionListView
                     projects={filteredAndSortedProjects}
                     onNewProject={onNewProject}

@@ -104,7 +104,7 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
             id="main-scroll-container"
             className="h-full min-h-0 overflow-y-auto no-scrollbar scroll-smooth relative flex flex-col"
         >
-            <HomeHeader />
+            <HomeHeader isAuthenticated={isAuthenticated} onOpenAuth={onOpenAuth} />
 
             <div className="flex flex-col items-center justify-start pt-[22vh] md:pt-[27vh] h-full flex-1 gap-3 animate-in fade-in duration-500 max-w-4xl mx-auto px-4 w-full shrink-0 relative">
                 <div className="flex flex-col items-center gap-3 text-center">

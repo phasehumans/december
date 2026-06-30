@@ -70,7 +70,7 @@ export const ProfileRepositoriesSettings: React.FC<ProfileRepositoriesSettingsPr
     const hasMoreRepos = allRepos.length > INITIAL_REPOS_COUNT
 
     return (
-        <div className="flex flex-col w-full max-w-[720px] text-[#D6D5C9]">
+        <div className="flex flex-col w-full max-w-[800px] text-[#D6D5C9]">
             {/* GitHub Repositories */}
             <div className="flex flex-col mb-10">
                 <h1 className="text-[16px] font-medium mb-4">GitHub Repositories</h1>
