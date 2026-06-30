@@ -376,7 +376,7 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
                                         e.stopPropagation()
                                         deleteMutation.mutate(notification.id)
                                     }}
-                                    className="absolute top-2.5 right-2.5 p-1.5 rounded-lg bg-[#2A2A2A] border border-[#3A3A3A] text-[#969593] hover:text-white hover:border-white/20 opacity-0 group-hover/notif:opacity-100 transition-all duration-200 hover:bg-white/[0.06] outline-none shadow-sm"
+                                    className="absolute top-2.5 right-2.5 p-1.5 rounded-lg bg-transparent border border-[#3A3A3A] text-[#969593] hover:text-white hover:border-white/20 opacity-0 group-hover/notif:opacity-100 transition-all duration-200 hover:bg-white/[0.06] outline-none shadow-sm"
                                     title="Delete notification"
                                 >
                                     <Trash2 className="w-3.5 h-3.5" strokeWidth={1.5} />

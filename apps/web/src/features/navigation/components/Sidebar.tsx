@@ -1,6 +1,7 @@
 import React from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { createPortal } from 'react-dom'
+import { Pin, MoreHorizontal } from 'lucide-react'
 
 import { SearchModal } from './SearchModal'
 import { SidebarFooter } from './SidebarFooter'
@@ -12,6 +13,7 @@ import type { SidebarProps } from '@/features/navigation/types'
 import { useBillingOverview } from '@/features/billing/hooks/useBillingData'
 import { Icons } from '@/shared/components/ui/Icons'
 import { cn } from '@/shared/lib/utils'
+import { SettingsBigModal } from '@/features/preview/components/settings/SettingsBigModal'
 
 const Sidebar: React.FC<
     SidebarProps & { user?: any; onSignOut?: () => void; onHomeClick?: () => void }
@@ -38,6 +40,7 @@ const Sidebar: React.FC<
 
     const [isSearchOpen, setIsSearchOpen] = React.useState(false)
     const [isRecentMenuOpen, setIsRecentMenuOpen] = React.useState(false)
+    const [settingsProjectId, setSettingsProjectId] = React.useState<string | null>(null)
     const [recentMenuPos, setRecentMenuPos] = React.useState<{ top: number; left: number } | null>(
         null
     )
@@ -200,7 +203,7 @@ const Sidebar: React.FC<
                                     createPortal(
                                         <div
                                             ref={recentMenuRef}
-                                            className="fixed z-[200] w-[220px] rounded-2xl border border-[#2E2D2C] bg-[#1E1E1E] shadow-2xl p-2 flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-100 font-sans text-left"
+                                            className="fixed z-[200] w-[160px] rounded-2xl border border-[#2E2D2C] bg-[#1E1E1E] shadow-2xl p-1.5 flex flex-col gap-0.5 animate-in fade-in zoom-in-95 duration-100 font-sans text-left"
                                             style={{
                                                 top: recentMenuPos.top,
                                                 left: recentMenuPos.left,
@@ -214,7 +217,7 @@ const Sidebar: React.FC<
                                                     setSortBy('created')
                                                     setIsRecentMenuOpen(false)
                                                 }}
-                                                className="flex items-center justify-between w-full px-3 py-1.5 rounded-xl hover:bg-[#252525] text-[#CBCACA] hover:text-white transition-colors text-left text-[13px] cursor-pointer outline-none group"
+                                                className="flex items-center justify-between w-full px-3 py-1.5 rounded-xl hover:bg-[#252525] text-[#CBCACA] hover:text-white transition-colors text-left text-[12px] cursor-pointer outline-none group"
                                             >
                                                 <span>Created time</span>
                                                 {sortBy === 'created' && (
@@ -228,7 +231,7 @@ const Sidebar: React.FC<
                                                     setSortBy('updated')
                                                     setIsRecentMenuOpen(false)
                                                 }}
-                                                className="flex items-center justify-between w-full px-3 py-1.5 rounded-xl hover:bg-[#252525] text-[#CBCACA] hover:text-white transition-colors text-left text-[13px] cursor-pointer outline-none group"
+                                                className="flex items-center justify-between w-full px-3 py-1.5 rounded-xl hover:bg-[#252525] text-[#CBCACA] hover:text-white transition-colors text-left text-[12px] cursor-pointer outline-none group"
                                             >
                                                 <span>Last updated</span>
                                                 {sortBy === 'updated' && (
@@ -243,7 +246,7 @@ const Sidebar: React.FC<
                                                     setIsRecentMenuOpen(false)
                                                     onAllProjects?.()
                                                 }}
-                                                className="flex items-center gap-3 w-full px-3 py-1.5 rounded-xl hover:bg-[#252525] text-[#CBCACA] hover:text-white transition-colors text-left text-[13px] cursor-pointer outline-none group"
+                                                className="flex items-center gap-3 w-full px-3 py-1.5 rounded-xl hover:bg-[#252525] text-[#CBCACA] hover:text-white transition-colors text-left text-[12px] cursor-pointer outline-none group"
                                             >
                                                 <span>View all projects</span>
                                             </button>
@@ -258,16 +261,21 @@ const Sidebar: React.FC<
                         {isAuthenticated ? (
                             isProjectsLoading ? null : recentProjects.length > 0 ? (
                                 recentProjects.map((project) => (
-                                    <button
+                                    <div
                                         key={project.id}
+                                        className="flex items-center justify-between px-3 py-[3px] w-full text-left rounded-lg hover:bg-[#252525] transition-colors group cursor-pointer"
                                         onClick={() => onOpenProject?.(project.id)}
-                                        className="flex items-center px-3 py-0.5 w-full text-left rounded-lg hover:bg-[#252525] transition-colors group"
                                     >
-                                        <span className="font-normal text-[12px] lowercase transition-colors tracking-tight text-[#E8E8E8] group-hover:text-[#E8E8E8] truncate">
-                                            {/* @ts-expect-error */}
-                                            {project.name || project.title}
-                                        </span>
-                                    </button>
+                                        <div className="flex flex-col min-w-0 pr-2 overflow-hidden">
+                                            <span className="font-normal text-[12px] transition-colors tracking-tight text-[#E8E8E8] group-hover:text-[#E8E8E8] truncate">
+                                                {/* @ts-expect-error */}
+                                                {project.name || project.title}
+                                            </span>
+                                            <span className="text-[11px] text-[#8F8E8D] tracking-tight truncate mt-[1px]">
+                                                {project.updatedAt || 'just now'}
+                                            </span>
+                                        </div>
+                                    </div>
                                 ))
                             ) : (
                                 <div className="px-3 py-1.5 text-[12px] font-medium text-[#616161] tracking-tight">
@@ -299,6 +307,14 @@ const Sidebar: React.FC<
                 onNewThread={isAuthenticated ? onNewThread : onOpenAuth}
                 isAuthenticated={isAuthenticated}
             />
+
+            {settingsProjectId && (
+                <SettingsBigModal
+                    isOpen={!!settingsProjectId}
+                    onClose={() => setSettingsProjectId(null)}
+                    projectId={settingsProjectId}
+                />
+            )}
         </div>
     )
 }

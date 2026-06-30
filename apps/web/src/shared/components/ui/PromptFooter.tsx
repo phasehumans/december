@@ -203,9 +203,9 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
                             setIsModelSelectorOpen(!isModelSelectorOpen)
                         }}
                         className={cn(
-                            'flex items-center gap-1.5 transition-all duration-200 outline-none cursor-pointer px-2 py-0.5 rounded-full bg-transparent border border-dashed border-white/20 hover:border-white/40 hover:bg-[#27272A]',
+                            'flex items-center gap-1.5 transition-all duration-200 outline-none cursor-pointer px-2 py-0.5 rounded-full bg-transparent border border-transparent hover:bg-[#27272A]',
                             isModelSelectorOpen
-                                ? 'text-white bg-[#27272A] border-white/40'
+                                ? 'text-white bg-[#27272A]'
                                 : 'text-[#8E8E8E] hover:text-white'
                         )}
                     >

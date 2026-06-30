@@ -163,7 +163,7 @@ export const AddCreditsModal: React.FC<AddCreditsModalProps> = ({ onClose }) => 
                             pattern="[0-9]*"
                             value={amountStr}
                             onChange={(e) => handleAmountChange(e.target.value)}
-                            className="w-full bg-[#2A2A2A] border border-[#2B2A27] rounded-xl pl-9 pr-4 py-4 text-white text-2xl font-mono font-medium focus:outline-none focus:border-white transition-colors shadow-inner"
+                            className="w-full bg-white/[0.03] border border-[#2B2A27] rounded-xl pl-9 pr-4 py-4 text-white text-2xl font-mono font-medium focus:outline-none focus:border-white transition-colors shadow-inner"
                             placeholder="5"
                             disabled={isProcessing || !!successMessage}
                             autoComplete="off"

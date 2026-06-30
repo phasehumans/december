@@ -108,7 +108,7 @@ export const AuthModalAuthStep: React.FC<AuthModalAuthStepProps> = ({
                     className={`w-full font-medium h-[42px] rounded-full flex items-center justify-center text-[14px] transition-all duration-200 active:scale-[0.98] disabled:opacity-50 mt-1 shadow-sm ${
                         isFormFilled
                             ? 'bg-[#EDEDED] hover:bg-white text-[#111111]'
-                            : 'bg-[#222222] hover:bg-[#2A2A2A] text-[#888888]'
+                            : 'bg-[#222222] hover:bg-transparent text-[#888888]'
                     }`}
                 >
                     {isAuthPending

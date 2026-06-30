@@ -28,9 +28,9 @@ export const Modal: React.FC<ModalProps> = ({
         const premiumMaxWidth = maxWidth === 'max-w-[480px]' ? 'max-w-[400px]' : maxWidth
         return createPortal(
             <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 pointer-events-auto">
-                <div className="absolute inset-0 bg-black/75" onClick={onClose} />
+                <div className="absolute inset-0 bg-black/75 backdrop-blur-sm" onClick={onClose} />
                 <div
-                    className={`relative w-full ${premiumMaxWidth} bg-[#1F1F1F] border border-white/5 rounded-[20px] shadow-2xl overflow-visible animate-in fade-in zoom-in-95 duration-200`}
+                    className={`relative w-full ${premiumMaxWidth} bg-[#121211] border border-white/5 rounded-[20px] shadow-2xl overflow-visible animate-in fade-in zoom-in-95 duration-200`}
                 >
                     <button
                         onClick={onClose}
@@ -41,6 +41,9 @@ export const Modal: React.FC<ModalProps> = ({
 
                     <div className="p-6">
                         <div className="flex flex-col mb-4">
+                            <div className="mb-3 select-none inline-block text-[#D6D5D4]">
+                                <Icons.DecemberLogo className="w-8 h-8" />
+                            </div>
                             <h2 className="text-[18px] font-semibold text-white tracking-tight leading-tight mb-1">
                                 {title}
                             </h2>
@@ -60,7 +63,7 @@ export const Modal: React.FC<ModalProps> = ({
 
     return createPortal(
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 pointer-events-auto">
-            <div className="absolute inset-0 bg-black/60" onClick={onClose} />
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
             <div
                 className={`relative w-full ${maxWidth} bg-[#141414] border border-white/10 rounded-xl shadow-2xl overflow-visible animate-in fade-in zoom-in-95 duration-200`}
             >
