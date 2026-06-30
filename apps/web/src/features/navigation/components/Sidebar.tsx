@@ -257,13 +257,13 @@ const Sidebar: React.FC<
                         </div>
                     </div>
 
-                    <div className="flex flex-col gap-[1px] mt-1 pr-1">
+                    <div className="flex flex-col gap-[2px] mt-1 pr-1">
                         {isAuthenticated ? (
                             isProjectsLoading ? null : recentProjects.length > 0 ? (
                                 recentProjects.map((project) => (
                                     <div
                                         key={project.id}
-                                        className="flex items-center justify-between px-3 py-[3px] w-full text-left rounded-lg hover:bg-[#252525] transition-colors group cursor-pointer"
+                                        className="flex items-center justify-between px-3 py-1 w-full text-left rounded-lg hover:bg-[#252525] transition-colors group cursor-pointer"
                                         onClick={() => onOpenProject?.(project.id)}
                                     >
                                         <div className="flex flex-col min-w-0 pr-2 overflow-hidden">

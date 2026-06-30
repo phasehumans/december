@@ -131,53 +131,32 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
 
                     {/* Import Integration */}
                     <div className="flex items-center justify-center gap-3 mt-6 animate-in fade-in duration-300 whitespace-nowrap">
-                        <span className="text-[#656565] text-[14px] font-medium tracking-wide">
+                        <span className="text-[#8F8E8D] text-[13px] font-medium tracking-wide">
                             or start with
                         </span>
                         <div className="flex items-center gap-2">
                             <button
-                                onClick={() => toggleImportForm('github')}
-                                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-dashed transition-all group ${
-                                    activeImportForm === 'github'
-                                        ? 'border-[#5A5A5A] bg-white/5 text-white'
-                                        : 'border-[#404040] bg-transparent hover:bg-white/5 hover:border-[#5A5A5A] text-[#A1A1AA] hover:text-white'
-                                }`}
+                                onClick={() => {
+                                    if (!isAuthenticated) {
+                                        onOpenAuth()
+                                        return
+                                    }
+                                    const separator = prompt && !prompt.endsWith(' ') ? ' ' : ''
+                                    setPrompt(prompt + separator + '@repos:')
+                                }}
+                                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-dashed transition-all group outline-none border-[#2A2928] bg-transparent hover:bg-[#252525]/50 hover:border-[#3A3938] text-[#8F8E8D] hover:text-[#CBCACA]"
                             >
                                 <Icons.Github className="w-[12px] h-[12px] group-hover:text-white transition-colors" />
                                 <span className="text-[11px]">GitHub Repo</span>
                             </button>
                             <button
                                 onClick={handleTemplateClick}
-                                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-dashed border-[#404040] bg-transparent hover:bg-white/5 hover:border-[#5A5A5A] text-[#A1A1AA] hover:text-white transition-all group"
+                                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-dashed border-[#2A2928] bg-transparent hover:bg-[#252525]/50 hover:border-[#3A3938] text-[#8F8E8D] hover:text-[#CBCACA] transition-all group outline-none"
                             >
                                 <Icons.Bookmark className="w-[12px] h-[12px] group-hover:text-white transition-colors" />
                                 <span className="text-[11px]">Template</span>
                             </button>
                         </div>
-                    </div>
-
-                    {/* Import Forms */}
-                    <div className="flex justify-center">
-                        <AnimatePresence mode="wait">
-                            {activeImportForm === 'github' && (
-                                <GitHubRepoForm
-                                    key="github-form"
-                                    onClose={() => {
-                                        setActiveImportForm(null)
-                                        onResetImportState?.()
-                                    }}
-                                    onSubmitRepo={onImportGithub}
-                                    isImporting={importState?.status === 'loading'}
-                                    importMessage={importState?.message}
-                                    importError={
-                                        importState?.status === 'failed'
-                                            ? importState.message
-                                            : null
-                                    }
-                                    onResetImportState={onResetImportState}
-                                />
-                            )}
-                        </AnimatePresence>
                     </div>
                 </div>
             </div>

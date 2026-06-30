@@ -8,6 +8,7 @@ import {
     ArrowUpRight,
     Plug,
     FolderGit2,
+    Server,
 } from 'lucide-react'
 import React from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
@@ -169,6 +170,19 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                         >
                             <Plug className="w-[18px] h-[18px] rotate-45" strokeWidth={1.5} />
                             Integrations
+                        </button>
+                        <button
+                            onClick={() =>
+                                navigate(`/settings/${getSlugForProfileTab('MCP Server')}`)
+                            }
+                            className={`flex items-center gap-3 px-3 py-1.5 rounded-xl text-[13px] font-medium transition-colors ${
+                                activeTab === 'MCP Server'
+                                    ? 'bg-[#242323] text-[#D6D5C9]'
+                                    : 'text-[#D6D5C9] hover:bg-[#191919]'
+                            }`}
+                        >
+                            <Server className="w-[18px] h-[18px]" strokeWidth={1.5} />
+                            MCP Server
                         </button>
                         <button
                             onClick={() =>

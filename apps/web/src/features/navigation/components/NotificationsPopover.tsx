@@ -171,7 +171,7 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
         return createPortal(
             <div
                 ref={popoverRef}
-                className="fixed z-[100] rounded-2xl border border-[#2E2D2C] bg-[#1E1E1E] shadow-2xl p-2 pointer-events-auto animate-in fade-in zoom-in-95 duration-200 flex flex-col font-sans"
+                className="fixed z-[100] rounded-2xl border border-[#2E2D2C] bg-[#1E1E1E] shadow-2xl p-1.5 pointer-events-auto animate-in fade-in zoom-in-95 duration-200 flex flex-col font-sans"
                 style={{
                     bottom: position.bottom,
                     left: Math.max(10, position.left),
@@ -179,24 +179,24 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
                     height: 320,
                 }}
             >
-                <div className="flex items-center gap-2 px-2 py-1.5 shrink-0">
+                <div className="flex items-center gap-1.5 px-2 py-1 shrink-0">
                     <button
                         onClick={() => setSelectedNotification(null)}
-                        className="text-[#CBCACA] hover:text-white transition-colors p-1.5 rounded-xl hover:bg-[#252525] outline-none"
+                        className="text-[#CBCACA] hover:text-white transition-colors p-1 rounded-lg hover:bg-[#252525] outline-none"
                     >
-                        <ArrowLeft className="w-[15px] h-[15px]" />
+                        <ArrowLeft className="w-[13px] h-[13px]" />
                     </button>
-                    <span className="text-[14px] text-[#CBCACA] font-medium">Back</span>
+                    <span className="text-[12px] text-[#CBCACA] font-medium">Back</span>
                 </div>
 
                 <div className="h-[1px] bg-[#2B2A29] mx-1 my-1 shrink-0" />
 
                 <div
-                    className="px-3 py-3 flex flex-col gap-3 overflow-y-auto"
+                    className="px-2.5 py-2.5 flex flex-col gap-2.5 overflow-y-auto"
                     style={{ scrollbarWidth: 'none' }}
                 >
                     <div>
-                        <h3 className="text-[15px] font-semibold text-white leading-snug">
+                        <h3 className="text-[13px] font-semibold text-white leading-snug">
                             {selectedNotification.title}
                         </h3>
                         <div className="flex items-center gap-2 mt-1">
@@ -213,7 +213,7 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
                             </span>
                         </div>
                     </div>
-                    <p className="text-[13.5px] text-[#CBCACA] leading-relaxed whitespace-pre-wrap mt-1">
+                    <p className="text-[12px] text-[#CBCACA] leading-relaxed whitespace-pre-wrap mt-0.5">
                         {selectedNotification.message}
                     </p>
                     {selectedNotification.link && (
@@ -221,7 +221,7 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
                             href={selectedNotification.link}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-[#2E2D2C] bg-[#252525]/50 hover:bg-[#252525] rounded-xl text-[12px] font-medium text-[#CBCACA] hover:text-white transition-colors w-fit shadow-sm mt-2"
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 border border-[#2E2D2C] bg-[#252525]/50 hover:bg-[#252525] rounded-xl text-[11px] font-medium text-[#CBCACA] hover:text-white transition-colors w-fit shadow-sm mt-1.5"
                         >
                             View Details →
                         </a>
@@ -236,7 +236,7 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
     return createPortal(
         <div
             ref={popoverRef}
-            className="fixed z-[100] rounded-2xl border border-[#2E2D2C] bg-[#1E1E1E] shadow-2xl p-2 pointer-events-auto animate-in fade-in zoom-in-95 duration-200 flex flex-col font-sans"
+            className="fixed z-[100] rounded-2xl border border-[#2E2D2C] bg-[#1E1E1E] shadow-2xl p-1.5 pointer-events-auto animate-in fade-in zoom-in-95 duration-200 flex flex-col font-sans"
             style={{
                 bottom: position.bottom,
                 left: Math.max(10, position.left),
@@ -244,9 +244,9 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
                 height: 320,
             }}
         >
-            <div className="flex items-center justify-between px-3 py-1.5 shrink-0 relative">
+            <div className="flex items-center justify-between px-2 py-1 shrink-0 relative">
                 <div className="flex items-center gap-1.5">
-                    <span className="text-[14px] font-medium text-[#CBCACA]">Notifications</span>
+                    <span className="text-[13px] font-medium text-[#CBCACA]">Notifications</span>
                 </div>
                 {/* 3 Dots Menu Button */}
                 <div className="relative">
@@ -264,7 +264,7 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
                     {isMenuOpen && (
                         <div
                             ref={menuRef}
-                            className="absolute right-[-144px] top-8 z-[110] w-[180px] rounded-2xl border border-[#2E2D2C] bg-[#1E1E1E] shadow-2xl p-2 flex flex-col gap-0.5 animate-in fade-in zoom-in-95 duration-100"
+                            className="absolute right-[-130px] top-8 z-[110] w-[160px] rounded-2xl border border-[#2E2D2C] bg-[#1E1E1E] shadow-2xl p-1.5 flex flex-col gap-0.5 animate-in fade-in zoom-in-95 duration-100"
                         >
                             <button
                                 onClick={() => {
@@ -272,10 +272,10 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
                                     onClose()
                                     setIsMenuOpen(false)
                                 }}
-                                className="flex items-center gap-3 w-full px-3 py-1.5 rounded-xl hover:bg-[#252525] text-[#CBCACA] hover:text-white transition-colors text-left text-[14px] cursor-pointer outline-none group"
+                                className="flex items-center gap-3 w-full px-2.5 py-1.5 rounded-xl hover:bg-[#252525] text-[#CBCACA] hover:text-white transition-colors text-left text-[12px] cursor-pointer outline-none group"
                             >
                                 <Settings
-                                    className="w-[18px] h-[18px] text-[#CBCACA] group-hover:text-white transition-colors"
+                                    className="w-[15px] h-[15px] text-[#CBCACA] group-hover:text-white transition-colors"
                                     strokeWidth={1.5}
                                 />
                                 <span>Settings</span>
@@ -284,10 +284,10 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
                                 onClick={() => {
                                     deleteAllReadMutation.mutate()
                                 }}
-                                className="flex items-center gap-3 w-full px-3 py-1.5 rounded-xl hover:bg-[#252525] text-[#CBCACA] hover:text-white transition-colors text-left text-[14px] cursor-pointer outline-none group"
+                                className="flex items-center gap-3 w-full px-2.5 py-1.5 rounded-xl hover:bg-[#252525] text-[#CBCACA] hover:text-white transition-colors text-left text-[12px] cursor-pointer outline-none group"
                             >
                                 <Trash2
-                                    className="w-[18px] h-[18px] text-[#CBCACA] group-hover:text-white transition-colors"
+                                    className="w-[15px] h-[15px] text-[#CBCACA] group-hover:text-white transition-colors"
                                     strokeWidth={1.5}
                                 />
                                 <span>Delete all read</span>
@@ -336,7 +336,7 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
                             <div
                                 key={notification.id}
                                 onClick={() => handleNotificationClick(notification)}
-                                className={`relative group/notif flex flex-col gap-0.5 px-3 py-2.5 rounded-xl cursor-pointer transition-colors ${
+                                className={`relative group/notif flex flex-col gap-0.5 px-2.5 py-2 rounded-xl cursor-pointer transition-colors ${
                                     notification.isRead
                                         ? 'text-[#8F8E8D] hover:bg-[#252525]'
                                         : 'bg-[#252525]/30 hover:bg-[#252525]/60 text-white'
@@ -348,7 +348,7 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
                                             <span className="w-1.5 h-1.5 rounded-full bg-white shrink-0" />
                                         )}
                                         <span
-                                            className={`text-[13.5px] font-medium truncate ${
+                                            className={`text-[12.5px] font-medium truncate ${
                                                 notification.isRead
                                                     ? 'text-[#CBCACA] group-hover/notif:text-white'
                                                     : 'text-white'
@@ -358,10 +358,10 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
                                         </span>
                                     </div>
                                 </div>
-                                <p className="text-[12px] text-[#8F8E8D] group-hover/notif:text-[#CBCACA] line-clamp-2 mt-0.5 leading-relaxed pr-4">
+                                <p className="text-[11px] text-[#8F8E8D] group-hover/notif:text-[#CBCACA] line-clamp-2 mt-0.5 leading-relaxed pr-4">
                                     {notification.message}
                                 </p>
-                                <span className="text-[10px] text-[#6F6E6D] group-hover/notif:text-[#8F8E8D] mt-1">
+                                <span className="text-[9.5px] text-[#6F6E6D] group-hover/notif:text-[#8F8E8D] mt-0.5">
                                     {new Date(notification.createdAt).toLocaleString(undefined, {
                                         month: 'short',
                                         day: 'numeric',

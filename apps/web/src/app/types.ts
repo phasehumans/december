@@ -13,6 +13,7 @@ export type ProfileTab =
     | 'Account'
     | 'Preferences'
     | 'Integrations'
+    | 'MCP Server'
     | 'Repositories'
     | 'Billing'
     | 'Usage'
@@ -22,6 +23,7 @@ const profileTabToSlug: Record<string, string> = {
     Account: 'account',
     Preferences: 'preferences',
     Integrations: 'integrations',
+    'MCP Server': 'mcp-server',
     Repositories: 'repositories',
     Billing: 'billing',
     Usage: 'usage',
