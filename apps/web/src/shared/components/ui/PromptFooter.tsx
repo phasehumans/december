@@ -1,13 +1,25 @@
 import { useQuery } from '@tanstack/react-query'
 import React, { useRef, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Paperclip, AtSign, Key } from 'lucide-react'
+import {
+    Paperclip,
+    AtSign,
+    Key,
+    Folder,
+    Code,
+    Puzzle,
+    MessageSquare,
+    BookOpen,
+    X,
+} from 'lucide-react'
 
 import { Icons } from './Icons'
 
 import { billingAPI } from '@/features/billing/api/billing'
 import { useVoiceToText } from '@/shared/lib/useVoiceToText'
 import { cn } from '@/shared/lib/utils'
+
+import sidebarPng from '../../../../public/sidebar.png'
 
 interface PromptFooterProps {
     onUpload: () => void
@@ -18,7 +30,54 @@ interface PromptFooterProps {
     onVoiceStateChange?: (isListening: boolean) => void
     isAuthenticated?: boolean
     onOpenAuth?: () => void
+    onOptionSelect?: (trigger: string) => void
 }
+
+const MODELS = [
+    { id: 'Auto', name: 'Auto', desc: 'Best model for your task', icon: null },
+    {
+        id: 'Claude Opus 4.1',
+        name: 'Claude Opus 4.1',
+        desc: "Anthropic's Most Capable Model",
+        icon: Icons.Claude,
+    },
+    {
+        id: 'Claude Sonnet 4',
+        name: 'Claude Sonnet 4',
+        desc: "Anthropic's Latest Model",
+        icon: Icons.Claude,
+    },
+    {
+        id: 'GPT-5.5',
+        name: 'GPT-5.5',
+        desc: "OpenAI's Latest flagship",
+        icon: Icons.OpenAI,
+    },
+    {
+        id: 'GPT-5.5 Mini',
+        name: 'GPT-5.5 Mini',
+        desc: "OpenAI's Fast and smart model",
+        icon: Icons.OpenAI,
+    },
+    {
+        id: 'Gemini 2.5 Pro',
+        name: 'Gemini 2.5 Pro',
+        desc: "Google's Advanced intelligence",
+        icon: Icons.Gemini,
+    },
+    {
+        id: 'Gemini 2.5 Flash',
+        name: 'Gemini 2.5 Flash',
+        desc: "Google's High-speed processing",
+        icon: Icons.Gemini,
+    },
+    {
+        id: 'DeepSeek V3',
+        name: 'DeepSeek V3',
+        desc: 'Powerful Open Source',
+        icon: Icons.Deepseek,
+    },
+]
 
 export const PromptFooter: React.FC<PromptFooterProps> = ({
     onUpload,
@@ -29,13 +88,36 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
     onVoiceStateChange,
     isAuthenticated,
     onOpenAuth,
+    onOptionSelect,
 }) => {
     const navigate = useNavigate()
     const [isModelSelectorOpen, setIsModelSelectorOpen] = useState(false)
     const [isPlusMenuOpen, setIsPlusMenuOpen] = useState(false)
+    const [plusMenuPosition, setPlusMenuPosition] = useState<'top' | 'bottom'>('bottom')
+    const [selectedPlusIndex, setSelectedPlusIndex] = useState(0)
+    const [modelSelectorPosition, setModelSelectorPosition] = useState<'top' | 'bottom'>('bottom')
+    const [selectedModelIndex, setSelectedModelIndex] = useState(0)
     const [selectedModel, setSelectedModel] = useState('Auto')
     const selectorRef = useRef<HTMLDivElement>(null)
     const plusRef = useRef<HTMLDivElement>(null)
+
+    const [showCanvasCard, setShowCanvasCard] = useState(false)
+    const canvasHideTimeoutRef = useRef<any>(null)
+
+    const handleCanvasMouseEnter = () => {
+        if (canvasHideTimeoutRef.current) {
+            clearTimeout(canvasHideTimeoutRef.current)
+            canvasHideTimeoutRef.current = null
+        }
+        setShowCanvasCard(true)
+    }
+
+    const handleCanvasMouseLeave = () => {
+        canvasHideTimeoutRef.current = setTimeout(() => {
+            setShowCanvasCard(false)
+            canvasHideTimeoutRef.current = null
+        }, 300)
+    }
 
     const { isListening, isSupported, volume, toggleListening } = useVoiceToText({
         onTranscript: (text) => {
@@ -46,6 +128,102 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
     useEffect(() => {
         onVoiceStateChange?.(isListening)
     }, [isListening, onVoiceStateChange])
+
+    useEffect(() => {
+        if (!isPlusMenuOpen) {
+            setSelectedPlusIndex(0)
+            return
+        }
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'ArrowDown') {
+                e.preventDefault()
+                e.stopPropagation()
+                setSelectedPlusIndex((prev) => (prev + 1) % 7)
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault()
+                e.stopPropagation()
+                setSelectedPlusIndex((prev) => (prev - 1 + 7) % 7)
+            } else if (e.key === 'Enter') {
+                e.preventDefault()
+                e.stopPropagation()
+                const actions = [
+                    () => {
+                        setIsPlusMenuOpen(false)
+                        onUpload()
+                    },
+                    () => {
+                        setIsPlusMenuOpen(false)
+                        onOptionSelect?.('repos:')
+                    },
+                    () => {
+                        setIsPlusMenuOpen(false)
+                        onOptionSelect?.('files:')
+                    },
+                    () => {
+                        setIsPlusMenuOpen(false)
+                        onOptionSelect?.('skills:')
+                    },
+                    () => {
+                        setIsPlusMenuOpen(false)
+                        onOptionSelect?.('sessions:')
+                    },
+                    () => {
+                        setIsPlusMenuOpen(false)
+                        onOptionSelect?.('playbooks:')
+                    },
+                    () => {
+                        setIsPlusMenuOpen(false)
+                        onOptionSelect?.('secrets:')
+                    },
+                ]
+                actions[selectedPlusIndex]?.()
+            } else if (e.key === 'Escape') {
+                setIsPlusMenuOpen(false)
+            }
+        }
+        document.addEventListener('keydown', handleKeyDown, true)
+        return () => document.removeEventListener('keydown', handleKeyDown, true)
+    }, [isPlusMenuOpen, selectedPlusIndex, onUpload, onOptionSelect])
+
+    const isPro = true
+
+    useEffect(() => {
+        if (!isModelSelectorOpen) return
+
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'ArrowDown') {
+                e.preventDefault()
+                e.stopPropagation()
+                setSelectedModelIndex((prev) => (prev + 1) % MODELS.length)
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault()
+                e.stopPropagation()
+                setSelectedModelIndex((prev) => (prev - 1 + MODELS.length) % MODELS.length)
+            } else if (e.key === 'Enter') {
+                e.preventDefault()
+                e.stopPropagation()
+                const model = MODELS[selectedModelIndex]
+                if (model) {
+                    if (model.id !== 'Auto' && !isPro) {
+                        if (!isAuthenticated) {
+                            onOpenAuth?.()
+                            setIsModelSelectorOpen(false)
+                            return
+                        }
+                        navigate('/profile/billing')
+                        setIsModelSelectorOpen(false)
+                        return
+                    }
+                    setSelectedModel(model.id)
+                    setIsModelSelectorOpen(false)
+                }
+            } else if (e.key === 'Escape') {
+                setIsModelSelectorOpen(false)
+            }
+        }
+        document.addEventListener('keydown', handleKeyDown, true)
+        return () => document.removeEventListener('keydown', handleKeyDown, true)
+    }, [isModelSelectorOpen, selectedModelIndex, isAuthenticated, isPro, navigate, onOpenAuth])
 
     useEffect(() => {
         const handleClickOutside = (e: MouseEvent) => {
@@ -66,65 +244,93 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
         staleTime: 10 * 1000,
         enabled: isAuthenticated,
     })
-    const isPro = true
 
-    const models = [
-        { id: 'Auto', name: 'Auto', desc: 'Best model for your task', icon: null },
+    const selectedModelData = MODELS.find((m) => m.id === selectedModel) ?? MODELS[0]!
+
+    const fileInputRef = useRef<HTMLInputElement>(null)
+
+    const handleUploadClick = () => {
+        if (fileInputRef.current) {
+            fileInputRef.current.click()
+        }
+        if (onUpload) {
+            onUpload()
+        }
+    }
+
+    const plusMenuItems = [
         {
-            id: 'Claude Opus 4.1',
-            name: 'Claude Opus 4.1',
-            desc: "Anthropic's Most Capable Model",
-            icon: Icons.Claude,
+            label: 'Upload attachment',
+            icon: <Paperclip className="w-4 h-4 text-[#8F8E8D]" />,
+            action: handleUploadClick,
         },
         {
-            id: 'Claude Sonnet 4',
-            name: 'Claude Sonnet 4',
-            desc: "Anthropic's Latest Model",
-            icon: Icons.Claude,
+            label: 'Repositories',
+            icon: <Icons.Github className="w-4 h-4 text-[#8F8E8D]" />,
+            action: () => onOptionSelect?.('repos:'),
         },
         {
-            id: 'GPT-5.5',
-            name: 'GPT-5.5',
-            desc: "OpenAI's Latest flagship",
-            icon: Icons.OpenAI,
+            label: 'Codebase files',
+            icon: <Code className="w-4 h-4 text-[#8F8E8D]" />,
+            action: () => onOptionSelect?.('files:'),
         },
         {
-            id: 'GPT-5.5 Mini',
-            name: 'GPT-5.5 Mini',
-            desc: "OpenAI's Fast and smart model",
-            icon: Icons.OpenAI,
+            label: 'Skills',
+            icon: <Puzzle className="w-4 h-4 text-[#8F8E8D]" />,
+            action: () => onOptionSelect?.('skills:'),
         },
         {
-            id: 'Gemini 2.5 Pro',
-            name: 'Gemini 2.5 Pro',
-            desc: "Google's Advanced intelligence",
-            icon: Icons.Gemini,
+            label: 'December sessions',
+            icon: <MessageSquare className="w-4 h-4 text-[#8F8E8D]" />,
+            action: () => onOptionSelect?.('sessions:'),
         },
         {
-            id: 'Gemini 2.5 Flash',
-            name: 'Gemini 2.5 Flash',
-            desc: "Google's High-speed processing",
-            icon: Icons.Gemini,
+            label: 'Playbooks',
+            icon: <BookOpen className="w-4 h-4 text-[#8F8E8D]" />,
+            action: () => onOptionSelect?.('playbooks:'),
         },
         {
-            id: 'DeepSeek V3',
-            name: 'DeepSeek V3',
-            desc: 'Powerful Open Source',
-            icon: Icons.Deepseek,
+            label: 'Secrets',
+            icon: <Key className="w-4 h-4 text-[#8F8E8D]" />,
+            action: () => onOptionSelect?.('secrets:'),
         },
     ]
 
-    const selectedModelData = models.find((m) => m.id === selectedModel) ?? models[0]!
-
     return (
         <div className="flex items-center justify-between px-3 pb-3 mt-0 pl-3 relative">
+            <input
+                type="file"
+                ref={fileInputRef}
+                className="hidden"
+                multiple
+                accept="image/*,.pdf,.doc,.docx,.txt"
+                onChange={(e) => {
+                    // File handling will be implemented here
+                    if (e.target.files && e.target.files.length > 0) {
+                        console.log('Files selected:', e.target.files)
+                    }
+                    // Reset input so the same file can be selected again
+                    if (fileInputRef.current) {
+                        fileInputRef.current.value = ''
+                    }
+                }}
+            />
             <div className="flex items-center gap-0.5">
                 <div className="relative group/btn" ref={plusRef}>
                     <button
-                        onClick={() => {
+                        onClick={(e) => {
                             if (!isAuthenticated) {
                                 onOpenAuth?.()
                                 return
+                            }
+                            if (!isPlusMenuOpen) {
+                                const rect = e.currentTarget.getBoundingClientRect()
+                                const spaceBelow = window.innerHeight - rect.bottom
+                                if (spaceBelow < 250 && rect.top > spaceBelow) {
+                                    setPlusMenuPosition('top')
+                                } else {
+                                    setPlusMenuPosition('bottom')
+                                }
                             }
                             setIsPlusMenuOpen(!isPlusMenuOpen)
                         }}
@@ -132,46 +338,41 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
                     >
                         <Icons.Plus className="w-[18px] h-[18px] stroke-[2.5px]" />
                     </button>
-                    <div className="absolute top-[calc(100%+6px)] left-0 z-50 hidden group-hover/btn:flex items-center gap-1.5 bg-[#1C1B1A] border border-[#2A2928] px-2.5 py-1 rounded-lg shadow-xl whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
-                        <span className="text-[12px] font-medium text-[#EDEDEF]">More options</span>
-                    </div>
+                    {!isPlusMenuOpen && (
+                        <div className="absolute top-[calc(100%+6px)] left-0 z-50 hidden group-hover/btn:flex items-center gap-1.5 bg-[#1C1B1A] border border-[#2A2928] px-2.5 py-1 rounded-lg shadow-xl whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
+                            <span className="text-[12px] font-medium text-[#EDEDEF]">
+                                More options
+                            </span>
+                        </div>
+                    )}
 
                     {isPlusMenuOpen && (
-                        <div className="absolute top-[calc(100%+8px)] left-0 w-[230px] bg-[#1E1E1E] border border-[#2A2928] rounded-2xl p-2 shadow-2xl z-50 flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-150">
-                            <button
-                                onClick={() => {
-                                    setIsPlusMenuOpen(false)
-                                    onUpload()
-                                }}
-                                className="flex items-center gap-3 px-3 py-2 rounded-xl text-left text-[13px] font-medium text-[#EDEDEF] hover:bg-[#252525] transition-colors outline-none w-full"
-                            >
-                                <Paperclip className="w-4 h-4 text-[#8F8E8D]" />
-                                <span>Attachments</span>
-                            </button>
-                            <button
-                                onClick={() => {
-                                    setIsPlusMenuOpen(false)
-                                    onUpload()
-                                }}
-                                className="flex items-center gap-3 px-3 py-2 rounded-xl text-left text-[13px] font-medium text-[#EDEDEF] hover:bg-[#252525] transition-colors outline-none w-full"
-                            >
-                                <AtSign className="w-4 h-4 text-[#8F8E8D]" />
-                                <span>Add files, repos, macros</span>
-                            </button>
-                            <button
-                                onClick={() => {
-                                    setIsPlusMenuOpen(false)
-                                }}
-                                className="flex items-center gap-3 px-3 py-2 rounded-xl text-left text-[13px] font-medium text-[#EDEDEF] hover:bg-[#252525] transition-colors outline-none w-full"
-                            >
-                                <Key className="w-4 h-4 text-[#8F8E8D]" />
-                                <span>Send secrets</span>
-                            </button>
+                        <div
+                            className={`absolute ${plusMenuPosition === 'top' ? 'bottom-[calc(100%+8px)]' : 'top-[calc(100%+8px)]'} left-0 w-[230px] bg-[#1E1E1E] border border-[#2A2928] rounded-2xl p-1 shadow-2xl z-50 flex flex-col animate-in fade-in zoom-in-95 duration-150`}
+                        >
+                            {plusMenuItems.map((item, idx) => (
+                                <button
+                                    key={item.label}
+                                    onMouseEnter={() => setSelectedPlusIndex(idx)}
+                                    onClick={() => {
+                                        setIsPlusMenuOpen(false)
+                                        item.action()
+                                    }}
+                                    className={`flex items-center gap-3 px-3 py-1.5 rounded-xl text-left text-[12.5px] font-medium text-[#EDEDEF] transition-colors outline-none w-full ${selectedPlusIndex === idx ? 'bg-[#252525]' : 'hover:bg-[#252525]'}`}
+                                >
+                                    {item.icon}
+                                    <span>{item.label}</span>
+                                </button>
+                            ))}
                         </div>
                     )}
                 </div>
 
-                <div className="relative group/btn">
+                <div
+                    className="relative group/btn"
+                    onMouseEnter={handleCanvasMouseEnter}
+                    onMouseLeave={handleCanvasMouseLeave}
+                >
                     <button
                         onClick={() => {
                             if (!isAuthenticated && onOpenAuth) {
@@ -184,21 +385,68 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
                     >
                         <span className="text-[13px] font-medium">Canvas</span>
                     </button>
-                    <div className="absolute top-[calc(100%+6px)] left-0 z-50 hidden group-hover/btn:flex items-center gap-1.5 bg-[#1C1B1A] border border-[#2A2928] px-2.5 py-1 rounded-lg shadow-xl whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
-                        <span className="text-[12px] font-medium text-[#EDEDEF]">
-                            Attach context canvas
-                        </span>
-                    </div>
+                    {showCanvasCard && (
+                        <div className="absolute bottom-[calc(100%+8px)] left-0 z-50 flex flex-col bg-[#1E1E1E] border border-[#2A2928] rounded-2xl shadow-2xl overflow-hidden w-[260px] animate-in fade-in zoom-in-95 duration-200 cursor-default">
+                            <div className="w-full h-[140px] bg-[#1E1E1E] relative overflow-hidden flex items-center justify-center p-1.5 pb-0 pointer-events-none">
+                                <div className="w-full h-full relative overflow-hidden rounded-xl border border-[#2A2928]">
+                                    <img
+                                        src={sidebarPng}
+                                        alt="Context Canvas"
+                                        className="w-full h-full object-cover object-center scale-[1.35] absolute inset-0 opacity-80"
+                                    />
+                                </div>
+                            </div>
+                            <div className="flex flex-col px-2 pt-2.5 pb-2.5 bg-[#1E1E1E] gap-3">
+                                <div className="flex flex-col px-1 w-full text-left">
+                                    <div className="flex items-center gap-1.5 mt-0.5">
+                                        <span className="text-[13px] font-semibold text-[#E8E8E8]">
+                                            Introducing Context Canvas
+                                        </span>
+                                        <span className="px-1.5 py-[1.5px] rounded-full bg-transparent border border-[#3A3938] text-[#A3A3A3] text-[8px] font-bold tracking-widest uppercase leading-none">
+                                            Beta
+                                        </span>
+                                    </div>
+                                    <span className="text-[12px] text-[#8F8E8D] mt-1 leading-relaxed">
+                                        A powerful visual workspace to organize your code,
+                                        architecture, and context alongside your conversation.
+                                    </span>
+                                </div>
+                                <div className="flex justify-end mx-1 mt-1">
+                                    <button
+                                        className="px-2.5 py-1 bg-[#2B2A29] hover:bg-[#343331] text-[#E8E8E8] text-[11px] font-medium rounded-md transition-colors border border-white/10"
+                                        onClick={(e) => {
+                                            e.preventDefault()
+                                            e.stopPropagation()
+                                            window.open('/canvas', '_blank')
+                                        }}
+                                    >
+                                        Try now
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
 
             <div className="flex items-center gap-1.5">
                 <div className="relative group/btn" ref={selectorRef}>
                     <button
-                        onClick={() => {
+                        onClick={(e) => {
                             if (!isAuthenticated) {
                                 onOpenAuth?.()
                                 return
+                            }
+                            if (!isModelSelectorOpen) {
+                                const rect = e.currentTarget.getBoundingClientRect()
+                                const spaceBelow = window.innerHeight - rect.bottom
+                                if (spaceBelow < 300 && rect.top > spaceBelow) {
+                                    setModelSelectorPosition('top')
+                                } else {
+                                    setModelSelectorPosition('bottom')
+                                }
+                                const currIdx = MODELS.findIndex((m) => m.id === selectedModel)
+                                setSelectedModelIndex(currIdx !== -1 ? currIdx : 0)
                             }
                             setIsModelSelectorOpen(!isModelSelectorOpen)
                         }}
@@ -217,17 +465,24 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
                             )}
                         />
                     </button>
-                    <div className="absolute top-[calc(100%+6px)] right-0 z-50 hidden group-hover/btn:flex items-center gap-1.5 bg-[#1C1B1A] border border-[#2A2928] px-2.5 py-1 rounded-lg shadow-xl whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
-                        <span className="text-[12px] font-medium text-[#EDEDEF]">Select model</span>
-                    </div>
+                    {!isModelSelectorOpen && (
+                        <div className="absolute top-[calc(100%+6px)] right-0 z-50 hidden group-hover/btn:flex items-center gap-1.5 bg-[#1C1B1A] border border-[#2A2928] px-2.5 py-1 rounded-lg shadow-xl whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
+                            <span className="text-[12px] font-medium text-[#EDEDEF]">
+                                Select model
+                            </span>
+                        </div>
+                    )}
 
                     {isModelSelectorOpen && (
-                        <div className="absolute top-[calc(100%+8px)] right-0 w-[200px] bg-[#1F1F1F] border border-white/[0.08] rounded-xl p-1 shadow-2xl z-50 flex flex-col gap-0.5">
-                            {models.map((model) => {
+                        <div
+                            className={`absolute ${modelSelectorPosition === 'top' ? 'bottom-[calc(100%+8px)]' : 'top-[calc(100%+8px)]'} right-0 w-[200px] bg-[#1F1F1F] border border-white/[0.08] rounded-xl p-1 shadow-2xl z-50 flex flex-col gap-0.5`}
+                        >
+                            {MODELS.map((model, idx) => {
                                 const isSelected = selectedModel === model.id
                                 return (
                                     <button
                                         key={model.id}
+                                        onMouseEnter={() => setSelectedModelIndex(idx)}
                                         onClick={() => {
                                             if (model.id !== 'Auto' && !isPro) {
                                                 if (!isAuthenticated) {
@@ -244,7 +499,7 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
                                         }}
                                         className={cn(
                                             'flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left text-[13px] font-medium transition-colors outline-none cursor-pointer',
-                                            isSelected
+                                            selectedModelIndex === idx
                                                 ? 'bg-[#252525] text-[#D6D5D4]'
                                                 : 'text-[#8F8E8D] hover:bg-[#252525] hover:text-[#D6D5D4]'
                                         )}

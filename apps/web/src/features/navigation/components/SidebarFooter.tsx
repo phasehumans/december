@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { Bell, Copy, Check } from 'lucide-react'
+import { Inbox, Copy, Check } from 'lucide-react'
 import React, { useState, useRef } from 'react'
 
 import sidebarPng from '../../../../public/sidebar.png'
@@ -150,7 +150,7 @@ export const SidebarFooter: React.FC<
                                     title="Copy command"
                                 >
                                     {isCopied ? (
-                                        <Check className="w-3.5 h-3.5 text-emerald-500" />
+                                        <Check className="w-3.5 h-3.5 text-white" />
                                     ) : (
                                         <Copy className="w-3.5 h-3.5" />
                                     )}
@@ -172,10 +172,10 @@ export const SidebarFooter: React.FC<
                                 className="flex items-center gap-2 px-1.5 py-[7px] rounded-lg hover:bg-[#252525] transition-colors group outline-none min-w-0"
                                 style={{ maxWidth: 'calc(100% - 28px)' }}
                             >
-                                <div className="flex items-center justify-center w-[24px] h-[24px] rounded-full bg-white/[0.04] text-[#8F8E8D] group-hover:text-[#CBCACA] transition-colors shrink-0">
+                                <div className="flex items-center justify-center w-[24px] h-[24px] rounded-full bg-white/[0.04] text-[#E8E8E8] group-hover:text-[#E8E8E8] transition-colors shrink-0">
                                     <Icons.UserCircle className="w-[12px] h-[12px]" />
                                 </div>
-                                <span className="font-medium text-[13px] text-[#8F8E8D] group-hover:text-[#CBCACA] transition-colors truncate tracking-tight text-left">
+                                <span className="font-medium text-[13px] text-[#E8E8E8] group-hover:text-[#E8E8E8] transition-colors truncate tracking-tight text-left">
                                     {user?.name ||
                                         profile?.name ||
                                         quickInfo?.fullName ||
@@ -185,17 +185,19 @@ export const SidebarFooter: React.FC<
                             <button
                                 ref={notifAnchorRef}
                                 onClick={() => setIsNotifPopoverOpen(!isNotifPopoverOpen)}
-                                className="flex items-center justify-center w-7 h-7 rounded-lg hover:bg-[#252525] text-[#8F8E8D] hover:text-[#CBCACA] transition-colors shrink-0 outline-none -ml-1 relative group/notif"
+                                className="flex items-center justify-center w-7 h-7 rounded-lg hover:bg-[#252525] text-[#E8E8E8] hover:text-[#E8E8E8] transition-colors shrink-0 outline-none -ml-1 relative group/notif"
                             >
-                                <Bell className="w-[13px] h-[13px]" strokeWidth={2} />
+                                <Inbox className="w-[13px] h-[13px]" strokeWidth={2} />
                                 {hasUnread && (
                                     <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-white rounded-full border border-[#141414]" />
                                 )}
-                                <div className="absolute bottom-[calc(100%+6px)] right-0 z-50 hidden group-hover/notif:flex items-center gap-1.5 bg-[#1C1B1A] border border-[#2A2928] px-2.5 py-1 rounded-lg shadow-xl whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
-                                    <span className="text-[12px] font-medium text-[#EDEDEF]">
-                                        Notifications
-                                    </span>
-                                </div>
+                                {!isNotifPopoverOpen && (
+                                    <div className="absolute bottom-[calc(100%+6px)] right-0 z-50 hidden group-hover/notif:flex items-center gap-1.5 bg-[#1C1B1A] border border-[#2A2928] px-2.5 py-1 rounded-lg shadow-xl whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
+                                        <span className="text-[12px] font-medium text-[#EDEDEF]">
+                                            Notifications
+                                        </span>
+                                    </div>
+                                )}
                             </button>
                         </div>
 
