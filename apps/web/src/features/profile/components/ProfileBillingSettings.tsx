@@ -99,7 +99,7 @@ export const ProfileBillingSettings: React.FC<ProfileBillingSettingsProps> = (pr
     const remainingInCents = overview.creditBalance ?? 0
 
     return (
-        <div className="flex flex-col w-full max-w-[680px] text-[#D6D5C9] animate-in fade-in duration-200">
+        <div className="flex flex-col w-full max-w-[800px] text-[#D6D5C9] animate-in fade-in duration-200">
             {/* Credits Section */}
             <div className="flex flex-col mb-6">
                 <h1 className="text-[16px] font-medium text-[#D6D5C9] mb-3">Credits</h1>

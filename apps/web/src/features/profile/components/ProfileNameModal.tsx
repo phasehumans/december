@@ -44,7 +44,7 @@ export const ProfileNameModal: React.FC<ProfileNameModalProps> = ({
                         autoFocus
                         value={value}
                         onChange={(e) => onChange(e.target.value)}
-                        className="w-full bg-[#181817] border border-[#2B2A27] rounded-lg px-3.5 py-2.5 text-white text-[13px] focus:outline-none focus:border-[#4E4D49] focus:ring-1 focus:ring-[#4E4D49] transition-[border-color,box-shadow] duration-200"
+                        className="w-full bg-[#2A2A2A] border border-[#2B2A27] rounded-lg px-3.5 py-2.5 text-white text-[13px] focus:outline-none focus:border-[#4E4D49] focus:ring-1 focus:ring-[#4E4D49] transition-[border-color,box-shadow] duration-200"
                         placeholder={`Enter new ${label?.toLowerCase() || 'name'}...`}
                         disabled={isPending}
                     />

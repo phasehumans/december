@@ -4,7 +4,12 @@ import { MessageSquare } from 'lucide-react'
 import { ProfileFeedbackModal } from '@/features/profile/components/ProfileFeedbackModal'
 import { Icons } from '@/shared/components/ui/Icons'
 
-export const HomeHeader: React.FC = () => {
+interface HomeHeaderProps {
+    isAuthenticated?: boolean
+    onOpenAuth?: () => void
+}
+
+export const HomeHeader: React.FC<HomeHeaderProps> = ({ isAuthenticated, onOpenAuth }) => {
     const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false)
 
     return (
@@ -19,7 +24,13 @@ export const HomeHeader: React.FC = () => {
             <div className="flex-1 flex flex-col items-end gap-1 pointer-events-auto">
                 <div className="flex items-center gap-1">
                     <button
-                        onClick={() => setIsFeedbackModalOpen(true)}
+                        onClick={() => {
+                            if (isAuthenticated) {
+                                setIsFeedbackModalOpen(true)
+                            } else if (onOpenAuth) {
+                                onOpenAuth()
+                            }
+                        }}
                         className="text-textMuted hover:text-textMain transition-colors flex items-center justify-center p-1 cursor-pointer outline-none relative group/feedback"
                     >
                         <MessageSquare className="w-[17px] h-[17px]" strokeWidth={2} />

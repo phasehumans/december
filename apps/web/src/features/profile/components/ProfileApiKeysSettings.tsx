@@ -3,7 +3,7 @@ import React from 'react'
 
 export const ProfileApiKeysSettings: React.FC = () => {
     return (
-        <div className="flex flex-col w-full max-w-[680px] text-[#D6D5C9]">
+        <div className="flex flex-col w-full max-w-[800px] text-[#D6D5C9]">
             <div className="flex flex-col mb-8">
                 <div className="flex items-center gap-3 mb-4">
                     <h1 className="text-[16px] font-medium">API Keys</h1>
