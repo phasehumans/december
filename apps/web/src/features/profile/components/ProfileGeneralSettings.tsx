@@ -238,7 +238,7 @@ Use this template file to specify coding styles, design tokens, responsive grids
             {/* Custom Design */}
             <div className="flex flex-col mb-10">
                 <h1 className="text-[16px] font-medium mb-4">Custom Design</h1>
-                <div className="flex flex-col gap-4 border border-[#242323] rounded-xl p-5 bg-[#141414]">
+                <div className="flex flex-col gap-4 border-t border-[#242323] pt-6">
                     <p className="text-[13px] text-[#7B7A79] mb-4 leading-relaxed">
                         Create reusable design guidelines that december can apply during
                         conversations. Each design has a design.md that defines custom layout rules

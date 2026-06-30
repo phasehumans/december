@@ -137,7 +137,7 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
                     </div>
 
                     {isPlusMenuOpen && (
-                        <div className="absolute top-[calc(100%+8px)] left-0 w-[230px] bg-[#1C1B1A] border border-[#2A2928] rounded-2xl p-2 shadow-2xl z-50 flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-150">
+                        <div className="absolute top-[calc(100%+8px)] left-0 w-[230px] bg-[#1E1E1E] border border-[#2A2928] rounded-2xl p-2 shadow-2xl z-50 flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-150">
                             <button
                                 onClick={() => {
                                     setIsPlusMenuOpen(false)

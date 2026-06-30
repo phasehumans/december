@@ -154,8 +154,23 @@ export const TemplatesView: React.FC<TemplatesViewProps> = ({ onOpenProject }) =
     )
     const [visibleCount, setVisibleCount] = useState(9)
     const [activeDropdown, setActiveDropdown] = useState<string | null>(null)
+    const [dropdownDirection, setDropdownDirection] = useState<'down' | 'up'>('down')
     const [selectedSort, setSelectedSort] = useState(SORT_OPTIONS[0]!)
     const [actionError, setActionError] = useState<string | null>(null)
+
+    const toggleDropdown = (type: string, event: React.MouseEvent<HTMLButtonElement>) => {
+        if (activeDropdown === type) {
+            setActiveDropdown(null)
+            return
+        }
+        const rect = event.currentTarget.getBoundingClientRect()
+        if (window.innerHeight - rect.bottom < 250 && rect.top > 250) {
+            setDropdownDirection('up')
+        } else {
+            setDropdownDirection('down')
+        }
+        setActiveDropdown(type)
+    }
     const [likePendingTemplateId, setLikePendingTemplateId] = useState<string | null>(null)
     const [remixPendingTemplateId, setRemixPendingTemplateId] = useState<string | null>(null)
     const [remixModal, setRemixModal] = useState<{
@@ -395,11 +410,7 @@ export const TemplatesView: React.FC<TemplatesViewProps> = ({ onOpenProject }) =
                                         <div className="relative">
                                             <button
                                                 id="sort-filter-btn"
-                                                onClick={() =>
-                                                    setActiveDropdown(
-                                                        activeDropdown === 'sort' ? null : 'sort'
-                                                    )
-                                                }
+                                                onClick={(e) => toggleDropdown('sort', e)}
                                                 className="flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-[#383736] bg-[#141414] text-[13px] text-[#D6D5C9] hover:bg-[#191919] transition-colors"
                                             >
                                                 Sort: {selectedSort.label}
@@ -412,7 +423,7 @@ export const TemplatesView: React.FC<TemplatesViewProps> = ({ onOpenProject }) =
                                                         animate={{ opacity: 1, y: 0, scale: 1 }}
                                                         exit={{ opacity: 0, y: -6, scale: 0.97 }}
                                                         transition={{ duration: 0.15 }}
-                                                        className="absolute right-0 top-full mt-2 w-44 rounded-xl border border-[#383736] bg-[#1F1F1F] py-2 shadow-xl z-50"
+                                                        className={`absolute right-0 ${dropdownDirection === 'up' ? 'bottom-full mb-2' : 'top-full mt-2'} w-44 rounded-xl border border-[#383736] bg-[#1E1E1E] py-2 shadow-xl z-50`}
                                                     >
                                                         <div className="px-3 pb-2 text-[11px] font-medium text-[#7B7A79] border-b border-[#383736] mb-1 uppercase tracking-wider">
                                                             Sort by
@@ -425,7 +436,7 @@ export const TemplatesView: React.FC<TemplatesViewProps> = ({ onOpenProject }) =
                                                                     setActiveDropdown(null)
                                                                     setVisibleCount(9)
                                                                 }}
-                                                                className="w-full flex items-center justify-between px-3 py-1.5 text-[13px] text-[#D6D5C9] hover:bg-[#242323] transition-colors"
+                                                                className="w-full flex items-center justify-between px-3 py-1.5 text-[13px] text-[#D6D5C9] hover:bg-[#262626] transition-colors"
                                                             >
                                                                 {opt.label}
                                                                 {selectedSort.id === opt.id && (
@@ -441,13 +452,7 @@ export const TemplatesView: React.FC<TemplatesViewProps> = ({ onOpenProject }) =
                                         <div className="relative">
                                             <button
                                                 id="category-filter-btn"
-                                                onClick={() =>
-                                                    setActiveDropdown(
-                                                        activeDropdown === 'category'
-                                                            ? null
-                                                            : 'category'
-                                                    )
-                                                }
+                                                onClick={(e) => toggleDropdown('category', e)}
                                                 className="flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-[#383736] bg-[#141414] text-[13px] text-[#D6D5C9] hover:bg-[#191919] transition-colors"
                                             >
                                                 Category:{' '}
@@ -461,7 +466,7 @@ export const TemplatesView: React.FC<TemplatesViewProps> = ({ onOpenProject }) =
                                                         animate={{ opacity: 1, y: 0, scale: 1 }}
                                                         exit={{ opacity: 0, y: -6, scale: 0.97 }}
                                                         transition={{ duration: 0.15 }}
-                                                        className="absolute right-0 top-full mt-2 w-48 rounded-xl border border-[#383736] bg-[#1F1F1F] py-2 shadow-xl z-50"
+                                                        className={`absolute right-0 ${dropdownDirection === 'up' ? 'bottom-full mb-2' : 'top-full mt-2'} w-48 rounded-xl border border-[#383736] bg-[#1E1E1E] py-2 shadow-xl z-50`}
                                                     >
                                                         <div className="px-3 pb-2 text-[11px] font-medium text-[#7B7A79] border-b border-[#383736] mb-1 uppercase tracking-wider">
                                                             Filter by
@@ -472,7 +477,7 @@ export const TemplatesView: React.FC<TemplatesViewProps> = ({ onOpenProject }) =
                                                                 setActiveDropdown(null)
                                                                 setVisibleCount(9)
                                                             }}
-                                                            className="w-full flex items-center justify-between px-3 py-1.5 text-[13px] text-[#D6D5C9] hover:bg-[#242323] transition-colors"
+                                                            className="w-full flex items-center justify-between px-3 py-1.5 text-[13px] text-[#D6D5C9] hover:bg-[#262626] transition-colors"
                                                         >
                                                             All
                                                             {!selectedCategory && (
@@ -487,7 +492,7 @@ export const TemplatesView: React.FC<TemplatesViewProps> = ({ onOpenProject }) =
                                                                     setActiveDropdown(null)
                                                                     setVisibleCount(9)
                                                                 }}
-                                                                className="w-full flex items-center justify-between px-3 py-1.5 text-[13px] text-[#D6D5C9] hover:bg-[#242323] transition-colors"
+                                                                className="w-full flex items-center justify-between px-3 py-1.5 text-[13px] text-[#D6D5C9] hover:bg-[#262626] transition-colors"
                                                             >
                                                                 {cat.label}
                                                                 {selectedCategory?.id ===

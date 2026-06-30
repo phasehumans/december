@@ -85,7 +85,7 @@ export const ProfileFeedbackModal: React.FC<ProfileFeedbackModalProps> = ({ isOp
                     <textarea
                         value={feedback}
                         onChange={(e) => setFeedback(e.target.value)}
-                        className="w-full bg-[#181817] border border-[#2B2A27] hover:border-[#383736] focus:border-[#4E4D49] focus:ring-1 focus:ring-[#4E4D49] rounded-lg p-3.5 text-[13px] text-white outline-none resize-none h-[110px] transition-[border-color,box-shadow] duration-200 placeholder:text-[#4A4948]"
+                        className="w-full bg-[#2A2A2A] border border-[#2B2A27] hover:border-[#383736] focus:border-[#4E4D49] focus:ring-1 focus:ring-[#4E4D49] rounded-lg p-3.5 text-[13px] text-white outline-none resize-none h-[110px] transition-[border-color,box-shadow] duration-200 placeholder:text-[#4A4948]"
                         placeholder="Your feedback..."
                         disabled={isSubmitting}
                     />
