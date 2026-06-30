@@ -1,14 +1,11 @@
-import { render } from 'ink'
-
 import { RootLayout } from './layouts/root-layout'
 import { Chat } from './screens/chat'
+import type { Agent } from '@december/agent'
 
-function App() {
+export function App({ agent }: { agent: Agent }) {
     return (
         <RootLayout>
-            <Chat />
+            <Chat agent={agent} />
         </RootLayout>
     )
 }
-
-render(<App />, { exitOnCtrlC: false })
