@@ -1,8 +1,19 @@
 ## [unreleased]
 
+### Features
+
+- Agent loop and cli iteration
+- _(agent)_ Add agent loop and fix cli iteration #161
+
+## [0.1.7] - 2026-06-30
+
 ### Bug Fixes
 
 - _(ui)_ Improve sidebar visuals with color change, tooltip, and search #157
+
+### Miscellaneous Tasks
+
+- _(release)_ V0.1.7
 
 ## [0.1.6] - 2026-06-26
 

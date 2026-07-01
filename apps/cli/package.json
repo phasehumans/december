@@ -1,9 +1,9 @@
 {
-    "name": "@phasehumans/december",
+    "name": "@trydecember/cli",
     "module": "src/index.ts",
     "type": "module",
     "private": false,
-    "version": "1.0.0",
+    "version": "0.1.8",
     "engines": {
         "node": ">=18.0.0"
     },
