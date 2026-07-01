@@ -1,6 +1,4 @@
-import fs from 'node:fs/promises'
-import path from 'node:path'
-import { Tool } from '@december/agent'
+import { Tool, ToolExecuteContext } from '@december/agent'
 
 export const WriteFileTool: Tool<{ filePath: string; content: string }> = {
     name: 'write_file',
@@ -14,12 +12,9 @@ export const WriteFileTool: Tool<{ filePath: string; content: string }> = {
         },
         required: ['filePath', 'content'],
     },
-    execute: async ({ filePath, content }) => {
+    execute: async ({ filePath, content }, context: ToolExecuteContext) => {
         try {
-            const absolutePath = path.resolve(process.cwd(), filePath)
-            // Ensure parent directories exist
-            await fs.mkdir(path.dirname(absolutePath), { recursive: true })
-            await fs.writeFile(absolutePath, content, 'utf-8')
+            await context.operations.fs.writeFile(filePath, content)
             return `Successfully wrote to ${filePath}`
         } catch (e: any) {
             return `Failed to write file: ${e.message}`

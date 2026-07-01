@@ -66,11 +66,21 @@ export function BotMessage({ blocks }: Props) {
                                         borderStyle="single"
                                         borderColor="#4A5568"
                                     >
-                                        {block.output.split('\n').map((line, lidx) => (
-                                            <Text key={lidx} color="#718096" dimColor>
-                                                {line}
-                                            </Text>
-                                        ))}
+                                        {block.output.split('\n').map((line, lidx) => {
+                                            const isTruncationMarker =
+                                                line.startsWith('<...') && line.endsWith('...>')
+                                            return (
+                                                <Text
+                                                    key={lidx}
+                                                    color={
+                                                        isTruncationMarker ? 'yellow' : '#718096'
+                                                    }
+                                                    dimColor
+                                                >
+                                                    {line}
+                                                </Text>
+                                            )
+                                        })}
                                     </Box>
                                 )}
                             </Box>

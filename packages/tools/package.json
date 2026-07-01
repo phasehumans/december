@@ -4,6 +4,7 @@
     "main": "src/index.ts",
     "types": "src/index.ts",
     "dependencies": {
-        "@december/agent": "workspace:*"
+        "@december/agent": "workspace:*",
+        "fast-glob": "3.3.3"
     }
 }
