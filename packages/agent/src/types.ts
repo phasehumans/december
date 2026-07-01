@@ -1,5 +1,13 @@
 export type Role = 'system' | 'user' | 'assistant' | 'tool'
 
+import { AgentOperations } from './operations'
+
+export interface ToolExecuteContext {
+    operations: AgentOperations
+    env: Map<string, string>
+    onStream: (chunk: string) => void
+    spawnSubagent: (prompt: string) => Promise<string>
+}
 export interface Message {
     role: Role
     content: string
@@ -25,7 +33,7 @@ export interface Tool<TInput = any> {
     description: string
     // We can use JSON Schema or Zod schemas here. For simplicity in DI, we use a generic schema object or just rely on the LLM to provide JSON.
     inputSchema: any
-    execute: (input: TInput) => Promise<string>
+    execute: (input: TInput, context: ToolExecuteContext) => Promise<string>
 }
 
 // Event Stream Types (The Async Generator Yields These)

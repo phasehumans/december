@@ -1,6 +1,4 @@
-import fs from 'node:fs/promises'
-import path from 'node:path'
-import { Tool } from '@december/agent'
+import { Tool, ToolExecuteContext, truncateOutput } from '@december/agent'
 
 export const LsTool: Tool<{ dirPath?: string }> = {
     name: 'list_dir',
@@ -14,15 +12,11 @@ export const LsTool: Tool<{ dirPath?: string }> = {
             },
         },
     },
-    execute: async ({ dirPath = '.' }) => {
+    execute: async ({ dirPath = '.' }, context: ToolExecuteContext) => {
         try {
-            const absolutePath = path.resolve(process.cwd(), dirPath)
-            const entries = await fs.readdir(absolutePath, { withFileTypes: true })
-            const result = entries.map((entry) => {
-                const type = entry.isDirectory() ? 'DIR ' : 'FILE'
-                return `[${type}] ${entry.name}`
-            })
-            return result.length > 0 ? result.join('\n') : 'Directory is empty.'
+            const result = await context.operations.fs.readdir(dirPath)
+            return truncateOutput(result.length > 0 ? result.join('\n') : 'Directory is empty.')
+                .text
         } catch (e: any) {
             return `Failed to list directory: ${e.message}`
         }

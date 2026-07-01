@@ -1,24 +1,44 @@
-import fs from 'node:fs/promises'
-import path from 'node:path'
-import { Tool } from '@december/agent'
+import { Tool, truncateOutput, ToolExecuteContext } from '@december/agent'
 
-export const ReadFileTool: Tool<{ filePath: string }> = {
+export interface ReadFileInput {
+    path: string
+    startLine?: number
+    endLine?: number
+    noTruncate?: boolean
+}
+
+export const ReadFileTool: Tool<ReadFileInput> = {
     name: 'read_file',
-    description: 'Reads the complete contents of a file.',
+    description:
+        'Reads the contents of a file. Automatically truncates massive files to protect context limits. Use noTruncate: true if you absolutely need the full file for AST rewriting, or use startLine/endLine for pagination.',
     inputSchema: {
         type: 'object',
         properties: {
-            filePath: { type: 'string', description: 'The relative or absolute path to the file.' },
+            path: { type: 'string' },
+            startLine: { type: 'number' },
+            endLine: { type: 'number' },
+            noTruncate: { type: 'boolean' },
         },
-        required: ['filePath'],
+        required: ['path'],
     },
-    execute: async ({ filePath }) => {
+    execute: async ({ path, startLine, endLine, noTruncate }, context: ToolExecuteContext) => {
         try {
-            const absolutePath = path.resolve(process.cwd(), filePath)
-            const content = await fs.readFile(absolutePath, 'utf-8')
-            return content
-        } catch (e: any) {
-            return `Failed to read file: ${e.message}`
+            const content = await context.operations.fs.readFile(path)
+            const lines = content.split('\n')
+
+            const start = startLine ? Math.max(0, startLine - 1) : 0
+            const end = endLine ? Math.min(lines.length, endLine) : lines.length
+
+            const slice = lines.slice(start, end).join('\n')
+
+            if (noTruncate) {
+                return slice
+            }
+
+            const result = truncateOutput(slice)
+            return result.text
+        } catch (error: any) {
+            return `Failed to read file: ${error.message}`
         }
     },
 }

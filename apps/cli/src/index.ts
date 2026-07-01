@@ -1,25 +1,56 @@
-#!/usr/bin/env bun
+#!/usr/bin/env node
 import { render } from 'ink'
 import React from 'react'
 import { App } from '@december/tui'
-import { Agent, OpenAIProvider } from '@december/agent'
-import { BashTool, ReadFileTool, WriteFileTool, LsTool } from '@december/tools'
+import {
+    Agent,
+    createProvider,
+    ProviderConfig,
+    getProviderConfig,
+    OpenAIProvider,
+} from '@december/agent'
+import {
+    BashTool,
+    ReadFileTool,
+    WriteFileTool,
+    LsTool,
+    EditFileTool,
+    FindFilesTool,
+    GrepSearchTool,
+    SubagentTool,
+} from '@december/tools'
+import { localOperations } from './local-operations'
 
 async function main() {
-    // Determine the API key and Base URL based on whether the user is using BYOK or December Wallet.
-    // If OPENROUTER_API_KEY is present, we use OpenRouter (BYOK).
-    // Otherwise, we could default to `https://api.december.com/v1` with a JWT from `DECEMBER_TOKEN`.
-    const apiKey = process.env.OPENROUTER_API_KEY || process.env.OPENAI_API_KEY || 'dummy'
-    const baseURL = process.env.OPENROUTER_API_KEY ? 'https://openrouter.ai/api/v1' : undefined
+    let providerConfig = await getProviderConfig()
+
+    // If not authenticated, we pass a dummy provider so the Agent can boot.
+    // The TUI will intercept prompts and force them to /login
+    const llm = providerConfig
+        ? createProvider(providerConfig)
+        : new OpenAIProvider('dummy', undefined, 'gpt-4o')
+    const isAuthenticated = !!providerConfig
 
     const agent = new Agent({
         systemPrompt:
-            'You are December, an autonomous software engineer. You have access to bash, read, write, and ls tools. When executing code, please use JSON schemas for tool inputs.',
-        llm: new OpenAIProvider(apiKey, baseURL, 'gpt-4o'), // or "anthropic/claude-3.5-sonnet" on openrouter
-        tools: [BashTool, ReadFileTool, WriteFileTool, LsTool],
+            'You are December, an autonomous software engineer. You have access to tools. When executing code, please use JSON schemas for tool inputs.',
+        llm: llm,
+        tools: [
+            BashTool,
+            ReadFileTool,
+            WriteFileTool,
+            LsTool,
+            EditFileTool,
+            FindFilesTool,
+            GrepSearchTool,
+            SubagentTool,
+        ],
+        operations: localOperations,
     })
 
-    render(React.createElement(App, { agent }), { exitOnCtrlC: false })
+    await agent.loadContext()
+
+    render(React.createElement(App, { agent, isAuthenticated }), { exitOnCtrlC: false })
 }
 
 main().catch(console.error)

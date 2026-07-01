@@ -9,6 +9,7 @@ pnpm-lock.yaml
 
 # Build & compiled directories
 **/dist/
+**/bin/
 **/build/
 **/out/
 **/coverage/
