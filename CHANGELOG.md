@@ -1,9 +1,13 @@
-## [unreleased]
+## [0.2.0] - 2026-07-01
 
 ### Features
 
 - Agent loop and cli iteration
 - _(agent)_ Add agent loop and fix cli iteration #161
+
+### Miscellaneous Tasks
+
+- _(release)_ V0.2.0
 
 ## [0.1.7] - 2026-06-30
 
