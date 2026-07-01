@@ -52,6 +52,17 @@ export function InputBar({
             if (!command) return
             setValue('')
             handleContentChange('')
+
+            // Forward auth commands to Chat component
+            if (
+                command.value === '/login' ||
+                command.value === '/logout' ||
+                command.value === '/exit'
+            ) {
+                onSubmit(command.value)
+                return
+            }
+
             if (command.action) {
                 command.action({
                     exit: () => process.exit(0),
@@ -60,7 +71,7 @@ export function InputBar({
                 })
             }
         },
-        [toast, dialog, handleContentChange]
+        [toast, dialog, handleContentChange, onSubmit]
     )
 
     const handleSubmit = useCallback(

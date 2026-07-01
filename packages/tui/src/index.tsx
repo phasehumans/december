@@ -1,14 +1,11 @@
-import { render } from 'ink'
-
 import { RootLayout } from './layouts/root-layout'
 import { Chat } from './screens/chat'
+import type { Agent } from '@december/agent'
 
-function App() {
+export function App({ agent, isAuthenticated }: { agent: Agent; isAuthenticated: boolean }) {
     return (
         <RootLayout>
-            <Chat />
+            <Chat agent={agent} isAuthenticated={isAuthenticated} />
         </RootLayout>
     )
 }
-
-render(<App />, { exitOnCtrlC: false })
