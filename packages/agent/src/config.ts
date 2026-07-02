@@ -1,10 +1,15 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import os from 'node:os'
-import { ProviderConfig } from './providers/factory'
+export interface ProviderConfig {
+    provider: 'openai' | 'anthropic' | 'gemini' | 'openrouter'
+    apiKey: string
+    model?: string
+}
 
 export interface DecemberConfig {
     activeProvider?: string
+    activeModel?: string
     providers: Record<string, string>
     decemberToken?: string
 }
@@ -41,6 +46,7 @@ export async function getProviderConfig(): Promise<ProviderConfig | undefined> {
         return {
             provider: config.activeProvider as any,
             apiKey: config.providers[config.activeProvider],
+            model: config.activeModel,
         }
     }
 

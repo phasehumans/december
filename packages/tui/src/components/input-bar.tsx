@@ -8,7 +8,7 @@ import { useToast } from '../providers/toast'
 
 import { CommandMenu } from './command-menu'
 import { useCommandMenu } from './command-menu/use-command-menu'
-import { ModelSelector } from './model-selector'
+// ModelSelector removed in favor of passing activeModel as prop
 
 import type { Command } from './command-menu/types'
 
@@ -16,12 +16,14 @@ type Props = {
     onSubmit: (text: string) => void
     disabled?: boolean
     placeholder?: string
+    activeModel?: string
 }
 
 export function InputBar({
     onSubmit,
     disabled = false,
     placeholder = 'Ask December to build features, fix bugs, or work on your code...',
+    activeModel = 'unknown',
 }: Props) {
     const [value, setValue] = useState('')
     const cols = useTerminalColumns()
@@ -57,7 +59,8 @@ export function InputBar({
             if (
                 command.value === '/login' ||
                 command.value === '/logout' ||
-                command.value === '/exit'
+                command.value === '/exit' ||
+                command.value === '/model'
             ) {
                 onSubmit(command.value)
                 return
@@ -133,7 +136,7 @@ export function InputBar({
             {!showCommandMenu && (
                 <Box width={innerWidth} justifyContent="space-between">
                     <Box gap={2} alignItems="center">
-                        <ModelSelector />
+                        <Text color="#AAAAAA">{activeModel}</Text>
                         {toast.currentToast && (
                             <Box gap={1}>
                                 <Text
