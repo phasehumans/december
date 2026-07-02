@@ -28,26 +28,41 @@ export function BotMessage({ blocks }: Props) {
         <Box flexDirection="column" paddingX={4} paddingY={1} gap={1}>
             {blocks.map((block, idx) => {
                 switch (block.type) {
-                    case 'text':
+                    case 'text': {
+                        const isThinking = block.content === 'Thinking...'
                         return (
-                            <Box key={idx} marginY={0.5}>
-                                <Text color="white">{block.content}</Text>
+                            <Box key={idx} marginY={0.5} gap={1} alignItems="center">
+                                {isThinking && <Spinner />}
+                                <Text color={isThinking ? 'gray' : 'white'}>{block.content}</Text>
                             </Box>
                         )
+                    }
                     case 'command': {
                         const isRunning = block.status === 'running'
                         const isSuccess = block.status === 'success'
+
+                        if (!isRunning) {
+                            // Collapsed state for completed tools
+                            return (
+                                <Box key={idx} gap={1} marginY={0.5} alignItems="center">
+                                    <Text color={isSuccess ? '#6EE7B7' : '#FCA5A5'} bold>
+                                        {isSuccess ? '✓' : '✗'}
+                                    </Text>
+                                    <Text color="gray">Ran command:</Text>
+                                    <Text color="white">
+                                        {block.command.substring(0, 50)}
+                                        {block.command.length > 50 ? '...' : ''}
+                                    </Text>
+                                </Box>
+                            )
+                        }
+
+                        // Expanded state for running tools
                         return (
                             <Box key={idx} flexDirection="column" marginY={0.5}>
                                 <Box gap={1} alignItems="center">
-                                    {isRunning ? (
-                                        <Spinner />
-                                    ) : (
-                                        <Text color={isSuccess ? '#6EE7B7' : '#FCA5A5'} bold>
-                                            {isSuccess ? '✔' : '✘'}
-                                        </Text>
-                                    )}
-                                    <Text color="#A0AEC0" bold>
+                                    <Spinner />
+                                    <Text color="#88C0D0" bold>
                                         Running:
                                     </Text>
                                     <Box backgroundColor="#2D3748" paddingX={1}>
@@ -100,77 +115,16 @@ export function BotMessage({ blocks }: Props) {
                               ? '#FCA5A5'
                               : '#63B3ED'
 
+                        // Always render collapsed for completed file operations
                         return (
-                            <Box key={idx} flexDirection="column" marginY={0.5}>
-                                <Box gap={1} alignItems="center">
-                                    <Text color={actionColor} bold>
-                                        ✓
-                                    </Text>
-                                    <Text color="white">{actionLabel} file:</Text>
-                                    <Text color="#63B3ED" bold underline>
-                                        {block.filePath}
-                                    </Text>
-                                </Box>
-                                {block.diff && (
-                                    <Box
-                                        flexDirection="column"
-                                        marginLeft={2}
-                                        marginTop={0.5}
-                                        borderStyle="single"
-                                        borderColor="#2D3748"
-                                        paddingX={1}
-                                        paddingY={0.5}
-                                    >
-                                        <Text color="gray" bold>
-                                            diff --git a/{block.filePath} b/{block.filePath}
-                                        </Text>
-                                        <Box flexDirection="column" marginTop={0.5}>
-                                            {block.diff.split('\n').map((line, lidx) => {
-                                                const isAdd = line.startsWith('+')
-                                                const isDel = line.startsWith('-')
-                                                const isHdr = line.startsWith('@@')
-
-                                                // Pad lines so they form a beautiful block background
-                                                const paddedLine = line.padEnd(76).slice(0, 76)
-
-                                                if (isAdd) {
-                                                    return (
-                                                        <Text
-                                                            key={lidx}
-                                                            color="#A6E22E"
-                                                            backgroundColor="#1B3B22"
-                                                        >
-                                                            {paddedLine}
-                                                        </Text>
-                                                    )
-                                                }
-                                                if (isDel) {
-                                                    return (
-                                                        <Text
-                                                            key={lidx}
-                                                            color="#F92672"
-                                                            backgroundColor="#4A181E"
-                                                        >
-                                                            {paddedLine}
-                                                        </Text>
-                                                    )
-                                                }
-                                                if (isHdr) {
-                                                    return (
-                                                        <Text key={lidx} color="#805AD5">
-                                                            {line}
-                                                        </Text>
-                                                    )
-                                                }
-                                                return (
-                                                    <Text key={lidx} color="gray">
-                                                        {line}
-                                                    </Text>
-                                                )
-                                            })}
-                                        </Box>
-                                    </Box>
-                                )}
+                            <Box key={idx} gap={1} marginY={0.5} alignItems="center">
+                                <Text color={actionColor} bold>
+                                    ✓
+                                </Text>
+                                <Text color="gray">{actionLabel} file:</Text>
+                                <Text color="#63B3ED" underline>
+                                    {block.filePath}
+                                </Text>
                             </Box>
                         )
                     }

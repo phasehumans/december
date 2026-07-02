@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import { Message, Tool } from './types'
-import { LLMProvider } from './llm'
+import { LLMProvider } from '@december/providers'
 
 import { AgentOperations } from './operations'
 
@@ -11,6 +11,7 @@ export interface AgentConfig {
     tools: Tool[]
     llm: LLMProvider
     operations: AgentOperations
+    modelOptions?: Record<string, any>
 }
 
 export class Agent {
@@ -22,6 +23,7 @@ export class Agent {
     public sessionDir: string
     public operations: AgentOperations
     public env: Map<string, string>
+    public modelOptions?: Record<string, any>
 
     constructor(config: AgentConfig) {
         this.llm = config.llm
@@ -30,6 +32,7 @@ export class Agent {
         this.sessionDir = path.join(process.cwd(), '.december', 'sessions')
         this.operations = config.operations
         this.env = new Map<string, string>()
+        this.modelOptions = config.modelOptions
 
         for (const tool of config.tools) {
             this.tools.set(tool.name, tool)

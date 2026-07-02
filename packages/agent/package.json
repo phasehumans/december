@@ -13,6 +13,7 @@
     },
     "dependencies": {
         "@anthropic-ai/sdk": "0.109.0",
+        "@december/providers": "workspace:*",
         "@types/uuid": "11.0.0",
         "openai": "6.45.0",
         "uuid": "14.0.1"

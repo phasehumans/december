@@ -28,16 +28,45 @@ export async function* runAgentLoop(
         while (!success && retries > 0) {
             try {
                 agent.messages = await compactContextIfNeeded(agent.messages, agent.llm)
-                const generator = agent.llm.stream(agent.messages, agent.tools)
-                let result: IteratorResult<string, ToolCall[]>
+                const toolsArray = Array.from(agent.tools.values()).map((t) => ({
+                    name: t.name,
+                    description: t.description,
+                    inputSchema: t.inputSchema,
+                }))
 
-                while (true) {
-                    result = await generator.next()
-                    if (result.done) break
-                    assistantMessage += result.value
-                    yield { type: 'StreamChunk', content: result.value }
+                const generator = agent.llm.stream(
+                    agent.messages,
+                    toolsArray,
+                    agent.systemPrompt,
+                    agent.modelOptions
+                )
+
+                const activeToolCalls = new Map<
+                    string,
+                    { id: string; name: string; input: string }
+                >()
+
+                for await (const chunk of generator) {
+                    if (chunk.type === 'text') {
+                        assistantMessage += chunk.text
+                        yield { type: 'StreamChunk', content: chunk.text }
+                    } else if (chunk.type === 'tool_call_delta') {
+                        if (!activeToolCalls.has(chunk.id)) {
+                            activeToolCalls.set(chunk.id, {
+                                id: chunk.id,
+                                name: chunk.name || '',
+                                input: '',
+                            })
+                        }
+                        const tc = activeToolCalls.get(chunk.id)!
+                        if (chunk.inputDelta) {
+                            tc.input += chunk.inputDelta
+                        }
+                    } else if (chunk.type === 'tool_call') {
+                        activeToolCalls.set(chunk.toolCall.id, chunk.toolCall)
+                    }
                 }
-                toolCalls = result.value
+                toolCalls = Array.from(activeToolCalls.values())
                 success = true
             } catch (error: any) {
                 if (error.status === 429 || error.message?.includes('429')) {
