@@ -1,7 +1,17 @@
-import { Box, Static, useApp, Text } from 'ink'
+import { Box, Static, useApp, Text, useInput } from 'ink'
 import { useState, useCallback } from 'react'
 import SelectInput from 'ink-select-input'
 import TextInput from 'ink-text-input'
+
+const CustomIndicator = ({ isSelected }: { isSelected?: boolean }) => (
+    <Box marginRight={1}>
+        <Text color={isSelected ? '#88C0D0' : 'transparent'}>{'❯'}</Text>
+    </Box>
+)
+
+const CustomItem = ({ isSelected, label }: { isSelected?: boolean; label: string }) => (
+    <Text color={isSelected ? '#88C0D0' : 'white'}>{label}</Text>
+)
 
 import { Header } from '../components/header'
 import { InputBar } from '../components/input-bar'
@@ -26,7 +36,7 @@ type Message = {
 
 let msgId = 0
 
-type AuthMode = 'none' | 'menu' | 'byok_provider' | 'byok_key'
+type AuthMode = 'none' | 'menu' | 'byok_provider' | 'byok_key' | 'model_select'
 
 export function Chat({
     agent,
@@ -48,10 +58,23 @@ export function Chat({
     const [selectedProvider, setSelectedProvider] = useState<string>('')
     const [apiKey, setApiKey] = useState('')
 
+    useInput((input, key) => {
+        if (key.escape) {
+            if (authMode === 'byok_key') {
+                setAuthMode('byok_provider')
+            } else if (authMode === 'byok_provider') {
+                setAuthMode('menu')
+            } else if (authMode === 'menu' || authMode === 'model_select') {
+                setAuthMode('none')
+            }
+        }
+    })
+
     const handleSubmit = useCallback(
         async (text: string) => {
             if (text.trim() === '/exit') {
                 exit()
+                process.exit(0)
                 return
             }
 
@@ -75,6 +98,31 @@ export function Chat({
 
             if (text.trim() === '/login') {
                 setAuthMode('menu')
+                return
+            }
+
+            if (text.trim() === '/model') {
+                if (!isAuthenticated) {
+                    setStaticMessages((prev) => [...prev, ...activeMessages])
+                    setActiveMessages([
+                        { id: ++msgId, role: 'user', text },
+                        {
+                            id: ++msgId,
+                            role: 'assistant',
+                            blocks: [
+                                {
+                                    type: 'text',
+                                    content: '🔒 You must log in first to configure a model.',
+                                },
+                            ],
+                        },
+                    ])
+                    return
+                }
+                loadConfig().then((config) => {
+                    setSelectedProvider(config.activeProvider || '')
+                    setAuthMode('model_select')
+                })
                 return
             }
 
@@ -183,6 +231,25 @@ export function Chat({
         }
     }
 
+    const handleModelSelect = async (item: any) => {
+        const config = await loadConfig()
+        config.activeModel = item.value
+        await saveConfig(config)
+        agent.modelOptions = { model: item.value }
+        setAuthMode('none')
+
+        setStaticMessages((prev) => [...prev, ...activeMessages])
+        setActiveMessages([
+            {
+                id: ++msgId,
+                role: 'assistant',
+                blocks: [
+                    { type: 'text', content: `✅ Model successfully changed to ${item.value}!` },
+                ],
+            },
+        ])
+    }
+
     const handleProviderSelect = (item: any) => {
         setSelectedProvider(item.value)
         setAuthMode('byok_key')
@@ -195,9 +262,11 @@ export function Chat({
         const internalProvider =
             selectedProvider === 'anthropic'
                 ? 'anthropic'
-                : selectedProvider === 'openrouter'
-                  ? 'openrouter'
-                  : 'openai'
+                : selectedProvider === 'google'
+                  ? 'gemini'
+                  : selectedProvider === 'openrouter'
+                    ? 'openrouter'
+                    : 'openai'
         let testProvider: any
         switch (internalProvider) {
             case 'openai':
@@ -214,17 +283,37 @@ export function Chat({
                 break
         }
 
+        let testModel: string | undefined
+        switch (internalProvider) {
+            case 'anthropic':
+                testModel = 'claude-3-5-sonnet-latest'
+                break
+            case 'gemini':
+                testModel = 'gemini-2.5-pro'
+                break
+            case 'openai':
+                testModel = 'gpt-4o'
+                break
+            case 'openrouter':
+                testModel = 'openai/gpt-4o'
+                break
+        }
+
         try {
             // Dummy request to validate key
-            const stream = testProvider.stream([{ role: 'user', content: 'Hi' }], new Map())
+            const stream = testProvider.stream([{ role: 'user', content: 'Hi' }], [], undefined, {
+                model: testModel,
+            })
             await stream.next()
 
             const config = await loadConfig()
             config.providers[selectedProvider] = key
             config.activeProvider = selectedProvider
+            config.activeModel = testModel
             await saveConfig(config)
 
             agent.setLLM(testProvider)
+            agent.modelOptions = { model: testModel }
             setIsAuthenticated(true)
             setAuthMode('none')
             setApiKey('')
@@ -243,15 +332,51 @@ export function Chat({
                 },
             ])
         } catch (err: any) {
-            setStaticMessages((prev) => [...prev, ...activeMessages])
-            setActiveMessages([
-                {
-                    id: ++msgId,
-                    role: 'error',
-                    text: `❌ Invalid API Key for ${selectedProvider}: ${err.message}`,
-                },
-            ])
-            setApiKey('')
+            const errStr = (err?.message || JSON.stringify(err) || String(err)).toLowerCase()
+            if (
+                errStr.includes('429') ||
+                errStr.includes('quota') ||
+                errStr.includes('rate limit') ||
+                errStr.includes('404') ||
+                errStr.includes('not found')
+            ) {
+                // Key is valid, but rate limited or model not found. Save it anyway!
+                const config = await loadConfig()
+                config.providers[selectedProvider] = key
+                config.activeProvider = selectedProvider
+                config.activeModel = testModel
+                await saveConfig(config)
+
+                agent.setLLM(testProvider)
+                agent.modelOptions = { model: testModel }
+                setIsAuthenticated(true)
+                setAuthMode('none')
+                setApiKey('')
+
+                setStaticMessages((prev) => [...prev, ...activeMessages])
+                setActiveMessages([
+                    {
+                        id: ++msgId,
+                        role: 'assistant',
+                        blocks: [
+                            {
+                                type: 'text',
+                                content: `⚠️ Key saved for ${selectedProvider}, but your account is currently rate-limited or out of quota!`,
+                            },
+                        ],
+                    },
+                ])
+            } else {
+                setStaticMessages((prev) => [...prev, ...activeMessages])
+                setActiveMessages([
+                    {
+                        id: ++msgId,
+                        role: 'error',
+                        text: `❌ Invalid API Key for ${selectedProvider}: ${err.message}`,
+                    },
+                ])
+                setApiKey('')
+            }
         } finally {
             setIsStreaming(false)
         }
@@ -279,18 +404,9 @@ export function Chat({
                 return <BotMessage key={msg.id} blocks={msg.blocks ?? []} />
             })}
 
-            {authMode === 'none' && <InputBar onSubmit={handleSubmit} disabled={isStreaming} />}
-
-            {/* Inline Auth UI styled strictly like the native TUI dialogs */}
+            {/* Inline Auth UI */}
             {authMode === 'menu' && (
-                <Box
-                    flexDirection="column"
-                    width={panelWidth}
-                    borderStyle="single"
-                    borderColor="#444444"
-                    paddingX={1}
-                    alignSelf="flex-end"
-                >
+                <Box flexDirection="column" width={panelWidth} paddingX={1} alignSelf="flex-start">
                     <Box justifyContent="space-between" marginBottom={1}>
                         <Text bold color="white">
                             Authentication
@@ -303,19 +419,14 @@ export function Chat({
                             { label: 'Bring Your Own Key (BYOK)', value: 'byok' },
                         ]}
                         onSelect={handleAuthMenuSelect}
+                        indicatorComponent={CustomIndicator}
+                        itemComponent={CustomItem}
                     />
                 </Box>
             )}
 
             {authMode === 'byok_provider' && (
-                <Box
-                    flexDirection="column"
-                    width={panelWidth}
-                    borderStyle="single"
-                    borderColor="#444444"
-                    paddingX={1}
-                    alignSelf="flex-end"
-                >
+                <Box flexDirection="column" width={panelWidth} paddingX={1} alignSelf="flex-start">
                     <Box justifyContent="space-between" marginBottom={1}>
                         <Text bold color="white">
                             LLM Provider
@@ -324,27 +435,20 @@ export function Chat({
                     </Box>
                     <SelectInput
                         items={[
-                            { label: 'Anthropic (Claude 3.5 Sonnet)', value: 'anthropic' },
-                            { label: 'OpenAI (GPT-4o)', value: 'openai' },
-                            { label: 'Google (Gemini 1.5 Pro)', value: 'google' },
-                            { label: 'DeepSeek', value: 'deepseek' },
-                            { label: 'Groq', value: 'groq' },
+                            { label: 'Anthropic', value: 'anthropic' },
+                            { label: 'Google', value: 'google' },
+                            { label: 'OpenAI', value: 'openai' },
                             { label: 'OpenRouter', value: 'openrouter' },
                         ]}
                         onSelect={handleProviderSelect}
+                        indicatorComponent={CustomIndicator}
+                        itemComponent={CustomItem}
                     />
                 </Box>
             )}
 
             {authMode === 'byok_key' && (
-                <Box
-                    flexDirection="column"
-                    width={panelWidth}
-                    borderStyle="single"
-                    borderColor="#444444"
-                    paddingX={1}
-                    alignSelf="flex-end"
-                >
+                <Box flexDirection="column" width={panelWidth} paddingX={1} alignSelf="flex-start">
                     <Box justifyContent="space-between" marginBottom={1}>
                         <Text bold color="white">
                             API Key
@@ -352,7 +456,7 @@ export function Chat({
                         <Text color="gray">{selectedProvider}</Text>
                     </Box>
                     <Box>
-                        <Text color="gray">❭ </Text>
+                        <Text color="#88C0D0">❭ </Text>
                         <TextInput
                             value={apiKey}
                             onChange={setApiKey}
@@ -362,6 +466,71 @@ export function Chat({
                     </Box>
                 </Box>
             )}
+            {authMode === 'model_select' && (
+                <Box flexDirection="column" width={panelWidth} paddingX={1} alignSelf="flex-start">
+                    <Box justifyContent="space-between" marginBottom={1}>
+                        <Text bold color="white">
+                            Select Model
+                        </Text>
+                        <Text color="gray">{selectedProvider}</Text>
+                    </Box>
+                    <SelectInput
+                        items={
+                            selectedProvider === 'anthropic'
+                                ? [
+                                      {
+                                          label: 'Claude 3.5 Sonnet',
+                                          value: 'claude-3-5-sonnet-latest',
+                                      },
+                                      { label: 'Claude 3 Opus', value: 'claude-3-opus-latest' },
+                                      { label: 'Claude 3 Haiku', value: 'claude-3-haiku-20240307' },
+                                  ]
+                                : selectedProvider === 'google'
+                                  ? [
+                                        { label: 'Gemini 3.5 Flash', value: 'gemini-3.5-flash' },
+                                        { label: 'Gemini 3.1 Pro', value: 'gemini-3.1-pro' },
+                                        {
+                                            label: 'Gemini 3 Pro Preview',
+                                            value: 'gemini-3-pro-preview',
+                                        },
+                                        { label: 'Gemini 2.5 Pro', value: 'gemini-2.5-pro' },
+                                    ]
+                                  : selectedProvider === 'openai'
+                                    ? [
+                                          { label: 'GPT-4o', value: 'gpt-4o' },
+                                          { label: 'GPT-4 Turbo', value: 'gpt-4-turbo' },
+                                          { label: 'GPT-3.5 Turbo', value: 'gpt-3.5-turbo' },
+                                      ]
+                                    : selectedProvider === 'openrouter'
+                                      ? [
+                                            {
+                                                label: 'Anthropic: Claude 3.5 Sonnet',
+                                                value: 'anthropic/claude-3.5-sonnet',
+                                            },
+                                            {
+                                                label: 'Google: Gemini 1.5 Pro',
+                                                value: 'google/gemini-1.5-pro',
+                                            },
+                                            { label: 'OpenAI: GPT-4o', value: 'openai/gpt-4o' },
+                                            {
+                                                label: 'Meta: Llama 3 70B',
+                                                value: 'meta-llama/llama-3-70b-instruct',
+                                            },
+                                        ]
+                                      : []
+                        }
+                        onSelect={handleModelSelect}
+                        indicatorComponent={CustomIndicator}
+                        itemComponent={CustomItem}
+                    />
+                </Box>
+            )}
+
+            <InputBar
+                onSubmit={handleSubmit}
+                disabled={isStreaming || authMode !== 'none'}
+                activeModel={agent.modelOptions?.model || 'unknown'}
+            />
         </Box>
     )
 }

@@ -35,6 +35,7 @@ async function main() {
             case 'anthropic':
                 llm = new AnthropicProvider(providerConfig.apiKey)
                 break
+            case 'google':
             case 'gemini':
                 llm = new GeminiProvider(providerConfig.apiKey)
                 break
@@ -63,6 +64,7 @@ async function main() {
             SubagentTool,
         ],
         operations: localOperations,
+        modelOptions: providerConfig?.model ? { model: providerConfig.model } : undefined,
     })
 
     await agent.loadContext()
