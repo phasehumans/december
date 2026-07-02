@@ -1,7 +1,10 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import os from 'node:os'
-import { ProviderConfig } from './providers/factory'
+export interface ProviderConfig {
+    provider: 'openai' | 'anthropic' | 'gemini' | 'openrouter'
+    apiKey: string
+}
 
 export interface DecemberConfig {
     activeProvider?: string

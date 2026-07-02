@@ -1,0 +1,111 @@
+import { OpenAI } from 'openai'
+import { LLMProvider, Message, ProviderStreamChunk, ProviderTool } from '../types.ts'
+import { registerProvider } from '../registry.ts'
+
+export class OpenAIProvider implements LLMProvider {
+    public id = 'openai'
+    private client: OpenAI
+
+    constructor(baseURL?: string, apiKey?: string) {
+        this.client = new OpenAI({
+            baseURL,
+            apiKey: apiKey || process.env.OPENAI_API_KEY,
+        })
+    }
+
+    async *stream(
+        messages: Message[],
+        tools?: ProviderTool[],
+        systemPrompt?: string,
+        modelOptions?: Record<string, any>
+    ): AsyncGenerator<ProviderStreamChunk, void, unknown> {
+        const oaiMessages: OpenAI.Chat.ChatCompletionMessageParam[] = []
+
+        if (systemPrompt) {
+            oaiMessages.push({ role: 'system', content: systemPrompt })
+        }
+
+        for (const msg of messages) {
+            if (msg.role === 'tool') {
+                oaiMessages.push({
+                    role: 'tool',
+                    tool_call_id: msg.toolCallId!,
+                    content: msg.content,
+                })
+            } else if (msg.role === 'assistant') {
+                const asstMsg: OpenAI.Chat.ChatCompletionAssistantMessageParam = {
+                    role: 'assistant',
+                    content: msg.content,
+                }
+                if (msg.toolCalls && msg.toolCalls.length > 0) {
+                    asstMsg.tool_calls = msg.toolCalls.map((tc) => ({
+                        id: tc.id,
+                        type: 'function',
+                        function: {
+                            name: tc.name,
+                            arguments: tc.input,
+                        },
+                    }))
+                }
+                oaiMessages.push(asstMsg)
+            } else {
+                oaiMessages.push({
+                    role: msg.role as 'user' | 'system',
+                    content: msg.content,
+                })
+            }
+        }
+
+        const oaiTools: OpenAI.Chat.ChatCompletionTool[] | undefined = tools?.map((t) => ({
+            type: 'function',
+            function: {
+                name: t.name,
+                description: t.description,
+                parameters: t.inputSchema,
+            },
+        }))
+
+        const stream = await this.client.chat.completions.create({
+            model: modelOptions?.model || 'gpt-4o',
+            messages: oaiMessages,
+            tools: oaiTools,
+            stream: true,
+            temperature: modelOptions?.temperature,
+            max_tokens: modelOptions?.max_tokens,
+        })
+
+        const activeToolCalls = new Map<number, string>()
+
+        for await (const chunk of stream) {
+            const choice = chunk.choices[0]
+            if (!choice) continue
+
+            if (choice.delta.content) {
+                yield { type: 'text', text: choice.delta.content }
+            }
+
+            if (choice.delta.tool_calls) {
+                for (const tc of choice.delta.tool_calls) {
+                    if (tc.id) {
+                        activeToolCalls.set(tc.index, tc.id)
+                        yield {
+                            type: 'tool_call_delta',
+                            id: tc.id,
+                            name: tc.function?.name,
+                            inputDelta: tc.function?.arguments || '',
+                        }
+                    } else if (tc.index !== undefined) {
+                        const id = activeToolCalls.get(tc.index)
+                        if (id) {
+                            yield {
+                                type: 'tool_call_delta',
+                                id,
+                                inputDelta: tc.function?.arguments || '',
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

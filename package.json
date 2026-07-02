@@ -28,7 +28,7 @@
         "docker:kill": "docker rm -f $(docker ps -aq --filter \"name=december-preview\")",
         "stop": "tmux kill-session -t december || true",
         "release": "bun scripts/release.ts",
-        "dev:cli": "bun run --watch apps/cli/src/index.tsx"
+        "dev:cli": "bun run --watch apps/cli/src/index.ts"
     },
     "devDependencies": {
         "@commitlint/cli": "^21.0.1",
