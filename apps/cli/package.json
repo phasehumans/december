@@ -15,6 +15,7 @@
     },
     "devDependencies": {
         "@december/agent": "workspace:*",
+        "@december/providers": "workspace:*",
         "@december/tools": "workspace:*",
         "@december/tui": "workspace:*",
         "fast-glob": "3.3.3",

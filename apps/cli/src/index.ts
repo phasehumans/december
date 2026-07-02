@@ -2,13 +2,13 @@
 import { render } from 'ink'
 import React from 'react'
 import { App } from '@december/tui'
+import { Agent, ProviderConfig, getProviderConfig } from '@december/agent'
 import {
-    Agent,
-    createProvider,
-    ProviderConfig,
-    getProviderConfig,
     OpenAIProvider,
-} from '@december/agent'
+    AnthropicProvider,
+    GeminiProvider,
+    OpenRouterProvider,
+} from '@december/providers'
 import {
     BashTool,
     ReadFileTool,
@@ -26,9 +26,26 @@ async function main() {
 
     // If not authenticated, we pass a dummy provider so the Agent can boot.
     // The TUI will intercept prompts and force them to /login
-    const llm = providerConfig
-        ? createProvider(providerConfig)
-        : new OpenAIProvider('dummy', undefined, 'gpt-4o')
+    let llm: any
+    if (providerConfig) {
+        switch (providerConfig.provider) {
+            case 'openai':
+                llm = new OpenAIProvider(undefined, providerConfig.apiKey)
+                break
+            case 'anthropic':
+                llm = new AnthropicProvider(providerConfig.apiKey)
+                break
+            case 'gemini':
+                llm = new GeminiProvider(providerConfig.apiKey)
+                break
+            case 'openrouter':
+                llm = new OpenRouterProvider(providerConfig.apiKey)
+                break
+        }
+    } else {
+        llm = new OpenAIProvider(undefined, 'dummy-key')
+    }
+
     const isAuthenticated = !!providerConfig
 
     const agent = new Agent({

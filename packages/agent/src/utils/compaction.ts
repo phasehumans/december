@@ -1,5 +1,5 @@
 import { Message } from '../types'
-import { LLMProvider } from '../llm'
+import { LLMProvider } from '@december/providers'
 
 export const DEFAULT_MAX_TOKENS = 32000 // Assume a generic safe limit
 
@@ -56,12 +56,17 @@ Keep it concise but detailed enough for an AI to resume work.
 HISTORY:
 ${historyText}`
 
-        const generator = llm.stream([{ role: 'user', content: summaryPrompt }], new Map())
+        const compactionMessages: Message[] = [{ role: 'user', content: summaryPrompt }]
         let summary = ''
-        while (true) {
-            const { value, done } = await generator.next()
-            if (done) break
-            summary += value
+        try {
+            const stream = llm.stream(compactionMessages, [])
+            for await (const chunk of stream) {
+                if (chunk.type === 'text') {
+                    summary += chunk.text
+                }
+            }
+        } catch (e: any) {
+            console.error('Summarization stream failed', e)
         }
 
         const summaryMessage: Message = {

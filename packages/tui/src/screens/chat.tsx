@@ -8,7 +8,13 @@ import { InputBar } from '../components/input-bar'
 import { BotMessage, ErrorMessage, UserMessage } from '../components/messages'
 
 import type { MessageBlock } from '../components/messages/bot-message'
-import { Agent, runAgentLoop, saveConfig, loadConfig, createProvider } from '@december/agent'
+import { Agent, runAgentLoop, saveConfig, loadConfig } from '@december/agent'
+import {
+    OpenAIProvider,
+    AnthropicProvider,
+    GeminiProvider,
+    OpenRouterProvider,
+} from '@december/providers'
 import { useTerminalColumns } from '../hooks/use-terminal-columns'
 
 type Message = {
@@ -192,11 +198,21 @@ export function Chat({
                 : selectedProvider === 'openrouter'
                   ? 'openrouter'
                   : 'openai'
-        const testProvider = createProvider({
-            provider: internalProvider as any,
-            apiKey: key,
-            model: undefined,
-        })
+        let testProvider: any
+        switch (internalProvider) {
+            case 'openai':
+                testProvider = new OpenAIProvider(undefined, key)
+                break
+            case 'anthropic':
+                testProvider = new AnthropicProvider(key)
+                break
+            case 'gemini':
+                testProvider = new GeminiProvider(key)
+                break
+            case 'openrouter':
+                testProvider = new OpenRouterProvider(key)
+                break
+        }
 
         try {
             // Dummy request to validate key

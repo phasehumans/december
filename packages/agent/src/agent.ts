@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import { Message, Tool } from './types'
-import { LLMProvider } from './llm'
+import { LLMProvider } from '@december/providers'
 
 import { AgentOperations } from './operations'
 
