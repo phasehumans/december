@@ -22,12 +22,38 @@ export class GeminiProvider implements LLMProvider {
 
         for (const msg of messages) {
             if (msg.role === 'tool') {
+                let name = 'unknown'
+                let extraFields: any = { id: msg.toolCallId }
+                try {
+                    const parsed = JSON.parse(msg.toolCallId!)
+                    if (parsed && typeof parsed === 'object') {
+                        extraFields = parsed
+                        if (extraFields.thoughtSignature) {
+                            delete extraFields.thoughtSignature
+                        }
+                    }
+                } catch {}
+
+                for (let i = geminiMessages.length - 1; i >= 0; i--) {
+                    const prev = geminiMessages[i]
+                    if (prev.role === 'model') {
+                        const call = prev.parts?.find(
+                            (p) => p.functionCall && (p.functionCall as any).id === extraFields.id
+                        )
+                        if (call && call.functionCall?.name) {
+                            name = call.functionCall.name
+                            break
+                        }
+                    }
+                }
+
                 geminiMessages.push({
                     role: 'user',
                     parts: [
                         {
                             functionResponse: {
-                                name: msg.toolCallId!, // We assume toolCallId maps to the function name in gemini for simplicity here
+                                ...extraFields,
+                                name: name,
                                 response: { result: msg.content },
                             },
                         },
@@ -40,12 +66,30 @@ export class GeminiProvider implements LLMProvider {
                 }
                 if (msg.toolCalls && msg.toolCalls.length > 0) {
                     for (const tc of msg.toolCalls) {
-                        parts.push({
+                        let extraFields: any = { id: tc.id }
+                        let thoughtSignature: string | undefined
+                        try {
+                            const parsed = JSON.parse(tc.id)
+                            if (parsed && typeof parsed === 'object') {
+                                extraFields = parsed
+                                if (parsed.thoughtSignature) {
+                                    thoughtSignature = parsed.thoughtSignature
+                                    delete extraFields.thoughtSignature
+                                }
+                            }
+                        } catch {}
+
+                        const part: any = {
                             functionCall: {
+                                ...extraFields,
                                 name: tc.name,
                                 args: JSON.parse(tc.input || '{}'),
                             },
-                        })
+                        }
+                        if (thoughtSignature) {
+                            part.thoughtSignature = thoughtSignature
+                        }
+                        parts.push(part)
                     }
                 }
                 if (parts.length > 0) {
@@ -90,9 +134,24 @@ export class GeminiProvider implements LLMProvider {
             if (chunk.text) {
                 yield { type: 'text', text: chunk.text }
             }
-            if (chunk.functionCalls) {
-                for (const fc of chunk.functionCalls) {
-                    const id = Math.random().toString(36).substring(7)
+
+            const parts = chunk.candidates?.[0]?.content?.parts || []
+            for (const part of parts) {
+                if (part.functionCall) {
+                    const fc = part.functionCall
+                    const extraFields: any = {}
+
+                    if ((fc as any).id) {
+                        extraFields.id = (fc as any).id
+                    } else {
+                        extraFields.id = Math.random().toString(36).substring(7)
+                    }
+
+                    if ((part as any).thoughtSignature) {
+                        extraFields.thoughtSignature = (part as any).thoughtSignature
+                    }
+
+                    const id = JSON.stringify(extraFields)
                     yield {
                         type: 'tool_call_delta',
                         id,

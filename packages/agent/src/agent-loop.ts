@@ -34,7 +34,12 @@ export async function* runAgentLoop(
                     inputSchema: t.inputSchema,
                 }))
 
-                const generator = agent.llm.stream(agent.messages, toolsArray, agent.systemPrompt)
+                const generator = agent.llm.stream(
+                    agent.messages,
+                    toolsArray,
+                    agent.systemPrompt,
+                    agent.modelOptions
+                )
 
                 const activeToolCalls = new Map<
                     string,
