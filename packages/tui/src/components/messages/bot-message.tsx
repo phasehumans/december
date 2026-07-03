@@ -4,10 +4,12 @@ import { Spinner } from '../spinner'
 
 export type MessageBlock =
     | { type: 'text'; content: string }
+    | { type: 'thinking'; content: string }
     | {
           type: 'command'
+          toolCallId?: string
           command: string
-          status: 'running' | 'success' | 'failed'
+          status: 'running' | 'success' | 'error'
           output?: string
       }
     | {
@@ -34,6 +36,22 @@ export function BotMessage({ blocks }: Props) {
                             <Box key={idx} marginY={0.5} gap={1} alignItems="center">
                                 {isThinking && <Spinner />}
                                 <Text color={isThinking ? 'gray' : 'white'}>{block.content}</Text>
+                            </Box>
+                        )
+                    }
+                    case 'thinking': {
+                        return (
+                            <Box
+                                key={idx}
+                                marginY={0.5}
+                                flexDirection="column"
+                                borderStyle="round"
+                                borderColor="gray"
+                                paddingX={1}
+                            >
+                                <Text color="gray" italic>
+                                    {block.content || 'Thinking...'}
+                                </Text>
                             </Box>
                         )
                     }

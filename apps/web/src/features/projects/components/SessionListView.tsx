@@ -369,8 +369,8 @@ export const SessionListView: React.FC<SessionListViewProps> = ({
             {viewMode === 'list' && hasProjects && (
                 <div className="mb-2 grid grid-cols-[minmax(0,2fr)_minmax(100px,1fr)_minmax(150px,1fr)_minmax(150px,1fr)_8rem_2.5rem] gap-3 border-b border-[#242323] px-5 py-3 text-[13px] font-medium text-[#D6D5C9] select-none md:gap-4">
                     <div>Name</div>
-                    <div>Status</div>
-                    <div>Created at</div>
+                    <div>Sessions</div>
+                    <div>Updated at</div>
                     <div>Created by</div>
                     <div className="text-center">Starred sessions</div>
                     <div></div>

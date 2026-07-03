@@ -37,29 +37,15 @@ export const ProjectListRow: React.FC<ProjectListRowProps> = ({
             </div>
 
             <div className="flex items-center gap-2 text-[13px] text-[#7B7A79]">
-                {project.status === 'Deployed' && (
-                    <Cloud className="h-3.5 w-3.5 text-[#D6D5C9]" strokeWidth={1.8} />
-                )}
-                {project.status === 'Generated' && (
-                    <Terminal className="h-3.5 w-3.5 text-[#D6D5C9]" strokeWidth={1.8} />
-                )}
-                {project.status === 'Generating' && (
-                    <Loader2
-                        className="h-3.5 w-3.5 text-[#D6D5C9] animate-spin"
-                        strokeWidth={1.8}
-                    />
-                )}
-                {project.status === 'Failed' && (
-                    <AlertCircle className="h-3.5 w-3.5 text-[#D6D5C9]" strokeWidth={1.8} />
-                )}
-                {(project.status === 'Draft' || !project.status) && (
-                    <Folder className="h-3.5 w-3.5 text-[#D6D5C9]" strokeWidth={1.8} />
-                )}
-                <span className="capitalize">{project.status || 'Draft'}</span>
+                <Icons.SessionsIcon className="h-3.5 w-3.5" />
+                <span className="capitalize">
+                    {project.versionCount || 1}{' '}
+                    {project.versionCount === 1 ? 'session' : 'sessions'}
+                </span>
             </div>
 
             <div className="truncate pr-2 text-[13px] text-[#7B7A79] transition-colors group-hover:text-[#A3A2A0]">
-                {project.createdAt}
+                {project.updatedAt || project.createdAt}
             </div>
 
             <div className="flex items-center gap-2 text-[13px] text-[#7B7A79]">

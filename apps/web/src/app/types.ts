@@ -8,6 +8,8 @@ export type ViewState =
     | 'docs'
     | 'project'
     | 'canvas'
+    | 'wiki'
+    | 'automations'
 
 export type ProfileTab =
     | 'Account'
@@ -16,8 +18,14 @@ export type ProfileTab =
     | 'MCP Server'
     | 'Repositories'
     | 'Billing'
-    | 'Usage'
+    | 'Analytics'
     | 'API Keys'
+    | 'Review'
+    | 'Wiki'
+    | 'Schedules'
+    | 'December CLI'
+    | 'Knowledge'
+    | 'Secrets'
 
 const profileTabToSlug: Record<string, string> = {
     Account: 'account',
@@ -26,8 +34,14 @@ const profileTabToSlug: Record<string, string> = {
     'MCP Server': 'mcp-server',
     Repositories: 'repositories',
     Billing: 'billing',
-    Usage: 'usage',
+    Analytics: 'analytics',
     'API Keys': 'api-keys',
+    Review: 'review',
+    Wiki: 'wiki',
+    Schedules: 'schedules',
+    'December CLI': 'december-cli',
+    Knowledge: 'knowledge',
+    Secrets: 'secrets',
 }
 
 const slugToProfileTab: Record<string, ProfileTab> = Object.fromEntries(
@@ -53,6 +67,8 @@ const simpleViewToPath: Record<string, string> = {
     templates: '/templates',
     docs: '/docs',
     canvas: '/canvas',
+    wiki: '/wiki',
+    automations: '/automations',
 }
 
 const simplePathToView: Record<string, ViewState> = Object.fromEntries(
