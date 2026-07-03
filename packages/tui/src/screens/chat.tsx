@@ -178,20 +178,54 @@ export function Chat({
                                         blocks.push({ type: 'text', content: event.content })
                                     }
                                     break
+                                case 'ThinkingChunk': {
+                                    const lastThinkBlock = blocks[blocks.length - 1]
+                                    if (lastThinkBlock && lastThinkBlock.type === 'thinking') {
+                                        lastThinkBlock.content += event.content
+                                    } else {
+                                        if (
+                                            blocks.length > 0 &&
+                                            blocks[blocks.length - 1].type === 'text' &&
+                                            blocks[blocks.length - 1].content === 'Thinking...'
+                                        ) {
+                                            blocks.pop()
+                                        }
+                                        blocks.push({ type: 'thinking', content: event.content })
+                                    }
+                                    break
+                                }
                                 case 'ToolCallStart':
                                     blocks.push({
                                         type: 'command',
+                                        toolCallId: event.toolCall.id,
                                         command: `${event.toolCall.name} ${event.toolCall.input}`,
                                         status: 'running',
+                                        output: '',
                                     })
                                     break
-                                case 'ToolCallResult':
-                                    const lastCmd = blocks[blocks.length - 1]
-                                    if (lastCmd && lastCmd.type === 'command') {
+                                case 'ToolExecutionUpdate': {
+                                    const runningCmd = blocks.find(
+                                        (b) =>
+                                            b.type === 'command' &&
+                                            b.toolCallId === event.toolCallId
+                                    ) as any
+                                    if (runningCmd && runningCmd.status === 'running') {
+                                        runningCmd.output += event.chunk
+                                    }
+                                    break
+                                }
+                                case 'ToolCallResult': {
+                                    const lastCmd = blocks.find(
+                                        (b) =>
+                                            b.type === 'command' &&
+                                            b.toolCallId === event.result.toolCallId
+                                    ) as any
+                                    if (lastCmd) {
                                         lastCmd.status = event.result.error ? 'error' : 'success'
                                         lastCmd.output = event.result.error || event.result.result
                                     }
                                     break
+                                }
                             }
                             return { ...msg, blocks }
                         })

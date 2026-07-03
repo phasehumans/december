@@ -2,7 +2,13 @@
 import { render } from 'ink'
 import React from 'react'
 import { App } from '@december/tui'
-import { Agent, ProviderConfig, getProviderConfig } from '@december/agent'
+import {
+    Agent,
+    AgentHarness,
+    FileSessionRepository,
+    ProviderConfig,
+    getProviderConfig,
+} from '@december/agent'
 import {
     OpenAIProvider,
     AnthropicProvider,
@@ -15,6 +21,7 @@ import {
     WriteFileTool,
     LsTool,
     EditFileTool,
+    EditDiffTool,
     FindFilesTool,
     GrepSearchTool,
     SubagentTool,
@@ -49,8 +56,8 @@ async function main() {
 
     const isAuthenticated = !!providerConfig
 
-    const agent = new Agent({
-        systemPrompt:
+    const harness = new AgentHarness({
+        baseSystemPrompt:
             'You are December, an autonomous software engineer. You have access to tools. When executing code, please use JSON schemas for tool inputs.',
         llm: llm,
         tools: [
@@ -59,13 +66,23 @@ async function main() {
             WriteFileTool,
             LsTool,
             EditFileTool,
+            EditDiffTool,
             FindFilesTool,
             GrepSearchTool,
             SubagentTool,
         ],
         operations: localOperations,
         modelOptions: providerConfig?.model ? { model: providerConfig.model } : undefined,
+        sessionRepository: new FileSessionRepository(),
+        workspaceDir: process.cwd(),
+        hooks: {
+            beforeToolCall: async (toolCall) => {
+                // Future integration: Hook into the TUI to request user approval for destructive bash commands
+            },
+        },
     })
+
+    const agent = harness.getAgent()
 
     await agent.loadContext()
 

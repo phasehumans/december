@@ -82,6 +82,8 @@ const Sidebar: React.FC<
 
     const isHomeActive = path === '/'
     const isProjectsActive = path.startsWith('/projects')
+    const isSessionsActive = path.startsWith('/sessions')
+    const isReviewActive = path.startsWith('/review')
     const isTemplatesActive = path.startsWith('/templates')
     const isDocsActive = path.startsWith('/docs')
     const isSettingsActive = path.startsWith('/settings')
@@ -111,7 +113,19 @@ const Sidebar: React.FC<
                 onOpenAuth={onOpenAuth}
             />
 
-            <div className="flex flex-col gap-[2px] pl-[10px] pr-3">
+            <div className="flex flex-col gap-[1px] pl-[10px] pr-3">
+                <SidebarNavItem
+                    icon={<Icons.SessionsIcon className="w-[18px] h-[18px]" />}
+                    label="Sessions"
+                    active={isSessionsActive}
+                    onClick={onSessions}
+                />
+                <SidebarNavItem
+                    icon={<Icons.GitPullRequest className="w-[18px] h-[18px]" />}
+                    label="Review"
+                    active={isReviewActive}
+                    onClick={onReview}
+                />
                 <SidebarNavItem
                     icon={<Icons.Folder />}
                     label="Projects"
@@ -129,12 +143,6 @@ const Sidebar: React.FC<
                     label="Settings"
                     active={isSettingsActive}
                     onClick={onProfile}
-                />
-                <SidebarNavItem
-                    icon={<Icons.DocsBook className="w-[18px] h-[18px]" />}
-                    label="Documentation"
-                    active={isDocsActive}
-                    onClick={onDocs}
                 />
             </div>
 

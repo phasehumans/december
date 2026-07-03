@@ -14,7 +14,6 @@ import type {
 import type { BackendProjectVersionSummary } from '@/features/projects/api/project'
 import type { Project } from '@/features/projects/types'
 
-import { DocsPage } from '@/features/docs/components/DocsPage'
 import { HomeHero } from '@/features/home/components/HomeHero'
 import { OutputScreen } from '@/features/preview/components/OutputScreen'
 import { ProfileSettings } from '@/features/profile/components/ProfileSettings'
@@ -196,12 +195,6 @@ export const AppContentView: React.FC<AppContentViewProps> = ({
             {view === 'templates' && (
                 <AnimatedPage pageKey="templates">
                     <TemplatesView onOpenProject={onOpenProject} />
-                </AnimatedPage>
-            )}
-
-            {view === 'docs' && (
-                <AnimatedPage pageKey="docs">
-                    <DocsPage onBack={onNewProject} />
                 </AnimatedPage>
             )}
 

@@ -293,57 +293,14 @@ export const ProjectListView: React.FC<ProjectListViewProps> = ({
                             </div>
                         )}
                     </div>
-
-                    <div className="relative">
-                        <button
-                            onClick={(e) => toggleDropdown('status', e)}
-                            className="flex items-center gap-2 rounded-full border border-[#383736] bg-[#141414] px-4 py-1.5 text-[13px] text-[#D6D5C9] transition-colors hover:bg-[#191919]"
-                        >
-                            Status: {STATUS_LABELS[statusFilter]}{' '}
-                            <Icons.ChevronDown className="h-3.5 w-3.5 text-[#7B7A79]" />
-                        </button>
-                        {activeDropdown === 'status' && (
-                            <div
-                                className={`absolute right-0 ${dropdownDirection === 'up' ? 'bottom-full mb-2' : 'top-full mt-2'} z-50 w-48 rounded-xl border border-[#383736] bg-[#1E1E1E] py-2 shadow-xl`}
-                            >
-                                <div className="mb-1 border-b border-[#383736] px-3 pb-2 text-[12px] font-medium text-[#7B7A79]">
-                                    Publish status
-                                </div>
-                                {(
-                                    [
-                                        'any',
-                                        'Draft',
-                                        'Generating',
-                                        'Generated',
-                                        'Deployed',
-                                        'Failed',
-                                    ] as const
-                                ).map((option) => (
-                                    <button
-                                        key={option}
-                                        onClick={() => {
-                                            onStatusFilterChange(option)
-                                            setActiveDropdown(null)
-                                        }}
-                                        className="flex w-full items-center justify-between px-3 py-1.5 text-[13px] text-[#D6D5C9] hover:bg-[#242323]"
-                                    >
-                                        {STATUS_LABELS[option]}{' '}
-                                        {statusFilter === option && (
-                                            <Icons.Check className="h-4 w-4" />
-                                        )}
-                                    </button>
-                                ))}
-                            </div>
-                        )}
-                    </div>
                 </div>
             </div>
 
             {hasProjects && (
                 <div className="mb-2 grid grid-cols-[minmax(0,2fr)_minmax(100px,1fr)_minmax(150px,1fr)_minmax(150px,1fr)_8rem_2.5rem] gap-3 border-b border-[#242323] px-5 py-3 text-[13px] font-medium text-[#D6D5C9] select-none md:gap-4">
                     <div>Name</div>
-                    <div>Status</div>
-                    <div>Created at</div>
+                    <div>Sessions</div>
+                    <div>Updated at</div>
                     <div>Created by</div>
                     <div className="text-center">Starred projects</div>
                     <div></div>

@@ -10,8 +10,10 @@ interface MobileSidebarNavProps {
     onAllProjects: () => void
     onSessions?: () => void
     onReview?: () => void
+    onAutomations?: () => void
     onTemplates: () => void
     onDocs: () => void
+    onWiki?: () => void
     onProfile?: () => void
     isAuthenticated?: boolean
     onOpenAuth?: () => void
@@ -51,7 +53,7 @@ export const MobileSidebarNav: React.FC<MobileSidebarNavProps> = ({
             />
             <SidebarNavItem
                 icon={<Icons.Folder />}
-                label="All Projects"
+                label="Projects"
                 collapsed={false}
                 onClick={() => {
                     onAllProjects()
@@ -59,7 +61,7 @@ export const MobileSidebarNav: React.FC<MobileSidebarNavProps> = ({
                 }}
             />
             <SidebarNavItem
-                icon={<Icons.Grid />}
+                icon={<Icons.Bookmark />}
                 label="Templates"
                 collapsed={false}
                 onClick={() => {

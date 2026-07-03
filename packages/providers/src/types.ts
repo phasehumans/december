@@ -21,6 +21,7 @@ export interface ProviderTool {
 
 export type ProviderStreamChunk =
     | { type: 'text'; text: string }
+    | { type: 'thinking_delta'; text: string }
     | { type: 'tool_call'; toolCall: ToolCall }
     | { type: 'tool_call_delta'; id: string; name?: string; inputDelta: string }
 
