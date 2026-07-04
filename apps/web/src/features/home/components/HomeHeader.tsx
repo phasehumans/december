@@ -16,8 +16,17 @@ export const HomeHeader: React.FC<HomeHeaderProps> = ({ isAuthenticated, onOpenA
 
     return (
         <div className="absolute top-4 left-0 w-full px-4 md:px-6 z-50 flex justify-between items-start pointer-events-none">
-            {/* Empty left spacer to truly center the middle element */}
-            <div className="flex-1" />
+            {/* Left side Docs link */}
+            <div className="flex-1 pointer-events-auto flex justify-start pl-2 md:pl-0">
+                <a
+                    href={import.meta.env?.VITE_DOCS_URL || 'http://localhost:3005'}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1 text-[#8F8E8D] hover:text-[#D4D4D8] transition-colors text-[12px] font-medium underline underline-offset-4 decoration-[#8F8E8D]/40 hover:decoration-[#D4D4D8]"
+                >
+                    Docs <ArrowUpRight className="w-3 h-3" />
+                </a>
+            </div>
 
             {/* Center Heading */}
             <div className="flex-initial flex justify-center pointer-events-auto">

@@ -9,6 +9,12 @@ import {
     Plug,
     FolderGit2,
     Server,
+    GitPullRequest,
+    BookOpen,
+    Clock,
+    Terminal,
+    Brain,
+    Key,
 } from 'lucide-react'
 import React from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
@@ -197,6 +203,79 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                             <FolderGit2 className="w-[18px] h-[18px]" strokeWidth={1.5} />
                             Repositories
                         </button>
+
+                        <button
+                            onClick={() => navigate(`/settings/${getSlugForProfileTab('Review')}`)}
+                            className={`flex items-center gap-3 px-3 py-1.5 rounded-xl text-[13px] font-medium transition-colors ${
+                                activeTab === 'Review'
+                                    ? 'bg-[#242323] text-[#D6D5C9]'
+                                    : 'text-[#D6D5C9] hover:bg-[#191919]'
+                            }`}
+                        >
+                            <GitPullRequest className="w-[18px] h-[18px]" strokeWidth={1.5} />
+                            Review
+                        </button>
+                        <button
+                            onClick={() => navigate(`/settings/${getSlugForProfileTab('Wiki')}`)}
+                            className={`flex items-center gap-3 px-3 py-1.5 rounded-xl text-[13px] font-medium transition-colors ${
+                                activeTab === 'Wiki'
+                                    ? 'bg-[#242323] text-[#D6D5C9]'
+                                    : 'text-[#D6D5C9] hover:bg-[#191919]'
+                            }`}
+                        >
+                            <BookOpen className="w-[18px] h-[18px]" strokeWidth={1.5} />
+                            Wiki
+                        </button>
+                        <button
+                            onClick={() =>
+                                navigate(`/settings/${getSlugForProfileTab('Schedules')}`)
+                            }
+                            className={`flex items-center gap-3 px-3 py-1.5 rounded-xl text-[13px] font-medium transition-colors ${
+                                activeTab === 'Schedules'
+                                    ? 'bg-[#242323] text-[#D6D5C9]'
+                                    : 'text-[#D6D5C9] hover:bg-[#191919]'
+                            }`}
+                        >
+                            <Clock className="w-[18px] h-[18px]" strokeWidth={1.5} />
+                            Schedules
+                        </button>
+                        <button
+                            onClick={() =>
+                                navigate(`/settings/${getSlugForProfileTab('December CLI')}`)
+                            }
+                            className={`flex items-center gap-3 px-3 py-1.5 rounded-xl text-[13px] font-medium transition-colors ${
+                                activeTab === 'December CLI'
+                                    ? 'bg-[#242323] text-[#D6D5C9]'
+                                    : 'text-[#D6D5C9] hover:bg-[#191919]'
+                            }`}
+                        >
+                            <Terminal className="w-[18px] h-[18px]" strokeWidth={1.5} />
+                            December CLI
+                        </button>
+                        <button
+                            onClick={() =>
+                                navigate(`/settings/${getSlugForProfileTab('Knowledge')}`)
+                            }
+                            className={`flex items-center gap-3 px-3 py-1.5 rounded-xl text-[13px] font-medium transition-colors ${
+                                activeTab === 'Knowledge'
+                                    ? 'bg-[#242323] text-[#D6D5C9]'
+                                    : 'text-[#D6D5C9] hover:bg-[#191919]'
+                            }`}
+                        >
+                            <Brain className="w-[18px] h-[18px]" strokeWidth={1.5} />
+                            Knowledge
+                        </button>
+                        <button
+                            onClick={() => navigate(`/settings/${getSlugForProfileTab('Secrets')}`)}
+                            className={`flex items-center gap-3 px-3 py-1.5 rounded-xl text-[13px] font-medium transition-colors ${
+                                activeTab === 'Secrets'
+                                    ? 'bg-[#242323] text-[#D6D5C9]'
+                                    : 'text-[#D6D5C9] hover:bg-[#191919]'
+                            }`}
+                        >
+                            <Key className="w-[18px] h-[18px]" strokeWidth={1.5} />
+                            Secrets
+                        </button>
                         <button
                             onClick={() => navigate(`/settings/${getSlugForProfileTab('Billing')}`)}
                             className={`flex items-center gap-3 px-3 py-1.5 rounded-xl text-[13px] font-medium transition-colors ${
@@ -206,30 +285,21 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                             }`}
                         >
                             <CreditCard className="w-[18px] h-[18px]" strokeWidth={1.5} />
-                            Credits
+                            Billing
                         </button>
                         <button
-                            onClick={() => navigate(`/settings/${getSlugForProfileTab('Usage')}`)}
+                            onClick={() =>
+                                navigate(`/settings/${getSlugForProfileTab('Analytics')}`)
+                            }
                             className={`flex items-center gap-3 px-3 py-1.5 rounded-xl text-[13px] font-medium transition-colors ${
-                                activeTab === 'Usage'
+                                activeTab === 'Analytics'
                                     ? 'bg-[#242323] text-[#D6D5C9]'
                                     : 'text-[#D6D5C9] hover:bg-[#191919]'
                             }`}
                         >
                             <Activity className="w-[18px] h-[18px]" strokeWidth={1.5} />
-                            Usage
+                            Analytics
                         </button>
-                        {/* <button
-                            onClick={() => navigate(`/profile/${getSlugForProfileTab('API Keys')}`)}
-                            className={`flex items-center gap-3 px-3 py-1.5 rounded-xl text-[13px] font-medium transition-colors ${
-                                activeTab === 'API Keys'
-                                    ? 'bg-[#242323] text-[#D6D5C9]'
-                                    : 'text-[#D6D5C9] hover:bg-[#191919]'
-                            }`}
-                        >
-                            <KeyRound className="w-[18px] h-[18px]" strokeWidth={1.5} />
-                            API Keys
-                        </button> */}
 
                         <div className="px-3 py-2 text-[12px] font-medium text-[#7B7A79] mt-4 mb-1">
                             Resources
@@ -314,7 +384,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                             />
                         ) : activeTab === 'Billing' ? (
                             <ProfileBillingSettings profile={profile} />
-                        ) : activeTab === 'Usage' ? (
+                        ) : activeTab === 'Analytics' ? (
                             <ProfileUsageSettings />
                         ) : activeTab === 'API Keys' ? (
                             <ProfileApiKeysSettings />
