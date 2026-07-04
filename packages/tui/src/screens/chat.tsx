@@ -60,7 +60,9 @@ export function Chat({
 
     useInput((input, key) => {
         if (key.escape) {
-            if (authMode === 'byok_key') {
+            if (isStreaming) {
+                agent.abort()
+            } else if (authMode === 'byok_key') {
                 setAuthMode('byok_provider')
             } else if (authMode === 'byok_provider') {
                 setAuthMode('menu')
@@ -90,7 +92,7 @@ export function Chat({
                     {
                         id: ++msgId,
                         role: 'assistant',
-                        blocks: [{ type: 'text', content: '✅ Signed out successfully.' }],
+                        blocks: [{ type: 'text', content: 'Signed out successfully.' }],
                     },
                 ])
                 return
@@ -112,7 +114,7 @@ export function Chat({
                             blocks: [
                                 {
                                     type: 'text',
-                                    content: '🔒 You must log in first to configure a model.',
+                                    content: 'You must log in first to configure a model.',
                                 },
                             ],
                         },
@@ -137,7 +139,7 @@ export function Chat({
                             {
                                 type: 'text',
                                 content:
-                                    '🔒 You are not logged in. Please use `/login` to configure your API key or log in via December.',
+                                    'You are not logged in. Please use `/login` to configure your API key or log in via December.',
                             },
                         ],
                     },
@@ -146,6 +148,12 @@ export function Chat({
             }
 
             // Normal chat logic
+            if (isStreaming) {
+                agent.steer({ role: 'user', content: text, isUI: true })
+                setActiveMessages((prev) => [...prev, { id: ++msgId, role: 'user', text }])
+                return
+            }
+
             setIsStreaming(true)
             setStaticMessages((prev) => [...prev, ...activeMessages])
             setActiveMessages([
@@ -254,7 +262,7 @@ export function Chat({
                     blocks: [
                         {
                             type: 'text',
-                            content: `🌐 Browser login flow would open http://localhost:8989 here.`,
+                            content: `Browser login flow would open http://localhost:8989 here.`,
                         },
                     ],
                 },
@@ -277,9 +285,7 @@ export function Chat({
             {
                 id: ++msgId,
                 role: 'assistant',
-                blocks: [
-                    { type: 'text', content: `✅ Model successfully changed to ${item.value}!` },
-                ],
+                blocks: [{ type: 'text', content: `Model successfully changed to ${item.value}!` }],
             },
         ])
     }
@@ -360,7 +366,7 @@ export function Chat({
                     blocks: [
                         {
                             type: 'text',
-                            content: `✅ Successfully validated and saved API key for ${selectedProvider}!`,
+                            content: `Successfully validated and saved API key for ${selectedProvider}!`,
                         },
                     ],
                 },
@@ -395,7 +401,7 @@ export function Chat({
                         blocks: [
                             {
                                 type: 'text',
-                                content: `⚠️ Key saved for ${selectedProvider}, but your account is currently rate-limited or out of quota!`,
+                                content: `Key saved for ${selectedProvider}, but your account is currently rate-limited or out of quota!`,
                             },
                         ],
                     },
@@ -406,7 +412,7 @@ export function Chat({
                     {
                         id: ++msgId,
                         role: 'error',
-                        text: `❌ Invalid API Key for ${selectedProvider}: ${err.message}`,
+                        text: `Invalid API Key for ${selectedProvider}: ${err.message}`,
                     },
                 ])
                 setApiKey('')
@@ -562,7 +568,7 @@ export function Chat({
 
             <InputBar
                 onSubmit={handleSubmit}
-                disabled={isStreaming || authMode !== 'none'}
+                disabled={authMode !== 'none'}
                 activeModel={agent.modelOptions?.model || 'unknown'}
             />
         </Box>

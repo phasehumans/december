@@ -17,7 +17,8 @@ export class OpenAIProvider implements LLMProvider {
         messages: Message[],
         tools?: ProviderTool[],
         systemPrompt?: string,
-        modelOptions?: Record<string, any>
+        modelOptions?: Record<string, any>,
+        signal?: AbortSignal
     ): AsyncGenerator<ProviderStreamChunk, void, unknown> {
         const oaiMessages: OpenAI.Chat.ChatCompletionMessageParam[] = []
 
@@ -65,14 +66,17 @@ export class OpenAIProvider implements LLMProvider {
             },
         }))
 
-        const stream = await this.client.chat.completions.create({
-            model: modelOptions?.model || 'gpt-4o',
-            messages: oaiMessages,
-            tools: oaiTools,
-            stream: true,
-            temperature: modelOptions?.temperature,
-            max_tokens: modelOptions?.max_tokens,
-        })
+        const stream = await this.client.chat.completions.create(
+            {
+                model: modelOptions?.model || 'gpt-4o',
+                messages: oaiMessages,
+                tools: oaiTools,
+                stream: true,
+                temperature: modelOptions?.temperature,
+                max_tokens: modelOptions?.max_tokens,
+            },
+            { signal }
+        )
 
         const activeToolCalls = new Map<number, string>()
 

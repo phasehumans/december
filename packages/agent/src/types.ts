@@ -1,4 +1,4 @@
-export type Role = 'system' | 'user' | 'assistant' | 'tool'
+export type Role = 'system' | 'user' | 'assistant' | 'tool' | string
 
 import { AgentOperations } from './operations'
 
@@ -7,6 +7,7 @@ export interface ToolExecuteContext {
     env: Map<string, string>
     onStream: (chunk: string) => void
     spawnSubagent: (prompt: string) => Promise<string>
+    signal?: AbortSignal
 }
 export interface Message {
     role: Role
@@ -14,6 +15,12 @@ export interface Message {
     // Optional fields for tracking tool calls in the message history
     toolCalls?: ToolCall[]
     toolCallId?: string
+}
+
+export interface AgentMessage extends Message {
+    isUI?: boolean
+    errorMessage?: string
+    timestamp?: number
 }
 
 export interface ToolCall {
@@ -38,13 +45,21 @@ export interface Tool<TInput = any> {
 }
 
 export interface AgentHooks {
-    beforeToolCall?: (toolCall: ToolCall) => Promise<void>
-    afterToolCall?: (toolCall: ToolCall, result: ToolResult) => Promise<void>
+    beforeToolCall?: (toolCall: ToolCall) => Promise<{ block?: boolean; reason?: string } | void>
+    afterToolCall?: (
+        toolCall: ToolCall,
+        result: ToolResult
+    ) => Promise<{ result?: string; error?: string } | void>
     shouldStopAfterTurn?: () => Promise<boolean>
-    getSteeringMessages?: () => Promise<Message[]>
+    getSteeringMessages?: () => Promise<AgentMessage[]>
+    prepareNextTurn?: () => Promise<{ modelOptions?: any; systemPrompt?: string } | void>
 }
 
 // Event Stream Types (The Async Generator Yields These)
+
+export interface AgentStartEvent {
+    type: 'AgentStart'
+}
 
 export interface TurnStartEvent {
     type: 'TurnStart'
@@ -80,7 +95,17 @@ export interface TurnEndEvent {
     type: 'TurnEnd'
 }
 
+export interface AgentEndEvent {
+    type: 'AgentEnd'
+}
+
+export interface AgentErrorEvent {
+    type: 'AgentError'
+    error: string
+}
+
 export type AgentEvent =
+    | AgentStartEvent
     | TurnStartEvent
     | StreamChunkEvent
     | ThinkingChunkEvent
@@ -88,3 +113,5 @@ export type AgentEvent =
     | ToolExecutionUpdateEvent
     | ToolCallResultEvent
     | TurnEndEvent
+    | AgentEndEvent
+    | AgentErrorEvent

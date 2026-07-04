@@ -142,7 +142,7 @@ const verifyOtp = async (data: VerifyOtp) => {
         refreshTokenHash: refreshTokenHash,
         userAgent: userAgent,
         ipAddress: ipAddress,
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
     })
 
     try {
@@ -216,7 +216,7 @@ const login = async (data: Login) => {
         refreshTokenHash: refreshTokenHash,
         userAgent: userAgent,
         ipAddress: ipAddress,
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
     })
 
     return {
@@ -374,7 +374,7 @@ const google = async (data: Google) => {
         refreshTokenHash,
         userAgent: userAgent,
         ipAddress: ipAddress,
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
     })
 
     return {
@@ -449,7 +449,7 @@ const refreshSession = async (data: RefreshSession) => {
 
     await authRepository.updateSession(session.id, {
         refreshTokenHash: newRefreshTokenHash,
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
     })
 
     return {

@@ -1,4 +1,4 @@
-import { Message, Tool, AgentHooks } from './types'
+import { AgentMessage, Message, Tool, AgentHooks } from './types'
 import { LLMProvider } from '@december/providers'
 import { SessionRepository } from './harness/session-repository'
 
@@ -13,10 +13,11 @@ export interface AgentConfig {
     modelOptions?: Record<string, any>
     sessionRepository?: SessionRepository
     hooks?: AgentHooks
+    convertToLlm?: (messages: AgentMessage[]) => Message[]
 }
 
 export class Agent {
-    public messages: Message[] = []
+    public messages: AgentMessage[] = []
     public tools: Map<string, Tool> = new Map()
     public systemPrompt: string
     public llm: LLMProvider
@@ -26,6 +27,10 @@ export class Agent {
     public operations: AgentOperations
     public env: Map<string, string>
     public modelOptions?: Record<string, any>
+    public steeringQueue: AgentMessage[] = []
+    public followUpQueue: AgentMessage[] = []
+    public activeAbortController?: AbortController
+    public convertToLlm: (messages: AgentMessage[]) => Message[]
 
     constructor(config: AgentConfig) {
         this.llm = config.llm
@@ -36,6 +41,7 @@ export class Agent {
         this.operations = config.operations
         this.env = new Map<string, string>()
         this.modelOptions = config.modelOptions
+        this.convertToLlm = config.convertToLlm || this.defaultConvertToLlm
 
         for (const tool of config.tools) {
             this.tools.set(tool.name, tool)
@@ -48,11 +54,36 @@ export class Agent {
         })
     }
 
+    private defaultConvertToLlm(messages: AgentMessage[]): Message[] {
+        return messages
+            .filter((m) => !m.isUI)
+            .map((m) => ({
+                role: m.role,
+                content: m.content,
+                toolCalls: m.toolCalls,
+                toolCallId: m.toolCallId,
+            }))
+    }
+
+    public steer(message: AgentMessage) {
+        this.steeringQueue.push(message)
+    }
+
+    public followUp(message: AgentMessage) {
+        this.followUpQueue.push(message)
+    }
+
+    public abort() {
+        if (this.activeAbortController) {
+            this.activeAbortController.abort()
+        }
+    }
+
     public setLLM(llm: LLMProvider) {
         this.llm = llm
     }
 
-    public addMessage(message: Message) {
+    public addMessage(message: AgentMessage) {
         this.messages.push(message)
     }
 
