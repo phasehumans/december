@@ -8,7 +8,9 @@ import {
     FileSessionRepository,
     ProviderConfig,
     getProviderConfig,
+    loadConfig,
 } from '@december/agent'
+import pkg from '../package.json' with { type: 'json' }
 import {
     OpenAIProvider,
     AnthropicProvider,
@@ -49,6 +51,31 @@ async function main() {
             case 'openrouter':
                 llm = new OpenRouterProvider(providerConfig.apiKey)
                 break
+            case 'deepseek':
+                llm = new OpenAIProvider('https://api.deepseek.com', providerConfig.apiKey)
+                break
+            case 'groq':
+                llm = new OpenAIProvider('https://api.groq.com/openai/v1', providerConfig.apiKey)
+                break
+            case 'huggingface':
+                llm = new OpenAIProvider(
+                    'https://api-inference.huggingface.co/v1',
+                    providerConfig.apiKey
+                )
+                break
+            case 'kimi':
+            case 'moonshoot':
+                llm = new OpenAIProvider('https://api.moonshot.cn/v1', providerConfig.apiKey)
+                break
+            case 'mistral':
+                llm = new OpenAIProvider('https://api.mistral.ai/v1', providerConfig.apiKey)
+                break
+            case 'xai':
+                llm = new OpenAIProvider('https://api.x.ai/v1', providerConfig.apiKey)
+                break
+            case 'zai':
+                llm = new OpenAIProvider('https://api.zai.ai/v1', providerConfig.apiKey)
+                break
         }
     } else {
         llm = new OpenAIProvider(undefined, 'dummy-key')
@@ -86,7 +113,14 @@ async function main() {
 
     await agent.loadContext()
 
-    render(React.createElement(App, { agent, isAuthenticated }), { exitOnCtrlC: false })
+    const config = await loadConfig()
+    // Mock user email until backend login fully provides it. We show it only if logged in via December.
+    const userEmail = config.decemberToken ? 'phasehumans@gmail.com' : undefined
+
+    render(
+        React.createElement(App, { agent, isAuthenticated, cliVersion: pkg.version, userEmail }),
+        { exitOnCtrlC: false }
+    )
 }
 
 main().catch(console.error)

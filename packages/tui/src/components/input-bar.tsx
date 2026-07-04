@@ -17,13 +17,15 @@ type Props = {
     disabled?: boolean
     placeholder?: string
     activeModel?: string
+    authUI?: React.ReactNode
 }
 
 export function InputBar({
     onSubmit,
     disabled = false,
-    placeholder = 'Ask December to build features, fix bugs, or work on your code...',
+    placeholder = 'Ask December to build...',
     activeModel = 'unknown',
+    authUI,
 }: Props) {
     const [value, setValue] = useState('')
     const cols = useTerminalColumns()
@@ -117,17 +119,21 @@ export function InputBar({
             {/* Top separator */}
             <Text color="#555555">{sep}</Text>
 
-            {/* Prompt */}
-            <Box>
-                <Text color={disabled ? '#555555' : 'white'}>{`❭ `}</Text>
-                <TextInput
-                    value={value}
-                    onChange={handleChange}
-                    onSubmit={handleSubmit}
-                    placeholder={placeholder}
-                    focus={!disabled && !dialog.isOpen}
-                />
-            </Box>
+            {/* Content: Auth UI or Prompt */}
+            {authUI ? (
+                <Box paddingY={0}>{authUI}</Box>
+            ) : (
+                <Box>
+                    <Text color={disabled ? '#555555' : 'white'}>{`❭ `}</Text>
+                    <TextInput
+                        value={value}
+                        onChange={handleChange}
+                        onSubmit={handleSubmit}
+                        placeholder={placeholder}
+                        focus={!disabled && !dialog.isOpen}
+                    />
+                </Box>
+            )}
 
             {/* Bottom separator */}
             <Text color="#555555">{sep}</Text>
@@ -154,9 +160,10 @@ export function InputBar({
                             </Box>
                         )}
                     </Box>
-                    <Box gap={1}>
-                        <Text color="gray">december studio</Text>
-                        <Text color="gray">↗</Text>
+                    <Box gap={0}>
+                        <Text color="gray">
+                            {'\x1b]8;;https://trydecember.com\x07december ↗\x1b]8;;\x07'}
+                        </Text>
                     </Box>
                 </Box>
             )}

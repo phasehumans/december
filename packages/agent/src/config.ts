@@ -2,7 +2,20 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import os from 'node:os'
 export interface ProviderConfig {
-    provider: 'openai' | 'anthropic' | 'gemini' | 'openrouter'
+    provider:
+        | 'openai'
+        | 'anthropic'
+        | 'gemini'
+        | 'openrouter'
+        | 'deepseek'
+        | 'groq'
+        | 'huggingface'
+        | 'kimi'
+        | 'moonshoot'
+        | 'mistral'
+        | 'xai'
+        | 'zai'
+        | string
     apiKey: string
     model?: string
 }
