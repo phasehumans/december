@@ -1,3 +1,4 @@
+import { prisma } from '@december/database'
 import axios from 'axios'
 import { OAuth2Client } from 'google-auth-library'
 
@@ -155,6 +156,18 @@ const refreshSession = async (req: Request, res: Response, next: NextFunction) =
     }
 }
 
+const getCliToken = asyncHandler(async (req: Request, res: Response) => {
+    const token = req.cookies?.accessToken
+    if (!token || !req.user?.userId) {
+        throw new AppError('No active session found', 401)
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: req.user.userId } })
+    const email = user?.email
+
+    return sendSuccess(res, 'cli token retrieved successfully', { token, email })
+})
+
 export const authController = {
     signup,
     verifyOtp,
@@ -164,4 +177,5 @@ export const authController = {
     resetPassword,
     google,
     refreshSession,
+    getCliToken,
 }
