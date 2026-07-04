@@ -2,9 +2,6 @@ import { homedir } from 'node:os'
 
 import { Box, Text } from 'ink'
 
-const VERSION = 'v0.1.0'
-const USER_EMAIL = 'phasehumans@gmail.com'
-
 function getCwd(): string {
     try {
         const cwd = process.cwd()
@@ -15,15 +12,21 @@ function getCwd(): string {
     }
 }
 
-export function Header() {
+export function Header({
+    cliVersion = '0.1.0',
+    userEmail,
+}: {
+    cliVersion?: string
+    userEmail?: string
+}) {
     const cwd = getCwd()
 
     return (
         <Box flexDirection="column" paddingLeft={2} paddingTop={1} paddingBottom={1}>
             <Text bold color="white">
-                ✱ December CLI <Text color="gray">{VERSION}</Text>
+                ✱ December CLI <Text color="gray">v{cliVersion.replace(/^v/, '')}</Text>
             </Text>
-            <Text color="gray">{USER_EMAIL}</Text>
+            {userEmail && <Text color="gray">{userEmail}</Text>}
             <Text color="gray">{cwd}</Text>
         </Box>
     )
