@@ -78,12 +78,34 @@ const getProviderModels = (provider: string) => {
     }
 }
 
+const getModelLabel = (value: string) => {
+    const allProviders = [
+        'anthropic',
+        'google',
+        'openai',
+        'openrouter',
+        'deepseek',
+        'groq',
+        'huggingface',
+        'kimi',
+        'mistral',
+        'xai',
+        'zai',
+    ]
+    for (const p of allProviders) {
+        const models = getProviderModels(p)
+        const found = models.find((m) => m.value === value)
+        if (found) return found.label
+    }
+    return value
+}
+
 import { Header } from '../components/header'
 import { InputBar } from '../components/input-bar'
 import { BotMessage, ErrorMessage, UserMessage } from '../components/messages'
 
 import type { MessageBlock } from '../components/messages/bot-message'
-import { Agent, runAgentLoop, saveConfig, loadConfig } from '@december/agent'
+import { Agent, runAgentLoop, saveConfig, loadConfig, getProviderConfig } from '@december/agent'
 import {
     OpenAIProvider,
     AnthropicProvider,
@@ -101,7 +123,7 @@ type Message = {
 
 let msgId = 0
 
-type AuthMode = 'none' | 'menu' | 'byok_provider' | 'byok_key' | 'model_select'
+type AuthMode = 'none' | 'menu' | 'byok_provider' | 'byok_key' | 'model_select' | 'logout_select'
 
 export function Chat({
     agent,
@@ -124,6 +146,7 @@ export function Chat({
 
     const [isAuthenticated, setIsAuthenticated] = useState(initialAuth)
     const [authMode, setAuthMode] = useState<AuthMode>('none')
+    const [logoutItems, setLogoutItems] = useState<{ label: string; value: string }[]>([])
     const [selectedProvider, setSelectedProvider] = useState<string>('')
     const [apiKey, setApiKey] = useState('')
 
@@ -135,7 +158,11 @@ export function Chat({
                 setAuthMode('byok_provider')
             } else if (authMode === 'byok_provider') {
                 setAuthMode('menu')
-            } else if (authMode === 'menu' || authMode === 'model_select') {
+            } else if (
+                authMode === 'menu' ||
+                authMode === 'model_select' ||
+                authMode === 'logout_select'
+            ) {
                 setAuthMode('none')
             } else if (input === 'c' && key.ctrl) {
                 exit()
@@ -154,19 +181,37 @@ export function Chat({
 
             if (text.trim() === '/logout') {
                 const config = await loadConfig()
-                config.activeProvider = undefined
-                config.decemberToken = undefined
-                await saveConfig(config)
-                setIsAuthenticated(false)
-                setAuthMode('none')
-                setStaticMessages((prev) => [...prev, ...activeMessages])
-                setActiveMessages([
-                    {
-                        id: ++msgId,
-                        role: 'assistant',
-                        blocks: [{ type: 'text', content: 'Signed out successfully.' }],
-                    },
-                ])
+                const items: { label: string; value: string }[] = []
+                if (config.decemberToken) {
+                    items.push({ label: 'December (Cloud Wallet)', value: 'decemberToken' })
+                }
+                if (config.providers) {
+                    for (const provider of Object.keys(config.providers)) {
+                        items.push({
+                            label: `${provider.charAt(0).toUpperCase() + provider.slice(1)} (API Key)`,
+                            value: `provider:${provider}`,
+                        })
+                    }
+                }
+                if (items.length === 0) {
+                    setStaticMessages((prev) => [...prev, ...activeMessages])
+                    setActiveMessages([
+                        {
+                            id: ++msgId,
+                            role: 'assistant',
+                            blocks: [
+                                {
+                                    type: 'text',
+                                    content:
+                                        'No stored credentials to remove. /logout only removes credentials saved by /login; environment variables and models.json config are unchanged.',
+                                },
+                            ],
+                        },
+                    ])
+                } else {
+                    setLogoutItems(items)
+                    setAuthMode('logout_select')
+                }
                 return
             }
 
@@ -507,6 +552,38 @@ export function Chat({
         }
     }
 
+    const handleLogoutSelect = async (value: string) => {
+        const config = await loadConfig()
+        let removedName = ''
+        if (value === 'decemberToken') {
+            config.decemberToken = undefined
+            removedName = 'December Cloud Wallet'
+        } else if (value.startsWith('provider:')) {
+            const provider = value.split(':')[1]
+            if (provider && config.providers) {
+                delete config.providers[provider]
+                removedName = `${provider.charAt(0).toUpperCase() + provider.slice(1)} API Key`
+                if (config.activeProvider === provider) {
+                    config.activeProvider = undefined
+                }
+            }
+        }
+        await saveConfig(config)
+        setAuthMode('none')
+
+        const providerConfig = await getProviderConfig()
+        setIsAuthenticated(!!providerConfig)
+
+        setStaticMessages((prev) => [...prev, ...activeMessages])
+        setActiveMessages([
+            {
+                id: ++msgId,
+                role: 'assistant',
+                blocks: [{ type: 'text', content: `Removed credentials for: ${removedName}` }],
+            },
+        ])
+    }
+
     let authUI: React.ReactNode = null
     if (authMode === 'menu') {
         authUI = (
@@ -605,6 +682,25 @@ export function Chat({
                 </Box>
             </Box>
         )
+    } else if (authMode === 'logout_select') {
+        authUI = (
+            <Box flexDirection="column" paddingX={1}>
+                <Box marginBottom={1}>
+                    <Text bold color="white">
+                        Select credential to remove:
+                    </Text>
+                </Box>
+                <SelectInput
+                    items={logoutItems}
+                    onSelect={(item) => handleLogoutSelect(item.value)}
+                    indicatorComponent={CustomIndicator}
+                    itemComponent={CustomItem}
+                />
+                <Box paddingTop={1}>
+                    <Text color="gray">↑↓ navigate enter select escape/ctrl+c cancel</Text>
+                </Box>
+            </Box>
+        )
     }
 
     return (
@@ -632,7 +728,9 @@ export function Chat({
             <InputBar
                 onSubmit={handleSubmit}
                 disabled={authMode !== 'none'}
-                activeModel={agent.modelOptions?.model || 'unknown'}
+                activeModel={
+                    agent.modelOptions?.model ? getModelLabel(agent.modelOptions.model) : 'unknown'
+                }
                 authUI={authUI}
             />
         </Box>

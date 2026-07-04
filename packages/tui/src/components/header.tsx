@@ -1,6 +1,27 @@
 import { homedir } from 'node:os'
 
 import { Box, Text } from 'ink'
+import { useState, useEffect } from 'react'
+import { exec } from 'node:child_process'
+import { promisify } from 'node:util'
+
+const execAsync = promisify(exec)
+
+function useGitBranch() {
+    const [branch, setBranch] = useState<string | null>(null)
+
+    useEffect(() => {
+        execAsync('git rev-parse --abbrev-ref HEAD')
+            .then(({ stdout }) => {
+                setBranch(stdout.trim())
+            })
+            .catch(() => {
+                setBranch(null)
+            })
+    }, [])
+
+    return branch
+}
 
 function getCwd(): string {
     try {
@@ -20,6 +41,7 @@ export function Header({
     userEmail?: string
 }) {
     const cwd = getCwd()
+    const branch = useGitBranch()
 
     return (
         <Box flexDirection="column" paddingLeft={2} paddingTop={1} paddingBottom={1}>
@@ -27,7 +49,10 @@ export function Header({
                 ✱ December CLI <Text color="gray">v{cliVersion.replace(/^v/, '')}</Text>
             </Text>
             {userEmail && <Text color="gray">{userEmail}</Text>}
-            <Text color="gray">{cwd}</Text>
+            <Box gap={1}>
+                <Text color="gray">{cwd}</Text>
+                {branch && <Text color="gray">({branch})</Text>}
+            </Box>
         </Box>
     )
 }
