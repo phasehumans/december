@@ -19,7 +19,7 @@ export const SidebarNavItem: React.FC<
         <button
             onClick={onClick}
             className={cn(
-                'relative flex items-center justify-between gap-2 px-3 py-[7px] rounded-lg transition-colors group w-full font-sans outline-none border-none ring-0 focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 active:outline-none active:ring-0',
+                'relative flex items-center justify-between gap-2 px-3 py-[6px] rounded-lg transition-colors group w-full font-sans outline-none border-none ring-0 focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 active:outline-none active:ring-0',
                 active
                     ? isSearch
                         ? 'bg-transparent text-[#A6A6A8] hover:bg-[#252525] hover:text-[#EDEDEF]'

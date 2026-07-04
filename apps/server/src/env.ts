@@ -35,7 +35,7 @@ const envSchema = z.object({
     ACCESS_TOKEN_SECRET: z.string().min(1),
     ACCESS_TOKEN_EXPIRES_IN: z.string().default('15m'),
     REFRESH_TOKEN_SECRET: z.string().min(1),
-    REFRESH_TOKEN_EXPIRES_IN: z.string().default('7d'),
+    REFRESH_TOKEN_EXPIRES_IN: z.string().default('30d'),
 
     GOOGLE_CLIENT_ID: z.string().min(1).optional(),
     GOOGLE_CLIENT_SECRET: z.string().min(1).optional(),

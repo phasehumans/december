@@ -87,7 +87,7 @@ export const SidebarFooter: React.FC<
 
     const handleCopy = (e: React.MouseEvent) => {
         e.stopPropagation()
-        navigator.clipboard.writeText('bun install -g @december/cli')
+        navigator.clipboard.writeText('bun install -g @trydecember/cli')
         setIsCopied(true)
         setTimeout(() => setIsCopied(false), 2000)
     }
@@ -134,13 +134,13 @@ export const SidebarFooter: React.FC<
                                     Turn ideas into reality.
                                 </span>
                             </div>
-                            <div className="flex items-center justify-between mx-1 px-3 py-2 bg-[#1E1E1E] border border-[#2A2928] rounded-xl group/cmd">
+                            <div className="flex items-center justify-between mx-1 px-3 py-1.5 bg-[#1E1E1E] border border-[#2A2928] rounded-xl group/cmd">
                                 <div className="flex items-center truncate mr-2">
-                                    <span className="text-[#7B7A79] mr-2 text-[12px] font-mono select-none">
+                                    <span className="text-[#7B7A79] mr-2 text-[11px] font-mono select-none">
                                         $
                                     </span>
-                                    <span className="text-[#D6D5C9] text-[12px] font-mono truncate">
-                                        bun install -g @december/cli
+                                    <span className="text-[#D6D5C9] text-[11px] font-mono truncate tracking-tight">
+                                        bun install -g @trydecember/cli
                                     </span>
                                 </div>
                                 <button

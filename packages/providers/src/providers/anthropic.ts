@@ -16,7 +16,8 @@ export class AnthropicProvider implements LLMProvider {
         messages: Message[],
         tools?: ProviderTool[],
         systemPrompt?: string,
-        modelOptions?: Record<string, any>
+        modelOptions?: Record<string, any>,
+        signal?: AbortSignal
     ): AsyncGenerator<ProviderStreamChunk, void, unknown> {
         const antMessages: Anthropic.MessageParam[] = []
 
@@ -64,15 +65,18 @@ export class AnthropicProvider implements LLMProvider {
             input_schema: t.inputSchema,
         }))
 
-        const stream = await this.client.messages.create({
-            model: modelOptions?.model || 'claude-3-5-sonnet-20241022',
-            messages: antMessages,
-            system: systemPrompt,
-            tools: antTools,
-            stream: true,
-            max_tokens: modelOptions?.max_tokens || 4096,
-            temperature: modelOptions?.temperature,
-        })
+        const stream = await this.client.messages.create(
+            {
+                model: modelOptions?.model || 'claude-3-5-sonnet-20241022',
+                messages: antMessages,
+                system: systemPrompt,
+                tools: antTools,
+                stream: true,
+                max_tokens: modelOptions?.max_tokens || 4096,
+                temperature: modelOptions?.temperature,
+            },
+            { signal }
+        )
 
         const activeToolCalls = new Map<number, string>()
 

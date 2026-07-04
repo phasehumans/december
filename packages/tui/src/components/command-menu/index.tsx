@@ -3,7 +3,7 @@ import { Box, Text } from 'ink'
 import { getFilteredCommands } from './filter-commands'
 
 const WINDOW_SIZE = 5
-const CMD_COL_WIDTH = 14
+const CMD_COL_WIDTH = 24
 
 type CommandMenuProps = {
     query: string
