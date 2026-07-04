@@ -25,6 +25,7 @@ export interface DecemberConfig {
     activeModel?: string
     providers: Record<string, string>
     decemberToken?: string
+    email?: string
 }
 
 const CONFIG_DIR = path.join(os.homedir(), '.december')

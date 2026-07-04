@@ -59,6 +59,7 @@ model User {
   walletTransactions     WalletTransaction[]
   usageEvents            UsageEvent[]
   collaborations         ProjectCollaborator[]
+  deviceCodes            DeviceCode[]
 }
 
 model Notification {
@@ -419,4 +420,26 @@ enum ProjectCategory {
   SAAS_APP
   ECOMMERCE
   NONE
+}
+
+model DeviceCode {
+  id         String           @id @default(uuid())
+  deviceCode String           @unique
+  userCode   String           @unique
+  userId     String?
+  expiresAt  DateTime
+  status     DeviceCodeStatus @default(PENDING)
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+  user       User?            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([deviceCode])
+  @@index([userCode])
+  @@index([userId])
+}
+
+enum DeviceCodeStatus {
+  PENDING
+  APPROVED
+  EXPIRED
 }

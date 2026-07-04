@@ -5,6 +5,7 @@ export type CommandContext = {
     exit: () => void
     toast: ToastContextValue
     dialog: DialogContextValue
+    agent?: any // We use any here to avoid a circular dependency if not careful, or we can import Agent type. Let's try importing Agent type.
 }
 
 export type Command = {
