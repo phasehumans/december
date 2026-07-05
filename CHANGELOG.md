@@ -1,3 +1,25 @@
+## [unreleased]
+
+### Features
+
+- Added openai, anthropic and gemmni provider
+- _(agent)_ Added custom proviiders and model selection #162
+- Add fumadocs
+- _(agent)_ Add proxy cmds and fix agent outet steer loop
+- _(providers)_ Add providers (#166)
+- _(auth)_ Login via december in cli; browser and w/code
+- _(auth)_ Login via december in cli; browser and w/code (#168)
+
+### Bug Fixes
+
+- _(agent)_ Fix agent loop and esc agent and improve tui #164
+
+## [0.2.2] - 2026-07-01
+
+### Miscellaneous Tasks
+
+- _(release)_ V0.2.2
+
 ## [0.2.1] - 2026-07-01
 
 ### Miscellaneous Tasks
