@@ -29,6 +29,7 @@ import {
     SubagentTool,
 } from '@december/tools'
 import { localOperations } from './local-operations'
+import { loginViaBrowser, loginViaDeviceCode } from './auth'
 
 async function main() {
     let providerConfig = await getProviderConfig()
@@ -114,11 +115,18 @@ async function main() {
     await agent.loadContext()
 
     const config = await loadConfig()
-    // Mock user email until backend login fully provides it. We show it only if logged in via December.
-    const userEmail = config.decemberToken ? 'phasehumans@gmail.com' : undefined
+    const userEmail = config.decemberToken ? config.email : undefined
 
     render(
-        React.createElement(App, { agent, isAuthenticated, cliVersion: pkg.version, userEmail }),
+        React.createElement(App, {
+            agent,
+            isAuthenticated,
+            cliVersion: pkg.version,
+            userEmail,
+            onLogin: loginViaBrowser,
+            onLoginHeadless: (onCode: (code: string, uri: string) => void) =>
+                loginViaDeviceCode('http://localhost:4000', onCode), // Replace with prod URL later
+        }),
         { exitOnCtrlC: false }
     )
 }

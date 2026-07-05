@@ -123,18 +123,31 @@ type Message = {
 
 let msgId = 0
 
-type AuthMode = 'none' | 'menu' | 'byok_provider' | 'byok_key' | 'model_select' | 'logout_select'
+type AuthMode =
+    | 'none'
+    | 'menu'
+    | 'december_login_select'
+    | 'byok_provider'
+    | 'byok_key'
+    | 'model_select'
+    | 'logout_select'
 
 export function Chat({
     agent,
     isAuthenticated: initialAuth,
     cliVersion,
     userEmail,
+    onLogin,
+    onLoginHeadless,
 }: {
     agent: Agent
     isAuthenticated: boolean
     cliVersion?: string
     userEmail?: string
+    onLogin?: () => Promise<{ token: string; email: string | null }>
+    onLoginHeadless?: (
+        onCode: (code: string, uri: string) => void
+    ) => Promise<{ token: string; email: string | null }>
 }) {
     const cols = useTerminalColumns()
     const panelWidth = Math.floor(cols * 0.45)
@@ -145,6 +158,7 @@ export function Chat({
     const { exit } = useApp()
 
     const [isAuthenticated, setIsAuthenticated] = useState(initialAuth)
+    const [currentEmail, setCurrentEmail] = useState<string | undefined>(userEmail)
     const [authMode, setAuthMode] = useState<AuthMode>('none')
     const [logoutItems, setLogoutItems] = useState<{ label: string; value: string }[]>([])
     const [selectedProvider, setSelectedProvider] = useState<string>('')
@@ -156,7 +170,7 @@ export function Chat({
                 agent.abort()
             } else if (authMode === 'byok_key') {
                 setAuthMode('byok_provider')
-            } else if (authMode === 'byok_provider') {
+            } else if (authMode === 'byok_provider' || authMode === 'december_login_select') {
                 setAuthMode('menu')
             } else if (
                 authMode === 'menu' ||
@@ -368,9 +382,12 @@ export function Chat({
         [exit, agent, activeMessages, isAuthenticated]
     )
 
-    const handleAuthMenuSelect = (item: any) => {
+    const handleAuthMenuSelect = async (item: any) => {
         if (item.value === 'december') {
-            // Mocking December Login for now
+            setAuthMode('december_login_select')
+        } else if (item.value === 'december_browser') {
+            setAuthMode('none')
+            setIsStreaming(true)
             setStaticMessages((prev) => [...prev, ...activeMessages])
             setActiveMessages([
                 {
@@ -379,12 +396,141 @@ export function Chat({
                     blocks: [
                         {
                             type: 'text',
-                            content: `Browser login flow would open http://localhost:8989 here.`,
+                            content: `Opening browser to log in...`,
                         },
                     ],
                 },
             ])
+
+            try {
+                if (!onLogin) {
+                    throw new Error('Login functionality is not provided by the host environment.')
+                }
+                const { token, email } = await onLogin()
+                const config = await loadConfig()
+                config.decemberToken = token
+                if (email) {
+                    config.email = email
+                    setCurrentEmail(email)
+                }
+                await saveConfig(config)
+
+                const providerConfig = await getProviderConfig()
+                if (providerConfig) {
+                    const provider = new OpenRouterProvider(providerConfig.apiKey)
+                    agent.setLLM(provider)
+                    setIsAuthenticated(true)
+                }
+
+                setStaticMessages((prev) => [...prev, ...activeMessages])
+                setActiveMessages([
+                    {
+                        id: ++msgId,
+                        role: 'assistant',
+                        blocks: [
+                            {
+                                type: 'text',
+                                content: `Successfully logged in via December!`,
+                            },
+                        ],
+                    },
+                ])
+            } catch (err: any) {
+                setStaticMessages((prev) => [...prev, ...activeMessages])
+                setActiveMessages([
+                    {
+                        id: ++msgId,
+                        role: 'error',
+                        text: `Login failed: ${err.message}`,
+                    },
+                ])
+            } finally {
+                setIsStreaming(false)
+            }
+        } else if (item.value === 'december_headless') {
             setAuthMode('none')
+            setIsStreaming(true)
+
+            try {
+                if (!onLoginHeadless) {
+                    throw new Error(
+                        'Headless login functionality is not provided by the host environment.'
+                    )
+                }
+
+                // Keep track of the message ID so we can update it with the code
+                const codeMsgId = ++msgId
+                setStaticMessages((prev) => [...prev, ...activeMessages])
+                setActiveMessages([
+                    {
+                        id: codeMsgId,
+                        role: 'assistant',
+                        blocks: [
+                            {
+                                type: 'text',
+                                content: `Generating device code...`,
+                            },
+                        ],
+                    },
+                ])
+
+                const onCode = (code: string, uri: string) => {
+                    setActiveMessages([
+                        {
+                            id: codeMsgId,
+                            role: 'assistant',
+                            blocks: [
+                                {
+                                    type: 'text',
+                                    content: `Please open ${uri} on any device and enter code: ${code}\nWaiting for authorization...`,
+                                },
+                            ],
+                        },
+                    ])
+                }
+
+                const { token, email } = await onLoginHeadless(onCode)
+
+                const config = await loadConfig()
+                config.decemberToken = token
+                if (email) {
+                    config.email = email
+                    setCurrentEmail(email)
+                }
+                await saveConfig(config)
+
+                const providerConfig = await getProviderConfig()
+                if (providerConfig) {
+                    const provider = new OpenRouterProvider(providerConfig.apiKey)
+                    agent.setLLM(provider)
+                    setIsAuthenticated(true)
+                }
+
+                setStaticMessages((prev) => [...prev, ...activeMessages])
+                setActiveMessages([
+                    {
+                        id: ++msgId,
+                        role: 'assistant',
+                        blocks: [
+                            {
+                                type: 'text',
+                                content: `Successfully logged in via device code!`,
+                            },
+                        ],
+                    },
+                ])
+            } catch (err: any) {
+                setStaticMessages((prev) => [...prev, ...activeMessages])
+                setActiveMessages([
+                    {
+                        id: ++msgId,
+                        role: 'error',
+                        text: `Login failed: ${err.message}`,
+                    },
+                ])
+            } finally {
+                setIsStreaming(false)
+            }
         } else if (item.value === 'byok') {
             setAuthMode('byok_provider')
         }
@@ -557,6 +703,8 @@ export function Chat({
         let removedName = ''
         if (value === 'decemberToken') {
             config.decemberToken = undefined
+            config.email = undefined
+            setCurrentEmail(undefined)
             removedName = 'December Cloud Wallet'
         } else if (value.startsWith('provider:')) {
             const provider = value.split(':')[1]
@@ -597,6 +745,31 @@ export function Chat({
                     items={[
                         { label: 'Login via December (Cloud Wallet)', value: 'december' },
                         { label: 'Bring Your Own Key (BYOK)', value: 'byok' },
+                    ]}
+                    onSelect={handleAuthMenuSelect}
+                    indicatorComponent={CustomIndicator}
+                    itemComponent={CustomItem}
+                />
+                <Box paddingTop={1}>
+                    <Text color="gray">↑↓ navigate enter select escape/ctrl+c cancel</Text>
+                </Box>
+            </Box>
+        )
+    } else if (authMode === 'december_login_select') {
+        authUI = (
+            <Box flexDirection="column" paddingX={1}>
+                <Box marginBottom={1}>
+                    <Text bold color="white">
+                        Select December login method:
+                    </Text>
+                </Box>
+                <SelectInput
+                    items={[
+                        { label: 'Login via Browser (Local)', value: 'december_browser' },
+                        {
+                            label: 'Login via Device Code (Headless/SSH)',
+                            value: 'december_headless',
+                        },
                     ]}
                     onSelect={handleAuthMenuSelect}
                     indicatorComponent={CustomIndicator}
@@ -705,7 +878,7 @@ export function Chat({
 
     return (
         <Box flexDirection="column" width="100%">
-            <Header cliVersion={cliVersion} userEmail={userEmail} />
+            <Header cliVersion={cliVersion} userEmail={currentEmail} />
 
             <Static items={staticMessages}>
                 {(msg) => {
