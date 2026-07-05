@@ -12,6 +12,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import App from './App'
 import { CliLogin } from './features/auth/components/CliLogin'
 import { DeviceActivate } from './features/auth/components/DeviceActivate'
+import { GithubCallback } from './features/auth/components/GithubCallback'
 import { QueryProvider } from './shared/providers/query-provider'
 
 const elem = document.getElementById('root')!
@@ -22,6 +23,7 @@ const app = (
                 <Routes>
                     <Route path="/cli/login" element={<CliLogin />} />
                     <Route path="/activate" element={<DeviceActivate />} />
+                    <Route path="/github/callback" element={<GithubCallback />} />
                     <Route path="*" element={<App />} />
                 </Routes>
             </GoogleOAuthProvider>

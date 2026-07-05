@@ -55,9 +55,11 @@ export interface AuthModalAuthStepProps {
     errorMessage: string | null
     isAuthPending: boolean
     isGooglePending: boolean
+    isGithubPending: boolean
     onEmailChange: (value: string) => void
     onPasswordChange: (value: string) => void
     onGoogleLogin: () => void
+    onGithubLogin: () => void
     onSubmit: (event: FormEvent) => void
     onToggleAuthMode: () => void
     onForgotPassword: () => void
