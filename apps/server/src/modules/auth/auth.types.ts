@@ -27,6 +27,14 @@ export type Google = {
     ipAddress?: string
 }
 
+export type Github = {
+    name: string
+    email: string
+    sub: string
+    userAgent?: string
+    ipAddress?: string
+}
+
 export type Signup = {
     email: string
     password: string

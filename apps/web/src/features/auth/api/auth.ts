@@ -19,6 +19,10 @@ type GoogleInput = {
     code: string
 }
 
+type GithubInput = {
+    code: string
+}
+
 type ForgotPasswordRequestInput = {
     email: string
 }
@@ -64,6 +68,14 @@ const google = (data: GoogleInput) => {
     })
 }
 
+const github = (data: GithubInput) => {
+    return apiRequest<void>('/auth/github', {
+        method: 'POST',
+        includeAuth: false,
+        body: JSON.stringify(data),
+    })
+}
+
 const requestPasswordReset = (data: ForgotPasswordRequestInput) => {
     return apiRequest<void>('/auth/forgot-password/request', {
         method: 'POST',
@@ -96,4 +108,5 @@ export const authAPI = {
     verifyPasswordResetOtp,
     resetPassword,
     google,
+    github,
 }

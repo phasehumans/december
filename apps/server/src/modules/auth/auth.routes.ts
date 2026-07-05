@@ -12,6 +12,7 @@ authRouter.post('/forgot-password/request', authController.requestPasswordReset)
 authRouter.post('/forgot-password/verify', authController.verifyPasswordResetOtp)
 authRouter.post('/forgot-password/reset', authController.resetPassword)
 authRouter.post('/google', authController.google)
+authRouter.post('/github', authController.github)
 authRouter.post('/refresh', authController.refreshSession)
 
 import { authMiddleware } from '../../middleware/auth.middleware'

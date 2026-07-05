@@ -44,3 +44,9 @@ export const googleAuthSchema = z.object({
         .string({ message: 'authorization code is required' })
         .min(1, 'authorization code is required'),
 })
+
+export const githubAuthSchema = z.object({
+    code: z
+        .string({ message: 'authorization code is required' })
+        .min(1, 'authorization code is required'),
+})
