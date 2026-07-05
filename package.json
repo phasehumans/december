@@ -59,5 +59,6 @@
         "*.{js,jsx,ts,tsx,json,md,css,html,yml,yaml}": [
             "prettier --write"
         ]
-    }
+    },
+    "version": "0.2.3"
 }

@@ -9,6 +9,23 @@ if (!version) {
 
 console.log(`Releasing v${version}...`)
 
+const glob = new Bun.Glob('**/package.json')
+for await (const file of glob.scan('.')) {
+    if (file.includes('node_modules')) continue
+
+    const fileRef = Bun.file(file)
+    const pkg = await fileRef.json()
+
+    pkg.version = version
+    await Bun.write(file, JSON.stringify(pkg, null, 4) + '\n')
+    console.log(`Updated ${file} to v${version}`)
+}
+
+// format the package.jsons just to be safe
+await $`bun run format`
+
+await $`bun install` // to update lockfile if needed
+
 await $`git-cliff -o CHANGELOG.md`
 
 await $`git add .`
