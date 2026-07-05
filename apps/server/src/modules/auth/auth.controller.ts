@@ -6,6 +6,7 @@ import { env } from '../../env'
 import { AppError } from '../../shared/appError'
 import { asyncHandler } from '../../shared/asyncHandler'
 import { sendSuccess } from '../../shared/response'
+import { integrationsService } from '../integration/integration.service'
 
 import { authCookie } from './auth.cookie'
 import {
@@ -16,6 +17,7 @@ import {
     signupSchema,
     verifyOtpSchema,
     googleAuthSchema,
+    githubAuthSchema,
 } from './auth.schema'
 import { authService } from './auth.service'
 
@@ -135,6 +137,99 @@ const google = asyncHandler(async (req: Request, res: Response) => {
     return sendSuccess(res, 'login successful')
 })
 
+const github = asyncHandler(async (req: Request, res: Response) => {
+    const parseData = githubAuthSchema.parse(req.body)
+    const { code } = parseData
+
+    if (!env.GITHUB_CLIENT_ID || !env.GITHUB_CLIENT_SECRET) {
+        throw new AppError('github auth is not configured on server', 500)
+    }
+
+    let tokenResponse
+    try {
+        tokenResponse = await axios.post(
+            'https://github.com/login/oauth/access_token',
+            {
+                client_id: env.GITHUB_CLIENT_ID,
+                client_secret: env.GITHUB_CLIENT_SECRET,
+                code,
+            },
+            {
+                headers: {
+                    Accept: 'application/json',
+                },
+            }
+        )
+    } catch (error: any) {
+        const errorMsg =
+            error?.response?.data?.error_description ||
+            error.message ||
+            'github authentication failed'
+        throw new AppError(errorMsg.toLowerCase(), 400)
+    }
+
+    const { access_token } = tokenResponse.data
+
+    if (!access_token) throw new AppError('github access token not found', 400)
+
+    let userResponse
+    try {
+        userResponse = await axios.get('https://api.github.com/user', {
+            headers: {
+                Authorization: `Bearer ${access_token}`,
+            },
+        })
+    } catch (error: any) {
+        throw new AppError('failed to fetch github user profile', 400)
+    }
+
+    let emailsResponse
+    try {
+        emailsResponse = await axios.get('https://api.github.com/user/emails', {
+            headers: {
+                Authorization: `Bearer ${access_token}`,
+            },
+        })
+    } catch (error: any) {
+        throw new AppError('failed to fetch github user emails', 400)
+    }
+
+    const primaryEmailObj = emailsResponse.data.find((e: any) => e.primary)
+    if (!primaryEmailObj) {
+        throw new AppError('no primary email found in github account', 400)
+    }
+
+    if (!primaryEmailObj.verified) {
+        throw new AppError('github primary email is not verified', 400)
+    }
+
+    const email = primaryEmailObj.email
+    const username = userResponse.data.login
+    const name = userResponse.data.name || username
+    const sub = String(userResponse.data.id)
+
+    const userAgent = req.get('user-agent') || 'unknown'
+    const ipAddress =
+        (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
+        req.socket.remoteAddress ||
+        'unknown'
+
+    const result = await authService.github({ email, name, sub, userAgent, ipAddress })
+    authCookie.setAuthCookies(res, result.accessToken, result.refreshToken)
+
+    try {
+        await integrationsService.connectGithub({
+            userId: result.user.id,
+            accessToken: access_token,
+            username: username,
+        })
+    } catch (err) {
+        console.error('Failed to automatically connect GitHub integration during login', err)
+    }
+
+    return sendSuccess(res, 'login successful')
+})
+
 const refreshSession = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const result = await authService.refreshSession({
@@ -176,6 +271,7 @@ export const authController = {
     verifyPasswordResetOtp,
     resetPassword,
     google,
+    github,
     refreshSession,
     getCliToken,
 }

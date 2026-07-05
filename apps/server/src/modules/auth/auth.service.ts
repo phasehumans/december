@@ -19,6 +19,7 @@ import type {
     VerifyOtp,
     Login,
     Google,
+    Github,
     Signup,
     RefreshSession,
     RequestPasswordReset,
@@ -383,6 +384,84 @@ const google = async (data: Google) => {
     }
 }
 
+const github = async (data: Github) => {
+    const { name, email, sub, userAgent, ipAddress } = data
+
+    let user = await authRepository.findUserByEmail(email)
+
+    const username = getUsername()
+    let isNewUser = false
+
+    if (!user) {
+        isNewUser = true
+        user = await authRepository.createUser({
+            email: email,
+            username: username,
+            emailVerified: true,
+            githubId: sub,
+            name: name,
+        })
+
+        try {
+            await sendNotificationToUser({
+                userId: user.id,
+                title: 'Welcome to December',
+                message:
+                    'Your account has been created successfully. You can now start building apps and turn your ideas into reality with December.',
+                type: 'SUCCESS',
+            })
+        } catch (error) {
+            console.error('failed to send welcome notification:', error)
+        }
+
+        try {
+            // await sendWelcomeEmail(user.email, user.name || '')
+        } catch (error) {
+            console.error('failed to send welcome email:', error)
+        }
+    } else if (user.deletedAt || user.isDeleted) {
+        throw new AppError('account has been deleted', 403)
+    } else if (!user.githubId) {
+        user = await authRepository.updateUser(user.id, {
+            githubId: sub,
+            emailVerified: true,
+            otpHash: null,
+            otpExpiresAt: null,
+        })
+    } else if (user.githubId !== sub) {
+        throw new AppError('github id mismatch', 400)
+    }
+
+    const sessionId = crypto.randomUUID()
+
+    const accessToken = generateAccessToken({
+        userId: user.id,
+        sessionId,
+    })
+
+    const refreshToken = generateRefreshToken({
+        userId: user.id,
+        sessionId,
+    })
+
+    const refreshTokenHash = await bcrypt.hash(refreshToken, env.BCRYPT_SALT_ROUNDS)
+
+    await authRepository.createSession({
+        id: sessionId,
+        userId: user.id,
+        refreshTokenHash,
+        userAgent: userAgent,
+        ipAddress: ipAddress,
+        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+    })
+
+    return {
+        accessToken,
+        refreshToken,
+        user,
+    }
+}
+
 const refreshSession = async (data: RefreshSession) => {
     const { refreshToken } = data
 
@@ -466,5 +545,6 @@ export const authService = {
     verifyPasswordResetOtp,
     resetPassword,
     google,
+    github,
     refreshSession,
 }

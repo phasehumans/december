@@ -51,6 +51,10 @@ const connectNotion = asyncHandler(async (req: Request, res: Response) => {
 const connectGithub = asyncHandler(async (req: Request, res: Response) => {
     const { code, state } = connectOAuthQuerySchema.parse(req.query)
 
+    if (state === 'auth') {
+        return res.redirect(`http://localhost:3000/github/callback?code=${code}`)
+    }
+
     let userId = state
     let redirectPath = '/profile/integrations'
     if (state.includes(':')) {

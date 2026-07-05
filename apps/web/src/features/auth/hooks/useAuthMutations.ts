@@ -105,6 +105,17 @@ export const useAuthMutations = ({
         },
     })
 
+    const githubMutation = useMutation({
+        mutationFn: authAPI.github,
+        onSuccess: () => {
+            setErrorMessage(null)
+            onAuthSuccess()
+        },
+        onError: (error) => {
+            setErrorMessage(getErrorMessage(error))
+        },
+    })
+
     const requestPasswordResetMutation = useMutation({
         mutationFn: authAPI.requestPasswordReset,
         onSuccess: () => {
@@ -148,8 +159,37 @@ export const useAuthMutations = ({
         },
     })
 
+    const githubLogin = () => {
+        const clientId =
+            (typeof process !== 'undefined' ? process.env.GITHUB_CLIENT_ID : undefined) ||
+            'Ov23liFGkTAwCW7E8gtk'
+        const url = `https://github.com/login/oauth/authorize?client_id=${clientId}&state=auth&scope=user:email%20repo`
+
+        const popup = window.open(url, 'github-login', 'width=500,height=600')
+
+        const handleMessage = (event: MessageEvent) => {
+            if (event.origin !== window.location.origin) return
+
+            if (event.data.type === 'GITHUB_LOGIN_SUCCESS') {
+                const { code } = event.data
+                githubMutation.mutate({ code })
+                popup?.close()
+                window.removeEventListener('message', handleMessage)
+            } else if (event.data.type === 'GITHUB_LOGIN_FAILED') {
+                setErrorMessage('GitHub Login Failed')
+                popup?.close()
+                window.removeEventListener('message', handleMessage)
+            }
+        }
+
+        window.addEventListener('message', handleMessage)
+    }
+
     const isAuthPending =
-        signupMutation.isPending || loginMutation.isPending || googleMutation.isPending
+        signupMutation.isPending ||
+        loginMutation.isPending ||
+        googleMutation.isPending ||
+        githubMutation.isPending
 
     return {
         signupMutation,
@@ -160,6 +200,8 @@ export const useAuthMutations = ({
         resetPasswordMutation,
         googleMutation,
         googleLogin,
+        githubMutation,
+        githubLogin,
         isAuthPending,
     }
 }
