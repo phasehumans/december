@@ -1,9 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
-import { Github, GitBranch, Clock, ArrowRight, Lock, Globe } from 'lucide-react'
-import React, { useState } from 'react'
-
-import { profileAPI, type GithubRepo } from '@/features/profile/api/profile'
-import { Skeleton } from '@/shared/components/ui/Skeleton'
+import React from 'react'
 
 type IntegrationId =
     | 'github'

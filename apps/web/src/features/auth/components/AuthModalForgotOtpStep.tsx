@@ -2,8 +2,6 @@ import React from 'react'
 
 import type { AuthModalForgotOtpStepProps } from '@/features/auth/types'
 
-import { Icons } from '@/shared/components/ui/Icons'
-
 export const AuthModalForgotOtpStep: React.FC<AuthModalForgotOtpStepProps> = ({
     email,
     otp,

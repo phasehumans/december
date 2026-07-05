@@ -1,6 +1,6 @@
+import { MessageSquare, ArrowUpRight } from 'lucide-react'
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { MessageSquare, ArrowUpRight } from 'lucide-react'
 
 import { ProfileFeedbackModal } from '@/features/profile/components/ProfileFeedbackModal'
 import { Icons } from '@/shared/components/ui/Icons'

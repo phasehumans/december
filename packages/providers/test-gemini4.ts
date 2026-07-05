@@ -1,5 +1,6 @@
-import { GoogleGenAI } from '@google/genai'
 import fs from 'fs'
+
+import { GoogleGenAI } from '@google/genai'
 
 async function run() {
     const config = JSON.parse(fs.readFileSync(process.env.HOME + '/.december/config.json', 'utf-8'))

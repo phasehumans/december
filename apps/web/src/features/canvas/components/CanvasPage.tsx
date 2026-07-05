@@ -1,8 +1,8 @@
-import { ChevronLeft } from 'lucide-react'
 import React, { useRef } from 'react'
 
-import Canvas, { type CanvasRef } from '@/features/canvas/components/Canvas'
 import type { CanvasDocument } from '@/features/canvas/types'
+
+import Canvas, { type CanvasRef } from '@/features/canvas/components/Canvas'
 
 interface CanvasPageProps {
     onBack?: () => void

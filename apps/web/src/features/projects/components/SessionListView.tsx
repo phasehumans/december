@@ -1,8 +1,8 @@
-import React from 'react'
 import { LayoutGrid, List } from 'lucide-react'
+import React from 'react'
 
-import { ProjectListRow } from './ProjectListRow'
 import { ProjectGridCard } from './ProjectGridCard'
+import { ProjectListRow } from './ProjectListRow'
 
 import type { SortOption, StatusFilter } from './SessionList'
 import type { Project } from '@/features/projects/types'

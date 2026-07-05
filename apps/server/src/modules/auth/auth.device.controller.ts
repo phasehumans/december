@@ -1,10 +1,12 @@
+import crypto from 'crypto'
+
 import { prisma } from '@december/database'
+
 import { AppError } from '../../shared/appError'
 import { asyncHandler } from '../../shared/asyncHandler'
 import { sendSuccess } from '../../shared/response'
-import crypto from 'crypto'
+
 import type { Request, Response } from 'express'
-import { authCookie } from './auth.cookie'
 
 function generateUserCode() {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'

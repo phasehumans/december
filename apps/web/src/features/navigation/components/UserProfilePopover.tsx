@@ -1,5 +1,4 @@
 import {
-    User,
     LogOut,
     ExternalLink,
     Settings as SettingsIcon,

@@ -1,4 +1,3 @@
-import { AgentEvent } from './types'
 import { Agent } from './agent'
 import { runAgentLoop } from './agent-loop'
 

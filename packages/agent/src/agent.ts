@@ -1,8 +1,8 @@
-import { AgentMessage, Message, Tool, AgentHooks } from './types'
 import { LLMProvider } from '@december/providers'
-import { SessionRepository } from './harness/session-repository'
 
+import { SessionRepository } from './harness/session-repository'
 import { AgentOperations } from './operations'
+import { AgentMessage, Message, Tool, AgentHooks } from './types'
 
 export interface AgentConfig {
     sessionId?: string

@@ -1,25 +1,15 @@
 import { useQuery } from '@tanstack/react-query'
+import { Paperclip, Key, Code, Puzzle, MessageSquare, BookOpen } from 'lucide-react'
 import React, { useRef, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import {
-    Paperclip,
-    AtSign,
-    Key,
-    Folder,
-    Code,
-    Puzzle,
-    MessageSquare,
-    BookOpen,
-    X,
-} from 'lucide-react'
+
+import sidebarPng from '../../../../public/sidebar.png'
 
 import { Icons } from './Icons'
 
 import { billingAPI } from '@/features/billing/api/billing'
 import { useVoiceToText } from '@/shared/lib/useVoiceToText'
 import { cn } from '@/shared/lib/utils'
-
-import sidebarPng from '../../../../public/sidebar.png'
 
 interface PromptFooterProps {
     onUpload: () => void

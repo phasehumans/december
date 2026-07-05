@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import React, { useState } from 'react'
 import { useLocation } from 'react-router-dom'
-import { Icons } from '@/shared/components/ui/Icons'
-import { profileAPI } from '@/features/profile/api/profile'
+
 import { AuthModal } from '@/features/auth/components/AuthModal'
+import { profileAPI } from '@/features/profile/api/profile'
 import { apiRequest } from '@/shared/api/client'
+import { Icons } from '@/shared/components/ui/Icons'
 
 export const CliLogin: React.FC = () => {
     const location = useLocation()

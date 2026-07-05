@@ -1,12 +1,10 @@
-import React from 'react'
 import { Eye, EyeOff } from 'lucide-react'
+import React from 'react'
 
 import { AuthModalGithubIcon } from './AuthModalGithubIcon'
 import { AuthModalGoogleIcon } from './AuthModalGoogleIcon'
 
 import type { AuthModalAuthStepProps } from '@/features/auth/types'
-
-import { Icons } from '@/shared/components/ui/Icons'
 
 export const AuthModalAuthStep: React.FC<AuthModalAuthStepProps> = ({
     authMode,

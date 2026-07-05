@@ -1,5 +1,4 @@
 import { Agent, AgentConfig } from '../agent'
-import { Message } from '../types'
 
 export interface HarnessConfig extends Omit<AgentConfig, 'systemPrompt'> {
     baseSystemPrompt?: string

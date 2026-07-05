@@ -1,11 +1,9 @@
-import React from 'react'
-import { X, Settings, Calendar } from 'lucide-react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import bannerImg from '../../../../public/banner.png'
-import { profileAPI } from '@/features/profile/api/profile'
-import { Skeleton } from '@/shared/components/ui/Skeleton'
+import React from 'react'
 
 import type { Profile } from '../types'
+
+import { profileAPI } from '@/features/profile/api/profile'
 
 interface ProfileSettingsContentProps {
     profile?: Profile

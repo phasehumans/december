@@ -1,9 +1,9 @@
+import { exec } from 'node:child_process'
 import { homedir } from 'node:os'
+import { promisify } from 'node:util'
 
 import { Box, Text } from 'ink'
 import { useState, useEffect } from 'react'
-import { exec } from 'node:child_process'
-import { promisify } from 'node:util'
 
 const execAsync = promisify(exec)
 
