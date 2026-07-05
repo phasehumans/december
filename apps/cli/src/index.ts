@@ -1,16 +1,5 @@
 #!/usr/bin/env node
-import { render } from 'ink'
-import React from 'react'
-import { App } from '@december/tui'
-import {
-    Agent,
-    AgentHarness,
-    FileSessionRepository,
-    ProviderConfig,
-    getProviderConfig,
-    loadConfig,
-} from '@december/agent'
-import pkg from '../package.json' with { type: 'json' }
+import { AgentHarness, FileSessionRepository, getProviderConfig, loadConfig } from '@december/agent'
 import {
     OpenAIProvider,
     AnthropicProvider,
@@ -28,11 +17,17 @@ import {
     GrepSearchTool,
     SubagentTool,
 } from '@december/tools'
-import { localOperations } from './local-operations'
+import { App } from '@december/tui'
+import { render } from 'ink'
+import React from 'react'
+
+import pkg from '../package.json' with { type: 'json' }
+
 import { loginViaBrowser, loginViaDeviceCode } from './auth'
+import { localOperations } from './local-operations'
 
 async function main() {
-    let providerConfig = await getProviderConfig()
+    const providerConfig = await getProviderConfig()
 
     // If not authenticated, we pass a dummy provider so the Agent can boot.
     // The TUI will intercept prompts and force them to /login

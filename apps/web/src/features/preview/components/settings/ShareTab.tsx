@@ -3,8 +3,9 @@ import React, { useState, useEffect } from 'react'
 
 import { PremiumInput } from './SettingsFormControls'
 
-import { projectAPI, type BackendProject } from '@/features/projects/api/project'
 import type { Profile } from '@/features/profile/api/profile'
+
+import { projectAPI, type BackendProject } from '@/features/projects/api/project'
 
 interface ShareTabProps {
     visibility: 'private' | 'link' | 'public'

@@ -11,7 +11,6 @@ import type {
     GetDeploymentStatus,
     StreamBuildLogs,
     CancelDeployment,
-    SyncEnvVars,
 } from './platform.types'
 
 interface VercelCredentials {

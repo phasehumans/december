@@ -1,8 +1,8 @@
-import { Agent } from './agent'
-import { compactContextIfNeeded } from './utils/compaction'
-import { AgentEvent, ToolCall, AgentMessage, ToolResult, ToolExecuteContext } from './types'
 import { v4 as uuidv4 } from 'uuid'
-import { ProviderStreamChunk } from '@december/providers'
+
+import { Agent } from './agent'
+import { AgentEvent, ToolCall, ToolResult } from './types'
+import { compactContextIfNeeded } from './utils/compaction'
 
 const delay = (ms: number) => new Promise((res) => setTimeout(res, ms))
 
@@ -163,7 +163,7 @@ async function streamAssistantResponse(
     let assistantMessage = ''
     let toolCalls: ToolCall[] = []
     let retries = 10
-    let maxRetries = 10
+    const maxRetries = 10
     let success = false
     let lastError = undefined
 
@@ -341,7 +341,7 @@ async function executeSingleTool(
         }
     }
 
-    let toolResult = { toolCallId: toolCall.id, result: resultStr, error: errorStr }
+    const toolResult = { toolCallId: toolCall.id, result: resultStr, error: errorStr }
 
     if (agent.hooks?.afterToolCall) {
         const afterRes = await agent.hooks.afterToolCall(toolCall, toolResult)

@@ -1,6 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk'
+
 import { LLMProvider, Message, ProviderStreamChunk, ProviderTool } from '../types.ts'
-import { registerProvider } from '../registry.ts'
 
 export class AnthropicProvider implements LLMProvider {
     public id = 'anthropic'

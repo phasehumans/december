@@ -1,10 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { AnimatePresence } from 'framer-motion'
 import React, { useRef, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Paperclip } from 'lucide-react'
 
-import { GitHubRepoForm } from './GitHubRepoForm'
 import { HomeHeader } from './HomeHeader'
 import { OnboardingModal } from './OnboardingModal'
 import PromptInput from './PromptInput'
@@ -12,7 +9,7 @@ import PromptInput from './PromptInput'
 import type { HomeHeroProps } from '@/features/home/types'
 
 import { ProUpgradeModal } from '@/features/billing/components/ProUpgradeModal'
-import Canvas, { type CanvasRef } from '@/features/canvas/components/Canvas'
+import { type CanvasRef } from '@/features/canvas/components/Canvas'
 import { profileAPI } from '@/features/profile/api/profile'
 import { Icons } from '@/shared/components/ui/Icons'
 

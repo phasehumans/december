@@ -1,6 +1,6 @@
-import { GoogleGenAI, Type, FunctionDeclaration, Content } from '@google/genai'
+import { GoogleGenAI, Content } from '@google/genai'
+
 import { LLMProvider, Message, ProviderStreamChunk, ProviderTool } from '../types.ts'
-import { registerProvider } from '../registry.ts'
 
 export class GeminiProvider implements LLMProvider {
     public id = 'gemini'

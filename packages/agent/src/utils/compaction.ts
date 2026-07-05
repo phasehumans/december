@@ -1,5 +1,6 @@
-import { Message } from '../types'
 import { LLMProvider } from '@december/providers'
+
+import { Message } from '../types'
 
 export const DEFAULT_MAX_TOKENS = 32000 // Assume a generic safe limit
 

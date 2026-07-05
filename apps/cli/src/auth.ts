@@ -1,4 +1,5 @@
 import http from 'node:http'
+
 import open from 'open'
 
 export async function loginViaBrowser(

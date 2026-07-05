@@ -1,9 +1,10 @@
-import React, { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Icons } from '@/shared/components/ui/Icons'
-import { profileAPI } from '@/features/profile/api/profile'
+import React, { useState } from 'react'
+
 import { AuthModal } from '@/features/auth/components/AuthModal'
+import { profileAPI } from '@/features/profile/api/profile'
 import { apiRequest } from '@/shared/api/client'
+import { Icons } from '@/shared/components/ui/Icons'
 
 export const DeviceActivate: React.FC = () => {
     const [userCode, setUserCode] = useState('')

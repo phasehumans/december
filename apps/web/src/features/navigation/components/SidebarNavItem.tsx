@@ -1,5 +1,5 @@
-import React from 'react'
 import { ArrowUpRight } from 'lucide-react'
+import React from 'react'
 
 import type { SidebarNavItemProps } from '@/features/navigation/types'
 

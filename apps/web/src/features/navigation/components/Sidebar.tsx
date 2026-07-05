@@ -1,7 +1,6 @@
 import React from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
 import { createPortal } from 'react-dom'
-import { Pin, MoreHorizontal } from 'lucide-react'
+import { useNavigate, useLocation } from 'react-router-dom'
 
 import { SearchModal } from './SearchModal'
 import { SidebarFooter } from './SidebarFooter'
@@ -11,9 +10,8 @@ import { SidebarNavItem } from './SidebarNavItem'
 import type { SidebarProps } from '@/features/navigation/types'
 
 import { useBillingOverview } from '@/features/billing/hooks/useBillingData'
-import { Icons } from '@/shared/components/ui/Icons'
-import { cn } from '@/shared/lib/utils'
 import { SettingsBigModal } from '@/features/preview/components/settings/SettingsBigModal'
+import { Icons } from '@/shared/components/ui/Icons'
 
 const Sidebar: React.FC<
     SidebarProps & { user?: any; onSignOut?: () => void; onHomeClick?: () => void }

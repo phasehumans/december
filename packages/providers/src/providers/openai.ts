@@ -1,6 +1,6 @@
 import { OpenAI } from 'openai'
+
 import { LLMProvider, Message, ProviderStreamChunk, ProviderTool } from '../types.ts'
-import { registerProvider } from '../registry.ts'
 
 export class OpenAIProvider implements LLMProvider {
     public id = 'openai'

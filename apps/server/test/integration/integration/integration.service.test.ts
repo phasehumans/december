@@ -3,7 +3,6 @@ import '../../env'
 import { prisma } from '@december/database'
 import bcrypt from 'bcrypt'
 import { describe, it, expect, beforeEach, afterAll, mock } from 'bun:test'
-import axios from 'axios'
 
 mock.module('axios', () => ({
     default: {

@@ -2,12 +2,13 @@ import '../../env'
 
 import crypto from 'crypto'
 import fs from 'fs'
+
 import { prisma } from '@december/database'
 import { afterAll, beforeEach, describe, expect, it, mock } from 'bun:test'
 
 // Mock external storage, runtime, and network calls
-let mockTextFile: any = 'text content'
-let mockBinaryFile: any = { body: new Uint8Array([1, 2, 3]) }
+const mockTextFile: any = 'text content'
+const mockBinaryFile: any = { body: new Uint8Array([1, 2, 3]) }
 mock.module('../../../src/shared/project-storage', () => ({
     getTextFile: async () => mockTextFile,
     getBinaryFile: async () => mockBinaryFile,
@@ -24,10 +25,10 @@ mock.module('../../../src/modules/runtime/runtime.service', () => ({
     },
 }))
 
-let mockAxiosPostResponse: any = {
+const mockAxiosPostResponse: any = {
     data: { id: 'dep-123', url: 'https://test.vercel.app', state: 'READY' },
 }
-let mockAxiosGetResponse: any = {
+const mockAxiosGetResponse: any = {
     data: {
         id: 'dep-123',
         url: 'https://test.vercel.app',
@@ -35,7 +36,7 @@ let mockAxiosGetResponse: any = {
         deployments: [{ uid: 'dep-123', url: 'https://test.vercel.app', state: 'READY' }],
     },
 }
-let mockAxiosPatchResponse: any = { data: { id: 'dep-123', status: 'CANCELLED' } }
+const mockAxiosPatchResponse: any = { data: { id: 'dep-123', status: 'CANCELLED' } }
 let mockAxiosPostError: any = null
 let mockAxiosGetError: any = null
 let mockAxiosPatchError: any = null
@@ -145,7 +146,7 @@ const createProjectVersion = async (projectId: string, overrides: Record<string,
 }
 
 describe('platform.service.integration', () => {
-    let isCleaningUp = false
+    const isCleaningUp = false
 
     beforeEach(async () => {
         if (isCleaningUp) return

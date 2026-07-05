@@ -1,6 +1,9 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import React from 'react'
 
+import { CanvasPage } from '../../features/canvas/components/CanvasPage'
+import { ReviewPage } from '../../features/projects/components/ReviewPage'
+
 import type { ViewState } from '@/app/types'
 import type { CanvasDocument } from '@/features/canvas/types'
 import type { Message } from '@/features/chat/types'
@@ -18,10 +21,8 @@ import { HomeHero } from '@/features/home/components/HomeHero'
 import { OutputScreen } from '@/features/preview/components/OutputScreen'
 import { ProfileSettings } from '@/features/profile/components/ProfileSettings'
 import { ProjectList } from '@/features/projects/components/ProjectList'
-import { ReviewPage } from '../../features/projects/components/ReviewPage'
 import { SessionList } from '@/features/projects/components/SessionList'
 import { TemplatesView } from '@/features/templates/components/TemplatesView'
-import { CanvasPage } from '../../features/canvas/components/CanvasPage'
 
 interface AppContentViewProps {
     view: ViewState

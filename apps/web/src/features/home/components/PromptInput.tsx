@@ -1,17 +1,11 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react'
-
 import { useQuery } from '@tanstack/react-query'
-
-import { profileAPI } from '@/features/profile/api/profile'
-import { Icons } from '@/shared/components/ui/Icons'
-
 import { Code, Puzzle, MessageSquare, BookOpen, Key } from 'lucide-react'
-import { useTypewriter } from '../hooks/useTypewriter'
-
-import { PromptInputPlaceholder } from './PromptInputPlaceholder'
+import React, { useState, useRef, useEffect, useCallback } from 'react'
 
 import type { PromptInputProps } from '@/features/home/types'
 
+import { profileAPI } from '@/features/profile/api/profile'
+import { Icons } from '@/shared/components/ui/Icons'
 import { PromptFooter } from '@/shared/components/ui/PromptFooter'
 
 const MENTION_PROVIDERS = [

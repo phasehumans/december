@@ -1,5 +1,4 @@
 import { OpenAIProvider } from './openai.ts'
-import { registerProvider } from '../registry.ts'
 
 export class OpenRouterProvider extends OpenAIProvider {
     public id = 'openrouter'

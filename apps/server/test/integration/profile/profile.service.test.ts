@@ -1,11 +1,13 @@
 import '../../env'
 
 import crypto from 'crypto'
-import bcrypt from 'bcrypt'
+
 import { prisma } from '@december/database'
+import bcrypt from 'bcrypt'
 import { afterAll, beforeEach, describe, expect, it } from 'bun:test'
-import { profileService } from '../../../src/modules/profile/profile.service'
+
 import { GenerationSound } from '../../../src/modules/profile/profile.schema'
+import { profileService } from '../../../src/modules/profile/profile.service'
 
 const createUser = async (overrides: Record<string, unknown> = {}) => {
     return prisma.user.create({

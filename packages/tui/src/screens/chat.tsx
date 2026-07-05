@@ -1,7 +1,7 @@
 import { Box, Static, useApp, Text, useInput } from 'ink'
-import { useState, useCallback } from 'react'
 import SelectInput from 'ink-select-input'
 import TextInput from 'ink-text-input'
+import { useState, useCallback } from 'react'
 
 const CustomIndicator = ({ isSelected }: { isSelected?: boolean }) => (
     <Box marginRight={1}>
@@ -103,8 +103,10 @@ const getModelLabel = (value: string) => {
 import { Header } from '../components/header'
 import { InputBar } from '../components/input-bar'
 import { BotMessage, ErrorMessage, UserMessage } from '../components/messages'
+import { useTerminalColumns } from '../hooks/use-terminal-columns'
 
 import type { MessageBlock } from '../components/messages/bot-message'
+
 import { Agent, runAgentLoop, saveConfig, loadConfig, getProviderConfig } from '@december/agent'
 import {
     OpenAIProvider,
@@ -112,7 +114,6 @@ import {
     GeminiProvider,
     OpenRouterProvider,
 } from '@december/providers'
-import { useTerminalColumns } from '../hooks/use-terminal-columns'
 
 type Message = {
     id: number
