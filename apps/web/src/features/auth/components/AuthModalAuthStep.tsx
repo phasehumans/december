@@ -1,6 +1,7 @@
 import React from 'react'
 import { Eye, EyeOff } from 'lucide-react'
 
+import { AuthModalGithubIcon } from './AuthModalGithubIcon'
 import { AuthModalGoogleIcon } from './AuthModalGoogleIcon'
 
 import type { AuthModalAuthStepProps } from '@/features/auth/types'
@@ -14,9 +15,11 @@ export const AuthModalAuthStep: React.FC<AuthModalAuthStepProps> = ({
     errorMessage,
     isAuthPending,
     isGooglePending,
+    isGithubPending,
     onEmailChange,
     onPasswordChange,
     onGoogleLogin,
+    onGithubLogin,
     onSubmit,
     onToggleAuthMode,
     onForgotPassword,
@@ -37,9 +40,21 @@ export const AuthModalAuthStep: React.FC<AuthModalAuthStepProps> = ({
             <div className="flex flex-col gap-2.5 mb-1">
                 <button
                     type="button"
+                    onClick={onGithubLogin}
+                    disabled={isAuthPending}
+                    className="w-full bg-[#222222] hover:bg-[#2A2A2A] text-white font-medium h-[42px] rounded-full flex items-center justify-center gap-2.5 transition-all duration-200 active:scale-[0.98] shadow-none disabled:opacity-50 border border-[#333333]"
+                >
+                    <div className="w-[18px] h-[18px] flex items-center justify-center">
+                        <AuthModalGithubIcon />
+                    </div>
+                    <span className="text-[14px]">Continue with GitHub</span>
+                </button>
+
+                <button
+                    type="button"
                     onClick={onGoogleLogin}
                     disabled={isAuthPending}
-                    className="w-full bg-[#EDEDED] hover:bg-white text-[#111111] font-medium h-[42px] rounded-full flex items-center justify-center gap-2.5 transition-all duration-200 active:scale-[0.98] shadow-none disabled:opacity-50"
+                    className="w-full bg-white hover:bg-[#F5F5F5] text-[#111111] font-medium h-[42px] rounded-full flex items-center justify-center gap-2.5 transition-all duration-200 active:scale-[0.98] shadow-none disabled:opacity-50"
                 >
                     <div className="w-[18px] h-[18px] flex items-center justify-center">
                         <AuthModalGoogleIcon />

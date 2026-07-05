@@ -18,6 +18,7 @@ model User {
   googleId               String?
   otpExpiresAt           DateTime?
   otpHash                String?
+  githubId               String?
   githubToken            String?
   githubUsername         String?
   githubConnected        Boolean             @default(false)

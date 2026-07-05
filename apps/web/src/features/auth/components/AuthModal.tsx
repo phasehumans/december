@@ -32,8 +32,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         otp,
         errorMessage,
         googleLogin,
+        githubLogin,
         isAuthPending,
         isGooglePending,
+        isGithubPending,
         isOtpPending,
         isForgotEmailPending,
         isForgotOtpPending,
@@ -79,9 +81,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                                     errorMessage={errorMessage}
                                     isAuthPending={isAuthPending}
                                     isGooglePending={isGooglePending}
+                                    isGithubPending={isGithubPending}
                                     onEmailChange={setEmail}
                                     onPasswordChange={setPassword}
                                     onGoogleLogin={googleLogin}
+                                    onGithubLogin={githubLogin}
                                     onSubmit={handleAuthSubmit}
                                     onToggleAuthMode={handleToggleAuthMode}
                                     onForgotPassword={handleForgotPasswordStart}
