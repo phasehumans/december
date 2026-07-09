@@ -51,34 +51,34 @@ export function ModelSelector() {
 
         return (
             <Box flexDirection="column">
-                {itemsAbove > 0 && <Text color="#888888">↑ {itemsAbove} more</Text>}
+                {itemsAbove > 0 && <Text color="#AAAAAA">↑ {itemsAbove} more</Text>}
                 {visibleModels.map((model, relIdx) => {
                     const absIdx = windowStart + relIdx
                     const isActive = absIdx === cursor
                     return (
                         <Box key={model.id}>
-                            <Text color={isActive ? '#FFFFFF' : '#888888'}>
-                                {isActive ? '● ' : '  '}
+                            <Text color={isActive ? '#89B4F8' : '#AAAAAA'}>
+                                {isActive ? '❭ ' : '  '}
                                 {model.label}
                             </Text>
                         </Box>
                     )
                 })}
-                {itemsBelow > 0 && <Text color="#888888">↓ {itemsBelow} more</Text>}
+                {itemsBelow > 0 && <Text color="#AAAAAA">↓ {itemsBelow} more</Text>}
                 <Box marginTop={1} gap={1}>
-                    <Text color="#888888">↑↓</Text>
-                    <Text color="#FFFFFF">Navigate</Text>
-                    <Text color="#888888">·</Text>
-                    <Text color="#888888">enter</Text>
-                    <Text color="#FFFFFF">Select</Text>
-                    <Text color="#888888">·</Text>
-                    <Text color="#888888">esc</Text>
-                    <Text color="#FFFFFF">Cancel</Text>
+                    <Text color="#89B4F8">↑↓</Text>
+                    <Text color="#AAAAAA">Navigate</Text>
+                    <Text color="#AAAAAA">·</Text>
+                    <Text color="#89B4F8">enter</Text>
+                    <Text color="#AAAAAA">Select</Text>
+                    <Text color="#AAAAAA">·</Text>
+                    <Text color="#89B4F8">esc</Text>
+                    <Text color="#AAAAAA">Cancel</Text>
                 </Box>
             </Box>
         )
     }
 
-    // Closed: just show model name in white
-    return <Text color="#AAAAAA">{currentModel.label}</Text>
+    // Closed: just show model name
+    return <Text color="#888888">{currentModel.label}</Text>
 }

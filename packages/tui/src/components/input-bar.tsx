@@ -116,16 +116,15 @@ export function InputBar({
                     <InlineDialog config={dialog.currentDialog} close={dialog.close} />
                 </Box>
             )}
-
             {/* Top separator */}
-            <Text color="#555555">{sep}</Text>
+            <Box overflow="hidden" height={1} width="100%">
+                <Text color="#555555">{sep}</Text>
+            </Box>
 
-            {/* Content: Auth UI or Prompt */}
-            {authUI ? (
-                <Box paddingY={0}>{authUI}</Box>
-            ) : (
-                <Box>
-                    <Text color={disabled ? '#555555' : 'white'}>{`❭ `}</Text>
+            {/* Content: Prompt */}
+            <Box>
+                <Text color={disabled ? '#555555' : '#89B4F8'}>{`❭ `}</Text>
+                {!authUI && (
                     <TextInput
                         value={value}
                         onChange={handleChange}
@@ -133,14 +132,16 @@ export function InputBar({
                         placeholder={placeholder}
                         focus={!disabled && !dialog.isOpen}
                     />
-                </Box>
-            )}
+                )}
+            </Box>
 
             {/* Bottom separator */}
-            <Text color="#555555">{sep}</Text>
+            <Box overflow="hidden" height={1} width="100%">
+                <Text color="#555555">{sep}</Text>
+            </Box>
 
             {/* Status row — model left, december studio right */}
-            {!showCommandMenu && (
+            {!showCommandMenu && !authUI && (
                 <Box width={innerWidth} justifyContent="space-between">
                     <Box gap={2} alignItems="center">
                         <Text color="#AAAAAA">{activeModel}</Text>
@@ -162,12 +163,15 @@ export function InputBar({
                         )}
                     </Box>
                     <Box gap={0}>
-                        <Text color="gray">
+                        <Text color="#AAAAAA">
                             {'\x1b]8;;https://trydecember.com\x07december ↗\x1b]8;;\x07'}
                         </Text>
                     </Box>
                 </Box>
             )}
+
+            {/* Auth UI */}
+            {authUI && <Box paddingBottom={1}>{authUI}</Box>}
 
             {/* Command dropdown */}
             {showCommandMenu && (
