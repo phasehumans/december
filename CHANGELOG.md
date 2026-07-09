@@ -2,6 +2,22 @@
 
 ### Features
 
+- Complete GitHub OAuth login and auto-connect integration
+- Integrate github oauth login (#170)
+- Add API rate limit retries, OpenRouter model fetching, and TUI session resume
+- API rate limit retries, OpenRouter model fetching, and TUI session resume (#179)
+- Selector and npm info
+- _(tui)_ Polish TUI command menu, input layouts, and fix bash description
+- _(tui)_ Polish command menu, input layouts, and fix bash description (#180)
+
+### Bug Fixes
+
+- Add OpenRouter model fallbacks and restore full tool blocks on resume
+
+## [0.2.3] - 2026-07-05
+
+### Features
+
 - Added openai, anthropic and gemmni provider
 - _(agent)_ Added custom proviiders and model selection #162
 - Add fumadocs
@@ -13,6 +29,10 @@
 ### Bug Fixes
 
 - _(agent)_ Fix agent loop and esc agent and improve tui #164
+
+### Miscellaneous Tasks
+
+- _(release)_ V0.2.3
 
 ## [0.2.2] - 2026-07-01
 
