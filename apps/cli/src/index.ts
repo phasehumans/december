@@ -79,9 +79,12 @@ async function main() {
 
     const isAuthenticated = !!providerConfig
 
+    const sessionRepository = new FileSessionRepository()
+    const sessionId = `session-${Date.now()}`
+
     const harness = new AgentHarness({
         baseSystemPrompt:
-            'You are December, an autonomous software engineer. You have access to tools. When executing code, please use JSON schemas for tool inputs.',
+            'You are December, an autonomous software engineer. You have access to tools. When executing code, please use JSON schemas for tool inputs. Before using a tool, you MUST enclose your thought process inside <thought>...</thought> tags. At the end of your work, provide a summary of what you did, highlighting important keywords.',
         llm: llm,
         tools: [
             BashTool,
@@ -96,7 +99,8 @@ async function main() {
         ],
         operations: localOperations,
         modelOptions: providerConfig?.model ? { model: providerConfig.model } : undefined,
-        sessionRepository: new FileSessionRepository(),
+        sessionRepository,
+        sessionId,
         workspaceDir: process.cwd(),
         hooks: {
             beforeToolCall: async (toolCall) => {
@@ -118,6 +122,7 @@ async function main() {
             isAuthenticated,
             cliVersion: pkg.version,
             userEmail,
+            sessionRepository,
             onLogin: loginViaBrowser,
             onLoginHeadless: (onCode: (code: string, uri: string) => void) =>
                 loginViaDeviceCode('http://localhost:4000', onCode), // Replace with prod URL later

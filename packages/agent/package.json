@@ -16,6 +16,7 @@
         "@december/providers": "workspace:*",
         "@types/uuid": "11.0.0",
         "openai": "6.45.0",
+        "p-retry": "8.0.0",
         "uuid": "14.0.1"
     },
     "version": "0.2.3"

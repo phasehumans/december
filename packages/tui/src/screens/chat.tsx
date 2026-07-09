@@ -1,7 +1,7 @@
 import { Box, Static, useApp, Text, useInput } from 'ink'
 import SelectInput from 'ink-select-input'
 import TextInput from 'ink-text-input'
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 
 const CustomIndicator = ({ isSelected }: { isSelected?: boolean }) => (
     <Box marginRight={1}>
@@ -108,12 +108,55 @@ import { useTerminalColumns } from '../hooks/use-terminal-columns'
 import type { MessageBlock } from '../components/messages/bot-message'
 
 import { Agent, runAgentLoop, saveConfig, loadConfig, getProviderConfig } from '@december/agent'
+import type { FileSessionRepository, SessionInfo } from '@december/agent'
 import {
     OpenAIProvider,
     AnthropicProvider,
     GeminiProvider,
     OpenRouterProvider,
 } from '@december/providers'
+
+function getToolSummary(name: string, inputStr: string): string {
+    try {
+        const args = JSON.parse(inputStr || '{}')
+        switch (name) {
+            case 'read_file':
+                return `Read(${args.filePath || args.path || ''})`.trim()
+            case 'write_file':
+                return `Create(${args.filePath || args.path || ''})`.trim()
+            case 'edit_file':
+            case 'edit_diff':
+                return `Edit(${args.filePath || args.path || ''})`.trim()
+            case 'list_dir':
+                return `List(${args.dirPath || args.path || ''})`.trim()
+            case 'bash':
+                return `Bash(${args.command || ''})`.trim()
+            case 'find_files':
+                return `Search(${args.pattern || args.query || ''})`.trim()
+            case 'grep_search':
+                return `Search(${args.pattern || args.query || ''})`.trim()
+            case 'subagent':
+                return `Subagent()`
+            default:
+                return `${name}()`
+        }
+    } catch {
+        return `${name}()`
+    }
+}
+
+const FALLBACK_OPENROUTER_MODELS = [
+    { label: '(free) Google: Gemma 2 9B', value: 'google/gemma-2-9b-it:free' },
+    { label: '(free) Meta: Llama 3 8B Instruct', value: 'meta-llama/llama-3-8b-instruct:free' },
+    {
+        label: '(free) Microsoft: Phi 3 Medium 128K Instruct',
+        value: 'microsoft/phi-3-medium-128k-instruct:free',
+    },
+    { label: 'Google: Gemini 2.5 Flash', value: 'google/gemini-2.5-flash' },
+    { label: 'Google: Gemini 2.5 Pro', value: 'google/gemini-2.5-pro' },
+    { label: 'Anthropic: Claude 3.5 Sonnet', value: 'anthropic/claude-3.5-sonnet' },
+    { label: 'Meta: Llama 3.3 70B Instruct', value: 'meta-llama/llama-3.3-70b-instruct' },
+]
 
 type Message = {
     id: number
@@ -132,12 +175,14 @@ type AuthMode =
     | 'byok_key'
     | 'model_select'
     | 'logout_select'
+    | 'session_select'
 
 export function Chat({
     agent,
     isAuthenticated: initialAuth,
     cliVersion,
     userEmail,
+    sessionRepository,
     onLogin,
     onLoginHeadless,
 }: {
@@ -145,6 +190,7 @@ export function Chat({
     isAuthenticated: boolean
     cliVersion?: string
     userEmail?: string
+    sessionRepository?: FileSessionRepository
     onLogin?: () => Promise<{ token: string; email: string | null }>
     onLoginHeadless?: (
         onCode: (code: string, uri: string) => void
@@ -164,11 +210,41 @@ export function Chat({
     const [logoutItems, setLogoutItems] = useState<{ label: string; value: string }[]>([])
     const [selectedProvider, setSelectedProvider] = useState<string>('')
     const [apiKey, setApiKey] = useState('')
+    const [openRouterModels, setOpenRouterModels] = useState<
+        { label: string; value: string }[] | null
+    >(null)
+    const [sessionItems, setSessionItems] = useState<{ label: string; value: string }[]>([])
+
+    useEffect(() => {
+        if (authMode === 'model_select' && selectedProvider === 'openrouter') {
+            fetch('https://openrouter.ai/api/v1/models')
+                .then((res) => res.json())
+                .then((data) => {
+                    const models = data.data.map((m: any) => {
+                        const isFree = m.pricing?.prompt === '0' && m.pricing?.completion === '0'
+                        return {
+                            label: isFree ? `(free) ${m.name}` : m.name,
+                            value: m.id,
+                        }
+                    })
+                    models.sort((a: any, b: any) => {
+                        if (a.label.startsWith('(free)') && !b.label.startsWith('(free)')) return -1
+                        if (!a.label.startsWith('(free)') && b.label.startsWith('(free)')) return 1
+                        return a.label.localeCompare(b.label)
+                    })
+                    setOpenRouterModels(models)
+                })
+                .catch(() => {
+                    setOpenRouterModels(FALLBACK_OPENROUTER_MODELS)
+                })
+        }
+    }, [authMode, selectedProvider])
 
     useInput((input, key) => {
         if (key.escape || (input === 'c' && key.ctrl)) {
             if (isStreaming) {
                 agent.abort()
+                setIsStreaming(false)
             } else if (authMode === 'byok_key') {
                 setAuthMode('byok_provider')
             } else if (authMode === 'byok_provider' || authMode === 'december_login_select') {
@@ -176,7 +252,8 @@ export function Chat({
             } else if (
                 authMode === 'menu' ||
                 authMode === 'model_select' ||
-                authMode === 'logout_select'
+                authMode === 'logout_select' ||
+                authMode === 'session_select'
             ) {
                 setAuthMode('none')
             } else if (input === 'c' && key.ctrl) {
@@ -260,6 +337,49 @@ export function Chat({
                 return
             }
 
+            if (text.trim() === '/resume') {
+                if (!sessionRepository) {
+                    setStaticMessages((prev) => [...prev, ...activeMessages])
+                    setActiveMessages([
+                        { id: ++msgId, role: 'user', text },
+                        {
+                            id: ++msgId,
+                            role: 'assistant',
+                            blocks: [
+                                { type: 'text', content: 'Session repository not available.' },
+                            ],
+                        },
+                    ])
+                    return
+                }
+                sessionRepository.listSessions().then((sessions) => {
+                    if (sessions.length === 0) {
+                        setStaticMessages((prev) => [...prev, ...activeMessages])
+                        setActiveMessages([
+                            { id: ++msgId, role: 'user', text },
+                            {
+                                id: ++msgId,
+                                role: 'assistant',
+                                blocks: [{ type: 'text', content: 'No previous sessions found.' }],
+                            },
+                        ])
+                        return
+                    }
+                    const items = sessions.map((s) => {
+                        const date = new Date(s.updatedAt)
+                        const timeStr = date.toLocaleString()
+                        const preview = s.preview ? ` — ${s.preview}` : ''
+                        return {
+                            label: `${s.id} (${timeStr}, ${s.messageCount} msgs)${preview}`,
+                            value: s.id,
+                        }
+                    })
+                    setSessionItems(items)
+                    setAuthMode('session_select')
+                })
+                return
+            }
+
             if (!isAuthenticated) {
                 setStaticMessages((prev) => [...prev, ...activeMessages])
                 setActiveMessages([
@@ -305,13 +425,48 @@ export function Chat({
                             const blocks = [...(msg.blocks || [])]
                             switch (event.type) {
                                 case 'TurnStart':
-                                    blocks.push({ type: 'text', content: 'Thinking...' })
+                                    blocks.push({ type: 'text', content: 'Working...' })
                                     break
+                                case 'AgentError': {
+                                    const lastBlock = blocks[blocks.length - 1]
+                                    if (
+                                        lastBlock &&
+                                        lastBlock.type === 'text' &&
+                                        (lastBlock.content === 'Working...' ||
+                                            lastBlock.content === 'Thinking...' ||
+                                            lastBlock.content.startsWith('Rate limit hit'))
+                                    ) {
+                                        lastBlock.content = `\n\n**Agent Error:** ${event.error}\n`
+                                    } else {
+                                        blocks.push({
+                                            type: 'text',
+                                            content: `\n\n**Agent Error:** ${event.error}\n`,
+                                        })
+                                    }
+                                    break
+                                }
+                                case 'AgentStatus': {
+                                    const statusBlock = blocks[blocks.length - 1]
+                                    if (
+                                        statusBlock &&
+                                        statusBlock.type === 'text' &&
+                                        (statusBlock.content === 'Working...' ||
+                                            statusBlock.content === 'Thinking...' ||
+                                            statusBlock.content.startsWith('Rate limit hit'))
+                                    ) {
+                                        statusBlock.content = event.message || 'Working...'
+                                    } else if (event.message) {
+                                        blocks.push({ type: 'text', content: event.message })
+                                    }
+                                    break
+                                }
                                 case 'StreamChunk':
                                     const lastBlock = blocks[blocks.length - 1]
                                     if (lastBlock && lastBlock.type === 'text') {
                                         lastBlock.content =
-                                            (lastBlock.content === 'Thinking...'
+                                            (lastBlock.content === 'Working...' ||
+                                            lastBlock.content === 'Thinking...' ||
+                                            lastBlock.content.startsWith('Rate limit hit')
                                                 ? ''
                                                 : lastBlock.content) + event.content
                                     } else {
@@ -326,7 +481,8 @@ export function Chat({
                                         if (
                                             blocks.length > 0 &&
                                             blocks[blocks.length - 1].type === 'text' &&
-                                            blocks[blocks.length - 1].content === 'Thinking...'
+                                            (blocks[blocks.length - 1].content === 'Working...' ||
+                                                blocks[blocks.length - 1].content === 'Thinking...')
                                         ) {
                                             blocks.pop()
                                         }
@@ -338,7 +494,12 @@ export function Chat({
                                     blocks.push({
                                         type: 'command',
                                         toolCallId: event.toolCall.id,
-                                        command: `${event.toolCall.name} ${event.toolCall.input}`,
+                                        toolName: event.toolCall.name,
+                                        toolInput: event.toolCall.input,
+                                        command: getToolSummary(
+                                            event.toolCall.name,
+                                            event.toolCall.input
+                                        ),
                                         status: 'running',
                                         output: '',
                                     })
@@ -538,6 +699,7 @@ export function Chat({
     }
 
     const handleModelSelect = async (item: any) => {
+        if (item.value === 'loading') return
         const config = await loadConfig()
         config.activeModel = item.value
         await saveConfig(config)
@@ -552,6 +714,74 @@ export function Chat({
                 blocks: [{ type: 'text', content: `Model successfully changed to ${item.value}!` }],
             },
         ])
+    }
+
+    const handleSessionSelect = async (item: any) => {
+        setAuthMode('none')
+        try {
+            await agent.loadContext(item.value)
+
+            // Rebuild UI messages from loaded context
+            const resumedMessages: Message[] = []
+            for (const msg of agent.messages) {
+                if (msg.role === 'user') {
+                    resumedMessages.push({ id: ++msgId, role: 'user', text: msg.content })
+                } else if (msg.role === 'assistant') {
+                    const blocks: MessageBlock[] = []
+
+                    if (msg.content) {
+                        blocks.push({ type: 'text', content: msg.content })
+                    }
+
+                    if (msg.toolCalls && msg.toolCalls.length > 0) {
+                        for (const tc of msg.toolCalls) {
+                            const toolMsg = agent.messages.find(
+                                (m) => m.role === 'tool' && m.toolCallId === tc.id
+                            )
+                            const inputStr =
+                                typeof tc.input === 'string' ? tc.input : JSON.stringify(tc.input)
+                            const hasError =
+                                toolMsg &&
+                                (toolMsg.content.startsWith('Error executing tool:') ||
+                                    toolMsg.content.startsWith('Tool execution blocked:') ||
+                                    (toolMsg.content.startsWith('Tool ') &&
+                                        toolMsg.content.endsWith(' not found.')))
+                            blocks.push({
+                                type: 'command',
+                                toolCallId: tc.id,
+                                toolName: tc.name,
+                                toolInput: inputStr,
+                                command: getToolSummary(tc.name, inputStr),
+                                status: hasError ? 'error' : 'success',
+                                output: toolMsg?.content || '',
+                            })
+                        }
+                    }
+
+                    if (blocks.length > 0) {
+                        resumedMessages.push({
+                            id: ++msgId,
+                            role: 'assistant',
+                            blocks,
+                        })
+                    }
+                }
+            }
+
+            setStaticMessages(resumedMessages)
+            setActiveMessages([
+                {
+                    id: ++msgId,
+                    role: 'assistant',
+                    blocks: [{ type: 'text', content: `Resumed session: ${item.value}` }],
+                },
+            ])
+        } catch (err: any) {
+            setStaticMessages((prev) => [...prev, ...activeMessages])
+            setActiveMessages([
+                { id: ++msgId, role: 'error', text: `Failed to resume session: ${err.message}` },
+            ])
+        }
     }
 
     const handleProviderSelect = (item: any) => {
@@ -580,7 +810,7 @@ export function Chat({
                 break
             case 'openrouter':
                 testProvider = new OpenRouterProvider(key)
-                testModel = 'openai/gpt-4o'
+                testModel = 'meta-llama/llama-3.2-3b-instruct:free'
                 break
             case 'deepseek':
                 testProvider = new OpenAIProvider('https://api.deepseek.com', key)
@@ -846,7 +1076,11 @@ export function Chat({
                     </Text>
                 </Box>
                 <SelectInput
-                    items={getProviderModels(selectedProvider)}
+                    items={
+                        selectedProvider === 'openrouter'
+                            ? openRouterModels || [{ label: 'Loading models...', value: 'loading' }]
+                            : getProviderModels(selectedProvider)
+                    }
                     onSelect={handleModelSelect}
                     indicatorComponent={CustomIndicator}
                     itemComponent={CustomItem}
@@ -867,6 +1101,25 @@ export function Chat({
                 <SelectInput
                     items={logoutItems}
                     onSelect={(item) => handleLogoutSelect(item.value)}
+                    indicatorComponent={CustomIndicator}
+                    itemComponent={CustomItem}
+                />
+                <Box paddingTop={1}>
+                    <Text color="gray">↑↓ navigate enter select escape/ctrl+c cancel</Text>
+                </Box>
+            </Box>
+        )
+    } else if (authMode === 'session_select') {
+        authUI = (
+            <Box flexDirection="column" paddingX={1}>
+                <Box marginBottom={1}>
+                    <Text bold color="white">
+                        Select a session to resume:
+                    </Text>
+                </Box>
+                <SelectInput
+                    items={sessionItems}
+                    onSelect={handleSessionSelect}
                     indicatorComponent={CustomIndicator}
                     itemComponent={CustomItem}
                 />
