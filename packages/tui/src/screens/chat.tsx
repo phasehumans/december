@@ -145,6 +145,19 @@ function getToolSummary(name: string, inputStr: string): string {
     }
 }
 
+const FALLBACK_OPENROUTER_MODELS = [
+    { label: '(free) Google: Gemma 2 9B', value: 'google/gemma-2-9b-it:free' },
+    { label: '(free) Meta: Llama 3 8B Instruct', value: 'meta-llama/llama-3-8b-instruct:free' },
+    {
+        label: '(free) Microsoft: Phi 3 Medium 128K Instruct',
+        value: 'microsoft/phi-3-medium-128k-instruct:free',
+    },
+    { label: 'Google: Gemini 2.5 Flash', value: 'google/gemini-2.5-flash' },
+    { label: 'Google: Gemini 2.5 Pro', value: 'google/gemini-2.5-pro' },
+    { label: 'Anthropic: Claude 3.5 Sonnet', value: 'anthropic/claude-3.5-sonnet' },
+    { label: 'Meta: Llama 3.3 70B Instruct', value: 'meta-llama/llama-3.3-70b-instruct' },
+]
+
 type Message = {
     id: number
     role: 'user' | 'assistant' | 'error'
@@ -222,7 +235,7 @@ export function Chat({
                     setOpenRouterModels(models)
                 })
                 .catch(() => {
-                    setOpenRouterModels(null)
+                    setOpenRouterModels(FALLBACK_OPENROUTER_MODELS)
                 })
         }
     }, [authMode, selectedProvider])
@@ -713,12 +726,45 @@ export function Chat({
             for (const msg of agent.messages) {
                 if (msg.role === 'user') {
                     resumedMessages.push({ id: ++msgId, role: 'user', text: msg.content })
-                } else if (msg.role === 'assistant' && msg.content) {
-                    resumedMessages.push({
-                        id: ++msgId,
-                        role: 'assistant',
-                        blocks: [{ type: 'text', content: msg.content }],
-                    })
+                } else if (msg.role === 'assistant') {
+                    const blocks: MessageBlock[] = []
+
+                    if (msg.content) {
+                        blocks.push({ type: 'text', content: msg.content })
+                    }
+
+                    if (msg.toolCalls && msg.toolCalls.length > 0) {
+                        for (const tc of msg.toolCalls) {
+                            const toolMsg = agent.messages.find(
+                                (m) => m.role === 'tool' && m.toolCallId === tc.id
+                            )
+                            const inputStr =
+                                typeof tc.input === 'string' ? tc.input : JSON.stringify(tc.input)
+                            const hasError =
+                                toolMsg &&
+                                (toolMsg.content.startsWith('Error executing tool:') ||
+                                    toolMsg.content.startsWith('Tool execution blocked:') ||
+                                    (toolMsg.content.startsWith('Tool ') &&
+                                        toolMsg.content.endsWith(' not found.')))
+                            blocks.push({
+                                type: 'command',
+                                toolCallId: tc.id,
+                                toolName: tc.name,
+                                toolInput: inputStr,
+                                command: getToolSummary(tc.name, inputStr),
+                                status: hasError ? 'error' : 'success',
+                                output: toolMsg?.content || '',
+                            })
+                        }
+                    }
+
+                    if (blocks.length > 0) {
+                        resumedMessages.push({
+                            id: ++msgId,
+                            role: 'assistant',
+                            blocks,
+                        })
+                    }
                 }
             }
 
