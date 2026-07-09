@@ -10,5 +10,7 @@
     },
     "devDependencies": {
         "@types/diff": "8.0.0"
-    }
+    },
+    "author": "Chaitanya Sonawane",
+    "license": "Apache-2.0"
 }

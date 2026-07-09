@@ -120,12 +120,10 @@ export function InputBar({
             {/* Top separator */}
             <Text color="#555555">{sep}</Text>
 
-            {/* Content: Auth UI or Prompt */}
-            {authUI ? (
-                <Box paddingY={0}>{authUI}</Box>
-            ) : (
-                <Box>
-                    <Text color={disabled ? '#555555' : '#89B4F8'}>{`❭ `}</Text>
+            {/* Content: Prompt */}
+            <Box>
+                <Text color={disabled ? '#555555' : '#89B4F8'}>{`❭ `}</Text>
+                {!authUI && (
                     <TextInput
                         value={value}
                         onChange={handleChange}
@@ -133,14 +131,14 @@ export function InputBar({
                         placeholder={placeholder}
                         focus={!disabled && !dialog.isOpen}
                     />
-                </Box>
-            )}
+                )}
+            </Box>
 
             {/* Bottom separator */}
             <Text color="#555555">{sep}</Text>
 
             {/* Status row — model left, december studio right */}
-            {!showCommandMenu && (
+            {!showCommandMenu && !authUI && (
                 <Box width={innerWidth} justifyContent="space-between">
                     <Box gap={2} alignItems="center">
                         <Text color="#AAAAAA">{activeModel}</Text>
@@ -168,6 +166,9 @@ export function InputBar({
                     </Box>
                 </Box>
             )}
+
+            {/* Auth UI */}
+            {authUI && <Box paddingBottom={1}>{authUI}</Box>}
 
             {/* Command dropdown */}
             {showCommandMenu && (

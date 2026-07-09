@@ -26,7 +26,15 @@ import pkg from '../package.json' with { type: 'json' }
 import { loginViaBrowser, loginViaDeviceCode } from './auth'
 import { localOperations } from './local-operations'
 
+const originalConsoleError = console.error
+
 async function main() {
+    // Suppress noisy SDK console logs that corrupt the Ink TUI layout
+    console.warn = () => {}
+    console.error = () => {}
+    console.log = () => {}
+    console.info = () => {}
+
     const providerConfig = await getProviderConfig()
 
     // If not authenticated, we pass a dummy provider so the Agent can boot.
@@ -131,4 +139,4 @@ async function main() {
     )
 }
 
-main().catch(console.error)
+main().catch(originalConsoleError)
