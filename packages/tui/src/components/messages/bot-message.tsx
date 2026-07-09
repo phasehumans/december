@@ -1,5 +1,8 @@
 import { Box, Text } from 'ink'
+import React from 'react'
 
+import { Markdown } from '../markdown'
+import { Pill } from '../pill'
 import { Spinner } from '../spinner'
 
 export type MessageBlock =
@@ -25,31 +28,6 @@ export type MessageBlock =
 
 type Props = {
     blocks: MessageBlock[]
-}
-
-const renderTextWithChips = (text: string) => {
-    const parts = text.split(/`([^`]+)`/g)
-    if (parts.length === 1) return <Text color="white">{text}</Text>
-
-    return (
-        <Text>
-            {parts.map((part, i) => {
-                if (i % 2 === 1) {
-                    return (
-                        <Text key={i} backgroundColor="#b37400" color="white" bold>
-                            {' '}
-                            {part}{' '}
-                        </Text>
-                    )
-                }
-                return (
-                    <Text key={i} color="white">
-                        {part}
-                    </Text>
-                )
-            })}
-        </Text>
-    )
 }
 
 export function BotMessage({ blocks }: Props) {
@@ -87,16 +65,16 @@ export function BotMessage({ blocks }: Props) {
                                             <Box
                                                 key={pidx}
                                                 flexDirection="column"
-                                                paddingBottom={1}
+                                                paddingBottom={0}
                                             >
-                                                <Text color="gray">▸ Thought</Text>
-                                                <Box
-                                                    marginLeft={2}
-                                                    borderLeft
-                                                    borderStyle="single"
-                                                    borderColor="gray"
-                                                    paddingLeft={1}
-                                                >
+                                                <Box gap={1} alignItems="center">
+                                                    <Pill
+                                                        label="THOUGHT"
+                                                        backgroundColor="#303030"
+                                                        color="#94a3b8"
+                                                    />
+                                                </Box>
+                                                <Box marginLeft={0} paddingLeft={2} paddingY={0.5}>
                                                     <Text color="gray" dimColor>
                                                         {thoughtContent}
                                                     </Text>
@@ -107,7 +85,7 @@ export function BotMessage({ blocks }: Props) {
                                     if (part.trim() === '') return null
                                     return (
                                         <Box key={pidx} paddingBottom={0.5}>
-                                            {renderTextWithChips(part.trim())}
+                                            <Markdown>{part.trim()}</Markdown>
                                         </Box>
                                     )
                                 })}
@@ -116,17 +94,13 @@ export function BotMessage({ blocks }: Props) {
                     }
                     case 'thinking': {
                         return (
-                            <Box
-                                key={idx}
-                                marginY={0.5}
-                                flexDirection="column"
-                                borderStyle="round"
-                                borderColor="gray"
-                                paddingX={1}
-                            >
-                                <Text color="gray" italic>
-                                    {block.content || 'Thinking...'}
-                                </Text>
+                            <Box key={idx} marginY={0.5} flexDirection="column">
+                                <Box gap={1} alignItems="center">
+                                    <Spinner />
+                                    <Text color="gray" italic>
+                                        {block.content || 'Thinking...'}
+                                    </Text>
+                                </Box>
                             </Box>
                         )
                     }
@@ -138,28 +112,29 @@ export function BotMessage({ blocks }: Props) {
                             let parsedInput: any = {}
                             try {
                                 parsedInput = JSON.parse(block.toolInput || '{}')
-                            } catch {}
+                            } catch {
+                                // ignore parse errors
+                            }
 
                             if (block.toolName === 'read_file') {
                                 const lines = block.output ? block.output.split('\n').length : 0
                                 return (
                                     <Box key={idx} flexDirection="column" marginY={0.5}>
                                         <Box gap={1} alignItems="center">
-                                            <Text color={isSuccess ? '#f59e0b' : '#FCA5A5'} bold>
-                                                •
-                                            </Text>
-                                            <Text color="white" bold>
-                                                Read
-                                            </Text>
-                                            <Text color="gray">
+                                            <Pill
+                                                label="READ"
+                                                backgroundColor="#303030"
+                                                color="#cbd5e1"
+                                            />
+                                            <Text color="white">
                                                 {parsedInput.path || parsedInput.filePath || ''}
                                             </Text>
+                                            {isSuccess && (
+                                                <Text color="gray" dimColor>
+                                                    ({lines} lines)
+                                                </Text>
+                                            )}
                                         </Box>
-                                        {isSuccess && (
-                                            <Box paddingLeft={2}>
-                                                <Text color="gray">└ {lines} lines</Text>
-                                            </Box>
-                                        )}
                                     </Box>
                                 )
                             }
@@ -167,77 +142,106 @@ export function BotMessage({ blocks }: Props) {
                             if (
                                 block.toolName === 'edit_file' ||
                                 block.toolName === 'edit_diff' ||
-                                block.toolName === 'write_file'
+                                block.toolName === 'write_file' ||
+                                block.toolName === 'write_to_file' ||
+                                block.toolName === 'multi_replace_file_content' ||
+                                block.toolName === 'replace_file_content'
                             ) {
                                 const diffStr =
-                                    block.toolName === 'write_file'
-                                        ? parsedInput.content
+                                    block.toolName === 'write_file' ||
+                                    block.toolName === 'write_to_file'
+                                        ? parsedInput.content || parsedInput.CodeContent
                                         : parsedInput.diff || ''
-                                const path = parsedInput.path || parsedInput.filePath || ''
+                                const path =
+                                    parsedInput.path ||
+                                    parsedInput.filePath ||
+                                    parsedInput.TargetFile ||
+                                    ''
                                 const lines = diffStr ? diffStr.split('\n') : []
-                                const actionStr =
-                                    block.toolName === 'write_file' ? 'Created' : 'Edited'
+                                const isWrite =
+                                    block.toolName === 'write_file' ||
+                                    block.toolName === 'write_to_file'
 
                                 return (
                                     <Box key={idx} flexDirection="column" marginY={0.5}>
-                                        <Box gap={1} alignItems="center">
-                                            <Text color={isSuccess ? '#f59e0b' : '#FCA5A5'} bold>
-                                                •
-                                            </Text>
-                                            <Text color="white" bold>
-                                                {actionStr}
-                                            </Text>
-                                            <Text color="gray">{path}</Text>
+                                        <Box
+                                            gap={1}
+                                            alignItems="center"
+                                            paddingBottom={isSuccess && lines.length > 0 ? 0.5 : 0}
+                                        >
+                                            <Pill
+                                                label={isWrite ? 'CREATE' : 'EDIT'}
+                                                backgroundColor="#303030"
+                                                color={isWrite ? '#4ade80' : '#89B4F8'}
+                                            />
+                                            <Text color="white">{path}</Text>
                                         </Box>
                                         {isSuccess && lines.length > 0 && (
-                                            <Box flexDirection="column" marginLeft={2}>
+                                            <Box flexDirection="column" paddingLeft={0}>
                                                 {lines
-                                                    .slice(0, 20)
+                                                    .slice(0, 40)
                                                     .map((rawLine: string, lidx: number) => {
-                                                        const isWriteFile =
-                                                            block.toolName === 'write_file'
-                                                        let isAdd =
-                                                            isWriteFile || rawLine.startsWith('+')
-                                                        let isSub =
-                                                            !isWriteFile && rawLine.startsWith('-')
+                                                        const isAdd =
+                                                            isWrite || rawLine.startsWith('+')
+                                                        const isSub =
+                                                            !isWrite && rawLine.startsWith('-')
+                                                        const lineStr = isWrite
+                                                            ? `+ ${rawLine}`
+                                                            : rawLine
 
-                                                        let lineStr = rawLine
-                                                        if (isWriteFile) {
-                                                            lineStr = `+ ${rawLine}`
-                                                        }
-
-                                                        let color = 'white'
+                                                        let prefixColor = '#d1d5db'
                                                         let bgColor: string | undefined = undefined
 
                                                         if (isAdd) {
-                                                            color = '#22c55e'
+                                                            prefixColor = '#4ade80'
+                                                            bgColor = '#122f1e'
                                                         } else if (isSub) {
-                                                            color = '#ef4444'
+                                                            prefixColor = '#f87171'
+                                                            bgColor = '#3f1316'
+                                                        }
+
+                                                        let prefix = ''
+                                                        let rest = lineStr
+                                                        if (isAdd && lineStr.startsWith('+')) {
+                                                            prefix = '+'
+                                                            rest = lineStr.slice(1)
+                                                        } else if (
+                                                            isSub &&
+                                                            lineStr.startsWith('-')
+                                                        ) {
+                                                            prefix = '-'
+                                                            rest = lineStr.slice(1)
                                                         }
 
                                                         return (
-                                                            <Box key={lidx}>
-                                                                <Text color="gray">│ </Text>
-                                                                <Box flexGrow={1}>
-                                                                    <Text
-                                                                        color={color}
-                                                                        wrap="truncate-end"
-                                                                    >
-                                                                        {lineStr}
-                                                                    </Text>
-                                                                </Box>
+                                                            <Box
+                                                                key={lidx}
+                                                                width="100%"
+                                                                backgroundColor={bgColor}
+                                                            >
+                                                                <Text color={prefixColor}>
+                                                                    {prefix}
+                                                                </Text>
+                                                                <Text
+                                                                    color={
+                                                                        bgColor
+                                                                            ? 'white'
+                                                                            : '#d1d5db'
+                                                                    }
+                                                                    wrap="truncate-end"
+                                                                >
+                                                                    {rest}
+                                                                </Text>
                                                             </Box>
                                                         )
                                                     })}
-                                                {lines.length > 20 && (
+                                                {lines.length > 40 && (
                                                     <Box>
-                                                        <Text color="gray">│ </Text>
                                                         <Text color="gray" dimColor>
-                                                            ... ({lines.length - 20} more lines)
+                                                            ... ({lines.length - 40} more lines)
                                                         </Text>
                                                     </Box>
                                                 )}
-                                                <Text color="gray">└</Text>
                                             </Box>
                                         )}
                                     </Box>
@@ -247,10 +251,14 @@ export function BotMessage({ blocks }: Props) {
                             // Collapsed state for other completed tools
                             return (
                                 <Box key={idx} gap={1} marginY={0.5} alignItems="center">
-                                    <Text color={isSuccess ? '#f59e0b' : '#FCA5A5'} bold>
-                                        •
-                                    </Text>
-                                    <Text color="white" bold>
+                                    <Pill
+                                        label={(block.toolName || 'TOOL')
+                                            .toUpperCase()
+                                            .substring(0, 10)}
+                                        backgroundColor="#303030"
+                                        color="#cbd5e1"
+                                    />
+                                    <Text color="white">
                                         {block.command.substring(0, 80)}
                                         {block.command.length > 80 ? '...' : ''}
                                     </Text>
@@ -266,19 +274,21 @@ export function BotMessage({ blocks }: Props) {
                             <Box key={idx} flexDirection="column" marginY={0.5}>
                                 <Box gap={1} alignItems="center">
                                     <Spinner />
-                                    <Text color="#f59e0b" bold>
-                                        {block.command}
-                                    </Text>
+                                    <Pill
+                                        label="RUNNING"
+                                        backgroundColor="#303030"
+                                        color="#fef08a"
+                                    />
+                                    <Text color="white">{block.command}</Text>
                                 </Box>
                                 {block.output && (
                                     <Box
                                         flexDirection="column"
-                                        marginLeft={2}
+                                        marginLeft={0}
                                         marginTop={0.5}
                                         paddingX={1}
                                         paddingY={0.5}
-                                        borderStyle="single"
-                                        borderColor="#4A5568"
+                                        backgroundColor="#1e293b"
                                     >
                                         {block.output.split('\n').map((line, lidx) => {
                                             const isTruncationMarker =
@@ -287,7 +297,7 @@ export function BotMessage({ blocks }: Props) {
                                                 <Text
                                                     key={lidx}
                                                     color={
-                                                        isTruncationMarker ? 'yellow' : '#718096'
+                                                        isTruncationMarker ? 'yellow' : '#94a3b8'
                                                     }
                                                     dimColor
                                                 >
@@ -304,26 +314,20 @@ export function BotMessage({ blocks }: Props) {
                         const isCreated = block.action === 'created'
                         const isDeleted = block.action === 'deleted'
                         const actionLabel = isCreated
-                            ? 'Created'
+                            ? 'CREATED'
                             : isDeleted
-                              ? 'Deleted'
-                              : 'Modified'
-                        const actionColor = isCreated
-                            ? '#6EE7B7'
-                            : isDeleted
-                              ? '#FCA5A5'
-                              : '#63B3ED'
+                              ? 'DELETED'
+                              : 'MODIFIED'
+                        const fgColor = isCreated ? '#4ade80' : isDeleted ? '#f87171' : '#89B4F8'
 
-                        // Always render collapsed for completed file operations
                         return (
                             <Box key={idx} gap={1} marginY={0.5} alignItems="center">
-                                <Text color={actionColor} bold>
-                                    ✓
-                                </Text>
-                                <Text color="gray">{actionLabel} file:</Text>
-                                <Text color="#63B3ED" underline>
-                                    {block.filePath}
-                                </Text>
+                                <Pill
+                                    label={actionLabel}
+                                    backgroundColor="#303030"
+                                    color={fgColor}
+                                />
+                                <Text color="white">{block.filePath}</Text>
                             </Box>
                         )
                     }
@@ -332,7 +336,7 @@ export function BotMessage({ blocks }: Props) {
                         const borderLine = '─'.repeat(borderLength)
                         return (
                             <Box key={idx} flexDirection="column" paddingLeft={1} marginY={0.5}>
-                                <Text color="#4A5568">
+                                <Text color="#4A5568" wrap="truncate">
                                     {block.filename
                                         ? `┌── ${block.filename} ${borderLine}`
                                         : `┌${borderLine}`}
@@ -350,16 +354,12 @@ export function BotMessage({ blocks }: Props) {
                     }
                     case 'status': {
                         return (
-                            <Box
-                                key={idx}
-                                gap={1}
-                                paddingLeft={1}
-                                marginY={0.25}
-                                alignItems="center"
-                            >
-                                <Text color={block.success ? '#6EE7B7' : '#FCA5A5'} bold>
-                                    {block.success ? '✓' : '✗'}
-                                </Text>
+                            <Box key={idx} gap={1} marginY={0.25} alignItems="center">
+                                <Pill
+                                    label={block.success ? 'SUCCESS' : 'FAILED'}
+                                    backgroundColor="#303030"
+                                    color={block.success ? '#4ade80' : '#f87171'}
+                                />
                                 <Text color="white" bold={block.success}>
                                     {block.label}
                                 </Text>

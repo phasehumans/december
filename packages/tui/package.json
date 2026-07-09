@@ -8,6 +8,7 @@
     },
     "devDependencies": {
         "@types/bun": "latest",
+        "@types/marked": "6.0.0",
         "@types/react": "^19.2.14"
     },
     "peerDependencies": {
@@ -20,7 +21,10 @@
         "ink-select-input": "6.2.0",
         "ink-spinner": "^5.0.0",
         "ink-text-input": "6.0.0",
+        "marked": "18.0.5",
         "react": "^19.2.4"
     },
-    "version": "0.2.3"
+    "version": "0.2.3",
+    "author": "Chaitanya Sonawane",
+    "license": "Apache-2.0"
 }

@@ -20,7 +20,7 @@ export function CommandMenu({ query, selectedIndex, windowStart }: CommandMenuPr
     if (filtered.length === 0) {
         return (
             <Box paddingLeft={2} paddingY={1}>
-                <Text color="#888888">No matching commands</Text>
+                <Text color="#AAAAAA">No matching commands</Text>
             </Box>
         )
     }
@@ -35,7 +35,7 @@ export function CommandMenu({ query, selectedIndex, windowStart }: CommandMenuPr
             {/* ↑ N more */}
             {itemsAbove > 0 && (
                 <Box paddingLeft={2}>
-                    <Text color="#888888">↑ {itemsAbove} more</Text>
+                    <Text color="#AAAAAA">↑ {itemsAbove} more</Text>
                 </Box>
             )}
 
@@ -45,15 +45,15 @@ export function CommandMenu({ query, selectedIndex, windowStart }: CommandMenuPr
                 const isSelected = absIdx === selectedIndex
                 return (
                     <Box key={cmd.value} paddingLeft={2}>
-                        <Text color={isSelected ? '#FFFFFF' : '#888888'}>
-                            {isSelected ? '● ' : '  '}
+                        <Text color={isSelected ? '#89B4F8' : '#AAAAAA'}>
+                            {isSelected ? '❭ ' : '  '}
                         </Text>
                         <Box width={CMD_COL_WIDTH}>
-                            <Text color={isSelected ? '#FFFFFF' : '#888888'} bold={isSelected}>
+                            <Text color={isSelected ? '#89B4F8' : '#AAAAAA'} bold={false}>
                                 /{cmd.name}
                             </Text>
                         </Box>
-                        <Text color="#888888">{cmd.description}</Text>
+                        <Text color="#AAAAAA">{cmd.description}</Text>
                     </Box>
                 )
             })}
@@ -61,23 +61,25 @@ export function CommandMenu({ query, selectedIndex, windowStart }: CommandMenuPr
             {/* ↓ N more */}
             {itemsBelow > 0 && (
                 <Box paddingLeft={2}>
-                    <Text color="#888888">↓ {itemsBelow} more</Text>
+                    <Text color="#AAAAAA">↓ {itemsBelow} more</Text>
                 </Box>
             )}
 
-            {/* Single-line footer */}
-            <Box paddingLeft={2} paddingTop={1} paddingBottom={1} gap={1}>
-                <Text color="#888888">↑↓</Text>
-                <Text color="#FFFFFF">Navigate</Text>
-                <Text color="#888888">·</Text>
-                <Text color="#888888">enter</Text>
-                <Text color="#FFFFFF">Select</Text>
-                <Text color="#888888">·</Text>
-                <Text color="#888888">tab</Text>
-                <Text color="#FFFFFF">Complete</Text>
-                <Text color="#888888">·</Text>
-                <Text color="#888888">esc</Text>
-                <Text color="#FFFFFF">Cancel</Text>
+            {/* Footer */}
+            <Box flexDirection="column" paddingLeft={2} paddingTop={1} paddingBottom={1}>
+                <Box gap={1}>
+                    <Text color="#89B4F8">↑/↓</Text>
+                    <Text color="#AAAAAA">Navigate</Text>
+                    <Text color="#AAAAAA">·</Text>
+                    <Text color="#89B4F8">enter</Text>
+                    <Text color="#AAAAAA">Select</Text>
+                    <Text color="#AAAAAA">·</Text>
+                    <Text color="#89B4F8">tab</Text>
+                    <Text color="#AAAAAA">Complete</Text>
+                    <Text color="#AAAAAA">·</Text>
+                    <Text color="#89B4F8">esc</Text>
+                    <Text color="#AAAAAA">Cancel</Text>
+                </Box>
             </Box>
         </Box>
     )

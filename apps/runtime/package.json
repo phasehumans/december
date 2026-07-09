@@ -6,5 +6,7 @@
         "dev": "cargo run",
         "build": "cargo build --release",
         "test": "cargo test"
-    }
+    },
+    "author": "Chaitanya Sonawane",
+    "license": "Apache-2.0"
 }

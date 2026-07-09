@@ -12,5 +12,7 @@
     "devDependencies": {
         "@types/bun": "latest",
         "typescript": "^5.0.0"
-    }
+    },
+    "author": "Chaitanya Sonawane",
+    "license": "Apache-2.0"
 }
