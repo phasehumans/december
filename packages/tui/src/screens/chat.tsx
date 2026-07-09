@@ -796,6 +796,7 @@ export function Chat({
     }
 
     const handleKeySubmit = async (key: string) => {
+        if (isStreaming) return
         setIsStreaming(true) // Prevent multi-submit
 
         let testProvider: any
@@ -1006,9 +1007,7 @@ export function Chat({
         authUI = (
             <Box flexDirection="column" paddingX={1}>
                 <Box marginBottom={1}>
-                    <Text bold color="white">
-                        Select authentication method:
-                    </Text>
+                    <Text color="white">Select authentication method:</Text>
                 </Box>
                 <SelectInput
                     items={[
@@ -1037,9 +1036,7 @@ export function Chat({
         authUI = (
             <Box flexDirection="column" paddingX={1}>
                 <Box marginBottom={1}>
-                    <Text bold color="white">
-                        Select December login method:
-                    </Text>
+                    <Text color="white">Select December login method:</Text>
                 </Box>
                 <SelectInput
                     items={[
@@ -1071,9 +1068,7 @@ export function Chat({
         authUI = (
             <Box flexDirection="column" paddingX={1}>
                 <Box marginBottom={1}>
-                    <Text bold color="white">
-                        Select API Provider:
-                    </Text>
+                    <Text color="white">Select API Provider:</Text>
                 </Box>
                 <SelectInput
                     items={[
@@ -1112,9 +1107,7 @@ export function Chat({
         authUI = (
             <Box flexDirection="column" paddingX={1}>
                 <Box marginBottom={1}>
-                    <Text bold color="white">
-                        Enter API Key for {selectedProvider}:
-                    </Text>
+                    <Text color="white">Enter API Key for {selectedProvider}:</Text>
                 </Box>
                 <Box>
                     <Text color="#89B4F8" bold={false}>
@@ -1142,9 +1135,7 @@ export function Chat({
         authUI = (
             <Box flexDirection="column" paddingX={1}>
                 <Box marginBottom={1}>
-                    <Text bold color="white">
-                        Select Model:
-                    </Text>
+                    <Text color="white">Select Model:</Text>
                 </Box>
                 <SelectInput
                     items={
@@ -1174,9 +1165,7 @@ export function Chat({
         authUI = (
             <Box flexDirection="column" paddingX={1}>
                 <Box marginBottom={1}>
-                    <Text bold color="white">
-                        Select credential to remove:
-                    </Text>
+                    <Text color="white">Select credential to remove:</Text>
                 </Box>
                 <SelectInput
                     items={logoutItems}
@@ -1202,9 +1191,7 @@ export function Chat({
         authUI = (
             <Box flexDirection="column" paddingX={1}>
                 <Box marginBottom={1}>
-                    <Text bold color="white">
-                        Select a session to resume:
-                    </Text>
+                    <Text color="white">Select a session to resume:</Text>
                 </Box>
                 <SelectInput
                     items={sessionItems}

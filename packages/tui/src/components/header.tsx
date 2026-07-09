@@ -35,8 +35,7 @@ export function Header({
     return (
         <Box flexDirection="column" paddingLeft={2} paddingTop={1} paddingBottom={1}>
             <Text bold color="white">
-                <Text color="#89B4F8">✱</Text> December CLI{' '}
-                <Text color="white">{cliVersion.replace(/^v/, '')}</Text>
+                ✱ December CLI <Text color="white">{cliVersion.replace(/^v/, '')}</Text>
             </Text>
             {userEmail && <Text color="gray">{userEmail}</Text>}
             <Box gap={1}>

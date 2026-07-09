@@ -76,9 +76,9 @@ export function CommandMenu({ query, selectedIndex, windowStart }: CommandMenuPr
                     <Text color="#AAAAAA">·</Text>
                     <Text color="#89B4F8">tab</Text>
                     <Text color="#AAAAAA">Complete</Text>
-                </Box>
-                <Box gap={1}>
-                    <Text color="#AAAAAA">esc to cancel</Text>
+                    <Text color="#AAAAAA">·</Text>
+                    <Text color="#89B4F8">esc</Text>
+                    <Text color="#AAAAAA">Cancel</Text>
                 </Box>
             </Box>
         </Box>
