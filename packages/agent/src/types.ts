@@ -95,6 +95,11 @@ export interface TurnEndEvent {
     type: 'TurnEnd'
 }
 
+export interface AgentStatusEvent {
+    type: 'AgentStatus'
+    message: string
+}
+
 export interface AgentEndEvent {
     type: 'AgentEnd'
 }
@@ -115,3 +120,4 @@ export type AgentEvent =
     | TurnEndEvent
     | AgentEndEvent
     | AgentErrorEvent
+    | AgentStatusEvent

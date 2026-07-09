@@ -127,6 +127,7 @@ export class GeminiProvider implements LLMProvider {
                 temperature: modelOptions?.temperature,
                 maxOutputTokens: modelOptions?.max_tokens,
             },
+            abortSignal: signal,
         })
 
         // Gemini doesn't stream tool call deltas like OpenAI/Anthropic do.

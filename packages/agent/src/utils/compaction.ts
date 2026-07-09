@@ -45,10 +45,9 @@ export async function compactContextIfNeeded(
         })
         .join('\n\n')
 
-    try {
-        // Attempt to summarize using the current LLM
-        // In a full implementation, we might hardcode a cheaper model like gpt-4o-mini here
-        const summaryPrompt = `Summarize the following conversation history. Focus on:
+    // Attempt to summarize using the current LLM
+    // In a full implementation, we might hardcode a cheaper model like gpt-4o-mini here
+    const summaryPrompt = `Summarize the following conversation history. Focus on:
 1. The user's original goal.
 2. The progress made so far.
 3. Any important context, decisions, or roadblocks encountered.
@@ -57,28 +56,20 @@ Keep it concise but detailed enough for an AI to resume work.
 HISTORY:
 ${historyText}`
 
-        const compactionMessages: Message[] = [{ role: 'user', content: summaryPrompt }]
-        let summary = ''
-        try {
-            const stream = llm.stream(compactionMessages, [])
-            for await (const chunk of stream) {
-                if (chunk.type === 'text') {
-                    summary += chunk.text
-                }
-            }
-        } catch (e: any) {
-            console.error('Summarization stream failed', e)
-        }
+    const compactionMessages: Message[] = [{ role: 'user', content: summaryPrompt }]
+    let summary = ''
 
-        const summaryMessage: Message = {
-            role: 'system',
-            content: `[COMPACTED HISTORY SUMMARY]\n${summary}`,
+    const stream = llm.stream(compactionMessages, [])
+    for await (const chunk of stream) {
+        if (chunk.type === 'text') {
+            summary += chunk.text
         }
-
-        return [systemPrompt, summaryMessage, ...recentHistory]
-    } catch (error) {
-        // Fallback to hard truncation if summarization fails
-        console.warn('[Compaction] Summarization failed, falling back to hard truncation.', error)
-        return [systemPrompt, ...recentHistory]
     }
+
+    const summaryMessage: Message = {
+        role: 'system',
+        content: `[COMPACTED HISTORY SUMMARY]\n${summary}`,
+    }
+
+    return [systemPrompt, summaryMessage, ...recentHistory]
 }

@@ -62,7 +62,8 @@ export function InputBar({
                 command.value === '/login' ||
                 command.value === '/logout' ||
                 command.value === '/exit' ||
-                command.value === '/model'
+                command.value === '/model' ||
+                command.value === '/resume'
             ) {
                 onSubmit(command.value)
                 return
