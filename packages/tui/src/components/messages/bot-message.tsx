@@ -1,9 +1,9 @@
 import { Box, Text } from 'ink'
 import React from 'react'
 
-import { Spinner } from '../spinner'
 import { Markdown } from '../markdown'
 import { Pill } from '../pill'
+import { Spinner } from '../spinner'
 
 export type MessageBlock =
     | { type: 'text'; content: string }
@@ -112,7 +112,9 @@ export function BotMessage({ blocks }: Props) {
                             let parsedInput: any = {}
                             try {
                                 parsedInput = JSON.parse(block.toolInput || '{}')
-                            } catch {}
+                            } catch {
+                                // ignore parse errors
+                            }
 
                             if (block.toolName === 'read_file') {
                                 const lines = block.output ? block.output.split('\n').length : 0
@@ -334,7 +336,7 @@ export function BotMessage({ blocks }: Props) {
                         const borderLine = '─'.repeat(borderLength)
                         return (
                             <Box key={idx} flexDirection="column" paddingLeft={1} marginY={0.5}>
-                                <Text color="#4A5568">
+                                <Text color="#4A5568" wrap="truncate">
                                     {block.filename
                                         ? `┌── ${block.filename} ${borderLine}`
                                         : `┌${borderLine}`}

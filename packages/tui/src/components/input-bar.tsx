@@ -116,9 +116,10 @@ export function InputBar({
                     <InlineDialog config={dialog.currentDialog} close={dialog.close} />
                 </Box>
             )}
-
             {/* Top separator */}
-            <Text color="#555555">{sep}</Text>
+            <Box overflow="hidden" height={1} width="100%">
+                <Text color="#555555">{sep}</Text>
+            </Box>
 
             {/* Content: Prompt */}
             <Box>
@@ -135,7 +136,9 @@ export function InputBar({
             </Box>
 
             {/* Bottom separator */}
-            <Text color="#555555">{sep}</Text>
+            <Box overflow="hidden" height={1} width="100%">
+                <Text color="#555555">{sep}</Text>
+            </Box>
 
             {/* Status row — model left, december studio right */}
             {!showCommandMenu && !authUI && (
@@ -160,7 +163,7 @@ export function InputBar({
                         )}
                     </Box>
                     <Box gap={0}>
-                        <Text color="#888888">
+                        <Text color="#AAAAAA">
                             {'\x1b]8;;https://trydecember.com\x07december ↗\x1b]8;;\x07'}
                         </Text>
                     </Box>

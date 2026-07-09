@@ -7,7 +7,7 @@ export interface BashInput {
 export const BashTool: Tool<BashInput> = {
     name: 'bash',
     description:
-        'Executes a bash command. If the command runs longer than 3 seconds (e.g. dev servers), it will automatically detach, run in the background, and return control to the agent.',
+        'Execute a shell command. Use this tool to run commands on the terminal (e.g., building, testing, or running scripts). Long-running commands (like dev servers) will automatically detach after 3 seconds and run in the background.',
     inputSchema: {
         type: 'object',
         properties: {
