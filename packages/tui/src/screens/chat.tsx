@@ -5,14 +5,14 @@ import { useState, useCallback, useEffect } from 'react'
 
 const CustomIndicator = ({ isSelected }: { isSelected?: boolean }) => (
     <Box marginRight={1}>
-        <Text color={isSelected ? 'white' : '#888888'} bold={isSelected}>
-            {isSelected ? '●' : ' '}
+        <Text color={isSelected ? '#89B4F8' : '#AAAAAA'} bold={false}>
+            {isSelected ? '❭' : ' '}
         </Text>
     </Box>
 )
 
 const CustomItem = ({ isSelected, label }: { isSelected?: boolean; label: string }) => (
-    <Text color={isSelected ? 'white' : '#888888'} bold={isSelected}>
+    <Text color={isSelected ? '#89B4F8' : '#AAAAAA'} bold={false}>
         {label}
     </Text>
 )
@@ -159,8 +159,8 @@ const FALLBACK_OPENROUTER_MODELS = [
 ]
 
 type Message = {
-    id: number
-    role: 'user' | 'assistant' | 'error'
+    id: number | string
+    role: 'user' | 'assistant' | 'error' | 'header'
     text?: string
     blocks?: MessageBlock[]
 }
@@ -199,7 +199,9 @@ export function Chat({
     const cols = useTerminalColumns()
     const panelWidth = Math.floor(cols * 0.45)
 
-    const [staticMessages, setStaticMessages] = useState<Message[]>([])
+    const [staticMessages, setStaticMessages] = useState<Message[]>([
+        { id: 'header', role: 'header' },
+    ])
     const [activeMessages, setActiveMessages] = useState<Message[]>([])
     const [isStreaming, setIsStreaming] = useState(false)
     const { exit } = useApp()
@@ -644,7 +646,11 @@ export function Chat({
                             blocks: [
                                 {
                                     type: 'text',
-                                    content: `Please open ${uri} on any device and enter code: ${code}\nWaiting for authorization...`,
+                                    content: `Please open [${uri}](${uri}) on any device and enter code: \`${code}\``,
+                                },
+                                {
+                                    type: 'thinking',
+                                    content: 'Waiting for authorization...',
                                 },
                             ],
                         },
@@ -795,58 +801,61 @@ export function Chat({
         let testProvider: any
         let testModel: string | undefined
 
-        switch (selectedProvider) {
-            case 'anthropic':
-                testProvider = new AnthropicProvider(key)
-                testModel = 'claude-3-5-sonnet-latest'
-                break
-            case 'google':
-                testProvider = new GeminiProvider(key)
-                testModel = 'gemini-2.5-pro'
-                break
-            case 'openai':
-                testProvider = new OpenAIProvider(undefined, key)
-                testModel = 'gpt-4o'
-                break
-            case 'openrouter':
-                testProvider = new OpenRouterProvider(key)
-                testModel = 'meta-llama/llama-3.2-3b-instruct:free'
-                break
-            case 'deepseek':
-                testProvider = new OpenAIProvider('https://api.deepseek.com', key)
-                testModel = 'deepseek-chat'
-                break
-            case 'groq':
-                testProvider = new OpenAIProvider('https://api.groq.com/openai/v1', key)
-                testModel = 'llama3-8b-8192'
-                break
-            case 'huggingface':
-                testProvider = new OpenAIProvider('https://api-inference.huggingface.co/v1', key)
-                testModel = 'meta-llama/Meta-Llama-3-8B-Instruct'
-                break
-            case 'kimi':
-            case 'moonshoot':
-                testProvider = new OpenAIProvider('https://api.moonshot.cn/v1', key)
-                testModel = 'moonshot-v1-8k'
-                break
-            case 'mistral':
-                testProvider = new OpenAIProvider('https://api.mistral.ai/v1', key)
-                testModel = 'mistral-large-latest'
-                break
-            case 'xai':
-                testProvider = new OpenAIProvider('https://api.x.ai/v1', key)
-                testModel = 'grok-beta'
-                break
-            case 'zai':
-                testProvider = new OpenAIProvider('https://api.zai.ai/v1', key)
-                testModel = 'zai-v1'
-                break
-            default:
-                testProvider = new OpenAIProvider(undefined, key)
-                testModel = 'gpt-4o'
-        }
-
         try {
+            switch (selectedProvider) {
+                case 'anthropic':
+                    testProvider = new AnthropicProvider(key)
+                    testModel = 'claude-3-5-sonnet-latest'
+                    break
+                case 'google':
+                    testProvider = new GeminiProvider(key)
+                    testModel = 'gemini-3.5-flash'
+                    break
+                case 'openai':
+                    testProvider = new OpenAIProvider(undefined, key)
+                    testModel = 'gpt-4o'
+                    break
+                case 'openrouter':
+                    testProvider = new OpenRouterProvider(key)
+                    testModel = 'meta-llama/llama-3.2-3b-instruct:free'
+                    break
+                case 'deepseek':
+                    testProvider = new OpenAIProvider('https://api.deepseek.com', key)
+                    testModel = 'deepseek-chat'
+                    break
+                case 'groq':
+                    testProvider = new OpenAIProvider('https://api.groq.com/openai/v1', key)
+                    testModel = 'llama3-8b-8192'
+                    break
+                case 'huggingface':
+                    testProvider = new OpenAIProvider(
+                        'https://api-inference.huggingface.co/v1',
+                        key
+                    )
+                    testModel = 'meta-llama/Meta-Llama-3-8B-Instruct'
+                    break
+                case 'kimi':
+                case 'moonshoot':
+                    testProvider = new OpenAIProvider('https://api.moonshot.cn/v1', key)
+                    testModel = 'moonshot-v1-8k'
+                    break
+                case 'mistral':
+                    testProvider = new OpenAIProvider('https://api.mistral.ai/v1', key)
+                    testModel = 'mistral-large-latest'
+                    break
+                case 'xai':
+                    testProvider = new OpenAIProvider('https://api.x.ai/v1', key)
+                    testModel = 'grok-beta'
+                    break
+                case 'zai':
+                    testProvider = new OpenAIProvider('https://api.zai.ai/v1', key)
+                    testModel = 'zai-v1'
+                    break
+                default:
+                    testProvider = new OpenAIProvider(undefined, key)
+                    testModel = 'gpt-4o'
+            }
+
             // Dummy request to validate key
             const stream = testProvider.stream([{ role: 'user', content: 'Hi' }], [], undefined, {
                 model: testModel,
@@ -872,8 +881,9 @@ export function Chat({
                     role: 'assistant',
                     blocks: [
                         {
-                            type: 'text',
-                            content: `Successfully validated and saved API key for ${selectedProvider}!`,
+                            type: 'status',
+                            success: true,
+                            label: `Successfully validated and saved API key for ${selectedProvider}!`,
                         },
                     ],
                 },
@@ -907,19 +917,47 @@ export function Chat({
                         role: 'assistant',
                         blocks: [
                             {
-                                type: 'text',
-                                content: `Key saved for ${selectedProvider}, but your account is currently rate-limited or out of quota!`,
+                                type: 'status',
+                                success: true,
+                                label: `API Key saved for ${selectedProvider}`,
                             },
                         ],
                     },
                 ])
             } else {
                 setStaticMessages((prev) => [...prev, ...activeMessages])
+
+                let cleanMessage = err?.message || String(err)
+                try {
+                    const parsed = JSON.parse(cleanMessage)
+                    if (parsed.error?.message) {
+                        cleanMessage = parsed.error.message
+                        try {
+                            const doubleParsed = JSON.parse(cleanMessage)
+                            if (doubleParsed.error?.message) {
+                                cleanMessage = doubleParsed.error.message
+                            }
+                        } catch {}
+                    } else if (parsed.message) {
+                        cleanMessage = parsed.message
+                    }
+                } catch {}
+
                 setActiveMessages([
                     {
                         id: ++msgId,
-                        role: 'error',
-                        text: `Invalid API Key for ${selectedProvider}: ${err.message}`,
+                        role: 'assistant',
+                        blocks: [
+                            {
+                                type: 'status',
+                                success: false,
+                                label: `Invalid API Key for ${selectedProvider}`,
+                            },
+                            {
+                                type: 'text',
+                                content: cleanMessage,
+                            },
+                        ],
                     },
                 ])
                 setApiKey('')
@@ -982,7 +1020,16 @@ export function Chat({
                     itemComponent={CustomItem}
                 />
                 <Box paddingTop={1}>
-                    <Text color="gray">↑↓ navigate enter select escape/ctrl+c cancel</Text>
+                    <Box gap={1}>
+                        <Text color="#89B4F8">↑↓</Text>
+                        <Text color="#AAAAAA">Navigate</Text>
+                        <Text color="#AAAAAA">·</Text>
+                        <Text color="#89B4F8">enter</Text>
+                        <Text color="#AAAAAA">Select</Text>
+                        <Text color="#AAAAAA">·</Text>
+                        <Text color="#89B4F8">esc</Text>
+                        <Text color="#AAAAAA">Cancel</Text>
+                    </Box>
                 </Box>
             </Box>
         )
@@ -1007,7 +1054,16 @@ export function Chat({
                     itemComponent={CustomItem}
                 />
                 <Box paddingTop={1}>
-                    <Text color="gray">↑↓ navigate enter select escape/ctrl+c cancel</Text>
+                    <Box gap={1}>
+                        <Text color="#89B4F8">↑↓</Text>
+                        <Text color="#AAAAAA">Navigate</Text>
+                        <Text color="#AAAAAA">·</Text>
+                        <Text color="#89B4F8">enter</Text>
+                        <Text color="#AAAAAA">Select</Text>
+                        <Text color="#AAAAAA">·</Text>
+                        <Text color="#89B4F8">esc</Text>
+                        <Text color="#AAAAAA">Cancel</Text>
+                    </Box>
                 </Box>
             </Box>
         )
@@ -1039,7 +1095,16 @@ export function Chat({
                     itemComponent={CustomItem}
                 />
                 <Box paddingTop={1}>
-                    <Text color="gray">↑↓ navigate enter select escape/ctrl+c cancel</Text>
+                    <Box gap={1}>
+                        <Text color="#89B4F8">↑↓</Text>
+                        <Text color="#AAAAAA">Navigate</Text>
+                        <Text color="#AAAAAA">·</Text>
+                        <Text color="#89B4F8">enter</Text>
+                        <Text color="#AAAAAA">Select</Text>
+                        <Text color="#AAAAAA">·</Text>
+                        <Text color="#89B4F8">esc</Text>
+                        <Text color="#AAAAAA">Cancel</Text>
+                    </Box>
                 </Box>
             </Box>
         )
@@ -1052,8 +1117,8 @@ export function Chat({
                     </Text>
                 </Box>
                 <Box>
-                    <Text color="white" bold>
-                        ●{' '}
+                    <Text color="#89B4F8" bold={false}>
+                        ❭{' '}
                     </Text>
                     <TextInput
                         value={apiKey}
@@ -1063,7 +1128,13 @@ export function Chat({
                     />
                 </Box>
                 <Box paddingTop={1}>
-                    <Text color="gray">enter submit escape cancel</Text>
+                    <Box gap={1}>
+                        <Text color="#89B4F8">enter</Text>
+                        <Text color="#AAAAAA">Submit</Text>
+                        <Text color="#AAAAAA">·</Text>
+                        <Text color="#89B4F8">esc</Text>
+                        <Text color="#AAAAAA">Cancel</Text>
+                    </Box>
                 </Box>
             </Box>
         )
@@ -1086,7 +1157,16 @@ export function Chat({
                     itemComponent={CustomItem}
                 />
                 <Box paddingTop={1}>
-                    <Text color="gray">↑↓ navigate enter select escape/ctrl+c cancel</Text>
+                    <Box gap={1}>
+                        <Text color="#89B4F8">↑↓</Text>
+                        <Text color="#AAAAAA">Navigate</Text>
+                        <Text color="#AAAAAA">·</Text>
+                        <Text color="#89B4F8">enter</Text>
+                        <Text color="#AAAAAA">Select</Text>
+                        <Text color="#AAAAAA">·</Text>
+                        <Text color="#89B4F8">esc</Text>
+                        <Text color="#AAAAAA">Cancel</Text>
+                    </Box>
                 </Box>
             </Box>
         )
@@ -1105,7 +1185,16 @@ export function Chat({
                     itemComponent={CustomItem}
                 />
                 <Box paddingTop={1}>
-                    <Text color="gray">↑↓ navigate enter select escape/ctrl+c cancel</Text>
+                    <Box gap={1}>
+                        <Text color="#89B4F8">↑↓</Text>
+                        <Text color="#AAAAAA">Navigate</Text>
+                        <Text color="#AAAAAA">·</Text>
+                        <Text color="#89B4F8">enter</Text>
+                        <Text color="#AAAAAA">Select</Text>
+                        <Text color="#AAAAAA">·</Text>
+                        <Text color="#89B4F8">esc</Text>
+                        <Text color="#AAAAAA">Cancel</Text>
+                    </Box>
                 </Box>
             </Box>
         )
@@ -1124,7 +1213,16 @@ export function Chat({
                     itemComponent={CustomItem}
                 />
                 <Box paddingTop={1}>
-                    <Text color="gray">↑↓ navigate enter select escape/ctrl+c cancel</Text>
+                    <Box gap={1}>
+                        <Text color="#89B4F8">↑↓</Text>
+                        <Text color="#AAAAAA">Navigate</Text>
+                        <Text color="#AAAAAA">·</Text>
+                        <Text color="#89B4F8">enter</Text>
+                        <Text color="#AAAAAA">Select</Text>
+                        <Text color="#AAAAAA">·</Text>
+                        <Text color="#89B4F8">esc</Text>
+                        <Text color="#AAAAAA">Cancel</Text>
+                    </Box>
                 </Box>
             </Box>
         )
@@ -1132,10 +1230,12 @@ export function Chat({
 
     return (
         <Box flexDirection="column" width="100%">
-            <Header cliVersion={cliVersion} userEmail={currentEmail} />
-
             <Static items={staticMessages}>
                 {(msg) => {
+                    if (msg.role === 'header')
+                        return (
+                            <Header key="header" cliVersion={cliVersion} userEmail={currentEmail} />
+                        )
                     if (msg.role === 'user')
                         return <UserMessage key={msg.id} message={msg.text ?? ''} />
                     if (msg.role === 'error')
@@ -1156,7 +1256,9 @@ export function Chat({
                 onSubmit={handleSubmit}
                 disabled={authMode !== 'none'}
                 activeModel={
-                    agent.modelOptions?.model ? getModelLabel(agent.modelOptions.model) : 'unknown'
+                    agent.modelOptions?.model
+                        ? getModelLabel(agent.modelOptions.model)
+                        : getModelLabel('gemini-3.5-flash')
                 }
                 authUI={authUI}
             />

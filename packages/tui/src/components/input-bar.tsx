@@ -125,7 +125,7 @@ export function InputBar({
                 <Box paddingY={0}>{authUI}</Box>
             ) : (
                 <Box>
-                    <Text color={disabled ? '#555555' : 'white'}>{`❭ `}</Text>
+                    <Text color={disabled ? '#555555' : '#89B4F8'}>{`❭ `}</Text>
                     <TextInput
                         value={value}
                         onChange={handleChange}
@@ -162,7 +162,7 @@ export function InputBar({
                         )}
                     </Box>
                     <Box gap={0}>
-                        <Text color="gray">
+                        <Text color="#888888">
                             {'\x1b]8;;https://trydecember.com\x07december ↗\x1b]8;;\x07'}
                         </Text>
                     </Box>

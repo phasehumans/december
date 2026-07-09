@@ -98,7 +98,7 @@ async function main() {
             SubagentTool,
         ],
         operations: localOperations,
-        modelOptions: providerConfig?.model ? { model: providerConfig.model } : undefined,
+        modelOptions: { model: providerConfig?.model || 'gemini-3.5-flash' },
         sessionRepository,
         sessionId,
         workspaceDir: process.cwd(),

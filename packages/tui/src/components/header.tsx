@@ -1,26 +1,15 @@
-import { exec } from 'node:child_process'
+import { execSync } from 'node:child_process'
 import { homedir } from 'node:os'
-import { promisify } from 'node:util'
 
 import { Box, Text } from 'ink'
-import { useState, useEffect } from 'react'
+import React from 'react'
 
-const execAsync = promisify(exec)
-
-function useGitBranch() {
-    const [branch, setBranch] = useState<string | null>(null)
-
-    useEffect(() => {
-        execAsync('git rev-parse --abbrev-ref HEAD')
-            .then(({ stdout }) => {
-                setBranch(stdout.trim())
-            })
-            .catch(() => {
-                setBranch(null)
-            })
-    }, [])
-
-    return branch
+function getGitBranch(): string | null {
+    try {
+        return execSync('git rev-parse --abbrev-ref HEAD', { stdio: 'pipe' }).toString().trim()
+    } catch {
+        return null
+    }
 }
 
 function getCwd(): string {
@@ -41,12 +30,13 @@ export function Header({
     userEmail?: string
 }) {
     const cwd = getCwd()
-    const branch = useGitBranch()
+    const branch = getGitBranch()
 
     return (
         <Box flexDirection="column" paddingLeft={2} paddingTop={1} paddingBottom={1}>
             <Text bold color="white">
-                ✱ December CLI <Text color="gray">v{cliVersion.replace(/^v/, '')}</Text>
+                <Text color="#89B4F8">✱</Text> December CLI{' '}
+                <Text color="white">{cliVersion.replace(/^v/, '')}</Text>
             </Text>
             {userEmail && <Text color="gray">{userEmail}</Text>}
             <Box gap={1}>
