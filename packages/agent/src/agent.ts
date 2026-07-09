@@ -96,7 +96,11 @@ export class Agent {
     public async loadContext(sessionId?: string) {
         if (sessionId) this.sessionId = sessionId
         if (this.sessionRepository) {
-            this.messages = await this.sessionRepository.loadContext(this.sessionId)
+            const loaded = await this.sessionRepository.loadContext(this.sessionId)
+            if (loaded.length > 0) {
+                this.messages = loaded
+            }
+            // If empty, keep the constructor's messages (system prompt)
         }
     }
 }

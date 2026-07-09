@@ -8,6 +8,8 @@ export type MessageBlock =
     | {
           type: 'command'
           toolCallId?: string
+          toolName?: string
+          toolInput?: string
           command: string
           status: 'running' | 'success' | 'error'
           output?: string
@@ -25,17 +27,90 @@ type Props = {
     blocks: MessageBlock[]
 }
 
+const renderTextWithChips = (text: string) => {
+    const parts = text.split(/`([^`]+)`/g)
+    if (parts.length === 1) return <Text color="white">{text}</Text>
+
+    return (
+        <Text>
+            {parts.map((part, i) => {
+                if (i % 2 === 1) {
+                    return (
+                        <Text key={i} backgroundColor="#b37400" color="white" bold>
+                            {' '}
+                            {part}{' '}
+                        </Text>
+                    )
+                }
+                return (
+                    <Text key={i} color="white">
+                        {part}
+                    </Text>
+                )
+            })}
+        </Text>
+    )
+}
+
 export function BotMessage({ blocks }: Props) {
     return (
-        <Box flexDirection="column" paddingX={4} paddingY={1} gap={1}>
+        <Box flexDirection="column" paddingX={4} paddingY={0} gap={0}>
             {blocks.map((block, idx) => {
                 switch (block.type) {
                     case 'text': {
-                        const isThinking = block.content === 'Thinking...'
+                        const isThinking =
+                            block.content === 'Thinking...' ||
+                            block.content === 'Working...' ||
+                            block.content === 'Generating...'
+                        if (isThinking) {
+                            return (
+                                <Box key={idx} marginY={0.5} gap={1} alignItems="center">
+                                    <Spinner />
+                                    <Text color="gray">{block.content}</Text>
+                                </Box>
+                            )
+                        }
+
+                        // Split by <thought> tags
+                        const parts = block.content.split(
+                            /(<thought>[\s\S]*?<\/thought>|<thought>[\s\S]*)/
+                        )
                         return (
-                            <Box key={idx} marginY={0.5} gap={1} alignItems="center">
-                                {isThinking && <Spinner />}
-                                <Text color={isThinking ? 'gray' : 'white'}>{block.content}</Text>
+                            <Box key={idx} flexDirection="column">
+                                {parts.map((part, pidx) => {
+                                    if (part.startsWith('<thought>')) {
+                                        const thoughtContent = part
+                                            .replace(/^<thought>/, '')
+                                            .replace(/<\/thought>$/, '')
+                                            .trim()
+                                        return (
+                                            <Box
+                                                key={pidx}
+                                                flexDirection="column"
+                                                paddingBottom={1}
+                                            >
+                                                <Text color="gray">▸ Thought</Text>
+                                                <Box
+                                                    marginLeft={2}
+                                                    borderLeft
+                                                    borderStyle="single"
+                                                    borderColor="gray"
+                                                    paddingLeft={1}
+                                                >
+                                                    <Text color="gray" dimColor>
+                                                        {thoughtContent}
+                                                    </Text>
+                                                </Box>
+                                            </Box>
+                                        )
+                                    }
+                                    if (part.trim() === '') return null
+                                    return (
+                                        <Box key={pidx} paddingBottom={0.5}>
+                                            {renderTextWithChips(part.trim())}
+                                        </Box>
+                                    )
+                                })}
                             </Box>
                         )
                     }
@@ -60,16 +135,127 @@ export function BotMessage({ blocks }: Props) {
                         const isSuccess = block.status === 'success'
 
                         if (!isRunning) {
-                            // Collapsed state for completed tools
+                            let parsedInput: any = {}
+                            try {
+                                parsedInput = JSON.parse(block.toolInput || '{}')
+                            } catch {}
+
+                            if (block.toolName === 'read_file') {
+                                const lines = block.output ? block.output.split('\n').length : 0
+                                return (
+                                    <Box key={idx} flexDirection="column" marginY={0.5}>
+                                        <Box gap={1} alignItems="center">
+                                            <Text color={isSuccess ? '#f59e0b' : '#FCA5A5'} bold>
+                                                •
+                                            </Text>
+                                            <Text color="white" bold>
+                                                Read
+                                            </Text>
+                                            <Text color="gray">
+                                                {parsedInput.path || parsedInput.filePath || ''}
+                                            </Text>
+                                        </Box>
+                                        {isSuccess && (
+                                            <Box paddingLeft={2}>
+                                                <Text color="gray">└ {lines} lines</Text>
+                                            </Box>
+                                        )}
+                                    </Box>
+                                )
+                            }
+
+                            if (
+                                block.toolName === 'edit_file' ||
+                                block.toolName === 'edit_diff' ||
+                                block.toolName === 'write_file'
+                            ) {
+                                const diffStr =
+                                    block.toolName === 'write_file'
+                                        ? parsedInput.content
+                                        : parsedInput.diff || ''
+                                const path = parsedInput.path || parsedInput.filePath || ''
+                                const lines = diffStr ? diffStr.split('\n') : []
+                                const actionStr =
+                                    block.toolName === 'write_file' ? 'Created' : 'Edited'
+
+                                return (
+                                    <Box key={idx} flexDirection="column" marginY={0.5}>
+                                        <Box gap={1} alignItems="center">
+                                            <Text color={isSuccess ? '#f59e0b' : '#FCA5A5'} bold>
+                                                •
+                                            </Text>
+                                            <Text color="white" bold>
+                                                {actionStr}
+                                            </Text>
+                                            <Text color="gray">{path}</Text>
+                                        </Box>
+                                        {isSuccess && lines.length > 0 && (
+                                            <Box flexDirection="column" marginLeft={2}>
+                                                {lines
+                                                    .slice(0, 20)
+                                                    .map((rawLine: string, lidx: number) => {
+                                                        const isWriteFile =
+                                                            block.toolName === 'write_file'
+                                                        let isAdd =
+                                                            isWriteFile || rawLine.startsWith('+')
+                                                        let isSub =
+                                                            !isWriteFile && rawLine.startsWith('-')
+
+                                                        let lineStr = rawLine
+                                                        if (isWriteFile) {
+                                                            lineStr = `+ ${rawLine}`
+                                                        }
+
+                                                        let color = 'white'
+                                                        let bgColor: string | undefined = undefined
+
+                                                        if (isAdd) {
+                                                            color = '#22c55e'
+                                                        } else if (isSub) {
+                                                            color = '#ef4444'
+                                                        }
+
+                                                        return (
+                                                            <Box key={lidx}>
+                                                                <Text color="gray">│ </Text>
+                                                                <Box flexGrow={1}>
+                                                                    <Text
+                                                                        color={color}
+                                                                        wrap="truncate-end"
+                                                                    >
+                                                                        {lineStr}
+                                                                    </Text>
+                                                                </Box>
+                                                            </Box>
+                                                        )
+                                                    })}
+                                                {lines.length > 20 && (
+                                                    <Box>
+                                                        <Text color="gray">│ </Text>
+                                                        <Text color="gray" dimColor>
+                                                            ... ({lines.length - 20} more lines)
+                                                        </Text>
+                                                    </Box>
+                                                )}
+                                                <Text color="gray">└</Text>
+                                            </Box>
+                                        )}
+                                    </Box>
+                                )
+                            }
+
+                            // Collapsed state for other completed tools
                             return (
                                 <Box key={idx} gap={1} marginY={0.5} alignItems="center">
-                                    <Text color={isSuccess ? '#6EE7B7' : '#FCA5A5'} bold>
-                                        {isSuccess ? '✓' : '✗'}
+                                    <Text color={isSuccess ? '#f59e0b' : '#FCA5A5'} bold>
+                                        •
                                     </Text>
-                                    <Text color="gray">Ran command:</Text>
-                                    <Text color="white">
-                                        {block.command.substring(0, 50)}
-                                        {block.command.length > 50 ? '...' : ''}
+                                    <Text color="white" bold>
+                                        {block.command.substring(0, 80)}
+                                        {block.command.length > 80 ? '...' : ''}
+                                    </Text>
+                                    <Text color="gray" dimColor>
+                                        (ctrl+o to expand)
                                     </Text>
                                 </Box>
                             )
@@ -80,14 +266,9 @@ export function BotMessage({ blocks }: Props) {
                             <Box key={idx} flexDirection="column" marginY={0.5}>
                                 <Box gap={1} alignItems="center">
                                     <Spinner />
-                                    <Text color="#88C0D0" bold>
-                                        Running:
+                                    <Text color="#f59e0b" bold>
+                                        {block.command}
                                     </Text>
-                                    <Box backgroundColor="#2D3748" paddingX={1}>
-                                        <Text color="white" bold>
-                                            {block.command}
-                                        </Text>
-                                    </Box>
                                 </Box>
                                 {block.output && (
                                     <Box
