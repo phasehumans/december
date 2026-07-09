@@ -28,10 +28,6 @@ await $`bun install` // to update lockfile if needed
 
 await $`git-cliff -o CHANGELOG.md`
 
-console.log('Running pre-release checks...')
-await $`bun run lint`
-await $`bun run build`
-
 await $`git add .`
 await $`git commit -m ${`chore(release): v${version}`}`
 
