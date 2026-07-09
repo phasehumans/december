@@ -82,7 +82,12 @@ export function DialogSearchList<T>({
                         const isSelected = i === selectedIndex
                         return (
                             <Box key={getKey(item)}>
-                                <Text dimColor={!isSelected}>{isSelected ? '▸ ' : '  '}</Text>
+                                <Text
+                                    color={isSelected ? '#89B4F8' : undefined}
+                                    dimColor={!isSelected}
+                                >
+                                    {isSelected ? '❭ ' : '  '}
+                                </Text>
                                 {renderItem(item, isSelected)}
                             </Box>
                         )
