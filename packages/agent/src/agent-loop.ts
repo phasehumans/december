@@ -1,4 +1,5 @@
 import { v4 as uuidv4 } from 'uuid'
+import pRetry, { AbortError } from 'p-retry'
 
 import { Agent } from './agent'
 import { AgentEvent, ToolCall, ToolResult } from './types'
@@ -9,6 +10,7 @@ const delay = (ms: number) => new Promise((res) => setTimeout(res, ms))
 class AsyncQueue<T> {
     private queue: T[] = []
     private resolvers: ((value: IteratorResult<T>) => void)[] = []
+    private isEnded = false
 
     push(item: T) {
         if (this.resolvers.length > 0) {
@@ -20,6 +22,7 @@ class AsyncQueue<T> {
     }
 
     end() {
+        this.isEnded = true
         while (this.resolvers.length > 0) {
             const resolve = this.resolvers.shift()!
             resolve({ value: undefined, done: true })
@@ -30,6 +33,8 @@ class AsyncQueue<T> {
         while (true) {
             if (this.queue.length > 0) {
                 yield this.queue.shift()!
+            } else if (this.isEnded) {
+                break
             } else {
                 const result = await new Promise<IteratorResult<T>>((resolve) => {
                     this.resolvers.push(resolve)
@@ -39,6 +44,23 @@ class AsyncQueue<T> {
             }
         }
     }
+}
+
+function formatError(e: any): string {
+    if (!e) return 'Unknown error'
+    if (typeof e === 'string') return e
+    if (e.originalError) return formatError(e.originalError) // p-retry AbortError
+    if (e.cause) return formatError(e.cause)
+    if (e.error?.error?.message) return String(e.error.error.message)
+    if (e.error?.message) return String(e.error.message)
+    if (e.message) return String(e.message)
+
+    try {
+        const json = JSON.stringify(e)
+        if (json !== '{}') return json
+    } catch {}
+
+    return String(e)
 }
 
 export async function* runAgentLoop(
@@ -58,7 +80,8 @@ export async function* runAgentLoop(
             eventQueue.push({ type: 'AgentEnd' })
         } catch (e: any) {
             console.error('Agent Loop Error:', e)
-            eventQueue.push({ type: 'AgentError', error: e.message || String(e) })
+            const errMsg = formatError(e)
+            eventQueue.push({ type: 'AgentError', error: errMsg })
             eventQueue.push({ type: 'AgentEnd' })
         } finally {
             agent.activeAbortController = undefined
@@ -162,89 +185,161 @@ async function streamAssistantResponse(
 ): Promise<{ assistantMessage: string; toolCalls: ToolCall[]; error?: string }> {
     let assistantMessage = ''
     let toolCalls: ToolCall[] = []
-    let retries = 10
-    const maxRetries = 10
-    let success = false
-    let lastError = undefined
 
-    while (!success && retries > 0 && !signal.aborted) {
-        try {
-            agent.messages = await compactContextIfNeeded(agent.messages, agent.llm)
-            const toolsArray = Array.from(agent.tools.values()).map((t) => ({
-                name: t.name,
-                description: t.description,
-                inputSchema: t.inputSchema,
-            }))
+    try {
+        await pRetry(
+            async () => {
+                assistantMessage = ''
+                toolCalls = []
+                if (signal.aborted) throw new AbortError(new Error('Aborted'))
 
-            const providerMessages = agent.convertToLlm(agent.messages)
+                agent.messages = await compactContextIfNeeded(agent.messages, agent.llm)
+                const toolsArray = Array.from(agent.tools.values()).map((t) => ({
+                    name: t.name,
+                    description: t.description,
+                    inputSchema: t.inputSchema,
+                }))
 
-            const generator = agent.llm.stream(
-                providerMessages,
-                toolsArray,
-                agent.systemPrompt,
-                agent.modelOptions,
-                signal
-            )
+                const providerMessages = agent.convertToLlm(agent.messages)
 
-            const activeToolCalls = new Map<string, { id: string; name: string; input: string }>()
+                const generator = agent.llm.stream(
+                    providerMessages,
+                    toolsArray,
+                    agent.systemPrompt,
+                    agent.modelOptions,
+                    signal
+                )
 
-            for await (const chunk of generator) {
-                if (signal.aborted) break
-                if (chunk.type === 'text') {
-                    assistantMessage += chunk.text
-                    eventQueue.push({ type: 'StreamChunk', content: chunk.text })
-                } else if (chunk.type === 'thinking_delta') {
-                    eventQueue.push({ type: 'ThinkingChunk', content: chunk.text })
-                } else if (chunk.type === 'tool_call_delta') {
-                    if (!activeToolCalls.has(chunk.id)) {
-                        activeToolCalls.set(chunk.id, {
-                            id: chunk.id,
-                            name: chunk.name || '',
-                            input: '',
-                        })
+                const activeToolCalls = new Map<
+                    string,
+                    { id: string; name: string; input: string }
+                >()
+
+                for await (const chunk of generator) {
+                    if (signal.aborted) throw new AbortError(new Error('Aborted'))
+                    if (chunk.type === 'text') {
+                        assistantMessage += chunk.text
+                        eventQueue.push({ type: 'StreamChunk', content: chunk.text })
+                    } else if (chunk.type === 'thinking_delta') {
+                        eventQueue.push({ type: 'ThinkingChunk', content: chunk.text })
+                    } else if (chunk.type === 'tool_call_delta') {
+                        if (!activeToolCalls.has(chunk.id)) {
+                            activeToolCalls.set(chunk.id, {
+                                id: chunk.id,
+                                name: chunk.name || '',
+                                input: '',
+                            })
+                        }
+                        const tc = activeToolCalls.get(chunk.id)!
+                        if (chunk.inputDelta) {
+                            tc.input += chunk.inputDelta
+                        }
+                    } else if (chunk.type === 'tool_call') {
+                        activeToolCalls.set(chunk.toolCall.id, chunk.toolCall)
                     }
-                    const tc = activeToolCalls.get(chunk.id)!
-                    if (chunk.inputDelta) {
-                        tc.input += chunk.inputDelta
-                    }
-                } else if (chunk.type === 'tool_call') {
-                    activeToolCalls.set(chunk.toolCall.id, chunk.toolCall)
                 }
+                toolCalls = Array.from(activeToolCalls.values())
+            },
+            {
+                retries: 5,
+                factor: 2,
+                minTimeout: 2000,
+                maxTimeout: 30000,
+                onFailedAttempt: (error: any) => {
+                    if (
+                        error.status === 429 ||
+                        error.message?.includes('429') ||
+                        error.message?.toLowerCase().includes('quota') ||
+                        error.message?.toLowerCase().includes('rate limit')
+                    ) {
+                        const delaySeconds = Math.round(Math.pow(2, error.attemptNumber - 1) * 2)
+                        eventQueue.push({
+                            type: 'AgentStatus',
+                            message: `Rate limit hit, waiting ~${delaySeconds}s to retry... (${error.retriesLeft} retries left)`,
+                        })
+                    } else {
+                        throw new AbortError(error)
+                    }
+                },
             }
-            toolCalls = Array.from(activeToolCalls.values())
-            success = true
-        } catch (error: any) {
-            lastError = error
-            if (
-                error.status === 429 ||
-                error.message?.includes('429') ||
-                error.message?.toLowerCase().includes('quota') ||
-                error.message?.toLowerCase().includes('rate limit')
-            ) {
-                retries--
-                const delaySeconds = (maxRetries - retries) * 5
-                eventQueue.push({
-                    type: 'StreamChunk',
-                    content: `\n[Rate Limited (429). Retrying in ${delaySeconds}s...]\n`,
-                })
-                await delay(delaySeconds * 1000)
-            } else {
-                agent.addMessage({
-                    role: 'assistant',
-                    content: `Failed due to API error: ${error.message}`,
-                    isUI: true,
-                    errorMessage: error.message,
-                })
-                return { assistantMessage, toolCalls, error: error.message }
+        )
+
+        eventQueue.push({ type: 'AgentStatus', message: '' }) // Clear status on success
+        return { assistantMessage, toolCalls }
+    } catch (error: any) {
+        let errorMsg = typeof error.message === 'string' ? error.message : String(error)
+
+        eventQueue.push({ type: 'AgentStatus', message: '' })
+
+        // Extract original error if p-retry wrapped it
+        if (error.name === 'AbortError' && error.originalError) {
+            error = error.originalError
+            if (error.error) {
+                error = error.error
             }
         }
-    }
 
-    if (!success && lastError) {
-        return { assistantMessage, toolCalls, error: lastError.message }
-    }
+        let extractedMsg = 'Unknown Error'
+        if (typeof error === 'string') {
+            extractedMsg = error
+        } else if (error && typeof error === 'object') {
+            if (typeof error.message === 'string') {
+                extractedMsg = error.message
+            } else if (error.error && typeof error.error === 'string') {
+                extractedMsg = error.error
+            } else if (error.error && typeof error.error.message === 'string') {
+                extractedMsg = error.error.message
+            } else if (error.message && typeof error.message === 'object') {
+                extractedMsg = JSON.stringify(error.message)
+            } else {
+                try {
+                    const str = JSON.stringify(error)
+                    extractedMsg = str === '{}' ? String(error) : str
+                } catch {
+                    extractedMsg = String(error)
+                }
+            }
+        } else {
+            extractedMsg = String(error)
+        }
 
-    return { assistantMessage, toolCalls }
+        if (extractedMsg === '[object Object]') {
+            try {
+                extractedMsg = JSON.stringify(error)
+            } catch {}
+        }
+
+        errorMsg = extractedMsg
+
+        if (signal.aborted || (error.name === 'AbortError' && errorMsg === 'Aborted')) {
+            eventQueue.push({ type: 'StreamChunk', content: `\n\n*[Generation Interrupted]*\n` })
+            agent.addMessage({
+                role: 'assistant',
+                content: assistantMessage + `\n\n*[Generation Interrupted]*`,
+                isUI: true,
+            })
+            return { assistantMessage, toolCalls, error: 'Aborted' }
+        }
+
+        if (
+            errorMsg.includes('429') ||
+            errorMsg.toLowerCase().includes('quota') ||
+            errorMsg.toLowerCase().includes('rate limit')
+        ) {
+            errorMsg =
+                'Rate limit exhausted after multiple retries. Please wait a few minutes or provide a different API key.'
+        }
+
+        eventQueue.push({ type: 'StreamChunk', content: `\n\n**API Error:** ${errorMsg}\n` })
+
+        agent.addMessage({
+            role: 'assistant',
+            content: `Failed due to API error: ${errorMsg}`,
+            isUI: true,
+            errorMessage: errorMsg,
+        })
+        return { assistantMessage, toolCalls, error: errorMsg }
+    }
 }
 
 async function executeToolCalls(
