@@ -3,87 +3,43 @@ import { exec } from 'child_process'
 import clipboard from 'clipboardy'
 import React from 'react'
 
-import { ContextDialog, SettingsDialog, TasksDialog, UsageDialog } from '../dialogs'
+import { SettingsDialog, TasksDialog, UsageDialog } from '../dialogs'
 
 import type { Command } from './types'
 
 export const COMMANDS: Command[] = [
     {
-        name: 'btw',
-        description: 'Ask a side question without disrupting the current task',
-        value: '/btw',
-        action: (ctx) => {
-            ctx.toast.show({
-                message: 'Type /btw <your question> in the input bar and press Enter.',
-            })
-        },
-    },
-    {
-        name: 'canvas',
-        description: 'Open the visual workspace',
-        value: '/canvas',
-        action: (ctx) => {
-            ctx.toast.show({ message: 'Command /canvas coming soon...' })
-        },
-    },
-    {
-        name: 'clear',
-        description: 'Clear the current conversation',
-        value: '/clear',
-        action: async (ctx) => {
-            if (ctx.agent) {
-                await ctx.agent.clearContext()
-            }
-            ctx.resetChat?.()
-            ctx.toast.show({ message: 'Conversation cleared.' })
-        },
-    },
-    {
-        name: 'compact',
-        description: 'Compact the conversation context to save tokens',
-        value: '/compact',
-        action: async (ctx) => {
-            if (ctx.agent) {
-                await ctx.agent.compactContext()
-            }
-            ctx.toast.show({ message: 'Conversation compacted.' })
-        },
-    },
-    {
         name: 'context',
-        description: 'Manage the context window',
+        description: 'Visualize current context usage',
         value: '/context',
         action: (ctx) => {
-            if (ctx.agent) {
-                ctx.dialog.open({
-                    title: 'Context Manager',
-                    children: (
-                        <ContextDialog
-                            agent={ctx.agent}
-                            toast={ctx.toast}
-                            resetChat={ctx.resetChat}
-                            close={ctx.dialog.close}
-                        />
-                    ),
-                })
-            } else {
-                ctx.toast.show({ variant: 'error', message: 'No active agent session' })
-            }
+            // Forwarded to Chat screen
         },
     },
     {
         name: 'copy',
-        description: 'Copy the session or generated code',
+        description: 'Copy the last planner response to the clipboard',
         value: '/copy',
         action: (ctx) => {
             if (ctx.agent && ctx.agent.messages.length > 0) {
                 try {
-                    const lastMsg = ctx.agent.messages[ctx.agent.messages.length - 1]
-                    clipboard.writeSync(lastMsg.content || '')
-                    ctx.toast.show({
-                        variant: 'success',
-                        message: 'Copied last message to clipboard!',
-                    })
+                    const plannerMessages = ctx.agent.messages.filter((m) => m.role === 'assistant')
+                    const lastMsg =
+                        plannerMessages.length > 0
+                            ? plannerMessages[plannerMessages.length - 1]
+                            : null
+                    if (lastMsg && lastMsg.content) {
+                        clipboard.writeSync(lastMsg.content)
+                        ctx.toast.show({
+                            variant: 'success',
+                            message: 'Copied last planner response to clipboard!',
+                        })
+                    } else {
+                        ctx.toast.show({
+                            variant: 'error',
+                            message: 'No planner response found to copy.',
+                        })
+                    }
                 } catch (e) {
                     ctx.toast.show({ variant: 'error', message: 'Failed to write to clipboard.' })
                 }
@@ -94,7 +50,7 @@ export const COMMANDS: Command[] = [
     },
     {
         name: 'exit',
-        description: 'Quit the CLI',
+        description: 'Exit the CLI',
         value: '/exit',
         action: (ctx) => {
             ctx.exit()
@@ -102,7 +58,7 @@ export const COMMANDS: Command[] = [
     },
     {
         name: 'fork',
-        description: 'Fork the session into a new branch',
+        description: 'Create a branch of the current conversation at this point',
         value: '/fork',
         action: async (ctx) => {
             if (ctx.agent) {
@@ -113,7 +69,7 @@ export const COMMANDS: Command[] = [
     },
     {
         name: 'grill-me',
-        description: 'Align on a plan through an interactive interview',
+        description: 'Interactive Q&A to resolve ambiguities',
         value: '/grill-me',
         action: (ctx) => {
             // Forwarded to Chat screen
@@ -138,7 +94,7 @@ export const COMMANDS: Command[] = [
     },
     {
         name: 'login',
-        description: 'Sign in via browser',
+        description: 'Configure API keys or log in to December',
         value: '/login',
         action: (ctx) => {
             ctx.toast.show({ message: 'Opening browser to sign in...' })
@@ -146,7 +102,7 @@ export const COMMANDS: Command[] = [
     },
     {
         name: 'logout',
-        description: 'Sign out of your account',
+        description: 'Clear stored credentials',
         value: '/logout',
         action: (ctx) => {
             ctx.toast.show({ variant: 'success', message: 'Signed out' })
@@ -170,7 +126,7 @@ export const COMMANDS: Command[] = [
     },
     {
         name: 'model',
-        description: 'Switch the active AI model',
+        description: 'Switch AI model',
         value: '/model',
         action: (ctx) => {
             ctx.toast.show({ message: 'Use arrow keys to select a model.' })
@@ -190,7 +146,7 @@ export const COMMANDS: Command[] = [
     },
     {
         name: 'plan',
-        description: 'Toggle planning mode',
+        description: 'Create an implementation plan',
         value: '/plan',
         action: (ctx) => {
             // Forwarded to Chat screen
@@ -198,7 +154,7 @@ export const COMMANDS: Command[] = [
     },
     {
         name: 'resume',
-        description: 'Resume a previous session',
+        description: 'Restore a previous conversation',
         value: '/resume',
         action: (ctx) => {
             ctx.toast.show({ message: 'Command /resume coming soon...' })
@@ -214,7 +170,7 @@ export const COMMANDS: Command[] = [
     },
     {
         name: 'settings',
-        description: 'Open CLI settings',
+        description: 'Adjust application settings',
         value: '/settings',
         action: (ctx) => {
             // Forwarded to Chat screen
