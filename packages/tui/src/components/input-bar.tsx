@@ -18,6 +18,11 @@ type Props = {
     placeholder?: string
     activeModel?: string
     authUI?: React.ReactNode
+    agent?: any
+    resetChat?: () => void
+    planMode?: boolean
+    grillMode?: boolean
+    customInputMode?: boolean
 }
 
 export function InputBar({
@@ -26,6 +31,11 @@ export function InputBar({
     placeholder = 'Ask December to build...',
     activeModel = 'unknown',
     authUI,
+    agent,
+    resetChat,
+    planMode = false,
+    grillMode = false,
+    customInputMode = false,
 }: Props) {
     const [value, setValue] = useState('')
     const cols = useTerminalColumns()
@@ -63,7 +73,10 @@ export function InputBar({
                 command.value === '/logout' ||
                 command.value === '/exit' ||
                 command.value === '/model' ||
-                command.value === '/resume'
+                command.value === '/resume' ||
+                command.value === '/plan' ||
+                command.value === '/grill-me' ||
+                command.value === '/settings'
             ) {
                 onSubmit(command.value)
                 return
@@ -74,10 +87,12 @@ export function InputBar({
                     exit: () => process.exit(0),
                     toast,
                     dialog,
+                    agent,
+                    resetChat,
                 })
             }
         },
-        [toast, dialog, handleContentChange, onSubmit]
+        [toast, dialog, agent, resetChat, handleContentChange, onSubmit]
     )
 
     const handleSubmit = useCallback(
@@ -123,13 +138,31 @@ export function InputBar({
 
             {/* Content: Prompt */}
             <Box>
+                {planMode && (
+                    <Text color="#F1C40F" bold>
+                        [PLAN]{' '}
+                    </Text>
+                )}
+                {grillMode && (
+                    <Text color="#89B4F8" bold>
+                        [GRILL]{' '}
+                    </Text>
+                )}
                 <Text color={disabled ? '#555555' : '#89B4F8'}>{`❭ `}</Text>
-                {!authUI && (
+                {(!authUI || customInputMode) && (
                     <TextInput
                         value={value}
                         onChange={handleChange}
                         onSubmit={handleSubmit}
-                        placeholder={placeholder}
+                        placeholder={
+                            customInputMode
+                                ? 'Type your custom answer...'
+                                : planMode
+                                  ? 'Describe what you want to plan...'
+                                  : grillMode
+                                    ? 'Describe what you want to grill...'
+                                    : placeholder
+                        }
                         focus={!disabled && !dialog.isOpen}
                     />
                 )}
