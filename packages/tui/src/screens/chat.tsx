@@ -100,9 +100,19 @@ const getModelLabel = (value: string) => {
     return value
 }
 
+const getModelContextWindow = (value: string) => {
+    if (value.includes('gemini')) return 1000000
+    if (value.includes('claude')) return 200000
+    if (value.includes('gpt-4')) return 128000
+    if (value.includes('gpt-3.5')) return 16385
+    if (value.includes('32k')) return 32768
+    if (value.includes('8192')) return 8192
+    if (value.includes('8k')) return 8192
+    return 100000
+}
+
 import { Header } from '../components/header'
 import { InputBar } from '../components/input-bar'
-import { BtwMessage } from '../components/btw-message'
 import { BotMessage, ErrorMessage, UserMessage } from '../components/messages'
 import { useTerminalColumns } from '../hooks/use-terminal-columns'
 import { useToast } from '../providers/toast'
@@ -206,8 +216,6 @@ type Message = {
     role: 'user' | 'assistant' | 'error' | 'header'
     text?: string
     blocks?: MessageBlock[]
-    isBtw?: boolean
-    btwQuery?: string
 }
 
 let msgId = 0
@@ -215,6 +223,7 @@ let msgId = 0
 type AuthMode =
     | 'none'
     | 'menu'
+    | 'context_select'
     | 'december_login_select'
     | 'byok_provider'
     | 'byok_key'
@@ -346,7 +355,8 @@ export function Chat({
                 authMode === 'logout_select' ||
                 authMode === 'session_select' ||
                 authMode === 'plan_approve' ||
-                authMode === 'settings_main'
+                authMode === 'settings_main' ||
+                authMode === 'context_select'
             ) {
                 if (authMode === 'plan_approve') {
                     setCurrentPlannedPrompt(null)
@@ -667,6 +677,11 @@ Explain which files need to be created, modified, or deleted, and what the chang
                 return
             }
 
+            if (text.trim() === '/context') {
+                setAuthMode('context_select')
+                return
+            }
+
             if (text.trim() === '/model') {
                 if (!isAuthenticated) {
                     setStaticMessages((prev) => [...prev, ...activeMessages])
@@ -789,58 +804,6 @@ Explain which files need to be created, modified, or deleted, and what the chang
                         ],
                     },
                 ])
-                return
-            }
-
-            if (text.startsWith('/btw ')) {
-                const btwMsgId = ++msgId
-                setActiveMessages((prev) => [
-                    ...prev,
-                    {
-                        id: btwMsgId,
-                        role: 'assistant',
-                        isBtw: true,
-                        btwQuery: text,
-                        blocks: [{ type: 'text', content: '' }],
-                    },
-                ])
-                ;(async () => {
-                    try {
-                        const messages = [
-                            ...agent.convertToLlm(agent.messages),
-                            { role: 'user', content: text },
-                        ] as any[]
-                        const stream = agent.llm.stream(messages)
-
-                        let accumulatedText = ''
-                        for await (const chunk of stream) {
-                            if (chunk.type === 'text') {
-                                accumulatedText += chunk.text
-                                setActiveMessages((prev) =>
-                                    prev.map((msg) => {
-                                        if (msg.id !== btwMsgId) return msg
-                                        return {
-                                            ...msg,
-                                            blocks: [{ type: 'text', content: accumulatedText }],
-                                        }
-                                    })
-                                )
-                            }
-                        }
-                    } catch (err: any) {
-                        const errMsg = parseErrorMessage(err)
-
-                        setActiveMessages((prev) =>
-                            prev.map((msg) => {
-                                if (msg.id !== btwMsgId) return msg
-                                return {
-                                    ...msg,
-                                    blocks: [{ type: 'text', content: `**Error:** ${errMsg}` }],
-                                }
-                            })
-                        )
-                    }
-                })()
                 return
             }
 
@@ -1745,6 +1708,124 @@ Explain which files need to be created, modified, or deleted, and what the chang
                 </Box>
             </Box>
         )
+    } else if (authMode === 'context_select') {
+        const activeModelId = agent.modelOptions?.model || 'gemini-3.5-flash'
+        const currentModelName = getModelLabel(activeModelId)
+        const maxTokens = getModelContextWindow(activeModelId)
+
+        const userTokens = Math.round(
+            agent.messages
+                .filter((m) => m.role === 'user')
+                .reduce((acc, m) => acc + (m.content?.length || 0) / 4, 0)
+        )
+        const agentTokens = Math.round(
+            agent.messages
+                .filter((m) => m.role === 'assistant')
+                .reduce((acc, m) => acc + (m.content?.length || 0) / 4, 0)
+        )
+        const toolTokens = Math.round(
+            agent.messages.reduce(
+                (acc, m) => acc + (m.toolCalls ? JSON.stringify(m.toolCalls).length / 4 : 0),
+                0
+            )
+        )
+        const sysTokens = Math.round((agent.systemPrompt?.length || 0) / 4)
+        const totalTokens = userTokens + agentTokens + toolTokens + sysTokens
+        const freeTokens = Math.max(0, maxTokens - totalTokens)
+
+        const pct = (n: number) => ((n / maxTokens) * 100).toFixed(1)
+        const formatK = (n: number) => (n > 1000 ? (n / 1000).toFixed(1) + 'k' : n.toString())
+
+        const totalSquares = 200
+        const squares = []
+        let filled = 0
+        const addSquares = (count: number, char: string, color: string) => {
+            for (let i = 0; i < count && filled < totalSquares; i++) {
+                squares.push(
+                    <Text key={filled} color={color}>
+                        {char}
+                    </Text>
+                )
+                filled++
+            }
+        }
+        addSquares(Math.round((userTokens / maxTokens) * totalSquares), '●', '#89B4F8') // blue
+        addSquares(Math.round((agentTokens / maxTokens) * totalSquares), '●', '#6EE7B7') // green
+        addSquares(Math.round((toolTokens / maxTokens) * totalSquares), '●', '#FCD34D') // yellow
+        addSquares(Math.round((sysTokens / maxTokens) * totalSquares), '●', '#AAAAAA') // grey
+
+        while (filled < totalSquares) {
+            squares.push(
+                <Text key={filled} color="#444444">
+                    □
+                </Text>
+            )
+            filled++
+        }
+
+        const gridRows = []
+        for (let i = 0; i < totalSquares; i += 20) {
+            gridRows.push(
+                <Box key={i} gap={1}>
+                    {squares.slice(i, i + 20)}
+                </Box>
+            )
+        }
+
+        authUI = (
+            <Box flexDirection="row" paddingX={1} gap={4}>
+                <Box flexDirection="column">{gridRows}</Box>
+
+                <Box flexDirection="column">
+                    <Box gap={1}>
+                        <Text color="#AAAAAA">
+                            {currentModelName} · {formatK(totalTokens)}/{formatK(maxTokens)} tokens
+                            ({pct(totalTokens)}%)
+                        </Text>
+                    </Box>
+                    <Text color="white" marginTop={1}>
+                        Token usage by category
+                    </Text>
+                    <Box flexDirection="column">
+                        <Box gap={1}>
+                            <Text color="#89B4F8">●</Text>
+                            <Text color="#AAAAAA">
+                                User messages: {formatK(userTokens)} tokens ({pct(userTokens)}%)
+                            </Text>
+                        </Box>
+                        <Box gap={1}>
+                            <Text color="#6EE7B7">●</Text>
+                            <Text color="#AAAAAA">
+                                Agent responses: {formatK(agentTokens)} tokens ({pct(agentTokens)}%)
+                            </Text>
+                        </Box>
+                        <Box gap={1}>
+                            <Text color="#FCD34D">●</Text>
+                            <Text color="#AAAAAA">
+                                Tool calls: {formatK(toolTokens)} tokens ({pct(toolTokens)}%)
+                            </Text>
+                        </Box>
+                        <Box gap={1}>
+                            <Text color="#AAAAAA">●</Text>
+                            <Text color="#AAAAAA">
+                                System prompt: {formatK(sysTokens)} tokens ({pct(sysTokens)}%)
+                            </Text>
+                        </Box>
+                        <Box gap={1}>
+                            <Text color="#444444">□</Text>
+                            <Text color="#AAAAAA">
+                                Free space: {formatK(freeTokens)} ({pct(freeTokens)}%)
+                            </Text>
+                        </Box>
+                    </Box>
+                    <Box marginTop={2} gap={1}>
+                        <Text color="#AAAAAA">Press</Text>
+                        <Text color="#89B4F8">esc</Text>
+                        <Text color="#AAAAAA">to go back</Text>
+                    </Box>
+                </Box>
+            </Box>
+        )
     } else if (authMode === 'logout_select') {
         authUI = (
             <Box flexDirection="column" paddingX={1}>
@@ -2059,14 +2140,6 @@ Explain which files need to be created, modified, or deleted, and what the chang
                         return (
                             <Header key={msg.id} cliVersion={cliVersion} userEmail={currentEmail} />
                         )
-                    if (msg.isBtw)
-                        return (
-                            <BtwMessage
-                                key={msg.id}
-                                query={msg.btwQuery ?? ''}
-                                blocks={msg.blocks ?? []}
-                            />
-                        )
                     if (msg.role === 'user')
                         return <UserMessage key={msg.id} message={msg.text ?? ''} />
                     if (msg.role === 'error')
@@ -2076,14 +2149,6 @@ Explain which files need to be created, modified, or deleted, and what the chang
             </Static>
 
             {activeMessages.map((msg) => {
-                if (msg.isBtw)
-                    return (
-                        <BtwMessage
-                            key={msg.id}
-                            query={msg.btwQuery ?? ''}
-                            blocks={msg.blocks ?? []}
-                        />
-                    )
                 if (msg.role === 'user')
                     return <UserMessage key={msg.id} message={msg.text ?? ''} />
                 if (msg.role === 'error')

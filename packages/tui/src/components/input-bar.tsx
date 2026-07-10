@@ -1,6 +1,6 @@
-import { Box, Text } from 'ink'
+import { Box, Text, useInput } from 'ink'
 import TextInput from 'ink-text-input'
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 
 import { useTerminalColumns } from '../hooks/use-terminal-columns'
 import { useDialog, InlineDialog } from '../providers/dialog'
@@ -52,9 +52,26 @@ export function InputBar({
         setSelectedIndex,
     } = useCommandMenu()
 
+    const isCtrlW = useRef(false)
+    useInput((input, key) => {
+        if (key.ctrl && input === 'w') {
+            isCtrlW.current = true
+            setValue((prev) => {
+                const match = prev.match(/(\s*\S+\s*)$/)
+                const next = match ? prev.slice(0, -match[0].length) : prev
+                handleContentChange(next)
+                return next
+            })
+        }
+    })
+
     const handleChange = useCallback(
         (newValue: string) => {
             if (disabled) return
+            if (isCtrlW.current) {
+                isCtrlW.current = false
+                return
+            }
             setValue(newValue)
             handleContentChange(newValue)
         },
@@ -76,7 +93,8 @@ export function InputBar({
                 command.value === '/resume' ||
                 command.value === '/plan' ||
                 command.value === '/grill-me' ||
-                command.value === '/settings'
+                command.value === '/settings' ||
+                command.value === '/context'
             ) {
                 onSubmit(command.value)
                 return
