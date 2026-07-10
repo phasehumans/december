@@ -1,3 +1,10 @@
+import { exec } from 'child_process'
+
+import clipboard from 'clipboardy'
+import React from 'react'
+
+import { ContextDialog, SettingsDialog, TasksDialog, UsageDialog } from '../dialogs'
+
 import type { Command } from './types'
 
 export const COMMANDS: Command[] = [
@@ -6,7 +13,9 @@ export const COMMANDS: Command[] = [
         description: 'Ask a side question without disrupting the current task',
         value: '/btw',
         action: (ctx) => {
-            ctx.toast.show({ message: 'Command /btw coming soon...' })
+            ctx.toast.show({
+                message: 'Type /btw <your question> in the input bar and press Enter.',
+            })
         },
     },
     {
@@ -21,7 +30,11 @@ export const COMMANDS: Command[] = [
         name: 'clear',
         description: 'Clear the current conversation',
         value: '/clear',
-        action: (ctx) => {
+        action: async (ctx) => {
+            if (ctx.agent) {
+                await ctx.agent.clearContext()
+            }
+            ctx.resetChat?.()
             ctx.toast.show({ message: 'Conversation cleared.' })
         },
     },
@@ -29,8 +42,11 @@ export const COMMANDS: Command[] = [
         name: 'compact',
         description: 'Compact the conversation context to save tokens',
         value: '/compact',
-        action: (ctx) => {
-            ctx.toast.show({ message: 'Command /compact coming soon...' })
+        action: async (ctx) => {
+            if (ctx.agent) {
+                await ctx.agent.compactContext()
+            }
+            ctx.toast.show({ message: 'Conversation compacted.' })
         },
     },
     {
@@ -38,7 +54,21 @@ export const COMMANDS: Command[] = [
         description: 'Manage the context window',
         value: '/context',
         action: (ctx) => {
-            ctx.toast.show({ message: 'Command /context coming soon...' })
+            if (ctx.agent) {
+                ctx.dialog.open({
+                    title: 'Context Manager',
+                    children: (
+                        <ContextDialog
+                            agent={ctx.agent}
+                            toast={ctx.toast}
+                            resetChat={ctx.resetChat}
+                            close={ctx.dialog.close}
+                        />
+                    ),
+                })
+            } else {
+                ctx.toast.show({ variant: 'error', message: 'No active agent session' })
+            }
         },
     },
     {
@@ -46,7 +76,20 @@ export const COMMANDS: Command[] = [
         description: 'Copy the session or generated code',
         value: '/copy',
         action: (ctx) => {
-            ctx.toast.show({ message: 'Command /copy coming soon...' })
+            if (ctx.agent && ctx.agent.messages.length > 0) {
+                try {
+                    const lastMsg = ctx.agent.messages[ctx.agent.messages.length - 1]
+                    clipboard.writeSync(lastMsg.content || '')
+                    ctx.toast.show({
+                        variant: 'success',
+                        message: 'Copied last message to clipboard!',
+                    })
+                } catch (e) {
+                    ctx.toast.show({ variant: 'error', message: 'Failed to write to clipboard.' })
+                }
+            } else {
+                ctx.toast.show({ variant: 'error', message: 'Nothing to copy.' })
+            }
         },
     },
     {
@@ -61,8 +104,11 @@ export const COMMANDS: Command[] = [
         name: 'fork',
         description: 'Fork the session into a new branch',
         value: '/fork',
-        action: (ctx) => {
-            ctx.toast.show({ message: 'Command /fork coming soon...' })
+        action: async (ctx) => {
+            if (ctx.agent) {
+                const newId = await ctx.agent.forkContext()
+                ctx.toast.show({ variant: 'success', message: `Forked to new session: ${newId}` })
+            }
         },
     },
     {
@@ -70,7 +116,7 @@ export const COMMANDS: Command[] = [
         description: 'Align on a plan through an interactive interview',
         value: '/grill-me',
         action: (ctx) => {
-            ctx.toast.show({ message: 'Command /grill-me coming soon...' })
+            // Forwarded to Chat screen
         },
     },
     {
@@ -81,14 +127,7 @@ export const COMMANDS: Command[] = [
             ctx.toast.show({ message: 'Command /handoff coming soon...' })
         },
     },
-    {
-        name: 'help',
-        description: 'Show available commands',
-        value: '/help',
-        action: (ctx) => {
-            ctx.toast.show({ message: 'Type / to browse all commands.' })
-        },
-    },
+
     {
         name: 'hooks',
         description: 'Manage agent lifecycle hooks',
@@ -141,8 +180,12 @@ export const COMMANDS: Command[] = [
         name: 'new',
         description: 'Start a new conversation',
         value: '/new',
-        action: (ctx) => {
-            ctx.toast.show({ message: 'Starting new conversation...' })
+        action: async (ctx) => {
+            if (ctx.agent) {
+                await ctx.agent.newContext()
+                ctx.resetChat?.()
+                ctx.toast.show({ variant: 'success', message: 'Started a new conversation.' })
+            }
         },
     },
     {
@@ -150,7 +193,7 @@ export const COMMANDS: Command[] = [
         description: 'Toggle planning mode',
         value: '/plan',
         action: (ctx) => {
-            ctx.toast.show({ message: 'Command /plan coming soon...' })
+            // Forwarded to Chat screen
         },
     },
     {
@@ -174,7 +217,7 @@ export const COMMANDS: Command[] = [
         description: 'Open CLI settings',
         value: '/settings',
         action: (ctx) => {
-            ctx.toast.show({ message: 'Command /settings coming soon...' })
+            // Forwarded to Chat screen
         },
     },
     {
@@ -190,7 +233,10 @@ export const COMMANDS: Command[] = [
         description: 'Manage background tasks',
         value: '/tasks',
         action: (ctx) => {
-            ctx.toast.show({ message: 'Command /tasks coming soon...' })
+            ctx.dialog.open({
+                title: 'Background Tasks',
+                children: <TasksDialog toast={ctx.toast} close={ctx.dialog.close} />,
+            })
         },
     },
     {
@@ -198,7 +244,12 @@ export const COMMANDS: Command[] = [
         description: 'Update to the latest version',
         value: '/update',
         action: (ctx) => {
-            ctx.toast.show({ message: 'Command /update coming soon...' })
+            exec('npm install -g @trydecember/cli', (err) => {
+                if (err) {
+                    // Update failed silently in bg, but we can't easily toast here if app is closed.
+                }
+            })
+            ctx.toast.show({ message: 'Updating CLI in the background. Please restart soon.' })
         },
     },
     {
@@ -206,7 +257,10 @@ export const COMMANDS: Command[] = [
         description: 'View API and token usage',
         value: '/usage',
         action: (ctx) => {
-            ctx.toast.show({ message: 'Command /usage coming soon...' })
+            ctx.dialog.open({
+                title: 'Usage',
+                children: <UsageDialog toast={ctx.toast} close={ctx.dialog.close} />,
+            })
         },
     },
 ]

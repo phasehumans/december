@@ -3,7 +3,7 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import { promisify } from 'node:util'
 
-import { AgentOperations } from '@december/agent'
+import { AgentOperations, taskManager } from '@december/agent'
 import fg from 'fast-glob'
 
 const execAsync = promisify(exec)
@@ -21,29 +21,37 @@ export const localOperations: AgentOperations = {
                     stdio: 'pipe',
                 })
 
+                const task = taskManager.addTask(command, child)
+
                 child.stdout?.on('data', (data) => {
                     const chunk = data.toString()
                     stdout += chunk
+                    taskManager.appendOutput(task.id, chunk)
                     onData(chunk)
                 })
 
                 child.stderr?.on('data', (data) => {
                     const chunk = data.toString()
                     stderr += chunk
+                    taskManager.appendOutput(task.id, chunk)
                     onData(chunk)
                 })
 
                 let isFinished = false
 
                 child.on('close', (code) => {
+                    taskManager.markCompleted(task.id, code)
                     if (isFinished) return
                     isFinished = true
+                    taskManager.removeTask(task.id)
                     resolve({ exitCode: code, output: stdout + '\n' + stderr })
                 })
 
                 child.on('error', (err) => {
+                    taskManager.markCompleted(task.id, 1)
                     if (isFinished) return
                     isFinished = true
+                    taskManager.removeTask(task.id)
                     resolve({ exitCode: 1, output: `Failed to start command: ${err.message}` })
                 })
 
