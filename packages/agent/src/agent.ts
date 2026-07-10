@@ -103,4 +103,42 @@ export class Agent {
             // If empty, keep the constructor's messages (system prompt)
         }
     }
+
+    public async clearContext() {
+        if (this.messages.length > 0) {
+            this.messages = [this.messages[0]]
+            await this.saveContext()
+        }
+    }
+
+    public async compactContext() {
+        if (this.messages.length > 6) {
+            const systemPrompt = this.messages[0]
+            const recentMessages = this.messages.slice(-5)
+            this.messages = [
+                systemPrompt,
+                {
+                    role: 'system',
+                    content: '[System: Conversation compacted to save context window]',
+                    isUI: true,
+                },
+                ...recentMessages,
+            ]
+            await this.saveContext()
+        }
+    }
+
+    public async newContext() {
+        this.sessionId = `session-${Date.now()}`
+        if (this.messages.length > 0) {
+            this.messages = [this.messages[0]]
+        }
+        await this.saveContext()
+    }
+
+    public async forkContext(newSessionId?: string) {
+        this.sessionId = newSessionId || `session-${Date.now()}`
+        await this.saveContext()
+        return this.sessionId
+    }
 }
