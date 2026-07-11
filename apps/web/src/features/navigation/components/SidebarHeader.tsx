@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { Home } from 'lucide-react'
 
 import { Icons } from '@/shared/components/ui/Icons'
 import { cn } from '@/shared/lib/utils'
@@ -47,21 +48,21 @@ export const SidebarHeader: React.FC<{
                         className={cn(
                             'transition-all flex items-center justify-center',
                             activeTab === 'home'
-                                ? 'text-white'
-                                : 'text-white group-hover:text-white'
+                                ? 'text-[#D6D5D4]'
+                                : 'text-[#919191] group-hover:text-[#D6D5D4]'
                         )}
                     >
-                        <Icons.DecemberLogo className="w-[18px] h-[18px]" />
+                        <Home className="w-[18px] h-[18px]" />
                     </div>
                     <span
                         className={cn(
                             'font-medium text-[14px] tracking-wide transition-colors',
                             activeTab === 'home'
-                                ? 'text-white'
-                                : 'text-white group-hover:text-white'
+                                ? 'text-[#D6D5D4]'
+                                : 'text-[#919191] group-hover:text-[#D6D5D4]'
                         )}
                     >
-                        December
+                        Home
                     </span>
                 </button>
                 <button

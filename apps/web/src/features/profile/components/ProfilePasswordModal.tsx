@@ -35,28 +35,28 @@ export const ProfilePasswordModal: React.FC<ProfilePasswordModalProps> = ({
             title={hasPassword ? 'Change password' : 'Set Password'}
             description={
                 hasPassword
-                    ? 'Update your account password for security.'
-                    : 'Set a password for your account to enable password-based login alongside OAuth.'
+                    ? 'This will immediately update your password for all active sessions.'
+                    : 'This will enable password-based login alongside OAuth for your account.'
             }
             variant="premium"
         >
             <form onSubmit={handleFormSubmit} className="flex flex-col gap-3.5">
+                <p className="text-[13px] text-[#8F8E8D] leading-relaxed">
+                    {hasPassword
+                        ? 'Enter your current password and choose a new one to secure your account.'
+                        : 'Choose a strong password to enable email and password login.'}
+                </p>
+
                 {hasPassword && (
                     <div>
-                        <label
-                            htmlFor="current-password-input"
-                            className="text-[11px] font-semibold text-[#8F8E8D] uppercase tracking-wider mb-1.5 block"
-                        >
-                            Current password
-                        </label>
                         <div className="relative">
                             <input
                                 id="current-password-input"
                                 type={showCurrentPass ? 'text' : 'password'}
                                 value={currentPassword}
                                 onChange={(e) => onCurrentPasswordChange(e.target.value)}
-                                className="w-full bg-white/[0.03] border border-[#2B2A27] rounded-lg px-3.5 py-2.5 text-white text-[13px] focus:outline-none focus:border-[#4E4D49] focus:ring-1 focus:ring-[#4E4D49] transition-[border-color,box-shadow] duration-200 pr-10"
-                                placeholder="••••••••"
+                                className="w-full bg-white/[0.03] border border-[#2B2A27] rounded-lg px-3.5 py-2.5 text-white text-[13px] focus:outline-none transition-[border-color,box-shadow] duration-200 pr-10"
+                                placeholder="Current password"
                                 disabled={isPending}
                             />
                             <button
@@ -71,20 +71,14 @@ export const ProfilePasswordModal: React.FC<ProfilePasswordModalProps> = ({
                 )}
 
                 <div>
-                    <label
-                        htmlFor="new-password-input"
-                        className="text-[11px] font-semibold text-[#8F8E8D] uppercase tracking-wider mb-1.5 block"
-                    >
-                        New password
-                    </label>
                     <div className="relative">
                         <input
                             id="new-password-input"
                             type={showNewPass ? 'text' : 'password'}
                             value={newPassword}
                             onChange={(e) => onNewPasswordChange(e.target.value)}
-                            className="w-full bg-white/[0.03] border border-[#2B2A27] rounded-lg px-3.5 py-2.5 text-white text-[13px] focus:outline-none focus:border-[#4E4D49] focus:ring-1 focus:ring-[#4E4D49] transition-[border-color,box-shadow] duration-200 pr-10"
-                            placeholder="••••••••"
+                            className="w-full bg-white/[0.03] border border-[#2B2A27] rounded-lg px-3.5 py-2.5 text-white text-[13px] focus:outline-none transition-[border-color,box-shadow] duration-200 pr-10"
+                            placeholder="New password"
                             disabled={isPending}
                         />
                         <button
@@ -98,19 +92,13 @@ export const ProfilePasswordModal: React.FC<ProfilePasswordModalProps> = ({
                 </div>
 
                 <div>
-                    <label
-                        htmlFor="confirm-password-input"
-                        className="text-[11px] font-semibold text-[#8F8E8D] uppercase tracking-wider mb-1.5 block"
-                    >
-                        Confirm password
-                    </label>
                     <input
                         id="confirm-password-input"
                         type="password"
                         value={confirmPassword}
                         onChange={(e) => onConfirmPasswordChange(e.target.value)}
-                        className="w-full bg-white/[0.03] border border-[#2B2A27] rounded-lg px-3.5 py-2.5 text-white text-[13px] focus:outline-none focus:border-[#4E4D49] focus:ring-1 focus:ring-[#4E4D49] transition-[border-color,box-shadow] duration-200"
-                        placeholder="••••••••"
+                        className="w-full bg-white/[0.03] border border-[#2B2A27] rounded-lg px-3.5 py-2.5 text-white text-[13px] focus:outline-none transition-[border-color,box-shadow] duration-200"
+                        placeholder="Confirm new password"
                         disabled={isPending}
                     />
                 </div>
@@ -124,7 +112,7 @@ export const ProfilePasswordModal: React.FC<ProfilePasswordModalProps> = ({
                         type="button"
                         onClick={onClose}
                         disabled={isPending}
-                        className="border border-[#2B2A27] bg-transparent text-white hover:bg-white/5 active:scale-95 transition-[transform,background-color,border-color,color] duration-200 text-[13px] font-medium px-4 py-2 rounded-lg focus:outline-none disabled:opacity-50"
+                        className="bg-transparent text-white hover:bg-white/5 active:scale-95 transition-[transform,background-color,border-color,color] duration-200 text-[13px] font-medium px-4 py-2 rounded-lg focus:outline-none disabled:opacity-50"
                     >
                         Cancel
                     </button>
