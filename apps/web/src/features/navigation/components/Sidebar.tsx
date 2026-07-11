@@ -150,28 +150,17 @@ const Sidebar: React.FC<
                         <span className="font-normal text-[13px] whitespace-nowrap transition-colors tracking-tight text-[#919191]">
                             Recent
                         </span>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-0.5">
                             <button
                                 onClick={() =>
                                     isAuthenticated ? setIsSearchOpen(true) : onOpenAuth?.()
                                 }
-                                className="relative text-[#919191] hover:text-[#919191] transition-all outline-none group/btn"
+                                className="relative flex items-center justify-center p-1 rounded-md text-[#919191] hover:text-[#E8E8E8] hover:bg-[#252525] transition-all outline-none group/btn"
                             >
                                 <Icons.Search className="w-3.5 h-3.5" />
-                                <div className="absolute top-[calc(100%+6px)] right-0 z-50 hidden group-hover/btn:flex items-center gap-1.5 bg-[#1C1B1A] border border-[#2A2928] px-2.5 py-1 rounded-lg shadow-xl whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
+                                <div className="absolute top-[calc(100%+6px)] right-0 z-50 hidden group-hover/btn:flex items-center gap-1.5 bg-[#1F1F1F] border border-[#282828] px-2.5 py-1 rounded-lg shadow-none whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
                                     <span className="text-[12px] font-medium text-[#EDEDEF]">
                                         Search
-                                    </span>
-                                </div>
-                            </button>
-                            <button
-                                onClick={() => {}}
-                                className="relative text-[#919191] hover:text-[#919191] transition-all outline-none group/btn"
-                            >
-                                <Icons.Plus className="w-3.5 h-3.5" />
-                                <div className="absolute top-[calc(100%+6px)] right-0 z-50 hidden group-hover/btn:flex items-center gap-1.5 bg-[#1C1B1A] border border-[#2A2928] px-2.5 py-1 rounded-lg shadow-xl whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
-                                    <span className="text-[12px] font-medium text-[#EDEDEF]">
-                                        New
                                     </span>
                                 </div>
                             </button>
@@ -194,10 +183,10 @@ const Sidebar: React.FC<
                                             setIsRecentMenuOpen(!isRecentMenuOpen)
                                         }
                                     }}
-                                    className="relative text-[#919191] hover:text-[#919191] transition-all outline-none group/btn"
+                                    className="relative flex items-center justify-center p-1 rounded-md text-[#919191] hover:text-[#E8E8E8] hover:bg-[#252525] transition-all outline-none group/btn"
                                 >
                                     <Icons.MoreHorizontal className="w-3.5 h-3.5" />
-                                    <div className="absolute top-[calc(100%+6px)] right-0 z-50 hidden group-hover/btn:flex items-center gap-1.5 bg-[#1C1B1A] border border-[#2A2928] px-2.5 py-1 rounded-lg shadow-xl whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
+                                    <div className="absolute top-[calc(100%+6px)] right-0 z-50 hidden group-hover/btn:flex items-center gap-1.5 bg-[#1F1F1F] border border-[#282828] px-2.5 py-1 rounded-lg shadow-none whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
                                         <span className="text-[12px] font-medium text-[#EDEDEF]">
                                             More options
                                         </span>
