@@ -6,21 +6,18 @@ import Canvas, { type CanvasRef } from '@/features/canvas/components/Canvas'
 
 interface CanvasPageProps {
     onBack?: () => void
-    canvasState: CanvasDocument
-    onCanvasStateChange: (document: CanvasDocument) => void
-    isAuthenticated: boolean
     onOpenAuth?: () => void
-    projectId?: string
 }
 
-export const CanvasPage: React.FC<CanvasPageProps> = ({
-    onBack,
-    canvasState,
-    onCanvasStateChange,
-    isAuthenticated,
-    onOpenAuth,
-    projectId,
-}) => {
+import { useAppStore } from '@/app/store'
+
+export const CanvasPage: React.FC<CanvasPageProps> = ({ onBack, onOpenAuth }) => {
+    const {
+        canvasState,
+        setCanvasState: onCanvasStateChange,
+        isAuthenticated,
+        activeProjectId: projectId,
+    } = useAppStore()
     const canvasRef = useRef<CanvasRef>(null)
 
     return (

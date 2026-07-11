@@ -9,18 +9,9 @@ export interface PromptSuggestion {
 
 export interface HomeHeroProps {
     onPromptSubmit: (prompt: string) => void
-    isGenerating: boolean
-    isAuthenticated: boolean
     onOpenAuth: () => void
-    canvasState: CanvasDocument
-    onCanvasStateChange: (document: CanvasDocument) => void
-    projectId?: string | null
     onImportGithub?: (repoUrl: string) => Promise<void> | void
     onImportZip?: (file: File) => Promise<void> | void
-    importState?: {
-        status: 'idle' | 'loading' | 'failed' | 'ready'
-        message?: string | null
-    }
     onResetImportState?: () => void
 }
 

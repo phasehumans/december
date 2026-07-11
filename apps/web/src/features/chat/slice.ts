@@ -1,6 +1,7 @@
 import { StateCreator } from 'zustand'
 import { Message } from '@/features/chat/types'
 import { OutputOperation } from '@/features/preview/types'
+import { getUserFacingGenerationError } from '@/features/chat/utils'
 
 export interface ChatSlice {
     messages: Message[]
@@ -14,6 +15,13 @@ export interface ChatSlice {
     setIsGenerating: (isGenerating: boolean) => void
     setCurrentGenerationFilePaths: (paths: string[]) => void
     updateAssistantMessage: (messageId: string, updater: (message: Message) => Message) => void
+    setAssistantStatus: (
+        messageId: string,
+        status: 'thinking' | 'building' | 'done' | 'error'
+    ) => void
+    appendAssistantChunk: (messageId: string, chunk: string, streamMessageId?: string) => void
+    setAssistantError: (messageId: string, errorMessage: string) => void
+    setAssistantAppliedFiles: (messageId: string, appliedFiles: string[]) => void
 }
 
 export const createChatSlice: StateCreator<ChatSlice> = (set, get) => ({
@@ -35,4 +43,47 @@ export const createChatSlice: StateCreator<ChatSlice> = (set, get) => ({
         set((state) => ({
             messages: state.messages.map((msg) => (msg.id === messageId ? updater(msg) : msg)),
         })),
+    setAssistantStatus: (messageId, status) => {
+        get().updateAssistantMessage(messageId, (message) => ({ ...message, status }))
+    },
+    appendAssistantChunk: (messageId, chunk, streamMessageId) => {
+        get().updateAssistantMessage(messageId, (message) => {
+            const isThinkingStream = streamMessageId?.endsWith(':thoughts')
+            const isPlanStream = streamMessageId?.endsWith(':plan_of_action')
+            const isSummaryStream = streamMessageId?.endsWith(':summary')
+
+            let nextThoughts = message.thoughts ?? ''
+            let nextPlan = message.plan ?? ''
+            let nextSummary = message.summary ?? ''
+
+            if (isThinkingStream) {
+                nextThoughts = `${nextThoughts}${chunk}`
+            } else if (isPlanStream) {
+                nextPlan = `${nextPlan}${chunk}`
+            } else if (isSummaryStream) {
+                nextSummary = `${nextSummary}${chunk}`
+            }
+
+            return {
+                ...message,
+                content: isSummaryStream ? message.content : `${message.content}${chunk}`,
+                thoughts: nextThoughts || undefined,
+                plan: nextPlan || undefined,
+                summary: nextSummary || undefined,
+            }
+        })
+    },
+    setAssistantError: (messageId, errorMessage) => {
+        const userFacingMessage = getUserFacingGenerationError(errorMessage)
+        get().updateAssistantMessage(messageId, (message) => ({
+            ...message,
+            status: 'error',
+            content: message.content.trim()
+                ? `${message.content.trim()}\n\n${userFacingMessage}`
+                : userFacingMessage,
+        }))
+    },
+    setAssistantAppliedFiles: (messageId, appliedFiles) => {
+        get().updateAssistantMessage(messageId, (message) => ({ ...message, appliedFiles }))
+    },
 })
