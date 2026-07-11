@@ -2,6 +2,16 @@
 
 ### Features
 
+- Context dipslay
+- _(cli)_ Add cmds and impl context display (#184)
+- Grillme cmd
+- Tasks, settings and resume mcd
+- _(cmds)_ Add advance cmds like grill me , settings, hooks, tasks and resume (#185)
+
+## [0.2.4] - 2026-07-09
+
+### Features
+
 - Complete GitHub OAuth login and auto-connect integration
 - Integrate github oauth login (#170)
 - Add API rate limit retries, OpenRouter model fetching, and TUI session resume
@@ -13,6 +23,10 @@
 ### Bug Fixes
 
 - Add OpenRouter model fallbacks and restore full tool blocks on resume
+
+### Miscellaneous Tasks
+
+- _(release)_ V0.2.4
 
 ## [0.2.3] - 2026-07-05
 
