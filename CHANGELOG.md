@@ -1,5 +1,11 @@
 ## [unreleased]
 
+### Bug Fixes
+
+- _(cli)_ Add robust init command and resolve TUI layout bugs
+
+## [0.2.5] - 2026-07-11
+
 ### Features
 
 - Context dipslay
@@ -7,6 +13,10 @@
 - Grillme cmd
 - Tasks, settings and resume mcd
 - _(cmds)_ Add advance cmds like grill me , settings, hooks, tasks and resume (#185)
+
+### Miscellaneous Tasks
+
+- _(release)_ V0.2.5
 
 ## [0.2.4] - 2026-07-09
 
