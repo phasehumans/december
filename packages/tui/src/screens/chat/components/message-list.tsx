@@ -26,7 +26,7 @@ export function MessageList({
 }) {
     return (
         <>
-            <Static items={staticMessages} style={{ flexDirection: 'column' }}>
+            <Static key={staticKey} items={staticMessages} style={{ flexDirection: 'column' }}>
                 {(msg) => {
                     if (msg.role === 'header') {
                         return <Header key={msg.id} cliVersion={cliVersion} userEmail={userEmail} />

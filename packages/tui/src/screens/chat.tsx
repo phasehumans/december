@@ -186,8 +186,15 @@ function parseErrorMessage(err: any): string {
 
 import type { MessageBlock } from '../components/messages/bot-message'
 
-import { Agent, runAgentLoop, saveConfig, loadConfig, getProviderConfig } from '@december/agent'
-import type { FileSessionRepository, SessionInfo } from '@december/agent'
+import {
+    Agent,
+    runAgentLoop,
+    saveConfig,
+    loadConfig,
+    getProviderConfig,
+    taskManager,
+} from '@december/agent'
+import type { FileSessionRepository, SessionInfo, BackgroundTask } from '@december/agent'
 import {
     OpenAIProvider,
     AnthropicProvider,
@@ -262,10 +269,15 @@ export function Chat({
     const panelWidth = Math.floor(cols * 0.45)
 
     const toast = useToast()
-    const [planMode, setPlanMode] = useState(false)
     const [currentPlannedPrompt, setCurrentPlannedPrompt] = useState<string | null>(null)
+    const [planModeInput, setPlanModeInput] = useState('')
+    const [grillModeInput, setGrillModeInput] = useState('')
 
-    const [grillMode, setGrillMode] = useState(false)
+    const [tasksData, setTasksData] = useState<BackgroundTask[]>([])
+    const [taskSelectedIndex, setTaskSelectedIndex] = useState(0)
+    const [taskViewingId, setTaskViewingId] = useState<string | null>(null)
+    const [taskScrollOffset, setTaskScrollOffset] = useState(0)
+
     const [grillQuestions, setGrillQuestions] = useState<{ question: string; options: string[] }[]>(
         []
     )
@@ -286,6 +298,16 @@ export function Chat({
     const [isAuthenticated, setIsAuthenticated] = useState(initialAuth)
     const [currentEmail, setCurrentEmail] = useState<string | undefined>(userEmail)
     const [authMode, setAuthMode] = useState<AuthMode>('none')
+
+    // Hooks state
+    const [selectedHookType, setSelectedHookType] = useState<string | null>(null)
+    const [hookMatchers, setHookMatchers] = useState<
+        Record<string, { pattern: string; enabled: boolean }[]>
+    >({})
+    const [addingMatcher, setAddingMatcher] = useState(false)
+    const [newMatcherRegex, setNewMatcherRegex] = useState('')
+    const [matcherIndex, setMatcherIndex] = useState(0)
+
     const [logoutItems, setLogoutItems] = useState<{ label: string; value: string }[]>([])
     const [selectedProvider, setSelectedProvider] = useState<string>('')
     const [apiKey, setApiKey] = useState('')
@@ -293,14 +315,21 @@ export function Chat({
         { label: string; value: string }[] | null
     >(null)
     const [sessionItems, setSessionItems] = useState<{ label: string; value: string }[]>([])
+    const [sessionsData, setSessionsData] = useState<SessionInfo[]>([])
+    const [sessionPage, setSessionPage] = useState(0)
+    const [sessionSelectedIndex, setSessionSelectedIndex] = useState(0)
+    const [sessionRenameMode, setSessionRenameMode] = useState(false)
+    const [sessionNewName, setSessionNewName] = useState('')
 
-    // Dummy settings states
-    const [settingsSoundEnabled, setSettingsSoundEnabled] = useState(true)
-    const [settingsDensity, setSettingsDensity] = useState<'compact' | 'spacious'>('compact')
-    const [settingsDefaultModel, setSettingsDefaultModel] = useState('gemini-2.5-flash')
-    const [settingsMaxTokens, setSettingsMaxTokens] = useState(4096)
-    const [settingsGeminiKey, setSettingsGeminiKey] = useState('configured')
-    const [settingsOpenrouterKey, setSettingsOpenrouterKey] = useState('not-configured')
+    const [settingsNonWorkspace, setSettingsNonWorkspace] = useState(false)
+    const [settingsNotifications, setSettingsNotifications] = useState(false)
+    const [settingsShowTasks, setSettingsShowTasks] = useState(true)
+    const [settingsShowTips, setSettingsShowTips] = useState(true)
+    const [settingsToolPermission, setSettingsToolPermission] = useState<
+        'always-proceed' | 'always-ask'
+    >('always-proceed')
+    const [settingsTelemetry, setSettingsTelemetry] = useState(true)
+    const [settingsAutoUpdate, setSettingsAutoUpdate] = useState(true)
 
     useEffect(() => {
         if (authMode === 'model_select' && selectedProvider === 'openrouter') {
@@ -327,11 +356,180 @@ export function Chat({
         }
     }, [authMode, selectedProvider])
 
+    useEffect(() => {
+        if (authMode === 'tasks_mode') {
+            const update = () => {
+                setTasksData([...taskManager.getTasks()])
+            }
+            update()
+            const interval = setInterval(update, 500)
+            return () => clearInterval(interval)
+        }
+    }, [authMode])
+
     useInput((input, key) => {
+        if (authMode === 'hooks' && selectedHookType && !addingMatcher) {
+            const matchers = hookMatchers[selectedHookType] || []
+            const maxIdx = matchers.length + 1 // +2 items for Add/MatchAll, so len + 1 is the last index
+
+            if (key.upArrow) {
+                setMatcherIndex(Math.max(0, matcherIndex - 1))
+            } else if (key.downArrow) {
+                setMatcherIndex(Math.min(maxIdx, matcherIndex + 1))
+            } else if (key.return) {
+                if (matcherIndex === 0) {
+                    setAddingMatcher(true)
+                } else if (matcherIndex === 1) {
+                    setHookMatchers((prev) => {
+                        const existing = prev[selectedHookType] || []
+                        return {
+                            ...prev,
+                            [selectedHookType]: [...existing, { pattern: '.*', enabled: true }],
+                        }
+                    })
+                }
+            } else if (input === 'e') {
+                if (matcherIndex > 1) {
+                    const idx = matcherIndex - 2
+                    setHookMatchers((prev) => {
+                        const existing = [...(prev[selectedHookType] || [])]
+                        if (existing[idx]) {
+                            existing[idx].enabled = !existing[idx].enabled
+                        }
+                        return { ...prev, [selectedHookType]: existing }
+                    })
+                }
+            } else if (key.backspace || key.delete) {
+                if (matcherIndex > 1) {
+                    const idx = matcherIndex - 2
+                    setHookMatchers((prev) => {
+                        const existing = [...(prev[selectedHookType] || [])]
+                        if (existing[idx]) {
+                            existing.splice(idx, 1)
+                        }
+                        return { ...prev, [selectedHookType]: existing }
+                    })
+                    setMatcherIndex(Math.max(0, matcherIndex - 1))
+                }
+            }
+        }
+
+        if (authMode === 'tasks_mode') {
+            if (taskViewingId) {
+                if (key.escape) {
+                    setTaskViewingId(null)
+                } else if (key.upArrow) {
+                    setTaskScrollOffset((prev) => Math.max(0, prev - 1))
+                } else if (key.downArrow) {
+                    setTaskScrollOffset((prev) => prev + 1)
+                } else if (key.leftArrow) {
+                    setTaskScrollOffset((prev) => Math.max(0, prev - 15))
+                } else if (key.rightArrow) {
+                    setTaskScrollOffset((prev) => prev + 15)
+                }
+                return
+            }
+
+            const currentTask = tasksData[taskSelectedIndex]
+            if (key.upArrow) {
+                setTaskSelectedIndex((prev) => Math.max(0, prev - 1))
+            } else if (key.downArrow) {
+                setTaskSelectedIndex((prev) => Math.min(tasksData.length - 1, prev + 1))
+            } else if (key.return && currentTask) {
+                setTaskViewingId(currentTask.id)
+                setTaskScrollOffset(0)
+            } else if (input === 'k' && currentTask) {
+                const killed = taskManager.killTask(currentTask.id)
+                if (killed) {
+                    toast.show({ variant: 'success', message: `Task ${currentTask.id} killed.` })
+                } else {
+                    toast.show({
+                        variant: 'error',
+                        message: `Task ${currentTask.id} is not running.`,
+                    })
+                }
+                setTasksData([...taskManager.getTasks()])
+            } else if (input === 'x' && currentTask) {
+                taskManager.removeTask(currentTask.id)
+                toast.show({ message: `Task ${currentTask.id} removed from list.` })
+                const nextTasks = taskManager.getTasks()
+                setTasksData(nextTasks)
+                setTaskSelectedIndex((prev) => Math.min(nextTasks.length - 1, Math.max(0, prev)))
+            }
+        }
+
+        if (authMode === 'session_select' && !sessionRenameMode) {
+            const SESSION_PAGE_SIZE = 10
+            const maxPage = Math.max(0, Math.ceil(sessionsData.length / SESSION_PAGE_SIZE) - 1)
+            const currentCount = Math.min(
+                SESSION_PAGE_SIZE,
+                sessionsData.length - sessionPage * SESSION_PAGE_SIZE
+            )
+
+            if (key.upArrow) {
+                setSessionSelectedIndex(Math.max(0, sessionSelectedIndex - 1))
+            } else if (key.downArrow) {
+                setSessionSelectedIndex(Math.min(currentCount - 1, sessionSelectedIndex + 1))
+            } else if (key.leftArrow) {
+                if (sessionPage > 0) {
+                    setSessionPage(sessionPage - 1)
+                    setSessionSelectedIndex(0)
+                }
+            } else if (key.rightArrow) {
+                if (sessionPage < maxPage) {
+                    setSessionPage(sessionPage + 1)
+                    setSessionSelectedIndex(0)
+                }
+            } else if (key.return) {
+                const absIndex = sessionPage * SESSION_PAGE_SIZE + sessionSelectedIndex
+                const session = sessionsData[absIndex]
+                if (session) {
+                    // Call the same logic that handleSessionSelect used
+                    handleSessionSelect({ value: session.id })
+                }
+            } else if (key.f2 || input === 'r') {
+                const absIndex = sessionPage * SESSION_PAGE_SIZE + sessionSelectedIndex
+                const session = sessionsData[absIndex]
+                if (session) {
+                    setSessionNewName(session.preview || session.id)
+                    setSessionRenameMode(true)
+                }
+            } else if ((key.delete && key.ctrl) || (key.backspace && key.ctrl) || input === 'd') {
+                // Adding 'd' as alternative since ctrl+delete may not be captured properly
+                const absIndex = sessionPage * SESSION_PAGE_SIZE + sessionSelectedIndex
+                const session = sessionsData[absIndex]
+                if (session && sessionRepository?.deleteSession) {
+                    sessionRepository.deleteSession(session.id).then(() => {
+                        const nextData = [...sessionsData]
+                        nextData.splice(absIndex, 1)
+                        setSessionsData(nextData)
+
+                        // Adjust indexes
+                        const newMaxPage = Math.max(
+                            0,
+                            Math.ceil(nextData.length / SESSION_PAGE_SIZE) - 1
+                        )
+                        if (sessionPage > newMaxPage) {
+                            setSessionPage(newMaxPage)
+                        }
+                        const newCurrentCount = Math.min(
+                            SESSION_PAGE_SIZE,
+                            nextData.length - Math.min(sessionPage, newMaxPage) * SESSION_PAGE_SIZE
+                        )
+                        if (sessionSelectedIndex >= newCurrentCount) {
+                            setSessionSelectedIndex(Math.max(0, newCurrentCount - 1))
+                        }
+                    })
+                }
+            }
+        }
+
         if (key.escape || (input === 'c' && key.ctrl)) {
             if (isStreaming) {
                 agent.abort()
                 setIsStreaming(false)
+            } else if (authMode === 'plan_mode' || authMode === 'grill_mode') {
+                setAuthMode('none')
             } else if (authMode === 'grill_question' && customInputMode) {
                 setCustomInputMode(false)
                 setCustomAnswer('')
@@ -346,13 +544,6 @@ export function Chat({
             } else if (authMode === 'byok_provider' || authMode === 'december_login_select') {
                 setAuthMode('menu')
             } else if (
-                authMode === 'settings_agent' ||
-                authMode === 'settings_ui' ||
-                authMode === 'settings_keys' ||
-                authMode === 'settings_prompt'
-            ) {
-                setAuthMode('settings_main')
-            } else if (
                 authMode === 'menu' ||
                 authMode === 'model_select' ||
                 authMode === 'logout_select' ||
@@ -360,12 +551,34 @@ export function Chat({
                 authMode === 'plan_approve' ||
                 authMode === 'settings_main' ||
                 authMode === 'context_select' ||
-                authMode === 'hooks'
+                authMode === 'hooks' ||
+                authMode === 'tasks_mode'
             ) {
                 if (authMode === 'plan_approve') {
                     setCurrentPlannedPrompt(null)
                     toast.show({ variant: 'error', message: 'Plan cancelled.' })
                 }
+
+                if (authMode === 'session_select') {
+                    if (sessionRenameMode) {
+                        setSessionRenameMode(false)
+                        setSessionNewName('')
+                        return
+                    }
+                }
+
+                if (authMode === 'hooks') {
+                    if (addingMatcher) {
+                        setAddingMatcher(false)
+                        setNewMatcherRegex('')
+                        return
+                    }
+                    if (selectedHookType) {
+                        setSelectedHookType(null)
+                        return
+                    }
+                }
+
                 setAuthMode('none')
             } else if (input === 'c' && key.ctrl) {
                 exit()
@@ -755,47 +968,56 @@ Explain which files need to be created, modified, or deleted, and what the chang
                         ])
                         return
                     }
-                    const items = sessions.map((s) => {
-                        const date = new Date(s.updatedAt)
-                        const timeStr = date.toLocaleString()
-                        const preview = s.preview ? ` — ${s.preview}` : ''
-                        return {
-                            label: `${s.id} (${timeStr}, ${s.messageCount} msgs)${preview}`,
-                            value: s.id,
-                        }
-                    })
-                    setSessionItems(items)
+                    setSessionsData(sessions)
+                    setSessionPage(0)
+                    setSessionSelectedIndex(0)
+                    setSessionRenameMode(false)
                     setAuthMode('session_select')
                 })
                 return
             }
 
-            if (text.trim() === '/plan') {
-                setPlanMode((prev) => {
-                    const next = !prev
-                    toast.show({
-                        variant: 'success',
-                        message: next ? 'Planning mode enabled.' : 'Planning mode disabled.',
-                    })
-                    return next
-                })
-                return
+            let isPlanningTurn = false
+
+            if (text.trim().startsWith('/plan')) {
+                const parts = text.trim().split(/\s+/)
+                if (parts.length === 1) {
+                    setAuthMode('plan_mode')
+                    return
+                } else {
+                    // Update text to be just the prompt, and override isPlanningTurn locally
+                    text = text.trim().slice(5).trim()
+                    isPlanningTurn = true
+                }
             }
 
             if (text.trim().startsWith('/grill-me')) {
                 const parts = text.trim().split(/\s+/)
                 if (parts.length === 1) {
-                    setGrillMode((prev) => !prev)
+                    setAuthMode('grill_mode')
                 } else {
                     const grillPromptText = text.trim().slice(9).trim()
-                    setGrillMode(false)
                     await generateGrillQuestions(grillPromptText)
                 }
                 return
             }
 
             if (text.trim() === '/settings') {
-                setAuthMode('settings_main')
+                loadConfig().then((config) => {
+                    setSettingsNonWorkspace(config.nonWorkspaceAccess ?? false)
+                    setSettingsNotifications(config.notifications ?? false)
+                    setSettingsShowTasks(config.showActiveTasks ?? true)
+                    setSettingsShowTips(config.showTips ?? true)
+                    setSettingsToolPermission(config.toolPermission ?? 'always-proceed')
+                    setSettingsTelemetry(config.telemetry ?? true)
+                    setSettingsAutoUpdate(config.autoUpdate ?? true)
+                    setAuthMode('settings_main')
+                })
+                return
+            }
+
+            if (text.trim() === '/tasks') {
+                setAuthMode('tasks_mode')
                 return
             }
 
@@ -825,18 +1047,8 @@ Explain which files need to be created, modified, or deleted, and what the chang
                 return
             }
 
-            const isGrillTurn = grillMode
-            if (isGrillTurn) {
-                setGrillMode(false)
-                await generateGrillQuestions(text)
-                return
-            }
-
-            const isPlanningTurn = planMode
-
             if (isPlanningTurn) {
                 setCurrentPlannedPrompt(text)
-                setPlanMode(false)
             }
 
             setIsStreaming(true)
@@ -993,8 +1205,6 @@ Explain which files need to be created, modified, or deleted, and what the chang
             activeMessages,
             isAuthenticated,
             isStreaming,
-            planMode,
-            grillMode,
             grillQuestions,
             grillAnswers,
             customInputMode,
@@ -1007,8 +1217,55 @@ Explain which files need to be created, modified, or deleted, and what the chang
         ]
     )
 
-    const handleSettingsMainSelect = (item: any) => {
-        setAuthMode(`settings_${item.value}` as AuthMode)
+    const handleSettingsMainSelect = async (item: any) => {
+        const config = await loadConfig()
+        let updated = false
+
+        switch (item.value) {
+            case 'nonWorkspaceAccess':
+                config.nonWorkspaceAccess = !settingsNonWorkspace
+                setSettingsNonWorkspace(!settingsNonWorkspace)
+                updated = true
+                break
+            case 'notifications':
+                config.notifications = !settingsNotifications
+                setSettingsNotifications(!settingsNotifications)
+                updated = true
+                break
+            case 'showActiveTasks':
+                config.showActiveTasks = !settingsShowTasks
+                setSettingsShowTasks(!settingsShowTasks)
+                updated = true
+                break
+            case 'showTips':
+                config.showTips = !settingsShowTips
+                setSettingsShowTips(!settingsShowTips)
+                updated = true
+                break
+            case 'toolPermission':
+                config.toolPermission =
+                    settingsToolPermission === 'always-proceed' ? 'always-ask' : 'always-proceed'
+                setSettingsToolPermission(config.toolPermission)
+                updated = true
+                break
+            case 'telemetry':
+                config.telemetry = !settingsTelemetry
+                setSettingsTelemetry(!settingsTelemetry)
+                updated = true
+                break
+            case 'autoUpdate':
+                config.autoUpdate = !settingsAutoUpdate
+                setSettingsAutoUpdate(!settingsAutoUpdate)
+                updated = true
+                break
+            case 'back':
+                setAuthMode('none')
+                break
+        }
+
+        if (updated) {
+            await saveConfig(config)
+        }
     }
 
     const handleSettingsAgentSelect = (item: any) => {
@@ -1850,24 +2107,331 @@ Explain which files need to be created, modified, or deleted, and what the chang
             </Box>
         )
     } else if (authMode === 'session_select') {
+        const SESSION_PAGE_SIZE = 10
+        const totalItems = sessionsData.length
+        const maxPage = Math.max(0, Math.ceil(totalItems / SESSION_PAGE_SIZE) - 1)
+        const startIndex = sessionPage * SESSION_PAGE_SIZE
+        const visibleItems = sessionsData.slice(startIndex, startIndex + SESSION_PAGE_SIZE)
+
+        const timeAgo = (date: Date) => {
+            const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000)
+            if (seconds < 60) return `${seconds}s ago`
+            const minutes = Math.floor(seconds / 60)
+            if (minutes < 60) return `${minutes}m ago`
+            const hours = Math.floor(minutes / 60)
+            if (hours < 24) return `${hours}h ago`
+            const days = Math.floor(hours / 24)
+            return `${days}d ago`
+        }
+
+        const handleRenameSubmit = (val: string) => {
+            const absIndex = startIndex + sessionSelectedIndex
+            const session = sessionsData[absIndex]
+            const newName = val.trim()
+            if (session && newName && newName !== session.id) {
+                if (sessionRepository?.renameSession) {
+                    sessionRepository.renameSession(session.id, newName).then(() => {
+                        const nextData = [...sessionsData]
+                        nextData[absIndex] = { ...session, id: newName, preview: newName }
+                        setSessionsData(nextData)
+                    })
+                }
+            }
+            setSessionRenameMode(false)
+            setSessionNewName('')
+        }
+
         authUI = (
             <Box flexDirection="column" paddingX={1}>
                 <Box marginBottom={1}>
-                    <Text color="white">Select a session to resume:</Text>
+                    <Text bold color="white">
+                        Conversations
+                    </Text>
                 </Box>
-                <SelectInput
-                    items={sessionItems}
-                    onSelect={handleSessionSelect}
-                    indicatorComponent={CustomIndicator}
-                    itemComponent={CustomItem}
-                />
+                {visibleItems.map((session, idx) => {
+                    const isSelected = idx === sessionSelectedIndex
+
+                    if (isSelected && sessionRenameMode) {
+                        return (
+                            <Box key={session.id} flexDirection="row">
+                                <Box width={2}>
+                                    <Text color="#89B4F8">{'> '}</Text>
+                                </Box>
+                                <TextInput
+                                    value={sessionNewName}
+                                    onChange={setSessionNewName}
+                                    onSubmit={handleRenameSubmit}
+                                />
+                            </Box>
+                        )
+                    }
+
+                    const title = session.preview || session.id
+                    const msgCount = `${session.messageCount} msgs`.padStart(10)
+                    const timeStr = timeAgo(session.updatedAt).padStart(10)
+
+                    return (
+                        <Box key={session.id} flexDirection="row">
+                            <Box width={2}>
+                                <Text color={isSelected ? '#89B4F8' : 'white'}>
+                                    {isSelected ? '> ' : '  '}
+                                </Text>
+                            </Box>
+                            <Box width={85}>
+                                <Text color={isSelected ? 'white' : '#AAAAAA'} wrap="truncate">
+                                    {title}
+                                </Text>
+                            </Box>
+                            <Box width={12}>
+                                <Text color="#AAAAAA">{msgCount}</Text>
+                            </Box>
+                            <Box width={12}>
+                                <Text color="#AAAAAA">{timeStr}</Text>
+                            </Box>
+                        </Box>
+                    )
+                })}
+
+                {totalItems === 0 && (
+                    <Box paddingLeft={2}>
+                        <Text color="#555555">No conversations found.</Text>
+                    </Box>
+                )}
+
+                {totalItems > 0 && (
+                    <Box marginTop={1} paddingLeft={2}>
+                        <Text color="#555555">
+                            [{startIndex + 1}-{Math.min(startIndex + SESSION_PAGE_SIZE, totalItems)}{' '}
+                            of {totalItems} items]
+                        </Text>
+                    </Box>
+                )}
+
                 <Box paddingTop={1}>
                     <Box gap={1}>
-                        <Text color="#89B4F8">↑↓</Text>
+                        <Text color="#AAAAAA">Keyboard:</Text>
+                        <Text color="#89B4F8">↑/↓</Text>
                         <Text color="#AAAAAA">Navigate</Text>
+                        <Text color="#AAAAAA">·</Text>
+                        <Text color="#89B4F8">←/→</Text>
+                        <Text color="#AAAAAA">Page</Text>
                         <Text color="#AAAAAA">·</Text>
                         <Text color="#89B4F8">enter</Text>
                         <Text color="#AAAAAA">Select</Text>
+                        <Text color="#AAAAAA">·</Text>
+                        <Text color="#89B4F8">f2</Text>
+                        <Text color="#AAAAAA">Rename</Text>
+                        <Text color="#AAAAAA">·</Text>
+                        <Text color="#89B4F8">ctrl+delete</Text>
+                        <Text color="#AAAAAA">Delete</Text>
+                        <Text color="#AAAAAA">·</Text>
+                        <Text color="#89B4F8">tab</Text>
+                        <Text color="#AAAAAA">Switch Tab</Text>
+                        <Text color="#AAAAAA">·</Text>
+                        <Text color="#89B4F8">esc</Text>
+                        <Text color="#AAAAAA">Go back</Text>
+                    </Box>
+                </Box>
+            </Box>
+        )
+    } else if (authMode === 'tasks_mode') {
+        const getStatusColor = (status: string) => {
+            switch (status) {
+                case 'running':
+                    return '#2ECC71'
+                case 'completed':
+                    return '#3498DB'
+                case 'failed':
+                    return '#E74C3C'
+                case 'killed':
+                    return '#F1C40F'
+                default:
+                    return 'white'
+            }
+        }
+
+        if (taskViewingId) {
+            const task = tasksData.find((t) => t.id === taskViewingId)
+            if (task) {
+                const outputLines = task.output.split('\n')
+                const visibleLines = outputLines.slice(taskScrollOffset, taskScrollOffset + 15)
+                authUI = (
+                    <Box flexDirection="column" paddingX={1}>
+                        <Box marginBottom={1} justifyContent="space-between">
+                            <Text bold color="white">
+                                Task: {task.id}
+                            </Text>
+                            <Text bold color={getStatusColor(task.status)}>
+                                [{task.status.toUpperCase()}]
+                            </Text>
+                        </Box>
+                        <Box marginBottom={1}>
+                            <Text color="#AAAAAA" bold>
+                                Cmd: {task.command}
+                            </Text>
+                        </Box>
+                        <Box
+                            borderColor="#333333"
+                            borderStyle="round"
+                            flexDirection="column"
+                            minHeight={8}
+                            paddingX={1}
+                        >
+                            {visibleLines.length === 0 ||
+                            (visibleLines.length === 1 && visibleLines[0] === '') ? (
+                                <Text color="gray">[No output recorded yet]</Text>
+                            ) : (
+                                visibleLines.map((line, idx) => (
+                                    <Text key={idx} color="white">
+                                        {line}
+                                    </Text>
+                                ))
+                            )}
+                        </Box>
+                        <Box marginTop={1} justifyContent="space-between">
+                            <Text color="gray">
+                                Showing lines {Math.min(outputLines.length, taskScrollOffset + 1)}-
+                                {Math.min(
+                                    outputLines.length,
+                                    taskScrollOffset + visibleLines.length
+                                )}{' '}
+                                of {outputLines.length}
+                            </Text>
+                        </Box>
+                        <Box paddingTop={1}>
+                            <Text color="#555555">
+                                Keyboard: ↑/↓ Scroll Line · ←/→ Page · esc Back
+                            </Text>
+                        </Box>
+                    </Box>
+                )
+            }
+        } else {
+            authUI = (
+                <Box flexDirection="column" paddingX={1}>
+                    <Box marginBottom={1}>
+                        <Text bold color="white">
+                            Tasks
+                        </Text>
+                    </Box>
+                    {tasksData.length === 0 ? (
+                        <Box paddingLeft={2}>
+                            <Text color="#555555">No background tasks.</Text>
+                        </Box>
+                    ) : (
+                        tasksData.map((task, idx) => {
+                            const isSelected = idx === taskSelectedIndex
+                            const truncatedCommand =
+                                task.command.length > 50
+                                    ? task.command.slice(0, 47) + '...'
+                                    : task.command
+                            return (
+                                <Box key={task.id} flexDirection="row">
+                                    <Box width={2}>
+                                        <Text color={isSelected ? '#89B4F8' : 'white'}>
+                                            {isSelected ? '> ' : '  '}
+                                        </Text>
+                                    </Box>
+                                    <Box width={25}>
+                                        <Text
+                                            color={isSelected ? 'white' : '#AAAAAA'}
+                                            wrap="truncate"
+                                        >
+                                            {task.id}
+                                        </Text>
+                                    </Box>
+                                    <Box width={15}>
+                                        <Text color={getStatusColor(task.status)}>
+                                            [{task.status.toUpperCase()}]
+                                        </Text>
+                                    </Box>
+                                    <Box>
+                                        <Text color={isSelected ? 'white' : 'gray'}>
+                                            {truncatedCommand}
+                                        </Text>
+                                    </Box>
+                                </Box>
+                            )
+                        })
+                    )}
+                    <Box paddingTop={1}>
+                        <Box gap={1}>
+                            <Text color="#AAAAAA">Keyboard:</Text>
+                            <Text color="#89B4F8">↑/↓</Text>
+                            <Text color="#AAAAAA">Navigate</Text>
+                            <Text color="#AAAAAA">·</Text>
+                            <Text color="#89B4F8">←/→</Text>
+                            <Text color="#AAAAAA">Page</Text>
+                            <Text color="#AAAAAA">·</Text>
+                            <Text color="#89B4F8">enter</Text>
+                            <Text color="#AAAAAA">View output</Text>
+                            <Text color="#AAAAAA">·</Text>
+                            <Text color="#89B4F8">k</Text>
+                            <Text color="#AAAAAA">Kill Task</Text>
+                        </Box>
+                    </Box>
+                </Box>
+            )
+        }
+    } else if (authMode === 'plan_mode') {
+        authUI = (
+            <Box flexDirection="column" paddingX={1}>
+                <Box marginBottom={1}>
+                    <Text bold color="#89B4F8">
+                        Plan Mode
+                    </Text>
+                    <Text color="#AAAAAA">{' Describe what you want to plan...'}</Text>
+                </Box>
+                <Box paddingLeft={1} paddingBottom={1} width="100%">
+                    <Text color="#89B4F8"> {'>'} </Text>
+                    <TextInput
+                        value={planModeInput}
+                        onChange={setPlanModeInput}
+                        onSubmit={(val) => {
+                            if (!val.trim()) return
+                            setAuthMode('none')
+                            setPlanModeInput('')
+                            handleSubmit(`/plan ${val.trim()}`)
+                        }}
+                    />
+                </Box>
+                <Box paddingTop={1}>
+                    <Box gap={1}>
+                        <Text color="#89B4F8">enter</Text>
+                        <Text color="#AAAAAA">Submit</Text>
+                        <Text color="#AAAAAA">·</Text>
+                        <Text color="#89B4F8">esc</Text>
+                        <Text color="#AAAAAA">Cancel</Text>
+                    </Box>
+                </Box>
+            </Box>
+        )
+    } else if (authMode === 'grill_mode') {
+        authUI = (
+            <Box flexDirection="column" paddingX={1}>
+                <Box marginBottom={1}>
+                    <Text bold color="#89B4F8">
+                        Grill Mode
+                    </Text>
+                    <Text color="#AAAAAA">{' Describe what you want to be grilled about...'}</Text>
+                </Box>
+                <Box paddingLeft={1} paddingBottom={1} width="100%">
+                    <Text color="#89B4F8"> {'>'} </Text>
+                    <TextInput
+                        value={grillModeInput}
+                        onChange={setGrillModeInput}
+                        onSubmit={(val) => {
+                            if (!val.trim()) return
+                            setAuthMode('none')
+                            setGrillModeInput('')
+                            handleSubmit(`/grill-me ${val.trim()}`)
+                        }}
+                    />
+                </Box>
+                <Box paddingTop={1}>
+                    <Box gap={1}>
+                        <Text color="#89B4F8">enter</Text>
+                        <Text color="#AAAAAA">Submit</Text>
                         <Text color="#AAAAAA">·</Text>
                         <Text color="#89B4F8">esc</Text>
                         <Text color="#AAAAAA">Cancel</Text>
@@ -1983,16 +2547,40 @@ Explain which files need to be created, modified, or deleted, and what the chang
         }
     } else if (authMode === 'settings_main') {
         const mainItems = [
-            { label: '⚙️  Agent Configuration', value: 'agent' },
-            { label: '🎨  Interface Settings', value: 'ui' },
-            { label: '🔑  API Key Management', value: 'keys' },
-            { label: '📝  View System Prompt', value: 'prompt' },
+            {
+                label: `Non-Workspace Access     [${settingsNonWorkspace ? 'on' : 'off'}]`,
+                value: 'nonWorkspaceAccess',
+            },
+            {
+                label: `Notifications            [${settingsNotifications ? 'on' : 'off'}]`,
+                value: 'notifications',
+            },
+            {
+                label: `Show Active Tasks        [${settingsShowTasks ? 'on' : 'off'}]`,
+                value: 'showActiveTasks',
+            },
+            {
+                label: `Show Tips                [${settingsShowTips ? 'on' : 'off'}]`,
+                value: 'showTips',
+            },
+            {
+                label: `Tool Permission          [${settingsToolPermission}]`,
+                value: 'toolPermission',
+            },
+            {
+                label: `Telemetry                [${settingsTelemetry ? 'on' : 'off'}]`,
+                value: 'telemetry',
+            },
+            {
+                label: `Auto Update              [${settingsAutoUpdate ? 'on' : 'off'}]`,
+                value: 'autoUpdate',
+            },
         ]
         authUI = (
             <Box flexDirection="column" paddingX={1}>
                 <Box marginBottom={1}>
-                    <Text bold color="#89B4F8">
-                        Select Settings Category:
+                    <Text bold color="white">
+                        Settings
                     </Text>
                 </Box>
                 <SelectInput
@@ -2007,151 +2595,10 @@ Explain which files need to be created, modified, or deleted, and what the chang
                         <Text color="#AAAAAA">Navigate</Text>
                         <Text color="#AAAAAA">·</Text>
                         <Text color="#89B4F8">enter</Text>
-                        <Text color="#AAAAAA">Select</Text>
+                        <Text color="#AAAAAA">Toggle</Text>
                         <Text color="#AAAAAA">·</Text>
                         <Text color="#89B4F8">esc</Text>
                         <Text color="#AAAAAA">Close</Text>
-                    </Box>
-                </Box>
-            </Box>
-        )
-    } else if (authMode === 'settings_agent') {
-        const agentItems = [
-            {
-                label: `Default Model: [${settingsDefaultModel}]`,
-                value:
-                    settingsDefaultModel === 'gemini-2.5-flash'
-                        ? 'model:gemini-2.5-pro'
-                        : 'model:gemini-2.5-flash',
-            },
-            {
-                label: `Max Tokens: [${settingsMaxTokens}]`,
-                value: settingsMaxTokens === 4096 ? 'tokens:8192' : 'tokens:4096',
-            },
-            { label: '◀  Back to Categories', value: 'back' },
-        ]
-        authUI = (
-            <Box flexDirection="column" paddingX={1}>
-                <Box marginBottom={1}>
-                    <Text bold color="#89B4F8">
-                        ⚙️ Agent Configuration:
-                    </Text>
-                </Box>
-                <SelectInput
-                    items={agentItems}
-                    onSelect={handleSettingsAgentSelect}
-                    indicatorComponent={CustomIndicator}
-                    itemComponent={CustomItem}
-                />
-                <Box paddingTop={1}>
-                    <Box gap={1}>
-                        <Text color="#89B4F8">↑↓</Text>
-                        <Text color="#AAAAAA">Navigate</Text>
-                        <Text color="#AAAAAA">·</Text>
-                        <Text color="#89B4F8">enter</Text>
-                        <Text color="#AAAAAA">Toggle/Select</Text>
-                        <Text color="#AAAAAA">·</Text>
-                        <Text color="#89B4F8">esc</Text>
-                        <Text color="#AAAAAA">Back</Text>
-                    </Box>
-                </Box>
-            </Box>
-        )
-    } else if (authMode === 'settings_ui') {
-        const uiItems = [
-            {
-                label: `Notification Sounds: [${settingsSoundEnabled ? 'Enabled' : 'Disabled'}]`,
-                value: 'sound',
-            },
-            {
-                label: `Layout Density: [${settingsDensity === 'compact' ? 'Compact' : 'Spacious'}]`,
-                value: 'density',
-            },
-            { label: '◀  Back to Categories', value: 'back' },
-        ]
-        authUI = (
-            <Box flexDirection="column" paddingX={1}>
-                <Box marginBottom={1}>
-                    <Text bold color="#89B4F8">
-                        🎨 Interface Settings:
-                    </Text>
-                </Box>
-                <SelectInput
-                    items={uiItems}
-                    onSelect={handleSettingsUISelect}
-                    indicatorComponent={CustomIndicator}
-                    itemComponent={CustomItem}
-                />
-                <Box paddingTop={1}>
-                    <Box gap={1}>
-                        <Text color="#89B4F8">↑↓</Text>
-                        <Text color="#AAAAAA">Navigate</Text>
-                        <Text color="#AAAAAA">·</Text>
-                        <Text color="#89B4F8">enter</Text>
-                        <Text color="#AAAAAA">Toggle</Text>
-                        <Text color="#AAAAAA">·</Text>
-                        <Text color="#89B4F8">esc</Text>
-                        <Text color="#AAAAAA">Back</Text>
-                    </Box>
-                </Box>
-            </Box>
-        )
-    } else if (authMode === 'settings_keys') {
-        const keyItems = [
-            {
-                label: `Gemini API Key: [${settingsGeminiKey === 'configured' ? '✓ Configured' : '✗ Not Set'}]`,
-                value: 'gemini',
-            },
-            {
-                label: `OpenRouter API Key: [${settingsOpenrouterKey === 'configured' ? '✓ Configured' : '✗ Not Set'}]`,
-                value: 'openrouter',
-            },
-            { label: '◀  Back to Categories', value: 'back' },
-        ]
-        authUI = (
-            <Box flexDirection="column" paddingX={1}>
-                <Box marginBottom={1}>
-                    <Text bold color="#89B4F8">
-                        🔑 API Key Management:
-                    </Text>
-                </Box>
-                <SelectInput
-                    items={keyItems}
-                    onSelect={handleSettingsKeysSelect}
-                    indicatorComponent={CustomIndicator}
-                    itemComponent={CustomItem}
-                />
-                <Box paddingTop={1}>
-                    <Box gap={1}>
-                        <Text color="#89B4F8">↑↓</Text>
-                        <Text color="#AAAAAA">Navigate</Text>
-                        <Text color="#AAAAAA">·</Text>
-                        <Text color="#89B4F8">enter</Text>
-                        <Text color="#AAAAAA">Toggle</Text>
-                        <Text color="#AAAAAA">·</Text>
-                        <Text color="#89B4F8">esc</Text>
-                        <Text color="#AAAAAA">Back</Text>
-                    </Box>
-                </Box>
-            </Box>
-        )
-    } else if (authMode === 'settings_prompt') {
-        authUI = (
-            <Box flexDirection="column" paddingX={1}>
-                <Box marginBottom={1}>
-                    <Text bold color="#89B4F8">
-                        📝 December System Prompt:
-                    </Text>
-                </Box>
-                <Text color="#AAAAAA">
-                    "You are December, an autonomous software engineer. You have access to tools.
-                    When executing code, please use JSON schemas for tool inputs. Before using a
-                    tool, you MUST enclose your thought process inside thought tags."
-                </Text>
-                <Box paddingTop={1}>
-                    <Box gap={1}>
-                        <Text color="#89B4F8">esc</Text>
-                        <Text color="#AAAAAA">Back to Categories</Text>
                     </Box>
                 </Box>
             </Box>
@@ -2173,56 +2620,198 @@ Explain which files need to be created, modified, or deleted, and what the chang
             { label: 'Stop', value: 'Stop', description: 'When agent tries to exit' },
         ]
 
-        const HookCustomItem = ({ label }: { label?: string }) => {
-            const item = hookItems.find((i) => i.label === label)
-            return (
-                <Box>
-                    <Box width={16}>
-                        <Text color={item ? 'white' : '#AAAAAA'}>{label}</Text>
+        if (!selectedHookType) {
+            const HookCustomItem = ({ label }: { label?: string }) => {
+                const item = hookItems.find((i) => i.label === label)
+                return (
+                    <Box>
+                        <Box width={16}>
+                            <Text color={item ? 'white' : '#AAAAAA'}>{label}</Text>
+                        </Box>
+                        <Text color="#AAAAAA">{item?.description}</Text>
                     </Box>
-                    <Text color="#AAAAAA">{item?.description}</Text>
+                )
+            }
+
+            const handleHookSelect = (item: any) => {
+                setSelectedHookType(item.value)
+                setMatcherIndex(0)
+            }
+
+            authUI = (
+                <Box flexDirection="column">
+                    <Box paddingLeft={2} paddingBottom={1} flexDirection="column">
+                        <Text bold color="white">
+                            {' '}
+                            Hooks
+                        </Text>
+                        <Text color="#AAAAAA"> 5 hook types</Text>
+                    </Box>
+
+                    <Box paddingLeft={2}>
+                        <SelectInput
+                            items={hookItems}
+                            onSelect={handleHookSelect}
+                            indicatorComponent={CustomIndicator}
+                            itemComponent={HookCustomItem}
+                        />
+                    </Box>
+
+                    <Box paddingLeft={2} paddingTop={1} paddingBottom={1}>
+                        <Box gap={1}>
+                            <Text color="#89B4F8">↑/↓</Text>
+                            <Text color="#AAAAAA">Navigate</Text>
+                            <Text color="#AAAAAA">·</Text>
+                            <Text color="#89B4F8">enter</Text>
+                            <Text color="#AAAAAA">Select</Text>
+                        </Box>
+                    </Box>
+                </Box>
+            )
+        } else if (addingMatcher) {
+            const hookDesc = hookItems.find((h) => h.value === selectedHookType)?.description || ''
+
+            const handleAddMatcherSubmit = (val: string) => {
+                if (val.trim()) {
+                    setHookMatchers((prev) => {
+                        const existing = prev[selectedHookType] || []
+                        return {
+                            ...prev,
+                            [selectedHookType]: [...existing, { pattern: val, enabled: true }],
+                        }
+                    })
+                    toast.show({ message: `Added matcher: ${val}` })
+                }
+                setAddingMatcher(false)
+                setNewMatcherRegex('')
+            }
+
+            authUI = (
+                <Box flexDirection="column">
+                    <Box paddingLeft={2} paddingBottom={1} flexDirection="column">
+                        <Text bold color="white">
+                            {' '}
+                            Add new matcher for {selectedHookType}
+                        </Text>
+                        <Text color="#AAAAAA"> {hookDesc}</Text>
+                    </Box>
+
+                    <Box paddingLeft={2} paddingBottom={1}>
+                        <Text color="white">Matcher:</Text>
+                    </Box>
+
+                    <Box paddingLeft={2} paddingBottom={1}>
+                        <Text color="#89B4F8"> {'>'} </Text>
+                        <TextInput
+                            value={newMatcherRegex}
+                            onChange={setNewMatcherRegex}
+                            onSubmit={handleAddMatcherSubmit}
+                        />
+                    </Box>
+
+                    <Box paddingLeft={2} paddingBottom={1} flexDirection="column">
+                        <Text color="#AAAAAA">Examples:</Text>
+                        <Text color="#AAAAAA">• Write (single tool)</Text>
+                        <Text color="#AAAAAA">• Write|Edit (multiple tools)</Text>
+                        <Text color="#AAAAAA">• Web.* (regex pattern)</Text>
+                    </Box>
+
+                    <Box paddingLeft={2} paddingTop={1} paddingBottom={1}>
+                        <Box gap={1}>
+                            <Text color="#89B4F8">enter</Text>
+                            <Text color="#AAAAAA">Confirm</Text>
+                            <Text color="#AAAAAA">·</Text>
+                            <Text color="#89B4F8">esc</Text>
+                            <Text color="#AAAAAA">Cancel</Text>
+                        </Box>
+                    </Box>
+                </Box>
+            )
+        } else {
+            const hookDesc = hookItems.find((h) => h.value === selectedHookType)?.description || ''
+            const matchers = hookMatchers[selectedHookType] || []
+
+            const matcherItems = [
+                { label: '+ Add new matcher...', value: 'add_new' },
+                { label: '+ Match all (no filter)', value: 'match_all' },
+            ]
+
+            matchers.forEach((m, idx) => {
+                matcherItems.push({
+                    label: `${m.enabled ? '✓' : '✗'} ${m.pattern}`,
+                    value: `matcher_${idx}`,
+                })
+            })
+
+            authUI = (
+                <Box flexDirection="column">
+                    <Box paddingLeft={2} paddingBottom={1} flexDirection="column">
+                        <Text bold color="white">
+                            {' '}
+                            {selectedHookType} — Matchers
+                        </Text>
+                        <Text color="#AAAAAA"> {hookDesc}</Text>
+                    </Box>
+
+                    <Box paddingLeft={2} flexDirection="column">
+                        {matcherItems.map((item, idx) => {
+                            const isSelected = idx === matcherIndex
+                            const isAdd = item.value === 'add_new' || item.value === 'match_all'
+                            const isEnabled = item.label.startsWith('✓')
+                            return (
+                                <Box key={item.value}>
+                                    <CustomIndicator isSelected={isSelected} />
+                                    {isAdd ? (
+                                        <Text color={isSelected ? '#89B4F8' : 'white'}>
+                                            {item.label}
+                                        </Text>
+                                    ) : (
+                                        <Text
+                                            color={
+                                                isSelected
+                                                    ? '#89B4F8'
+                                                    : isEnabled
+                                                      ? 'white'
+                                                      : '#555555'
+                                            }
+                                        >
+                                            {item.label}
+                                        </Text>
+                                    )}
+                                </Box>
+                            )
+                        })}
+                        {matchers.length === 0 && (
+                            <Box>
+                                <Box marginRight={1}>
+                                    <Text> </Text>
+                                </Box>
+                                <Text color="#555555">No hooks configured</Text>
+                            </Box>
+                        )}
+                    </Box>
+
+                    <Box paddingLeft={2} paddingTop={1} paddingBottom={1}>
+                        <Box gap={1}>
+                            <Text color="#89B4F8">↑/↓</Text>
+                            <Text color="#AAAAAA">Navigate</Text>
+                            <Text color="#AAAAAA">·</Text>
+                            <Text color="#89B4F8">enter</Text>
+                            <Text color="#AAAAAA">Select</Text>
+                            <Text color="#AAAAAA">·</Text>
+                            <Text color="#89B4F8">e</Text>
+                            <Text color="#AAAAAA">Toggle</Text>
+                            <Text color="#AAAAAA">·</Text>
+                            <Text color="#89B4F8">backspace</Text>
+                            <Text color="#AAAAAA">Delete</Text>
+                            <Text color="#AAAAAA">·</Text>
+                            <Text color="#89B4F8">esc</Text>
+                            <Text color="#AAAAAA">Back</Text>
+                        </Box>
+                    </Box>
                 </Box>
             )
         }
-
-        const handleHookSelect = (item: any) => {
-            setAuthMode('none')
-            toast.show({ message: `Selected ${item.value}` })
-        }
-
-        authUI = (
-            <Box flexDirection="column">
-                <Box paddingLeft={2} paddingBottom={1} flexDirection="column">
-                    <Text bold color="white">
-                        {' '}
-                        Hooks
-                    </Text>
-                    <Text color="#AAAAAA"> 5 hook types</Text>
-                </Box>
-
-                <Box paddingLeft={2}>
-                    <SelectInput
-                        items={hookItems}
-                        onSelect={handleHookSelect}
-                        indicatorComponent={CustomIndicator}
-                        itemComponent={HookCustomItem}
-                    />
-                </Box>
-
-                <Box paddingLeft={2} paddingTop={1} paddingBottom={1}>
-                    <Box gap={1}>
-                        <Text color="#89B4F8">↑/↓</Text>
-                        <Text color="#AAAAAA">Navigate</Text>
-                        <Text color="#AAAAAA">·</Text>
-                        <Text color="#89B4F8">enter</Text>
-                        <Text color="#AAAAAA">Select</Text>
-                        <Text color="#AAAAAA">·</Text>
-                        <Text color="#89B4F8">esc</Text>
-                        <Text color="#AAAAAA">Cancel</Text>
-                    </Box>
-                </Box>
-            </Box>
-        )
     }
 
     return (
@@ -2240,13 +2829,7 @@ Explain which files need to be created, modified, or deleted, and what the chang
             <InputBar
                 onSubmit={handleSubmit}
                 disabled={authMode !== 'none'}
-                placeholder={
-                    planMode
-                        ? 'Describe what you want to plan...'
-                        : grillMode
-                          ? 'Describe what you want to grill...'
-                          : 'Ask December to build...'
-                }
+                placeholder="Ask December to build..."
                 activeModel={
                     agent.modelOptions?.model
                         ? getModelLabel(agent.modelOptions.model)
@@ -2260,8 +2843,6 @@ Explain which files need to be created, modified, or deleted, and what the chang
                     setStaticKey((k) => k + 1)
                     setActiveMessages([])
                 }}
-                planMode={planMode}
-                grillMode={grillMode}
                 customInputMode={false}
             />
         </Box>

@@ -77,7 +77,7 @@ export const COMMANDS: Command[] = [
     },
     {
         name: 'handoff',
-        description: 'Handoff the current task to a cloud agent',
+        description: 'Hand off a task to a remote December session (cloud)',
         value: '/handoff',
         action: (ctx) => {
             ctx.toast.show({ message: 'Command /handoff coming soon...' })
@@ -86,7 +86,7 @@ export const COMMANDS: Command[] = [
 
     {
         name: 'hooks',
-        description: 'Manage agent lifecycle hooks',
+        description: 'Manage hook configurations for tool events',
         value: '/hooks',
         action: (ctx) => {
             // Forwarded to Chat screen
@@ -94,7 +94,7 @@ export const COMMANDS: Command[] = [
     },
     {
         name: 'login',
-        description: 'Configure API keys or log in to December',
+        description: 'Configure API keys or Connect via December Cloud',
         value: '/login',
         action: (ctx) => {
             ctx.toast.show({ message: 'Opening browser to sign in...' })
@@ -116,17 +116,10 @@ export const COMMANDS: Command[] = [
             ctx.toast.show({ message: 'Command /loop coming soon...' })
         },
     },
-    {
-        name: 'mcp',
-        description: 'Manage MCP servers',
-        value: '/mcp',
-        action: (ctx) => {
-            ctx.toast.show({ message: 'Command /mcp coming soon...' })
-        },
-    },
+
     {
         name: 'model',
-        description: 'Switch AI model',
+        description: 'Select a model',
         value: '/model',
         action: (ctx) => {
             ctx.toast.show({ message: 'Use arrow keys to select a model.' })
@@ -146,7 +139,7 @@ export const COMMANDS: Command[] = [
     },
     {
         name: 'plan',
-        description: 'Create an implementation plan',
+        description: 'Switch to plan mode',
         value: '/plan',
         action: (ctx) => {
             // Forwarded to Chat screen
@@ -154,45 +147,28 @@ export const COMMANDS: Command[] = [
     },
     {
         name: 'resume',
-        description: 'Restore a previous conversation',
+        description: 'Browse and resume past conversations',
         value: '/resume',
         action: (ctx) => {
             ctx.toast.show({ message: 'Command /resume coming soon...' })
         },
     },
-    {
-        name: 'schedule',
-        description: 'Schedule a recurring or background task',
-        value: '/schedule',
-        action: (ctx) => {
-            ctx.toast.show({ message: 'Command /schedule coming soon...' })
-        },
-    },
+
     {
         name: 'settings',
-        description: 'Adjust application settings',
+        description: 'Open settings',
         value: '/settings',
         action: (ctx) => {
             // Forwarded to Chat screen
         },
     },
-    {
-        name: 'skills',
-        description: 'Manage agent skills',
-        value: '/skills',
-        action: (ctx) => {
-            ctx.toast.show({ message: 'Command /skills coming soon...' })
-        },
-    },
+
     {
         name: 'tasks',
-        description: 'Manage background tasks',
+        description: 'View background tasks',
         value: '/tasks',
         action: (ctx) => {
-            ctx.dialog.open({
-                title: 'Background Tasks',
-                children: <TasksDialog toast={ctx.toast} close={ctx.dialog.close} />,
-            })
+            // Forwarded to Chat screen
         },
     },
     {
@@ -210,7 +186,7 @@ export const COMMANDS: Command[] = [
     },
     {
         name: 'usage',
-        description: 'View API and token usage',
+        description: 'View quota usage',
         value: '/usage',
         action: (ctx) => {
             ctx.dialog.open({
