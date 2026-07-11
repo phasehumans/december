@@ -17,19 +17,17 @@ export const HomeHeader: React.FC<HomeHeaderProps> = ({ isAuthenticated, onOpenA
     return (
         <div className="absolute top-4 left-0 w-full px-4 md:px-6 z-50 flex justify-between items-start pointer-events-none">
             <div className="flex-1 pointer-events-auto flex justify-start pl-2 md:pl-0">
-                <a
-                    href={import.meta.env?.VITE_DOCS_URL || 'http://localhost:3005'}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                <button
+                    onClick={() => navigate('/docs')}
                     className="flex items-center gap-1 text-[#8F8E8D] hover:text-[#D4D4D8] transition-colors text-[12px] font-medium underline underline-offset-4 decoration-[#8F8E8D]/40 hover:decoration-[#D4D4D8] relative group/docs"
                 >
-                    Docs <ArrowUpRight className="w-3 h-3" />
+                    Docs
                     <div className="absolute top-[calc(100%+6px)] left-0 z-50 hidden group-hover/docs:flex items-center gap-1.5 bg-[#1F1F1F] border border-[#282828] px-2.5 py-1 rounded-lg shadow-none whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
                         <span className="text-[12px] font-medium text-[#EDEDEF]">
                             Documentation
                         </span>
                     </div>
-                </a>
+                </button>
             </div>
 
             {/* Center Heading */}

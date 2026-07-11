@@ -49,17 +49,17 @@ export const TemplatesView: React.FC<TemplatesViewProps> = ({ onOpenProject }) =
     } = useTemplatesController(onOpenProject)
 
     return (
-        <div className="flex flex-col h-full bg-background overflow-hidden relative font-sans">
-            <div className="flex-1 overflow-y-auto no-scrollbar pb-24 pt-8 md:pt-12">
-                <div className="max-w-[1200px] mx-auto px-5 lg:px-8">
+        <div className="flex flex-col absolute inset-0 bg-background overflow-hidden font-sans">
+            <div className="flex-1 flex flex-col overflow-y-auto pb-24 pt-8 md:pt-12 [&::-webkit-scrollbar]:w-[12px] [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-[#383736] [&::-webkit-scrollbar-thumb]:bg-clip-padding [&::-webkit-scrollbar-thumb]:border-[4px] [&::-webkit-scrollbar-thumb]:border-solid [&::-webkit-scrollbar-thumb]:border-transparent [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-[#4A4948]">
+                <div className="max-w-[1200px] w-full mx-auto px-5 lg:px-8 flex-1 flex flex-col">
                     <div className="mb-10 flex flex-col items-start gap-5">
                         <div className="flex flex-col gap-2">
                             <h1 className="text-[24px] font-medium text-[#D6D5C9] mb-1">
                                 Community Templates
                             </h1>
                             <p className="text-[13px] text-[#7B7A79] max-w-xl leading-relaxed">
-                                Discover websites, apps, components, and starters shared by the
-                                community — ready to remix, customize, and make your own.
+                                Explore community-built apps, websites, and components ready to
+                                remix and make your own.
                             </p>
                         </div>
 

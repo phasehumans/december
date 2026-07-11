@@ -2,7 +2,7 @@ import React from 'react'
 
 export const EmptyTemplatesState: React.FC = () => {
     return (
-        <div className="flex min-h-[420px] flex-col items-center justify-center px-6 py-16 text-center">
+        <div className="flex flex-1 flex-col items-center justify-center px-6 py-16 text-center">
             <div className="relative mb-6 h-28 w-32">
                 <svg
                     viewBox="0 0 128 112"

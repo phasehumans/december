@@ -44,15 +44,12 @@ export const AuthModalAuthStep: React.FC<AuthModalAuthStepProps> = ({
                     type="button"
                     onClick={onGithubLogin}
                     disabled={isAuthPending}
-                    className="relative w-full bg-[#222222] hover:bg-[#2A2A2A] text-white font-medium h-[42px] rounded-full flex items-center justify-center gap-2.5 transition-all duration-200 active:scale-[0.98] shadow-none disabled:opacity-50 border border-[#333333]"
+                    className="w-full bg-[#222222] hover:bg-[#2A2A2A] text-white font-medium h-[42px] rounded-full flex items-center justify-center gap-2.5 transition-all duration-200 active:scale-[0.98] shadow-none disabled:opacity-50 border border-[#333333]"
                 >
                     <div className="w-[18px] h-[18px] flex items-center justify-center">
                         <AuthModalGithubIcon />
                     </div>
                     <span className="text-[14px]">Continue with GitHub</span>
-                    <span className="absolute -top-3 -right-3 bg-[#87B2F4] text-[#141414] ring-[3px] ring-[#141414] rounded-full px-2.5 py-[3px] text-[9px] font-bold uppercase tracking-wider leading-none flex items-center justify-center shadow-sm z-10">
-                        RECOMMENDED
-                    </span>
                 </button>
 
                 <button

@@ -143,7 +143,6 @@ export const UserProfilePopover: React.FC<UserProfilePopoverProps> = ({
             icon: Icons.DocsBook,
             label: 'Documentation',
             action: onDocs,
-            external: true,
         },
         {
             icon: FileClock,

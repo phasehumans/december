@@ -171,10 +171,10 @@ export const SidebarFooter: React.FC<
                                 className="flex items-center gap-2 px-1.5 py-[7px] rounded-lg hover:bg-[#252525] transition-colors group outline-none min-w-0"
                                 style={{ maxWidth: 'calc(100% - 28px)' }}
                             >
-                                <div className="flex items-center justify-center w-[24px] h-[24px] rounded-full bg-[#84AEEB]/20 text-[#84AEEB] transition-colors shrink-0 border border-[#84AEEB]/30">
-                                    <Icons.UserCircle className="w-[12px] h-[12px]" />
+                                <div className="flex items-center justify-center w-[24px] h-[24px] rounded-full bg-white/[0.04] text-[#8F8E8D] group-hover:text-[#CBCACA] transition-colors shrink-0">
+                                    <Icons.UserCircle className="w-[13px] h-[13px] relative -top-[1px]" />
                                 </div>
-                                <span className="font-medium text-[13px] text-[#E8E8E8] group-hover:text-[#E8E8E8] transition-colors truncate tracking-tight text-left">
+                                <span className="font-medium text-[13px] text-[#8F8E8D] group-hover:text-[#CBCACA] transition-colors truncate tracking-tight text-left">
                                     {user?.name ||
                                         profile?.name ||
                                         quickInfo?.fullName ||
@@ -188,7 +188,7 @@ export const SidebarFooter: React.FC<
                             >
                                 <Inbox className="w-[13px] h-[13px]" strokeWidth={2} />
                                 {hasUnread && (
-                                    <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-white rounded-full border border-[#141414]" />
+                                    <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-[#87B2F4] rounded-full border border-[#141414]" />
                                 )}
                                 {!isNotifPopoverOpen && (
                                     <div className="absolute bottom-[calc(100%+6px)] right-0 z-50 hidden group-hover/notif:flex items-center gap-1.5 bg-[#1F1F1F] border border-[#282828] px-2.5 py-1 rounded-lg shadow-none whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">

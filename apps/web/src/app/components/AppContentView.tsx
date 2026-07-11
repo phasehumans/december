@@ -23,6 +23,7 @@ import { ProfileSettings } from '@/features/profile/components/ProfileSettings'
 import { ProjectList } from '@/features/projects/components/ProjectList'
 import { SessionList } from '@/features/projects/components/SessionList'
 import { TemplatesView } from '@/features/templates/components/TemplatesView'
+import { DocsView } from '@/features/docs/components/DocsView'
 
 interface AppContentViewProps {
     view: ViewState
@@ -139,6 +140,12 @@ export const AppContentView: React.FC<AppContentViewProps> = ({
             {view === 'templates' && (
                 <AnimatedPage pageKey="templates">
                     <TemplatesView onOpenProject={onOpenProject} />
+                </AnimatedPage>
+            )}
+
+            {view === 'docs' && (
+                <AnimatedPage pageKey="docs">
+                    <DocsView onBack={onNewProject} />
                 </AnimatedPage>
             )}
 

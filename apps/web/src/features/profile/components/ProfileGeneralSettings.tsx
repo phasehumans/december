@@ -134,13 +134,13 @@ Use this template file to specify coding styles, design tokens, responsive grids
                             role="switch"
                             onClick={() => onChatSuggestionsToggle(!chatSuggestions)}
                             className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                                chatSuggestions ? 'bg-[#242323]' : 'bg-[#100E12] border-[#383736]'
+                                chatSuggestions ? 'bg-[#87B2F4]' : 'bg-[#100E12] border-[#383736]'
                             }`}
                         >
                             <span
                                 className={`pointer-events-none inline-block h-4 w-4 transform rounded-full shadow ring-0 transition duration-200 ease-in-out ${
                                     chatSuggestions
-                                        ? 'translate-x-4 bg-[#D6D5C9]'
+                                        ? 'translate-x-4 bg-[#100E12]'
                                         : 'translate-x-0 bg-[#383736]'
                                 }`}
                             />
@@ -163,22 +163,20 @@ Use this template file to specify coding styles, design tokens, responsive grids
                                     onGenerationSoundChange('FIRST_GENERATION')
                                     playGenerationSoundPreview()
                                 }}
-                                className="flex items-center gap-3 text-[13px] font-medium transition-colors hover:text-[#D6D5C9] group"
+                                className="flex items-center gap-3 text-[13px] font-medium group focus:outline-none"
                             >
                                 <div
-                                    className={`flex items-center justify-center w-4 h-4 rounded-full border ${generationSound === 'FIRST_GENERATION' ? 'border-[#D6D5C9]' : 'border-[#383736] group-hover:border-[#7B7A79]'}`}
+                                    className={`flex items-center justify-center w-[18px] h-[18px] rounded-full border-[1.5px] transition-all duration-200 ${generationSound === 'FIRST_GENERATION' ? 'border-[#87B2F4]' : 'border-[#383736] group-hover:border-[#7B7A79]'}`}
                                 >
                                     {generationSound === 'FIRST_GENERATION' && (
-                                        <div className="w-2 h-2 rounded-full bg-[#D6D5C9]" />
+                                        <div className="w-2.5 h-2.5 rounded-full bg-[#87B2F4] animate-in zoom-in duration-200" />
                                     )}
                                 </div>
-                                <Volume1 className="w-4 h-4 text-[#7B7A79]" />
+                                <Volume1
+                                    className={`w-4 h-4 transition-colors duration-200 ${generationSound === 'FIRST_GENERATION' ? 'text-[#87B2F4]' : 'text-[#7B7A79] group-hover:text-[#D6D5C9]'}`}
+                                />
                                 <span
-                                    className={
-                                        generationSound === 'FIRST_GENERATION'
-                                            ? 'text-[#D6D5C9]'
-                                            : 'text-[#7B7A79]'
-                                    }
+                                    className={`transition-colors duration-200 ${generationSound === 'FIRST_GENERATION' ? 'text-[#D6D5C9]' : 'text-[#7B7A79] group-hover:text-[#D6D5C9]'}`}
                                 >
                                     First generation
                                 </span>
@@ -188,44 +186,40 @@ Use this template file to specify coding styles, design tokens, responsive grids
                                     onGenerationSoundChange('ALWAYS')
                                     playGenerationSoundPreview()
                                 }}
-                                className="flex items-center gap-3 text-[13px] font-medium transition-colors hover:text-[#D6D5C9] group"
+                                className="flex items-center gap-3 text-[13px] font-medium group focus:outline-none"
                             >
                                 <div
-                                    className={`flex items-center justify-center w-4 h-4 rounded-full border ${generationSound === 'ALWAYS' ? 'border-[#D6D5C9]' : 'border-[#383736] group-hover:border-[#7B7A79]'}`}
+                                    className={`flex items-center justify-center w-[18px] h-[18px] rounded-full border-[1.5px] transition-all duration-200 ${generationSound === 'ALWAYS' ? 'border-[#87B2F4]' : 'border-[#383736] group-hover:border-[#7B7A79]'}`}
                                 >
                                     {generationSound === 'ALWAYS' && (
-                                        <div className="w-2 h-2 rounded-full bg-[#D6D5C9]" />
+                                        <div className="w-2.5 h-2.5 rounded-full bg-[#87B2F4] animate-in zoom-in duration-200" />
                                     )}
                                 </div>
-                                <Volume2 className="w-4 h-4 text-[#7B7A79]" />
+                                <Volume2
+                                    className={`w-4 h-4 transition-colors duration-200 ${generationSound === 'ALWAYS' ? 'text-[#87B2F4]' : 'text-[#7B7A79] group-hover:text-[#D6D5C9]'}`}
+                                />
                                 <span
-                                    className={
-                                        generationSound === 'ALWAYS'
-                                            ? 'text-[#D6D5C9]'
-                                            : 'text-[#7B7A79]'
-                                    }
+                                    className={`transition-colors duration-200 ${generationSound === 'ALWAYS' ? 'text-[#D6D5C9]' : 'text-[#7B7A79] group-hover:text-[#D6D5C9]'}`}
                                 >
                                     Always
                                 </span>
                             </button>
                             <button
                                 onClick={() => onGenerationSoundChange('NEVER')}
-                                className="flex items-center gap-3 text-[13px] font-medium transition-colors hover:text-[#D6D5C9] group"
+                                className="flex items-center gap-3 text-[13px] font-medium group focus:outline-none"
                             >
                                 <div
-                                    className={`flex items-center justify-center w-4 h-4 rounded-full border ${generationSound === 'NEVER' ? 'border-[#D6D5C9]' : 'border-[#383736] group-hover:border-[#7B7A79]'}`}
+                                    className={`flex items-center justify-center w-[18px] h-[18px] rounded-full border-[1.5px] transition-all duration-200 ${generationSound === 'NEVER' ? 'border-[#87B2F4]' : 'border-[#383736] group-hover:border-[#7B7A79]'}`}
                                 >
                                     {generationSound === 'NEVER' && (
-                                        <div className="w-2 h-2 rounded-full bg-[#D6D5C9]" />
+                                        <div className="w-2.5 h-2.5 rounded-full bg-[#87B2F4] animate-in zoom-in duration-200" />
                                     )}
                                 </div>
-                                <VolumeX className="w-4 h-4 text-[#7B7A79]" />
+                                <VolumeX
+                                    className={`w-4 h-4 transition-colors duration-200 ${generationSound === 'NEVER' ? 'text-[#87B2F4]' : 'text-[#7B7A79] group-hover:text-[#D6D5C9]'}`}
+                                />
                                 <span
-                                    className={
-                                        generationSound === 'NEVER'
-                                            ? 'text-[#D6D5C9]'
-                                            : 'text-[#7B7A79]'
-                                    }
+                                    className={`transition-colors duration-200 ${generationSound === 'NEVER' ? 'text-[#D6D5C9]' : 'text-[#7B7A79] group-hover:text-[#D6D5C9]'}`}
                                 >
                                     Never
                                 </span>
@@ -249,7 +243,7 @@ Use this template file to specify coding styles, design tokens, responsive grids
                                 e.preventDefault()
                                 navigate('/docs#custom-design')
                             }}
-                            className="inline-flex items-center gap-1.5 text-[#7B7A79] hover:text-[#D6D5C9] transition-colors"
+                            className="inline-flex items-center gap-1.5 text-[#87B2F4] hover:text-[#87B2F4]/80 transition-colors"
                         >
                             View sample design.md in docs
                             <ExternalLink className="w-3.5 h-3.5" />
