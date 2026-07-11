@@ -1,4 +1,5 @@
 import fs from 'node:fs/promises'
+import os from 'node:os'
 import path from 'node:path'
 
 import { Message } from '../types'
@@ -16,7 +17,7 @@ export class FileSessionRepository implements SessionRepository {
     private sessionDir: string
 
     constructor(sessionDir?: string) {
-        this.sessionDir = sessionDir || path.join(process.cwd(), '.december', 'sessions')
+        this.sessionDir = sessionDir || path.join(os.homedir(), '.config', 'december', 'sessions')
     }
 
     async saveContext(sessionId: string, messages: Message[]): Promise<void> {
@@ -79,5 +80,20 @@ export class FileSessionRepository implements SessionRepository {
         } catch {
             return []
         }
+    }
+
+    async deleteSession(sessionId: string): Promise<void> {
+        const historyPath = path.join(this.sessionDir, `${sessionId}.jsonl`)
+        try {
+            await fs.unlink(historyPath)
+        } catch (e) {
+            // Ignore if it doesn't exist
+        }
+    }
+
+    async renameSession(oldSessionId: string, newSessionId: string): Promise<void> {
+        const oldPath = path.join(this.sessionDir, `${oldSessionId}.jsonl`)
+        const newPath = path.join(this.sessionDir, `${newSessionId}.jsonl`)
+        await fs.rename(oldPath, newPath)
     }
 }

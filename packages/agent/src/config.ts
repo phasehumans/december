@@ -26,9 +26,16 @@ export interface DecemberConfig {
     providers: Record<string, string>
     decemberToken?: string
     email?: string
+    nonWorkspaceAccess?: boolean
+    notifications?: boolean
+    showActiveTasks?: boolean
+    showTips?: boolean
+    toolPermission?: 'always-proceed' | 'always-ask'
+    telemetry?: boolean
+    autoUpdate?: boolean
 }
 
-const CONFIG_DIR = path.join(os.homedir(), '.december')
+const CONFIG_DIR = path.join(os.homedir(), '.config', 'december')
 const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json')
 
 export async function loadConfig(): Promise<DecemberConfig> {
