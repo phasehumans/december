@@ -15,7 +15,8 @@ function estimateTokens(messages: Message[]): number {
 export async function compactContextIfNeeded(
     messages: Message[],
     llm: LLMProvider,
-    maxTokens: number = DEFAULT_MAX_TOKENS
+    maxTokens: number = DEFAULT_MAX_TOKENS,
+    modelOptions?: Record<string, any>
 ): Promise<Message[]> {
     const currentTokens = estimateTokens(messages)
 
@@ -31,7 +32,7 @@ export async function compactContextIfNeeded(
         return messages // Not enough messages to compact
     }
 
-    const systemPrompt = messages[0]
+    const systemPrompt = messages[0]!
     const middleHistory = messages.slice(1, messages.length - PROTECTED_TAIL)
     const recentHistory = messages.slice(messages.length - PROTECTED_TAIL)
 
@@ -59,7 +60,7 @@ ${historyText}`
     const compactionMessages: Message[] = [{ role: 'user', content: summaryPrompt }]
     let summary = ''
 
-    const stream = llm.stream(compactionMessages, [])
+    const stream = llm.stream(compactionMessages, [], undefined, modelOptions)
     for await (const chunk of stream) {
         if (chunk.type === 'text') {
             summary += chunk.text

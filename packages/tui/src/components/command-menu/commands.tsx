@@ -69,7 +69,7 @@ export const COMMANDS: Command[] = [
     },
     {
         name: 'grill-me',
-        description: 'Interactive Q&A to resolve ambiguities',
+        description: 'Interview me to align on a plan',
         value: '/grill-me',
         action: (ctx) => {
             // Forwarded to Chat screen
@@ -89,7 +89,7 @@ export const COMMANDS: Command[] = [
         description: 'Manage agent lifecycle hooks',
         value: '/hooks',
         action: (ctx) => {
-            ctx.toast.show({ message: 'Command /hooks coming soon...' })
+            // Forwarded to Chat screen
         },
     },
     {
