@@ -1,330 +1,52 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { AnimatePresence, motion } from 'framer-motion'
-import React, { useRef, useState } from 'react'
+import React from 'react'
 
 import { CATEGORIES, SORT_OPTIONS } from '../data'
 
+import { EmptyTemplatesState } from './EmptyTemplatesState'
 import { FeaturedTemplates } from './FeaturedTemplates'
 import { TemplateCard } from './TemplateCard'
 import { TemplateRemixModal } from './TemplateRemixModal'
+import { TemplatesSkeleton } from './TemplatesSkeleton'
 
-import { templateAPI } from '@/features/templates/api/template'
-import { mapBackendTemplateToTemplate, type Template } from '@/features/templates/types'
+import { useTemplatesController } from '@/features/templates/hooks/useTemplatesController'
 import { ErrorAlert } from '@/shared/components/ui/ErrorAlert'
 import { Icons } from '@/shared/components/ui/Icons'
-import { Skeleton } from '@/shared/components/ui/Skeleton'
 
 interface TemplatesViewProps {
     onOpenProject: (projectId: string) => void
 }
 
-const templatesQueryKey = ['templates', 'all'] as const
-const featuredTemplatesQueryKey = ['templates', 'featured'] as const
-
-const EmptyTemplatesState: React.FC = () => {
-    return (
-        <div className="flex min-h-[420px] flex-col items-center justify-center px-6 py-16 text-center">
-            <div className="relative mb-6 h-28 w-32">
-                <svg
-                    viewBox="0 0 128 112"
-                    fill="none"
-                    className="h-full w-full text-[#8A8987]"
-                    aria-hidden="true"
-                >
-                    <path
-                        d="M28 42.5 64 22l36 20.5v43L64 106 28 85.5v-43Z"
-                        stroke="currentColor"
-                        strokeWidth="2.4"
-                        strokeLinejoin="round"
-                    />
-                    <path
-                        d="M28 42.5 64 63l36-20.5M64 63v43"
-                        stroke="currentColor"
-                        strokeWidth="2.4"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                    />
-                </svg>
-            </div>
-            <h2 className="text-[17px] font-medium text-[#D6D5C9]">No templates</h2>
-            <p className="mt-2 max-w-sm text-[13px] leading-6 text-[#7B7A79]">
-                Shared community templates will appear here.
-            </p>
-        </div>
-    )
-}
-
-const TemplatesSkeleton: React.FC = () => {
-    return (
-        <div className="flex flex-col gap-10">
-            {/* Featured Templates Skeleton */}
-            <div className="mb-4">
-                <div className="flex items-center justify-between mb-5">
-                    <Skeleton className="h-[18px] w-40 bg-white/[0.06]" />
-                    <div className="flex items-center gap-2">
-                        <Skeleton className="w-7 h-7 rounded-full bg-white/[0.04]" />
-                        <Skeleton className="w-7 h-7 rounded-full bg-white/[0.04]" />
-                    </div>
-                </div>
-                <div className="flex gap-x-5 md:gap-x-6 overflow-hidden pb-3">
-                    {Array.from({ length: 3 }).map((_, i) => (
-                        <div
-                            key={`featured-skeleton-${i}`}
-                            className="shrink-0 w-[280px] md:w-[calc(50%-10px)] lg:w-[calc(33.333%-16px)]"
-                        >
-                            <div className="flex flex-col gap-3.5 w-full">
-                                <Skeleton className="aspect-[16/10] w-full rounded-xl bg-white/[0.06] border border-[#242323]" />
-                                <div className="flex items-start justify-between w-full gap-4 px-1 pb-1">
-                                    <div className="flex flex-col gap-2 min-w-0 flex-1">
-                                        <Skeleton className="h-4 w-3/4 bg-white/[0.06]" />
-                                        <Skeleton className="h-3 w-[90%] bg-white/[0.04]" />
-                                        <Skeleton className="h-3.5 w-24 bg-white/[0.04] mt-1" />
-                                    </div>
-                                    <div className="flex flex-col items-end gap-2.5 shrink-0">
-                                        <Skeleton className="h-3.5 w-10 bg-white/[0.04]" />
-                                        <Skeleton className="h-7 w-[64px] rounded-md bg-white/[0.04]" />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </div>
-
-            {/* Standard Templates Grid Skeleton */}
-            <div>
-                <div className="flex items-center justify-between mb-6 border-b border-[#242323] pb-4">
-                    <Skeleton className="h-5 w-28 bg-white/[0.06]" />
-                    <div className="flex items-center gap-2">
-                        <Skeleton className="h-8 w-32 rounded-full bg-white/[0.04]" />
-                        <Skeleton className="h-8 w-36 rounded-full bg-white/[0.04]" />
-                    </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-5 md:gap-x-6 gap-y-10">
-                    {Array.from({ length: 6 }).map((_, i) => (
-                        <div key={`grid-skeleton-${i}`} className="flex flex-col gap-3.5 w-full">
-                            <Skeleton className="aspect-[16/10] w-full rounded-xl bg-white/[0.06] border border-[#242323]" />
-                            <div className="flex items-start justify-between w-full gap-4 px-1 pb-1">
-                                <div className="flex flex-col gap-2 min-w-0 flex-1">
-                                    <Skeleton className="h-4 w-3/4 bg-white/[0.06]" />
-                                    <Skeleton className="h-3 w-[90%] bg-white/[0.04]" />
-                                    <Skeleton className="h-3.5 w-24 bg-white/[0.04] mt-1" />
-                                </div>
-                                <div className="flex flex-col items-end gap-2.5 shrink-0">
-                                    <Skeleton className="h-3.5 w-10 bg-white/[0.04]" />
-                                    <Skeleton className="h-7 w-[64px] rounded-md bg-white/[0.04]" />
-                                </div>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </div>
-        </div>
-    )
-}
-
-const sortTemplates = (templates: Template[], sortId: string) => {
-    const sorted = [...templates]
-
-    if (sortId === 'newest') {
-        sorted.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-        return sorted
-    }
-
-    if (sortId === 'oldest') {
-        sorted.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
-        return sorted
-    }
-
-    if (sortId === 'category') {
-        sorted.sort((a, b) => (a.category || '').localeCompare(b.category || ''))
-        return sorted
-    }
-
-    sorted.sort((a, b) => b.likeCount - a.likeCount)
-    return sorted
-}
-
 export const TemplatesView: React.FC<TemplatesViewProps> = ({ onOpenProject }) => {
-    const queryClient = useQueryClient()
-    const [searchQuery, setSearchQuery] = useState('')
-    const [selectedCategory, setSelectedCategory] = useState<{ id: string; label: string } | null>(
-        null
-    )
-    const [visibleCount, setVisibleCount] = useState(9)
-    const [activeDropdown, setActiveDropdown] = useState<string | null>(null)
-    const [dropdownDirection, setDropdownDirection] = useState<'down' | 'up'>('down')
-    const [selectedSort, setSelectedSort] = useState(SORT_OPTIONS[0]!)
-    const [actionError, setActionError] = useState<string | null>(null)
-
-    const toggleDropdown = (type: string, event: React.MouseEvent<HTMLButtonElement>) => {
-        if (activeDropdown === type) {
-            setActiveDropdown(null)
-            return
-        }
-        const rect = event.currentTarget.getBoundingClientRect()
-        if (window.innerHeight - rect.bottom < 250 && rect.top > 250) {
-            setDropdownDirection('up')
-        } else {
-            setDropdownDirection('down')
-        }
-        setActiveDropdown(type)
-    }
-    const [likePendingTemplateId, setLikePendingTemplateId] = useState<string | null>(null)
-    const [remixPendingTemplateId, setRemixPendingTemplateId] = useState<string | null>(null)
-    const [remixModal, setRemixModal] = useState<{
-        isOpen: boolean
-        template: Template | null
-    }>({
-        isOpen: false,
-        template: null,
-    })
-    const dropdownRef = useRef<HTMLDivElement>(null)
-
     const {
-        data: templates = [],
-        isLoading: isTemplatesLoading,
-        error: templatesError,
-    } = useQuery({
-        queryKey: templatesQueryKey,
-        queryFn: templateAPI.getTemplates,
-        select: (data) => data.map(mapBackendTemplateToTemplate),
-    })
-
-    const {
-        data: featuredTemplates = [],
-        isLoading: isFeaturedLoading,
-        error: featuredError,
-    } = useQuery({
-        queryKey: featuredTemplatesQueryKey,
-        queryFn: templateAPI.getFeaturedTemplates,
-        select: (data) => data.map(mapBackendTemplateToTemplate),
-    })
-
-    const setTemplateLikeState = (
-        templateId: string,
-        updater: (template: Template) => Template
-    ) => {
-        queryClient.setQueryData<Template[]>(templatesQueryKey, (current = []) =>
-            current.map((template) => (template.id === templateId ? updater(template) : template))
-        )
-        queryClient.setQueryData<Template[]>(featuredTemplatesQueryKey, (current = []) =>
-            current.map((template) => (template.id === templateId ? updater(template) : template))
-        )
-    }
-
-    const likeMutation = useMutation({
-        mutationFn: ({ templateId, isLiked }: { templateId: string; isLiked: boolean }) =>
-            templateAPI.toggleLike(templateId, isLiked),
-        onMutate: async ({ templateId, isLiked }) => {
-            setActionError(null)
-            setLikePendingTemplateId(templateId)
-            await queryClient.cancelQueries({ queryKey: templatesQueryKey })
-            await queryClient.cancelQueries({ queryKey: featuredTemplatesQueryKey })
-
-            const previousTemplates = queryClient.getQueryData<Template[]>(templatesQueryKey)
-            const previousFeaturedTemplates =
-                queryClient.getQueryData<Template[]>(featuredTemplatesQueryKey)
-
-            setTemplateLikeState(templateId, (template) => ({
-                ...template,
-                isLiked,
-                likeCount: Math.max(0, template.likeCount + (isLiked ? 1 : -1)),
-            }))
-
-            return { previousTemplates, previousFeaturedTemplates }
-        },
-        onError: (error, _variables, context) => {
-            if (context?.previousTemplates) {
-                queryClient.setQueryData(templatesQueryKey, context.previousTemplates)
-            }
-            if (context?.previousFeaturedTemplates) {
-                queryClient.setQueryData(
-                    featuredTemplatesQueryKey,
-                    context.previousFeaturedTemplates
-                )
-            }
-            setActionError(
-                error instanceof Error ? error.message : 'Failed to update template like'
-            )
-        },
-        onSuccess: () => {
-            setActionError(null)
-        },
-        onSettled: () => {
-            setLikePendingTemplateId(null)
-            queryClient.invalidateQueries({ queryKey: templatesQueryKey })
-            queryClient.invalidateQueries({ queryKey: featuredTemplatesQueryKey })
-        },
-    })
-
-    const remixMutation = useMutation({
-        mutationFn: ({ templateId, name }: { templateId: string; name?: string }) =>
-            templateAPI.remixTemplate(templateId, name),
-        onMutate: ({ templateId }) => {
-            setActionError(null)
-            setRemixPendingTemplateId(templateId)
-        },
-        onError: (error) => {
-            setActionError(error instanceof Error ? error.message : 'Failed to remix template')
-        },
-        onSuccess: (project) => {
-            setRemixModal({ isOpen: false, template: null })
-            onOpenProject(project.id)
-        },
-        onSettled: () => {
-            setRemixPendingTemplateId(null)
-            queryClient.invalidateQueries({ queryKey: ['projects'] })
-        },
-    })
-
-    React.useEffect(() => {
-        const handleClickOutside = (e: MouseEvent) => {
-            if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-                setActiveDropdown(null)
-            }
-        }
-        document.addEventListener('mousedown', handleClickOutside)
-        return () => document.removeEventListener('mousedown', handleClickOutside)
-    }, [])
-
-    const hasTemplates = templates.length > 0
-    const filteredFeaturedTemplates = featuredTemplates
-    const hasFeaturedTemplates = filteredFeaturedTemplates.length > 0
-
-    const filteredGridTemplates = sortTemplates(
-        templates.filter((template) => {
-            const matchesSearch =
-                template.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                template.author.toLowerCase().includes(searchQuery.toLowerCase())
-            const matchesCategory = selectedCategory
-                ? template.category === selectedCategory.id
-                : true
-            return matchesSearch && matchesCategory
-        }),
-        selectedSort.id
-    )
-
-    const visibleTemplates = filteredGridTemplates.slice(0, visibleCount)
-    const displayedError =
-        actionError ??
-        (templatesError instanceof Error ? templatesError.message : null) ??
-        (featuredError instanceof Error ? featuredError.message : null)
-
-    const openRemixModal = (template: Template) => {
-        setRemixModal({
-            isOpen: true,
-            template,
-        })
-    }
-
-    const handleRemixTemplate = (name: string) => {
-        if (!remixModal.template) return
-        remixMutation.mutate({ templateId: remixModal.template.id, name })
-    }
-
-    const isInitialLoading = isTemplatesLoading || isFeaturedLoading
+        searchQuery,
+        setSearchQuery,
+        selectedCategory,
+        setSelectedCategory,
+        visibleCount,
+        setVisibleCount,
+        activeDropdown,
+        setActiveDropdown,
+        dropdownDirection,
+        selectedSort,
+        setSelectedSort,
+        likePendingTemplateId,
+        remixPendingTemplateId,
+        remixModal,
+        setRemixModal,
+        dropdownRef,
+        likeMutation,
+        hasTemplates,
+        filteredFeaturedTemplates,
+        hasFeaturedTemplates,
+        filteredGridTemplates,
+        visibleTemplates,
+        displayedError,
+        openRemixModal,
+        handleRemixTemplate,
+        isInitialLoading,
+        toggleDropdown,
+    } = useTemplatesController(onOpenProject)
 
     return (
         <div className="flex flex-col h-full bg-background overflow-hidden relative font-sans">
@@ -453,11 +175,16 @@ export const TemplatesView: React.FC<TemplatesViewProps> = ({ onOpenProject }) =
                                             <button
                                                 id="category-filter-btn"
                                                 onClick={(e) => toggleDropdown('category', e)}
-                                                className="flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-[#383736] bg-[#141414] text-[13px] text-[#D6D5C9] hover:bg-[#191919] transition-colors"
+                                                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-full border transition-colors text-[13px] ${
+                                                    selectedCategory
+                                                        ? 'border-[#D6D5C9] bg-[#D6D5C9] text-[#141414] font-medium hover:bg-[#E8E7E4]'
+                                                        : 'border-[#383736] bg-[#141414] text-[#D6D5C9] hover:bg-[#191919]'
+                                                }`}
                                             >
-                                                Category:{' '}
                                                 {selectedCategory ? selectedCategory.label : 'All'}
-                                                <Icons.ChevronDown className="h-3 w-3 text-[#7B7A79]" />
+                                                <Icons.ChevronDown
+                                                    className={`h-3 w-3 ${selectedCategory ? 'text-[#141414]' : 'text-[#7B7A79]'}`}
+                                                />
                                             </button>
                                             <AnimatePresence>
                                                 {activeDropdown === 'category' && (
@@ -466,41 +193,48 @@ export const TemplatesView: React.FC<TemplatesViewProps> = ({ onOpenProject }) =
                                                         animate={{ opacity: 1, y: 0, scale: 1 }}
                                                         exit={{ opacity: 0, y: -6, scale: 0.97 }}
                                                         transition={{ duration: 0.15 }}
-                                                        className={`absolute right-0 ${dropdownDirection === 'up' ? 'bottom-full mb-2' : 'top-full mt-2'} w-48 rounded-xl border border-[#383736] bg-[#1E1E1E] py-2 shadow-xl z-50`}
+                                                        className={`absolute right-0 ${dropdownDirection === 'up' ? 'bottom-full mb-2' : 'top-full mt-2'} w-44 rounded-xl border border-[#383736] bg-[#1E1E1E] py-2 shadow-xl z-50`}
                                                     >
-                                                        <div className="px-3 pb-2 text-[11px] font-medium text-[#7B7A79] border-b border-[#383736] mb-1 uppercase tracking-wider">
-                                                            Filter by
-                                                        </div>
-                                                        <button
-                                                            onClick={() => {
-                                                                setSelectedCategory(null)
-                                                                setActiveDropdown(null)
-                                                                setVisibleCount(9)
-                                                            }}
-                                                            className="w-full flex items-center justify-between px-3 py-1.5 text-[13px] text-[#D6D5C9] hover:bg-[#262626] transition-colors"
-                                                        >
-                                                            All
-                                                            {!selectedCategory && (
-                                                                <Icons.Check className="h-3.5 w-3.5 text-[#7B7A79]" />
+                                                        <div className="px-3 pb-2 text-[11px] font-medium text-[#7B7A79] border-b border-[#383736] mb-1 uppercase tracking-wider flex items-center justify-between">
+                                                            <span>Category</span>
+                                                            {selectedCategory && (
+                                                                <button
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation()
+                                                                        setSelectedCategory(null)
+                                                                        setActiveDropdown(null)
+                                                                        setVisibleCount(9)
+                                                                    }}
+                                                                    className="text-[#D6D5C9] hover:text-white hover:underline lowercase"
+                                                                >
+                                                                    clear
+                                                                </button>
                                                             )}
-                                                        </button>
-                                                        {CATEGORIES.map((cat) => (
-                                                            <button
-                                                                key={cat.id}
-                                                                onClick={() => {
-                                                                    setSelectedCategory(cat)
-                                                                    setActiveDropdown(null)
-                                                                    setVisibleCount(9)
-                                                                }}
-                                                                className="w-full flex items-center justify-between px-3 py-1.5 text-[13px] text-[#D6D5C9] hover:bg-[#262626] transition-colors"
-                                                            >
-                                                                {cat.label}
-                                                                {selectedCategory?.id ===
-                                                                    cat.id && (
-                                                                    <Icons.Check className="h-3.5 w-3.5 text-[#7B7A79]" />
-                                                                )}
-                                                            </button>
-                                                        ))}
+                                                        </div>
+                                                        <div className="max-h-[240px] overflow-y-auto no-scrollbar">
+                                                            {CATEGORIES.map((cat) => (
+                                                                <button
+                                                                    key={cat.id}
+                                                                    onClick={() => {
+                                                                        setSelectedCategory(
+                                                                            selectedCategory?.id ===
+                                                                                cat.id
+                                                                                ? null
+                                                                                : cat
+                                                                        )
+                                                                        setActiveDropdown(null)
+                                                                        setVisibleCount(9)
+                                                                    }}
+                                                                    className="w-full flex items-center justify-between px-3 py-1.5 text-[13px] text-[#D6D5C9] hover:bg-[#262626] transition-colors"
+                                                                >
+                                                                    {cat.label}
+                                                                    {selectedCategory?.id ===
+                                                                        cat.id && (
+                                                                        <Icons.Check className="h-3.5 w-3.5 text-[#7B7A79]" />
+                                                                    )}
+                                                                </button>
+                                                            ))}
+                                                        </div>
                                                     </motion.div>
                                                 )}
                                             </AnimatePresence>
@@ -508,91 +242,51 @@ export const TemplatesView: React.FC<TemplatesViewProps> = ({ onOpenProject }) =
                                     </div>
                                 </div>
 
-                                {filteredGridTemplates.length > 0 ? (
-                                    <>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-5 md:gap-x-6 gap-y-10">
-                                            <AnimatePresence mode="popLayout">
-                                                {visibleTemplates.map((template) => (
-                                                    <motion.div
-                                                        key={template.id}
-                                                        layout
-                                                        initial={{ opacity: 0, scale: 0.98 }}
-                                                        animate={{ opacity: 1, scale: 1 }}
-                                                        exit={{ opacity: 0, scale: 0.98 }}
-                                                        transition={{ duration: 0.2 }}
-                                                    >
-                                                        <TemplateCard
-                                                            template={template}
-                                                            isLikePending={
-                                                                likePendingTemplateId ===
-                                                                template.id
-                                                            }
-                                                            isRemixPending={
-                                                                remixPendingTemplateId ===
-                                                                template.id
-                                                            }
-                                                            onToggleLike={(selectedTemplate) =>
-                                                                likeMutation.mutate({
-                                                                    templateId: selectedTemplate.id,
-                                                                    isLiked:
-                                                                        !selectedTemplate.isLiked,
-                                                                })
-                                                            }
-                                                            onRemix={openRemixModal}
-                                                        />
-                                                    </motion.div>
-                                                ))}
-                                            </AnimatePresence>
+                                {filteredGridTemplates.length === 0 ? (
+                                    <div className="py-20 text-center">
+                                        <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-[#191919] border border-[#242323] mb-4">
+                                            <Icons.Search className="w-5 h-5 text-[#7B7A79]" />
                                         </div>
-
-                                        {visibleCount < filteredGridTemplates.length && (
-                                            <div className="mt-14 flex justify-center">
-                                                <button
-                                                    onClick={() =>
-                                                        setVisibleCount((prev) => prev + 9)
-                                                    }
-                                                    className="px-4 py-1.5 rounded-md border border-[#383736] text-[13px] text-[#D6D5C9] hover:bg-[#191919] transition-colors"
-                                                >
-                                                    Load more
-                                                </button>
-                                            </div>
-                                        )}
-                                    </>
-                                ) : (
-                                    <motion.div
-                                        initial={{ opacity: 0 }}
-                                        animate={{ opacity: 1 }}
-                                        className="flex flex-col items-center justify-center py-20 text-center"
-                                    >
-                                        <div className="relative mb-6 h-28 w-32">
-                                            <svg
-                                                viewBox="0 0 128 112"
-                                                fill="none"
-                                                className="h-full w-full text-[#8A8987]"
-                                                aria-hidden="true"
-                                            >
-                                                <path
-                                                    d="M28 42.5 64 22l36 20.5v43L64 106 28 85.5v-43Z"
-                                                    stroke="currentColor"
-                                                    strokeWidth="2.4"
-                                                    strokeLinejoin="round"
-                                                />
-                                                <path
-                                                    d="M28 42.5 64 63l36-20.5M64 63v43"
-                                                    stroke="currentColor"
-                                                    strokeWidth="2.4"
-                                                    strokeLinecap="round"
-                                                    strokeLinejoin="round"
-                                                />
-                                            </svg>
-                                        </div>
-                                        <h3 className="text-[17px] font-medium text-[#D6D5C9] mb-2">
-                                            No templates found
+                                        <h3 className="text-[15px] font-medium text-[#D6D5C9]">
+                                            No matches found
                                         </h3>
-                                        <p className="text-[#7B7A79] text-[13px] max-w-sm">
-                                            Try changing the search or category filter.
+                                        <p className="mt-1 text-[13px] text-[#7B7A79]">
+                                            Try adjusting your filters or search term.
                                         </p>
-                                    </motion.div>
+                                    </div>
+                                ) : (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-5 md:gap-x-6 gap-y-10">
+                                        {visibleTemplates.map((template) => (
+                                            <TemplateCard
+                                                key={template.id}
+                                                template={template}
+                                                isLikePending={
+                                                    likePendingTemplateId === template.id
+                                                }
+                                                isRemixPending={
+                                                    remixPendingTemplateId === template.id
+                                                }
+                                                onToggleLike={() =>
+                                                    likeMutation.mutate({
+                                                        templateId: template.id,
+                                                        isLiked: !template.isLiked,
+                                                    })
+                                                }
+                                                onRemix={() => openRemixModal(template)}
+                                            />
+                                        ))}
+                                    </div>
+                                )}
+
+                                {filteredGridTemplates.length > visibleCount && (
+                                    <div className="mt-12 flex justify-center border-t border-[#242323] pt-12">
+                                        <button
+                                            onClick={() => setVisibleCount((prev) => prev + 9)}
+                                            className="px-6 py-2.5 rounded-full border border-[#383736] bg-[#141414] hover:bg-[#191919] text-[#D6D5C9] text-[13px] font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-[#555453] focus:border-transparent"
+                                        >
+                                            Load more templates
+                                        </button>
+                                    </div>
                                 )}
                             </div>
                         </>
@@ -602,9 +296,9 @@ export const TemplatesView: React.FC<TemplatesViewProps> = ({ onOpenProject }) =
 
             <TemplateRemixModal
                 isOpen={remixModal.isOpen}
-                templateTitle={remixModal.template?.title}
-                isPending={Boolean(remixPendingTemplateId)}
-                onClose={() => setRemixModal((prev) => ({ ...prev, isOpen: false }))}
+                template={remixModal.template}
+                isPending={remixPendingTemplateId === remixModal.template?.id}
+                onClose={() => setRemixModal({ isOpen: false, template: null })}
                 onConfirm={handleRemixTemplate}
             />
         </div>

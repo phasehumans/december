@@ -8,6 +8,7 @@ import PromptInput from './PromptInput'
 
 import type { HomeHeroProps } from '@/features/home/types'
 
+import { useAppStore } from '@/app/store'
 import { ProUpgradeModal } from '@/features/billing/components/ProUpgradeModal'
 import { type CanvasRef } from '@/features/canvas/components/Canvas'
 import { profileAPI } from '@/features/profile/api/profile'
@@ -15,17 +16,19 @@ import { Icons } from '@/shared/components/ui/Icons'
 
 export const HomeHero: React.FC<HomeHeroProps> = ({
     onPromptSubmit,
-    isGenerating,
-    isAuthenticated,
     onOpenAuth,
-    canvasState,
-    onCanvasStateChange,
-    projectId,
     onImportGithub,
     onImportZip,
-    importState,
     onResetImportState,
 }) => {
+    const {
+        isGenerating,
+        isAuthenticated,
+        canvasState,
+        setCanvasState: onCanvasStateChange,
+        activeProjectId: projectId,
+        importState,
+    } = useAppStore()
     const navigate = useNavigate()
     const canvasRef = useRef<CanvasRef>(null)
     const [prompt, setPrompt] = React.useState('')

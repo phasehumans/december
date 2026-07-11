@@ -74,28 +74,9 @@ export interface OutputScreenProps {
         options?: { selectedElement?: PreviewSelectedElement }
     ) => Promise<void> | void
     onRuntimeError?: (error: PreviewRuntimeError) => Promise<void> | void
-    messages: Message[]
-    generatedFiles?: Record<string, GeneratedProjectFile>
-    activeFilesToDisplay?: Record<string, GeneratedProjectFile>
-    activeGeneratedFilePath?: string | null
-    generationPhase?: 'thinking' | 'building' | 'done' | null
-    activeOperation?: OutputOperation | null
-    isGenerating?: boolean
     showStructureOnly?: boolean
-    projectName?: string | null
-    projectId?: string | null
-    canvasState: CanvasDocument
-    onCanvasStateChange: (document: CanvasDocument) => void
-    versions?: BackendProjectVersionSummary[]
-    activeVersionId?: string | null
-    isVersionLoading?: boolean
     onSelectVersion?: (versionId: string) => void
     onDownload?: () => void
-    previewSession?: PreviewSessionStatus | null
-    previewSessionError?: string | null
-    projectType?: 'generated' | 'github' | 'zip'
-    selectedModel?: string
-    setSelectedModel?: (val: string) => void
     onOpenFile?: (path: string) => void
 }
 

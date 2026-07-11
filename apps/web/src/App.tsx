@@ -9,13 +9,6 @@ const App: React.FC = () => {
     const {
         queryClient,
         view,
-        messages,
-        generatedFiles,
-        activeFilesToDisplay,
-        activeGeneratedFilePath,
-        generationPhase,
-        activeOperation,
-        isGenerating,
         setIsAuthenticated,
         showAuthModal,
         setShowAuthModal,
@@ -24,19 +17,8 @@ const App: React.FC = () => {
         isAuthenticated,
         isHome,
         showSidebar,
-        activeProjectId,
-        activeProjectName,
-        canvasState,
-        setCanvasState,
         selectedModel,
         setSelectedModel,
-        projectVersions,
-        activeProjectVersionId,
-        isProjectOpening,
-        previewSession,
-        previewSessionError,
-        importState,
-        projectType,
         handleNewThread,
         handleHomeClick,
         handleNavigate,
@@ -84,38 +66,19 @@ const App: React.FC = () => {
                 <AppContentView
                     view={view}
                     isHome={isHome}
-                    messages={messages}
-                    generatedFiles={generatedFiles}
-                    activeFilesToDisplay={activeFilesToDisplay}
-                    activeGeneratedFilePath={activeGeneratedFilePath}
-                    generationPhase={generationPhase}
-                    activeOperation={activeOperation}
-                    isGenerating={isGenerating}
-                    isAuthenticated={isAuthenticated}
-                    projectName={activeProjectName}
-                    activeProjectId={activeProjectId}
-                    canvasState={canvasState}
-                    onCanvasStateChange={setCanvasState}
-                    projectVersions={projectVersions}
-                    activeProjectVersionId={activeProjectVersionId}
-                    isProjectOpening={isProjectOpening}
-                    previewSession={previewSession}
-                    previewSessionError={previewSessionError}
-                    importState={importState}
                     onHomePromptSubmit={handlePromptSubmit}
                     onOutputPromptSubmit={handleOutputPromptSubmit}
                     onPreviewRuntimeError={handlePreviewRuntimeError}
-                    onImportGithub={handleImportGithub}
-                    onImportZip={handleImportZip}
                     onOpenAuth={() => setShowAuthModal(true)}
                     onBackFromOutput={handleBackFromOutput}
                     onNewProject={handleNewThread}
                     onOpenProject={handleOpenProject}
+                    onImportGithub={handleImportGithub}
+                    onImportZip={handleImportZip}
                     onSelectVersion={handleSelectVersion}
                     onDownloadProject={handleDownloadProject}
                     onSignOut={handleSignOut}
                     onDocs={() => handleNavigate('docs')}
-                    projectType={projectType}
                     selectedModel={selectedModel}
                     setSelectedModel={setSelectedModel}
                     onOpenFile={handleOpenFile}
