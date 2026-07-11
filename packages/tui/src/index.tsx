@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { RootLayout } from './layouts/root-layout'
 import { Chat } from './screens/chat'
 
@@ -23,6 +24,11 @@ export function App({
         onCode: (code: string, uri: string) => void
     ) => Promise<{ token: string; email: string | null }>
 }) {
+    useEffect(() => {
+        process.title = 'december'
+        process.stdout.write('\x1b]0;december\x07')
+    }, [])
+
     return (
         <RootLayout>
             <Chat

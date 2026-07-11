@@ -149,7 +149,9 @@ export function InputBar({
             )}
             {/* Top separator */}
             <Box overflow="hidden" height={1} width="100%">
-                <Text color="#555555">{sep}</Text>
+                <Text color="#555555" wrap="truncate">
+                    {sep}
+                </Text>
             </Box>
 
             {/* Content: Prompt */}
@@ -168,12 +170,14 @@ export function InputBar({
 
             {/* Bottom separator */}
             <Box overflow="hidden" height={1} width="100%">
-                <Text color="#555555">{sep}</Text>
+                <Text color="#555555" wrap="truncate">
+                    {sep}
+                </Text>
             </Box>
 
             {/* Status row — model left, december studio right */}
             {!showCommandMenu && !authUI && (
-                <Box width={innerWidth} justifyContent="space-between">
+                <Box width="100%" justifyContent="space-between">
                     <Box gap={2} alignItems="center">
                         <Text color="#AAAAAA">{activeModel}</Text>
                         {toast.currentToast && (
