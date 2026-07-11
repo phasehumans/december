@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { Inbox, Copy, Check } from 'lucide-react'
+import { Inbox, Copy, Check, ChevronRight } from 'lucide-react'
 import React, { useState, useRef } from 'react'
 
 import sidebarPng from '../../../../public/sidebar.png'
@@ -102,7 +102,7 @@ export const SidebarFooter: React.FC<
                 <button
                     id="try-cli-btn"
                     onClick={() => setShowCliCard(!showCliCard)}
-                    className="upgrade-plan-btn flex items-center gap-1 px-2.5 py-[3px] rounded-full hover:bg-white/[0.06] transition-all text-[#CBCACA] hover:text-white text-[11px] font-medium outline-none w-fit mx-auto cursor-pointer"
+                    className="upgrade-plan-btn flex items-center gap-1 px-2.5 py-[3px] rounded-full bg-transparent hover:bg-white/5 transition-all text-[#CBCACA] hover:text-white text-[11px] font-medium outline-none w-fit mx-auto cursor-pointer"
                     style={{
                         border: '1px solid #383735',
                     }}
@@ -114,7 +114,7 @@ export const SidebarFooter: React.FC<
                 {showCliCard && (
                     <div
                         id="cli-popover-card"
-                        className="absolute bottom-11 left-3 w-[300px] z-[100] bg-[#1E1E1E] border border-[#2A2928] rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200"
+                        className="absolute bottom-11 left-3 w-[300px] z-[100] bg-[#1E1E1E] border border-[#2A2928] rounded-2xl shadow-lg shadow-black/40 overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200"
                     >
                         <div className="w-full h-[165px] bg-[#1E1E1E] relative overflow-hidden flex items-center justify-center p-1.5 pb-0 pointer-events-none">
                             <div className="w-full h-full relative overflow-hidden rounded-xl border border-[#2A2928]">
@@ -150,7 +150,7 @@ export const SidebarFooter: React.FC<
                                     title="Copy command"
                                 >
                                     {isCopied ? (
-                                        <Check className="w-3.5 h-3.5 text-white" />
+                                        <Check className="w-3.5 h-3.5 text-[#87B2F4]" />
                                     ) : (
                                         <Copy className="w-3.5 h-3.5" />
                                     )}
@@ -161,7 +161,6 @@ export const SidebarFooter: React.FC<
                 )}
             </div>
             {isAuthenticated && <div className="w-full border-t border-white/[0.04]"></div>}
-
             <div className="pl-[6px] pr-[6px] pt-1 pb-1.5">
                 {isAuthenticated && (
                     <>
@@ -172,7 +171,7 @@ export const SidebarFooter: React.FC<
                                 className="flex items-center gap-2 px-1.5 py-[7px] rounded-lg hover:bg-[#252525] transition-colors group outline-none min-w-0"
                                 style={{ maxWidth: 'calc(100% - 28px)' }}
                             >
-                                <div className="flex items-center justify-center w-[24px] h-[24px] rounded-full bg-white/[0.04] text-[#E8E8E8] group-hover:text-[#E8E8E8] transition-colors shrink-0">
+                                <div className="flex items-center justify-center w-[24px] h-[24px] rounded-full bg-[#84AEEB]/20 text-[#84AEEB] transition-colors shrink-0 border border-[#84AEEB]/30">
                                     <Icons.UserCircle className="w-[12px] h-[12px]" />
                                 </div>
                                 <span className="font-medium text-[13px] text-[#E8E8E8] group-hover:text-[#E8E8E8] transition-colors truncate tracking-tight text-left">
@@ -192,7 +191,7 @@ export const SidebarFooter: React.FC<
                                     <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-white rounded-full border border-[#141414]" />
                                 )}
                                 {!isNotifPopoverOpen && (
-                                    <div className="absolute bottom-[calc(100%+6px)] right-0 z-50 hidden group-hover/notif:flex items-center gap-1.5 bg-[#1C1B1A] border border-[#2A2928] px-2.5 py-1 rounded-lg shadow-xl whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
+                                    <div className="absolute bottom-[calc(100%+6px)] right-0 z-50 hidden group-hover/notif:flex items-center gap-1.5 bg-[#1F1F1F] border border-[#282828] px-2.5 py-1 rounded-lg shadow-none whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
                                         <span className="text-[12px] font-medium text-[#EDEDEF]">
                                             Notifications
                                         </span>

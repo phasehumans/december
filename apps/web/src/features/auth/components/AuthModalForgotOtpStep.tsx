@@ -1,6 +1,7 @@
 import React from 'react'
 
 import type { AuthModalForgotOtpStepProps } from '@/features/auth/types'
+import { Icons } from '@/shared/components/ui/Icons'
 
 export const AuthModalForgotOtpStep: React.FC<AuthModalForgotOtpStepProps> = ({
     email,
@@ -16,6 +17,9 @@ export const AuthModalForgotOtpStep: React.FC<AuthModalForgotOtpStepProps> = ({
 }) => (
     <div className="flex flex-col">
         <div className="flex flex-col items-center text-center mb-6">
+            <div className="mb-5 opacity-90 hover:opacity-100 transition-opacity text-[#D6D5D4]">
+                <Icons.DecemberLogo className="w-[42px] h-[42px]" />
+            </div>
             <h2 className="text-[22px] font-normal text-white tracking-tight mb-1">
                 Enter reset code
             </h2>

@@ -329,7 +329,7 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
                         <Icons.Plus className="w-[18px] h-[18px] stroke-[2.5px]" />
                     </button>
                     {!isPlusMenuOpen && (
-                        <div className="absolute top-[calc(100%+6px)] left-0 z-50 hidden group-hover/btn:flex items-center gap-1.5 bg-[#1C1B1A] border border-[#2A2928] px-2.5 py-1 rounded-lg shadow-xl whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
+                        <div className="absolute top-[calc(100%+6px)] left-0 z-50 hidden group-hover/btn:flex items-center gap-1.5 bg-[#1F1F1F] border border-[#282828] px-2.5 py-1 rounded-lg shadow-none whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
                             <span className="text-[12px] font-medium text-[#EDEDEF]">
                                 More options
                             </span>
@@ -456,7 +456,7 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
                         />
                     </button>
                     {!isModelSelectorOpen && (
-                        <div className="absolute top-[calc(100%+6px)] right-0 z-50 hidden group-hover/btn:flex items-center gap-1.5 bg-[#1C1B1A] border border-[#2A2928] px-2.5 py-1 rounded-lg shadow-xl whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
+                        <div className="absolute top-[calc(100%+6px)] right-0 z-50 hidden group-hover/btn:flex items-center gap-1.5 bg-[#1F1F1F] border border-[#282828] px-2.5 py-1 rounded-lg shadow-none whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
                             <span className="text-[12px] font-medium text-[#EDEDEF]">
                                 Select model
                             </span>
@@ -525,31 +525,42 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
                         >
                             <Icons.Microphone className="w-[14px] h-[14px] stroke-[2.5px] relative z-10" />
                         </button>
-                        <div className="absolute top-[calc(100%+6px)] right-0 z-50 hidden group-hover/btn:flex items-center gap-1.5 bg-[#1C1B1A] border border-[#2A2928] px-2.5 py-1 rounded-lg shadow-xl whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
+                        <div className="absolute top-[calc(100%+6px)] right-0 z-50 hidden group-hover/btn:flex items-center gap-1.5 bg-[#1F1F1F] border border-[#282828] px-2.5 py-1 rounded-lg shadow-none whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
                             <span className="text-[12px] font-medium text-[#EDEDEF]">
                                 {isListening ? 'Stop listening' : 'Record voice prompt'}
                             </span>
                         </div>
                     </div>
                 )}
-                <button
-                    onClick={onSubmit}
-                    disabled={!hasInput || isLoading}
-                    className={`
-                        flex items-center justify-center w-8 h-8 rounded-full transition-colors duration-200
-                        ${
-                            hasInput && !isLoading
-                                ? 'bg-[#D6D5D4] text-black'
-                                : 'bg-[#2C2C2E] text-[#4A4A4A] cursor-not-allowed'
-                        }
-                    `}
-                >
-                    {isLoading ? (
-                        <div className="w-4 h-4 border-2 border-neutral-500 border-t-neutral-800 rounded-full animate-spin" />
-                    ) : (
-                        <Icons.ArrowRight className="w-4 h-4 stroke-[2px]" />
-                    )}
-                </button>
+                <div className="relative group/submitbtn">
+                    <button
+                        onClick={onSubmit}
+                        disabled={!hasInput || isLoading}
+                        className={`
+                            flex items-center justify-center w-8 h-8 rounded-full transition-colors duration-200 outline-none
+                            ${
+                                hasInput && !isLoading
+                                    ? 'bg-[#D6D5D4] text-black hover:bg-white'
+                                    : 'bg-[#2C2C2E] text-[#4A4A4A] cursor-not-allowed'
+                            }
+                        `}
+                    >
+                        {isLoading ? (
+                            <div className="w-4 h-4 border-2 border-neutral-500 border-t-neutral-800 rounded-full animate-spin" />
+                        ) : (
+                            <Icons.ArrowRight className="w-4 h-4 stroke-[2px]" />
+                        )}
+                    </button>
+                    <div className="absolute top-[calc(100%+6px)] right-0 z-50 hidden group-hover/submitbtn:flex items-center gap-1.5 bg-[#1F1F1F] border border-[#282828] px-2.5 py-1 rounded-lg shadow-none whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
+                        <span className="text-[12px] font-medium text-[#EDEDEF]">
+                            {!hasInput
+                                ? 'Prompt required'
+                                : isLoading
+                                  ? 'Generating...'
+                                  : 'Enter to send'}
+                        </span>
+                    </div>
+                </div>
             </div>
         </div>
     )
