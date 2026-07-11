@@ -22,10 +22,6 @@ const App: React.FC = () => {
         isMobileSidebarOpen,
         setIsMobileSidebarOpen,
         isAuthenticated,
-        projects,
-        isProjectsInitialLoading,
-        isProjectsFetching,
-        projectsErrorMessage,
         isHome,
         showSidebar,
         activeProjectId,
@@ -70,8 +66,6 @@ const App: React.FC = () => {
                 onOpenProject={handleOpenProject}
                 isAuthenticated={isAuthenticated}
                 onOpenAuth={() => setShowAuthModal(true)}
-                projects={projects}
-                isProjectsInitialLoading={isProjectsInitialLoading}
                 onSignOut={handleSignOut}
             />
 
@@ -98,10 +92,6 @@ const App: React.FC = () => {
                     activeOperation={activeOperation}
                     isGenerating={isGenerating}
                     isAuthenticated={isAuthenticated}
-                    projects={projects}
-                    isProjectsInitialLoading={isProjectsInitialLoading}
-                    isProjectsFetching={isProjectsFetching}
-                    projectsErrorMessage={projectsErrorMessage}
                     projectName={activeProjectName}
                     activeProjectId={activeProjectId}
                     canvasState={canvasState}

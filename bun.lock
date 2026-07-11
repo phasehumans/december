@@ -32,7 +32,7 @@
     },
     "apps/cli": {
       "name": "@trydecember/cli",
-      "version": "0.2.5",
+      "version": "0.2.6",
       "bin": {
         "december": "./dist/december.js",
       },
@@ -56,11 +56,11 @@
     },
     "apps/runtime": {
       "name": "@december/runtime",
-      "version": "0.2.5",
+      "version": "0.2.6",
     },
     "apps/server": {
       "name": "@december/server",
-      "version": "0.2.5",
+      "version": "0.2.6",
       "dependencies": {
         "@aws-sdk/client-s3": "^3.1014.0",
         "@december/database": "workspace:*",
@@ -108,7 +108,7 @@
     },
     "apps/web": {
       "name": "@december/web",
-      "version": "0.2.5",
+      "version": "0.2.6",
       "dependencies": {
         "@codemirror/commands": "^6.10.3",
         "@codemirror/lang-css": "^6.3.1",
@@ -132,6 +132,7 @@
         "react-dom": "18.2.0",
         "react-router-dom": "^7.15.1",
         "tailwind-merge": "2.2.1",
+        "zustand": "5.0.14",
       },
       "devDependencies": {
         "@types/bun": "latest",
@@ -144,7 +145,7 @@
     },
     "packages/agent": {
       "name": "@december/agent",
-      "version": "0.2.5",
+      "version": "0.2.6",
       "dependencies": {
         "@anthropic-ai/sdk": "0.109.0",
         "@december/providers": "workspace:*",
@@ -162,7 +163,7 @@
     },
     "packages/database": {
       "name": "@december/database",
-      "version": "0.2.5",
+      "version": "0.2.6",
       "dependencies": {
         "@prisma/adapter-pg": "7.8.0",
         "@prisma/client": "7.8.0",
@@ -181,7 +182,7 @@
     },
     "packages/providers": {
       "name": "@december/providers",
-      "version": "0.2.5",
+      "version": "0.2.6",
       "dependencies": {
         "@anthropic-ai/sdk": "latest",
         "@google/genai": "latest",
@@ -194,7 +195,7 @@
     },
     "packages/tools": {
       "name": "@december/tools",
-      "version": "0.2.5",
+      "version": "0.2.6",
       "dependencies": {
         "@december/agent": "workspace:*",
         "diff": "9.0.0",
@@ -206,7 +207,7 @@
     },
     "packages/tui": {
       "name": "@december/tui",
-      "version": "0.2.5",
+      "version": "0.2.6",
       "dependencies": {
         "@december/agent": "workspace:*",
         "@december/providers": "workspace:*",
@@ -2080,6 +2081,8 @@
     "zod-to-json-schema": ["zod-to-json-schema@3.25.2", "", { "peerDependencies": { "zod": "^3.25.28 || ^4" } }, "sha512-O/PgfnpT1xKSDeQYSCfRI5Gy3hPf91mKVDuYLUHZJMiDFptvP41MSnWofm8dnCm0256ZNfZIM7DSzuSMAFnjHA=="],
 
     "zod-validation-error": ["zod-validation-error@4.0.2", "", { "peerDependencies": { "zod": "^3.25.0 || ^4.0.0" } }, "sha512-Q6/nZLe6jxuU80qb/4uJ4t5v2VEZ44lzQjPDhYJNztRQ4wyWc6VF3D3Kb/fAuPetZQnhS3hnajCf9CsWesghLQ=="],
+
+    "zustand": ["zustand@5.0.14", "", { "peerDependencies": { "@types/react": ">=18.0.0", "immer": ">=9.0.6", "react": ">=18.0.0", "use-sync-external-store": ">=1.2.0" }, "optionalPeers": ["@types/react", "immer", "react", "use-sync-external-store"] }, "sha512-/8tAspM5LMPr28b3fwLYrtdj77ECpfZviaP75CMTnwO8ISyaE4GDIG/9rDDYq/cH9D2Xw2A2RXglLInmVBQB/g=="],
 
     "@babel/core/json5": ["json5@2.2.3", "", { "bin": { "json5": "lib/cli.js" } }, "sha512-XmOWe7eyHYH14cLdVPoyg+GOH3rYX++KpzrylJwSW98t3Nk+U8XOl8FWKOgwtzdb8lXGf6zYwDUzeHMWfxasyg=="],
 

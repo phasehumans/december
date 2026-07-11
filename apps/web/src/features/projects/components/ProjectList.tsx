@@ -1,6 +1,8 @@
 import React, { useEffect, useState, useMemo } from 'react'
 
 import { useProjectListMutations } from '../hooks/useProjectListMutations'
+import { useProjects } from '../hooks/useProjects'
+import { useAppStore } from '@/app/store'
 
 import { ProjectListModals } from './ProjectListModals'
 import { ProjectListView } from './ProjectListView'
@@ -20,16 +22,10 @@ import { SettingsBigModal } from '@/features/preview/components/settings/Setting
 export type SortOption = 'newest' | 'oldest'
 export type StatusFilter = 'any' | 'Draft' | 'Generating' | 'Generated' | 'Deployed' | 'Failed'
 
-export const ProjectList: React.FC<ProjectListProps> = ({
-    onNewProject,
-    onOpenProject,
-    projects,
-    isLoading,
-    isFetching,
-    errorMessage,
-    selectedModel,
-    setSelectedModel,
-}) => {
+export const ProjectList: React.FC<ProjectListProps> = ({ onNewProject, onOpenProject }) => {
+    const { data: projects = [], isLoading, isFetching, error } = useProjects()
+    const errorMessage = error instanceof Error ? error.message : null
+    const { selectedModel, setSelectedModel } = useAppStore()
     const [menuOpenId, setMenuOpenId] = useState<string | null>(null)
     const [searchQuery, setSearchQuery] = useState('')
     const [sortOption, setSortOption] = useState<SortOption>('newest')

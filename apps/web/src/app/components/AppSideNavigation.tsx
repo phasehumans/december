@@ -16,8 +16,6 @@ interface AppSideNavigationProps {
     onOpenProject: (projectId: string) => void
     isAuthenticated: boolean
     onOpenAuth: () => void
-    projects: Project[]
-    isProjectsInitialLoading: boolean
     onSignOut?: () => void
     onHomeClick?: () => void
 }
@@ -31,8 +29,6 @@ export const AppSideNavigation: React.FC<AppSideNavigationProps> = ({
     onOpenProject,
     isAuthenticated,
     onOpenAuth,
-    projects,
-    isProjectsInitialLoading,
     onSignOut,
     onHomeClick,
 }) => {
@@ -53,8 +49,6 @@ export const AppSideNavigation: React.FC<AppSideNavigationProps> = ({
                 onOpenProject={onOpenProject}
                 isAuthenticated={isAuthenticated}
                 onOpenAuth={onOpenAuth}
-                projects={projects}
-                isProjectsLoading={isProjectsInitialLoading}
                 onSignOut={onSignOut}
                 onHomeClick={onHomeClick}
             />
@@ -81,8 +75,6 @@ export const AppSideNavigation: React.FC<AppSideNavigationProps> = ({
                 onOpenProject={onOpenProject}
                 isAuthenticated={isAuthenticated}
                 onOpenAuth={onOpenAuth}
-                projects={projects}
-                isProjectsLoading={isProjectsInitialLoading}
                 onSignOut={onSignOut}
             />
         </>

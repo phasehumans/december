@@ -1,0 +1,17 @@
+{
+    "$schema": "https://unpkg.com/knip@5/schema.json",
+    "entry": ["src/index.ts", "src/App.tsx"],
+    "project": ["src/**/*.{ts,tsx}"],
+    "ignore": ["src/**/*.test.{ts,tsx}", "vite.config.ts"],
+    "ignoreBinaries": ["bun"],
+    "ignoreDependencies": [
+        "@types/react",
+        "@types/react-dom",
+        "vite",
+        "@vitejs/plugin-react",
+        "tailwindcss",
+        "postcss",
+        "autoprefixer",
+        "typescript"
+    ]
+}
