@@ -63,6 +63,9 @@ export function InputBar({
                 return next
             })
         }
+        if ((key.backspace || key.delete) && value.length === 0 && grillMode) {
+            onSubmit('/grill-me')
+        }
     })
 
     const handleChange = useCallback(
@@ -94,7 +97,8 @@ export function InputBar({
                 command.value === '/plan' ||
                 command.value === '/grill-me' ||
                 command.value === '/settings' ||
-                command.value === '/context'
+                command.value === '/context' ||
+                command.value === '/hooks'
             ) {
                 onSubmit(command.value)
                 return
@@ -161,12 +165,8 @@ export function InputBar({
                         [PLAN]{' '}
                     </Text>
                 )}
-                {grillMode && (
-                    <Text color="#89B4F8" bold>
-                        [GRILL]{' '}
-                    </Text>
-                )}
                 <Text color={disabled ? '#555555' : '#89B4F8'}>{`❭ `}</Text>
+                {grillMode && <Text color="#89B4F8">/grill-me </Text>}
                 {(!authUI || customInputMode) && (
                     <TextInput
                         value={value}
@@ -178,7 +178,7 @@ export function InputBar({
                                 : planMode
                                   ? 'Describe what you want to plan...'
                                   : grillMode
-                                    ? 'Describe what you want to grill...'
+                                    ? ''
                                     : placeholder
                         }
                         focus={!disabled && !dialog.isOpen}
