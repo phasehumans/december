@@ -35,12 +35,21 @@ export function Header({
     return (
         <Box flexDirection="column" paddingLeft={2} paddingTop={1} paddingBottom={1}>
             <Text bold color="white">
-                ✱ December CLI <Text color="white">{cliVersion.replace(/^v/, '')}</Text>
+                ✱ December CLI {cliVersion.replace(/^v/, '')}
             </Text>
             {userEmail && <Text color="gray">{userEmail}</Text>}
             <Box gap={1}>
                 <Text color="gray">{cwd}</Text>
                 {branch && <Text color="gray">({branch})</Text>}
+            </Box>
+            <Box flexDirection="column" marginTop={1}>
+                <Text color="#89B4F8">Tips for getting started</Text>
+                <Text color="gray">
+                    Run /init to scaffold .december workspace for custom rules and skills
+                </Text>
+                <Text color="gray">
+                    Use /handoff to continue this session in December (trydecember.com)
+                </Text>
             </Box>
         </Box>
     )

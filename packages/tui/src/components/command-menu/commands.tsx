@@ -1,4 +1,6 @@
 import { exec } from 'child_process'
+import fs from 'node:fs'
+import path from 'node:path'
 
 import clipboard from 'clipboardy'
 import React from 'react'
@@ -90,6 +92,62 @@ export const COMMANDS: Command[] = [
         value: '/hooks',
         action: (ctx) => {
             // Forwarded to Chat screen
+        },
+    },
+    {
+        name: 'init',
+        description: 'Create a .december folder with initial agent rules',
+        value: '/init',
+        action: (ctx) => {
+            try {
+                const rootDir = process.cwd()
+                const decDir = path.join(rootDir, '.december')
+
+                if (fs.existsSync(decDir)) {
+                    ctx.toast.show({ message: 'December workspace is already initialized.' })
+                    return
+                }
+
+                fs.mkdirSync(decDir)
+
+                const mdFile = path.join(decDir, 'DECEMBER.md')
+                const rulesDir = path.join(decDir, 'rules')
+                const rulesReadme = path.join(rulesDir, 'README.md')
+                const skillsDir = path.join(decDir, 'skills')
+                const skillsReadme = path.join(skillsDir, 'README.md')
+                const ignoreFile = path.join(decDir, '.decemberignore')
+
+                fs.writeFileSync(mdFile, '# December Configuration\n')
+
+                fs.mkdirSync(rulesDir)
+                fs.writeFileSync(
+                    rulesReadme,
+                    '# Rules\n\nDrop Markdown files here (e.g., `database.md` or `styling.md`) with specific instructions. December will automatically read these modular rules when working on related files.\n'
+                )
+
+                fs.mkdirSync(skillsDir)
+                fs.writeFileSync(
+                    skillsReadme,
+                    '# Skills\n\nAdd executable scripts or custom tool definitions here. December will be able to run these skills as custom tools to perform specific actions in your workspace.\n'
+                )
+
+                if (!fs.existsSync(ignoreFile)) {
+                    fs.writeFileSync(
+                        ignoreFile,
+                        '# Ignore these files and directories when searching or reading\nnode_modules\n.git\ndist\nbuild\n.env\n.next\n'
+                    )
+                }
+
+                ctx.toast.show({
+                    variant: 'success',
+                    message: 'Initialized December workspace successfully!',
+                })
+            } catch (err) {
+                ctx.toast.show({
+                    variant: 'error',
+                    message: 'Failed to initialize December workspace',
+                })
+            }
         },
     },
     {
