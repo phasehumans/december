@@ -1,0 +1,7 @@
+# Ignore these files and directories when searching or reading
+node_modules
+.git
+dist
+build
+.env
+.next

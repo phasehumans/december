@@ -194,9 +194,7 @@ export function InputBar({
                         )}
                     </Box>
                     <Box gap={0}>
-                        <Text color="#AAAAAA">
-                            {'\x1b]8;;https://trydecember.com\x07december ↗\x1b]8;;\x07'}
-                        </Text>
+                        <Text color="#AAAAAA">? for shortcuts</Text>
                     </Box>
                 </Box>
             )}
