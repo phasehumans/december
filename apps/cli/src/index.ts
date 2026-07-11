@@ -29,6 +29,9 @@ import { localOperations } from './local-operations'
 const originalConsoleError = console.error
 
 async function main() {
+    process.title = 'december'
+    process.stdout.write('\x1b]0;december\x07')
+
     // Suppress noisy SDK console logs that corrupt the Ink TUI layout
     console.warn = () => {}
     console.error = () => {}
