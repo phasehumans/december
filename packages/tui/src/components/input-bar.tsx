@@ -20,8 +20,6 @@ type Props = {
     authUI?: React.ReactNode
     agent?: any
     resetChat?: () => void
-    planMode?: boolean
-    grillMode?: boolean
     customInputMode?: boolean
 }
 
@@ -33,8 +31,6 @@ export function InputBar({
     authUI,
     agent,
     resetChat,
-    planMode = false,
-    grillMode = false,
     customInputMode = false,
 }: Props) {
     const [value, setValue] = useState('')
@@ -94,7 +90,9 @@ export function InputBar({
                 command.value === '/plan' ||
                 command.value === '/grill-me' ||
                 command.value === '/settings' ||
-                command.value === '/context'
+                command.value === '/context' ||
+                command.value === '/hooks' ||
+                command.value === '/tasks'
             ) {
                 onSubmit(command.value)
                 return
@@ -156,31 +154,13 @@ export function InputBar({
 
             {/* Content: Prompt */}
             <Box>
-                {planMode && (
-                    <Text color="#F1C40F" bold>
-                        [PLAN]{' '}
-                    </Text>
-                )}
-                {grillMode && (
-                    <Text color="#89B4F8" bold>
-                        [GRILL]{' '}
-                    </Text>
-                )}
                 <Text color={disabled ? '#555555' : '#89B4F8'}>{`❭ `}</Text>
                 {(!authUI || customInputMode) && (
                     <TextInput
                         value={value}
                         onChange={handleChange}
                         onSubmit={handleSubmit}
-                        placeholder={
-                            customInputMode
-                                ? 'Type your custom answer...'
-                                : planMode
-                                  ? 'Describe what you want to plan...'
-                                  : grillMode
-                                    ? 'Describe what you want to grill...'
-                                    : placeholder
-                        }
+                        placeholder={customInputMode ? 'Type your custom answer...' : placeholder}
                         focus={!disabled && !dialog.isOpen}
                     />
                 )}

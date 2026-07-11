@@ -3,7 +3,9 @@ import fs from 'fs'
 import { GoogleGenAI } from '@google/genai'
 
 async function run() {
-    const config = JSON.parse(fs.readFileSync(process.env.HOME + '/.december/config.json', 'utf-8'))
+    const config = JSON.parse(
+        fs.readFileSync(process.env.HOME + '/.config/december/config.json', 'utf-8')
+    )
     const ai = new GoogleGenAI({ apiKey: config.providers.google })
 
     // First, let's just try sending a history where thought_signature is inside functionCall vs outside
