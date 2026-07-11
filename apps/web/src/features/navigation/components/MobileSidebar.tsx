@@ -9,6 +9,7 @@ import type { MobileSidebarProps } from '@/features/navigation/types'
 
 import { Icons } from '@/shared/components/ui/Icons'
 import { cn } from '@/shared/lib/utils'
+import { useProjects } from '@/features/projects/hooks/useProjects'
 
 export const MobileSidebar: React.FC<MobileSidebarProps & { onSignOut?: () => void }> = ({
     isOpen,
@@ -23,10 +24,9 @@ export const MobileSidebar: React.FC<MobileSidebarProps & { onSignOut?: () => vo
     onOpenProject,
     isAuthenticated,
     onOpenAuth,
-    projects,
-    isProjectsLoading,
     onSignOut,
 }) => {
+    const { data: projects = [], isLoading: isProjectsLoading } = useProjects()
     const [recentOpen, setRecentOpen] = React.useState(true)
     const [starredOpen, setStarredOpen] = React.useState(true)
 

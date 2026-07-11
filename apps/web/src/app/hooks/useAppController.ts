@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import React from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
+import { useAppStore } from '@/app/store'
 
 import type { ViewState } from '@/app/types'
 import type { Message } from '@/features/chat/types'
@@ -30,6 +31,7 @@ import {
     type BackendProjectMessage,
     type BackendProjectVersionSummary,
 } from '@/features/projects/api/project'
+import { useProjects } from '@/features/projects/hooks/useProjects'
 import { refreshAuthSession } from '@/shared/api/client'
 
 const getUserFacingGenerationError = (message: string) => {
@@ -139,18 +141,20 @@ export const useAppController = () => {
     const location = useLocation()
 
     const view = getViewForPath(location.pathname)
-    const [messages, setMessages] = React.useState<Message[]>([])
-    const [generatedFiles, setGeneratedFiles] = React.useState<
-        Record<string, GeneratedProjectFile>
-    >({})
-    const [activeGeneratedFilePath, setActiveGeneratedFilePathState] = React.useState<
-        string | null
-    >(null)
-    const [generationPhase, setGenerationPhase] = React.useState<
-        'thinking' | 'building' | 'done' | null
-    >(null)
-    const [activeOperation, setActiveOperation] = React.useState<OutputOperation | null>(null)
-    const [currentGenerationFilePaths, setCurrentGenerationFilePaths] = React.useState<string[]>([])
+    const {
+        messages,
+        setMessages,
+        generatedFiles,
+        setGeneratedFiles,
+        activeGeneratedFilePath: activeGeneratedFilePathState,
+        setActiveGeneratedFilePath: setActiveGeneratedFilePathState,
+        generationPhase,
+        setGenerationPhase,
+        activeOperation,
+        setActiveOperation,
+        currentGenerationFilePaths,
+        setCurrentGenerationFilePaths,
+    } = useAppStore()
 
     const activeFilesToDisplay = React.useMemo(() => {
         if (currentGenerationFilePaths.length === 0) {
@@ -165,32 +169,40 @@ export const useAppController = () => {
         return filtered
     }, [generatedFiles, currentGenerationFilePaths])
 
-    const [projectType, setProjectType] = React.useState<'generated' | 'github' | 'zip'>(
-        'generated'
-    )
-    const [isGenerating, setIsGenerating] = React.useState(false)
-    const [isAuthenticated, setIsAuthenticated] = React.useState(false)
-    const [showAuthModal, setShowAuthModal] = React.useState(false)
-    const [isMobileSidebarOpen, setIsMobileSidebarOpen] = React.useState(false)
-    const [activeProjectId, setActiveProjectId] = React.useState<string | null>(null)
-    const [activeProjectName, setActiveProjectName] = React.useState<string | null>(null)
-    const [canvasState, setCanvasState] = React.useState<CanvasDocument>(() =>
-        createEmptyCanvasDocument()
-    )
-    const [selectedModel, setSelectedModel] = React.useState<string>(() => {
-        return localStorage.getItem('december_selected_model') || ''
-    })
-    const lastSavedCanvasRef = React.useRef<string>('')
-    const [projectVersions, setProjectVersions] = React.useState<BackendProjectVersionSummary[]>([])
-    const [activeProjectVersionId, setActiveProjectVersionId] = React.useState<string | null>(null)
-    const [isProjectOpening, setIsProjectOpening] = React.useState(false)
-    const [projectLoadError, setProjectLoadError] = React.useState<string | null>(null)
-    const [previewSession, setPreviewSession] = React.useState<PreviewSessionStatus | null>(null)
-    const [previewSessionError, setPreviewSessionError] = React.useState<string | null>(null)
-    const [importState, setImportState] = React.useState<{
-        status: 'idle' | 'loading' | 'failed' | 'ready'
-        message?: string | null
-    }>({ status: 'idle', message: null })
+    const {
+        projectType,
+        setProjectType,
+        isGenerating,
+        setIsGenerating,
+        isAuthenticated,
+        setIsAuthenticated,
+        showAuthModal,
+        setShowAuthModal,
+        isMobileSidebarOpen,
+        setIsMobileSidebarOpen,
+        activeProjectId,
+        setActiveProjectId,
+        activeProjectName,
+        setActiveProjectName,
+        canvasState,
+        setCanvasState,
+        selectedModel,
+        setSelectedModel,
+        projectVersions,
+        setProjectVersions,
+        activeProjectVersionId,
+        setActiveProjectVersionId,
+        isProjectOpening,
+        setIsProjectOpening,
+        projectLoadError,
+        setProjectLoadError,
+        previewSession,
+        setPreviewSession,
+        previewSessionError,
+        setPreviewSessionError,
+        importState,
+        setImportState,
+    } = useAppStore()
     const generationAbortControllerRef = React.useRef<AbortController | null>(null)
     const activeAssistantMessageIdRef = React.useRef<string | null>(null)
     const activeGeneratedFilePathRef = React.useRef<string | null>(null)
@@ -224,25 +236,7 @@ export const useAppController = () => {
         isLoading: isProjectsLoading,
         isFetching: isProjectsFetching,
         error: projectsError,
-    } = useQuery({
-        queryKey: ['projects'],
-        queryFn: projectAPI.getProjects,
-        enabled: isAuthenticated,
-        placeholderData: (previousData) => previousData,
-        select: (backendProjects) =>
-            [...backendProjects]
-                .sort((a, b) => {
-                    const createdAtDiff =
-                        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-
-                    if (createdAtDiff !== 0) {
-                        return createdAtDiff
-                    }
-
-                    return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
-                })
-                .map(mapBackendProjectToUIProject),
-    })
+    } = useProjects()
 
     const { data: profile } = useQuery({
         queryKey: ['profile'],
@@ -1677,7 +1671,7 @@ export const useAppController = () => {
         messages,
         generatedFiles,
         activeFilesToDisplay,
-        activeGeneratedFilePath,
+        activeGeneratedFilePath: activeGeneratedFilePathState,
         generationPhase,
         activeOperation,
         isGenerating,
@@ -1687,10 +1681,6 @@ export const useAppController = () => {
         isMobileSidebarOpen,
         setIsMobileSidebarOpen,
         isAuthenticated,
-        projects,
-        isProjectsInitialLoading,
-        isProjectsFetching,
-        projectsErrorMessage,
         isHome,
         showSidebar,
         activeProjectId,

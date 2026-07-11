@@ -12,6 +12,7 @@ import type { SidebarProps } from '@/features/navigation/types'
 import { useBillingOverview } from '@/features/billing/hooks/useBillingData'
 import { SettingsBigModal } from '@/features/preview/components/settings/SettingsBigModal'
 import { Icons } from '@/shared/components/ui/Icons'
+import { useProjects } from '@/features/projects/hooks/useProjects'
 
 const Sidebar: React.FC<
     SidebarProps & { user?: any; onSignOut?: () => void; onHomeClick?: () => void }
@@ -26,12 +27,11 @@ const Sidebar: React.FC<
     onOpenProject,
     isAuthenticated,
     onOpenAuth,
-    projects,
-    isProjectsLoading,
     user,
     onSignOut,
     onHomeClick,
 }) => {
+    const { data: projects = [], isLoading: isProjectsLoading } = useProjects()
     const navigate = useNavigate()
     const location = useLocation()
     const path = location.pathname

@@ -35,10 +35,6 @@ interface AppContentViewProps {
     activeOperation: OutputOperation | null
     isGenerating: boolean
     isAuthenticated: boolean
-    projects: Project[]
-    isProjectsInitialLoading: boolean
-    isProjectsFetching: boolean
-    projectsErrorMessage: string | null
     projectName: string | null
     activeProjectId: string | null
     canvasState: CanvasDocument
@@ -116,10 +112,6 @@ export const AppContentView: React.FC<AppContentViewProps> = ({
     activeOperation,
     isGenerating,
     isAuthenticated,
-    projects,
-    isProjectsInitialLoading,
-    isProjectsFetching,
-    projectsErrorMessage,
     projectName,
     activeProjectId,
     canvasState,
@@ -156,10 +148,6 @@ export const AppContentView: React.FC<AppContentViewProps> = ({
                     <ProjectList
                         onNewProject={onNewProject}
                         onOpenProject={onOpenProject}
-                        projects={projects}
-                        isLoading={isProjectsInitialLoading}
-                        isFetching={isProjectsFetching}
-                        errorMessage={projectsErrorMessage}
                         selectedModel={selectedModel}
                         setSelectedModel={setSelectedModel}
                     />
@@ -171,10 +159,6 @@ export const AppContentView: React.FC<AppContentViewProps> = ({
                     <SessionList
                         onNewProject={onNewProject}
                         onOpenProject={onOpenProject}
-                        projects={projects}
-                        isLoading={isProjectsInitialLoading}
-                        isFetching={isProjectsFetching}
-                        errorMessage={projectsErrorMessage}
                         selectedModel={selectedModel}
                         setSelectedModel={setSelectedModel}
                     />
