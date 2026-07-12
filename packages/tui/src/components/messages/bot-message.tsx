@@ -70,6 +70,7 @@ export function BotMessage({ blocks, usage }: Props) {
                             block.content === 'Working...' ||
                             block.content === 'Generating...'
                         if (isThinking) {
+                            if (idx !== blocks.length - 1) return null
                             return (
                                 <Box key={idx} gap={1} alignItems="center">
                                     <Spinner />
@@ -296,7 +297,6 @@ export function BotMessage({ blocks, usage }: Props) {
                         return (
                             <Box key={idx} flexDirection="column">
                                 <Box gap={1} alignItems="center">
-                                    <Spinner label={statusLabel} />
                                     <StyledCommand command={block.command} truncate={false} />
                                 </Box>
                                 <ToolArgumentsDisplay
@@ -387,7 +387,7 @@ export function BotMessage({ blocks, usage }: Props) {
 
             {usage && (
                 <Box alignSelf="flex-end" paddingRight={1} paddingTop={1}>
-                    <Text color="#475569" dimColor>
+                    <Text color="#94a3b8">
                         {usage.promptTokens + usage.completionTokens} tokens
                     </Text>
                 </Box>

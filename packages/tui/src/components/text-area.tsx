@@ -7,10 +7,19 @@ type Props = {
     onSubmit: (value: string) => void
     placeholder?: string
     focus?: boolean
+    history?: string[]
 }
 
-export function TextArea({ value, onChange, onSubmit, placeholder = '', focus = true }: Props) {
+export function TextArea({
+    value,
+    onChange,
+    onSubmit,
+    placeholder = '',
+    focus = true,
+    history = [],
+}: Props) {
     const [cursorOffset, setCursorOffset] = useState(value.length)
+    const [historyIndex, setHistoryIndex] = useState(-1)
 
     useEffect(() => {
         if (cursorOffset > value.length) {
@@ -31,6 +40,7 @@ export function TextArea({ value, onChange, onSubmit, placeholder = '', focus = 
                 setCursorOffset((prev) => prev + 1)
             } else {
                 onSubmit(value)
+                setHistoryIndex(-1)
             }
             return
         }
@@ -47,28 +57,47 @@ export function TextArea({ value, onChange, onSubmit, placeholder = '', focus = 
             // Simple up: go to start of line or previous line
             const lines = value.slice(0, cursorOffset).split('\n')
             if (lines.length > 1) {
-                const currentLineLength = lines[lines.length - 1].length
-                const prevLineLength = lines[lines.length - 2].length
+                const currentLineLength = lines[lines.length - 1]?.length || 0
+                const prevLineLength = lines[lines.length - 2]?.length || 0
                 const newCol = Math.min(currentLineLength, prevLineLength)
                 const newOffset = cursorOffset - currentLineLength - 1 - (prevLineLength - newCol)
                 setCursorOffset(Math.max(0, newOffset))
             } else {
-                setCursorOffset(0)
+                if (history && history.length > 0) {
+                    const nextIdx = Math.min(history.length - 1, historyIndex + 1)
+                    if (nextIdx !== historyIndex) {
+                        setHistoryIndex(nextIdx)
+                        const hVal = history[history.length - 1 - nextIdx] || ''
+                        onChange(hVal)
+                        setCursorOffset(hVal.length)
+                    }
+                } else {
+                    setCursorOffset(0)
+                }
             }
             return
         }
         if (key.downArrow) {
             const preLines = value.slice(0, cursorOffset).split('\n')
-            const currentLineLength = preLines[preLines.length - 1].length
+            const currentLineLength = preLines[preLines.length - 1]?.length || 0
 
             const postLines = value.slice(cursorOffset).split('\n')
             if (postLines.length > 1) {
-                const nextLineLength = postLines[1].length
+                const nextLineLength = postLines[1]?.length || 0
                 const newCol = Math.min(currentLineLength, nextLineLength)
-                const newOffset = cursorOffset + postLines[0].length + 1 + newCol
+                const postLineZeroLength = postLines[0]?.length || 0
+                const newOffset = cursorOffset + postLineZeroLength + 1 + newCol
                 setCursorOffset(Math.min(value.length, newOffset))
             } else {
-                setCursorOffset(value.length)
+                if (historyIndex >= 0) {
+                    const nextIdx = historyIndex - 1
+                    setHistoryIndex(nextIdx)
+                    const hVal = nextIdx >= 0 ? history[history.length - 1 - nextIdx] || '' : ''
+                    onChange(hVal)
+                    setCursorOffset(hVal.length)
+                } else {
+                    setCursorOffset(value.length)
+                }
             }
             return
         }
@@ -81,7 +110,27 @@ export function TextArea({ value, onChange, onSubmit, placeholder = '', focus = 
             return
         }
 
-        // Ignore ctrl commands here, let parent handle ctrl+w or handle it here
+        if (key.ctrl && input === 'a') {
+            setCursorOffset(0)
+            return
+        }
+        if (key.ctrl && input === 'e') {
+            setCursorOffset(value.length)
+            return
+        }
+        if (key.ctrl && input === 'k') {
+            const newValue = value.slice(0, cursorOffset)
+            onChange(newValue)
+            return
+        }
+        if (key.ctrl && input === 'u') {
+            const newValue = value.slice(cursorOffset)
+            onChange(newValue)
+            setCursorOffset(0)
+            return
+        }
+
+        // Ignore other ctrl commands here, let parent handle ctrl+w or handle it here
         if (key.ctrl) return
 
         if (input) {
