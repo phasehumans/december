@@ -936,11 +936,9 @@ export function useAgentSession({
             }
 
             setIsStreaming(true)
-            setStaticMessages((prev) => [...prev, ...activeMessages])
-            setActiveMessages([
-                { id: ++msgId, role: 'user', text },
-                { id: ++msgId, role: 'assistant', blocks: [] },
-            ])
+            const newUserMsg: Message = { id: ++msgId, role: 'user', text }
+            setStaticMessages((prev) => [...prev, ...activeMessages, newUserMsg])
+            setActiveMessages([{ id: ++msgId, role: 'assistant', blocks: [] }])
 
             const assistantMsgId = msgId
 
