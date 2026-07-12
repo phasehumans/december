@@ -10,11 +10,7 @@ type Props = {
 const renderToken = (token: marked.Token, index: number): React.ReactNode => {
     switch (token.type) {
         case 'paragraph':
-            return (
-                <Box key={index} flexDirection="row" flexWrap="wrap">
-                    {token.tokens?.map((t, i) => renderToken(t, i))}
-                </Box>
-            )
+            return <Text key={index}>{token.tokens?.map((t, i) => renderToken(t, i))}</Text>
         case 'text':
             if ('tokens' in token && token.tokens) {
                 return <Text key={index}>{token.tokens.map((t, i) => renderToken(t, i))}</Text>
@@ -43,13 +39,7 @@ const renderToken = (token: marked.Token, index: number): React.ReactNode => {
             return <Text key={index}>{token.raw}</Text>
         case 'code':
             return (
-                <Box
-                    key={index}
-                    flexDirection="column"
-                    marginY={0.5}
-                    paddingLeft={2}
-                    borderLeft={false}
-                >
+                <Box key={index} flexDirection="column" paddingLeft={2} borderLeft={false}>
                     <Text color="#555555">│ </Text>
                     <Text color="cyan">{token.text}</Text>
                 </Box>
