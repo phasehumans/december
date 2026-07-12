@@ -3,7 +3,7 @@ import { useState, useCallback, useEffect } from 'react'
 
 import { getModelLabel, getProviderModels } from './utils/models'
 
-import { MessageList, InputBar } from '@december/tui'
+import { MessageList, InputBar, TaskHUD } from '@december/tui'
 import { useAgentSession } from './hooks/use-agent-session'
 import { AuthMenus, AskQuestionMenu } from '@december/tui'
 import { Agent } from '@december/agent'
@@ -28,6 +28,7 @@ export function Chat({
         onCode: (code: string, uri: string) => void
     ) => Promise<{ token: string; email: string | null }>
 }) {
+    const [inputHistory, setInputHistory] = useState<string[]>([])
     const session = useAgentSession({
         agent,
         isAuthenticated: initialAuth,
@@ -43,7 +44,6 @@ export function Chat({
         activeMessages,
         isAuthenticated,
         currentEmail,
-        handleSubmit,
         authMode,
         planMode,
         grillMode,
@@ -68,8 +68,37 @@ export function Chat({
                 <AuthMenus {...session} agent={agent} getProviderModels={getProviderModels} />
             )
         ) : null
+
+    const handleFormSubmit = useCallback(
+        (text: string) => {
+            if (text && !text.startsWith('/')) {
+                setInputHistory((prev) => [...prev, text])
+            }
+            session.handleSubmit(text)
+        },
+        [session.handleSubmit]
+    )
+
+    const totalTokens = [...staticMessages, ...activeMessages].reduce((acc, msg) => {
+        if (msg.usage) {
+            return acc + (msg.usage.promptTokens || 0) + (msg.usage.completionTokens || 0)
+        }
+        return acc
+    }, 0)
+
+    const activeSubagent = activeMessages.find(
+        (m) => m.role === 'assistant' && m.toolCalls?.some((tc) => tc.name === 'invoke_subagent')
+    )
+    const hasActiveSubagent =
+        activeSubagent &&
+        !activeMessages.some(
+            (m) =>
+                m.role === 'tool' && activeSubagent.toolCalls?.some((tc) => tc.id === m.toolCallId)
+        )
+
     return (
         <Box flexDirection="column" width="100%">
+            <TaskHUD cwd={process.cwd()} />
             <MessageList
                 staticKey={staticKey}
                 staticMessages={staticMessages}
@@ -80,15 +109,50 @@ export function Chat({
             />
 
             <InputBar
-                onSubmit={handleSubmit}
+                onSubmit={handleFormSubmit}
+                history={inputHistory}
                 disabled={authMode !== 'none'}
+                onInterrupt={() => {
+                    if (session.isStreaming) {
+                        agent.abort()
+                    } else {
+                        process.exit(0)
+                    }
+                }}
+                onCopy={() => {
+                    import('clipboardy')
+                        .then((cb) => {
+                            const allMsgs = [...staticMessages, ...activeMessages]
+                            const lastAssistant = [...allMsgs]
+                                .reverse()
+                                .find((m) => m.role === 'assistant' && m.blocks)
+                            if (lastAssistant) {
+                                const text =
+                                    lastAssistant.blocks?.map((b) => b.content || '').join('\n') ||
+                                    ''
+                                cb.default.writeSync(text)
+                            }
+                        })
+                        .catch(console.error)
+                }}
                 placeholder="Ask December to build..."
                 activeModel={
                     agent.modelOptions?.model
                         ? getModelLabel(agent.modelOptions.model)
                         : getModelLabel('gemini-3.5-flash')
                 }
-                authUI={authUI}
+                contextTokens={totalTokens}
+                authUI={
+                    hasActiveSubagent ? (
+                        <Box paddingX={1}>
+                            <Text color="#F59E0B" bold>
+                                ◆ Subagent Active...
+                            </Text>
+                        </Box>
+                    ) : (
+                        authUI
+                    )
+                }
                 agent={agent}
                 resetChat={() => {
                     console.clear()

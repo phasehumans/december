@@ -50,7 +50,12 @@ export function ToolArgumentsDisplay({ toolName, inputObj }: { toolName: string;
     }
 
     // For general tools, avoid massive dumps
-    const entries = Object.entries(inputObj)
+    const entries = Object.entries(inputObj).filter(([key]) => {
+        if (toolName === 'run_command' || toolName === 'bash') {
+            if (key === 'command' || key === 'CommandLine') return false
+        }
+        return true
+    })
     if (entries.length === 0) return null
 
     return (

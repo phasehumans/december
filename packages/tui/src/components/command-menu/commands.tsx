@@ -110,14 +110,14 @@ export const COMMANDS: Command[] = [
 
                 fs.mkdirSync(decDir)
 
-                const mdFile = path.join(decDir, 'DECEMBER.md')
+                const agentsFile = path.join(decDir, 'AGENTS.md')
+
                 const rulesDir = path.join(decDir, 'rules')
                 const rulesReadme = path.join(rulesDir, 'README.md')
                 const skillsDir = path.join(decDir, 'skills')
                 const skillsReadme = path.join(skillsDir, 'README.md')
-                const ignoreFile = path.join(decDir, '.decemberignore')
 
-                fs.writeFileSync(mdFile, '# December Configuration\n')
+                fs.writeFileSync(agentsFile, '')
 
                 fs.mkdirSync(rulesDir)
                 fs.writeFileSync(
@@ -130,13 +130,6 @@ export const COMMANDS: Command[] = [
                     skillsReadme,
                     '# Skills\n\nAdd executable scripts or custom tool definitions here. December will be able to run these skills as custom tools to perform specific actions in your workspace.\n'
                 )
-
-                if (!fs.existsSync(ignoreFile)) {
-                    fs.writeFileSync(
-                        ignoreFile,
-                        '# Ignore these files and directories when searching or reading\nnode_modules\n.git\ndist\nbuild\n.env\n.next\n'
-                    )
-                }
 
                 ctx.toast.show({
                     variant: 'success',

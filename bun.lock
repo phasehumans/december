@@ -37,6 +37,7 @@
         "december": "./dist/december.js",
       },
       "dependencies": {
+        "clipboardy": "5.3.1",
         "ink-select-input": "6.2.0",
         "ink-text-input": "6.0.0",
         "open": "11.0.0",
