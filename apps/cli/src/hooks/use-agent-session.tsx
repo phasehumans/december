@@ -215,6 +215,50 @@ export function useAgentSession({
         setIsStreaming,
     } = chatFeature
 
+    const [pendingQuestions, setPendingQuestions] = useState<{
+        questions: Array<{ question: string; options: string[]; is_multi_select?: boolean }>
+        resolve: (answer: string) => void
+    } | null>(null)
+
+    useEffect(() => {
+        if (agent) {
+            agent.operations.askQuestion = (questions) => {
+                return new Promise((resolve) => {
+                    setAuthMode('ask_question')
+                    setPendingQuestions({ questions, resolve })
+                })
+            }
+
+            agent.hooks = {
+                ...agent.hooks,
+                beforeToolCall: async (toolCall) => {
+                    if (
+                        ['replace_file_content', 'multi_replace_file_content'].includes(
+                            toolCall.name
+                        )
+                    ) {
+                        const answer = await new Promise<string>((resolve) => {
+                            setAuthMode('ask_question')
+                            setPendingQuestions({
+                                questions: [
+                                    {
+                                        question: `Execute ${toolCall.name}? (Diff is previewed in chat)`,
+                                        options: ['Yes (Approve)', 'No (Deny)'],
+                                    },
+                                ],
+                                resolve,
+                            })
+                        })
+                        if (answer !== 'Yes (Approve)') {
+                            return { block: true, reason: 'User denied execution in UI.' }
+                        }
+                    }
+                    return { block: false }
+                },
+            }
+        }
+    }, [agent])
+
     const cols = useTerminalColumns()
     const panelWidth = Math.floor(cols * 0.45)
 
@@ -673,6 +717,15 @@ export function useAgentSession({
                                     }
                                     break
                                 }
+                                case 'AgentUsage': {
+                                    return {
+                                        ...msg,
+                                        usage: {
+                                            promptTokens: (event as any).promptTokens,
+                                            completionTokens: (event as any).completionTokens,
+                                        },
+                                    }
+                                }
                             }
                             return { ...msg, blocks }
                         })
@@ -936,11 +989,9 @@ export function useAgentSession({
             }
 
             setIsStreaming(true)
-            setStaticMessages((prev) => [...prev, ...activeMessages])
-            setActiveMessages([
-                { id: ++msgId, role: 'user', text },
-                { id: ++msgId, role: 'assistant', blocks: [] },
-            ])
+            const newUserMsg: Message = { id: ++msgId, role: 'user', text }
+            setStaticMessages((prev) => [...prev, ...activeMessages, newUserMsg])
+            setActiveMessages([{ id: ++msgId, role: 'assistant', blocks: [] }])
 
             const assistantMsgId = msgId
 
@@ -1065,6 +1116,15 @@ Explain which files need to be created, modified, or deleted, and what the chang
                                         lastCmd.output = event.result.error || event.result.result
                                     }
                                     break
+                                }
+                                case 'AgentUsage': {
+                                    return {
+                                        ...msg,
+                                        usage: {
+                                            promptTokens: (event as any).promptTokens,
+                                            completionTokens: (event as any).completionTokens,
+                                        },
+                                    }
                                 }
                             }
                             return { ...msg, blocks }
@@ -1791,5 +1851,7 @@ Explain which files need to be created, modified, or deleted, and what the chang
         handleKeySubmit,
         handleLogoutSelect,
         handleGrillSelect,
+        pendingQuestions,
+        setPendingQuestions,
     }
 }

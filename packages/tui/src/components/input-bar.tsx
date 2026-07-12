@@ -1,12 +1,12 @@
 import { Box, Text, useInput } from 'ink'
-import TextInput from 'ink-text-input'
+import { TextArea } from './text-area'
 import { useState, useCallback, useRef } from 'react'
 
-import { useTerminalColumns } from '../hooks/use-terminal-columns'
 import { useDialog, InlineDialog } from '../providers/dialog'
 import { useToast } from '../providers/toast'
 
 import { CommandMenu } from './command-menu'
+import { ShortcutsMenu } from './menus/shortcuts-menu'
 import { useCommandMenu } from './command-menu/use-command-menu'
 // ModelSelector removed in favor of passing activeModel as prop
 
@@ -23,6 +23,9 @@ type Props = {
     planMode?: boolean
     grillMode?: boolean
     customInputMode?: boolean
+    onInterrupt?: () => void
+    onCopy?: () => void
+    contextTokens?: number
 }
 
 export function InputBar({
@@ -36,9 +39,11 @@ export function InputBar({
     planMode = false,
     grillMode = false,
     customInputMode = false,
+    onInterrupt,
+    onCopy,
+    contextTokens,
 }: Props) {
     const [value, setValue] = useState('')
-    const cols = useTerminalColumns()
     const toast = useToast()
     const dialog = useDialog()
 
@@ -51,6 +56,8 @@ export function InputBar({
         resolveCommand,
         setSelectedIndex,
     } = useCommandMenu()
+
+    const [showShortcutsMenu, setShowShortcutsMenu] = useState(false)
 
     const isCtrlW = useRef(false)
     useInput((input, key) => {
@@ -69,6 +76,14 @@ export function InputBar({
         if ((key.backspace || key.delete) && value.length === 0 && planMode) {
             onSubmit('/plan')
         }
+        if (key.ctrl && input === 'c') {
+            if (onInterrupt) onInterrupt()
+            return
+        }
+        if (key.ctrl && input === 'y') {
+            if (onCopy) onCopy()
+            return
+        }
     })
 
     const handleChange = useCallback(
@@ -78,10 +93,17 @@ export function InputBar({
                 isCtrlW.current = false
                 return
             }
+            if (newValue === '?') {
+                setShowShortcutsMenu(true)
+                setValue('?')
+                return
+            } else if (showShortcutsMenu) {
+                setShowShortcutsMenu(false)
+            }
             setValue(newValue)
             handleContentChange(newValue)
         },
-        [disabled, handleContentChange]
+        [disabled, handleContentChange, showShortcutsMenu]
     )
 
     const handleCommand = useCallback(
@@ -137,8 +159,13 @@ export function InputBar({
                 handleCommand(command)
                 return
             }
+            if (showShortcutsMenu) {
+                // ignoring submit for shortcuts menu, it closes on escape
+                return
+            }
             const trimmed = text.trim()
             if (trimmed.length === 0) return
+            // Save to history (we will implement global history in app, or just pass it in here later)
             onSubmit(trimmed)
             setValue('')
             handleContentChange('')
@@ -154,8 +181,7 @@ export function InputBar({
         ]
     )
 
-    const innerWidth = Math.max(8, cols - 4)
-    const sep = '─'.repeat(innerWidth)
+    const sep = '─'.repeat(400)
 
     return (
         <Box flexDirection="column" paddingX={2}>
@@ -173,12 +199,12 @@ export function InputBar({
             </Box>
 
             {/* Content: Prompt */}
-            <Box>
+            <Box width="100%" paddingRight={4}>
                 <Text color={disabled ? '#555555' : '#89B4F8'}>{`❭ `}</Text>
                 {planMode && <Text color="#89B4F8">/plan </Text>}
                 {grillMode && <Text color="#89B4F8">/grill-me </Text>}
                 {(!authUI || customInputMode) && (
-                    <TextInput
+                    <TextArea
                         value={value}
                         onChange={handleChange}
                         onSubmit={handleSubmit}
@@ -204,10 +230,15 @@ export function InputBar({
             </Box>
 
             {/* Status row — model left, december studio right */}
-            {!showCommandMenu && !authUI && (
+            {!showCommandMenu && !showShortcutsMenu && !authUI && (
                 <Box width="100%" justifyContent="space-between">
                     <Box gap={2} alignItems="center">
-                        <Text color="#AAAAAA">{activeModel}</Text>
+                        <Box gap={1}>
+                            <Text color="#AAAAAA">{activeModel}</Text>
+                            {contextTokens !== undefined && contextTokens > 0 && (
+                                <Text color="#AAAAAA">· {contextTokens} tokens</Text>
+                            )}
+                        </Box>
                         {toast.currentToast && (
                             <Box gap={1}>
                                 <Text
@@ -244,6 +275,16 @@ export function InputBar({
                     onExecute={(index) => {
                         const command = resolveCommand(index)
                         handleCommand(command)
+                    }}
+                />
+            )}
+
+            {/* Shortcuts dropdown */}
+            {showShortcutsMenu && (
+                <ShortcutsMenu
+                    onClose={() => {
+                        setShowShortcutsMenu(false)
+                        setValue('')
                     }}
                 />
             )}

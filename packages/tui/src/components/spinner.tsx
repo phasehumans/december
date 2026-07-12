@@ -1,10 +1,13 @@
-import { Text } from 'ink'
+import { Text, Box } from 'ink'
 import InkSpinner from 'ink-spinner'
 
-export function Spinner() {
+export function Spinner({ label }: { label?: string }) {
     return (
-        <Text dimColor>
-            <InkSpinner type="dots" />
-        </Text>
+        <Box gap={1} alignItems="center">
+            <Text dimColor color="cyan">
+                <InkSpinner type="dots" />
+            </Text>
+            {label && <Text dimColor>{label}</Text>}
+        </Box>
     )
 }
