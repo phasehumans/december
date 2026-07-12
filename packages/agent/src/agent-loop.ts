@@ -2,7 +2,7 @@ import { v4 as uuidv4 } from 'uuid'
 import pRetry, { AbortError } from 'p-retry'
 
 import { Agent } from './agent'
-import { AgentEvent, ToolCall, ToolResult } from './types'
+import { AgentEvent, ToolCall, ToolResult } from '@december/shared'
 import { compactContextIfNeeded } from './utils/compaction'
 
 const delay = (ms: number) => new Promise((res) => setTimeout(res, ms))
@@ -51,13 +51,33 @@ function formatError(e: any): string {
     if (typeof e === 'string') return e
     if (e.originalError) return formatError(e.originalError) // p-retry AbortError
     if (e.cause) return formatError(e.cause)
-    if (e.error?.error?.message) return String(e.error.error.message)
-    if (e.error?.message) return String(e.error.message)
-    if (e.message) return String(e.message)
+
+    // Ensure we capture the raw response data if available (axios/fetch style)
+    // Ensure we capture the raw response data if available (axios/fetch style)
+    let rawData = e.response?.data || e.error || e
+
+    // If it's a Gemini SDK ApiError, the detailed JSON is often stuffed into a message string
+    const msgStr = e.error?.error?.message || e.error?.message || e.message || rawData?.message
+    if (msgStr && typeof msgStr === 'string') {
+        try {
+            const parsedMessage = JSON.parse(msgStr)
+            // If it's valid JSON, use it as the raw data
+            rawData = parsedMessage
+        } catch {
+            // Not JSON, just keep the original rawData but we'll include the message string if it's the only thing we have
+            if (rawData === e && !e.response && !e.error) {
+                return msgStr
+            }
+        }
+    }
 
     try {
-        const json = JSON.stringify(e)
-        if (json !== '{}') return json
+        const json = JSON.stringify(rawData, null, 2)
+        if (json !== '{}' && json !== '""') return json
+    } catch {}
+
+    try {
+        return require('util').inspect(rawData, { depth: 4 })
     } catch {}
 
     return String(e)
@@ -263,7 +283,8 @@ async function streamAssistantResponse(
                             message: `Rate limit hit, waiting ~${delaySeconds}s to retry... (${error.retriesLeft} retries left)`,
                         })
                     } else {
-                        throw new AbortError(error)
+                        const errStr = formatError(error)
+                        throw new AbortError(errStr)
                     }
                 },
             }
@@ -272,49 +293,7 @@ async function streamAssistantResponse(
         eventQueue.push({ type: 'AgentStatus', message: '' }) // Clear status on success
         return { assistantMessage, toolCalls }
     } catch (error: any) {
-        let errorMsg = typeof error.message === 'string' ? error.message : String(error)
-
-        eventQueue.push({ type: 'AgentStatus', message: '' })
-
-        // Extract original error if p-retry wrapped it
-        if (error.name === 'AbortError' && error.originalError) {
-            error = error.originalError
-            if (error.error) {
-                error = error.error
-            }
-        }
-
-        let extractedMsg = 'Unknown Error'
-        if (typeof error === 'string') {
-            extractedMsg = error
-        } else if (error && typeof error === 'object') {
-            if (typeof error.message === 'string') {
-                extractedMsg = error.message
-            } else if (error.error && typeof error.error === 'string') {
-                extractedMsg = error.error
-            } else if (error.error && typeof error.error.message === 'string') {
-                extractedMsg = error.error.message
-            } else if (error.message && typeof error.message === 'object') {
-                extractedMsg = JSON.stringify(error.message)
-            } else {
-                try {
-                    const str = JSON.stringify(error)
-                    extractedMsg = str === '{}' ? String(error) : str
-                } catch {
-                    extractedMsg = String(error)
-                }
-            }
-        } else {
-            extractedMsg = String(error)
-        }
-
-        if (extractedMsg === '[object Object]') {
-            try {
-                extractedMsg = JSON.stringify(error)
-            } catch {}
-        }
-
-        errorMsg = extractedMsg
+        let errorMsg = formatError(error)
 
         if (signal.aborted || (error.name === 'AbortError' && errorMsg === 'Aborted')) {
             eventQueue.push({ type: 'StreamChunk', content: `\n\n*[Generation Interrupted]*\n` })
@@ -332,7 +311,8 @@ async function streamAssistantResponse(
             errorMsg.toLowerCase().includes('rate limit')
         ) {
             errorMsg =
-                'Rate limit exhausted after multiple retries. Please wait a few minutes or provide a different API key.'
+                'Rate limit exhausted after multiple retries. Please wait a few minutes or provide a different API key.\n\n' +
+                errorMsg
         }
 
         eventQueue.push({ type: 'StreamChunk', content: `\n\n**API Error:** ${errorMsg}\n` })

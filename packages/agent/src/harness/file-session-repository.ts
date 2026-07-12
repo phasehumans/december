@@ -2,7 +2,7 @@ import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 
-import { Message } from '../types'
+import { Message } from '@december/shared'
 
 import { SessionRepository } from './session-repository'
 

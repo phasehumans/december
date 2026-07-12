@@ -133,11 +133,19 @@ export class GeminiProvider implements LLMProvider {
         // Gemini doesn't stream tool call deltas like OpenAI/Anthropic do.
         // It returns the entire tool call in one chunk.
         for await (const chunk of responseStream) {
-            if (chunk.text) {
-                yield { type: 'text', text: chunk.text }
+            const parts = chunk.candidates?.[0]?.content?.parts || []
+            let chunkText = ''
+
+            for (const part of parts) {
+                if (part.text && typeof part.text === 'string') {
+                    chunkText += part.text
+                }
             }
 
-            const parts = chunk.candidates?.[0]?.content?.parts || []
+            if (chunkText) {
+                yield { type: 'text', text: chunkText }
+            }
+
             for (const part of parts) {
                 if (part.functionCall) {
                     const fc = part.functionCall
