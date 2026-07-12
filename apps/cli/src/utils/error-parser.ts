@@ -60,7 +60,13 @@ export function parseErrorMessage(err: any): string {
     }
 
     const extracted = extractMessage(errMsg)
-    if (extracted) return extracted
+    if (extracted && extracted !== '[object Object]') return extracted
+
+    if (errMsg === '[object Object]' && err && typeof err === 'object') {
+        try {
+            return require('util').inspect(err)
+        } catch {}
+    }
 
     return errMsg.replace(/^\[.*?Error\]:\s*/, '').trim()
 }
