@@ -261,6 +261,12 @@ async function streamAssistantResponse(
                         }
                     } else if (chunk.type === 'tool_call') {
                         activeToolCalls.set(chunk.toolCall.id, chunk.toolCall)
+                    } else if (chunk.type === 'usage') {
+                        eventQueue.push({
+                            type: 'AgentUsage',
+                            promptTokens: chunk.promptTokens,
+                            completionTokens: chunk.completionTokens,
+                        })
                     }
                 }
                 toolCalls = Array.from(activeToolCalls.values())

@@ -14,4 +14,7 @@ export interface AgentOperations {
         find: (path: string, query: string) => Promise<string>
         grep: (path: string, query: string) => Promise<string>
     }
+    askQuestion?: (
+        questions: Array<{ question: string; options: string[]; is_multi_select?: boolean }>
+    ) => Promise<string>
 }

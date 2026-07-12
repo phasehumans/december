@@ -3,6 +3,7 @@ export type Message = {
     role: 'user' | 'assistant' | 'error' | 'header'
     text?: string
     blocks?: any[]
+    usage?: { promptTokens: number; completionTokens: number }
 }
 
 export type AuthMode =
@@ -17,6 +18,7 @@ export type AuthMode =
     | 'session_select'
     | 'plan_approve'
     | 'grill_question'
+    | 'ask_question'
     | 'settings_main'
     | 'tasks_mode'
     | 'usage'
