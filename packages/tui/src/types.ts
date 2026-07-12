@@ -18,6 +18,5 @@ export type AuthMode =
     | 'plan_approve'
     | 'grill_question'
     | 'settings_main'
-    | 'plan_mode'
-    | 'grill_mode'
     | 'tasks_mode'
+    | 'usage'

@@ -1,45 +1,25 @@
-import { useEffect } from 'react'
-import { RootLayout } from './layouts/root-layout'
-import { Chat } from './screens/chat'
+export * from './components/input-bar'
+export * from './hooks/use-terminal-columns'
+export * from './providers/toast'
+export * from './components/messages/bot-message'
+export * from './components/message-list'
+export * from './types'
+export * from './theme'
+export * from './layouts/root-layout'
+export * from './components/menus/menu-items'
+export * from './components/menus/auth-menus'
 
-import type { Agent } from '@december/agent'
-import type { FileSessionRepository } from '@december/agent'
-
-export function App({
-    agent,
-    isAuthenticated,
-    cliVersion,
-    userEmail,
-    sessionRepository,
-    onLogin,
-    onLoginHeadless,
-}: {
-    agent: Agent
-    isAuthenticated: boolean
-    cliVersion?: string
-    userEmail?: string
-    sessionRepository?: FileSessionRepository
-    onLogin?: () => Promise<{ token: string; email: string | null }>
-    onLoginHeadless?: (
-        onCode: (code: string, uri: string) => void
-    ) => Promise<{ token: string; email: string | null }>
-}) {
-    useEffect(() => {
-        process.title = 'december'
-        process.stdout.write('\x1b]0;december\x07')
-    }, [])
-
-    return (
-        <RootLayout>
-            <Chat
-                agent={agent}
-                isAuthenticated={isAuthenticated}
-                cliVersion={cliVersion}
-                userEmail={userEmail}
-                sessionRepository={sessionRepository}
-                onLogin={onLogin}
-                onLoginHeadless={onLoginHeadless}
-            />
-        </RootLayout>
-    )
-}
+export * from './components/menus/menu-menu'
+export * from './components/menus/december-login-select-menu'
+export * from './components/menus/byok-provider-menu'
+export * from './components/menus/byok-key-menu'
+export * from './components/menus/model-select-menu'
+export * from './components/menus/context-select-menu'
+export * from './components/menus/logout-select-menu'
+export * from './components/menus/session-select-menu'
+export * from './components/menus/tasks-mode-menu'
+export * from './components/menus/plan-approve-menu'
+export * from './components/menus/grill-question-menu'
+export * from './components/menus/settings-main-menu'
+export * from './components/menus/hooks-menu'
+export * from './components/menus/usage-menu'

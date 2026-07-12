@@ -1,4 +1,4 @@
-import { Tool, ToolExecuteContext } from '@december/agent'
+import { Tool, ToolExecuteContext } from '@december/shared'
 
 export interface SubagentInput {
     prompt: string

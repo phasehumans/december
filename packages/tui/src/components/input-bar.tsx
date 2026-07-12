@@ -20,6 +20,8 @@ type Props = {
     authUI?: React.ReactNode
     agent?: any
     resetChat?: () => void
+    planMode?: boolean
+    grillMode?: boolean
     customInputMode?: boolean
 }
 
@@ -31,6 +33,8 @@ export function InputBar({
     authUI,
     agent,
     resetChat,
+    planMode = false,
+    grillMode = false,
     customInputMode = false,
 }: Props) {
     const [value, setValue] = useState('')
@@ -59,6 +63,12 @@ export function InputBar({
                 return next
             })
         }
+        if ((key.backspace || key.delete) && value.length === 0 && grillMode) {
+            onSubmit('/grill-me')
+        }
+        if ((key.backspace || key.delete) && value.length === 0 && planMode) {
+            onSubmit('/plan')
+        }
     })
 
     const handleChange = useCallback(
@@ -77,6 +87,7 @@ export function InputBar({
     const handleCommand = useCallback(
         (command: Command | undefined) => {
             if (!command) return
+
             setValue('')
             handleContentChange('')
 
@@ -92,7 +103,8 @@ export function InputBar({
                 command.value === '/settings' ||
                 command.value === '/context' ||
                 command.value === '/hooks' ||
-                command.value === '/tasks'
+                command.value === '/tasks' ||
+                command.value === '/usage'
             ) {
                 onSubmit(command.value)
                 return
@@ -157,12 +169,22 @@ export function InputBar({
             {/* Content: Prompt */}
             <Box>
                 <Text color={disabled ? '#555555' : '#89B4F8'}>{`❭ `}</Text>
+                {planMode && <Text color="#89B4F8">/plan </Text>}
+                {grillMode && <Text color="#89B4F8">/grill-me </Text>}
                 {(!authUI || customInputMode) && (
                     <TextInput
                         value={value}
                         onChange={handleChange}
                         onSubmit={handleSubmit}
-                        placeholder={customInputMode ? 'Type your custom answer...' : placeholder}
+                        placeholder={
+                            customInputMode
+                                ? 'Type your custom answer...'
+                                : planMode
+                                  ? ''
+                                  : grillMode
+                                    ? ''
+                                    : placeholder
+                        }
                         focus={!disabled && !dialog.isOpen}
                     />
                 )}
@@ -191,9 +213,8 @@ export function InputBar({
                                               : 'gray'
                                     }
                                 >
-                                    ●
+                                    {toast.currentToast.message}
                                 </Text>
-                                <Text color="gray">{toast.currentToast.message}</Text>
                             </Box>
                         )}
                     </Box>
