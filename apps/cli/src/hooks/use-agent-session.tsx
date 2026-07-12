@@ -1655,6 +1655,8 @@ Explain which files need to be created, modified, or deleted, and what the chang
         }
     }
 
+    const handleContextSelect = () => {}
+
     const handleLogoutSelect = async (value: string) => {
         const config = await loadConfig()
         let removedName = ''
