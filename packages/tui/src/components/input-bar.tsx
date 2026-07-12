@@ -1,8 +1,7 @@
 import { Box, Text, useInput } from 'ink'
-import TextInput from 'ink-text-input'
+import { TextArea } from './text-area'
 import { useState, useCallback, useRef } from 'react'
 
-import { useTerminalColumns } from '../hooks/use-terminal-columns'
 import { useDialog, InlineDialog } from '../providers/dialog'
 import { useToast } from '../providers/toast'
 
@@ -38,7 +37,6 @@ export function InputBar({
     customInputMode = false,
 }: Props) {
     const [value, setValue] = useState('')
-    const cols = useTerminalColumns()
     const toast = useToast()
     const dialog = useDialog()
 
@@ -154,8 +152,7 @@ export function InputBar({
         ]
     )
 
-    const innerWidth = Math.max(8, cols - 4)
-    const sep = '─'.repeat(innerWidth)
+    const sep = '─'.repeat(400)
 
     return (
         <Box flexDirection="column" paddingX={2}>
@@ -173,12 +170,12 @@ export function InputBar({
             </Box>
 
             {/* Content: Prompt */}
-            <Box>
+            <Box width="100%" paddingRight={4}>
                 <Text color={disabled ? '#555555' : '#89B4F8'}>{`❭ `}</Text>
                 {planMode && <Text color="#89B4F8">/plan </Text>}
                 {grillMode && <Text color="#89B4F8">/grill-me </Text>}
                 {(!authUI || customInputMode) && (
-                    <TextInput
+                    <TextArea
                         value={value}
                         onChange={handleChange}
                         onSubmit={handleSubmit}

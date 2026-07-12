@@ -4,6 +4,8 @@ import React from 'react'
 import { Markdown } from '../markdown'
 import { Pill } from '../pill'
 import { Spinner } from '../spinner'
+import { ToolArgumentsDisplay } from './tool-arguments'
+import { ParsedOutputLine } from './parsed-output-line'
 
 export type MessageBlock =
     | { type: 'text'; content: string }
@@ -28,6 +30,7 @@ export type MessageBlock =
 
 type Props = {
     blocks: MessageBlock[]
+    usage?: { promptTokens: number; completionTokens: number }
 }
 
 function StyledCommand({ command, truncate = true }: { command: string; truncate?: boolean }) {
@@ -56,7 +59,7 @@ function StyledCommand({ command, truncate = true }: { command: string; truncate
     return <Text color="white">{displayCmd}</Text>
 }
 
-export function BotMessage({ blocks }: Props) {
+export function BotMessage({ blocks, usage }: Props) {
     return (
         <Box flexDirection="column" paddingX={4} paddingY={0} gap={1} marginTop={1}>
             {blocks.map((block, idx) => {
@@ -88,22 +91,19 @@ export function BotMessage({ blocks }: Props) {
                                             .replace(/<\/thought>$/, '')
                                             .trim()
                                         return (
-                                            <Box
-                                                key={pidx}
-                                                flexDirection="column"
-                                                paddingBottom={0}
-                                            >
-                                                <Box gap={1} alignItems="center">
-                                                    <Pill
-                                                        label="THOUGHT"
-                                                        backgroundColor="#303030"
-                                                        color="#94a3b8"
-                                                    />
+                                            <Box key={pidx} flexDirection="row" paddingBottom={1}>
+                                                <Box width={2} flexShrink={0}>
+                                                    <Text color="#475569">│</Text>
                                                 </Box>
-                                                <Box marginLeft={0} paddingLeft={2} paddingY={0.5}>
-                                                    <Text color="gray" dimColor>
-                                                        {thoughtContent}
+                                                <Box flexDirection="column">
+                                                    <Text color="#64748b" italic>
+                                                        Thinking...
                                                     </Text>
+                                                    <Box paddingY={0.5}>
+                                                        <Text color="#475569" dimColor>
+                                                            {thoughtContent}
+                                                        </Text>
+                                                    </Box>
                                                 </Box>
                                             </Box>
                                         )
@@ -134,14 +134,14 @@ export function BotMessage({ blocks }: Props) {
                         const isRunning = block.status === 'running'
                         const isSuccess = block.status === 'success'
 
-                        if (!isRunning) {
-                            let parsedInput: any = {}
-                            try {
-                                parsedInput = JSON.parse(block.toolInput || '{}')
-                            } catch {
-                                // ignore parse errors
-                            }
+                        let parsedInput: any = {}
+                        try {
+                            parsedInput = JSON.parse(block.toolInput || '{}')
+                        } catch {
+                            // ignore parse errors
+                        }
 
+                        if (!isRunning) {
                             if (block.toolName === 'read_file') {
                                 const lines = block.output ? block.output.split(/\r?\n/).length : 0
                                 return (
@@ -155,11 +155,7 @@ export function BotMessage({ blocks }: Props) {
                                             <Text color="white">
                                                 {parsedInput.path || parsedInput.filePath || ''}
                                             </Text>
-                                            {isSuccess && (
-                                                <Text color="gray" dimColor>
-                                                    ({lines} lines)
-                                                </Text>
-                                            )}
+                                            {isSuccess && <Text color="cyan">({lines} lines)</Text>}
                                         </Box>
                                     </Box>
                                 )
@@ -196,64 +192,71 @@ export function BotMessage({ blocks }: Props) {
                                             <StyledCommand
                                                 command={`${isWrite ? 'Create' : 'Edit'}(${path})`}
                                             />
+                                            {isSuccess && isWrite && (
+                                                <Text color="cyan">({lines.length} lines)</Text>
+                                            )}
                                         </Box>
-                                        {isSuccess && lines.length > 0 && (
+                                        {isSuccess && lines.length > 0 && !isWrite && (
                                             <Box flexDirection="column" paddingLeft={0}>
-                                                {lines.slice(0, 40).map((line, lidx) => {
-                                                    let prefixColor = '#d1d5db'
-                                                    let bgColor: string | undefined = undefined
-                                                    let prefix = ' '
-                                                    let rest = line
+                                                {lines
+                                                    .slice(0, 40)
+                                                    .map((line: string, lidx: number) => {
+                                                        let prefixColor = '#d1d5db'
+                                                        let bgColor: string | undefined = undefined
+                                                        let prefix = ' '
+                                                        let rest = line
 
-                                                    if (isWrite) {
-                                                        prefixColor = '#4ade80'
-                                                        bgColor = '#122f1e'
-                                                        prefix = '+'
-                                                        rest = line
-                                                    } else {
-                                                        prefix = ' '
-                                                        if (line.startsWith('+')) {
+                                                        if (isWrite) {
                                                             prefixColor = '#4ade80'
                                                             bgColor = '#122f1e'
                                                             prefix = '+'
-                                                            rest = line.slice(1)
-                                                        } else if (line.startsWith('-')) {
-                                                            prefixColor = '#f87171'
-                                                            bgColor = '#3f1316'
-                                                            prefix = '-'
-                                                            rest = line.slice(1)
-                                                        } else if (line.startsWith('@@')) {
-                                                            prefixColor = '#a78bfa'
-                                                            prefix = '@'
-                                                            rest = line.slice(1)
-                                                        } else if (line.startsWith(' ')) {
-                                                            rest = line.slice(1)
+                                                            rest = line
+                                                        } else {
+                                                            prefix = ' '
+                                                            if (line.startsWith('+')) {
+                                                                prefixColor = '#4ade80'
+                                                                bgColor = '#122f1e'
+                                                                prefix = '+'
+                                                                rest = line.slice(1)
+                                                            } else if (line.startsWith('-')) {
+                                                                prefixColor = '#f87171'
+                                                                bgColor = '#3f1316'
+                                                                prefix = '-'
+                                                                rest = line.slice(1)
+                                                            } else if (line.startsWith('@@')) {
+                                                                prefixColor = '#a78bfa'
+                                                                prefix = '@'
+                                                                rest = line.slice(1)
+                                                            } else if (line.startsWith(' ')) {
+                                                                rest = line.slice(1)
+                                                            }
                                                         }
-                                                    }
 
-                                                    return (
-                                                        <Box
-                                                            key={lidx}
-                                                            backgroundColor={bgColor}
-                                                            flexDirection="row"
-                                                            paddingLeft={2}
-                                                        >
-                                                            <Box width={2} flexShrink={0}>
-                                                                <Text color={prefixColor}>
-                                                                    {prefix}
+                                                        return (
+                                                            <Box
+                                                                key={lidx}
+                                                                backgroundColor={bgColor}
+                                                                flexDirection="row"
+                                                                paddingLeft={2}
+                                                            >
+                                                                <Box width={2} flexShrink={0}>
+                                                                    <Text color={prefixColor}>
+                                                                        {prefix}
+                                                                    </Text>
+                                                                </Box>
+                                                                <Text
+                                                                    color={
+                                                                        bgColor
+                                                                            ? 'white'
+                                                                            : '#d1d5db'
+                                                                    }
+                                                                    wrap="truncate-end"
+                                                                >
+                                                                    {rest}
                                                                 </Text>
                                                             </Box>
-                                                            <Text
-                                                                color={
-                                                                    bgColor ? 'white' : '#d1d5db'
-                                                                }
-                                                                wrap="truncate-end"
-                                                            >
-                                                                {rest}
-                                                            </Text>
-                                                        </Box>
-                                                    )
-                                                })}
+                                                        )
+                                                    })}
                                                 {lines.length > 40 && (
                                                     <Box paddingLeft={1}>
                                                         <Text color="#94a3b8">
@@ -269,19 +272,37 @@ export function BotMessage({ blocks }: Props) {
 
                             // Collapsed state for other completed tools
                             return (
-                                <Box key={idx} gap={1} alignItems="center">
-                                    <StyledCommand command={block.command} />
+                                <Box key={idx} flexDirection="column" gap={1}>
+                                    <Box alignItems="center" gap={1}>
+                                        <StyledCommand command={block.command} />
+                                    </Box>
+                                    <ToolArgumentsDisplay
+                                        toolName={block.toolName || ''}
+                                        inputObj={parsedInput}
+                                    />
                                 </Box>
                             )
                         }
 
                         // Expanded state for running tools
+                        let statusLabel = 'Working...'
+                        if (block.toolName === 'read_file' || block.toolName === 'view_file')
+                            statusLabel = 'Reading...'
+                        if (block.toolName === 'write_file' || block.toolName === 'write_to_file')
+                            statusLabel = 'Writing...'
+                        if (block.toolName === 'run_command') statusLabel = 'Executing...'
+                        if (block.toolName === 'search_web') statusLabel = 'Searching...'
+
                         return (
                             <Box key={idx} flexDirection="column">
                                 <Box gap={1} alignItems="center">
-                                    <Spinner />
+                                    <Spinner label={statusLabel} />
                                     <StyledCommand command={block.command} truncate={false} />
                                 </Box>
+                                <ToolArgumentsDisplay
+                                    toolName={block.toolName || ''}
+                                    inputObj={parsedInput}
+                                />
                                 {block.output && (
                                     <Box
                                         flexDirection="column"
@@ -291,21 +312,13 @@ export function BotMessage({ blocks }: Props) {
                                         paddingY={0.5}
                                         backgroundColor="#1e293b"
                                     >
-                                        {block.output.split(/\r?\n/).map((line, lidx) => {
-                                            const isTruncationMarker =
-                                                line.startsWith('<...') && line.endsWith('...>')
-                                            return (
-                                                <Text
-                                                    key={lidx}
-                                                    color={
-                                                        isTruncationMarker ? 'yellow' : '#94a3b8'
-                                                    }
-                                                    dimColor
-                                                >
-                                                    {line}
-                                                </Text>
-                                            )
-                                        })}
+                                        {block.output.split(/\r?\n/).map((line, lidx) => (
+                                            <ParsedOutputLine
+                                                key={lidx}
+                                                line={line}
+                                                isError={block.status === 'error'}
+                                            />
+                                        ))}
                                     </Box>
                                 )}
                             </Box>
@@ -371,6 +384,14 @@ export function BotMessage({ blocks }: Props) {
                         return null
                 }
             })}
+
+            {usage && (
+                <Box alignSelf="flex-end" paddingRight={1} paddingTop={1}>
+                    <Text color="#475569" dimColor>
+                        {usage.promptTokens + usage.completionTokens} tokens
+                    </Text>
+                </Box>
+            )}
         </Box>
     )
 }

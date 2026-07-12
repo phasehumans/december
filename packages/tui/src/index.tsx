@@ -8,6 +8,7 @@ export * from './theme'
 export * from './layouts/root-layout'
 export * from './components/menus/menu-items'
 export * from './components/menus/auth-menus'
+export * from './components/menus/ask-question-menu'
 
 export * from './components/menus/menu-menu'
 export * from './components/menus/december-login-select-menu'

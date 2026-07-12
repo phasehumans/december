@@ -215,6 +215,22 @@ export function useAgentSession({
         setIsStreaming,
     } = chatFeature
 
+    const [pendingQuestions, setPendingQuestions] = useState<{
+        questions: Array<{ question: string; options: string[]; is_multi_select?: boolean }>
+        resolve: (answer: string) => void
+    } | null>(null)
+
+    useEffect(() => {
+        if (agent) {
+            agent.operations.askQuestion = (questions) => {
+                return new Promise((resolve) => {
+                    setAuthMode('ask_question')
+                    setPendingQuestions({ questions, resolve })
+                })
+            }
+        }
+    }, [agent])
+
     const cols = useTerminalColumns()
     const panelWidth = Math.floor(cols * 0.45)
 
@@ -673,6 +689,15 @@ export function useAgentSession({
                                     }
                                     break
                                 }
+                                case 'AgentUsage': {
+                                    return {
+                                        ...msg,
+                                        usage: {
+                                            promptTokens: (event as any).promptTokens,
+                                            completionTokens: (event as any).completionTokens,
+                                        },
+                                    }
+                                }
                             }
                             return { ...msg, blocks }
                         })
@@ -1063,6 +1088,15 @@ Explain which files need to be created, modified, or deleted, and what the chang
                                         lastCmd.output = event.result.error || event.result.result
                                     }
                                     break
+                                }
+                                case 'AgentUsage': {
+                                    return {
+                                        ...msg,
+                                        usage: {
+                                            promptTokens: (event as any).promptTokens,
+                                            completionTokens: (event as any).completionTokens,
+                                        },
+                                    }
                                 }
                             }
                             return { ...msg, blocks }
@@ -1789,5 +1823,7 @@ Explain which files need to be created, modified, or deleted, and what the chang
         handleKeySubmit,
         handleLogoutSelect,
         handleGrillSelect,
+        pendingQuestions,
+        setPendingQuestions,
     }
 }

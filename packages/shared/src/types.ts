@@ -100,6 +100,12 @@ export interface AgentStatusEvent {
     message: string
 }
 
+export interface AgentUsageEvent {
+    type: 'AgentUsage'
+    promptTokens: number
+    completionTokens: number
+}
+
 export interface AgentEndEvent {
     type: 'AgentEnd'
 }
@@ -121,3 +127,4 @@ export type AgentEvent =
     | AgentEndEvent
     | AgentErrorEvent
     | AgentStatusEvent
+    | AgentUsageEvent

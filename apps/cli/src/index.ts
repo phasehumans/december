@@ -16,6 +16,7 @@ import {
     FindFilesTool,
     GrepSearchTool,
     SubagentTool,
+    AskQuestionTool,
 } from '@december/tools'
 import { RootLayout } from '@december/tui'
 import { Chat as App } from './app'
@@ -108,6 +109,7 @@ async function main() {
             FindFilesTool,
             GrepSearchTool,
             SubagentTool,
+            AskQuestionTool,
         ],
         operations: localOperations,
         modelOptions: { model: providerConfig?.model || 'gemini-3.5-flash' },

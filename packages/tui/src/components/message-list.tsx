@@ -31,7 +31,7 @@ export function MessageList({
                         return <UserMessage key={msg.id} message={msg.text ?? ''} />
                     if (msg.role === 'error')
                         return <ErrorMessage key={msg.id} message={msg.text ?? ''} />
-                    return <BotMessage key={msg.id} blocks={msg.blocks ?? []} />
+                    return <BotMessage key={msg.id} blocks={msg.blocks ?? []} usage={msg.usage} />
                 }}
             </Static>
 
@@ -40,7 +40,7 @@ export function MessageList({
                     return <UserMessage key={msg.id} message={msg.text ?? ''} />
                 if (msg.role === 'error')
                     return <ErrorMessage key={msg.id} message={msg.text ?? ''} />
-                return <BotMessage key={msg.id} blocks={msg.blocks ?? []} />
+                return <BotMessage key={msg.id} blocks={msg.blocks ?? []} usage={msg.usage} />
             })}
         </>
     )
