@@ -37,6 +37,8 @@
         "december": "./dist/december.js",
       },
       "dependencies": {
+        "ink-select-input": "6.2.0",
+        "ink-text-input": "6.0.0",
         "open": "11.0.0",
       },
       "devDependencies": {
@@ -155,6 +157,7 @@
       "dependencies": {
         "@anthropic-ai/sdk": "0.109.0",
         "@december/providers": "workspace:*",
+        "@december/shared": "workspace:*",
         "@types/uuid": "11.0.0",
         "openai": "6.45.0",
         "p-retry": "8.0.0",
@@ -199,11 +202,19 @@
         "typescript": "^5.0.0",
       },
     },
+    "packages/shared": {
+      "name": "@december/shared",
+      "version": "0.2.6",
+      "devDependencies": {
+        "@types/bun": "latest",
+        "typescript": "^5.0.0",
+      },
+    },
     "packages/tools": {
       "name": "@december/tools",
       "version": "0.2.6",
       "dependencies": {
-        "@december/agent": "workspace:*",
+        "@december/shared": "workspace:*",
         "diff": "9.0.0",
         "fast-glob": "3.3.3",
       },
@@ -215,8 +226,7 @@
       "name": "@december/tui",
       "version": "0.2.6",
       "dependencies": {
-        "@december/agent": "workspace:*",
-        "@december/providers": "workspace:*",
+        "@december/shared": "workspace:*",
         "clipboardy": "5.3.1",
         "ink": "^7.0.5",
         "ink-big-text": "2.0.0",
@@ -399,6 +409,8 @@
     "@december/runtime": ["@december/runtime@workspace:apps/runtime"],
 
     "@december/server": ["@december/server@workspace:apps/server"],
+
+    "@december/shared": ["@december/shared@workspace:packages/shared"],
 
     "@december/tools": ["@december/tools@workspace:packages/tools"],
 
@@ -2147,6 +2159,8 @@
     "@december/providers/typescript": ["typescript@5.9.3", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw=="],
 
     "@december/server/openai": ["openai@6.43.0", "", { "peerDependencies": { "ws": "^8.18.0", "zod": "^3.25 || ^4.0" }, "optionalPeers": ["ws", "zod"] }, "sha512-wVjioGjbnAZycj5mmkFVxbBxLEp+NkKpdMscCYP9LTbq+nbf1WTMVp+ovmD35jgyco4tldWZJkcqdmlh3O9yHQ=="],
+
+    "@december/shared/typescript": ["typescript@5.9.3", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw=="],
 
     "@december/web/@google/genai": ["@google/genai@1.52.0", "", { "dependencies": { "google-auth-library": "^10.3.0", "p-retry": "^4.6.2", "protobufjs": "^7.5.4", "ws": "^8.18.0" }, "peerDependencies": { "@modelcontextprotocol/sdk": "^1.25.2" }, "optionalPeers": ["@modelcontextprotocol/sdk"] }, "sha512-gwSvbpiN/17O9TbsqSsE/OzZcpv5Fo4RQjdngGgogtuB9RsyJ8ZHhX5KjHj1bp5N9snN2eK8LDGXSaWW2hof8Q=="],
 

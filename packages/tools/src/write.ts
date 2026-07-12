@@ -1,4 +1,4 @@
-import { Tool, ToolExecuteContext } from '@december/agent'
+import { Tool, ToolExecuteContext } from '@december/shared'
 
 export const WriteFileTool: Tool<{ filePath: string; content: string }> = {
     name: 'write_file',

@@ -17,7 +17,8 @@ import {
     GrepSearchTool,
     SubagentTool,
 } from '@december/tools'
-import { App } from '@december/tui'
+import { RootLayout } from '@december/tui'
+import { Chat as App } from './app'
 import { render } from 'ink'
 import React from 'react'
 
@@ -128,16 +129,20 @@ async function main() {
     const userEmail = config.decemberToken ? config.email : undefined
 
     render(
-        React.createElement(App, {
-            agent,
-            isAuthenticated,
-            cliVersion: pkg.version,
-            userEmail,
-            sessionRepository,
-            onLogin: loginViaBrowser,
-            onLoginHeadless: (onCode: (code: string, uri: string) => void) =>
-                loginViaDeviceCode('http://localhost:4000', onCode), // Replace with prod URL later
-        }),
+        React.createElement(
+            RootLayout,
+            null,
+            React.createElement(App, {
+                agent,
+                isAuthenticated,
+                cliVersion: pkg.version,
+                userEmail,
+                sessionRepository,
+                onLogin: loginViaBrowser,
+                onLoginHeadless: (onCode: (code: string, uri: string) => void) =>
+                    loginViaDeviceCode('http://localhost:4000', onCode),
+            })
+        ),
         { exitOnCtrlC: false }
     )
 }

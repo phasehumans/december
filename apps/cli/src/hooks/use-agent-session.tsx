@@ -1,3 +1,9 @@
+import { useAuth } from '../features/auth/use-auth'
+import { useChat } from '../features/chat/use-chat'
+import { useSettings } from '../features/settings/use-settings'
+import { useTasks } from '../features/tasks/use-tasks'
+import { useSessions } from '../features/sessions/use-sessions'
+import { useHooks } from '../features/hooks/use-hooks'
 import { Box, useApp, Text, useInput } from 'ink'
 import SelectInput from 'ink-select-input'
 import TextInput from 'ink-text-input'
@@ -17,174 +23,22 @@ const CustomItem = ({ isSelected, label }: { isSelected?: boolean; label: string
     </Text>
 )
 
-const getProviderModels = (provider: string) => {
-    switch (provider) {
-        case 'anthropic':
-            return [
-                { label: 'Claude 3.5 Sonnet', value: 'claude-3-5-sonnet-latest' },
-                { label: 'Claude 3 Opus', value: 'claude-3-opus-latest' },
-                { label: 'Claude 3 Haiku', value: 'claude-3-haiku-20240307' },
-            ]
-        case 'google':
-            return [
-                { label: 'Gemini 3.5 Flash', value: 'gemini-3.5-flash' },
-                { label: 'Gemini 3.1 Pro', value: 'gemini-3.1-pro' },
-                { label: 'Gemini 3 Pro Preview', value: 'gemini-3-pro-preview' },
-                { label: 'Gemini 2.5 Pro', value: 'gemini-2.5-pro' },
-            ]
-        case 'openai':
-            return [
-                { label: 'GPT-4o', value: 'gpt-4o' },
-                { label: 'GPT-4 Turbo', value: 'gpt-4-turbo' },
-                { label: 'GPT-3.5 Turbo', value: 'gpt-3.5-turbo' },
-            ]
-        case 'openrouter':
-            return [
-                { label: 'Anthropic: Claude 3.5 Sonnet', value: 'anthropic/claude-3.5-sonnet' },
-                { label: 'Google: Gemini 1.5 Pro', value: 'google/gemini-1.5-pro' },
-                { label: 'OpenAI: GPT-4o', value: 'openai/gpt-4o' },
-                { label: 'Meta: Llama 3 70B', value: 'meta-llama/llama-3-70b-instruct' },
-            ]
-        case 'deepseek':
-            return [
-                { label: 'DeepSeek Chat', value: 'deepseek-chat' },
-                { label: 'DeepSeek Coder', value: 'deepseek-coder' },
-            ]
-        case 'groq':
-            return [
-                { label: 'Llama 3 8B', value: 'llama3-8b-8192' },
-                { label: 'Llama 3 70B', value: 'llama3-70b-8192' },
-                { label: 'Mixtral 8x7B', value: 'mixtral-8x7b-32768' },
-            ]
-        case 'huggingface':
-            return [{ label: 'Llama 3 8B Instruct', value: 'meta-llama/Meta-Llama-3-8B-Instruct' }]
-        case 'kimi':
-        case 'moonshoot':
-            return [
-                { label: 'Moonshot v1 8K', value: 'moonshot-v1-8k' },
-                { label: 'Moonshot v1 32K', value: 'moonshot-v1-32k' },
-            ]
-        case 'mistral':
-            return [
-                { label: 'Mistral Large', value: 'mistral-large-latest' },
-                { label: 'Mistral Small', value: 'mistral-small-latest' },
-            ]
-        case 'xai':
-            return [{ label: 'Grok Beta', value: 'grok-beta' }]
-        case 'zai':
-            return [{ label: 'ZAI v1', value: 'zai-v1' }]
-        default:
-            return [{ label: 'Default', value: 'default' }]
-    }
-}
+import { getProviderModels, getModelLabel, getModelContextWindow } from '../utils/models'
 
-const getModelLabel = (value: string) => {
-    const allProviders = [
-        'anthropic',
-        'google',
-        'openai',
-        'openrouter',
-        'deepseek',
-        'groq',
-        'huggingface',
-        'kimi',
-        'mistral',
-        'xai',
-        'zai',
-    ]
-    for (const p of allProviders) {
-        const models = getProviderModels(p)
-        const found = models.find((m) => m.value === value)
-        if (found) return found.label
-    }
-    return value
-}
+import {
+    MessageList,
+    AuthMode,
+    Message,
+    InputBar,
+    useTerminalColumns,
+    useToast,
+} from '@december/tui'
 
-const getModelContextWindow = (value: string) => {
-    if (value.includes('gemini')) return 1000000
-    if (value.includes('claude')) return 200000
-    if (value.includes('gpt-4')) return 128000
-    if (value.includes('gpt-3.5')) return 16385
-    if (value.includes('32k')) return 32768
-    if (value.includes('8192')) return 8192
-    if (value.includes('8k')) return 8192
-    return 100000
-}
+import { parseErrorMessage } from '../utils/error-parser'
+import { getGrillPrompt, getPlanPrompt } from '../constants/prompts'
+import { MESSAGES } from '../constants/messages'
 
-import { MessageList } from './chat/components/message-list'
-import type { AuthMode, Message } from './chat/types'
-import { InputBar } from '../components/input-bar'
-import { useTerminalColumns } from '../hooks/use-terminal-columns'
-import { useToast } from '../providers/toast'
-
-function parseErrorMessage(err: any): string {
-    let errMsg = ''
-    try {
-        errMsg = err?.message || String(err)
-        if (typeof errMsg !== 'string') {
-            errMsg = JSON.stringify(errMsg)
-        }
-    } catch (e) {
-        return 'Unknown error occurred.'
-    }
-
-    const extractMessage = (str: string): string | null => {
-        if (!str) return null
-
-        // 1. Try regex extraction first, since it's the most robust against broken JSON
-        const msgMatch = str.match(/"message"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"/)
-        if (msgMatch) {
-            try {
-                return JSON.parse(`"${msgMatch[1]}"`)
-            } catch (e) {
-                return msgMatch[1]
-            }
-        }
-
-        // 2. Try JSON parse
-        try {
-            const parsed = JSON.parse(str)
-            if (parsed && typeof parsed === 'object') {
-                // If the error field itself is a stringified JSON, recurse
-                if (typeof parsed.error === 'string' && parsed.error.trim().startsWith('{')) {
-                    const extracted = extractMessage(parsed.error)
-                    if (extracted) return extracted
-                }
-                if (typeof parsed.message === 'string' && parsed.message.trim().startsWith('{')) {
-                    const extracted = extractMessage(parsed.message)
-                    if (extracted) return extracted
-                }
-
-                // Normal object access
-                if (typeof parsed.error?.message === 'string') return parsed.error.message
-                if (typeof parsed.message === 'string') return parsed.message
-                if (typeof parsed.error === 'string') return parsed.error
-            }
-        } catch (e) {}
-
-        // 3. Try JSON block extraction
-        const firstBrace = str.indexOf('{')
-        const lastBrace = str.lastIndexOf('}')
-        if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
-            const jsonStr = str.slice(firstBrace, lastBrace + 1)
-            try {
-                const parsed = JSON.parse(jsonStr)
-                if (parsed?.error?.message && typeof parsed.error.message === 'string')
-                    return parsed.error.message
-                if (parsed?.message && typeof parsed.message === 'string') return parsed.message
-            } catch (e) {}
-        }
-
-        return null
-    }
-
-    const extracted = extractMessage(errMsg)
-    if (extracted) return extracted
-
-    return errMsg.replace(/^\[.*?Error\]:\s*/, '').trim()
-}
-
-import type { MessageBlock } from '../components/messages/bot-message'
+import type { MessageBlock } from '@december/tui'
 
 import {
     Agent,
@@ -231,22 +85,9 @@ function getToolSummary(name: string, inputStr: string): string {
     }
 }
 
-const FALLBACK_OPENROUTER_MODELS = [
-    { label: '(free) Google: Gemma 2 9B', value: 'google/gemma-2-9b-it:free' },
-    { label: '(free) Meta: Llama 3 8B Instruct', value: 'meta-llama/llama-3-8b-instruct:free' },
-    {
-        label: '(free) Microsoft: Phi 3 Medium 128K Instruct',
-        value: 'microsoft/phi-3-medium-128k-instruct:free',
-    },
-    { label: 'Google: Gemini 2.5 Flash', value: 'google/gemini-2.5-flash' },
-    { label: 'Google: Gemini 2.5 Pro', value: 'google/gemini-2.5-pro' },
-    { label: 'Anthropic: Claude 3.5 Sonnet', value: 'anthropic/claude-3.5-sonnet' },
-    { label: 'Meta: Llama 3.3 70B Instruct', value: 'meta-llama/llama-3.3-70b-instruct' },
-]
-
 let msgId = 0
 
-export function Chat({
+export function useAgentSession({
     agent,
     isAuthenticated: initialAuth,
     cliVersion,
@@ -265,96 +106,123 @@ export function Chat({
         onCode: (code: string, uri: string) => void
     ) => Promise<{ token: string; email: string | null }>
 }) {
+    const settingsFeature = useSettings()
+    const {
+        settingsNonWorkspace,
+        setSettingsNonWorkspace,
+        settingsNotifications,
+        setSettingsNotifications,
+        settingsShowTasks,
+        setSettingsShowTasks,
+        settingsShowTips,
+        setSettingsShowTips,
+        settingsToolPermission,
+        setSettingsToolPermission,
+        settingsTelemetry,
+        setSettingsTelemetry,
+        settingsAutoUpdate,
+        setSettingsAutoUpdate,
+        settingsSelectedIndex,
+        setSettingsSelectedIndex,
+        settingsDefaultModel,
+        setSettingsDefaultModel,
+        settingsMaxTokens,
+        setSettingsMaxTokens,
+    } = settingsFeature
+    const tasksFeature = useTasks()
+    const {
+        tasksData,
+        setTasksData,
+        taskSelectedIndex,
+        setTaskSelectedIndex,
+        taskViewingId,
+        setTaskViewingId,
+        taskScrollOffset,
+        setTaskScrollOffset,
+    } = tasksFeature
+    const sessionsFeature = useSessions()
+    const {
+        sessionItems,
+        setSessionItems,
+        sessionsData,
+        setSessionsData,
+        sessionPage,
+        setSessionPage,
+        sessionSelectedIndex,
+        setSessionSelectedIndex,
+        sessionRenameMode,
+        setSessionRenameMode,
+        sessionNewName,
+        setSessionNewName,
+    } = sessionsFeature
+    const hooksFeature = useHooks()
+    const {
+        selectedHookType,
+        setSelectedHookType,
+        hookMatchers,
+        setHookMatchers,
+        addingMatcher,
+        setAddingMatcher,
+        newMatcherRegex,
+        setNewMatcherRegex,
+        matcherIndex,
+        setMatcherIndex,
+    } = hooksFeature
+    const authFeature = useAuth({ initialAuth, userEmail })
+    const {
+        isAuthenticated,
+        setIsAuthenticated,
+        currentEmail,
+        setCurrentEmail,
+        authMode,
+        setAuthMode,
+        logoutItems,
+        setLogoutItems,
+        selectedProvider,
+        setSelectedProvider,
+        apiKey,
+        setApiKey,
+        openRouterModels,
+        setOpenRouterModels,
+    } = authFeature
+    const chatFeature = useChat()
+    const {
+        currentPlannedPrompt,
+        setCurrentPlannedPrompt,
+        planMode,
+        setPlanMode,
+        grillMode,
+        setGrillMode,
+        grillQuestions,
+        setGrillQuestions,
+        currentGrillIndex,
+        setCurrentGrillIndex,
+        grillAnswers,
+        setGrillAnswers,
+        grillPrompt,
+        setGrillPrompt,
+        customInputMode,
+        setCustomInputMode,
+        customAnswer,
+        setCustomAnswer,
+        staticMessages,
+        setStaticMessages,
+        staticKey,
+        setStaticKey,
+        activeMessages,
+        setActiveMessages,
+        isStreaming,
+        setIsStreaming,
+    } = chatFeature
+
     const cols = useTerminalColumns()
     const panelWidth = Math.floor(cols * 0.45)
 
     const toast = useToast()
-    const [currentPlannedPrompt, setCurrentPlannedPrompt] = useState<string | null>(null)
-    const [planModeInput, setPlanModeInput] = useState('')
-    const [grillModeInput, setGrillModeInput] = useState('')
 
-    const [tasksData, setTasksData] = useState<BackgroundTask[]>([])
-    const [taskSelectedIndex, setTaskSelectedIndex] = useState(0)
-    const [taskViewingId, setTaskViewingId] = useState<string | null>(null)
-    const [taskScrollOffset, setTaskScrollOffset] = useState(0)
-
-    const [grillQuestions, setGrillQuestions] = useState<{ question: string; options: string[] }[]>(
-        []
-    )
-    const [currentGrillIndex, setCurrentGrillIndex] = useState(0)
-    const [grillAnswers, setGrillAnswers] = useState<string[]>([])
-    const [grillPrompt, setGrillPrompt] = useState<string | null>(null)
-    const [customInputMode, setCustomInputMode] = useState(false)
-    const [customAnswer, setCustomAnswer] = useState('')
-
-    const [staticMessages, setStaticMessages] = useState<Message[]>([
-        { id: 'header', role: 'header' },
-    ])
-    const [staticKey, setStaticKey] = useState(0)
-    const [activeMessages, setActiveMessages] = useState<Message[]>([])
-    const [isStreaming, setIsStreaming] = useState(false)
     const { exit } = useApp()
 
-    const [isAuthenticated, setIsAuthenticated] = useState(initialAuth)
-    const [currentEmail, setCurrentEmail] = useState<string | undefined>(userEmail)
-    const [authMode, setAuthMode] = useState<AuthMode>('none')
-
     // Hooks state
-    const [selectedHookType, setSelectedHookType] = useState<string | null>(null)
-    const [hookMatchers, setHookMatchers] = useState<
-        Record<string, { pattern: string; enabled: boolean }[]>
-    >({})
-    const [addingMatcher, setAddingMatcher] = useState(false)
-    const [newMatcherRegex, setNewMatcherRegex] = useState('')
-    const [matcherIndex, setMatcherIndex] = useState(0)
-
-    const [logoutItems, setLogoutItems] = useState<{ label: string; value: string }[]>([])
-    const [selectedProvider, setSelectedProvider] = useState<string>('')
-    const [apiKey, setApiKey] = useState('')
-    const [openRouterModels, setOpenRouterModels] = useState<
-        { label: string; value: string }[] | null
-    >(null)
-    const [sessionItems, setSessionItems] = useState<{ label: string; value: string }[]>([])
-    const [sessionsData, setSessionsData] = useState<SessionInfo[]>([])
-    const [sessionPage, setSessionPage] = useState(0)
-    const [sessionSelectedIndex, setSessionSelectedIndex] = useState(0)
-    const [sessionRenameMode, setSessionRenameMode] = useState(false)
-    const [sessionNewName, setSessionNewName] = useState('')
-
-    const [settingsNonWorkspace, setSettingsNonWorkspace] = useState(false)
-    const [settingsNotifications, setSettingsNotifications] = useState(false)
-    const [settingsShowTasks, setSettingsShowTasks] = useState(true)
-    const [settingsShowTips, setSettingsShowTips] = useState(true)
-    const [settingsToolPermission, setSettingsToolPermission] = useState<
-        'always-proceed' | 'always-ask'
-    >('always-proceed')
-    const [settingsTelemetry, setSettingsTelemetry] = useState(true)
-    const [settingsAutoUpdate, setSettingsAutoUpdate] = useState(true)
-
-    useEffect(() => {
-        if (authMode === 'model_select' && selectedProvider === 'openrouter') {
-            fetch('https://openrouter.ai/api/v1/models')
-                .then((res) => res.json())
-                .then((data) => {
-                    const models = data.data.map((m: any) => {
-                        const isFree = m.pricing?.prompt === '0' && m.pricing?.completion === '0'
-                        return {
-                            label: isFree ? `(free) ${m.name}` : m.name,
-                            value: m.id,
-                        }
-                    })
-                    models.sort((a: any, b: any) => {
-                        if (a.label.startsWith('(free)') && !b.label.startsWith('(free)')) return -1
-                        if (!a.label.startsWith('(free)') && b.label.startsWith('(free)')) return 1
-                        return a.label.localeCompare(b.label)
-                    })
-                    setOpenRouterModels(models)
-                })
-                .catch(() => {
-                    setOpenRouterModels(FALLBACK_OPENROUTER_MODELS)
-                })
-        }
-    }, [authMode, selectedProvider])
 
     useEffect(() => {
         if (authMode === 'tasks_mode') {
@@ -441,7 +309,10 @@ export function Chat({
             } else if (input === 'k' && currentTask) {
                 const killed = taskManager.killTask(currentTask.id)
                 if (killed) {
-                    toast.show({ variant: 'success', message: `Task ${currentTask.id} killed.` })
+                    toast.show({
+                        variant: 'success',
+                        message: MESSAGES.TASKS.KILLED(currentTask.id),
+                    })
                 } else {
                     toast.show({
                         variant: 'error',
@@ -528,7 +399,10 @@ export function Chat({
             if (isStreaming) {
                 agent.abort()
                 setIsStreaming(false)
-            } else if (authMode === 'plan_mode' || authMode === 'grill_mode') {
+            } else if (grillMode || planMode) {
+                setGrillMode(false)
+                setPlanMode(false)
+            } else if (authMode === 'plan_mode') {
                 setAuthMode('none')
             } else if (authMode === 'grill_question' && customInputMode) {
                 setCustomInputMode(false)
@@ -552,7 +426,8 @@ export function Chat({
                 authMode === 'settings_main' ||
                 authMode === 'context_select' ||
                 authMode === 'hooks' ||
-                authMode === 'tasks_mode'
+                authMode === 'tasks_mode' ||
+                authMode === 'usage'
             ) {
                 if (authMode === 'plan_approve') {
                     setCurrentPlannedPrompt(null)
@@ -598,25 +473,14 @@ export function Chat({
                     blocks: [
                         {
                             type: 'text',
-                            content: '⏳ *Analyzing prompt and generating grill questions...*',
+                            content: '*Analyzing prompt and generating grill questions...*',
                         },
                     ],
                 },
             ])
 
             try {
-                const prompt = `You are a product manager interviewing a developer.
-The user wants to implement: "${userPrompt}"
-Generate 5 to 8 questions to clarify the requirements and align on a detailed implementation plan.
-Each question must have exactly 3 options.
-Return the output as a strict JSON array of objects with the following schema:
-[
-  {
-    "question": "Question text?",
-    "options": ["Option 1", "Option 2", "Option 3"]
-  }
-]
-Do not include any other text, markdown formatting, or code blocks. Return raw JSON only.`
+                const prompt = getGrillPrompt(userPrompt)
 
                 const stream = agent.llm.stream(
                     [{ role: 'user', content: prompt }],
@@ -679,15 +543,10 @@ Do not include any other text, markdown formatting, or code blocks. Return raw J
 
             setCurrentPlannedPrompt(originalPrompt)
 
-            const planPrompt = `You are an autonomous software engineer.
-The user wants to implement: "${originalPrompt}"
-Here is the alignment interview results:
-${grillQuestions.map((q, i) => `Q: ${q.question}\nA: ${answers[i]}`).join('\n\n')}
-
-Please create a detailed, step-by-step implementation plan based on these requirements.
-Do NOT execute any tools. Only describe the plan.
-Start your response with '### Implementation Plan' and list the concrete steps.
-Explain which files need to be created, modified, or deleted, and what the changes will be.`
+            const planPrompt = getPlanPrompt(
+                originalPrompt || '',
+                grillQuestions.map((q, i) => ({ question: q.question, answer: answers[i] }))
+            )
 
             setIsStreaming(true)
             setStaticMessages((prev) => [...prev, ...activeMessages])
@@ -977,29 +836,49 @@ Explain which files need to be created, modified, or deleted, and what the chang
                 return
             }
 
-            let isPlanningTurn = false
+            // Intercept /plan commands anywhere in the text
+            const planMatch = text.trim().match(/(.*?)(?:\s|^)\/plan(?:\s(.*))?$/s)
+            if (planMatch) {
+                const before = planMatch[1] || ''
+                const after = planMatch[2] || ''
+                const planPromptText = `${before} ${after}`.trim()
 
-            if (text.trim().startsWith('/plan')) {
-                const parts = text.trim().split(/\s+/)
-                if (parts.length === 1) {
-                    setAuthMode('plan_mode')
-                    return
+                if (planPromptText.length > 0) {
+                    text = planPromptText
+                    // Fallthrough to handleMessage but with isPlanningTurn = true (set below)
                 } else {
-                    // Update text to be just the prompt, and override isPlanningTurn locally
-                    text = text.trim().slice(5).trim()
-                    isPlanningTurn = true
+                    setPlanMode((prev) => !prev)
+                    setGrillMode(false)
+                    return
                 }
             }
 
-            if (text.trim().startsWith('/grill-me')) {
-                const parts = text.trim().split(/\s+/)
-                if (parts.length === 1) {
-                    setAuthMode('grill_mode')
-                } else {
-                    const grillPromptText = text.trim().slice(9).trim()
+            // Intercept /grill-me or /grill commands anywhere in the text
+            const grillMatch = text.trim().match(/(.*?)(?:\s|^)\/(grill-me|grill)(?:\s(.*))?$/s)
+            if (grillMatch) {
+                const before = grillMatch[1] || ''
+                const after = grillMatch[3] || ''
+                const grillPromptText = `${before} ${after}`.trim()
+
+                if (grillPromptText.length > 0) {
                     await generateGrillQuestions(grillPromptText)
+                } else {
+                    setGrillMode((prev) => !prev)
+                    setPlanMode(false)
                 }
                 return
+            }
+
+            // Handle active modes (if the user previously toggled them on)
+            if (grillMode) {
+                setGrillMode(false)
+                await generateGrillQuestions(text.trim())
+                return
+            }
+
+            let isPlanningTurn = planMode || !!planMatch
+            if (isPlanningTurn) {
+                setPlanMode(false)
             }
 
             if (text.trim() === '/settings') {
@@ -1018,6 +897,11 @@ Explain which files need to be created, modified, or deleted, and what the chang
 
             if (text.trim() === '/tasks') {
                 setAuthMode('tasks_mode')
+                return
+            }
+
+            if (text.trim() === '/usage') {
+                setAuthMode('usage')
                 return
             }
 
@@ -1214,6 +1098,8 @@ Explain which files need to be created, modified, or deleted, and what the chang
             toast,
             authMode,
             currentGrillIndex,
+            grillMode,
+            planMode,
         ]
     )
 
@@ -1276,11 +1162,11 @@ Explain which files need to be created, modified, or deleted, and what the chang
         if (item.value.startsWith('model:')) {
             const model = item.value.split(':')[1]
             setSettingsDefaultModel(model)
-            toast.show({ variant: 'success', message: `Default model updated to ${model}` })
+            toast.show({ variant: 'success', message: MESSAGES.CONFIG.MODEL_UPDATED(model) })
         } else if (item.value.startsWith('tokens:')) {
             const tokens = parseInt(item.value.split(':')[1], 10)
             setSettingsMaxTokens(tokens)
-            toast.show({ variant: 'success', message: `Max tokens set to ${tokens}` })
+            toast.show({ variant: 'success', message: MESSAGES.CONFIG.MAX_TOKENS_SET(tokens) })
         }
     }
 
@@ -1370,7 +1256,7 @@ Explain which files need to be created, modified, or deleted, and what the chang
                         blocks: [
                             {
                                 type: 'text',
-                                content: `Successfully logged in via December!`,
+                                content: MESSAGES.AUTH.LOGIN_SUCCESS_DECEMBER,
                             },
                         ],
                     },
@@ -1458,7 +1344,7 @@ Explain which files need to be created, modified, or deleted, and what the chang
                         blocks: [
                             {
                                 type: 'text',
-                                content: `Successfully logged in via device code!`,
+                                content: MESSAGES.AUTH.LOGIN_SUCCESS_DEVICE,
                             },
                         ],
                     },
@@ -1583,7 +1469,7 @@ Explain which files need to be created, modified, or deleted, and what the chang
                     {
                         id: ++msgId,
                         role: 'assistant',
-                        blocks: [{ type: 'text', content: '❌ *Plan rejected by user.*' }],
+                        blocks: [{ type: 'text', content: '*Plan rejected by user.*' }],
                     },
                 ])
             }
@@ -1685,7 +1571,7 @@ Explain which files need to be created, modified, or deleted, and what the chang
                         {
                             type: 'status',
                             success: true,
-                            label: `Successfully validated and saved API key for ${selectedProvider}!`,
+                            label: MESSAGES.AUTH.API_KEY_SAVED(selectedProvider),
                         },
                     ],
                 },
@@ -1803,1048 +1689,105 @@ Explain which files need to be created, modified, or deleted, and what the chang
         ])
     }
 
-    let authUI: React.ReactNode = null
-    if (authMode === 'menu') {
-        authUI = (
-            <Box flexDirection="column" paddingX={1}>
-                <Box marginBottom={1}>
-                    <Text color="white">Select authentication method:</Text>
-                </Box>
-                <SelectInput
-                    items={[
-                        { label: 'Login via December (Cloud Wallet)', value: 'december' },
-                        { label: 'Bring Your Own Key (BYOK)', value: 'byok' },
-                    ]}
-                    onSelect={handleAuthMenuSelect}
-                    indicatorComponent={CustomIndicator}
-                    itemComponent={CustomItem}
-                />
-                <Box paddingTop={1}>
-                    <Box gap={1}>
-                        <Text color="#89B4F8">↑↓</Text>
-                        <Text color="#AAAAAA">Navigate</Text>
-                        <Text color="#AAAAAA">·</Text>
-                        <Text color="#89B4F8">enter</Text>
-                        <Text color="#AAAAAA">Select</Text>
-                        <Text color="#AAAAAA">·</Text>
-                        <Text color="#89B4F8">esc</Text>
-                        <Text color="#AAAAAA">Cancel</Text>
-                    </Box>
-                </Box>
-            </Box>
-        )
-    } else if (authMode === 'december_login_select') {
-        authUI = (
-            <Box flexDirection="column" paddingX={1}>
-                <Box marginBottom={1}>
-                    <Text color="white">Select December login method:</Text>
-                </Box>
-                <SelectInput
-                    items={[
-                        { label: 'Login via Browser (Local)', value: 'december_browser' },
-                        {
-                            label: 'Login via Device Code (Headless/SSH)',
-                            value: 'december_headless',
-                        },
-                    ]}
-                    onSelect={handleAuthMenuSelect}
-                    indicatorComponent={CustomIndicator}
-                    itemComponent={CustomItem}
-                />
-                <Box paddingTop={1}>
-                    <Box gap={1}>
-                        <Text color="#89B4F8">↑↓</Text>
-                        <Text color="#AAAAAA">Navigate</Text>
-                        <Text color="#AAAAAA">·</Text>
-                        <Text color="#89B4F8">enter</Text>
-                        <Text color="#AAAAAA">Select</Text>
-                        <Text color="#AAAAAA">·</Text>
-                        <Text color="#89B4F8">esc</Text>
-                        <Text color="#AAAAAA">Cancel</Text>
-                    </Box>
-                </Box>
-            </Box>
-        )
-    } else if (authMode === 'byok_provider') {
-        authUI = (
-            <Box flexDirection="column" paddingX={1}>
-                <Box marginBottom={1}>
-                    <Text color="white">Select API Provider:</Text>
-                </Box>
-                <SelectInput
-                    items={[
-                        { label: 'Anthropic', value: 'anthropic' },
-                        { label: 'DeepSeek', value: 'deepseek' },
-                        { label: 'Google', value: 'google' },
-                        { label: 'Groq', value: 'groq' },
-                        { label: 'Hugging Face', value: 'huggingface' },
-                        { label: 'Kimi', value: 'kimi' },
-                        { label: 'Mistral', value: 'mistral' },
-                        { label: 'Moonshoot AI', value: 'moonshoot' },
-                        { label: 'OpenAI', value: 'openai' },
-                        { label: 'OpenRouter', value: 'openrouter' },
-                        { label: 'xAI', value: 'xAI' },
-                        { label: 'ZAI', value: 'zai' },
-                    ]}
-                    onSelect={handleProviderSelect}
-                    indicatorComponent={CustomIndicator}
-                    itemComponent={CustomItem}
-                />
-                <Box paddingTop={1}>
-                    <Box gap={1}>
-                        <Text color="#89B4F8">↑↓</Text>
-                        <Text color="#AAAAAA">Navigate</Text>
-                        <Text color="#AAAAAA">·</Text>
-                        <Text color="#89B4F8">enter</Text>
-                        <Text color="#AAAAAA">Select</Text>
-                        <Text color="#AAAAAA">·</Text>
-                        <Text color="#89B4F8">esc</Text>
-                        <Text color="#AAAAAA">Cancel</Text>
-                    </Box>
-                </Box>
-            </Box>
-        )
-    } else if (authMode === 'byok_key') {
-        authUI = (
-            <Box flexDirection="column" paddingX={1}>
-                <Box marginBottom={1}>
-                    <Text color="white">Enter API Key for {selectedProvider}:</Text>
-                </Box>
-                <Box>
-                    <Text color="#89B4F8" bold={false}>
-                        ❭{' '}
-                    </Text>
-                    <TextInput
-                        value={apiKey}
-                        onChange={setApiKey}
-                        onSubmit={handleKeySubmit}
-                        mask="*"
-                    />
-                </Box>
-                <Box paddingTop={1}>
-                    <Box gap={1}>
-                        <Text color="#89B4F8">enter</Text>
-                        <Text color="#AAAAAA">Submit</Text>
-                        <Text color="#AAAAAA">·</Text>
-                        <Text color="#89B4F8">esc</Text>
-                        <Text color="#AAAAAA">Cancel</Text>
-                    </Box>
-                </Box>
-            </Box>
-        )
-    } else if (authMode === 'model_select') {
-        authUI = (
-            <Box flexDirection="column" paddingX={1}>
-                <Box marginBottom={1}>
-                    <Text color="white">Select Model:</Text>
-                </Box>
-                <SelectInput
-                    items={
-                        selectedProvider === 'openrouter'
-                            ? openRouterModels || [{ label: 'Loading models...', value: 'loading' }]
-                            : getProviderModels(selectedProvider)
-                    }
-                    onSelect={handleModelSelect}
-                    indicatorComponent={CustomIndicator}
-                    itemComponent={CustomItem}
-                />
-                <Box paddingTop={1}>
-                    <Box gap={1}>
-                        <Text color="#89B4F8">↑↓</Text>
-                        <Text color="#AAAAAA">Navigate</Text>
-                        <Text color="#AAAAAA">·</Text>
-                        <Text color="#89B4F8">enter</Text>
-                        <Text color="#AAAAAA">Select</Text>
-                        <Text color="#AAAAAA">·</Text>
-                        <Text color="#89B4F8">esc</Text>
-                        <Text color="#AAAAAA">Cancel</Text>
-                    </Box>
-                </Box>
-            </Box>
-        )
-    } else if (authMode === 'context_select') {
-        const activeModelId = agent.modelOptions?.model || 'gemini-3.5-flash'
-        const currentModelName = getModelLabel(activeModelId)
-        const maxTokens = getModelContextWindow(activeModelId)
-
-        const userTokens = Math.round(
-            agent.messages
-                .filter((m) => m.role === 'user')
-                .reduce((acc, m) => acc + (m.content?.length || 0) / 4, 0)
-        )
-        const agentTokens = Math.round(
-            agent.messages
-                .filter((m) => m.role === 'assistant')
-                .reduce((acc, m) => acc + (m.content?.length || 0) / 4, 0)
-        )
-        const toolTokens = Math.round(
-            agent.messages.reduce(
-                (acc, m) => acc + (m.toolCalls ? JSON.stringify(m.toolCalls).length / 4 : 0),
-                0
-            )
-        )
-        const sysTokens = Math.round((agent.systemPrompt?.length || 0) / 4)
-        const totalTokens = userTokens + agentTokens + toolTokens + sysTokens
-        const freeTokens = Math.max(0, maxTokens - totalTokens)
-
-        const pct = (n: number) => ((n / maxTokens) * 100).toFixed(1)
-        const formatK = (n: number) => (n > 1000 ? (n / 1000).toFixed(1) + 'k' : n.toString())
-
-        const totalSquares = 200
-        const squares = []
-        let filled = 0
-        const addSquares = (count: number, char: string, color: string) => {
-            for (let i = 0; i < count && filled < totalSquares; i++) {
-                squares.push(
-                    <Text key={filled} color={color}>
-                        {char}
-                    </Text>
-                )
-                filled++
-            }
-        }
-        addSquares(Math.round((userTokens / maxTokens) * totalSquares), '●', '#89B4F8') // blue
-        addSquares(Math.round((agentTokens / maxTokens) * totalSquares), '●', '#6EE7B7') // green
-        addSquares(Math.round((toolTokens / maxTokens) * totalSquares), '●', '#FCD34D') // yellow
-        addSquares(Math.round((sysTokens / maxTokens) * totalSquares), '●', '#AAAAAA') // grey
-
-        while (filled < totalSquares) {
-            squares.push(
-                <Text key={filled} color="#444444">
-                    □
-                </Text>
-            )
-            filled++
-        }
-
-        const gridRows = []
-        for (let i = 0; i < totalSquares; i += 20) {
-            gridRows.push(
-                <Box key={i} gap={1}>
-                    {squares.slice(i, i + 20)}
-                </Box>
-            )
-        }
-
-        authUI = (
-            <Box flexDirection="row" paddingX={1} gap={4}>
-                <Box flexDirection="column">{gridRows}</Box>
-
-                <Box flexDirection="column">
-                    <Box gap={1}>
-                        <Text color="#AAAAAA">
-                            {currentModelName} · {formatK(totalTokens)}/{formatK(maxTokens)} tokens
-                            ({pct(totalTokens)}%)
-                        </Text>
-                    </Box>
-                    <Text color="white" marginTop={1}>
-                        Token usage by category
-                    </Text>
-                    <Box flexDirection="column">
-                        <Box gap={1}>
-                            <Text color="#89B4F8">●</Text>
-                            <Text color="#AAAAAA">
-                                User messages: {formatK(userTokens)} tokens ({pct(userTokens)}%)
-                            </Text>
-                        </Box>
-                        <Box gap={1}>
-                            <Text color="#6EE7B7">●</Text>
-                            <Text color="#AAAAAA">
-                                Agent responses: {formatK(agentTokens)} tokens ({pct(agentTokens)}%)
-                            </Text>
-                        </Box>
-                        <Box gap={1}>
-                            <Text color="#FCD34D">●</Text>
-                            <Text color="#AAAAAA">
-                                Tool calls: {formatK(toolTokens)} tokens ({pct(toolTokens)}%)
-                            </Text>
-                        </Box>
-                        <Box gap={1}>
-                            <Text color="#AAAAAA">●</Text>
-                            <Text color="#AAAAAA">
-                                System prompt: {formatK(sysTokens)} tokens ({pct(sysTokens)}%)
-                            </Text>
-                        </Box>
-                        <Box gap={1}>
-                            <Text color="#444444">□</Text>
-                            <Text color="#AAAAAA">
-                                Free space: {formatK(freeTokens)} ({pct(freeTokens)}%)
-                            </Text>
-                        </Box>
-                    </Box>
-                    <Box marginTop={2} gap={1}>
-                        <Text color="#AAAAAA">Press</Text>
-                        <Text color="#89B4F8">esc</Text>
-                        <Text color="#AAAAAA">to go back</Text>
-                    </Box>
-                </Box>
-            </Box>
-        )
-    } else if (authMode === 'logout_select') {
-        authUI = (
-            <Box flexDirection="column" paddingX={1}>
-                <Box marginBottom={1}>
-                    <Text color="white">Select credential to remove:</Text>
-                </Box>
-                <SelectInput
-                    items={logoutItems}
-                    onSelect={(item) => handleLogoutSelect(item.value)}
-                    indicatorComponent={CustomIndicator}
-                    itemComponent={CustomItem}
-                />
-                <Box paddingTop={1}>
-                    <Box gap={1}>
-                        <Text color="#89B4F8">↑↓</Text>
-                        <Text color="#AAAAAA">Navigate</Text>
-                        <Text color="#AAAAAA">·</Text>
-                        <Text color="#89B4F8">enter</Text>
-                        <Text color="#AAAAAA">Select</Text>
-                        <Text color="#AAAAAA">·</Text>
-                        <Text color="#89B4F8">esc</Text>
-                        <Text color="#AAAAAA">Cancel</Text>
-                    </Box>
-                </Box>
-            </Box>
-        )
-    } else if (authMode === 'session_select') {
-        const SESSION_PAGE_SIZE = 10
-        const totalItems = sessionsData.length
-        const maxPage = Math.max(0, Math.ceil(totalItems / SESSION_PAGE_SIZE) - 1)
-        const startIndex = sessionPage * SESSION_PAGE_SIZE
-        const visibleItems = sessionsData.slice(startIndex, startIndex + SESSION_PAGE_SIZE)
-
-        const timeAgo = (date: Date) => {
-            const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000)
-            if (seconds < 60) return `${seconds}s ago`
-            const minutes = Math.floor(seconds / 60)
-            if (minutes < 60) return `${minutes}m ago`
-            const hours = Math.floor(minutes / 60)
-            if (hours < 24) return `${hours}h ago`
-            const days = Math.floor(hours / 24)
-            return `${days}d ago`
-        }
-
-        const handleRenameSubmit = (val: string) => {
-            const absIndex = startIndex + sessionSelectedIndex
-            const session = sessionsData[absIndex]
-            const newName = val.trim()
-            if (session && newName && newName !== session.id) {
-                if (sessionRepository?.renameSession) {
-                    sessionRepository.renameSession(session.id, newName).then(() => {
-                        const nextData = [...sessionsData]
-                        nextData[absIndex] = { ...session, id: newName, preview: newName }
-                        setSessionsData(nextData)
-                    })
-                }
-            }
-            setSessionRenameMode(false)
-            setSessionNewName('')
-        }
-
-        authUI = (
-            <Box flexDirection="column" paddingX={1}>
-                <Box marginBottom={1}>
-                    <Text bold color="white">
-                        Conversations
-                    </Text>
-                </Box>
-                {visibleItems.map((session, idx) => {
-                    const isSelected = idx === sessionSelectedIndex
-
-                    if (isSelected && sessionRenameMode) {
-                        return (
-                            <Box key={session.id} flexDirection="row">
-                                <Box width={2}>
-                                    <Text color="#89B4F8">{'> '}</Text>
-                                </Box>
-                                <TextInput
-                                    value={sessionNewName}
-                                    onChange={setSessionNewName}
-                                    onSubmit={handleRenameSubmit}
-                                />
-                            </Box>
-                        )
-                    }
-
-                    const title = session.preview || session.id
-                    const msgCount = `${session.messageCount} msgs`.padStart(10)
-                    const timeStr = timeAgo(session.updatedAt).padStart(10)
-
-                    return (
-                        <Box key={session.id} flexDirection="row">
-                            <Box width={2}>
-                                <Text color={isSelected ? '#89B4F8' : 'white'}>
-                                    {isSelected ? '> ' : '  '}
-                                </Text>
-                            </Box>
-                            <Box width={85}>
-                                <Text color={isSelected ? 'white' : '#AAAAAA'} wrap="truncate">
-                                    {title}
-                                </Text>
-                            </Box>
-                            <Box width={12}>
-                                <Text color="#AAAAAA">{msgCount}</Text>
-                            </Box>
-                            <Box width={12}>
-                                <Text color="#AAAAAA">{timeStr}</Text>
-                            </Box>
-                        </Box>
-                    )
-                })}
-
-                {totalItems === 0 && (
-                    <Box paddingLeft={2}>
-                        <Text color="#555555">No conversations found.</Text>
-                    </Box>
-                )}
-
-                {totalItems > 0 && (
-                    <Box marginTop={1} paddingLeft={2}>
-                        <Text color="#555555">
-                            [{startIndex + 1}-{Math.min(startIndex + SESSION_PAGE_SIZE, totalItems)}{' '}
-                            of {totalItems} items]
-                        </Text>
-                    </Box>
-                )}
-
-                <Box paddingTop={1}>
-                    <Box gap={1}>
-                        <Text color="#AAAAAA">Keyboard:</Text>
-                        <Text color="#89B4F8">↑/↓</Text>
-                        <Text color="#AAAAAA">Navigate</Text>
-                        <Text color="#AAAAAA">·</Text>
-                        <Text color="#89B4F8">←/→</Text>
-                        <Text color="#AAAAAA">Page</Text>
-                        <Text color="#AAAAAA">·</Text>
-                        <Text color="#89B4F8">enter</Text>
-                        <Text color="#AAAAAA">Select</Text>
-                        <Text color="#AAAAAA">·</Text>
-                        <Text color="#89B4F8">f2</Text>
-                        <Text color="#AAAAAA">Rename</Text>
-                        <Text color="#AAAAAA">·</Text>
-                        <Text color="#89B4F8">ctrl+delete</Text>
-                        <Text color="#AAAAAA">Delete</Text>
-                        <Text color="#AAAAAA">·</Text>
-                        <Text color="#89B4F8">tab</Text>
-                        <Text color="#AAAAAA">Switch Tab</Text>
-                        <Text color="#AAAAAA">·</Text>
-                        <Text color="#89B4F8">esc</Text>
-                        <Text color="#AAAAAA">Go back</Text>
-                    </Box>
-                </Box>
-            </Box>
-        )
-    } else if (authMode === 'tasks_mode') {
-        const getStatusColor = (status: string) => {
-            switch (status) {
-                case 'running':
-                    return '#2ECC71'
-                case 'completed':
-                    return '#3498DB'
-                case 'failed':
-                    return '#E74C3C'
-                case 'killed':
-                    return '#F1C40F'
-                default:
-                    return 'white'
-            }
-        }
-
-        if (taskViewingId) {
-            const task = tasksData.find((t) => t.id === taskViewingId)
-            if (task) {
-                const outputLines = task.output.split('\n')
-                const visibleLines = outputLines.slice(taskScrollOffset, taskScrollOffset + 15)
-                authUI = (
-                    <Box flexDirection="column" paddingX={1}>
-                        <Box marginBottom={1} justifyContent="space-between">
-                            <Text bold color="white">
-                                Task: {task.id}
-                            </Text>
-                            <Text bold color={getStatusColor(task.status)}>
-                                [{task.status.toUpperCase()}]
-                            </Text>
-                        </Box>
-                        <Box marginBottom={1}>
-                            <Text color="#AAAAAA" bold>
-                                Cmd: {task.command}
-                            </Text>
-                        </Box>
-                        <Box
-                            borderColor="#333333"
-                            borderStyle="round"
-                            flexDirection="column"
-                            minHeight={8}
-                            paddingX={1}
-                        >
-                            {visibleLines.length === 0 ||
-                            (visibleLines.length === 1 && visibleLines[0] === '') ? (
-                                <Text color="gray">[No output recorded yet]</Text>
-                            ) : (
-                                visibleLines.map((line, idx) => (
-                                    <Text key={idx} color="white">
-                                        {line}
-                                    </Text>
-                                ))
-                            )}
-                        </Box>
-                        <Box marginTop={1} justifyContent="space-between">
-                            <Text color="gray">
-                                Showing lines {Math.min(outputLines.length, taskScrollOffset + 1)}-
-                                {Math.min(
-                                    outputLines.length,
-                                    taskScrollOffset + visibleLines.length
-                                )}{' '}
-                                of {outputLines.length}
-                            </Text>
-                        </Box>
-                        <Box paddingTop={1}>
-                            <Text color="#555555">
-                                Keyboard: ↑/↓ Scroll Line · ←/→ Page · esc Back
-                            </Text>
-                        </Box>
-                    </Box>
-                )
-            }
-        } else {
-            authUI = (
-                <Box flexDirection="column" paddingX={1}>
-                    <Box marginBottom={1}>
-                        <Text bold color="white">
-                            Tasks
-                        </Text>
-                    </Box>
-                    {tasksData.length === 0 ? (
-                        <Box paddingLeft={2}>
-                            <Text color="#555555">No background tasks.</Text>
-                        </Box>
-                    ) : (
-                        tasksData.map((task, idx) => {
-                            const isSelected = idx === taskSelectedIndex
-                            const truncatedCommand =
-                                task.command.length > 50
-                                    ? task.command.slice(0, 47) + '...'
-                                    : task.command
-                            return (
-                                <Box key={task.id} flexDirection="row">
-                                    <Box width={2}>
-                                        <Text color={isSelected ? '#89B4F8' : 'white'}>
-                                            {isSelected ? '> ' : '  '}
-                                        </Text>
-                                    </Box>
-                                    <Box width={25}>
-                                        <Text
-                                            color={isSelected ? 'white' : '#AAAAAA'}
-                                            wrap="truncate"
-                                        >
-                                            {task.id}
-                                        </Text>
-                                    </Box>
-                                    <Box width={15}>
-                                        <Text color={getStatusColor(task.status)}>
-                                            [{task.status.toUpperCase()}]
-                                        </Text>
-                                    </Box>
-                                    <Box>
-                                        <Text color={isSelected ? 'white' : 'gray'}>
-                                            {truncatedCommand}
-                                        </Text>
-                                    </Box>
-                                </Box>
-                            )
-                        })
-                    )}
-                    <Box paddingTop={1}>
-                        <Box gap={1}>
-                            <Text color="#AAAAAA">Keyboard:</Text>
-                            <Text color="#89B4F8">↑/↓</Text>
-                            <Text color="#AAAAAA">Navigate</Text>
-                            <Text color="#AAAAAA">·</Text>
-                            <Text color="#89B4F8">←/→</Text>
-                            <Text color="#AAAAAA">Page</Text>
-                            <Text color="#AAAAAA">·</Text>
-                            <Text color="#89B4F8">enter</Text>
-                            <Text color="#AAAAAA">View output</Text>
-                            <Text color="#AAAAAA">·</Text>
-                            <Text color="#89B4F8">k</Text>
-                            <Text color="#AAAAAA">Kill Task</Text>
-                        </Box>
-                    </Box>
-                </Box>
-            )
-        }
-    } else if (authMode === 'plan_mode') {
-        authUI = (
-            <Box flexDirection="column" paddingX={1}>
-                <Box marginBottom={1}>
-                    <Text bold color="#89B4F8">
-                        Plan Mode
-                    </Text>
-                    <Text color="#AAAAAA">{' Describe what you want to plan...'}</Text>
-                </Box>
-                <Box paddingLeft={1} paddingBottom={1} width="100%">
-                    <Text color="#89B4F8"> {'>'} </Text>
-                    <TextInput
-                        value={planModeInput}
-                        onChange={setPlanModeInput}
-                        onSubmit={(val) => {
-                            if (!val.trim()) return
-                            setAuthMode('none')
-                            setPlanModeInput('')
-                            handleSubmit(`/plan ${val.trim()}`)
-                        }}
-                    />
-                </Box>
-                <Box paddingTop={1}>
-                    <Box gap={1}>
-                        <Text color="#89B4F8">enter</Text>
-                        <Text color="#AAAAAA">Submit</Text>
-                        <Text color="#AAAAAA">·</Text>
-                        <Text color="#89B4F8">esc</Text>
-                        <Text color="#AAAAAA">Cancel</Text>
-                    </Box>
-                </Box>
-            </Box>
-        )
-    } else if (authMode === 'grill_mode') {
-        authUI = (
-            <Box flexDirection="column" paddingX={1}>
-                <Box marginBottom={1}>
-                    <Text bold color="#89B4F8">
-                        Grill Mode
-                    </Text>
-                    <Text color="#AAAAAA">{' Describe what you want to be grilled about...'}</Text>
-                </Box>
-                <Box paddingLeft={1} paddingBottom={1} width="100%">
-                    <Text color="#89B4F8"> {'>'} </Text>
-                    <TextInput
-                        value={grillModeInput}
-                        onChange={setGrillModeInput}
-                        onSubmit={(val) => {
-                            if (!val.trim()) return
-                            setAuthMode('none')
-                            setGrillModeInput('')
-                            handleSubmit(`/grill-me ${val.trim()}`)
-                        }}
-                    />
-                </Box>
-                <Box paddingTop={1}>
-                    <Box gap={1}>
-                        <Text color="#89B4F8">enter</Text>
-                        <Text color="#AAAAAA">Submit</Text>
-                        <Text color="#AAAAAA">·</Text>
-                        <Text color="#89B4F8">esc</Text>
-                        <Text color="#AAAAAA">Cancel</Text>
-                    </Box>
-                </Box>
-            </Box>
-        )
-    } else if (authMode === 'plan_approve') {
-        const planItems = [
-            { label: 'Approve and Execute', value: 'approve' },
-            { label: 'Reject / Cancel', value: 'reject' },
-        ]
-        authUI = (
-            <Box flexDirection="column" paddingX={1}>
-                <Box marginBottom={1}>
-                    <Text color="#F1C40F" bold>
-                        Plan generated. Please approve or reject:
-                    </Text>
-                </Box>
-                <SelectInput
-                    items={planItems}
-                    onSelect={handlePlanApprovalSelect}
-                    indicatorComponent={CustomIndicator}
-                    itemComponent={CustomItem}
-                />
-                <Box paddingTop={1}>
-                    <Box gap={1}>
-                        <Text color="#89B4F8">↑↓</Text>
-                        <Text color="#AAAAAA">Navigate</Text>
-                        <Text color="#AAAAAA">·</Text>
-                        <Text color="#89B4F8">enter</Text>
-                        <Text color="#AAAAAA">Select</Text>
-                    </Box>
-                </Box>
-            </Box>
-        )
-    } else if (authMode === 'grill_question') {
-        const q = grillQuestions[currentGrillIndex]
-        if (q) {
-            const items = [
-                ...q.options.map((opt, i) => ({ label: `${i + 1}. ${opt}`, value: opt })),
-                { label: `${q.options.length + 1}. Write-in...`, value: 'custom' },
-            ]
-            authUI = (
-                <Box flexDirection="column" paddingX={1}>
-                    <Box marginBottom={1} flexDirection="column">
-                        <Text color="#89B4F8" bold>
-                            Question {currentGrillIndex + 1}/{grillQuestions.length}:
-                        </Text>
-                        <Text color="white" bold>
-                            {q.question}
-                        </Text>
-                    </Box>
-                    {!customInputMode ? (
-                        <>
-                            <SelectInput
-                                items={items}
-                                onSelect={handleGrillSelect}
-                                indicatorComponent={CustomIndicator}
-                                itemComponent={CustomItem}
-                            />
-                            <Box paddingTop={1}>
-                                <Box gap={1}>
-                                    <Text color="#89B4F8">↑↓</Text>
-                                    <Text color="#AAAAAA">Navigate</Text>
-                                    <Text color="#AAAAAA">·</Text>
-                                    <Text color="#89B4F8">enter</Text>
-                                    <Text color="#AAAAAA">Select</Text>
-                                    <Text color="#AAAAAA">·</Text>
-                                    <Text color="#89B4F8">esc</Text>
-                                    <Text color="#AAAAAA">Cancel Grill</Text>
-                                </Box>
-                            </Box>
-                        </>
-                    ) : (
-                        <Box flexDirection="column" gap={1}>
-                            <Box flexDirection="row" gap={1}>
-                                <Text color="#89B4F8">Your answer:</Text>
-                                <TextInput
-                                    value={customAnswer}
-                                    onChange={setCustomAnswer}
-                                    onSubmit={(value) => {
-                                        const answer = value.trim()
-                                        if (answer.length === 0) return
-
-                                        setCustomInputMode(false)
-                                        setCustomAnswer('')
-
-                                        const nextAnswers = [...grillAnswers, answer]
-                                        setGrillAnswers(nextAnswers)
-
-                                        if (currentGrillIndex + 1 < grillQuestions.length) {
-                                            setCurrentGrillIndex(currentGrillIndex + 1)
-                                        } else {
-                                            void generatePlanFromGrill(nextAnswers)
-                                        }
-                                    }}
-                                />
-                            </Box>
-                            <Box paddingTop={1}>
-                                <Box gap={1}>
-                                    <Text color="#89B4F8">enter</Text>
-                                    <Text color="#AAAAAA">Submit</Text>
-                                    <Text color="#AAAAAA">·</Text>
-                                    <Text color="#89B4F8">esc</Text>
-                                    <Text color="#AAAAAA">Back</Text>
-                                </Box>
-                            </Box>
-                        </Box>
-                    )}
-                </Box>
-            )
-        }
-    } else if (authMode === 'settings_main') {
-        const mainItems = [
-            {
-                label: `Non-Workspace Access     [${settingsNonWorkspace ? 'on' : 'off'}]`,
-                value: 'nonWorkspaceAccess',
-            },
-            {
-                label: `Notifications            [${settingsNotifications ? 'on' : 'off'}]`,
-                value: 'notifications',
-            },
-            {
-                label: `Show Active Tasks        [${settingsShowTasks ? 'on' : 'off'}]`,
-                value: 'showActiveTasks',
-            },
-            {
-                label: `Show Tips                [${settingsShowTips ? 'on' : 'off'}]`,
-                value: 'showTips',
-            },
-            {
-                label: `Tool Permission          [${settingsToolPermission}]`,
-                value: 'toolPermission',
-            },
-            {
-                label: `Telemetry                [${settingsTelemetry ? 'on' : 'off'}]`,
-                value: 'telemetry',
-            },
-            {
-                label: `Auto Update              [${settingsAutoUpdate ? 'on' : 'off'}]`,
-                value: 'autoUpdate',
-            },
-        ]
-        authUI = (
-            <Box flexDirection="column" paddingX={1}>
-                <Box marginBottom={1}>
-                    <Text bold color="white">
-                        Settings
-                    </Text>
-                </Box>
-                <SelectInput
-                    items={mainItems}
-                    onSelect={handleSettingsMainSelect}
-                    indicatorComponent={CustomIndicator}
-                    itemComponent={CustomItem}
-                />
-                <Box paddingTop={1}>
-                    <Box gap={1}>
-                        <Text color="#89B4F8">↑↓</Text>
-                        <Text color="#AAAAAA">Navigate</Text>
-                        <Text color="#AAAAAA">·</Text>
-                        <Text color="#89B4F8">enter</Text>
-                        <Text color="#AAAAAA">Toggle</Text>
-                        <Text color="#AAAAAA">·</Text>
-                        <Text color="#89B4F8">esc</Text>
-                        <Text color="#AAAAAA">Close</Text>
-                    </Box>
-                </Box>
-            </Box>
-        )
-    } else if (authMode === 'hooks') {
-        const hookItems = [
-            { label: 'PreToolUse', value: 'PreToolUse', description: 'Before tool execution' },
-            { label: 'PostToolUse', value: 'PostToolUse', description: 'After tool execution' },
-            {
-                label: 'PreInvocation',
-                value: 'PreInvocation',
-                description: 'Before each LLM invocation',
-            },
-            {
-                label: 'PostInvocation',
-                value: 'PostInvocation',
-                description: 'After each LLM invocation',
-            },
-            { label: 'Stop', value: 'Stop', description: 'When agent tries to exit' },
-        ]
-
-        if (!selectedHookType) {
-            const HookCustomItem = ({ label }: { label?: string }) => {
-                const item = hookItems.find((i) => i.label === label)
-                return (
-                    <Box>
-                        <Box width={16}>
-                            <Text color={item ? 'white' : '#AAAAAA'}>{label}</Text>
-                        </Box>
-                        <Text color="#AAAAAA">{item?.description}</Text>
-                    </Box>
-                )
-            }
-
-            const handleHookSelect = (item: any) => {
-                setSelectedHookType(item.value)
-                setMatcherIndex(0)
-            }
-
-            authUI = (
-                <Box flexDirection="column">
-                    <Box paddingLeft={2} paddingBottom={1} flexDirection="column">
-                        <Text bold color="white">
-                            {' '}
-                            Hooks
-                        </Text>
-                        <Text color="#AAAAAA"> 5 hook types</Text>
-                    </Box>
-
-                    <Box paddingLeft={2}>
-                        <SelectInput
-                            items={hookItems}
-                            onSelect={handleHookSelect}
-                            indicatorComponent={CustomIndicator}
-                            itemComponent={HookCustomItem}
-                        />
-                    </Box>
-
-                    <Box paddingLeft={2} paddingTop={1} paddingBottom={1}>
-                        <Box gap={1}>
-                            <Text color="#89B4F8">↑/↓</Text>
-                            <Text color="#AAAAAA">Navigate</Text>
-                            <Text color="#AAAAAA">·</Text>
-                            <Text color="#89B4F8">enter</Text>
-                            <Text color="#AAAAAA">Select</Text>
-                        </Box>
-                    </Box>
-                </Box>
-            )
-        } else if (addingMatcher) {
-            const hookDesc = hookItems.find((h) => h.value === selectedHookType)?.description || ''
-
-            const handleAddMatcherSubmit = (val: string) => {
-                if (val.trim()) {
-                    setHookMatchers((prev) => {
-                        const existing = prev[selectedHookType] || []
-                        return {
-                            ...prev,
-                            [selectedHookType]: [...existing, { pattern: val, enabled: true }],
-                        }
-                    })
-                    toast.show({ message: `Added matcher: ${val}` })
-                }
-                setAddingMatcher(false)
-                setNewMatcherRegex('')
-            }
-
-            authUI = (
-                <Box flexDirection="column">
-                    <Box paddingLeft={2} paddingBottom={1} flexDirection="column">
-                        <Text bold color="white">
-                            {' '}
-                            Add new matcher for {selectedHookType}
-                        </Text>
-                        <Text color="#AAAAAA"> {hookDesc}</Text>
-                    </Box>
-
-                    <Box paddingLeft={2} paddingBottom={1}>
-                        <Text color="white">Matcher:</Text>
-                    </Box>
-
-                    <Box paddingLeft={2} paddingBottom={1}>
-                        <Text color="#89B4F8"> {'>'} </Text>
-                        <TextInput
-                            value={newMatcherRegex}
-                            onChange={setNewMatcherRegex}
-                            onSubmit={handleAddMatcherSubmit}
-                        />
-                    </Box>
-
-                    <Box paddingLeft={2} paddingBottom={1} flexDirection="column">
-                        <Text color="#AAAAAA">Examples:</Text>
-                        <Text color="#AAAAAA">• Write (single tool)</Text>
-                        <Text color="#AAAAAA">• Write|Edit (multiple tools)</Text>
-                        <Text color="#AAAAAA">• Web.* (regex pattern)</Text>
-                    </Box>
-
-                    <Box paddingLeft={2} paddingTop={1} paddingBottom={1}>
-                        <Box gap={1}>
-                            <Text color="#89B4F8">enter</Text>
-                            <Text color="#AAAAAA">Confirm</Text>
-                            <Text color="#AAAAAA">·</Text>
-                            <Text color="#89B4F8">esc</Text>
-                            <Text color="#AAAAAA">Cancel</Text>
-                        </Box>
-                    </Box>
-                </Box>
-            )
-        } else {
-            const hookDesc = hookItems.find((h) => h.value === selectedHookType)?.description || ''
-            const matchers = hookMatchers[selectedHookType] || []
-
-            const matcherItems = [
-                { label: '+ Add new matcher...', value: 'add_new' },
-                { label: '+ Match all (no filter)', value: 'match_all' },
-            ]
-
-            matchers.forEach((m, idx) => {
-                matcherItems.push({
-                    label: `${m.enabled ? '✓' : '✗'} ${m.pattern}`,
-                    value: `matcher_${idx}`,
-                })
-            })
-
-            authUI = (
-                <Box flexDirection="column">
-                    <Box paddingLeft={2} paddingBottom={1} flexDirection="column">
-                        <Text bold color="white">
-                            {' '}
-                            {selectedHookType} — Matchers
-                        </Text>
-                        <Text color="#AAAAAA"> {hookDesc}</Text>
-                    </Box>
-
-                    <Box paddingLeft={2} flexDirection="column">
-                        {matcherItems.map((item, idx) => {
-                            const isSelected = idx === matcherIndex
-                            const isAdd = item.value === 'add_new' || item.value === 'match_all'
-                            const isEnabled = item.label.startsWith('✓')
-                            return (
-                                <Box key={item.value}>
-                                    <CustomIndicator isSelected={isSelected} />
-                                    {isAdd ? (
-                                        <Text color={isSelected ? '#89B4F8' : 'white'}>
-                                            {item.label}
-                                        </Text>
-                                    ) : (
-                                        <Text
-                                            color={
-                                                isSelected
-                                                    ? '#89B4F8'
-                                                    : isEnabled
-                                                      ? 'white'
-                                                      : '#555555'
-                                            }
-                                        >
-                                            {item.label}
-                                        </Text>
-                                    )}
-                                </Box>
-                            )
-                        })}
-                        {matchers.length === 0 && (
-                            <Box>
-                                <Box marginRight={1}>
-                                    <Text> </Text>
-                                </Box>
-                                <Text color="#555555">No hooks configured</Text>
-                            </Box>
-                        )}
-                    </Box>
-
-                    <Box paddingLeft={2} paddingTop={1} paddingBottom={1}>
-                        <Box gap={1}>
-                            <Text color="#89B4F8">↑/↓</Text>
-                            <Text color="#AAAAAA">Navigate</Text>
-                            <Text color="#AAAAAA">·</Text>
-                            <Text color="#89B4F8">enter</Text>
-                            <Text color="#AAAAAA">Select</Text>
-                            <Text color="#AAAAAA">·</Text>
-                            <Text color="#89B4F8">e</Text>
-                            <Text color="#AAAAAA">Toggle</Text>
-                            <Text color="#AAAAAA">·</Text>
-                            <Text color="#89B4F8">backspace</Text>
-                            <Text color="#AAAAAA">Delete</Text>
-                            <Text color="#AAAAAA">·</Text>
-                            <Text color="#89B4F8">esc</Text>
-                            <Text color="#AAAAAA">Back</Text>
-                        </Box>
-                    </Box>
-                </Box>
-            )
-        }
+    return {
+        toast,
+        currentPlannedPrompt,
+        setCurrentPlannedPrompt,
+        grillMode,
+        setGrillMode,
+        planMode,
+        setPlanMode,
+        tasksData,
+        setTasksData,
+        taskSelectedIndex,
+        setTaskSelectedIndex,
+        taskViewingId,
+        setTaskViewingId,
+        taskScrollOffset,
+        setTaskScrollOffset,
+        grillQuestions,
+        setGrillQuestions,
+        currentGrillIndex,
+        setCurrentGrillIndex,
+        grillAnswers,
+        setGrillAnswers,
+        grillPrompt,
+        setGrillPrompt,
+        customInputMode,
+        setCustomInputMode,
+        customAnswer,
+        setCustomAnswer,
+        staticMessages,
+        setStaticMessages,
+        staticKey,
+        setStaticKey,
+        activeMessages,
+        setActiveMessages,
+        isStreaming,
+        setIsStreaming,
+        isAuthenticated,
+        setIsAuthenticated,
+        currentEmail,
+        setCurrentEmail,
+        authMode,
+        setAuthMode,
+        selectedHookType,
+        setSelectedHookType,
+        hookMatchers,
+        setHookMatchers,
+        addingMatcher,
+        setAddingMatcher,
+        newMatcherRegex,
+        setNewMatcherRegex,
+        matcherIndex,
+        setMatcherIndex,
+        logoutItems,
+        setLogoutItems,
+        selectedProvider,
+        setSelectedProvider,
+        apiKey,
+        setApiKey,
+        openRouterModels,
+        setOpenRouterModels,
+        sessionItems,
+        setSessionItems,
+        sessionsData,
+        setSessionsData,
+        sessionPage,
+        setSessionPage,
+        sessionSelectedIndex,
+        setSessionSelectedIndex,
+        sessionRenameMode,
+        setSessionRenameMode,
+        sessionNewName,
+        setSessionNewName,
+        settingsNonWorkspace,
+        setSettingsNonWorkspace,
+        settingsNotifications,
+        setSettingsNotifications,
+        settingsShowTasks,
+        setSettingsShowTasks,
+        settingsShowTips,
+        setSettingsShowTips,
+        settingsToolPermission,
+        setSettingsToolPermission,
+        settingsTelemetry,
+        setSettingsTelemetry,
+        settingsAutoUpdate,
+        setSettingsAutoUpdate,
+        handleSubmit,
+        sessionRepository,
+        handleSettingsMainSelect,
+        handleSettingsAgentSelect,
+        handleSettingsUISelect,
+        handleSettingsKeysSelect,
+        handleAuthMenuSelect,
+        handleModelSelect,
+        handleSessionSelect,
+        handlePlanApprovalSelect,
+        handleProviderSelect,
+        handleKeySubmit,
+        handleLogoutSelect,
+        handleGrillSelect,
     }
-
-    return (
-        <Box flexDirection="column" width="100%">
-            <MessageList
-                staticKey={staticKey}
-                staticMessages={staticMessages}
-                activeMessages={activeMessages}
-                agent={agent}
-                isAuthenticated={isAuthenticated}
-                cliVersion={cliVersion}
-                userEmail={currentEmail}
-            />
-
-            <InputBar
-                onSubmit={handleSubmit}
-                disabled={authMode !== 'none'}
-                placeholder="Ask December to build..."
-                activeModel={
-                    agent.modelOptions?.model
-                        ? getModelLabel(agent.modelOptions.model)
-                        : getModelLabel('gemini-3.5-flash')
-                }
-                authUI={authUI}
-                agent={agent}
-                resetChat={() => {
-                    console.clear()
-                    setStaticMessages([{ id: `header-${Date.now()}`, role: 'header' }])
-                    setStaticKey((k) => k + 1)
-                    setActiveMessages([])
-                }}
-                customInputMode={false}
-            />
-        </Box>
-    )
 }

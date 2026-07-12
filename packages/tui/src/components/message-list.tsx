@@ -1,17 +1,14 @@
 import React from 'react'
 import { Static } from 'ink'
 import type { Message } from '../types'
-import { Header } from '../../../components/header'
-import { UserMessage } from '../../../components/messages/user-message'
-import { BotMessage } from '../../../components/messages/bot-message'
-import { ErrorMessage } from '../../../components/messages/error-message'
-import { Agent } from '@december/agent'
-
+import { Header } from './header'
+import { UserMessage } from './messages/user-message'
+import { BotMessage } from './messages/bot-message'
+import { ErrorMessage } from './messages/error-message'
 export function MessageList({
     staticKey,
     staticMessages,
     activeMessages,
-    agent,
     isAuthenticated,
     cliVersion,
     userEmail,
@@ -19,7 +16,6 @@ export function MessageList({
     staticKey: number
     staticMessages: Message[]
     activeMessages: Message[]
-    agent: Agent
     isAuthenticated: boolean
     cliVersion?: string
     userEmail?: string

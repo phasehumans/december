@@ -1,4 +1,4 @@
-import { Tool, ToolExecuteContext, truncateOutput } from '@december/agent'
+import { Tool, ToolExecuteContext, truncateOutput } from '@december/shared'
 
 export interface GrepSearchInput {
     query: string
