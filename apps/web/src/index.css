@@ -76,3 +76,8 @@ button:focus-visible,
 .cm-editor .cm-searchMatch.cm-searchMatch-selected {
     background-color: rgba(234, 184, 57, 0.6) !important;
 }
+
+html,
+body {
+    overflow-x: hidden;
+}

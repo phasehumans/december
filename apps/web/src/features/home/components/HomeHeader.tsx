@@ -19,7 +19,7 @@ export const HomeHeader: React.FC<HomeHeaderProps> = ({ isAuthenticated, onOpenA
             <div className="flex-1 pointer-events-auto flex justify-start pl-2 md:pl-0">
                 <button
                     onClick={() => navigate('/docs')}
-                    className="flex items-center gap-1 text-[#8F8E8D] hover:text-[#D4D4D8] transition-colors text-[13px] font-medium border-b border-[#333] pb-[1px] hover:border-[#D4D4D8] relative group/docs"
+                    className="hidden md:flex items-center gap-1 text-[#8F8E8D] hover:text-[#D4D4D8] transition-colors text-[13px] font-medium border-b border-[#333] pb-[1px] hover:border-[#D4D4D8] relative group/docs"
                 >
                     Docs
                     <div className="absolute top-[calc(100%+6px)] left-0 z-50 hidden group-hover/docs:flex items-center gap-1.5 bg-[#1F1F1F] border border-[#282828] px-2.5 py-1 rounded-lg shadow-none whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
@@ -36,7 +36,7 @@ export const HomeHeader: React.FC<HomeHeaderProps> = ({ isAuthenticated, onOpenA
                     onClick={() => {
                         window.dispatchEvent(new Event('open-cli-card'))
                     }}
-                    className="home-header-badge flex items-center gap-2.5 bg-transparent border border-white/5 rounded-full pl-1.5 pr-3 py-1 text-[13px] text-[#E8E8E6] shadow-sm transition-all duration-200 cursor-pointer hover:bg-white/5 group whitespace-nowrap flex-shrink-0"
+                    className="home-header-badge hidden md:flex items-center gap-2.5 bg-transparent border border-white/5 rounded-full pl-1.5 pr-3 py-1 text-[13px] text-[#E8E8E6] shadow-sm transition-all duration-200 cursor-pointer hover:bg-white/5 group whitespace-nowrap flex-shrink-0"
                 >
                     <span className="bg-[#87B2F4]/15 text-[#87B2F4] rounded-full px-2 py-1 text-[10px] font-medium leading-none flex items-center justify-center flex-shrink-0">
                         New
@@ -62,7 +62,7 @@ export const HomeHeader: React.FC<HomeHeaderProps> = ({ isAuthenticated, onOpenA
                                 onOpenAuth()
                             }
                         }}
-                        className="text-textMuted hover:text-textMain transition-colors flex items-center justify-center p-1 cursor-pointer outline-none relative group/feedback"
+                        className="text-textMuted hover:text-textMain transition-colors hidden md:flex items-center justify-center p-1 cursor-pointer outline-none relative group/feedback"
                     >
                         <MessageSquare className="w-[17px] h-[17px]" strokeWidth={2} />
                         <div className="absolute top-[calc(100%+6px)] right-0 z-50 hidden group-hover/feedback:flex items-center gap-1.5 bg-[#1F1F1F] border border-[#282828] px-2.5 py-1 rounded-lg shadow-none whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
