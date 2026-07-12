@@ -18,12 +18,6 @@ export interface Project {
 export interface ProjectListProps {
     onNewProject: () => void
     onOpenProject: (projectId: string) => void
-    projects: Project[]
-    isLoading: boolean
-    isFetching: boolean
-    errorMessage: string | null
-    selectedModel?: string
-    setSelectedModel?: (val: string) => void
 }
 
 export interface RenameModalState {

@@ -27,24 +27,22 @@ export const ProfileNameModal: React.FC<ProfileNameModalProps> = ({
             isOpen={isOpen}
             onClose={onClose}
             title={title || 'Change Name'}
-            description={`Update your account ${label?.toLowerCase() || 'name'} details.`}
+            description={`This will immediately update your ${label?.toLowerCase() || 'name'} across the platform.`}
             variant="premium"
         >
             <form onSubmit={handleFormSubmit} className="flex flex-col gap-4">
+                <p className="text-[13px] text-[#8F8E8D] leading-relaxed">
+                    Enter a new {label?.toLowerCase() || 'name'} for your account. This will be
+                    updated across your profile and visible to others.
+                </p>
                 <div>
-                    <label
-                        htmlFor="profile-name-input"
-                        className="text-[11px] font-semibold text-[#8F8E8D] uppercase tracking-wider mb-1.5 block"
-                    >
-                        {label || 'Display Name'}
-                    </label>
                     <input
                         id="profile-name-input"
                         type="text"
                         autoFocus
                         value={value}
                         onChange={(e) => onChange(e.target.value)}
-                        className="w-full bg-white/[0.03] border border-[#2B2A27] rounded-lg px-3.5 py-2.5 text-white text-[13px] focus:outline-none focus:border-[#4E4D49] focus:ring-1 focus:ring-[#4E4D49] transition-[border-color,box-shadow] duration-200"
+                        className="w-full bg-white/[0.03] border border-[#2B2A27] rounded-lg px-3.5 py-2.5 text-white text-[13px] focus:outline-none transition-[border-color,box-shadow] duration-200"
                         placeholder={`Enter new ${label?.toLowerCase() || 'name'}...`}
                         disabled={isPending}
                     />
@@ -59,7 +57,7 @@ export const ProfileNameModal: React.FC<ProfileNameModalProps> = ({
                         type="button"
                         onClick={onClose}
                         disabled={isPending}
-                        className="border border-[#2B2A27] bg-transparent text-white hover:bg-white/5 active:scale-95 transition-[transform,background-color,border-color,color] duration-200 text-[13px] font-medium px-4 py-2 rounded-lg focus:outline-none disabled:opacity-50"
+                        className="bg-transparent text-white hover:bg-white/5 active:scale-95 transition-[transform,background-color,border-color,color] duration-200 text-[13px] font-medium px-4 py-2 rounded-lg focus:outline-none disabled:opacity-50"
                     >
                         Cancel
                     </button>

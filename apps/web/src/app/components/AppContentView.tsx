@@ -23,31 +23,11 @@ import { ProfileSettings } from '@/features/profile/components/ProfileSettings'
 import { ProjectList } from '@/features/projects/components/ProjectList'
 import { SessionList } from '@/features/projects/components/SessionList'
 import { TemplatesView } from '@/features/templates/components/TemplatesView'
+import { DocsView } from '@/features/docs/components/DocsView'
 
 interface AppContentViewProps {
     view: ViewState
     isHome: boolean
-    messages: Message[]
-    generatedFiles: Record<string, GeneratedProjectFile>
-    activeFilesToDisplay: Record<string, GeneratedProjectFile>
-    activeGeneratedFilePath: string | null
-    generationPhase: 'thinking' | 'building' | 'done' | null
-    activeOperation: OutputOperation | null
-    isGenerating: boolean
-    isAuthenticated: boolean
-    projects: Project[]
-    isProjectsInitialLoading: boolean
-    isProjectsFetching: boolean
-    projectsErrorMessage: string | null
-    projectName: string | null
-    activeProjectId: string | null
-    canvasState: CanvasDocument
-    onCanvasStateChange: (document: CanvasDocument) => void
-    projectVersions: BackendProjectVersionSummary[]
-    activeProjectVersionId: string | null
-    isProjectOpening: boolean
-    previewSession: PreviewSessionStatus | null
-    previewSessionError: string | null
     onHomePromptSubmit: (prompt: string) => void
     onOutputPromptSubmit: (
         prompt: string,
@@ -60,11 +40,6 @@ interface AppContentViewProps {
     onOpenProject: (projectId: string) => void
     onImportGithub: (repoUrl: string) => Promise<void> | void
     onImportZip: (file: File) => Promise<void> | void
-    importState: {
-        status: 'idle' | 'loading' | 'failed' | 'ready'
-        message?: string | null
-    }
-    projectType: 'generated' | 'github' | 'zip'
     onSelectVersion: (versionId: string) => void
     onDownloadProject: () => void
     onSignOut: () => void
@@ -108,27 +83,6 @@ const AnimatedPage: React.FC<{ pageKey: string; children: React.ReactNode }> = (
 export const AppContentView: React.FC<AppContentViewProps> = ({
     view,
     isHome,
-    messages,
-    generatedFiles,
-    activeFilesToDisplay,
-    activeGeneratedFilePath,
-    generationPhase,
-    activeOperation,
-    isGenerating,
-    isAuthenticated,
-    projects,
-    isProjectsInitialLoading,
-    isProjectsFetching,
-    projectsErrorMessage,
-    projectName,
-    activeProjectId,
-    canvasState,
-    onCanvasStateChange,
-    projectVersions,
-    activeProjectVersionId,
-    isProjectOpening,
-    previewSession,
-    previewSessionError,
     onHomePromptSubmit,
     onOutputPromptSubmit,
     onPreviewRuntimeError,
@@ -138,8 +92,6 @@ export const AppContentView: React.FC<AppContentViewProps> = ({
     onOpenProject,
     onImportGithub,
     onImportZip,
-    importState,
-    projectType,
     onSelectVersion,
     onDownloadProject,
     onSignOut,
@@ -156,10 +108,6 @@ export const AppContentView: React.FC<AppContentViewProps> = ({
                     <ProjectList
                         onNewProject={onNewProject}
                         onOpenProject={onOpenProject}
-                        projects={projects}
-                        isLoading={isProjectsInitialLoading}
-                        isFetching={isProjectsFetching}
-                        errorMessage={projectsErrorMessage}
                         selectedModel={selectedModel}
                         setSelectedModel={setSelectedModel}
                     />
@@ -171,10 +119,6 @@ export const AppContentView: React.FC<AppContentViewProps> = ({
                     <SessionList
                         onNewProject={onNewProject}
                         onOpenProject={onOpenProject}
-                        projects={projects}
-                        isLoading={isProjectsInitialLoading}
-                        isFetching={isProjectsFetching}
-                        errorMessage={projectsErrorMessage}
                         selectedModel={selectedModel}
                         setSelectedModel={setSelectedModel}
                     />
@@ -199,16 +143,15 @@ export const AppContentView: React.FC<AppContentViewProps> = ({
                 </AnimatedPage>
             )}
 
+            {view === 'docs' && (
+                <AnimatedPage pageKey="docs">
+                    <DocsView onBack={onNewProject} />
+                </AnimatedPage>
+            )}
+
             {view === 'canvas' && (
                 <AnimatedPage pageKey="canvas">
-                    <CanvasPage
-                        onBack={onNewProject}
-                        canvasState={canvasState}
-                        onCanvasStateChange={onCanvasStateChange}
-                        isAuthenticated={isAuthenticated}
-                        onOpenAuth={onOpenAuth}
-                        projectId={activeProjectId}
-                    />
+                    <CanvasPage onBack={onNewProject} onOpenAuth={onOpenAuth} />
                 </AnimatedPage>
             )}
 
@@ -217,15 +160,9 @@ export const AppContentView: React.FC<AppContentViewProps> = ({
                     <AnimatedPage pageKey="chat-home">
                         <HomeHero
                             onPromptSubmit={onHomePromptSubmit}
-                            isGenerating={isGenerating}
-                            isAuthenticated={isAuthenticated}
                             onOpenAuth={onOpenAuth}
-                            canvasState={canvasState}
-                            onCanvasStateChange={onCanvasStateChange}
-                            projectId={activeProjectId}
                             onImportGithub={onImportGithub}
                             onImportZip={onImportZip}
-                            importState={importState}
                             onResetImportState={onResetImportState}
                         />
                     </AnimatedPage>
@@ -237,31 +174,8 @@ export const AppContentView: React.FC<AppContentViewProps> = ({
                                 onOutputPromptSubmit(prompt, options?.selectedElement)
                             }
                             onRuntimeError={onPreviewRuntimeError}
-                            messages={messages}
-                            generatedFiles={generatedFiles}
-                            activeFilesToDisplay={activeFilesToDisplay}
-                            activeGeneratedFilePath={activeGeneratedFilePath}
-                            generationPhase={generationPhase}
-                            activeOperation={activeOperation}
-                            isGenerating={isGenerating}
-                            projectName={projectName}
-                            projectId={activeProjectId}
-                            canvasState={canvasState}
-                            onCanvasStateChange={onCanvasStateChange}
-                            versions={projectVersions}
-                            activeVersionId={activeProjectVersionId}
-                            isVersionLoading={isProjectOpening}
                             onSelectVersion={onSelectVersion}
                             onDownload={onDownloadProject}
-                            previewSession={previewSession}
-                            projectType={projectType}
-                            previewSessionError={
-                                importState.status === 'failed'
-                                    ? importState.message || 'Import failed'
-                                    : previewSessionError
-                            }
-                            selectedModel={selectedModel}
-                            setSelectedModel={setSelectedModel}
                             onOpenFile={onOpenFile}
                         />
                     </AnimatedPage>

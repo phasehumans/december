@@ -47,7 +47,7 @@ export const ProjectRenameModal: React.FC<ProjectRenameModalProps> = ({
                         autoFocus
                         value={value}
                         onChange={(e) => onChange(e.target.value)}
-                        className="w-full bg-white/[0.03] border border-[#2B2A27] rounded-lg px-3.5 py-2.5 text-white text-[13px] focus:outline-none focus:border-[#4E4D49] focus:ring-1 focus:ring-[#4E4D49] transition-[border-color,box-shadow] duration-200"
+                        className="w-full bg-white/[0.03] border border-[#2B2A27] rounded-lg px-3.5 py-2.5 text-white text-[13px] focus:outline-none transition-[border-color,box-shadow] duration-200"
                         placeholder="Enter project name..."
                         disabled={isDisabled}
                     />
@@ -58,7 +58,7 @@ export const ProjectRenameModal: React.FC<ProjectRenameModalProps> = ({
                         type="button"
                         onClick={onClose}
                         disabled={isDisabled}
-                        className="border border-[#2B2A27] bg-transparent text-white hover:bg-white/5 active:scale-95 transition-[transform,background-color,border-color,color] duration-200 text-[13px] font-medium px-4 py-2 rounded-lg focus:outline-none disabled:opacity-50"
+                        className="bg-transparent text-white hover:bg-white/5 active:scale-95 transition-[transform,background-color,border-color,color] duration-200 text-[13px] font-medium px-4 py-2 rounded-lg focus:outline-none disabled:opacity-50"
                     >
                         Cancel
                     </button>

@@ -1,46 +1,34 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 
 import { AppContentView } from './app/components/AppContentView'
 import { AppSideNavigation } from './app/components/AppSideNavigation'
 import { useAppController } from './app/hooks/useAppController'
 import { AuthModal } from './features/auth/components/AuthModal'
+import { Icons } from '@/shared/components/ui/Icons'
 
 const App: React.FC = () => {
+    const [showLoader, setShowLoader] = useState(true)
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setShowLoader(false)
+        }, 800) // 0.8s loader
+        return () => clearTimeout(timer)
+    }, [])
+
     const {
         queryClient,
         view,
-        messages,
-        generatedFiles,
-        activeFilesToDisplay,
-        activeGeneratedFilePath,
-        generationPhase,
-        activeOperation,
-        isGenerating,
         setIsAuthenticated,
         showAuthModal,
         setShowAuthModal,
         isMobileSidebarOpen,
         setIsMobileSidebarOpen,
         isAuthenticated,
-        projects,
-        isProjectsInitialLoading,
-        isProjectsFetching,
-        projectsErrorMessage,
         isHome,
         showSidebar,
-        activeProjectId,
-        activeProjectName,
-        canvasState,
-        setCanvasState,
         selectedModel,
         setSelectedModel,
-        projectVersions,
-        activeProjectVersionId,
-        isProjectOpening,
-        previewSession,
-        previewSessionError,
-        importState,
-        projectType,
         handleNewThread,
         handleHomeClick,
         handleNavigate,
@@ -59,80 +47,67 @@ const App: React.FC = () => {
     } = useAppController()
 
     return (
-        <div className="flex w-full h-screen bg-background text-textMain overflow-hidden font-sans">
-            <AppSideNavigation
-                showSidebar={showSidebar}
-                isMobileSidebarOpen={isMobileSidebarOpen}
-                setIsMobileSidebarOpen={setIsMobileSidebarOpen}
-                onNewThread={handleNewThread}
-                onHomeClick={handleHomeClick}
-                onNavigate={handleNavigate}
-                onOpenProject={handleOpenProject}
-                isAuthenticated={isAuthenticated}
-                onOpenAuth={() => setShowAuthModal(true)}
-                projects={projects}
-                isProjectsInitialLoading={isProjectsInitialLoading}
-                onSignOut={handleSignOut}
-            />
-
-            <AuthModal
-                isOpen={showAuthModal}
-                onClose={() => setShowAuthModal(false)}
-                onAuthSuccess={() => {
-                    setIsAuthenticated(true)
-                    setShowAuthModal(false)
-                    queryClient.invalidateQueries({ queryKey: ['projects'] })
-                    queryClient.invalidateQueries({ queryKey: ['profile'] })
-                }}
-            />
-
-            <div className="flex-1 flex flex-col h-full min-h-0 relative overflow-hidden">
-                <AppContentView
-                    view={view}
-                    isHome={isHome}
-                    messages={messages}
-                    generatedFiles={generatedFiles}
-                    activeFilesToDisplay={activeFilesToDisplay}
-                    activeGeneratedFilePath={activeGeneratedFilePath}
-                    generationPhase={generationPhase}
-                    activeOperation={activeOperation}
-                    isGenerating={isGenerating}
-                    isAuthenticated={isAuthenticated}
-                    projects={projects}
-                    isProjectsInitialLoading={isProjectsInitialLoading}
-                    isProjectsFetching={isProjectsFetching}
-                    projectsErrorMessage={projectsErrorMessage}
-                    projectName={activeProjectName}
-                    activeProjectId={activeProjectId}
-                    canvasState={canvasState}
-                    onCanvasStateChange={setCanvasState}
-                    projectVersions={projectVersions}
-                    activeProjectVersionId={activeProjectVersionId}
-                    isProjectOpening={isProjectOpening}
-                    previewSession={previewSession}
-                    previewSessionError={previewSessionError}
-                    importState={importState}
-                    onHomePromptSubmit={handlePromptSubmit}
-                    onOutputPromptSubmit={handleOutputPromptSubmit}
-                    onPreviewRuntimeError={handlePreviewRuntimeError}
-                    onImportGithub={handleImportGithub}
-                    onImportZip={handleImportZip}
-                    onOpenAuth={() => setShowAuthModal(true)}
-                    onBackFromOutput={handleBackFromOutput}
-                    onNewProject={handleNewThread}
+        <>
+            {showLoader && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#141414]">
+                    <div className="flex items-center justify-center animate-pulse">
+                        <Icons.DecemberLogo
+                            className="w-10 h-10 md:w-14 md:h-14 text-[#212121]"
+                            strokeWidth={1.5}
+                        />
+                    </div>
+                </div>
+            )}
+            <div className="flex w-full h-screen bg-background text-textMain overflow-hidden font-sans">
+                <AppSideNavigation
+                    showSidebar={showSidebar}
+                    isMobileSidebarOpen={isMobileSidebarOpen}
+                    setIsMobileSidebarOpen={setIsMobileSidebarOpen}
+                    onNewThread={handleNewThread}
+                    onHomeClick={handleHomeClick}
+                    onNavigate={handleNavigate}
                     onOpenProject={handleOpenProject}
-                    onSelectVersion={handleSelectVersion}
-                    onDownloadProject={handleDownloadProject}
+                    isAuthenticated={isAuthenticated}
+                    onOpenAuth={() => setShowAuthModal(true)}
                     onSignOut={handleSignOut}
-                    onDocs={() => handleNavigate('docs')}
-                    projectType={projectType}
-                    selectedModel={selectedModel}
-                    setSelectedModel={setSelectedModel}
-                    onOpenFile={handleOpenFile}
-                    onResetImportState={resetImportState}
                 />
+
+                <AuthModal
+                    isOpen={showAuthModal}
+                    onClose={() => setShowAuthModal(false)}
+                    onAuthSuccess={() => {
+                        setIsAuthenticated(true)
+                        setShowAuthModal(false)
+                        queryClient.invalidateQueries({ queryKey: ['projects'] })
+                        queryClient.invalidateQueries({ queryKey: ['profile'] })
+                    }}
+                />
+
+                <div className="flex-1 flex flex-col h-full min-h-0 relative overflow-hidden">
+                    <AppContentView
+                        view={view}
+                        isHome={isHome}
+                        onHomePromptSubmit={handlePromptSubmit}
+                        onOutputPromptSubmit={handleOutputPromptSubmit}
+                        onPreviewRuntimeError={handlePreviewRuntimeError}
+                        onOpenAuth={() => setShowAuthModal(true)}
+                        onBackFromOutput={handleBackFromOutput}
+                        onNewProject={handleNewThread}
+                        onOpenProject={handleOpenProject}
+                        onImportGithub={handleImportGithub}
+                        onImportZip={handleImportZip}
+                        onSelectVersion={handleSelectVersion}
+                        onDownloadProject={handleDownloadProject}
+                        onSignOut={handleSignOut}
+                        onDocs={() => handleNavigate('docs')}
+                        selectedModel={selectedModel}
+                        setSelectedModel={setSelectedModel}
+                        onOpenFile={handleOpenFile}
+                        onResetImportState={resetImportState}
+                    />
+                </div>
             </div>
-        </div>
+        </>
     )
 }
 

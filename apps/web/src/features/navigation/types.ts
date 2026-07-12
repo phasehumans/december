@@ -16,8 +16,6 @@ export interface SidebarProps {
     onOpenProject: (projectId: string) => void
     isAuthenticated: boolean
     onOpenAuth: () => void
-    projects: Project[]
-    isProjectsLoading: boolean
     onSignOut?: () => void
     onHomeClick?: () => void
 }
@@ -35,8 +33,6 @@ export interface MobileSidebarProps {
     onOpenProject: (projectId: string) => void
     isAuthenticated: boolean
     onOpenAuth: () => void
-    projects: Project[]
-    isProjectsLoading: boolean
     onSignOut?: () => void
 }
 

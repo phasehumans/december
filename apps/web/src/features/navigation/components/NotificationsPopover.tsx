@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Inbox, Trash2, ArrowLeft, MoreHorizontal, Settings } from 'lucide-react'
+import { Trash2, ArrowLeft, MoreHorizontal, Settings, Bell, RefreshCw } from 'lucide-react'
 import React, { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 
@@ -38,14 +38,44 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
 
     const markAsReadMutation = useMutation({
         mutationFn: notificationAPI.markAsRead,
-        onSuccess: () => {
+        onMutate: async (id) => {
+            await queryClient.cancelQueries({ queryKey: ['notifications'] })
+            const previous = queryClient.getQueryData<Notification[]>(['notifications'])
+            if (previous) {
+                queryClient.setQueryData<Notification[]>(['notifications'], (old) =>
+                    old ? old.map((n) => (n.id === id ? { ...n, isRead: true } : n)) : []
+                )
+            }
+            return { previous }
+        },
+        onError: (err, id, context) => {
+            if (context?.previous) {
+                queryClient.setQueryData(['notifications'], context.previous)
+            }
+        },
+        onSettled: () => {
             queryClient.invalidateQueries({ queryKey: ['notifications'] })
         },
     })
 
     const deleteMutation = useMutation({
         mutationFn: notificationAPI.deleteNotification,
-        onSuccess: () => {
+        onMutate: async (id) => {
+            await queryClient.cancelQueries({ queryKey: ['notifications'] })
+            const previous = queryClient.getQueryData<Notification[]>(['notifications'])
+            if (previous) {
+                queryClient.setQueryData<Notification[]>(['notifications'], (old) =>
+                    old ? old.filter((n) => n.id !== id) : []
+                )
+            }
+            return { previous }
+        },
+        onError: (err, id, context) => {
+            if (context?.previous) {
+                queryClient.setQueryData(['notifications'], context.previous)
+            }
+        },
+        onSettled: () => {
             queryClient.invalidateQueries({ queryKey: ['notifications'] })
             setSelectedNotification(null)
         },
@@ -53,7 +83,22 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
 
     const deleteAllReadMutation = useMutation({
         mutationFn: notificationAPI.deleteAllRead,
-        onSuccess: () => {
+        onMutate: async () => {
+            await queryClient.cancelQueries({ queryKey: ['notifications'] })
+            const previous = queryClient.getQueryData<Notification[]>(['notifications'])
+            if (previous) {
+                queryClient.setQueryData<Notification[]>(['notifications'], (old) =>
+                    old ? old.filter((n) => !n.isRead) : []
+                )
+            }
+            return { previous }
+        },
+        onError: (err, variables, context) => {
+            if (context?.previous) {
+                queryClient.setQueryData(['notifications'], context.previous)
+            }
+        },
+        onSettled: () => {
             queryClient.invalidateQueries({ queryKey: ['notifications'] })
             setIsMenuOpen(false)
         },
@@ -171,7 +216,7 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
         return createPortal(
             <div
                 ref={popoverRef}
-                className="fixed z-[100] rounded-2xl border border-[#2E2D2C] bg-[#1E1E1E] shadow-2xl p-1.5 pointer-events-auto animate-in fade-in zoom-in-95 duration-200 flex flex-col font-sans"
+                className="fixed z-[100] rounded-2xl border border-[#2E2D2C] bg-[#1E1E1E] shadow-lg p-1.5 pointer-events-auto animate-in fade-in zoom-in-95 duration-200 flex flex-col font-sans"
                 style={{
                     bottom: position.bottom,
                     left: Math.max(10, position.left),
@@ -236,7 +281,7 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
     return createPortal(
         <div
             ref={popoverRef}
-            className="fixed z-[100] rounded-2xl border border-[#2E2D2C] bg-[#1E1E1E] shadow-2xl p-1.5 pointer-events-auto animate-in fade-in zoom-in-95 duration-200 flex flex-col font-sans"
+            className="fixed z-[100] rounded-2xl border border-[#2E2D2C] bg-[#1E1E1E] shadow-lg p-1.5 pointer-events-auto animate-in fade-in zoom-in-95 duration-200 flex flex-col font-sans"
             style={{
                 bottom: position.bottom,
                 left: Math.max(10, position.left),
@@ -256,15 +301,19 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
                             e.stopPropagation()
                             setIsMenuOpen(!isMenuOpen)
                         }}
-                        className="flex items-center justify-center w-7 h-7 rounded-lg hover:bg-[#252525] text-[#8F8E8D] hover:text-[#CBCACA] transition-colors outline-none cursor-pointer"
-                        title="More options"
+                        className="flex items-center justify-center w-7 h-7 rounded-lg hover:bg-[#252525] text-[#8F8E8D] hover:text-[#CBCACA] transition-colors outline-none cursor-pointer group/dots"
                     >
                         <MoreHorizontal className="w-[15px] h-[15px]" />
+                        <div className="absolute top-1/2 -translate-y-1/2 left-[calc(100%+8px)] z-50 hidden group-hover/dots:flex items-center gap-1.5 bg-[#1F1F1F] border border-[#282828] px-2.5 py-1 rounded-lg shadow-none whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
+                            <span className="text-[11px] font-medium text-[#EDEDEF]">
+                                More options
+                            </span>
+                        </div>
                     </button>
                     {isMenuOpen && (
                         <div
                             ref={menuRef}
-                            className="absolute right-[-130px] top-8 z-[110] w-[160px] rounded-2xl border border-[#2E2D2C] bg-[#1E1E1E] shadow-2xl p-1.5 flex flex-col gap-0.5 animate-in fade-in zoom-in-95 duration-100"
+                            className="absolute right-[-130px] top-8 z-[110] w-[160px] rounded-2xl border border-[#2E2D2C] bg-[#1E1E1E] shadow-lg p-1.5 flex flex-col gap-0.5 animate-in fade-in zoom-in-95 duration-100"
                         >
                             <button
                                 onClick={() => {
@@ -281,7 +330,10 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
                                 <span>Settings</span>
                             </button>
                             <button
-                                onClick={() => {
+                                type="button"
+                                onClick={(e) => {
+                                    e.preventDefault()
+                                    e.stopPropagation()
                                     deleteAllReadMutation.mutate()
                                 }}
                                 className="flex items-center gap-3 w-full px-2.5 py-1.5 rounded-xl hover:bg-[#252525] text-[#CBCACA] hover:text-white transition-colors text-left text-[12px] cursor-pointer outline-none group"
@@ -323,11 +375,14 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
                     </div>
                 ) : notifications.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-[240px] px-6 text-center animate-in fade-in slide-in-from-bottom-2 duration-300">
-                        <Inbox className="w-10 h-10 text-[#4E4D4C] mb-4" strokeWidth={1.5} />
-                        <p className="text-[13px] font-medium text-[#7B7A79] leading-snug">
-                            Your notifications will
-                            <br />
-                            appear here
+                        <div className="w-10 h-10 rounded-2xl bg-[#252525]/60 flex items-center justify-center mb-4 border border-[#2E2D2C]/60 shadow-sm">
+                            <Bell className="w-[18px] h-[18px] text-[#D6D5D4]" strokeWidth={1.5} />
+                        </div>
+                        <h3 className="text-[13px] font-semibold text-white mb-1.5 tracking-tight">
+                            No Notifications
+                        </h3>
+                        <p className="text-[12px] text-[#8F8E8D] leading-[1.4] max-w-[190px]">
+                            You're all caught up. New notifications will appear here.
                         </p>
                     </div>
                 ) : (
@@ -339,13 +394,13 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
                                 className={`relative group/notif flex flex-col gap-0.5 px-2.5 py-2 rounded-xl cursor-pointer transition-colors ${
                                     notification.isRead
                                         ? 'text-[#8F8E8D] hover:bg-[#252525]'
-                                        : 'bg-[#252525]/30 hover:bg-[#252525]/60 text-white'
+                                        : 'bg-transparent hover:bg-[#252525] text-white'
                                 }`}
                             >
                                 <div className="flex items-center justify-between gap-2 pr-6">
                                     <div className="flex items-center gap-1.5 min-w-0">
                                         {!notification.isRead && (
-                                            <span className="w-1.5 h-1.5 rounded-full bg-white shrink-0" />
+                                            <span className="w-1.5 h-1.5 rounded-full bg-[#87B2F4] shrink-0" />
                                         )}
                                         <span
                                             className={`text-[12.5px] font-medium truncate ${
@@ -372,12 +427,13 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
 
                                 {/* Hover Delete Button */}
                                 <button
+                                    type="button"
                                     onClick={(e) => {
+                                        e.preventDefault()
                                         e.stopPropagation()
                                         deleteMutation.mutate(notification.id)
                                     }}
-                                    className="absolute top-2.5 right-2.5 p-1.5 rounded-lg bg-transparent border border-[#3A3A3A] text-[#969593] hover:text-white hover:border-white/20 opacity-0 group-hover/notif:opacity-100 transition-all duration-200 hover:bg-white/[0.06] outline-none shadow-sm"
-                                    title="Delete notification"
+                                    className="absolute top-2.5 right-2.5 p-1.5 rounded-lg bg-transparent border border-[#3A3A3A] text-[#969593] hover:text-[#EF4444] hover:border-[#EF4444]/20 opacity-0 group-hover/notif:opacity-100 transition-all duration-200 hover:bg-[#EF4444]/10 outline-none shadow-sm"
                                 >
                                     <Trash2 className="w-3.5 h-3.5" strokeWidth={1.5} />
                                 </button>
