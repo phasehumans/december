@@ -121,14 +121,14 @@ export const SidebarHeader: React.FC<{
                     </div>
                     {onCollapse && (
                         <div
-                            className="hidden group-hover:flex items-center justify-center text-[#919191] hover:text-[#D6D5D4] group/collapse p-0.5 rounded-md hover:bg-[#333333] transition-colors"
+                            className="flex md:hidden md:group-hover:flex items-center justify-center text-[#919191] hover:text-[#D4D4D8] group/collapse p-0.5 rounded-md hover:bg-[#333333] transition-colors"
                             onClick={(e) => {
                                 e.stopPropagation()
                                 onCollapse()
                             }}
                         >
                             <Icons.SidebarToggle className="w-4 h-4" />
-                            <div className="absolute top-[calc(100%+4px)] right-0 z-50 hidden group-hover/collapse:flex items-center gap-1.5 bg-[#1F1F1F] border border-[#282828] px-2.5 py-1 rounded-lg shadow-none whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
+                            <div className="absolute top-[calc(100%+4px)] right-0 z-50 hidden md:group-hover/collapse:flex items-center gap-1.5 bg-[#1F1F1F] border border-[#282828] px-2.5 py-1 rounded-lg shadow-none whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
                                 <span className="text-[12px] font-medium text-[#EDEDEF]">
                                     Close sidebar{' '}
                                     <span className="text-[#919191] ml-1 text-[10px] border border-[#333] rounded px-1 py-0.5 bg-[#252525]">
