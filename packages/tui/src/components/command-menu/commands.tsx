@@ -247,10 +247,7 @@ export const COMMANDS: Command[] = [
         description: 'View quota usage',
         value: '/usage',
         action: (ctx) => {
-            ctx.dialog.open({
-                title: 'Usage',
-                children: <UsageDialog toast={ctx.toast} close={ctx.dialog.close} />,
-            })
+            // Forwarded to Chat screen
         },
     },
 ]

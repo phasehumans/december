@@ -1,4 +1,4 @@
-import { Tool, ToolExecuteContext, truncateOutput } from '@december/agent'
+import { Tool, ToolExecuteContext, truncateOutput } from '@december/shared'
 
 export const LsTool: Tool<{ dirPath?: string }> = {
     name: 'list_dir',

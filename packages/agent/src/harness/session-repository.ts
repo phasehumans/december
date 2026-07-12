@@ -1,4 +1,4 @@
-import { Message } from '../types'
+import { Message } from '@december/shared'
 
 export interface SessionRepository {
     saveContext(sessionId: string, messages: Message[]): Promise<void>

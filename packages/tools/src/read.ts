@@ -1,4 +1,4 @@
-import { Tool, truncateOutput, ToolExecuteContext } from '@december/agent'
+import { Tool, truncateOutput, ToolExecuteContext } from '@december/shared'
 
 export interface ReadFileInput {
     path: string
