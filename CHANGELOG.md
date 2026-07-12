@@ -1,8 +1,25 @@
 ## [unreleased]
 
+### Features
+
+- Improve authflow
+- Settings page
+- Search agent
+
+### Bug Fixes
+
+- _(ui)_ Fix ui and added zustand, fix mobile view (#186)
+- _(tui/cli)_ Refactor bloat and fix quota key err (#187)
+
+## [0.2.6] - 2026-07-11
+
 ### Bug Fixes
 
 - _(cli)_ Add robust init command and resolve TUI layout bugs
+
+### Miscellaneous Tasks
+
+- _(release)_ V0.2.6
 
 ## [0.2.5] - 2026-07-11
 
