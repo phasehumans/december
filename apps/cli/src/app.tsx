@@ -3,9 +3,9 @@ import { useState, useCallback, useEffect } from 'react'
 
 import { getModelLabel, getProviderModels } from './utils/models'
 
-import { MessageList, InputBar, useTerminalColumns } from '@december/tui'
+import { MessageList, InputBar } from '@december/tui'
 import { useAgentSession } from './hooks/use-agent-session'
-import { AuthMenus } from '@december/tui'
+import { AuthMenus, AskQuestionMenu } from '@december/tui'
 import { Agent } from '@december/agent'
 import type { FileSessionRepository } from '@december/agent'
 
@@ -28,9 +28,6 @@ export function Chat({
         onCode: (code: string, uri: string) => void
     ) => Promise<{ token: string; email: string | null }>
 }) {
-    const cols = useTerminalColumns()
-    const panelWidth = Math.floor(cols * 0.45)
-
     const session = useAgentSession({
         agent,
         isAuthenticated: initialAuth,
@@ -56,7 +53,20 @@ export function Chat({
     } = session
     const authUI =
         authMode !== 'none' ? (
-            <AuthMenus {...session} agent={agent} getProviderModels={getProviderModels} />
+            authMode === 'ask_question' && session.pendingQuestions ? (
+                <AskQuestionMenu
+                    questions={session.pendingQuestions.questions}
+                    onComplete={(answers) => {
+                        session.pendingQuestions?.resolve(
+                            typeof answers === 'string' ? answers : answers.join(', ')
+                        )
+                        setAuthMode('none')
+                        session.setPendingQuestions(null)
+                    }}
+                />
+            ) : (
+                <AuthMenus {...session} agent={agent} getProviderModels={getProviderModels} />
+            )
         ) : null
     return (
         <Box flexDirection="column" width="100%">

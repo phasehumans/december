@@ -132,7 +132,15 @@ export class GeminiProvider implements LLMProvider {
 
         // Gemini doesn't stream tool call deltas like OpenAI/Anthropic do.
         // It returns the entire tool call in one chunk.
+        let totalPromptTokens = 0
+        let totalCompletionTokens = 0
+
         for await (const chunk of responseStream) {
+            if (chunk.usageMetadata) {
+                totalPromptTokens = chunk.usageMetadata.promptTokenCount || totalPromptTokens
+                totalCompletionTokens =
+                    chunk.usageMetadata.candidatesTokenCount || totalCompletionTokens
+            }
             const parts = chunk.candidates?.[0]?.content?.parts || []
             let chunkText = ''
 
@@ -169,6 +177,14 @@ export class GeminiProvider implements LLMProvider {
                         inputDelta: JSON.stringify(fc.args),
                     }
                 }
+            }
+        }
+
+        if (totalPromptTokens > 0 || totalCompletionTokens > 0) {
+            yield {
+                type: 'usage',
+                promptTokens: totalPromptTokens,
+                completionTokens: totalCompletionTokens,
             }
         }
     }

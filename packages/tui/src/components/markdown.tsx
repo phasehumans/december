@@ -2,6 +2,7 @@ import { Box, Text } from 'ink'
 import { marked } from 'marked'
 import type { Tokens } from 'marked'
 import React from 'react'
+import { highlight } from 'cli-highlight'
 
 type Props = {
     children: string
@@ -36,12 +37,17 @@ const renderToken = (token: marked.Token, index: number): React.ReactNode => {
                 </Text>
             )
         case 'space':
-            return <Text key={index}>{token.raw}</Text>
+            return null
         case 'code':
             return (
                 <Box key={index} flexDirection="column" paddingLeft={2} borderLeft={false}>
                     <Text color="#555555">│ </Text>
-                    <Text color="cyan">{token.text}</Text>
+                    <Text>
+                        {highlight(token.text, {
+                            language: token.lang || 'typescript',
+                            ignoreIllegals: true,
+                        })}
+                    </Text>
                 </Box>
             )
         case 'list':
@@ -59,7 +65,7 @@ const renderToken = (token: marked.Token, index: number): React.ReactNode => {
             )
         case 'heading':
             return (
-                <Box key={index} marginTop={1}>
+                <Box key={index}>
                     <Text bold color="white" underline>
                         {token.tokens?.map((t, i) => renderToken(t, i))}
                     </Text>
@@ -82,8 +88,10 @@ const renderToken = (token: marked.Token, index: number): React.ReactNode => {
 
 export function Markdown({ children }: Props) {
     if (!children) return null
-    const tokens = marked.lexer(children)
+    const tokens = marked.lexer(children).filter((t) => t.type !== 'space')
     return (
-        <Box flexDirection="column">{tokens.map((token, index) => renderToken(token, index))}</Box>
+        <Box flexDirection="column" gap={1}>
+            {tokens.map((token, index) => renderToken(token, index))}
+        </Box>
     )
 }
