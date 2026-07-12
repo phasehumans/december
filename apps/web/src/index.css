@@ -1,12 +1,3 @@
-/* Global override to completely remove all box shadows from tooltips, cards, modals, popovers, and all UI elements */
-*,
-*::before,
-*::after {
-    --tw-shadow: 0 0 #0000 !important;
-    --tw-shadow-colored: 0 0 #0000 !important;
-    box-shadow: none !important;
-}
-
 /* Custom resets to override Tailwind defaults and prevent focus/border flickers */
 button:focus,
 button:active,
@@ -84,4 +75,9 @@ button:focus-visible,
 }
 .cm-editor .cm-searchMatch.cm-searchMatch-selected {
     background-color: rgba(234, 184, 57, 0.6) !important;
+}
+
+html,
+body {
+    overflow-x: hidden;
 }

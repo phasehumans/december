@@ -1,22 +1,24 @@
 import { useQuery } from '@tanstack/react-query'
-import { Inbox, Copy, Check } from 'lucide-react'
+import { Inbox, Copy, Check, ChevronRight } from 'lucide-react'
 import React, { useState, useRef } from 'react'
 
 import sidebarPng from '../../../../public/sidebar.png'
 
 import { NotificationsPopover } from './NotificationsPopover'
+import { UserProfilePopover } from './UserProfilePopover'
 
 import type { SidebarFooterProps } from '@/features/navigation/types'
 
 import { billingAPI } from '@/features/billing/api/billing'
 import { notificationAPI } from '@/features/notification/api/notification'
 import { profileAPI } from '@/features/profile/api/profile'
+import { cn } from '@/shared/lib/utils'
 import { Icons } from '@/shared/components/ui/Icons'
 
 export const SidebarFooter: React.FC<
     SidebarFooterProps & { user?: { name?: string }; onSignOut?: () => void }
 > = ({ isAuthenticated, isCollapsed, onProfile, onDocs, onOpenAuth, user, onSignOut }) => {
-    const [isPopoverOpen] = useState(false)
+    const [isPopoverOpen, setIsPopoverOpen] = useState(false)
     const [isNotifPopoverOpen, setIsNotifPopoverOpen] = useState(false)
     const [showCliCard, setShowCliCard] = useState(false)
     const [isCopied, setIsCopied] = useState(false)
@@ -102,19 +104,22 @@ export const SidebarFooter: React.FC<
                 <button
                     id="try-cli-btn"
                     onClick={() => setShowCliCard(!showCliCard)}
-                    className="upgrade-plan-btn flex items-center gap-1 px-2.5 py-[3px] rounded-full hover:bg-white/[0.06] transition-all text-[#CBCACA] hover:text-white text-[11px] font-medium outline-none w-fit mx-auto cursor-pointer"
+                    className={cn(
+                        'upgrade-plan-btn flex items-center justify-center gap-1 rounded-full bg-transparent hover:bg-white/5 transition-all text-[#CBCACA] hover:text-white font-medium outline-none mx-auto cursor-pointer',
+                        isCollapsed ? 'w-8 h-8 px-0' : 'px-2.5 py-[3px] w-fit text-[11px]'
+                    )}
                     style={{
                         border: '1px solid #383735',
                     }}
                 >
-                    <span className="text-[12px]">✱</span>
-                    <span>Try December CLI</span>
+                    <span className={cn(isCollapsed ? 'text-[16px]' : 'text-[12px]')}>✱</span>
+                    {!isCollapsed && <span>Try December CLI</span>}
                 </button>
 
                 {showCliCard && (
                     <div
                         id="cli-popover-card"
-                        className="absolute bottom-11 left-3 w-[300px] z-[100] bg-[#1E1E1E] border border-[#2A2928] rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200"
+                        className="absolute bottom-11 left-3 w-[300px] z-[100] bg-[#1E1E1E] border border-[#2A2928] rounded-2xl shadow-lg shadow-black/40 overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200"
                     >
                         <div className="w-full h-[165px] bg-[#1E1E1E] relative overflow-hidden flex items-center justify-center p-1.5 pb-0 pointer-events-none">
                             <div className="w-full h-full relative overflow-hidden rounded-xl border border-[#2A2928]">
@@ -150,7 +155,7 @@ export const SidebarFooter: React.FC<
                                     title="Copy command"
                                 >
                                     {isCopied ? (
-                                        <Check className="w-3.5 h-3.5 text-white" />
+                                        <Check className="w-3.5 h-3.5 text-[#87B2F4]" />
                                     ) : (
                                         <Copy className="w-3.5 h-3.5" />
                                     )}
@@ -160,39 +165,83 @@ export const SidebarFooter: React.FC<
                     </div>
                 )}
             </div>
-            {isAuthenticated && <div className="w-full border-t border-white/[0.04]"></div>}
 
+            {isAuthenticated && <div className="w-full border-t border-white/[0.04]"></div>}
             <div className="pl-[6px] pr-[6px] pt-1 pb-1.5">
                 {isAuthenticated && (
                     <>
-                        <div className="flex items-center gap-0 w-full justify-between">
+                        <div
+                            className={cn(
+                                'flex items-center w-full',
+                                isCollapsed
+                                    ? 'flex-col-reverse gap-2 mb-2'
+                                    : 'gap-0 justify-between'
+                            )}
+                        >
                             <button
                                 ref={anchorRef}
-                                onClick={onProfile}
-                                className="flex items-center gap-2 px-1.5 py-[7px] rounded-lg hover:bg-[#252525] transition-colors group outline-none min-w-0"
-                                style={{ maxWidth: 'calc(100% - 28px)' }}
+                                onClick={() => setIsPopoverOpen(!isPopoverOpen)}
+                                className={cn(
+                                    'flex items-center justify-center rounded-lg hover:bg-[#252525] transition-colors group outline-none min-w-0 relative',
+                                    isCollapsed ? 'w-10 h-10' : 'gap-2 px-1.5 py-[7px]'
+                                )}
+                                style={isCollapsed ? {} : { maxWidth: 'calc(100% - 28px)' }}
                             >
-                                <div className="flex items-center justify-center w-[24px] h-[24px] rounded-full bg-white/[0.04] text-[#E8E8E8] group-hover:text-[#E8E8E8] transition-colors shrink-0">
-                                    <Icons.UserCircle className="w-[12px] h-[12px]" />
+                                <div
+                                    className={cn(
+                                        'flex items-center justify-center rounded-full bg-white/[0.04] text-[#8F8E8D] group-hover:text-[#CBCACA] transition-colors shrink-0',
+                                        isCollapsed ? 'w-[26px] h-[26px]' : 'w-[24px] h-[24px]'
+                                    )}
+                                >
+                                    <Icons.UserCircle
+                                        className={cn(
+                                            'relative -top-[1px]',
+                                            isCollapsed ? 'w-[15px] h-[15px]' : 'w-[13px] h-[13px]'
+                                        )}
+                                    />
                                 </div>
-                                <span className="font-medium text-[13px] text-[#E8E8E8] group-hover:text-[#E8E8E8] transition-colors truncate tracking-tight text-left">
-                                    {user?.name ||
-                                        profile?.name ||
-                                        quickInfo?.fullName ||
-                                        'Profile'}
-                                </span>
+                                {!isCollapsed && (
+                                    <span className="font-medium text-[13px] text-[#8F8E8D] group-hover:text-[#CBCACA] transition-colors truncate tracking-tight text-left">
+                                        {user?.name ||
+                                            profile?.name ||
+                                            quickInfo?.fullName ||
+                                            'Profile'}
+                                    </span>
+                                )}
+                                {isCollapsed && (
+                                    <div className="absolute top-1/2 left-[calc(100%+8px)] -translate-y-1/2 z-50 hidden group-hover:flex items-center gap-1.5 bg-[#1F1F1F] border border-[#282828] px-2.5 py-1 rounded-lg shadow-none whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
+                                        <span className="text-[12px] font-medium text-[#EDEDEF]">
+                                            Profile
+                                        </span>
+                                    </div>
+                                )}
                             </button>
                             <button
                                 ref={notifAnchorRef}
                                 onClick={() => setIsNotifPopoverOpen(!isNotifPopoverOpen)}
-                                className="flex items-center justify-center w-7 h-7 rounded-lg hover:bg-[#252525] text-[#E8E8E8] hover:text-[#E8E8E8] transition-colors shrink-0 outline-none -ml-1 relative group/notif"
+                                className={cn(
+                                    'flex items-center justify-center rounded-lg hover:bg-[#252525] text-[#E8E8E8] transition-colors shrink-0 outline-none relative group/notif',
+                                    isCollapsed ? 'w-10 h-10' : 'w-7 h-7 -ml-1'
+                                )}
                             >
-                                <Inbox className="w-[13px] h-[13px]" strokeWidth={2} />
+                                <Inbox
+                                    className={cn(
+                                        isCollapsed ? 'w-[15px] h-[15px]' : 'w-[13px] h-[13px]'
+                                    )}
+                                    strokeWidth={2}
+                                />
                                 {hasUnread && (
-                                    <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-white rounded-full border border-[#141414]" />
+                                    <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-[#87B2F4] rounded-full border border-[#141414]" />
                                 )}
                                 {!isNotifPopoverOpen && (
-                                    <div className="absolute bottom-[calc(100%+6px)] right-0 z-50 hidden group-hover/notif:flex items-center gap-1.5 bg-[#1C1B1A] border border-[#2A2928] px-2.5 py-1 rounded-lg shadow-xl whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
+                                    <div
+                                        className={cn(
+                                            'absolute z-50 hidden group-hover/notif:flex items-center gap-1.5 bg-[#1F1F1F] border border-[#282828] px-2.5 py-1 rounded-lg shadow-none whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none',
+                                            isCollapsed
+                                                ? 'top-1/2 left-[calc(100%+8px)] -translate-y-1/2'
+                                                : 'bottom-[calc(100%+6px)] right-0'
+                                        )}
+                                    >
                                         <span className="text-[12px] font-medium text-[#EDEDEF]">
                                             Notifications
                                         </span>
@@ -206,6 +255,17 @@ export const SidebarFooter: React.FC<
                             anchorRef={notifAnchorRef}
                             onClose={() => setIsNotifPopoverOpen(false)}
                             onSettings={onProfile}
+                        />
+
+                        <UserProfilePopover
+                            isOpen={isPopoverOpen}
+                            anchorRef={anchorRef}
+                            onClose={() => setIsPopoverOpen(false)}
+                            userName={profile?.name || quickInfo?.fullName || 'phasehuman'}
+                            userEmail={profile?.email || 'dev.chaitanyasonawane@gmail.com'}
+                            isPro={isPro}
+                            onProfile={onProfile}
+                            onSignOut={onSignOut}
                         />
                     </>
                 )}

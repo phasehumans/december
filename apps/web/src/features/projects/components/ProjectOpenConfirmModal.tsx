@@ -34,7 +34,7 @@ export const ProjectOpenConfirmModal: React.FC<ProjectOpenConfirmModalProps> = (
                     <button
                         type="button"
                         onClick={onClose}
-                        className="border border-[#2B2A27] bg-transparent text-white hover:bg-white/5 active:scale-95 transition-[transform,background-color,border-color,color] duration-200 text-[13px] font-medium px-4 py-2 rounded-lg focus:outline-none"
+                        className="bg-transparent text-white hover:bg-white/5 active:scale-95 transition-[transform,background-color,border-color,color] duration-200 text-[13px] font-medium px-4 py-2 rounded-lg focus:outline-none"
                     >
                         Cancel
                     </button>

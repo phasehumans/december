@@ -1,4 +1,6 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
+
+import { cn } from '@/shared/lib/utils'
 
 import type { ViewState } from '@/app/types'
 import type { Project } from '@/features/projects/types'
@@ -16,8 +18,6 @@ interface AppSideNavigationProps {
     onOpenProject: (projectId: string) => void
     isAuthenticated: boolean
     onOpenAuth: () => void
-    projects: Project[]
-    isProjectsInitialLoading: boolean
     onSignOut?: () => void
     onHomeClick?: () => void
 }
@@ -31,11 +31,22 @@ export const AppSideNavigation: React.FC<AppSideNavigationProps> = ({
     onOpenProject,
     isAuthenticated,
     onOpenAuth,
-    projects,
-    isProjectsInitialLoading,
     onSignOut,
     onHomeClick,
 }) => {
+    const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
+
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.ctrlKey && e.key === '.') {
+                e.preventDefault()
+                setIsSidebarCollapsed((prev) => !prev)
+            }
+        }
+        window.addEventListener('keydown', handleKeyDown)
+        return () => window.removeEventListener('keydown', handleKeyDown)
+    }, [])
+
     if (!showSidebar) {
         return null
     }
@@ -53,18 +64,19 @@ export const AppSideNavigation: React.FC<AppSideNavigationProps> = ({
                 onOpenProject={onOpenProject}
                 isAuthenticated={isAuthenticated}
                 onOpenAuth={onOpenAuth}
-                projects={projects}
-                isProjectsLoading={isProjectsInitialLoading}
                 onSignOut={onSignOut}
                 onHomeClick={onHomeClick}
+                onCollapse={() => setIsSidebarCollapsed(true)}
+                isCollapsed={isSidebarCollapsed}
+                onExpand={() => setIsSidebarCollapsed(false)}
             />
 
             <div className="md:hidden fixed top-4 left-4 z-50">
                 <button
                     onClick={() => setIsMobileSidebarOpen(true)}
-                    className="p-2 bg-[#1F1F1F] rounded-md border border-white/10 text-white"
+                    className="p-1.5 text-[#8F8E8D] hover:text-[#D4D4D8] transition-colors"
                 >
-                    <Icons.SidebarToggle />
+                    <Icons.SidebarToggle className="w-[18px] h-[18px]" />
                 </button>
             </div>
 
@@ -81,8 +93,6 @@ export const AppSideNavigation: React.FC<AppSideNavigationProps> = ({
                 onOpenProject={onOpenProject}
                 isAuthenticated={isAuthenticated}
                 onOpenAuth={onOpenAuth}
-                projects={projects}
-                isProjectsLoading={isProjectsInitialLoading}
                 onSignOut={onSignOut}
             />
         </>

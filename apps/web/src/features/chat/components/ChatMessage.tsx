@@ -6,129 +6,8 @@ import type { ChatMessageProps } from '@/features/chat/types'
 
 import { cn } from '@/shared/lib/utils'
 
-const parseInlineFormatting = (text: string): React.ReactNode[] => {
-    const regex = /(\*\*.*?\*\*|\*.*?\*|`.*?`)/g
-    const matches = text.split(regex)
-
-    return matches.map((part, idx) => {
-        if (part.startsWith('**') && part.endsWith('**')) {
-            return (
-                <strong key={idx} className="font-semibold text-[#E6E4E3]">
-                    {part.slice(2, -2)}
-                </strong>
-            )
-        }
-        if (part.startsWith('*') && part.endsWith('*')) {
-            return (
-                <em key={idx} className="italic text-[#C4C3C2]">
-                    {part.slice(1, -1)}
-                </em>
-            )
-        }
-        if (part.startsWith('`') && part.endsWith('`')) {
-            return (
-                <code
-                    key={idx}
-                    className="px-1 py-0.5 rounded bg-white/5 font-mono text-[10.5px] text-[#E6E4E3]"
-                >
-                    {part.slice(1, -1)}
-                </code>
-            )
-        }
-        return part
-    })
-}
-
-const renderRichContent = (text: string, isThoughts = false) => {
-    if (!text) return null
-
-    const lines = text.split('\n').map((l) => l.trim())
-    const elements: React.ReactNode[] = []
-    let currentListItems: React.ReactNode[] = []
-
-    const flushList = (key: string | number) => {
-        if (currentListItems.length > 0) {
-            elements.push(
-                <ul key={`ul-${key}`} className="my-1.5 space-y-1.5 pl-0.5 w-full">
-                    {...currentListItems}
-                </ul>
-            )
-            currentListItems = []
-        }
-    }
-
-    lines.forEach((line, index) => {
-        if (!line || line.trim().toLowerCase() === '### overview') {
-            flushList(index)
-            return
-        }
-
-        if (line.startsWith('### ')) {
-            flushList(index)
-            elements.push(
-                <h3
-                    key={index}
-                    className="text-[12px] font-bold text-[#E6E4E3] tracking-wide mt-3 mb-1 font-sans"
-                >
-                    {parseInlineFormatting(line.slice(4))}
-                </h3>
-            )
-        } else if (line.startsWith('#### ')) {
-            flushList(index)
-            elements.push(
-                <h4
-                    key={index}
-                    className="text-[11.5px] font-semibold text-[#E6E4E3] mt-2 mb-1 font-sans"
-                >
-                    {parseInlineFormatting(line.slice(5))}
-                </h4>
-            )
-        } else if (line.startsWith('## ')) {
-            flushList(index)
-            elements.push(
-                <h2
-                    key={index}
-                    className="text-[13px] font-bold text-[#E6E4E3] tracking-wide mt-4 mb-1.5 font-sans"
-                >
-                    {parseInlineFormatting(line.slice(3))}
-                </h2>
-            )
-        } else if (line.startsWith('- ') || line.startsWith('• ')) {
-            currentListItems.push(
-                <li
-                    key={`li-${index}`}
-                    className="flex items-start gap-2 text-[12px] leading-5 text-[#B7B6B5] w-full"
-                >
-                    <span className="mt-[8px] h-1 w-1 shrink-0 rounded-full bg-[#6D6C6B]" />
-                    <span className="select-text w-full break-words">
-                        {parseInlineFormatting(line.slice(2))}
-                    </span>
-                </li>
-            )
-        } else {
-            flushList(index)
-            const processedLine = line.replace(
-                /^(\*\*Overview:\*\*|\*\*Overview\*\*|Overview:?)\s*[\-–—]?\s*/i,
-                ''
-            )
-            elements.push(
-                <p
-                    key={index}
-                    className={
-                        isThoughts
-                            ? 'text-[12px] leading-relaxed text-[#8E8D8C] whitespace-pre-wrap select-text mb-1.5'
-                            : 'text-[12.5px] leading-relaxed text-[#D1D0CF] whitespace-pre-wrap select-text mb-2'
-                    }
-                >
-                    {parseInlineFormatting(processedLine)}
-                </p>
-            )
-        }
-    })
-
-    flushList('final')
-    return <div className="space-y-1.5 w-full">{elements}</div>
-}
+import { useChatMessageController } from '@/features/chat/hooks/useChatMessageController'
+import { renderRichContent } from '@/features/chat/utils/chatFormatting'
 
 export const ChatMessage: React.FC<ChatMessageProps> = ({
     id,
@@ -151,130 +30,30 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
     onOpenFile,
     projectId,
 }) => {
-    const [feedback, setFeedback] = React.useState<'like' | 'dislike' | null>(null)
-    const [isThoughtsOpen, setIsThoughtsOpen] = React.useState<boolean>(true)
-    const [displayedPlan, setDisplayedPlan] = React.useState('')
-    const [displayedThoughts, setDisplayedThoughts] = React.useState('')
-    const [displayedSummary, setDisplayedSummary] = React.useState('')
-    const hasAutoCollapsedRef = React.useRef(false)
-
-    const isFirstImportView = projectType !== 'generated' && index === 1
-    const cacheKey = `december_msg_streamed_${id}`
-    const justImported = projectId
-        ? sessionStorage.getItem(`december_actively_importing_${projectId}`) === 'true'
-        : false
-    const shouldForceStream = isFirstImportView && justImported && !sessionStorage.getItem(cacheKey)
-    const [isStreamFinished, setIsStreamFinished] = React.useState(!shouldForceStream)
-
-    // Calculate segments needed for useEffect BEFORE they are used in hooks
-    const isThinkingPhase = status === 'thinking'
-    const thinkingText = thoughts || (isThinkingPhase && !thoughts ? content : '')
-    const planText = plan || ''
-    const summaryText = summary || ''
-
-    React.useEffect(() => {
-        if (shouldForceStream) return
-
-        if (
-            (status === 'building' || status === 'done' || Boolean(plan)) &&
-            !hasAutoCollapsedRef.current
-        ) {
-            setIsThoughtsOpen(false)
-            hasAutoCollapsedRef.current = true
-        }
-        if (status === 'thinking' && !plan) {
-            setIsThoughtsOpen(true)
-            hasAutoCollapsedRef.current = false
-        }
-    }, [status, plan, shouldForceStream])
-
-    React.useEffect(() => {
-        if (!shouldForceStream) {
-            setDisplayedThoughts(thinkingText)
-            setDisplayedPlan(planText)
-            setDisplayedSummary(summaryText)
-            return
-        }
-
-        let isCancelled = false
-
-        const runStream = async () => {
-            if (projectId) {
-                sessionStorage.setItem(`december_import_stream_running_${projectId}`, 'true')
-                window.dispatchEvent(
-                    new CustomEvent('december-import-stream-start', { detail: { projectId } })
-                )
-            }
-
-            // 1. Stream thoughts with accordion open
-            if (thinkingText) {
-                setIsThoughtsOpen(true)
-                let currentThoughts = ''
-                while (currentThoughts.length < thinkingText.length) {
-                    if (isCancelled) return
-                    const increment = Math.floor(Math.random() * 2) + 1
-                    currentThoughts = thinkingText.slice(0, currentThoughts.length + increment)
-                    setDisplayedThoughts(currentThoughts)
-                    await new Promise((resolve) => setTimeout(resolve, 30))
-                }
-            }
-
-            // Collapse the thoughts accordion
-            if (isCancelled) return
-            setIsThoughtsOpen(false)
-
-            // Brief pause to let the collapse transition run before starting metadata stream
-            await new Promise((resolve) => setTimeout(resolve, 350))
-
-            // 2. Stream plan
-            if (planText) {
-                let currentPlan = ''
-                while (currentPlan.length < planText.length) {
-                    if (isCancelled) return
-                    const increment = Math.floor(Math.random() * 2) + 1
-                    currentPlan = planText.slice(0, currentPlan.length + increment)
-                    setDisplayedPlan(currentPlan)
-                    await new Promise((resolve) => setTimeout(resolve, 20))
-                }
-            }
-
-            // 3. Stream summary (only if generated project)
-            if (projectType === 'generated' && summaryText) {
-                let currentSummary = ''
-                while (currentSummary.length < summaryText.length) {
-                    if (isCancelled) return
-                    const increment = Math.floor(Math.random() * 2) + 1
-                    currentSummary = summaryText.slice(0, currentSummary.length + increment)
-                    setDisplayedSummary(currentSummary)
-                    await new Promise((resolve) => setTimeout(resolve, 25))
-                }
-            }
-
-            if (!isCancelled) {
-                setIsStreamFinished(true)
-                sessionStorage.setItem(cacheKey, 'true')
-                if (projectId) {
-                    sessionStorage.removeItem(`december_import_stream_running_${projectId}`)
-                    sessionStorage.removeItem(`december_actively_importing_${projectId}`)
-                    window.dispatchEvent(
-                        new CustomEvent('december-import-stream-end', { detail: { projectId } })
-                    )
-                }
-            }
-        }
-
-        runStream()
-
-        return () => {
-            isCancelled = true
-            if (projectId) {
-                sessionStorage.removeItem(`december_import_stream_running_${projectId}`)
-                window.dispatchEvent(
-                    new CustomEvent('december-import-stream-end', { detail: { projectId } })
-                )
-            }
-        }
-    }, [thinkingText, planText, summaryText, shouldForceStream, cacheKey, projectType, projectId])
+    const {
+        feedback,
+        setFeedback,
+        isThoughtsOpen,
+        setIsThoughtsOpen,
+        displayedPlan,
+        displayedThoughts,
+        displayedSummary,
+        isStreamFinished,
+        isThinkingPhase,
+        thinkingText,
+        planText,
+        shouldForceStream,
+    } = useChatMessageController({
+        id,
+        content,
+        thoughts,
+        plan,
+        summary,
+        status,
+        index,
+        projectType,
+        projectId,
+    })
 
     if (role === 'user') {
         return (

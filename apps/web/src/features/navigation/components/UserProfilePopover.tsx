@@ -143,7 +143,6 @@ export const UserProfilePopover: React.FC<UserProfilePopoverProps> = ({
             icon: Icons.DocsBook,
             label: 'Documentation',
             action: onDocs,
-            external: true,
         },
         {
             icon: FileClock,
@@ -169,7 +168,7 @@ export const UserProfilePopover: React.FC<UserProfilePopoverProps> = ({
     return createPortal(
         <div
             ref={popoverRef}
-            className="fixed z-[100] rounded-2xl border border-[#2E2D2C] bg-[#1E1E1E] shadow-2xl p-2 pointer-events-auto animate-in fade-in zoom-in-95 duration-200"
+            className="fixed z-[100] rounded-2xl border border-[#2E2D2C] bg-[#1E1E1E] shadow-lg p-1.5 pointer-events-auto animate-in fade-in zoom-in-95 duration-200 flex flex-col font-sans"
             style={{
                 bottom: position.bottom,
                 left: position.left,
@@ -177,15 +176,15 @@ export const UserProfilePopover: React.FC<UserProfilePopoverProps> = ({
             }}
         >
             {/* User Info Header */}
-            <div className="flex items-center gap-3 px-3 py-1.5 mb-1">
-                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-white/[0.04] text-[#8F8E8D] shrink-0 overflow-hidden">
-                    <Icons.UserCircle className="w-4 h-4" />
+            <div className="flex items-center gap-2.5 px-2 py-1.5 mb-1">
+                <div className="flex items-center justify-center w-7 h-7 rounded-full bg-white/[0.04] text-[#8F8E8D] shrink-0 overflow-hidden">
+                    <Icons.UserCircle className="w-3.5 h-3.5" />
                 </div>
                 <div className="flex flex-col min-w-0">
-                    <span className="text-[14px] font-medium text-[#CBCACA] truncate leading-tight">
+                    <span className="text-[13px] font-medium text-[#CBCACA] truncate leading-tight">
                         {userName}
                     </span>
-                    <span className="text-[12px] text-[#969593] truncate leading-tight mt-0.5">
+                    <span className="text-[11px] text-[#969593] truncate leading-tight mt-0.5">
                         {userEmail}
                     </span>
                 </div>
@@ -204,14 +203,14 @@ export const UserProfilePopover: React.FC<UserProfilePopoverProps> = ({
                             }
                             onClose()
                         }}
-                        className="flex items-center justify-between w-full px-3 py-1.5 rounded-xl hover:bg-[#252525] transition-colors group text-left"
+                        className="flex items-center justify-between w-full px-2.5 py-1.5 rounded-xl hover:bg-[#252525] transition-colors group text-left"
                     >
                         <div className="flex items-center gap-3">
                             <item.icon
-                                className="w-[18px] h-[18px] text-[#CBCACA] group-hover:text-white transition-colors"
+                                className="w-[15px] h-[15px] text-[#CBCACA] group-hover:text-white transition-colors"
                                 strokeWidth={1.5}
                             />
-                            <span className="text-[14px] text-[#CBCACA] group-hover:text-white transition-colors">
+                            <span className="text-[12px] text-[#CBCACA] group-hover:text-white transition-colors">
                                 {item.label}
                             </span>
                         </div>
@@ -234,13 +233,13 @@ export const UserProfilePopover: React.FC<UserProfilePopoverProps> = ({
                     onSignOut?.()
                     onClose()
                 }}
-                className="flex items-center gap-3 w-full px-3 py-1.5 rounded-xl hover:bg-[#252525] transition-colors group text-left mb-0.5"
+                className="flex items-center gap-3 w-full px-2.5 py-1.5 rounded-xl hover:bg-[#252525] transition-colors group text-left mb-0.5"
             >
                 <LogOut
-                    className="w-[18px] h-[18px] text-[#CBCACA] group-hover:text-white transition-colors"
+                    className="w-[15px] h-[15px] text-[#CBCACA] group-hover:text-white transition-colors"
                     strokeWidth={1.5}
                 />
-                <span className="text-[14px] text-[#CBCACA] group-hover:text-white transition-colors">
+                <span className="text-[12px] text-[#CBCACA] group-hover:text-white transition-colors">
                     Sign out
                 </span>
             </button>

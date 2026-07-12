@@ -1,5 +1,6 @@
 import React from 'react'
 import { createPortal } from 'react-dom'
+import { cn } from '@/shared/lib/utils'
 import { useNavigate, useLocation } from 'react-router-dom'
 
 import { SearchModal } from './SearchModal'
@@ -12,9 +13,17 @@ import type { SidebarProps } from '@/features/navigation/types'
 import { useBillingOverview } from '@/features/billing/hooks/useBillingData'
 import { SettingsBigModal } from '@/features/preview/components/settings/SettingsBigModal'
 import { Icons } from '@/shared/components/ui/Icons'
+import { useProjects } from '@/features/projects/hooks/useProjects'
 
 const Sidebar: React.FC<
-    SidebarProps & { user?: any; onSignOut?: () => void; onHomeClick?: () => void }
+    SidebarProps & {
+        user?: any
+        onSignOut?: () => void
+        onHomeClick?: () => void
+        onCollapse?: () => void
+        isCollapsed?: boolean
+        onExpand?: () => void
+    }
 > = ({
     onNewThread,
     onAllProjects,
@@ -26,12 +35,14 @@ const Sidebar: React.FC<
     onOpenProject,
     isAuthenticated,
     onOpenAuth,
-    projects,
-    isProjectsLoading,
     user,
     onSignOut,
     onHomeClick,
+    onCollapse,
+    isCollapsed,
+    onExpand,
 }) => {
+    const { data: projects = [], isLoading: isProjectsLoading } = useProjects()
     const navigate = useNavigate()
     const location = useLocation()
     const path = location.pathname
@@ -103,75 +114,98 @@ const Sidebar: React.FC<
         : []
 
     return (
-        <div className="hidden md:flex flex-col h-screen bg-sidebar border-r border-white/5 pt-2 pb-0 z-20 w-[200px] font-sans">
+        <div
+            className={cn(
+                'hidden md:flex flex-col h-screen bg-sidebar border-r border-white/5 pt-2 pb-0 z-20 font-sans transition-all duration-300',
+                isCollapsed ? 'w-[56px] items-center' : 'w-[200px]'
+            )}
+        >
             <SidebarHeader
                 onNewThread={isAuthenticated ? onNewThread : onOpenAuth}
                 onHomeClick={isAuthenticated ? onHomeClick : onOpenAuth}
                 isAuthenticated={isAuthenticated}
                 onOpenAuth={onOpenAuth}
+                onCollapse={onCollapse}
+                isCollapsed={isCollapsed}
+                onExpand={onExpand}
             />
 
-            <div className="flex flex-col gap-[1px] pl-[10px] pr-3">
+            <div className={cn('flex flex-col gap-[1px]', isCollapsed ? 'px-2' : 'pl-[10px] pr-3')}>
                 <SidebarNavItem
                     icon={<Icons.SessionsIcon className="w-[18px] h-[18px]" />}
                     label="Sessions"
                     active={isSessionsActive}
                     onClick={onSessions}
+                    collapsed={isCollapsed}
+                    tooltipLabel={isCollapsed ? 'Sessions' : undefined}
                 />
                 <SidebarNavItem
                     icon={<Icons.GitPullRequest className="w-[18px] h-[18px]" />}
                     label="Review"
                     active={isReviewActive}
                     onClick={onReview}
+                    collapsed={isCollapsed}
+                    tooltipLabel={isCollapsed ? 'Review' : undefined}
                 />
                 <SidebarNavItem
                     icon={<Icons.Folder />}
                     label="Projects"
                     active={isProjectsActive}
                     onClick={onAllProjects}
+                    collapsed={isCollapsed}
+                    tooltipLabel={isCollapsed ? 'Projects' : undefined}
                 />
                 <SidebarNavItem
                     icon={<Icons.Bookmark />}
                     label="Templates"
                     active={isTemplatesActive}
                     onClick={onTemplates}
+                    collapsed={isCollapsed}
+                    tooltipLabel={isCollapsed ? 'Templates' : undefined}
                 />
                 <SidebarNavItem
                     icon={<Icons.Settings className="w-[18px] h-[18px]" />}
                     label="Settings"
                     active={isSettingsActive}
                     onClick={onProfile}
+                    collapsed={isCollapsed}
+                    tooltipLabel={isCollapsed ? 'Settings' : undefined}
                 />
             </div>
 
-            <div className="flex-1 flex flex-col pl-[10px] pr-3 mt-4 mb-2 overflow-y-auto no-scrollbar font-sans">
+            <div
+                className={cn(
+                    'flex-1 flex flex-col mt-4 mb-2 overflow-y-auto no-scrollbar font-sans',
+                    isCollapsed ? 'px-2 hidden' : 'pl-[10px] pr-3'
+                )}
+            >
                 <div className="flex flex-col mb-2">
                     <div className="flex items-center justify-between px-3 py-1.5 w-full text-left group">
                         <span className="font-normal text-[13px] whitespace-nowrap transition-colors tracking-tight text-[#919191]">
                             Recent
                         </span>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-0.5">
                             <button
-                                onClick={() =>
-                                    isAuthenticated ? setIsSearchOpen(true) : onOpenAuth?.()
-                                }
-                                className="relative text-[#919191] hover:text-[#919191] transition-all outline-none group/btn"
+                                onClick={() => (isAuthenticated ? onNewThread() : onOpenAuth?.())}
+                                className="relative flex items-center justify-center p-1 rounded-md text-[#919191] hover:text-[#E8E8E8] hover:bg-[#252525] transition-all outline-none group/btn"
                             >
-                                <Icons.Search className="w-3.5 h-3.5" />
-                                <div className="absolute top-[calc(100%+6px)] right-0 z-50 hidden group-hover/btn:flex items-center gap-1.5 bg-[#1C1B1A] border border-[#2A2928] px-2.5 py-1 rounded-lg shadow-xl whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
+                                <Icons.Plus className="w-3.5 h-3.5" />
+                                <div className="absolute top-[calc(100%+6px)] right-0 z-50 hidden group-hover/btn:flex items-center gap-1.5 bg-[#1F1F1F] border border-[#282828] px-2.5 py-1 rounded-lg shadow-none whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
                                     <span className="text-[12px] font-medium text-[#EDEDEF]">
-                                        Search
+                                        New project
                                     </span>
                                 </div>
                             </button>
                             <button
-                                onClick={() => {}}
-                                className="relative text-[#919191] hover:text-[#919191] transition-all outline-none group/btn"
+                                onClick={() =>
+                                    isAuthenticated ? setIsSearchOpen(true) : onOpenAuth?.()
+                                }
+                                className="relative flex items-center justify-center p-1 rounded-md text-[#919191] hover:text-[#E8E8E8] hover:bg-[#252525] transition-all outline-none group/btn"
                             >
-                                <Icons.Plus className="w-3.5 h-3.5" />
-                                <div className="absolute top-[calc(100%+6px)] right-0 z-50 hidden group-hover/btn:flex items-center gap-1.5 bg-[#1C1B1A] border border-[#2A2928] px-2.5 py-1 rounded-lg shadow-xl whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
+                                <Icons.Search className="w-3.5 h-3.5" />
+                                <div className="absolute top-[calc(100%+6px)] right-0 z-50 hidden group-hover/btn:flex items-center gap-1.5 bg-[#1F1F1F] border border-[#282828] px-2.5 py-1 rounded-lg shadow-none whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
                                     <span className="text-[12px] font-medium text-[#EDEDEF]">
-                                        New
+                                        Search
                                     </span>
                                 </div>
                             </button>
@@ -194,10 +228,10 @@ const Sidebar: React.FC<
                                             setIsRecentMenuOpen(!isRecentMenuOpen)
                                         }
                                     }}
-                                    className="relative text-[#919191] hover:text-[#919191] transition-all outline-none group/btn"
+                                    className="relative flex items-center justify-center p-1 rounded-md text-[#919191] hover:text-[#E8E8E8] hover:bg-[#252525] transition-all outline-none group/btn"
                                 >
                                     <Icons.MoreHorizontal className="w-3.5 h-3.5" />
-                                    <div className="absolute top-[calc(100%+6px)] right-0 z-50 hidden group-hover/btn:flex items-center gap-1.5 bg-[#1C1B1A] border border-[#2A2928] px-2.5 py-1 rounded-lg shadow-xl whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
+                                    <div className="absolute top-[calc(100%+6px)] right-0 z-50 hidden group-hover/btn:flex items-center gap-1.5 bg-[#1F1F1F] border border-[#282828] px-2.5 py-1 rounded-lg shadow-none whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
                                         <span className="text-[12px] font-medium text-[#EDEDEF]">
                                             More options
                                         </span>
@@ -299,7 +333,7 @@ const Sidebar: React.FC<
 
             <SidebarFooter
                 isAuthenticated={isAuthenticated}
-                isCollapsed={false}
+                isCollapsed={isCollapsed || false}
                 onProfile={onProfile}
                 onDocs={onDocs}
                 onOpenAuth={onOpenAuth}
