@@ -35,6 +35,7 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
     const [activeImportForm, setActiveImportForm] = useState<'github' | null>(null)
     const [showUpgradeModal, setShowUpgradeModal] = useState(false)
     const [isUbuntuMenuOpen, setIsUbuntuMenuOpen] = useState(false)
+    const [chatMode, setChatMode] = useState<'agent' | 'plan'>('agent')
 
     const queryClient = useQueryClient()
     const { data: profile } = useQuery({
@@ -106,9 +107,13 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
         >
             <HomeHeader isAuthenticated={isAuthenticated} onOpenAuth={onOpenAuth} />
 
-            <div className="flex flex-col items-center justify-start pt-[22vh] md:pt-[27vh] h-full flex-1 gap-6 animate-in fade-in duration-500 max-w-4xl mx-auto px-4 w-full shrink-0 relative">
-                <div className="flex flex-col items-center gap-3 text-center relative -left-[8px]">
-                    <div className="flex items-center gap-2.5 select-none">
+            <div className="flex flex-col items-center justify-start pt-[25vh] md:pt-[32vh] h-full flex-1 gap-6 animate-in fade-in duration-500 max-w-4xl mx-auto px-4 w-full shrink-0 relative">
+                {/* Hidden original logo to preserve exact vertical layout flow */}
+                <div
+                    className="flex flex-col items-center gap-3 text-center relative -left-[8px] opacity-0 pointer-events-none select-none"
+                    aria-hidden="true"
+                >
+                    <div className="flex items-center gap-2.5">
                         <Icons.DecemberLogo
                             className="w-7 h-7 md:w-9 md:h-9 text-white"
                             strokeWidth={1}
@@ -119,6 +124,49 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
                     </div>
                 </div>
                 <div className="w-full max-w-[638px] px-2 md:px-0 relative -top-[1px] -left-[4px]">
+                    <div className="absolute bottom-[calc(100%+10px)] left-2 md:left-0 right-2 md:right-0 z-10 flex justify-between items-end">
+                        <div className="flex items-center gap-2 select-none mb-1 ml-1.5 md:ml-2">
+                            <Icons.DecemberLogo
+                                className="w-[22px] h-[22px] md:w-[26px] md:h-[26px] text-white"
+                                strokeWidth={1}
+                            />
+                            <h2 className="text-[20px] md:text-[23px] font-sohne font-medium tracking-tight text-white flex items-center gap-1.5 leading-none">
+                                December
+                                <span className="text-[#87B2F4]">
+                                    {chatMode === 'agent' ? 'Agent' : 'Search'}
+                                </span>
+                            </h2>
+                        </div>
+                        <div className="relative flex items-center bg-[#1B1B1B] rounded-full shadow-sm w-[94px] overflow-hidden">
+                            {/* Sliding Indicator */}
+                            <div
+                                className={`absolute left-0 top-0 bottom-0 w-1/2 rounded-full bg-[#87B2F4] transition-transform duration-300 ease-out shadow-sm ${
+                                    chatMode === 'agent' ? 'translate-x-0' : 'translate-x-full'
+                                }`}
+                            />
+
+                            <button
+                                onClick={() => setChatMode('agent')}
+                                className={`relative z-10 flex-1 flex justify-center items-center py-[4px] rounded-full text-[11px] transition-colors duration-300 ${
+                                    chatMode === 'agent'
+                                        ? 'text-[#111111] font-semibold'
+                                        : 'text-[#8F8E8D] hover:text-[#E8E8E8] font-medium'
+                                }`}
+                            >
+                                Agent
+                            </button>
+                            <button
+                                onClick={() => setChatMode('search')}
+                                className={`relative z-10 flex-1 flex justify-center items-center py-[4px] rounded-full text-[11px] transition-colors duration-300 ${
+                                    chatMode === 'search'
+                                        ? 'text-[#111111] font-semibold'
+                                        : 'text-[#8F8E8D] hover:text-[#E8E8E8] font-medium'
+                                }`}
+                            >
+                                Search
+                            </button>
+                        </div>
+                    </div>
                     <PromptInput
                         value={prompt}
                         onChange={setPrompt}

@@ -9,7 +9,18 @@ export const SidebarHeader: React.FC<{
     onHomeClick?: () => void
     isAuthenticated?: boolean
     onOpenAuth?: () => void
-}> = ({ onNewThread, onHomeClick, isAuthenticated, onOpenAuth }) => {
+    onCollapse?: () => void
+    isCollapsed?: boolean
+    onExpand?: () => void
+}> = ({
+    onNewThread,
+    onHomeClick,
+    isAuthenticated,
+    onOpenAuth,
+    onCollapse,
+    isCollapsed,
+    onExpand,
+}) => {
     const [activeTab, setActiveTab] = useState<'home' | 'canvas'>('home')
 
     useEffect(() => {
@@ -19,6 +30,48 @@ export const SidebarHeader: React.FC<{
         window.addEventListener('hero-canvas-intersect', handler)
         return () => window.removeEventListener('hero-canvas-intersect', handler)
     }, [])
+
+    if (isCollapsed) {
+        return (
+            <div className="px-2 mb-2 mt-2 z-30 relative flex flex-col gap-2 items-center">
+                <button
+                    onClick={() => onExpand?.()}
+                    className={cn(
+                        'relative flex items-center justify-center w-10 h-10 rounded-lg transition-all group outline-none',
+                        activeTab === 'home'
+                            ? 'bg-[#141414] border border-white/5 shadow-sm text-[#D6D5D4]'
+                            : 'hover:bg-[#272727] text-[#919191] hover:text-[#D6D5D4]'
+                    )}
+                >
+                    <Home className="w-[18px] h-[18px] group-hover:hidden" />
+                    <Icons.SidebarToggle className="w-5 h-5 hidden group-hover:block" />
+                    <div className="absolute top-1/2 left-[calc(100%+12px)] -translate-y-1/2 z-50 hidden group-hover:flex items-center gap-1.5 bg-[#1F1F1F] border border-[#282828] px-2.5 py-1 rounded-lg shadow-none whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
+                        <span className="text-[12px] font-medium text-[#EDEDEF]">
+                            Open sidebar{' '}
+                            <span className="text-[#919191] ml-1 text-[10px] border border-[#333] rounded px-1 py-0.5 bg-[#252525]">
+                                Ctrl .
+                            </span>
+                        </span>
+                    </div>
+                </button>
+                <div className="w-6 h-[1px] bg-white/10 my-1" />
+                <button
+                    onClick={() => {}}
+                    className={cn(
+                        'relative flex items-center justify-center w-10 h-10 rounded-lg transition-all group outline-none',
+                        activeTab === 'canvas'
+                            ? 'bg-[#141414] border border-white/5 shadow-sm text-[#D6D5D4]'
+                            : 'hover:bg-[#272727] text-[#919191] hover:text-[#D6D5D4]'
+                    )}
+                >
+                    <Icons.Plus className="w-[18px] h-[18px]" />
+                    <div className="absolute top-1/2 left-[calc(100%+12px)] -translate-y-1/2 z-50 hidden group-hover:flex items-center gap-1.5 bg-[#1F1F1F] border border-[#282828] px-2.5 py-1 rounded-lg shadow-none whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
+                        <span className="text-[12px] font-medium text-[#EDEDEF]">New Project</span>
+                    </div>
+                </button>
+            </div>
+        )
+    }
 
     return (
         <div className="px-3 mb-2 mt-0 z-30 relative">
@@ -40,30 +93,51 @@ export const SidebarHeader: React.FC<{
                         if (onHomeClick) onHomeClick()
                     }}
                     className={cn(
-                        'relative flex items-center gap-2.5 w-full px-2.5 h-[32px] rounded-[10px] transition-all group outline-none',
+                        'relative flex items-center justify-between w-full px-2.5 h-[32px] rounded-[10px] transition-all group outline-none',
                         activeTab === 'home' ? '' : 'hover:bg-[#272727]'
                     )}
                 >
-                    <div
-                        className={cn(
-                            'transition-all flex items-center justify-center',
-                            activeTab === 'home'
-                                ? 'text-[#D6D5D4]'
-                                : 'text-[#919191] group-hover:text-[#D6D5D4]'
-                        )}
-                    >
-                        <Home className="w-[18px] h-[18px]" />
+                    <div className="flex items-center gap-2.5">
+                        <div
+                            className={cn(
+                                'transition-all flex items-center justify-center',
+                                activeTab === 'home'
+                                    ? 'text-[#D6D5D4]'
+                                    : 'text-[#919191] group-hover:text-[#D6D5D4]'
+                            )}
+                        >
+                            <Home className="w-[18px] h-[18px]" />
+                        </div>
+                        <span
+                            className={cn(
+                                'font-medium text-[14px] tracking-wide transition-colors',
+                                activeTab === 'home'
+                                    ? 'text-[#D6D5D4]'
+                                    : 'text-[#919191] group-hover:text-[#D6D5D4]'
+                            )}
+                        >
+                            Home
+                        </span>
                     </div>
-                    <span
-                        className={cn(
-                            'font-medium text-[14px] tracking-wide transition-colors',
-                            activeTab === 'home'
-                                ? 'text-[#D6D5D4]'
-                                : 'text-[#919191] group-hover:text-[#D6D5D4]'
-                        )}
-                    >
-                        Home
-                    </span>
+                    {onCollapse && (
+                        <div
+                            className="hidden group-hover:flex items-center justify-center text-[#919191] hover:text-[#D6D5D4] group/collapse p-0.5 rounded-md hover:bg-[#333333] transition-colors"
+                            onClick={(e) => {
+                                e.stopPropagation()
+                                onCollapse()
+                            }}
+                        >
+                            <Icons.SidebarToggle className="w-4 h-4" />
+                            <div className="absolute top-[calc(100%+4px)] right-0 z-50 hidden group-hover/collapse:flex items-center gap-1.5 bg-[#1F1F1F] border border-[#282828] px-2.5 py-1 rounded-lg shadow-none whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
+                                <span className="text-[12px] font-medium text-[#EDEDEF]">
+                                    Close sidebar{' '}
+                                    <span className="text-[#919191] ml-1 text-[10px] border border-[#333] rounded px-1 py-0.5 bg-[#252525]">
+                                        Ctrl .
+                                    </span>
+                                </span>
+                            </div>
+                        </div>
+                    )}
                 </button>
                 <button
                     onClick={() => {}}

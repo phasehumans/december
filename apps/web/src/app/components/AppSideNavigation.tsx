@@ -1,4 +1,6 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
+
+import { cn } from '@/shared/lib/utils'
 
 import type { ViewState } from '@/app/types'
 import type { Project } from '@/features/projects/types'
@@ -32,6 +34,19 @@ export const AppSideNavigation: React.FC<AppSideNavigationProps> = ({
     onSignOut,
     onHomeClick,
 }) => {
+    const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
+
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.ctrlKey && e.key === '.') {
+                e.preventDefault()
+                setIsSidebarCollapsed((prev) => !prev)
+            }
+        }
+        window.addEventListener('keydown', handleKeyDown)
+        return () => window.removeEventListener('keydown', handleKeyDown)
+    }, [])
+
     if (!showSidebar) {
         return null
     }
@@ -51,6 +66,9 @@ export const AppSideNavigation: React.FC<AppSideNavigationProps> = ({
                 onOpenAuth={onOpenAuth}
                 onSignOut={onSignOut}
                 onHomeClick={onHomeClick}
+                onCollapse={() => setIsSidebarCollapsed(true)}
+                isCollapsed={isSidebarCollapsed}
+                onExpand={() => setIsSidebarCollapsed(false)}
             />
 
             <div className="md:hidden fixed top-4 left-4 z-50">

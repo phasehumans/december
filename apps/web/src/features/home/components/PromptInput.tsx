@@ -57,7 +57,7 @@ const PromptInput: React.FC<PromptInputProps> = ({
       `}
             >
                 <div
-                    className={`flex flex-wrap items-start w-full relative rounded-t-[16px] overflow-visible ${minimized ? 'py-4 pl-5 pr-12 min-h-[54px]' : 'pt-[17px] pl-5 pr-12 pb-1 min-h-[92px] text-[15px]'}`}
+                    className={`flex flex-wrap items-start w-full relative rounded-t-[16px] overflow-visible ${minimized ? 'py-3 pl-5 pr-12 min-h-[48px]' : 'pt-[12px] pl-5 pr-12 pb-1 min-h-[72px] text-[15px]'}`}
                 >
                     {selectedRepos.map((repo, idx) => (
                         <div
