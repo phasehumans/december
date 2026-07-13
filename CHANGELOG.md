@@ -2,6 +2,17 @@
 
 ### Features
 
+- Improve uiux
+- Reviews page
+
+### Bug Fixes
+
+- _(tui)_ Fix chat interface and multi loader (#188)
+
+## [0.2.7] - 2026-07-12
+
+### Features
+
 - Improve authflow
 - Settings page
 - Search agent
@@ -10,6 +21,10 @@
 
 - _(ui)_ Fix ui and added zustand, fix mobile view (#186)
 - _(tui/cli)_ Refactor bloat and fix quota key err (#187)
+
+### Miscellaneous Tasks
+
+- _(release)_ V0.2.7
 
 ## [0.2.6] - 2026-07-11
 

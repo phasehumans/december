@@ -125,9 +125,9 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
                 </div>
                 <div className="w-full max-w-[638px] px-2 md:px-0 relative -top-[1px] -left-[4px]">
                     <div className="absolute bottom-[calc(100%+10px)] left-2 md:left-0 right-2 md:right-0 z-10 flex justify-between items-end">
-                        <div className="flex items-center gap-2 select-none mb-1 ml-1.5 md:ml-2">
+                        <div className="flex items-center gap-2 select-none mb-1 ml-1.5 md:ml-2 group cursor-default">
                             <Icons.DecemberLogo
-                                className="w-[22px] h-[22px] md:w-[26px] md:h-[26px] text-white"
+                                className="w-[22px] h-[22px] md:w-[26px] md:h-[26px] text-white transition-all duration-500 ease-out group-hover:-rotate-[30deg]"
                                 strokeWidth={1}
                             />
                             <h2 className="text-[20px] md:text-[23px] font-sohne font-medium tracking-tight text-white flex items-center gap-1.5 leading-none">
@@ -173,7 +173,7 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
                                 Agent
                             </button>
                             <button
-                                onClick={() => setChatMode('search')}
+                                onClick={() => setChatMode('search' as any)}
                                 className={`relative z-10 flex-1 flex justify-center items-center py-[4px] rounded-full text-[11px] transition-colors duration-300 ${
                                     chatMode === 'search'
                                         ? 'text-[#111111] font-semibold'
