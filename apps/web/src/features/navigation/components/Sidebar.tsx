@@ -5,8 +5,8 @@ import { useNavigate, useLocation } from 'react-router-dom'
 
 import { SearchModal } from './SearchModal'
 import { SidebarFooter } from './SidebarFooter'
-import { SidebarHeader } from './SidebarHeader'
 import { SidebarNavItem } from './SidebarNavItem'
+import { Home, BookOpen } from 'lucide-react'
 
 import type { SidebarProps } from '@/features/navigation/types'
 
@@ -90,12 +90,80 @@ const Sidebar: React.FC<
     }, [])
 
     const isHomeActive = path === '/'
-    const isProjectsActive = path.startsWith('/projects')
+    const isProjectsActive = path.startsWith('/projects') || path.startsWith('/all-projects')
     const isSessionsActive = path.startsWith('/sessions')
     const isReviewActive = path.startsWith('/review')
     const isTemplatesActive = path.startsWith('/templates')
     const isDocsActive = path.startsWith('/docs')
-    const isSettingsActive = path.startsWith('/settings')
+    const isSettingsActive = path.startsWith('/settings') || path.startsWith('/profile')
+
+    let activeIndex = 0
+    if (isSearchOpen) {
+        activeIndex = 1
+    } else if (!isHomeActive) {
+        if (isSessionsActive) activeIndex = 2
+        else if (isReviewActive) activeIndex = 3
+        else if (isProjectsActive) activeIndex = 4
+        else if (isTemplatesActive) activeIndex = 5
+        else if (isSettingsActive) activeIndex = 6
+    } else {
+        activeIndex = 0
+    }
+
+    const navItems = [
+        {
+            id: 'home',
+            label: 'Home',
+            icon: <Home className="w-[18px] h-[18px]" />,
+            onClick: () => {
+                const el = document.getElementById('main-scroll-container')
+                el?.scrollTo({ top: 0, behavior: 'smooth' })
+                if (onHomeClick) onHomeClick()
+            },
+        },
+        {
+            id: 'search',
+            label: 'Search',
+            icon: <Icons.Search className="w-[18px] h-[18px]" />,
+            onClick: () => {
+                if (isAuthenticated) {
+                    setIsSearchOpen(true)
+                } else {
+                    if (onOpenAuth) onOpenAuth()
+                }
+            },
+        },
+        {
+            id: 'sessions',
+            label: 'Sessions',
+            icon: <Icons.SessionsIcon className="w-[18px] h-[18px]" />,
+            onClick: onSessions,
+        },
+        {
+            id: 'review',
+            label: 'Review',
+            icon: <Icons.GitPullRequest className="w-[18px] h-[18px]" />,
+            onClick: onReview,
+        },
+        {
+            id: 'projects',
+            label: 'Projects',
+            icon: <Icons.Folder className="w-[18px] h-[18px]" />,
+            onClick: onAllProjects,
+        },
+        {
+            id: 'templates',
+            label: 'Templates',
+            icon: <Icons.Bookmark className="w-[18px] h-[18px]" />,
+            onClick: onTemplates,
+        },
+        {
+            id: 'settings',
+            label: 'Settings',
+            icon: <Icons.Settings className="w-[18px] h-[18px]" />,
+            onClick: onProfile,
+        },
+    ]
 
     // Keep exact same size (was 200px when open)
     // No collapse option
@@ -120,62 +188,120 @@ const Sidebar: React.FC<
                 isCollapsed ? 'w-[56px] items-center' : 'w-[200px]'
             )}
         >
-            <SidebarHeader
-                onNewThread={isAuthenticated ? onNewThread : onOpenAuth}
-                onHomeClick={isAuthenticated ? onHomeClick : onOpenAuth}
-                isAuthenticated={isAuthenticated}
-                onOpenAuth={onOpenAuth}
-                onCollapse={onCollapse}
-                isCollapsed={isCollapsed}
-                onExpand={onExpand}
-            />
+            {isCollapsed ? (
+                <div className="px-2 mb-2 mt-2 z-30 relative flex flex-col gap-2 items-center">
+                    <button
+                        onClick={() => onExpand?.()}
+                        className={cn(
+                            'relative flex items-center justify-center w-10 h-10 rounded-lg transition-all group outline-none',
+                            activeIndex === 0
+                                ? 'bg-[#141414] border border-white/5 shadow-sm text-[#D6D5D4]'
+                                : 'hover:bg-[#272727] text-[#919191] hover:text-[#D6D5D4]'
+                        )}
+                    >
+                        <Home className="w-[18px] h-[18px] group-hover:hidden" />
+                        <Icons.SidebarToggle className="w-5 h-5 hidden group-hover:block" />
+                        <div className="absolute top-1/2 left-[calc(100%+12px)] -translate-y-1/2 z-50 hidden group-hover:flex items-center gap-1.5 bg-[#1F1F1F] border border-[#282828] px-2.5 py-1 rounded-lg shadow-none whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
+                            <span className="text-[12px] font-medium text-[#EDEDEF]">
+                                Open sidebar{' '}
+                                <span className="text-[#919191] ml-1 text-[10px] border border-[#333] rounded px-1 py-0.5 bg-[#252525]">
+                                    Ctrl .
+                                </span>
+                            </span>
+                        </div>
+                    </button>
+                    <div className="w-6 h-[1px] bg-white/10 my-1" />
+                    {navItems.slice(1).map((item, idx) => {
+                        const actualIdx = idx + 1
+                        return (
+                            <button
+                                key={item.id}
+                                onClick={item.onClick}
+                                className={cn(
+                                    'relative flex items-center justify-center w-10 h-10 rounded-lg transition-all group outline-none',
+                                    activeIndex === actualIdx
+                                        ? 'bg-[#141414] border border-white/5 shadow-sm text-[#D6D5D4]'
+                                        : 'hover:bg-[#272727] text-[#919191] hover:text-[#D6D5D4]'
+                                )}
+                            >
+                                {item.icon}
+                                <div className="absolute top-1/2 left-[calc(100%+12px)] -translate-y-1/2 z-50 hidden group-hover:flex items-center gap-1.5 bg-[#1F1F1F] border border-[#282828] px-2.5 py-1 rounded-lg shadow-none whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
+                                    <span className="text-[12px] font-medium text-[#EDEDEF]">
+                                        {item.label}
+                                    </span>
+                                </div>
+                            </button>
+                        )
+                    })}
+                </div>
+            ) : (
+                <div className="px-3 mb-2 mt-0 z-30 relative">
+                    <div className="bg-[#1F1F1F] rounded-[14px] p-1 pb-1.5 flex flex-col gap-[2px] -mx-1 relative">
+                        {/* Sliding Background */}
+                        <div
+                            className="absolute left-1 right-1 h-[32px] bg-[#141414] border border-white/5 shadow-sm rounded-[10px] transition-transform duration-300 ease-[cubic-bezier(0.34,1.2,0.64,1)]"
+                            style={{ transform: `translateY(${activeIndex * 34}px)` }}
+                        />
 
-            <div className={cn('flex flex-col gap-[1px]', isCollapsed ? 'px-2' : 'pl-[10px] pr-3')}>
-                <SidebarNavItem
-                    icon={<Icons.SessionsIcon className="w-[18px] h-[18px]" />}
-                    label="Sessions"
-                    active={isSessionsActive}
-                    onClick={onSessions}
-                    collapsed={isCollapsed}
-                    tooltipLabel={isCollapsed ? 'Sessions' : undefined}
-                />
-                <SidebarNavItem
-                    icon={<Icons.GitPullRequest className="w-[18px] h-[18px]" />}
-                    label="Review"
-                    active={isReviewActive}
-                    onClick={onReview}
-                    collapsed={isCollapsed}
-                    tooltipLabel={isCollapsed ? 'Review' : undefined}
-                />
-                <SidebarNavItem
-                    icon={<Icons.Folder />}
-                    label="Projects"
-                    active={isProjectsActive}
-                    onClick={onAllProjects}
-                    collapsed={isCollapsed}
-                    tooltipLabel={isCollapsed ? 'Projects' : undefined}
-                />
-                <SidebarNavItem
-                    icon={<Icons.Bookmark />}
-                    label="Templates"
-                    active={isTemplatesActive}
-                    onClick={onTemplates}
-                    collapsed={isCollapsed}
-                    tooltipLabel={isCollapsed ? 'Templates' : undefined}
-                />
-                <SidebarNavItem
-                    icon={<Icons.Settings className="w-[18px] h-[18px]" />}
-                    label="Settings"
-                    active={isSettingsActive}
-                    onClick={onProfile}
-                    collapsed={isCollapsed}
-                    tooltipLabel={isCollapsed ? 'Settings' : undefined}
-                />
-            </div>
+                        {navItems.map((item, idx) => (
+                            <button
+                                key={item.id}
+                                onClick={item.onClick}
+                                className={cn(
+                                    'relative flex items-center justify-between w-full px-2.5 h-[32px] rounded-[10px] transition-all group outline-none',
+                                    activeIndex === idx ? '' : 'hover:bg-[#1A1A1A]'
+                                )}
+                            >
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                    <div
+                                        className={cn(
+                                            'transition-colors flex items-center justify-center shrink-0',
+                                            activeIndex === idx
+                                                ? 'text-[#D6D5D4]'
+                                                : 'text-[#919191] group-hover:text-[#D6D5D4]'
+                                        )}
+                                    >
+                                        {item.icon}
+                                    </div>
+                                    <span
+                                        className={cn(
+                                            'font-medium text-[14px] tracking-wide transition-colors truncate',
+                                            activeIndex === idx
+                                                ? 'text-[#D6D5D4]'
+                                                : 'text-[#919191] group-hover:text-[#D6D5D4]'
+                                        )}
+                                    >
+                                        {item.label}
+                                    </span>
+                                </div>
+                                {idx === 0 && onCollapse && (
+                                    <div
+                                        className="flex md:hidden md:group-hover:flex items-center justify-center text-[#919191] hover:text-[#D4D4D8] group/collapse p-0.5 rounded-md hover:bg-[#333333] transition-colors shrink-0"
+                                        onClick={(e) => {
+                                            e.stopPropagation()
+                                            onCollapse()
+                                        }}
+                                    >
+                                        <Icons.SidebarToggle className="w-4 h-4" />
+                                        <div className="absolute top-[calc(100%+4px)] right-0 z-50 hidden md:group-hover/collapse:flex items-center gap-1.5 bg-[#1F1F1F] border border-[#282828] px-2.5 py-1 rounded-lg shadow-none whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
+                                            <span className="text-[12px] font-medium text-[#EDEDEF]">
+                                                Close sidebar{' '}
+                                                <span className="text-[#919191] ml-1 text-[10px] border border-[#333] rounded px-1 py-0.5 bg-[#252525]">
+                                                    Ctrl .
+                                                </span>
+                                            </span>
+                                        </div>
+                                    </div>
+                                )}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             <div
                 className={cn(
-                    'flex-1 flex flex-col mt-4 mb-2 overflow-y-auto no-scrollbar font-sans',
+                    'flex-1 flex flex-col mt-2 mb-2 overflow-y-auto no-scrollbar font-sans',
                     isCollapsed ? 'px-2 hidden' : 'pl-[10px] pr-3'
                 )}
             >

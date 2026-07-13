@@ -5,7 +5,6 @@ import React, { useState, useRef } from 'react'
 import sidebarPng from '../../../../public/sidebar.png'
 
 import { NotificationsPopover } from './NotificationsPopover'
-import { UserProfilePopover } from './UserProfilePopover'
 
 import type { SidebarFooterProps } from '@/features/navigation/types'
 
@@ -18,7 +17,6 @@ import { Icons } from '@/shared/components/ui/Icons'
 export const SidebarFooter: React.FC<
     SidebarFooterProps & { user?: { name?: string }; onSignOut?: () => void }
 > = ({ isAuthenticated, isCollapsed, onProfile, onDocs, onOpenAuth, user, onSignOut }) => {
-    const [isPopoverOpen, setIsPopoverOpen] = useState(false)
     const [isNotifPopoverOpen, setIsNotifPopoverOpen] = useState(false)
     const [showCliCard, setShowCliCard] = useState(false)
     const [isCopied, setIsCopied] = useState(false)
@@ -53,7 +51,7 @@ export const SidebarFooter: React.FC<
     const { data: profile } = useQuery({
         queryKey: ['profile'],
         queryFn: profileAPI.getProfile,
-        enabled: isAuthenticated && isPopoverOpen,
+        enabled: isAuthenticated,
     })
 
     const { data: notifications = [] } = useQuery({
@@ -180,7 +178,9 @@ export const SidebarFooter: React.FC<
                         >
                             <button
                                 ref={anchorRef}
-                                onClick={() => setIsPopoverOpen(!isPopoverOpen)}
+                                onClick={() => {
+                                    if (onProfile) onProfile()
+                                }}
                                 className={cn(
                                     'flex items-center justify-center rounded-lg hover:bg-[#252525] transition-colors group outline-none min-w-0 relative',
                                     isCollapsed ? 'w-10 h-10' : 'gap-2 px-1.5 py-[7px]'
@@ -255,17 +255,6 @@ export const SidebarFooter: React.FC<
                             anchorRef={notifAnchorRef}
                             onClose={() => setIsNotifPopoverOpen(false)}
                             onSettings={onProfile}
-                        />
-
-                        <UserProfilePopover
-                            isOpen={isPopoverOpen}
-                            anchorRef={anchorRef}
-                            onClose={() => setIsPopoverOpen(false)}
-                            userName={profile?.name || quickInfo?.fullName || 'phasehuman'}
-                            userEmail={profile?.email || 'dev.chaitanyasonawane@gmail.com'}
-                            isPro={isPro}
-                            onProfile={onProfile}
-                            onSignOut={onSignOut}
                         />
                     </>
                 )}
