@@ -1,8 +1,7 @@
 import React, { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useLocation } from 'react-router-dom'
-import { SidebarHeader } from './SidebarHeader'
-import { SidebarNavItem } from './SidebarNavItem'
+import { Home, BookOpen } from 'lucide-react'
 import { SidebarFooter } from './SidebarFooter'
 import { SearchModal } from './SearchModal'
 import { Icons } from '@/shared/components/ui/Icons'
@@ -39,7 +38,8 @@ export const MobileSidebar: React.FC<
     const isReviewActive = path.startsWith('/review')
     const isTemplatesActive = path.startsWith('/templates')
     const isDocsActive = path.startsWith('/docs')
-    const isSettingsActive = path.startsWith('/settings')
+    const isSettingsActive = path.startsWith('/settings') || path.startsWith('/profile')
+
     const [isSearchOpen, setIsSearchOpen] = React.useState(false)
     const [isRecentMenuOpen, setIsRecentMenuOpen] = React.useState(false)
     const [recentMenuPos, setRecentMenuPos] = React.useState<{ top: number; left: number } | null>(
@@ -48,6 +48,94 @@ export const MobileSidebar: React.FC<
     const [sortBy, setSortBy] = React.useState<'created' | 'updated'>('updated')
     const recentMenuRef = React.useRef<HTMLDivElement | null>(null)
     const recentMenuTriggerRef = React.useRef<HTMLButtonElement | null>(null)
+
+    let activeIndex = 0
+    if (isSearchOpen) {
+        activeIndex = 1
+    } else if (!isHomeActive) {
+        if (isSessionsActive) activeIndex = 2
+        else if (isReviewActive) activeIndex = 3
+        else if (isProjectsActive) activeIndex = 4
+        else if (isTemplatesActive) activeIndex = 5
+        else if (isSettingsActive) activeIndex = 6
+    } else {
+        activeIndex = 0
+    }
+
+    const navItems = [
+        {
+            id: 'home',
+            label: 'Home',
+            icon: <Home className="w-[18px] h-[18px]" />,
+            onClick: () => {
+                const el = document.getElementById('main-scroll-container')
+                el?.scrollTo({ top: 0, behavior: 'smooth' })
+                if (isAuthenticated) {
+                    if (onHomeClick) onHomeClick()
+                } else {
+                    if (onOpenAuth) onOpenAuth()
+                }
+                onClose()
+            },
+        },
+        {
+            id: 'search',
+            label: 'Search',
+            icon: <Icons.Search className="w-[18px] h-[18px]" />,
+            onClick: () => {
+                if (isAuthenticated) {
+                    setIsSearchOpen(true)
+                } else {
+                    if (onOpenAuth) onOpenAuth()
+                }
+            },
+        },
+        {
+            id: 'sessions',
+            label: 'Sessions',
+            icon: <Icons.SessionsIcon className="w-[18px] h-[18px]" />,
+            onClick: () => {
+                if (onSessions) onSessions()
+                onClose()
+            },
+        },
+        {
+            id: 'review',
+            label: 'Review',
+            icon: <Icons.GitPullRequest className="w-[18px] h-[18px]" />,
+            onClick: () => {
+                if (onReview) onReview()
+                onClose()
+            },
+        },
+        {
+            id: 'projects',
+            label: 'Projects',
+            icon: <Icons.Folder className="w-[18px] h-[18px]" />,
+            onClick: () => {
+                onAllProjects()
+                onClose()
+            },
+        },
+        {
+            id: 'templates',
+            label: 'Templates',
+            icon: <Icons.Bookmark className="w-[18px] h-[18px]" />,
+            onClick: () => {
+                onTemplates()
+                onClose()
+            },
+        },
+        {
+            id: 'settings',
+            label: 'Settings',
+            icon: <Icons.Settings className="w-[18px] h-[18px]" />,
+            onClick: () => {
+                onProfile()
+                onClose()
+            },
+        },
+    ]
 
     React.useEffect(() => {
         if (!isRecentMenuOpen) return
@@ -98,79 +186,63 @@ export const MobileSidebar: React.FC<
                         : '-translate-x-full opacity-0 pointer-events-none'
                 )}
             >
-                {/* Header */}
-                <div className="flex items-start justify-between pr-2">
-                    <div className="flex-1">
-                        <SidebarHeader
-                            onNewThread={() => {
-                                isAuthenticated ? onNewThread() : onOpenAuth?.()
-                                onClose()
-                            }}
-                            onHomeClick={() => {
-                                isAuthenticated ? onHomeClick?.() : onOpenAuth?.()
-                                onClose()
-                            }}
-                            isAuthenticated={isAuthenticated}
-                            onOpenAuth={onOpenAuth}
-                            onCollapse={onClose}
+                {/* Header & Nav Items */}
+                <div className="px-3 mb-2 mt-0 z-30 relative pt-2">
+                    <div className="bg-[#1F1F1F] rounded-[14px] p-1 pb-1.5 flex flex-col gap-[2px] -mx-1 relative">
+                        {/* Sliding Background */}
+                        <div
+                            className="absolute left-1 right-1 h-[32px] bg-[#141414] border border-white/5 shadow-sm rounded-[10px] transition-transform duration-300 ease-[cubic-bezier(0.34,1.2,0.64,1)]"
+                            style={{ transform: `translateY(${activeIndex * 34}px)` }}
                         />
+
+                        {navItems.map((item, idx) => (
+                            <button
+                                key={item.id}
+                                onClick={item.onClick}
+                                className={cn(
+                                    'relative flex items-center justify-between w-full px-2.5 h-[32px] rounded-[10px] transition-all group outline-none',
+                                    activeIndex === idx ? '' : 'hover:bg-[#1A1A1A]'
+                                )}
+                            >
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                    <div
+                                        className={cn(
+                                            'transition-colors flex items-center justify-center shrink-0',
+                                            activeIndex === idx
+                                                ? 'text-[#D6D5D4]'
+                                                : 'text-[#919191] group-hover:text-[#D6D5D4]'
+                                        )}
+                                    >
+                                        {item.icon}
+                                    </div>
+                                    <span
+                                        className={cn(
+                                            'font-medium text-[14px] tracking-wide transition-colors truncate',
+                                            activeIndex === idx
+                                                ? 'text-[#D6D5D4]'
+                                                : 'text-[#919191] group-hover:text-[#D6D5D4]'
+                                        )}
+                                    >
+                                        {item.label}
+                                    </span>
+                                </div>
+                                {idx === 0 && (
+                                    <div
+                                        className="flex items-center justify-center text-[#919191] hover:text-[#D4D4D8] p-0.5 rounded-md hover:bg-[#333333] transition-colors shrink-0"
+                                        onClick={(e) => {
+                                            e.stopPropagation()
+                                            onClose()
+                                        }}
+                                    >
+                                        <Icons.SidebarToggle className="w-4 h-4" />
+                                    </div>
+                                )}
+                            </button>
+                        ))}
                     </div>
                 </div>
 
-                <div className="flex flex-col gap-[1px] pl-[10px] pr-3 mt-2">
-                    <SidebarNavItem
-                        icon={<Icons.SessionsIcon className="w-[18px] h-[18px]" />}
-                        label="Sessions"
-                        active={isSessionsActive}
-                        onClick={() => {
-                            onSessions?.()
-                            onClose()
-                        }}
-                        collapsed={false}
-                    />
-                    <SidebarNavItem
-                        icon={<Icons.GitPullRequest className="w-[18px] h-[18px]" />}
-                        label="Review"
-                        active={isReviewActive}
-                        onClick={() => {
-                            onReview?.()
-                            onClose()
-                        }}
-                        collapsed={false}
-                    />
-                    <SidebarNavItem
-                        icon={<Icons.Folder />}
-                        label="Projects"
-                        active={isProjectsActive}
-                        onClick={() => {
-                            onAllProjects()
-                            onClose()
-                        }}
-                        collapsed={false}
-                    />
-                    <SidebarNavItem
-                        icon={<Icons.Bookmark />}
-                        label="Templates"
-                        active={isTemplatesActive}
-                        onClick={() => {
-                            onTemplates()
-                            onClose()
-                        }}
-                        collapsed={false}
-                    />
-                    <SidebarNavItem
-                        icon={<Icons.Settings className="w-[18px] h-[18px]" />}
-                        label="Settings"
-                        active={isSettingsActive}
-                        onClick={() => {
-                            onProfile()
-                            onClose()
-                        }}
-                        collapsed={false}
-                    />
-                </div>
-
-                <div className="flex-1 flex flex-col mt-4 mb-2 overflow-y-auto no-scrollbar font-sans pl-[10px] pr-3">
+                <div className="flex-1 flex flex-col mt-2 mb-2 overflow-y-auto no-scrollbar font-sans pl-[10px] pr-3">
                     <div className="flex flex-col mb-2">
                         <div className="flex items-center justify-between px-3 py-1.5 w-full text-left">
                             <span className="font-normal text-[13px] whitespace-nowrap transition-colors tracking-tight text-[#919191]">

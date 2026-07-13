@@ -1,7 +1,8 @@
-import { MessageSquare, ArrowUpRight } from 'lucide-react'
+import { MessageSquare, ArrowUpRight, Loader2 } from 'lucide-react'
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
+import { useBillingOverview } from '@/features/billing/hooks/useBillingData'
 import { ProfileFeedbackModal } from '@/features/profile/components/ProfileFeedbackModal'
 import { Icons } from '@/shared/components/ui/Icons'
 
@@ -14,19 +15,24 @@ export const HomeHeader: React.FC<HomeHeaderProps> = ({ isAuthenticated, onOpenA
     const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false)
     const navigate = useNavigate()
 
+    const { data: overview, isLoading: isOverviewLoading } = useBillingOverview()
+    const remaining = overview?.creditBalance ?? 0
+
     return (
-        <div className="absolute top-4 left-0 w-full px-4 md:px-6 z-50 flex justify-between items-start pointer-events-none">
+        <div className="absolute top-4 left-0 w-full px-4 md:px-6 z-50 flex justify-between items-center pointer-events-none">
             <div className="flex-1 pointer-events-auto flex justify-start pl-2 md:pl-0">
                 <button
-                    onClick={() => navigate('/docs')}
-                    className="hidden md:flex items-center gap-1 text-[#8F8E8D] hover:text-[#D4D4D8] transition-colors text-[13px] font-medium border-b border-[#333] pb-[1px] hover:border-[#D4D4D8] relative group/docs"
+                    onClick={() => navigate('/settings/billing')}
+                    className="hidden md:flex items-center gap-1.5 h-7 text-[13px] transition-colors font-medium text-[#8F8E8D] hover:text-[#D4D4D8]"
                 >
-                    Docs
-                    <div className="absolute top-[calc(100%+6px)] left-0 z-50 hidden group-hover/docs:flex items-center gap-1.5 bg-[#1F1F1F] border border-[#282828] px-2.5 py-1 rounded-lg shadow-none whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
-                        <span className="text-[12px] font-medium text-[#EDEDEF]">
-                            Documentation
-                        </span>
-                    </div>
+                    <span>Credits:</span>
+                    <span>
+                        {isOverviewLoading ? (
+                            <Loader2 className="w-3 h-3 animate-spin inline-block" />
+                        ) : (
+                            `$ ${(remaining / 100).toFixed(2)}`
+                        )}
+                    </span>
                 </button>
             </div>
 
@@ -62,7 +68,7 @@ export const HomeHeader: React.FC<HomeHeaderProps> = ({ isAuthenticated, onOpenA
                                 onOpenAuth()
                             }
                         }}
-                        className="text-textMuted hover:text-textMain transition-colors hidden md:flex items-center justify-center p-1 cursor-pointer outline-none relative group/feedback"
+                        className="text-textMuted hover:text-textMain hover:bg-[#252525] rounded-full transition-colors hidden md:flex items-center justify-center w-7 h-7 cursor-pointer outline-none relative group/feedback"
                     >
                         <MessageSquare className="w-[17px] h-[17px]" strokeWidth={2} />
                         <div className="absolute top-[calc(100%+6px)] right-0 z-50 hidden group-hover/feedback:flex items-center gap-1.5 bg-[#1F1F1F] border border-[#282828] px-2.5 py-1 rounded-lg shadow-none whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
@@ -73,7 +79,7 @@ export const HomeHeader: React.FC<HomeHeaderProps> = ({ isAuthenticated, onOpenA
                         href="https://x.com/phasehumans"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-textMuted hover:text-textMain transition-colors flex items-center justify-center p-1 relative group/twitter"
+                        className="text-textMuted hover:text-textMain hover:bg-[#252525] rounded-full transition-colors flex items-center justify-center w-7 h-7 relative group/twitter"
                     >
                         <Icons.XLogo className="w-[15px] h-[15px]" />
                         <div className="absolute top-[calc(100%+6px)] right-0 z-50 hidden group-hover/twitter:flex items-center gap-1.5 bg-[#1F1F1F] border border-[#282828] px-2.5 py-1 rounded-lg shadow-none whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
@@ -84,7 +90,7 @@ export const HomeHeader: React.FC<HomeHeaderProps> = ({ isAuthenticated, onOpenA
                         href="https://github.com/phasehumans/december"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-textMuted hover:text-textMain transition-colors flex items-center justify-center p-1 relative group/github"
+                        className="text-textMuted hover:text-textMain hover:bg-[#252525] rounded-full transition-colors flex items-center justify-center w-7 h-7 relative group/github"
                     >
                         <Icons.Github className="w-5 h-5" />
                         <div className="absolute top-[calc(100%+6px)] right-0 z-50 hidden group-hover/github:flex items-center gap-1.5 bg-[#1F1F1F] border border-[#282828] px-2.5 py-1 rounded-lg shadow-none whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">

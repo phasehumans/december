@@ -107,7 +107,7 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
         >
             <HomeHeader isAuthenticated={isAuthenticated} onOpenAuth={onOpenAuth} />
 
-            <div className="flex flex-col items-center justify-start pt-[25vh] md:pt-[32vh] h-full flex-1 gap-6 animate-in fade-in duration-500 max-w-4xl mx-auto px-4 w-full shrink-0 relative">
+            <div className="flex flex-col items-center justify-start pt-[19vh] md:pt-[26vh] h-full flex-1 gap-6 animate-in fade-in duration-500 max-w-4xl mx-auto px-4 w-full shrink-0 relative">
                 {/* Hidden original logo to preserve exact vertical layout flow */}
                 <div
                     className="flex flex-col items-center gap-3 text-center relative -left-[8px] opacity-0 pointer-events-none select-none"
@@ -137,7 +137,7 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
                                 </span>
                             </h2>
                         </div>
-                        <div className="relative flex items-center bg-[#1B1B1B] rounded-full shadow-sm w-[94px] overflow-hidden">
+                        <div className="relative flex items-center bg-[#252525] border border-[#333] rounded-full shadow-sm w-[94px] overflow-hidden">
                             {/* Sliding Indicator */}
                             <div
                                 className={`absolute left-0 top-0 bottom-0 w-1/2 rounded-full bg-[#87B2F4] transition-transform duration-300 ease-out shadow-sm ${
@@ -150,7 +150,7 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
                                 className={`relative z-10 flex-1 flex justify-center items-center py-[4px] rounded-full text-[11px] transition-colors duration-300 ${
                                     chatMode === 'agent'
                                         ? 'text-[#111111] font-semibold'
-                                        : 'text-[#8F8E8D] hover:text-[#E8E8E8] font-medium'
+                                        : 'text-[#B4B4B4] hover:text-[#E8E8E8] font-medium'
                                 }`}
                             >
                                 Agent
@@ -160,7 +160,7 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
                                 className={`relative z-10 flex-1 flex justify-center items-center py-[4px] rounded-full text-[11px] transition-colors duration-300 ${
                                     chatMode === 'search'
                                         ? 'text-[#111111] font-semibold'
-                                        : 'text-[#8F8E8D] hover:text-[#E8E8E8] font-medium'
+                                        : 'text-[#B4B4B4] hover:text-[#E8E8E8] font-medium'
                                 }`}
                             >
                                 Search

@@ -86,7 +86,7 @@ const PromptInput: React.FC<PromptInputProps> = ({
                                     ? 'Ask a follow-up...'
                                     : selectedRepos.length > 0
                                       ? ''
-                                      : 'Ask December to build...')
+                                      : 'Describe your idea...')
                             }
                             className={`
                     w-full bg-transparent text-[#D6D5D4] placeholder-[#949494] caret-white
