@@ -95,7 +95,10 @@ export const SidebarFooter: React.FC<
     return (
         <div className="mt-auto flex flex-col w-full relative">
             <div
-                className="px-3 py-1.5 flex justify-center relative"
+                className={cn(
+                    'flex justify-center relative',
+                    isCollapsed ? 'px-2 py-0 mb-0' : 'px-3 py-1.5 mb-2'
+                )}
                 onMouseEnter={handleMouseEnter}
                 onMouseLeave={handleMouseLeave}
             >
@@ -104,13 +107,13 @@ export const SidebarFooter: React.FC<
                     onClick={() => setShowCliCard(!showCliCard)}
                     className={cn(
                         'upgrade-plan-btn flex items-center justify-center gap-1 rounded-full bg-transparent hover:bg-white/5 transition-all text-[#CBCACA] hover:text-white font-medium outline-none mx-auto cursor-pointer',
-                        isCollapsed ? 'w-8 h-8 px-0' : 'px-2.5 py-[3px] w-fit text-[11px]'
+                        isCollapsed ? 'w-[32px] h-[32px] px-0' : 'px-2.5 py-[3px] w-fit text-[11px]'
                     )}
                     style={{
-                        border: '1px solid #383735',
+                        border: isCollapsed ? 'none' : '1px solid #383735',
                     }}
                 >
-                    <span className={cn(isCollapsed ? 'text-[16px]' : 'text-[12px]')}>✱</span>
+                    <span className={cn(isCollapsed ? 'text-[18px]' : 'text-[12px]')}>✱</span>
                     {!isCollapsed && <span>Try December CLI</span>}
                 </button>
 
@@ -164,16 +167,21 @@ export const SidebarFooter: React.FC<
                 )}
             </div>
 
-            {isAuthenticated && <div className="w-full border-t border-white/[0.04]"></div>}
-            <div className="pl-[6px] pr-[6px] pt-1 pb-1.5">
+            {isAuthenticated && !isCollapsed && (
+                <div className="w-full border-t border-white/[0.04]"></div>
+            )}
+            <div
+                className={cn(
+                    'pr-[6px] pb-1.5',
+                    isCollapsed ? 'pl-[8px] pt-[2px]' : 'pl-[6px] pt-1'
+                )}
+            >
                 {isAuthenticated && (
                     <>
                         <div
                             className={cn(
                                 'flex items-center w-full',
-                                isCollapsed
-                                    ? 'flex-col-reverse gap-2 mb-2'
-                                    : 'gap-0 justify-between'
+                                isCollapsed ? 'flex-col-reverse gap-[2px]' : 'gap-0 justify-between'
                             )}
                         >
                             <button
@@ -182,8 +190,8 @@ export const SidebarFooter: React.FC<
                                     if (onProfile) onProfile()
                                 }}
                                 className={cn(
-                                    'flex items-center justify-center rounded-lg hover:bg-[#252525] transition-colors group outline-none min-w-0 relative',
-                                    isCollapsed ? 'w-10 h-10' : 'gap-2 px-1.5 py-[7px]'
+                                    'flex items-center justify-center rounded-[10px] hover:bg-[#252525] transition-colors group outline-none min-w-0 relative',
+                                    isCollapsed ? 'w-[32px] h-[32px]' : 'gap-2 px-1.5 py-[7px]'
                                 )}
                                 style={isCollapsed ? {} : { maxWidth: 'calc(100% - 28px)' }}
                             >
@@ -220,8 +228,8 @@ export const SidebarFooter: React.FC<
                                 ref={notifAnchorRef}
                                 onClick={() => setIsNotifPopoverOpen(!isNotifPopoverOpen)}
                                 className={cn(
-                                    'flex items-center justify-center rounded-lg hover:bg-[#252525] text-[#E8E8E8] transition-colors shrink-0 outline-none relative group/notif',
-                                    isCollapsed ? 'w-10 h-10' : 'w-7 h-7 -ml-1'
+                                    'flex items-center justify-center rounded-[10px] hover:bg-[#252525] text-[#E8E8E8] transition-colors shrink-0 outline-none relative group/notif',
+                                    isCollapsed ? 'w-[32px] h-[32px]' : 'w-7 h-7 -ml-1'
                                 )}
                             >
                                 <Inbox

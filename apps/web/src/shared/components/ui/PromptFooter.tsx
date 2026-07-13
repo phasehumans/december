@@ -305,57 +305,79 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
                     }
                 }}
             />
-            <div className="flex items-center gap-0.5">
-                <div className="relative group/btn" ref={plusRef}>
-                    <button
-                        onClick={(e) => {
-                            if (!isAuthenticated) {
-                                onOpenAuth?.()
-                                return
-                            }
-                            if (!isPlusMenuOpen) {
-                                const rect = e.currentTarget.getBoundingClientRect()
-                                const spaceBelow = window.innerHeight - rect.bottom
-                                if (spaceBelow < 250 && rect.top > spaceBelow) {
-                                    setPlusMenuPosition('top')
-                                } else {
-                                    setPlusMenuPosition('bottom')
+            <div className="flex items-center gap-1.5">
+                <div className="flex items-center">
+                    <div className="relative group/btn" ref={plusRef}>
+                        <button
+                            onClick={(e) => {
+                                if (!isAuthenticated) {
+                                    onOpenAuth?.()
+                                    return
                                 }
-                            }
-                            setIsPlusMenuOpen(!isPlusMenuOpen)
-                        }}
-                        className="flex items-center justify-center w-8 h-8 rounded-full text-[#8E8E8E] transition-all hover:bg-white/5 hover:text-white outline-none"
-                    >
-                        <Icons.Plus className="w-[18px] h-[18px] stroke-[2.5px]" />
-                    </button>
-                    {!isPlusMenuOpen && (
-                        <div className="absolute top-[calc(100%+6px)] left-0 z-50 hidden group-hover/btn:flex items-center gap-1.5 bg-[#1F1F1F] border border-[#282828] px-2.5 py-1 rounded-lg shadow-none whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
+                                if (!isPlusMenuOpen) {
+                                    const rect = e.currentTarget.getBoundingClientRect()
+                                    const spaceBelow = window.innerHeight - rect.bottom
+                                    if (spaceBelow < 250 && rect.top > spaceBelow) {
+                                        setPlusMenuPosition('top')
+                                    } else {
+                                        setPlusMenuPosition('bottom')
+                                    }
+                                }
+                                setIsPlusMenuOpen(!isPlusMenuOpen)
+                            }}
+                            className="flex items-center justify-center w-8 h-8 rounded-full text-[#8E8E8E] transition-all hover:bg-white/5 hover:text-white outline-none"
+                        >
+                            <Icons.Plus className="w-[18px] h-[18px] stroke-[2.5px]" />
+                        </button>
+                        {!isPlusMenuOpen && (
+                            <div className="absolute bottom-[calc(100%+6px)] left-0 z-50 hidden group-hover/btn:flex items-center gap-1.5 bg-[#1F1F1F] border border-[#282828] px-2.5 py-1 rounded-lg shadow-none whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
+                                <span className="text-[12px] font-medium text-[#EDEDEF]">
+                                    Attach or mention
+                                </span>
+                            </div>
+                        )}
+
+                        {isPlusMenuOpen && (
+                            <div
+                                className={`absolute ${plusMenuPosition === 'top' ? 'bottom-[calc(100%+8px)]' : 'top-[calc(100%+8px)]'} left-0 w-[230px] bg-[#1E1E1E] border border-[#2A2928] rounded-2xl p-1 shadow-2xl z-50 flex flex-col animate-in fade-in zoom-in-95 duration-150`}
+                            >
+                                {plusMenuItems.map((item, idx) => (
+                                    <button
+                                        key={item.label}
+                                        onMouseEnter={() => setSelectedPlusIndex(idx)}
+                                        onClick={() => {
+                                            setIsPlusMenuOpen(false)
+                                            item.action()
+                                        }}
+                                        className={`flex items-center gap-3 px-3 py-1.5 rounded-xl text-left text-[12.5px] font-medium text-[#EDEDEF] transition-colors outline-none w-full ${selectedPlusIndex === idx ? 'bg-[#252525]' : 'hover:bg-[#252525]'}`}
+                                    >
+                                        {item.icon}
+                                        <span>{item.label}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="relative group/btn -ml-0.5">
+                        <button
+                            onClick={() => {
+                                if (!isAuthenticated && onOpenAuth) {
+                                    onOpenAuth()
+                                    return
+                                }
+                                onOptionSelect?.('repos:')
+                            }}
+                            className="flex items-center justify-center w-8 h-8 rounded-full text-[#8E8E8E] transition-all hover:bg-white/5 hover:text-white outline-none"
+                        >
+                            <Icons.Github className="w-[16px] h-[16px]" />
+                        </button>
+                        <div className="absolute bottom-[calc(100%+6px)] left-1/2 -translate-x-1/2 z-50 hidden group-hover/btn:flex items-center gap-1.5 bg-[#1F1F1F] border border-[#282828] px-2.5 py-1 rounded-lg shadow-none whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
                             <span className="text-[12px] font-medium text-[#EDEDEF]">
-                                More options
+                                Attach repo
                             </span>
                         </div>
-                    )}
-
-                    {isPlusMenuOpen && (
-                        <div
-                            className={`absolute ${plusMenuPosition === 'top' ? 'bottom-[calc(100%+8px)]' : 'top-[calc(100%+8px)]'} left-0 w-[230px] bg-[#1E1E1E] border border-[#2A2928] rounded-2xl p-1 shadow-2xl z-50 flex flex-col animate-in fade-in zoom-in-95 duration-150`}
-                        >
-                            {plusMenuItems.map((item, idx) => (
-                                <button
-                                    key={item.label}
-                                    onMouseEnter={() => setSelectedPlusIndex(idx)}
-                                    onClick={() => {
-                                        setIsPlusMenuOpen(false)
-                                        item.action()
-                                    }}
-                                    className={`flex items-center gap-3 px-3 py-1.5 rounded-xl text-left text-[12.5px] font-medium text-[#EDEDEF] transition-colors outline-none w-full ${selectedPlusIndex === idx ? 'bg-[#252525]' : 'hover:bg-[#252525]'}`}
-                                >
-                                    {item.icon}
-                                    <span>{item.label}</span>
-                                </button>
-                            ))}
-                        </div>
-                    )}
+                    </div>
                 </div>
 
                 <div
@@ -441,10 +463,10 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
                             setIsModelSelectorOpen(!isModelSelectorOpen)
                         }}
                         className={cn(
-                            'flex items-center gap-1.5 transition-all duration-200 outline-none cursor-pointer px-2 py-0.5 rounded-full bg-transparent border border-transparent hover:bg-[#27272A]',
+                            'flex items-center gap-1.5 transition-all duration-200 outline-none cursor-pointer px-2.5 py-1 rounded-full',
                             isModelSelectorOpen
-                                ? 'text-white bg-[#27272A]'
-                                : 'text-[#8E8E8E] hover:text-white'
+                                ? 'text-[#E8E8E8] bg-[#2C2C2E]'
+                                : 'text-[#D6D5D4] bg-[#252525] hover:bg-[#2C2C2E] hover:text-[#E8E8E8]'
                         )}
                     >
                         <span className="text-[13px] font-medium">{selectedModelData.name}</span>
@@ -456,7 +478,7 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
                         />
                     </button>
                     {!isModelSelectorOpen && (
-                        <div className="absolute top-[calc(100%+6px)] right-0 z-50 hidden group-hover/btn:flex items-center gap-1.5 bg-[#1F1F1F] border border-[#282828] px-2.5 py-1 rounded-lg shadow-none whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
+                        <div className="absolute bottom-[calc(100%+6px)] right-0 z-50 hidden group-hover/btn:flex items-center gap-1.5 bg-[#1F1F1F] border border-[#282828] px-2.5 py-1 rounded-lg shadow-none whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
                             <span className="text-[12px] font-medium text-[#EDEDEF]">
                                 Select model
                             </span>
@@ -525,7 +547,7 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
                         >
                             <Icons.Microphone className="w-[14px] h-[14px] stroke-[2.5px] relative z-10" />
                         </button>
-                        <div className="absolute top-[calc(100%+6px)] right-0 z-50 hidden group-hover/btn:flex items-center gap-1.5 bg-[#1F1F1F] border border-[#282828] px-2.5 py-1 rounded-lg shadow-none whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
+                        <div className="absolute bottom-[calc(100%+6px)] right-0 z-50 hidden group-hover/btn:flex items-center gap-1.5 bg-[#1F1F1F] border border-[#282828] px-2.5 py-1 rounded-lg shadow-none whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
                             <span className="text-[12px] font-medium text-[#EDEDEF]">
                                 {isListening ? 'Stop listening' : 'Record voice prompt'}
                             </span>
@@ -551,7 +573,7 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
                             <Icons.ArrowRight className="w-4 h-4 stroke-[2px]" />
                         )}
                     </button>
-                    <div className="absolute top-[calc(100%+6px)] right-0 z-50 hidden group-hover/submitbtn:flex items-center gap-1.5 bg-[#1F1F1F] border border-[#282828] px-2.5 py-1 rounded-lg shadow-none whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
+                    <div className="absolute bottom-[calc(100%+6px)] right-0 z-50 hidden group-hover/submitbtn:flex items-center gap-1.5 bg-[#1F1F1F] border border-[#282828] px-2.5 py-1 rounded-lg shadow-none whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
                         <span className="text-[12px] font-medium text-[#EDEDEF]">
                             {!hasInput
                                 ? 'Prompt required'
