@@ -247,7 +247,7 @@ export const SidebarFooter: React.FC<
                                             'absolute z-50 hidden group-hover/notif:flex items-center gap-1.5 bg-[#1F1F1F] border border-[#282828] px-2.5 py-1 rounded-lg shadow-none whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none',
                                             isCollapsed
                                                 ? 'top-1/2 left-[calc(100%+8px)] -translate-y-1/2'
-                                                : 'bottom-[calc(100%+6px)] right-0'
+                                                : 'bottom-[calc(100%+6px)] left-1/2'
                                         )}
                                     >
                                         <span className="text-[12px] font-medium text-[#EDEDEF]">

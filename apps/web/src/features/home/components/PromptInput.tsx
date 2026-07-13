@@ -2,7 +2,7 @@ import { Icons } from '@/shared/components/ui/Icons'
 import { PromptFooter } from '@/shared/components/ui/PromptFooter'
 import { usePromptInputController } from '@/features/home/hooks/usePromptInputController'
 
-const PromptInput: React.FC<PromptInputProps> = ({
+const PromptInput: React.FC<PromptInputProps & { onFocus?: () => void }> = ({
     onSubmit,
     isLoading,
     placeholder,
@@ -12,6 +12,7 @@ const PromptInput: React.FC<PromptInputProps> = ({
     onChange,
     isAuthenticated,
     onOpenAuth,
+    onFocus,
 }) => {
     const {
         input,
@@ -80,6 +81,7 @@ const PromptInput: React.FC<PromptInputProps> = ({
                             onSelect={handleSelect}
                             onKeyUp={handleSelect}
                             onClick={handleSelect}
+                            onFocus={onFocus}
                             placeholder={
                                 placeholder ||
                                 (minimized

@@ -391,9 +391,14 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
                     onMouseLeave={handleCanvasMouseLeave}
                 >
                     <button
-                        onClick={() => {
+                        onClick={(e) => {
                             if (!isAuthenticated && onOpenAuth) {
                                 onOpenAuth()
+                                return
+                            }
+                            if (window.innerWidth < 768) {
+                                e.preventDefault()
+                                setShowCanvasCard(!showCanvasCard)
                                 return
                             }
                             window.open('/canvas', '_blank')

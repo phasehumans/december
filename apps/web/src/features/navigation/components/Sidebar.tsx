@@ -56,6 +56,15 @@ const Sidebar: React.FC<
     const [sortBy, setSortBy] = React.useState<'created' | 'updated'>('updated')
     const recentMenuRef = React.useRef<HTMLDivElement | null>(null)
     const recentMenuTriggerRef = React.useRef<HTMLButtonElement | null>(null)
+    const [isLogoAnimating, setIsLogoAnimating] = React.useState(false)
+
+    React.useEffect(() => {
+        if (isCollapsed) {
+            setIsLogoAnimating(true)
+            const timer = setTimeout(() => setIsLogoAnimating(false), 1000)
+            return () => clearTimeout(timer)
+        }
+    }, [isCollapsed])
 
     React.useEffect(() => {
         if (!isRecentMenuOpen) return
@@ -112,13 +121,21 @@ const Sidebar: React.FC<
 
     const navItems = [
         {
-            id: 'home',
-            label: 'Home',
-            icon: <Home className="w-[18px] h-[18px]" />,
+            id: 'new',
+            label: 'New',
+            icon: (
+                <div className="w-[20px] h-[20px] rounded-full bg-[#333333] flex items-center justify-center shrink-0">
+                    <Icons.Plus className="w-3 h-3 text-[#E8E8E8]" strokeWidth={2.5} />
+                </div>
+            ),
             onClick: () => {
-                const el = document.getElementById('main-scroll-container')
-                el?.scrollTo({ top: 0, behavior: 'smooth' })
-                if (onHomeClick) onHomeClick()
+                if (onNewThread) {
+                    onNewThread()
+                } else {
+                    const el = document.getElementById('main-scroll-container')
+                    el?.scrollTo({ top: 0, behavior: 'smooth' })
+                    if (onHomeClick) onHomeClick()
+                }
             },
         },
         {
@@ -189,59 +206,93 @@ const Sidebar: React.FC<
             )}
         >
             {isCollapsed ? (
-                <div className="px-2 mb-2 mt-1 z-30 relative flex flex-col gap-[2px] items-center">
-                    {navItems.map((item, idx) => {
-                        return (
-                            <button
-                                key={item.id}
-                                onClick={item.id === 'home' ? () => onExpand?.() : item.onClick}
+                <div className="px-2 mb-2 mt-0 z-30 relative">
+                    <div className="flex items-center justify-center w-full mb-6 mt-4">
+                        <div
+                            className="flex items-center justify-center w-[32px] h-[32px] relative group cursor-pointer rounded-[10px] hover:bg-[#252525] transition-colors"
+                            onClick={(e) => {
+                                e.stopPropagation()
+                                onExpand?.()
+                            }}
+                        >
+                            <Icons.DecemberLogo
                                 className={cn(
-                                    'relative flex items-center justify-center w-[32px] h-[32px] rounded-[10px] transition-all group outline-none',
-                                    activeIndex === idx
-                                        ? 'bg-[#141414] border border-white/5 shadow-sm text-[#D6D5D4]'
-                                        : 'hover:bg-[#272727] text-[#919191] hover:text-[#D6D5D4]'
+                                    'w-6 h-6 text-[#D6D5D4] group-hover:hidden',
+                                    isLogoAnimating
+                                        ? 'transition-transform duration-1000 ease-[cubic-bezier(0.34,1.56,0.64,1)] rotate-[360deg]'
+                                        : 'rotate-0'
                                 )}
-                            >
-                                {item.id === 'home' ? (
-                                    <>
-                                        <div className="group-hover:hidden flex items-center justify-center">
-                                            {item.icon}
-                                        </div>
-                                        <Icons.SidebarToggle className="w-[18px] h-[18px] hidden group-hover:block" />
-                                    </>
-                                ) : (
-                                    item.icon
-                                )}
-                                <div className="absolute top-1/2 left-[calc(100%+12px)] -translate-y-1/2 z-50 hidden group-hover:flex items-center gap-1.5 bg-[#1F1F1F] border border-[#282828] px-2.5 py-1 rounded-lg shadow-none whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
-                                    <span className="text-[12px] font-medium text-[#EDEDEF]">
-                                        {item.id === 'home' ? 'Open sidebar' : item.label}
-                                        {item.id === 'home' && (
-                                            <span className="text-[#919191] ml-1 text-[10px] border border-[#333] rounded px-1 py-0.5 bg-[#252525]">
-                                                Ctrl .
-                                            </span>
-                                        )}
+                            />
+                            <Icons.SidebarToggle className="w-4 h-4 text-[#919191] group-hover:text-[#D4D4D8] hidden group-hover:block" />
+
+                            <div className="absolute top-1/2 left-[calc(100%+12px)] -translate-y-1/2 z-50 hidden group-hover:flex items-center gap-1.5 bg-[#1F1F1F] border border-[#282828] px-2.5 py-1 rounded-lg shadow-none whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
+                                <span className="text-[12px] font-medium text-[#EDEDEF]">
+                                    Open sidebar{' '}
+                                    <span className="text-[#919191] ml-1 text-[10px] border border-[#333] rounded px-1 py-0.5 bg-[#252525]">
+                                        Ctrl .
                                     </span>
-                                </div>
-                            </button>
-                        )
-                    })}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="flex flex-col gap-[2px] relative items-center">
+                        {navItems.map((item, idx) => {
+                            return (
+                                <button
+                                    key={item.id}
+                                    onClick={item.onClick}
+                                    className={cn(
+                                        'relative flex items-center justify-center w-[32px] h-[32px] rounded-[10px] transition-all group outline-none',
+                                        activeIndex === idx
+                                            ? 'bg-[#1F1F1F] text-[#D6D5D4]'
+                                            : item.id === 'new'
+                                              ? 'text-[#919191] hover:text-[#D6D5D4]'
+                                              : 'hover:bg-[#252525] text-[#919191] hover:text-[#D6D5D4]'
+                                    )}
+                                >
+                                    {item.icon}
+                                    <div className="absolute top-1/2 left-[calc(100%+12px)] -translate-y-1/2 z-50 hidden group-hover:flex items-center gap-1.5 bg-[#1F1F1F] border border-[#282828] px-2.5 py-1 rounded-lg shadow-none whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
+                                        <span className="text-[12px] font-medium text-[#EDEDEF]">
+                                            {item.id === 'new' ? 'Create new session' : item.label}
+                                        </span>
+                                    </div>
+                                </button>
+                            )
+                        })}
+                    </div>
                 </div>
             ) : (
                 <div className="px-3 mb-2 mt-0 z-30 relative">
-                    <div className="bg-[#1F1F1F] rounded-[14px] p-1 pb-1.5 flex flex-col gap-[2px] -mx-1 relative">
-                        {/* Sliding Background */}
-                        <div
-                            className="absolute left-1 right-1 h-[32px] bg-[#141414] border border-white/5 shadow-sm rounded-[10px] transition-transform duration-300 ease-[cubic-bezier(0.34,1.2,0.64,1)]"
-                            style={{ transform: `translateY(${activeIndex * 34}px)` }}
-                        />
-
+                    <div className="flex items-center justify-between px-2 mb-6 mt-4">
+                        <Icons.DecemberLogo className="w-6 h-6 text-[#D6D5D4]" />
+                        {onCollapse && (
+                            <div
+                                className="flex items-center justify-center text-[#919191] hover:text-[#D4D4D8] group/collapse p-1 rounded-md hover:bg-[#252525] transition-colors cursor-pointer relative"
+                                onClick={(e) => {
+                                    e.stopPropagation()
+                                    onCollapse()
+                                }}
+                            >
+                                <Icons.SidebarToggle className="w-4 h-4" />
+                                <div className="absolute top-1/2 left-[calc(100%+12px)] -translate-y-1/2 z-50 hidden group-hover/collapse:flex items-center gap-1.5 bg-[#1F1F1F] border border-[#282828] px-2.5 py-1 rounded-lg shadow-none whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
+                                    <span className="text-[12px] font-medium text-[#EDEDEF]">
+                                        Close sidebar{' '}
+                                        <span className="text-[#919191] ml-1 text-[10px] border border-[#333] rounded px-1 py-0.5 bg-[#252525]">
+                                            Ctrl .
+                                        </span>
+                                    </span>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                    <div className="flex flex-col gap-[2px] relative">
                         {navItems.map((item, idx) => (
                             <button
                                 key={item.id}
                                 onClick={item.onClick}
                                 className={cn(
                                     'relative flex items-center justify-between w-full px-2.5 h-[32px] rounded-[10px] transition-all group outline-none',
-                                    activeIndex === idx ? '' : 'hover:bg-[#1A1A1A]'
+                                    activeIndex === idx ? 'bg-[#1F1F1F]' : 'hover:bg-[#1C1C1C]'
                                 )}
                             >
                                 <div className="flex items-center gap-2.5 min-w-0">
@@ -266,23 +317,11 @@ const Sidebar: React.FC<
                                         {item.label}
                                     </span>
                                 </div>
-                                {idx === 0 && onCollapse && (
-                                    <div
-                                        className="flex md:hidden md:group-hover:flex items-center justify-center text-[#919191] hover:text-[#D4D4D8] group/collapse p-0.5 rounded-md hover:bg-[#333333] transition-colors shrink-0"
-                                        onClick={(e) => {
-                                            e.stopPropagation()
-                                            onCollapse()
-                                        }}
-                                    >
-                                        <Icons.SidebarToggle className="w-4 h-4" />
-                                        <div className="absolute top-[calc(100%+4px)] left-[calc(100%+4px)] z-50 hidden md:group-hover/collapse:flex items-center gap-1.5 bg-[#1F1F1F] border border-[#282828] px-2.5 py-1 rounded-lg shadow-none whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
-                                            <span className="text-[12px] font-medium text-[#EDEDEF]">
-                                                Close sidebar{' '}
-                                                <span className="text-[#919191] ml-1 text-[10px] border border-[#333] rounded px-1 py-0.5 bg-[#252525]">
-                                                    Ctrl .
-                                                </span>
-                                            </span>
-                                        </div>
+                                {item.id === 'new' && (
+                                    <div className="absolute top-1/2 left-[120px] -translate-y-1/2 z-50 hidden group-hover:flex items-center gap-1.5 bg-[#1F1F1F] border border-[#282828] px-2.5 py-1 rounded-lg shadow-md whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
+                                        <span className="text-[12px] font-medium text-[#EDEDEF]">
+                                            Create new session
+                                        </span>
                                     </div>
                                 )}
                             </button>
@@ -293,12 +332,12 @@ const Sidebar: React.FC<
 
             <div
                 className={cn(
-                    'flex-1 flex flex-col mt-2 mb-2 overflow-y-auto no-scrollbar font-sans',
+                    'flex-1 flex flex-col mt-2 mb-2 font-sans min-h-0',
                     isCollapsed ? 'px-2 hidden' : 'pl-[10px] pr-3'
                 )}
             >
-                <div className="flex flex-col mb-2">
-                    <div className="flex items-center justify-between px-3 py-1.5 w-full text-left group">
+                <div className="flex flex-col h-full">
+                    <div className="flex items-center justify-between px-3 py-1.5 w-full text-left group shrink-0 z-10">
                         <div className="flex items-center gap-1.5 text-[#919191]">
                             <History className="w-3.5 h-3.5" strokeWidth={2.5} />
                             <span className="font-medium text-[12px] whitespace-nowrap transition-colors tracking-tight">
@@ -306,19 +345,6 @@ const Sidebar: React.FC<
                             </span>
                         </div>
                         <div className="flex items-center gap-0.5">
-                            <button
-                                onClick={() =>
-                                    isAuthenticated ? setIsSearchOpen(true) : onOpenAuth?.()
-                                }
-                                className="relative flex items-center justify-center p-1 rounded-md text-[#919191] hover:text-[#E8E8E8] hover:bg-[#252525] transition-all outline-none group/btn"
-                            >
-                                <Icons.Search className="w-3.5 h-3.5" />
-                                <div className="absolute top-[calc(100%+6px)] right-0 z-50 hidden group-hover/btn:flex items-center gap-1.5 bg-[#1F1F1F] border border-[#282828] px-2.5 py-1 rounded-lg shadow-none whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
-                                    <span className="text-[12px] font-medium text-[#EDEDEF]">
-                                        Search
-                                    </span>
-                                </div>
-                            </button>
                             <div className="relative">
                                 <button
                                     ref={recentMenuTriggerRef}
@@ -341,7 +367,7 @@ const Sidebar: React.FC<
                                     className="relative flex items-center justify-center p-1 rounded-md text-[#919191] hover:text-[#E8E8E8] hover:bg-[#252525] transition-all outline-none group/btn"
                                 >
                                     <Icons.MoreHorizontal className="w-3.5 h-3.5" />
-                                    <div className="absolute top-[calc(100%+6px)] right-0 z-50 hidden group-hover/btn:flex items-center gap-1.5 bg-[#1F1F1F] border border-[#282828] px-2.5 py-1 rounded-lg shadow-none whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
+                                    <div className="absolute bottom-[calc(100%+6px)] left-0 z-50 hidden group-hover/btn:flex items-center gap-1.5 bg-[#1F1F1F] border border-[#282828] px-2.5 py-1 rounded-lg shadow-none whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
                                         <span className="text-[12px] font-medium text-[#EDEDEF]">
                                             More options
                                         </span>
@@ -407,7 +433,7 @@ const Sidebar: React.FC<
                         </div>
                     </div>
 
-                    <div className="flex flex-col gap-[2px] mt-1 pr-1">
+                    <div className="flex flex-col gap-[2px] mt-1 pr-1 overflow-y-auto no-scrollbar flex-1 min-h-0 pb-2">
                         {isAuthenticated ? (
                             isProjectsLoading ? null : recentProjects.length > 0 ? (
                                 recentProjects.map((project) => (

@@ -10,7 +10,7 @@ export const ReviewPage: React.FC<ReviewPageProps> = () => {
     const [prUrl, setPrUrl] = useState('')
 
     return (
-        <div className="relative h-full w-full flex-1 overflow-y-auto bg-background px-8 pb-8 pt-20 font-sans no-scrollbar md:p-16">
+        <div className="relative h-full w-full flex-1 overflow-y-auto bg-background px-4 pb-8 pt-16 font-sans no-scrollbar md:p-16">
             <div className="relative z-10 mx-auto max-w-6xl">
                 {/* Header matching Sessions page */}
                 <div className="mb-6 flex items-start justify-between gap-4">
@@ -23,9 +23,9 @@ export const ReviewPage: React.FC<ReviewPageProps> = () => {
                 </div>
 
                 {/* Top Action Bar */}
-                <div className="relative z-10 mb-12 flex w-full items-center">
+                <div className="relative z-10 mb-12 flex flex-col md:flex-row w-full items-start md:items-center gap-4 md:gap-0">
                     {/* Left: URL Input and Button */}
-                    <div className="flex items-center gap-3 w-full max-w-[480px]">
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:max-w-[480px]">
                         <div className="relative w-full">
                             <input
                                 type="text"
@@ -33,7 +33,7 @@ export const ReviewPage: React.FC<ReviewPageProps> = () => {
                                 className="w-full rounded-lg border border-[#383736] bg-[#141414] py-1.5 px-3.5 text-[13px] text-[#D6D5C9] transition-colors placeholder:text-[#555453] hover:bg-[#191919] focus:border-[#7B7A79] focus:bg-[#191919] focus:outline-none"
                             />
                         </div>
-                        <button className="whitespace-nowrap px-4 py-1.5 rounded-lg border border-[#383736] bg-[#1A1918] text-[13px] font-medium text-[#D6D5C9] hover:bg-[#262626] transition-colors">
+                        <button className="whitespace-nowrap px-4 py-2 sm:py-1.5 rounded-lg border border-[#383736] bg-[#1A1918] text-[13px] font-medium text-[#D6D5C9] hover:bg-[#262626] transition-colors w-full sm:w-auto">
                             Go to pull request
                         </button>
                     </div>
@@ -41,10 +41,10 @@ export const ReviewPage: React.FC<ReviewPageProps> = () => {
                     <div className="flex-1" />
 
                     {/* Right: Repository Dropdown */}
-                    <div className="flex items-center gap-2">
-                        <div className="relative">
-                            <button className="flex items-center gap-2 rounded-full border border-[#383736] bg-[#141414] px-4 py-1.5 text-[13px] text-[#D6D5C9] transition-colors hover:bg-[#191919]">
-                                All repositories{' '}
+                    <div className="flex items-center gap-2 w-full md:w-auto">
+                        <div className="relative w-full md:w-auto">
+                            <button className="flex w-full items-center justify-between gap-2 rounded-lg md:rounded-full border border-[#383736] bg-[#141414] px-4 py-2 md:py-1.5 text-[13px] text-[#D6D5C9] transition-colors hover:bg-[#191919]">
+                                <span>All repositories</span>
                                 <Icons.ChevronDown className="h-3.5 w-3.5 text-[#7B7A79]" />
                             </button>
                         </div>
@@ -52,7 +52,7 @@ export const ReviewPage: React.FC<ReviewPageProps> = () => {
                 </div>
 
                 {/* Main Big Input Area */}
-                <div className="flex w-full flex-col items-center justify-center mt-32 mb-20">
+                <div className="flex w-full flex-col items-center justify-center mt-16 md:mt-32 mb-20">
                     <div className="w-full max-w-[560px] flex flex-col">
                         <h2 className="text-[15px] font-medium text-[#D6D5C9] mb-3">
                             Review any PR URL

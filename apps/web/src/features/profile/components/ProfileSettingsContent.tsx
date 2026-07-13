@@ -84,7 +84,7 @@ export const ProfileSettingsContent: React.FC<ProfileSettingsContentProps> = (pr
                 <h1 className="text-[16px] font-medium mb-3">Account</h1>
                 <div className="flex flex-col gap-2 border-t border-[#242323] pt-4">
                     {/* Full Name Row */}
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
                         <div className="flex flex-col gap-0.5">
                             <span className="text-[14px] text-[#D6D5C9]">Full Name</span>
                             <span className="text-[13px] text-[#7B7A79]">
@@ -93,14 +93,14 @@ export const ProfileSettingsContent: React.FC<ProfileSettingsContentProps> = (pr
                         </div>
                         <button
                             onClick={onOpenNameModal}
-                            className="px-4 py-1.5 rounded-lg border border-[#383736] text-[13px] text-[#D6D5C9] hover:bg-[#242323] transition-colors"
+                            className="w-full sm:w-auto px-4 py-1.5 rounded-lg border border-[#383736] text-[13px] text-[#D6D5C9] hover:bg-[#242323] transition-colors"
                         >
                             Change full name
                         </button>
                     </div>
 
                     {/* Username Row */}
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
                         <div className="flex flex-col gap-0.5">
                             <span className="text-[14px] text-[#D6D5C9]">Username</span>
                             <span className="text-[13px] text-[#7B7A79]">
@@ -109,7 +109,7 @@ export const ProfileSettingsContent: React.FC<ProfileSettingsContentProps> = (pr
                         </div>
                         <button
                             onClick={onOpenUsernameModal}
-                            className="px-4 py-1.5 rounded-lg border border-[#383736] text-[13px] text-[#D6D5C9] hover:bg-[#242323] transition-colors"
+                            className="w-full sm:w-auto px-4 py-1.5 rounded-lg border border-[#383736] text-[13px] text-[#D6D5C9] hover:bg-[#242323] transition-colors"
                         >
                             Change username
                         </button>
@@ -126,7 +126,7 @@ export const ProfileSettingsContent: React.FC<ProfileSettingsContentProps> = (pr
                     </div>
 
                     {/* Change Password Row */}
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
                         <div className="flex flex-col gap-0.5">
                             <span className="text-[14px] text-[#D6D5C9]">Password</span>
                             {profile?.hasPassword ? (
@@ -139,7 +139,7 @@ export const ProfileSettingsContent: React.FC<ProfileSettingsContentProps> = (pr
                         </div>
                         <button
                             onClick={onOpenPasswordModal}
-                            className="px-4 py-1.5 rounded-lg border border-[#383736] text-[13px] text-[#D6D5C9] hover:bg-[#242323] transition-colors"
+                            className="w-full sm:w-auto px-4 py-1.5 rounded-lg border border-[#383736] text-[13px] text-[#D6D5C9] hover:bg-[#242323] transition-colors"
                         >
                             {profile?.hasPassword ? 'Change password' : 'Set password'}
                         </button>
@@ -236,20 +236,20 @@ export const ProfileSettingsContent: React.FC<ProfileSettingsContentProps> = (pr
             {/* System */}
             <div className="flex flex-col mb-6">
                 <h2 className="text-[16px] font-medium text-[#D6D5C9] mb-3">System</h2>
-                <div className="flex flex-col gap-2 border-t border-[#242323] pt-4">
-                    <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-6 sm:gap-2 border-t border-[#242323] pt-4">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
                         <span className="text-[14px] text-[#D6D5C9]">
                             You are signed in as {profile?.username || profile?.name || 'User'}
                         </span>
                         <button
                             onClick={onSignOut}
-                            className="px-4 py-1.5 rounded-lg border border-[#383736] text-[13px] text-[#D6D5C9] hover:bg-[#242323] transition-colors"
+                            className="w-full sm:w-auto px-4 py-1.5 rounded-lg border border-[#383736] text-[13px] text-[#D6D5C9] hover:bg-[#242323] transition-colors"
                         >
                             Sign out
                         </button>
                     </div>
 
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
                         <div className="flex flex-col gap-0.5">
                             <span className="text-[14px] text-[#D6D5C9]">
                                 Sign out of all sessions
@@ -260,13 +260,13 @@ export const ProfileSettingsContent: React.FC<ProfileSettingsContentProps> = (pr
                         </div>
                         <button
                             onClick={onOpenSignOutAllSessionsModal}
-                            className="px-4 py-1.5 rounded-lg border border-[#383736] text-[13px] text-[#D6D5C9] hover:bg-[#242323] transition-colors"
+                            className="w-full sm:w-auto px-4 py-1.5 rounded-lg border border-[#383736] text-[13px] text-[#D6D5C9] hover:bg-[#242323] transition-colors"
                         >
                             Sign out of all sessions
                         </button>
                     </div>
 
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
                         <div className="flex flex-col gap-0.5">
                             <span className="text-[14px] text-[#D6D5C9]">Delete account</span>
                             <span className="text-[13px] text-[#7B7A79]">
@@ -275,7 +275,7 @@ export const ProfileSettingsContent: React.FC<ProfileSettingsContentProps> = (pr
                         </div>
                         <button
                             onClick={onOpenDeleteAccountModal}
-                            className="px-4 py-1.5 rounded-lg border border-[#383736] text-[13px] text-[#D6D5C9] hover:bg-[#242323] transition-colors"
+                            className="w-full sm:w-auto px-4 py-1.5 rounded-lg border border-[#383736] text-[13px] text-[#D6D5C9] hover:bg-[#242323] transition-colors"
                         >
                             Delete Account
                         </button>
