@@ -136,6 +136,11 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
             } else if (e.key === 'Enter') {
                 e.preventDefault()
                 e.stopPropagation()
+                if (!isAuthenticated) {
+                    setIsPlusMenuOpen(false)
+                    onOpenAuth?.()
+                    return
+                }
                 const actions = [
                     () => {
                         setIsPlusMenuOpen(false)
@@ -310,10 +315,6 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
                     <div className="relative group/btn" ref={plusRef}>
                         <button
                             onClick={(e) => {
-                                if (!isAuthenticated) {
-                                    onOpenAuth?.()
-                                    return
-                                }
                                 if (!isPlusMenuOpen) {
                                     const rect = e.currentTarget.getBoundingClientRect()
                                     const spaceBelow = window.innerHeight - rect.bottom
@@ -347,6 +348,10 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
                                         onMouseEnter={() => setSelectedPlusIndex(idx)}
                                         onClick={() => {
                                             setIsPlusMenuOpen(false)
+                                            if (!isAuthenticated) {
+                                                onOpenAuth?.()
+                                                return
+                                            }
                                             item.action()
                                         }}
                                         className={`flex items-center gap-3 px-3 py-1.5 rounded-xl text-left text-[12.5px] font-medium text-[#EDEDEF] transition-colors outline-none w-full ${selectedPlusIndex === idx ? 'bg-[#252525]' : 'hover:bg-[#252525]'}`}
@@ -445,10 +450,6 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
                 <div className="relative group/btn" ref={selectorRef}>
                     <button
                         onClick={(e) => {
-                            if (!isAuthenticated) {
-                                onOpenAuth?.()
-                                return
-                            }
                             if (!isModelSelectorOpen) {
                                 const rect = e.currentTarget.getBoundingClientRect()
                                 const spaceBelow = window.innerHeight - rect.bottom

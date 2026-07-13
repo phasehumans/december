@@ -100,12 +100,6 @@ const EmptySessionsState: React.FC<{ onNewProject: () => void }> = ({ onNewProje
             <p className="mt-2 max-w-sm text-[13px] leading-6 text-[#7B7A79]">
                 Sessions you create or start will appear here.
             </p>
-            <button
-                onClick={onNewProject}
-                className="mt-5 rounded-lg border border-[#383736] bg-[#1A1918] px-4 py-2 text-[13px] font-medium text-[#D6D5C9] transition-colors hover:bg-[#262626]"
-            >
-                New session
-            </button>
         </div>
     )
 }
@@ -337,31 +331,6 @@ export const SessionListView: React.FC<SessionListViewProps> = ({
                                 ))}
                             </div>
                         )}
-                    </div>
-
-                    <div className="flex items-center rounded-lg border border-[#383736] bg-[#141414] p-0.5 ml-1">
-                        <button
-                            onClick={() => setViewMode('list')}
-                            className={`p-1.5 rounded-md transition-colors ${
-                                viewMode === 'list'
-                                    ? 'bg-[#EDEDED] text-[#111111]'
-                                    : 'text-[#7B7A79] hover:text-[#D6D5C9]'
-                            }`}
-                            title="List view"
-                        >
-                            <List className="w-4 h-4" />
-                        </button>
-                        <button
-                            onClick={() => setViewMode('grid')}
-                            className={`p-1.5 rounded-md transition-colors ${
-                                viewMode === 'grid'
-                                    ? 'bg-[#EDEDED] text-[#111111]'
-                                    : 'text-[#7B7A79] hover:text-[#D6D5C9]'
-                            }`}
-                            title="Grid view"
-                        >
-                            <LayoutGrid className="w-4 h-4" />
-                        </button>
                     </div>
                 </div>
             </div>

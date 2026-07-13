@@ -1,3 +1,114 @@
+@import 'tailwindcss';
+
+@theme {
+    --color-background: #141414; /* The requested warm dark grey */
+    --color-sidebar: #191919; /* Updated sidebar color */
+    --color-surface: #252423; /* Slightly lighter for input box/cards */
+    --color-surface-hover: #2f2e2d;
+    --color-border: #333333;
+    --color-text-main: #e8e8e6; /* Off-white for better contrast on warm dark */
+    --color-text-muted: #a09f9d;
+    --color-accent: #ffffff;
+
+    --font-sans: 'Inter', sans-serif;
+    --font-display: 'FK Grotesk', sans-serif;
+    --font-sohne: 'Söhne', 'Sohne', sans-serif;
+    --font-roboto: 'Roboto', sans-serif;
+    --font-hand: 'Caveat', cursive;
+
+    --animate-fade-in: fadeIn 0.8s ease-out forwards;
+    --animate-popover-in: popoverIn 0.2s ease-out forwards;
+}
+
+@keyframes fadeIn {
+    0% {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes popoverIn {
+    0% {
+        opacity: 0;
+        transform: scale(0.95) translateY(-5px);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+@layer base {
+    body {
+        background-color: #141414;
+        color: #e8e8e6;
+        font-family: 'Inter', sans-serif;
+    }
+    button,
+    input,
+    textarea,
+    select {
+        -webkit-tap-highlight-color: transparent !important;
+    }
+    button:focus,
+    button:active,
+    button:focus-visible {
+        outline: none !important;
+        box-shadow: none !important;
+    }
+    input:focus,
+    input:active,
+    textarea:focus,
+    textarea:active {
+        outline: none !important;
+    }
+}
+
+/* Custom scrollbar for webkit */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+::-webkit-scrollbar-thumb {
+    background: #333333;
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #4b4b4b;
+}
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+.no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+.dot-pattern {
+    background-image: radial-gradient(#454545 1.5px, transparent 1.5px);
+    background-size: 24px 24px;
+}
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 30px #181817 inset !important;
+    -webkit-text-fill-color: #ffffff !important;
+    transition: background-color 5000s ease-in-out 0s;
+}
+body.feedback-modal-open .home-header-badge,
+body.feedback-modal-open .canvas-toolbar-container {
+    opacity: 0 !important;
+    pointer-events: none !important;
+    visibility: hidden !important;
+}
+
 /* Custom resets to override Tailwind defaults and prevent focus/border flickers */
 button:focus,
 button:active,
