@@ -132,12 +132,29 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
                             />
                             <h2 className="text-[20px] md:text-[23px] font-sohne font-medium tracking-tight text-white flex items-center gap-1.5 leading-none">
                                 December
-                                <span className="text-[#87B2F4]">
-                                    {chatMode === 'agent' ? 'Agent' : 'Search'}
+                                <span className="text-[#87B2F4] font-normal relative inline-grid overflow-hidden py-1">
+                                    <span
+                                        className={`col-start-1 row-start-1 transition-all duration-300 ease-out ${
+                                            chatMode === 'agent'
+                                                ? 'opacity-100 translate-y-0'
+                                                : 'opacity-0 -translate-y-4 pointer-events-none'
+                                        }`}
+                                    >
+                                        Agent
+                                    </span>
+                                    <span
+                                        className={`col-start-1 row-start-1 transition-all duration-300 ease-out ${
+                                            chatMode === 'search'
+                                                ? 'opacity-100 translate-y-0'
+                                                : 'opacity-0 translate-y-4 pointer-events-none'
+                                        }`}
+                                    >
+                                        Search
+                                    </span>
                                 </span>
                             </h2>
                         </div>
-                        <div className="relative flex items-center bg-[#252525] border border-[#333] rounded-full shadow-sm w-[94px] overflow-hidden">
+                        <div className="relative flex items-center bg-[#252525] rounded-full shadow-sm w-[94px] overflow-hidden">
                             {/* Sliding Indicator */}
                             <div
                                 className={`absolute left-0 top-0 bottom-0 w-1/2 rounded-full bg-[#87B2F4] transition-transform duration-300 ease-out shadow-sm ${

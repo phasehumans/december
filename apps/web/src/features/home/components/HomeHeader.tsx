@@ -23,7 +23,7 @@ export const HomeHeader: React.FC<HomeHeaderProps> = ({ isAuthenticated, onOpenA
             <div className="flex-1 pointer-events-auto flex justify-start pl-2 md:pl-0">
                 <button
                     onClick={() => navigate('/settings/billing')}
-                    className="hidden md:flex items-center gap-1.5 h-7 text-[13px] transition-colors font-medium text-[#8F8E8D] hover:text-[#D4D4D8]"
+                    className="hidden md:flex items-center gap-1.5 h-7 px-2.5 rounded-full bg-[#252525] hover:bg-[#2C2C2C] text-[12px] transition-all font-medium text-[#999999] hover:text-[#E8E8E8]"
                 >
                     <span>Credits:</span>
                     <span>
