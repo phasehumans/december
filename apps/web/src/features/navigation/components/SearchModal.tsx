@@ -15,7 +15,7 @@ interface SearchItem {
     id: string
     label: string
     subtitle?: string
-    category: 'Actions' | 'Navigation' | 'Settings'
+    category: 'Recent' | 'Navigation' | 'Settings'
     icon: React.ReactNode
     action: () => void
 }
@@ -30,6 +30,13 @@ export const SearchModal: React.FC<SearchModalProps> = ({
     const [searchQuery, setSearchQuery] = useState('')
     const [selectedIndex, setSelectedIndex] = useState(0)
     const inputRef = useRef<HTMLInputElement>(null)
+    const [recentIds, setRecentIds] = useState<string[]>(() => {
+        try {
+            return JSON.parse(localStorage.getItem('december-search-recents') || '[]')
+        } catch {
+            return []
+        }
+    })
 
     // Reset search query and selected index on open
     useEffect(() => {
@@ -40,20 +47,13 @@ export const SearchModal: React.FC<SearchModalProps> = ({
         }
     }, [isOpen])
 
+    const saveRecent = (id: string) => {
+        const newRecents = [id, ...recentIds.filter((rId) => rId !== id)].slice(0, 5)
+        setRecentIds(newRecents)
+        localStorage.setItem('december-search-recents', JSON.stringify(newRecents))
+    }
+
     const allItems: SearchItem[] = [
-        // Actions
-        {
-            id: 'start-session',
-            label: 'Start session',
-            subtitle: 'with a prompt...',
-            category: 'Actions',
-            icon: <Icons.SessionsIcon className="w-4 h-4 text-neutral-400" />,
-            action: () => {
-                onClose()
-                if (onNewThread) onNewThread()
-                else navigate('/')
-            },
-        },
         // Navigation
         {
             id: 'go-sessions',
@@ -112,6 +112,28 @@ export const SearchModal: React.FC<SearchModalProps> = ({
             },
         },
         {
+            id: 'go-settings-account-profile',
+            label: 'Profile Details',
+            subtitle: 'Settings > Account',
+            category: 'Settings',
+            icon: <Icons.User className="w-4 h-4 text-neutral-400" />,
+            action: () => {
+                onClose()
+                navigate('/settings/account#profile')
+            },
+        },
+        {
+            id: 'go-settings-account-password',
+            label: 'Password & Security',
+            subtitle: 'Settings > Account',
+            category: 'Settings',
+            icon: <Icons.Lock className="w-4 h-4 text-neutral-400" />,
+            action: () => {
+                onClose()
+                navigate('/settings/account#password')
+            },
+        },
+        {
             id: 'go-settings-preferences',
             label: 'Preferences',
             subtitle: 'Manage theme & app preferences',
@@ -120,6 +142,28 @@ export const SearchModal: React.FC<SearchModalProps> = ({
             action: () => {
                 onClose()
                 navigate('/settings/preferences')
+            },
+        },
+        {
+            id: 'go-settings-preferences-custom-design',
+            label: 'Custom Design',
+            subtitle: 'Settings > Preferences',
+            category: 'Settings',
+            icon: <Icons.DesignSystems className="w-4 h-4 text-neutral-400" />,
+            action: () => {
+                onClose()
+                navigate('/settings/preferences#custom-design')
+            },
+        },
+        {
+            id: 'go-settings-preferences-shortcuts',
+            label: 'Keyboard Shortcuts',
+            subtitle: 'Settings > Preferences',
+            category: 'Settings',
+            icon: <Icons.Settings className="w-4 h-4 text-neutral-400" />,
+            action: () => {
+                onClose()
+                navigate('/settings/preferences#shortcuts')
             },
         },
         {
@@ -134,6 +178,17 @@ export const SearchModal: React.FC<SearchModalProps> = ({
             },
         },
         {
+            id: 'go-settings-integrations-github',
+            label: 'GitHub Integration',
+            subtitle: 'Settings > Integrations',
+            category: 'Settings',
+            icon: <Icons.Github className="w-4 h-4 text-neutral-400" />,
+            action: () => {
+                onClose()
+                navigate('/settings/integrations#github')
+            },
+        },
+        {
             id: 'go-settings-billing',
             label: 'Billing & Credits',
             subtitle: 'Manage subscription & credit balance',
@@ -142,6 +197,28 @@ export const SearchModal: React.FC<SearchModalProps> = ({
             action: () => {
                 onClose()
                 navigate('/settings/billing')
+            },
+        },
+        {
+            id: 'go-settings-billing-subscription',
+            label: 'Subscription Plan',
+            subtitle: 'Settings > Billing & Credits',
+            category: 'Settings',
+            icon: <Icons.Clock className="w-4 h-4 text-neutral-400" />,
+            action: () => {
+                onClose()
+                navigate('/settings/billing#subscription')
+            },
+        },
+        {
+            id: 'go-settings-billing-invoices',
+            label: 'Invoices & Receipts',
+            subtitle: 'Settings > Billing & Credits',
+            category: 'Settings',
+            icon: <Icons.DocsBook className="w-4 h-4 text-neutral-400" />,
+            action: () => {
+                onClose()
+                navigate('/settings/billing#invoices')
             },
         },
         {
@@ -157,16 +234,32 @@ export const SearchModal: React.FC<SearchModalProps> = ({
         },
     ]
 
-    const filteredItems = allItems.filter(
-        (item) =>
-            item.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            item.subtitle?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            item.category.toLowerCase().includes(searchQuery.toLowerCase())
-    )
+    const defaultRecentIds = ['go-projects', 'go-sessions', 'go-settings-account']
+    const activeRecentIds = recentIds.length > 0 ? recentIds : defaultRecentIds
+
+    const recentItems = activeRecentIds
+        .map((id) => allItems.find((i) => i.id === id))
+        .filter((i): i is SearchItem => Boolean(i))
+        .map((i) => ({ ...i, category: 'Recent' as const }))
+
+    let displayedItems: SearchItem[] = []
+
+    if (searchQuery.trim() === '') {
+        // Show Recent first, then the rest
+        displayedItems = [...recentItems, ...allItems]
+    } else {
+        const query = searchQuery.toLowerCase()
+        displayedItems = allItems.filter(
+            (item) =>
+                item.label.toLowerCase().includes(query) ||
+                item.subtitle?.toLowerCase().includes(query) ||
+                item.category.toLowerCase().includes(query)
+        )
+    }
 
     // Group items by category
-    const categories: ('Actions' | 'Navigation' | 'Settings')[] = [
-        'Actions',
+    const categories: ('Recent' | 'Navigation' | 'Settings')[] = [
+        'Recent',
         'Navigation',
         'Settings',
     ]
@@ -176,24 +269,36 @@ export const SearchModal: React.FC<SearchModalProps> = ({
     }, [searchQuery])
 
     useEffect(() => {
+        if (!isOpen) return
+        const element = document.getElementById(`search-item-${selectedIndex}`)
+        if (element) {
+            element.scrollIntoView({ block: 'nearest' })
+        }
+    }, [selectedIndex, isOpen])
+
+    useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (!isOpen) return
 
             if (e.key === 'ArrowDown') {
                 e.preventDefault()
-                setSelectedIndex((prev) => (prev + 1) % filteredItems.length)
+                setSelectedIndex((prev) => (prev + 1) % displayedItems.length)
             } else if (e.key === 'ArrowUp') {
                 e.preventDefault()
-                setSelectedIndex((prev) => (prev - 1 + filteredItems.length) % filteredItems.length)
+                setSelectedIndex(
+                    (prev) => (prev - 1 + displayedItems.length) % displayedItems.length
+                )
             } else if (e.key === 'Enter') {
                 e.preventDefault()
-                if (filteredItems[selectedIndex]) {
+                if (displayedItems[selectedIndex]) {
+                    const item = displayedItems[selectedIndex]
+                    saveRecent(item.id)
                     if (e.ctrlKey || e.metaKey) {
                         // Open in new tab behavior simulation
                         window.open(window.location.origin, '_blank')
                         onClose()
                     } else {
-                        filteredItems[selectedIndex].action()
+                        item.action()
                     }
                 }
             } else if (e.key === 'Escape') {
@@ -204,7 +309,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({
 
         window.addEventListener('keydown', handleKeyDown)
         return () => window.removeEventListener('keydown', handleKeyDown)
-    }, [isOpen, filteredItems, selectedIndex, onClose])
+    }, [isOpen, displayedItems, selectedIndex, onClose])
 
     if (!isOpen) return null
 
@@ -212,65 +317,81 @@ export const SearchModal: React.FC<SearchModalProps> = ({
 
     return (
         <div
-            className="fixed inset-0 bg-black/60 backdrop-blur-[2px] z-[200] flex items-start justify-center pt-[15vh] p-4 animate-in fade-in duration-150"
+            className="fixed inset-0 bg-black/40 z-[200] flex items-start justify-center pt-[15vh] p-4 animate-in fade-in duration-200"
             onClick={onClose}
         >
             <div
-                className="w-full max-w-[640px] bg-[#1E1E1E] border border-[#2A2928] rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150 font-sans"
+                className="w-full max-w-[640px] bg-[#1E1E1E] border border-[#282828] rounded-xl shadow-[0_0_80px_rgba(0,0,0,0.8)] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200 font-sans"
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Search Input */}
-                <div className="flex items-center px-5 py-4 border-b border-[#2A2928]">
-                    <Icons.Search className="w-5 h-5 text-neutral-400 mr-3.5 shrink-0" />
+                <div className="flex items-center px-4 py-3.5 border-b border-[#282828] bg-[#1E1E1E]">
+                    <Icons.Search className="w-4 h-4 text-[#888888] mr-3 shrink-0" />
                     <input
                         ref={inputRef}
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         placeholder="Type a command or search..."
-                        className="w-full bg-transparent text-[15px] text-[#D6D5D4] placeholder-[#7B7A79] focus:outline-none caret-white font-sans"
+                        className="w-full bg-transparent text-[14.5px] font-medium text-[#EDEDED] placeholder-[#777777] focus:outline-none caret-white font-sans"
                     />
                 </div>
 
                 {/* Results List */}
                 <div className="flex flex-col py-2 max-h-[420px] overflow-y-auto no-scrollbar">
                     {categories.map((category) => {
-                        const categoryItems = filteredItems.filter(
+                        const categoryItems = displayedItems.filter(
                             (item) => item.category === category
                         )
                         if (categoryItems.length === 0) return null
 
+                        // Ensure we use a Set to deduplicate Recents if needed, but they are mapped uniquely by index in render
+                        // Note: Recent category might show duplicate items if they are also in Navigation/Settings. That's typical command palette behavior.
+
                         return (
                             <div key={category} className="flex flex-col mb-2 last:mb-0">
-                                <div className="px-5 py-1.5 text-[12px] font-medium text-[#7B7A79]">
-                                    {category}
+                                <div className="px-4 py-1.5 mt-1 text-[12px] font-semibold text-[#7B7A79]">
+                                    {category === 'Recent' && recentIds.length === 0
+                                        ? 'Recommendations'
+                                        : category}
                                 </div>
-                                <div className="flex flex-col gap-0.5 px-1.5">
-                                    {categoryItems.map((item) => {
+                                <div className="flex flex-col gap-0.5 px-2 pb-1">
+                                    {categoryItems.map((item, localIdx) => {
                                         const itemIndex = currentIndex++
                                         const isSelected = itemIndex === selectedIndex
 
                                         return (
                                             <button
-                                                key={item.id}
-                                                onClick={() => item.action()}
+                                                key={`${category}-${item.id}-${localIdx}`}
+                                                id={`search-item-${itemIndex}`}
+                                                onClick={() => {
+                                                    saveRecent(item.id)
+                                                    item.action()
+                                                }}
                                                 onMouseEnter={() => setSelectedIndex(itemIndex)}
                                                 className={cn(
-                                                    'flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-colors w-full text-left outline-none cursor-pointer group',
+                                                    'flex items-center justify-between px-3 py-2 rounded-lg transition-colors w-full text-left outline-none cursor-pointer group',
                                                     isSelected
                                                         ? 'bg-[#2A2928]'
-                                                        : 'hover:bg-[#2A2928]/50'
+                                                        : 'hover:bg-[#2A2928]/40'
                                                 )}
                                             >
                                                 <div className="flex items-center gap-3 min-w-0 flex-1">
-                                                    <div className="text-[#A6A6A8] group-hover:text-[#EDEDEF] transition-colors shrink-0">
+                                                    <div className="shrink-0 text-[#888888] group-hover:text-[#EDEDED] flex items-center justify-center">
                                                         {item.icon}
                                                     </div>
-                                                    <div className="flex items-baseline gap-1.5 min-w-0 truncate">
-                                                        <span className="text-[14px] font-medium text-[#EDEDEF]">
+                                                    <div className="flex items-baseline min-w-0 gap-1.5 truncate">
+                                                        <span
+                                                            className={cn(
+                                                                'text-[14px] font-medium transition-colors',
+                                                                isSelected
+                                                                    ? 'text-[#EDEDED]'
+                                                                    : 'text-[#D6D5D4]'
+                                                            )}
+                                                        >
                                                             {item.label}
                                                         </span>
                                                         {item.subtitle && (
-                                                            <span className="text-[13px] text-[#7B7A79]">
+                                                            <span className="text-[14px] text-[#7B7A79] transition-colors">
                                                                 {item.subtitle}
                                                             </span>
                                                         )}
@@ -283,23 +404,11 @@ export const SearchModal: React.FC<SearchModalProps> = ({
                             </div>
                         )
                     })}
-                    {filteredItems.length === 0 && (
+                    {displayedItems.length === 0 && (
                         <div className="py-8 text-center text-[14px] text-[#7B7A79]">
                             No results found for "{searchQuery}"
                         </div>
                     )}
-                </div>
-
-                {/* Footer */}
-                <div className="flex items-center justify-between px-5 py-3 bg-[#1E1E1E] border-t border-[#2A2928] text-[12px] text-[#7B7A79] select-none font-sans">
-                    <div className="flex items-center gap-4">
-                        <span>Navigate</span>
-                        <span>Close</span>
-                    </div>
-                    <div className="flex items-center gap-6">
-                        <span>Open in new tab</span>
-                        <span>Select</span>
-                    </div>
                 </div>
             </div>
         </div>

@@ -53,7 +53,7 @@ const App: React.FC = () => {
                     <div className="flex items-center justify-center animate-pulse">
                         <Icons.DecemberLogo
                             className="w-10 h-10 md:w-14 md:h-14 text-[#212121]"
-                            strokeWidth={1.3}
+                            strokeWidth={1.2}
                         />
                     </div>
                 </div>

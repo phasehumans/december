@@ -97,7 +97,7 @@ const PromptInput: React.FC<PromptInputProps> = ({
                         />
                     </div>
 
-                    {isAtTriggered && !isReposTriggered && !forceClose && (
+                    {isAuthenticated && isAtTriggered && !isReposTriggered && !forceClose && (
                         <div
                             ref={dropdownRef}
                             className={`absolute left-5 z-[100] w-[320px] bg-[#1E1E1E] border border-[#2A2928] rounded-xl shadow-2xl overflow-hidden font-sans flex flex-col max-h-[320px] py-1.5 ${dropdownPosition === 'top' ? 'bottom-[calc(100%+8px)]' : 'top-[48px]'}`}
@@ -141,7 +141,7 @@ const PromptInput: React.FC<PromptInputProps> = ({
                         </div>
                     )}
 
-                    {isReposTriggered && !forceClose && (
+                    {isAuthenticated && isReposTriggered && !forceClose && (
                         <div
                             ref={dropdownRef}
                             className={`absolute left-5 z-[100] w-[280px] bg-[#1E1E1E] border border-[#2A2928] rounded-xl shadow-2xl overflow-hidden font-sans flex flex-col max-h-[300px] py-1 ${dropdownPosition === 'top' ? 'bottom-[calc(100%+8px)]' : 'top-[48px]'}`}

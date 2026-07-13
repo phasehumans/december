@@ -30,13 +30,14 @@ export const AuthModalAuthStep: React.FC<AuthModalAuthStepProps> = ({
     return (
         <div className="flex flex-col">
             <div className="flex flex-col items-center text-center mb-6">
-                <div className="mb-5 opacity-90 hover:opacity-100 transition-opacity text-[#D6D5D4]">
-                    <Icons.DecemberLogo className="w-[42px] h-[42px]" />
+                <div className="mb-5 opacity-90 hover:opacity-100 transition-opacity text-[#D6D5D4] relative">
+                    <div className="absolute inset-0 bg-white/20 blur-[24px] rounded-full scale-[1.8]"></div>
+                    <Icons.DecemberLogo className="w-[42px] h-[42px] relative z-10" />
                 </div>
                 <h2 className="text-[22px] font-normal text-white tracking-tight mb-1">
                     {authMode === 'login' ? 'Sign in to continue building' : 'Create an account'}
                 </h2>
-                <p className="text-[13px] text-[#A3A3A3]">turn ideas into reality.</p>
+                <p className="text-[13px] text-gray-400 tracking-wider">turn ideas into reality.</p>
             </div>
 
             <div className="flex flex-col gap-2.5 mb-1">
@@ -66,11 +67,11 @@ export const AuthModalAuthStep: React.FC<AuthModalAuthStepProps> = ({
             </div>
 
             <div className="flex items-center my-5">
-                <div className="flex-1 border-t border-[#2A2A2A]"></div>
-                <span className="px-3 text-[11px] text-[#737373] font-medium uppercase tracking-wider">
+                <div className="flex-1 border-t border-white/10"></div>
+                <span className="px-3 text-[10px] text-[#888888] font-semibold uppercase tracking-widest">
                     or continue with email
                 </span>
-                <div className="flex-1 border-t border-[#2A2A2A]"></div>
+                <div className="flex-1 border-t border-white/10"></div>
             </div>
 
             <form onSubmit={onSubmit} className="flex flex-col gap-3">

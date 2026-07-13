@@ -62,12 +62,6 @@ export const EmptySessionsState: React.FC<{ onNewProject: () => void }> = ({ onN
             <p className="mt-2 max-w-sm text-[13px] leading-6 text-[#7B7A79]">
                 Sessions you create or start will appear here.
             </p>
-            <button
-                onClick={onNewProject}
-                className="mt-5 rounded-lg border border-[#383736] bg-[#1A1918] px-4 py-2 text-[13px] font-medium text-[#D6D5C9] transition-colors hover:bg-[#262626]"
-            >
-                New session
-            </button>
         </div>
     )
 }

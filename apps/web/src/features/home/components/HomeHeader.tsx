@@ -80,20 +80,30 @@ export const HomeHeader: React.FC<HomeHeaderProps> = ({ isAuthenticated, onOpenA
 
     return (
         <div className="absolute top-4 left-0 w-full px-4 md:px-6 z-50 flex justify-between items-center pointer-events-none">
-            <div className="flex-1 pointer-events-auto flex justify-start pl-2 md:pl-0">
-                <button
-                    onClick={() => navigate('/settings/billing')}
-                    className="hidden md:flex items-center gap-1.5 h-7 px-2.5 rounded-full bg-[#1F1F1F] hover:bg-[#252525] text-[12px] transition-all font-medium text-[#999999] hover:text-[#E8E8E8]"
-                >
-                    <span>Credits:</span>
-                    <span>
-                        {isOverviewLoading ? (
-                            <Loader2 className="w-3 h-3 animate-spin inline-block" />
-                        ) : (
-                            `$ ${(remaining / 100).toFixed(2)}`
-                        )}
-                    </span>
-                </button>
+            <div className="flex-1 pointer-events-auto flex justify-start pl-2 md:pl-0 mt-[9px]">
+                {isAuthenticated ? (
+                    <button
+                        onClick={() => navigate('/settings/billing')}
+                        className="hidden md:flex items-center gap-1.5 h-7 px-2.5 rounded-full bg-[#1F1F1F] hover:bg-[#252525] text-[12px] transition-all font-medium text-[#999999] hover:text-[#E8E8E8]"
+                    >
+                        <span>Credits:</span>
+                        <span>
+                            {isOverviewLoading ? (
+                                <Loader2 className="w-3 h-3 animate-spin inline-block" />
+                            ) : (
+                                `$ ${(remaining / 100).toFixed(2)}`
+                            )}
+                        </span>
+                    </button>
+                ) : (
+                    <button
+                        onClick={() => navigate('/docs')}
+                        className="hidden md:flex items-center gap-1 h-7 px-2.5 rounded-full bg-[#1F1F1F] hover:bg-[#252525] text-[12px] transition-all font-medium text-[#999999] hover:text-[#E8E8E8]"
+                    >
+                        <span>Docs</span>
+                        <ArrowUpRight className="w-3.5 h-3.5" />
+                    </button>
+                )}
             </div>
 
             {/* Center Heading */}
@@ -105,7 +115,7 @@ export const HomeHeader: React.FC<HomeHeaderProps> = ({ isAuthenticated, onOpenA
                             '_blank'
                         )
                     }}
-                    className="home-header-badge hidden md:flex items-center gap-2 bg-transparent border border-white/5 rounded-full pl-1.5 pr-2.5 py-1 text-[13px] text-[#E8E8E6] shadow-sm transition-all duration-200 cursor-pointer hover:bg-white/5 group whitespace-nowrap flex-shrink-0"
+                    className="home-header-badge hidden md:flex items-center gap-2 bg-transparent border border-white/5 rounded-full pl-1.5 pr-2.5 py-1 text-[13px] text-[#E8E8E6] shadow-sm transition-all duration-200 cursor-pointer hover:bg-white/5 group whitespace-nowrap flex-shrink-0 opacity-[0.85] hover:opacity-100"
                 >
                     <span className="bg-[#87B2F4]/15 text-[#87B2F4] rounded-full px-1.5 py-0.5 text-[10px] font-medium leading-none flex items-center justify-center flex-shrink-0">
                         New
@@ -123,17 +133,15 @@ export const HomeHeader: React.FC<HomeHeaderProps> = ({ isAuthenticated, onOpenA
             {/* Right Icons */}
             <div className="flex-1 flex flex-col items-end gap-1 pointer-events-auto">
                 <div className="flex items-center gap-0">
-                    <MagneticIconWithTooltip
-                        icon={<MessageSquare className="w-[17px] h-[17px]" strokeWidth={2} />}
-                        tooltip="Feedback"
-                        onClick={() => {
-                            if (isAuthenticated) {
+                    {isAuthenticated && (
+                        <MagneticIconWithTooltip
+                            icon={<MessageSquare className="w-[17px] h-[17px]" strokeWidth={2} />}
+                            tooltip="Feedback"
+                            onClick={() => {
                                 setIsFeedbackModalOpen(true)
-                            } else if (onOpenAuth) {
-                                onOpenAuth()
-                            }
-                        }}
-                    />
+                            }}
+                        />
+                    )}
                     <MagneticIconWithTooltip
                         icon={<Icons.XLogo className="w-[15px] h-[15px]" />}
                         tooltip="Twitter"
