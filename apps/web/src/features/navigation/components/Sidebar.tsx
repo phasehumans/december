@@ -6,7 +6,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { SearchModal } from './SearchModal'
 import { SidebarFooter } from './SidebarFooter'
 import { SidebarNavItem } from './SidebarNavItem'
-import { Home, BookOpen } from 'lucide-react'
+import { Home, BookOpen, History } from 'lucide-react'
 
 import type { SidebarProps } from '@/features/navigation/types'
 
@@ -184,50 +184,42 @@ const Sidebar: React.FC<
     return (
         <div
             className={cn(
-                'hidden md:flex flex-col h-screen bg-sidebar border-r border-white/5 pt-2 pb-0 z-20 font-sans transition-all duration-300',
+                'hidden md:flex flex-col h-screen bg-sidebar border-r border-white/5 pt-2 pb-0 z-[60] font-sans transition-all duration-300',
                 isCollapsed ? 'w-[56px] items-center' : 'w-[200px]'
             )}
         >
             {isCollapsed ? (
-                <div className="px-2 mb-2 mt-2 z-30 relative flex flex-col gap-2 items-center">
-                    <button
-                        onClick={() => onExpand?.()}
-                        className={cn(
-                            'relative flex items-center justify-center w-10 h-10 rounded-lg transition-all group outline-none',
-                            activeIndex === 0
-                                ? 'bg-[#141414] border border-white/5 shadow-sm text-[#D6D5D4]'
-                                : 'hover:bg-[#272727] text-[#919191] hover:text-[#D6D5D4]'
-                        )}
-                    >
-                        <Home className="w-[18px] h-[18px] group-hover:hidden" />
-                        <Icons.SidebarToggle className="w-5 h-5 hidden group-hover:block" />
-                        <div className="absolute top-1/2 left-[calc(100%+12px)] -translate-y-1/2 z-50 hidden group-hover:flex items-center gap-1.5 bg-[#1F1F1F] border border-[#282828] px-2.5 py-1 rounded-lg shadow-none whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
-                            <span className="text-[12px] font-medium text-[#EDEDEF]">
-                                Open sidebar{' '}
-                                <span className="text-[#919191] ml-1 text-[10px] border border-[#333] rounded px-1 py-0.5 bg-[#252525]">
-                                    Ctrl .
-                                </span>
-                            </span>
-                        </div>
-                    </button>
-                    <div className="w-6 h-[1px] bg-white/10 my-1" />
-                    {navItems.slice(1).map((item, idx) => {
-                        const actualIdx = idx + 1
+                <div className="px-2 mb-2 mt-1 z-30 relative flex flex-col gap-[2px] items-center">
+                    {navItems.map((item, idx) => {
                         return (
                             <button
                                 key={item.id}
-                                onClick={item.onClick}
+                                onClick={item.id === 'home' ? () => onExpand?.() : item.onClick}
                                 className={cn(
-                                    'relative flex items-center justify-center w-10 h-10 rounded-lg transition-all group outline-none',
-                                    activeIndex === actualIdx
+                                    'relative flex items-center justify-center w-[32px] h-[32px] rounded-[10px] transition-all group outline-none',
+                                    activeIndex === idx
                                         ? 'bg-[#141414] border border-white/5 shadow-sm text-[#D6D5D4]'
                                         : 'hover:bg-[#272727] text-[#919191] hover:text-[#D6D5D4]'
                                 )}
                             >
-                                {item.icon}
+                                {item.id === 'home' ? (
+                                    <>
+                                        <div className="group-hover:hidden flex items-center justify-center">
+                                            {item.icon}
+                                        </div>
+                                        <Icons.SidebarToggle className="w-[18px] h-[18px] hidden group-hover:block" />
+                                    </>
+                                ) : (
+                                    item.icon
+                                )}
                                 <div className="absolute top-1/2 left-[calc(100%+12px)] -translate-y-1/2 z-50 hidden group-hover:flex items-center gap-1.5 bg-[#1F1F1F] border border-[#282828] px-2.5 py-1 rounded-lg shadow-none whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
                                     <span className="text-[12px] font-medium text-[#EDEDEF]">
-                                        {item.label}
+                                        {item.id === 'home' ? 'Open sidebar' : item.label}
+                                        {item.id === 'home' && (
+                                            <span className="text-[#919191] ml-1 text-[10px] border border-[#333] rounded px-1 py-0.5 bg-[#252525]">
+                                                Ctrl .
+                                            </span>
+                                        )}
                                     </span>
                                 </div>
                             </button>
@@ -283,7 +275,7 @@ const Sidebar: React.FC<
                                         }}
                                     >
                                         <Icons.SidebarToggle className="w-4 h-4" />
-                                        <div className="absolute top-[calc(100%+4px)] right-0 z-50 hidden md:group-hover/collapse:flex items-center gap-1.5 bg-[#1F1F1F] border border-[#282828] px-2.5 py-1 rounded-lg shadow-none whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
+                                        <div className="absolute top-[calc(100%+4px)] left-[calc(100%+4px)] z-50 hidden md:group-hover/collapse:flex items-center gap-1.5 bg-[#1F1F1F] border border-[#282828] px-2.5 py-1 rounded-lg shadow-none whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
                                             <span className="text-[12px] font-medium text-[#EDEDEF]">
                                                 Close sidebar{' '}
                                                 <span className="text-[#919191] ml-1 text-[10px] border border-[#333] rounded px-1 py-0.5 bg-[#252525]">
@@ -307,21 +299,13 @@ const Sidebar: React.FC<
             >
                 <div className="flex flex-col mb-2">
                     <div className="flex items-center justify-between px-3 py-1.5 w-full text-left group">
-                        <span className="font-normal text-[13px] whitespace-nowrap transition-colors tracking-tight text-[#919191]">
-                            Recent
-                        </span>
+                        <div className="flex items-center gap-1.5 text-[#919191]">
+                            <History className="w-3.5 h-3.5" strokeWidth={2.5} />
+                            <span className="font-medium text-[12px] whitespace-nowrap transition-colors tracking-tight">
+                                Recent
+                            </span>
+                        </div>
                         <div className="flex items-center gap-0.5">
-                            <button
-                                onClick={() => (isAuthenticated ? onNewThread() : onOpenAuth?.())}
-                                className="relative flex items-center justify-center p-1 rounded-md text-[#919191] hover:text-[#E8E8E8] hover:bg-[#252525] transition-all outline-none group/btn"
-                            >
-                                <Icons.Plus className="w-3.5 h-3.5" />
-                                <div className="absolute top-[calc(100%+6px)] right-0 z-50 hidden group-hover/btn:flex items-center gap-1.5 bg-[#1F1F1F] border border-[#282828] px-2.5 py-1 rounded-lg shadow-none whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
-                                    <span className="text-[12px] font-medium text-[#EDEDEF]">
-                                        New project
-                                    </span>
-                                </div>
-                            </button>
                             <button
                                 onClick={() =>
                                     isAuthenticated ? setIsSearchOpen(true) : onOpenAuth?.()

@@ -154,7 +154,7 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
                                 </span>
                             </h2>
                         </div>
-                        <div className="relative flex items-center bg-[#252525] rounded-full shadow-sm w-[94px] overflow-hidden">
+                        <div className="relative flex items-center bg-[#252525] rounded-full shadow-sm w-[94px] overflow-hidden mr-1.5 md:mr-2">
                             {/* Sliding Indicator */}
                             <div
                                 className={`absolute left-0 top-0 bottom-0 w-1/2 rounded-full bg-[#87B2F4] transition-transform duration-300 ease-out shadow-sm ${
@@ -193,36 +193,6 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
                         isAuthenticated={isAuthenticated}
                         onOpenAuth={onOpenAuth}
                     />
-
-                    {/* Import Integration */}
-                    <div className="flex items-center justify-center gap-3 mt-6 animate-in fade-in duration-300 whitespace-nowrap">
-                        <span className="text-[#8F8E8D] text-[13px] font-medium tracking-wide">
-                            or start with
-                        </span>
-                        <div className="flex items-center gap-2">
-                            <button
-                                onClick={() => {
-                                    if (!isAuthenticated) {
-                                        onOpenAuth()
-                                        return
-                                    }
-                                    const separator = prompt && !prompt.endsWith(' ') ? ' ' : ''
-                                    setPrompt(prompt + separator + '@repos:')
-                                }}
-                                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-dashed transition-all group outline-none border-[#2A2928] bg-transparent hover:bg-[#252525]/50 hover:border-[#3A3938] text-[#8F8E8D] hover:text-[#CBCACA]"
-                            >
-                                <Icons.Github className="w-[12px] h-[12px] group-hover:text-white transition-colors" />
-                                <span className="text-[11px]">GitHub Repo</span>
-                            </button>
-                            <button
-                                onClick={handleTemplateClick}
-                                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-dashed border-[#2A2928] bg-transparent hover:bg-[#252525]/50 hover:border-[#3A3938] text-[#8F8E8D] hover:text-[#CBCACA] transition-all group outline-none"
-                            >
-                                <Icons.Bookmark className="w-[12px] h-[12px] group-hover:text-white transition-colors" />
-                                <span className="text-[11px]">Template</span>
-                            </button>
-                        </div>
-                    </div>
                 </div>
             </div>
 
