@@ -50,8 +50,8 @@ export const TemplatesView: React.FC<TemplatesViewProps> = ({ onOpenProject }) =
 
     return (
         <div className="flex flex-col absolute inset-0 bg-background overflow-hidden font-sans">
-            <div className="flex-1 flex flex-col overflow-y-auto pb-24 pt-8 md:pt-12 [&::-webkit-scrollbar]:w-[12px] [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-[#383736] [&::-webkit-scrollbar-thumb]:bg-clip-padding [&::-webkit-scrollbar-thumb]:border-[4px] [&::-webkit-scrollbar-thumb]:border-solid [&::-webkit-scrollbar-thumb]:border-transparent [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-[#4A4948]">
-                <div className="max-w-[1200px] w-full mx-auto px-5 lg:px-8 flex-1 flex flex-col">
+            <div className="relative h-full w-full flex-1 flex-col overflow-y-auto bg-background px-8 pb-8 pt-20 font-sans md:p-16 [&::-webkit-scrollbar]:w-[12px] [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-[#383736] [&::-webkit-scrollbar-thumb]:bg-clip-padding [&::-webkit-scrollbar-thumb]:border-[4px] [&::-webkit-scrollbar-thumb]:border-solid [&::-webkit-scrollbar-thumb]:border-transparent [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-[#4A4948]">
+                <div className="relative z-10 mx-auto max-w-[1200px] w-full flex-1 flex flex-col">
                     <div className="mb-10 flex flex-col items-start gap-5">
                         <div className="flex flex-col gap-2">
                             <h1 className="text-[24px] font-medium text-[#D6D5C9] mb-1">
@@ -128,7 +128,10 @@ export const TemplatesView: React.FC<TemplatesViewProps> = ({ onOpenProject }) =
                                         {searchQuery ? 'Search Results' : 'Templates'}
                                     </h2>
 
-                                    <div className="flex items-center gap-2" ref={dropdownRef}>
+                                    <div
+                                        className="hidden md:flex items-center gap-2"
+                                        ref={dropdownRef}
+                                    >
                                         <div className="relative">
                                             <button
                                                 id="sort-filter-btn"

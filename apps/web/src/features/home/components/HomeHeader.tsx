@@ -80,7 +80,7 @@ export const HomeHeader: React.FC<HomeHeaderProps> = ({ isAuthenticated, onOpenA
 
     return (
         <div className="absolute top-4 left-0 w-full px-4 md:px-6 z-50 flex justify-between items-center pointer-events-none">
-            <div className="flex-1 pointer-events-auto flex justify-start pl-2 md:pl-0 mt-[9px]">
+            <div className="flex-1 pointer-events-auto flex items-center justify-start pl-2 md:pl-0">
                 {isAuthenticated ? (
                     <button
                         onClick={() => navigate('/settings/billing')}
@@ -107,7 +107,7 @@ export const HomeHeader: React.FC<HomeHeaderProps> = ({ isAuthenticated, onOpenA
             </div>
 
             {/* Center Heading */}
-            <div className="flex-initial flex justify-center pointer-events-auto">
+            <div className="flex-initial flex items-center justify-center pointer-events-auto">
                 <div
                     onClick={() => {
                         window.open(
@@ -131,16 +131,20 @@ export const HomeHeader: React.FC<HomeHeaderProps> = ({ isAuthenticated, onOpenA
             </div>
 
             {/* Right Icons */}
-            <div className="flex-1 flex flex-col items-end gap-1 pointer-events-auto">
+            <div className="flex-1 flex items-center justify-end pointer-events-auto">
                 <div className="flex items-center gap-0">
                     {isAuthenticated && (
-                        <MagneticIconWithTooltip
-                            icon={<MessageSquare className="w-[17px] h-[17px]" strokeWidth={2} />}
-                            tooltip="Feedback"
-                            onClick={() => {
-                                setIsFeedbackModalOpen(true)
-                            }}
-                        />
+                        <div className="hidden md:block">
+                            <MagneticIconWithTooltip
+                                icon={
+                                    <MessageSquare className="w-[17px] h-[17px]" strokeWidth={2} />
+                                }
+                                tooltip="Feedback"
+                                onClick={() => {
+                                    setIsFeedbackModalOpen(true)
+                                }}
+                            />
+                        </div>
                     )}
                     <MagneticIconWithTooltip
                         icon={<Icons.XLogo className="w-[15px] h-[15px]" />}

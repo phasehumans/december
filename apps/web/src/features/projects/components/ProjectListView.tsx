@@ -254,7 +254,7 @@ export const ProjectListView: React.FC<ProjectListViewProps> = ({
 
                 <div className="flex-1" />
 
-                <div className="flex items-center gap-2" ref={dropdownRef}>
+                <div className="hidden md:flex items-center gap-2" ref={dropdownRef}>
                     <div className="relative">
                         <button
                             onClick={(e) => toggleDropdown('sort', e)}

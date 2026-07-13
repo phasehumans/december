@@ -267,9 +267,9 @@ export const OutputScreen: React.FC<OutputScreenProps> = ({
                     onBack={handleTriggerExit}
                     previewHtml={previewHtml}
                     setPreviewHtml={setPreviewHtml}
-                    generatedFiles={activeFiles}
-                    activeGeneratedFilePath={activeActiveFilePath}
-                    isGenerating={activeIsGenerating}
+                    generatedFiles={activeFilesToDisplay}
+                    activeGeneratedFilePath={activeGeneratedFilePath}
+                    isGenerating={isGenerating}
                     isVisualMode={isVisualMode}
                     iframeRef={iframeRef}
                     onIframeMessage={handleIframeMessage}
@@ -283,9 +283,13 @@ export const OutputScreen: React.FC<OutputScreenProps> = ({
                     isVersionLoading={isVersionLoading}
                     onSelectVersion={onSelectVersion}
                     onDownload={onDownload}
-                    previewSession={activePreviewSession}
-                    previewSessionError={activePreviewSessionError}
-                    projectType={activeProjectType}
+                    previewSession={previewSession}
+                    previewSessionError={
+                        importState.status === 'failed'
+                            ? importState.message || 'Import failed'
+                            : previewSessionError
+                    }
+                    projectType={projectType}
                     selectedModel={selectedModel}
                     setSelectedModel={setSelectedModel}
                     onRefresh={handleRefreshPreview}

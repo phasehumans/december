@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useLocation } from 'react-router-dom'
-import { Home, BookOpen } from 'lucide-react'
+import { BookOpen, History } from 'lucide-react'
 import { SidebarFooter } from './SidebarFooter'
 import { SearchModal } from './SearchModal'
 import { Icons } from '@/shared/components/ui/Icons'
@@ -64,16 +64,20 @@ export const MobileSidebar: React.FC<
 
     const navItems = [
         {
-            id: 'home',
-            label: 'Home',
-            icon: <Home className="w-[18px] h-[18px]" />,
+            id: 'new',
+            label: 'New',
+            icon: (
+                <div className="w-[20px] h-[20px] rounded-full bg-[#333333] flex items-center justify-center shrink-0">
+                    <Icons.Plus className="w-3 h-3 text-[#E8E8E8]" strokeWidth={2.5} />
+                </div>
+            ),
             onClick: () => {
-                const el = document.getElementById('main-scroll-container')
-                el?.scrollTo({ top: 0, behavior: 'smooth' })
-                if (isAuthenticated) {
-                    if (onHomeClick) onHomeClick()
+                if (onNewThread) {
+                    onNewThread()
                 } else {
-                    if (onOpenAuth) onOpenAuth()
+                    const el = document.getElementById('main-scroll-container')
+                    el?.scrollTo({ top: 0, behavior: 'smooth' })
+                    if (onHomeClick) onHomeClick()
                 }
                 onClose()
             },
@@ -85,6 +89,7 @@ export const MobileSidebar: React.FC<
             onClick: () => {
                 if (isAuthenticated) {
                     setIsSearchOpen(true)
+                    onClose()
                 } else {
                     if (onOpenAuth) onOpenAuth()
                 }
@@ -172,7 +177,7 @@ export const MobileSidebar: React.FC<
         <>
             <div
                 className={cn(
-                    'fixed inset-0 bg-black/50 z-40 md:hidden transition-opacity duration-300 ease-out',
+                    'fixed inset-0 bg-black/50 z-40 md:hidden transition-opacity duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)]',
                     isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
                 )}
                 onClick={onClose}
@@ -180,28 +185,34 @@ export const MobileSidebar: React.FC<
 
             <div
                 className={cn(
-                    'fixed inset-y-0 left-0 w-[240px] bg-sidebar border-r border-white/5 z-[60] md:hidden flex flex-col pt-2 pb-0 transition-[transform,opacity] duration-300 ease-out will-change-transform',
+                    'fixed inset-y-0 left-0 w-[240px] bg-sidebar border-r border-white/5 z-[60] md:hidden flex flex-col pt-2 pb-0 transition-transform duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)] will-change-transform',
                     isOpen
-                        ? 'translate-x-0 opacity-100 pointer-events-auto'
-                        : '-translate-x-full opacity-0 pointer-events-none'
+                        ? 'translate-x-0 pointer-events-auto'
+                        : '-translate-x-full pointer-events-none'
                 )}
             >
                 {/* Header & Nav Items */}
-                <div className="px-3 mb-2 mt-0 z-30 relative pt-2">
-                    <div className="bg-[#1F1F1F] rounded-[14px] p-1 pb-1.5 flex flex-col gap-[2px] -mx-1 relative">
-                        {/* Sliding Background */}
+                <div className="px-3 mb-2 mt-0 z-30 relative">
+                    <div className="flex items-center justify-between px-2 mb-6 mt-4">
+                        <Icons.DecemberLogo className="w-6 h-6 text-[#D6D5D4]" />
                         <div
-                            className="absolute left-1 right-1 h-[32px] bg-[#141414] border border-white/5 shadow-sm rounded-[10px] transition-transform duration-300 ease-[cubic-bezier(0.34,1.2,0.64,1)]"
-                            style={{ transform: `translateY(${activeIndex * 34}px)` }}
-                        />
-
+                            className="flex items-center justify-center text-[#919191] hover:text-[#D4D4D8] group/collapse p-1 rounded-md hover:bg-[#252525] transition-colors cursor-pointer relative"
+                            onClick={(e) => {
+                                e.stopPropagation()
+                                onClose()
+                            }}
+                        >
+                            <Icons.SidebarToggle className="w-4 h-4" />
+                        </div>
+                    </div>
+                    <div className="flex flex-col gap-[2px] relative">
                         {navItems.map((item, idx) => (
                             <button
                                 key={item.id}
                                 onClick={item.onClick}
                                 className={cn(
                                     'relative flex items-center justify-between w-full px-2.5 h-[32px] rounded-[10px] transition-all group outline-none',
-                                    activeIndex === idx ? '' : 'hover:bg-[#1A1A1A]'
+                                    activeIndex === idx ? 'bg-[#1F1F1F]' : 'hover:bg-[#1C1C1C]'
                                 )}
                             >
                                 <div className="flex items-center gap-2.5 min-w-0">
@@ -226,45 +237,21 @@ export const MobileSidebar: React.FC<
                                         {item.label}
                                     </span>
                                 </div>
-                                {idx === 0 && (
-                                    <div
-                                        className="flex items-center justify-center text-[#919191] hover:text-[#D4D4D8] p-0.5 rounded-md hover:bg-[#333333] transition-colors shrink-0"
-                                        onClick={(e) => {
-                                            e.stopPropagation()
-                                            onClose()
-                                        }}
-                                    >
-                                        <Icons.SidebarToggle className="w-4 h-4" />
-                                    </div>
-                                )}
                             </button>
                         ))}
                     </div>
                 </div>
 
-                <div className="flex-1 flex flex-col mt-2 mb-2 overflow-y-auto no-scrollbar font-sans pl-[10px] pr-3">
-                    <div className="flex flex-col mb-2">
-                        <div className="flex items-center justify-between px-3 py-1.5 w-full text-left">
-                            <span className="font-normal text-[13px] whitespace-nowrap transition-colors tracking-tight text-[#919191]">
-                                Recent
-                            </span>
+                <div className="flex-1 flex flex-col mt-2 mb-2 font-sans pl-[10px] pr-3 min-h-0">
+                    <div className="flex flex-col h-full">
+                        <div className="flex items-center justify-between px-3 py-1.5 w-full text-left group shrink-0 z-10">
+                            <div className="flex items-center gap-1.5 text-[#919191]">
+                                <History className="w-3.5 h-3.5" strokeWidth={2.5} />
+                                <span className="font-medium text-[12px] whitespace-nowrap transition-colors tracking-tight">
+                                    Recent
+                                </span>
+                            </div>
                             <div className="flex items-center gap-0.5">
-                                <button
-                                    onClick={() =>
-                                        isAuthenticated ? onNewThread() : onOpenAuth?.()
-                                    }
-                                    className="relative flex items-center justify-center p-1 rounded-md text-[#919191] hover:text-[#E8E8E8] hover:bg-[#252525] transition-all outline-none group/btn"
-                                >
-                                    <Icons.Plus className="w-3.5 h-3.5" />
-                                </button>
-                                <button
-                                    onClick={() =>
-                                        isAuthenticated ? setIsSearchOpen(true) : onOpenAuth?.()
-                                    }
-                                    className="relative flex items-center justify-center p-1 rounded-md text-[#919191] hover:text-[#E8E8E8] hover:bg-[#252525] transition-all outline-none group/btn"
-                                >
-                                    <Icons.Search className="w-3.5 h-3.5" />
-                                </button>
                                 <div className="relative">
                                     <button
                                         ref={recentMenuTriggerRef}
@@ -350,20 +337,20 @@ export const MobileSidebar: React.FC<
                             </div>
                         </div>
 
-                        <div className="flex flex-col gap-[2px] mt-1 pr-1">
+                        <div className="flex flex-col gap-[2px] mt-1 pr-1 overflow-y-auto no-scrollbar flex-1 min-h-0 pb-2">
                             {isAuthenticated ? (
                                 isProjectsLoading ? null : recentProjects.length > 0 ? (
                                     recentProjects.map((project) => (
                                         <div
                                             key={project.id}
-                                            className="flex items-center justify-between px-3 py-1 w-full text-left rounded-lg hover:bg-[#252525] transition-colors cursor-pointer"
+                                            className="flex items-center justify-between px-3 py-1 w-full text-left rounded-lg hover:bg-[#252525] transition-colors group cursor-pointer"
                                             onClick={() => {
                                                 onOpenProject(project.id)
                                                 onClose()
                                             }}
                                         >
                                             <div className="flex flex-col min-w-0 pr-2 overflow-hidden">
-                                                <span className="font-normal text-[12px] transition-colors tracking-tight text-[#E8E8E8] truncate">
+                                                <span className="font-normal text-[12px] transition-colors tracking-tight text-[#E8E8E8] group-hover:text-[#E8E8E8] truncate">
                                                     {/* @ts-expect-error */}
                                                     {project.name || project.title}
                                                 </span>
@@ -408,14 +395,14 @@ export const MobileSidebar: React.FC<
                         onClose()
                     }}
                 />
-
-                <SearchModal
-                    isOpen={isSearchOpen}
-                    onClose={() => setIsSearchOpen(false)}
-                    onNewThread={isAuthenticated ? onNewThread : onOpenAuth}
-                    isAuthenticated={isAuthenticated}
-                />
             </div>
+
+            <SearchModal
+                isOpen={isSearchOpen}
+                onClose={() => setIsSearchOpen(false)}
+                onNewThread={isAuthenticated ? onNewThread : onOpenAuth}
+                isAuthenticated={isAuthenticated}
+            />
         </>
     )
 }
