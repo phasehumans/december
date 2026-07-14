@@ -34,7 +34,7 @@ describe('usage.service.integration', () => {
     beforeEach(async () => {
         await prisma.usageEvent.deleteMany()
         await prisma.project.deleteMany()
-        await prisma.session.deleteMany()
+        await prisma.authSession.deleteMany()
         await prisma.user.deleteMany()
 
         const user = await createUser()

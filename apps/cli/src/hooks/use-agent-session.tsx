@@ -222,39 +222,35 @@ export function useAgentSession({
 
     useEffect(() => {
         if (agent) {
-            agent.operations.askQuestion = (questions) => {
+            if (!agent.operations.ui) agent.operations.ui = {} as any
+            agent.operations.ui.askQuestion = (questions) => {
                 return new Promise((resolve) => {
                     setAuthMode('ask_question')
                     setPendingQuestions({ questions, resolve })
                 })
             }
 
-            agent.hooks = {
-                ...agent.hooks,
-                beforeToolCall: async (toolCall) => {
-                    if (
-                        ['replace_file_content', 'multi_replace_file_content'].includes(
-                            toolCall.name
-                        )
-                    ) {
-                        const answer = await new Promise<string>((resolve) => {
-                            setAuthMode('ask_question')
-                            setPendingQuestions({
-                                questions: [
-                                    {
-                                        question: `Execute ${toolCall.name}? (Diff is previewed in chat)`,
-                                        options: ['Yes (Approve)', 'No (Deny)'],
-                                    },
-                                ],
-                                resolve,
-                            })
+            agent.operations.ui.requestPermission = async (toolCall: any) => {
+                if (
+                    ['replace_file_content', 'multi_replace_file_content'].includes(toolCall.name)
+                ) {
+                    const answer = await new Promise<string>((resolve) => {
+                        setAuthMode('ask_question')
+                        setPendingQuestions({
+                            questions: [
+                                {
+                                    question: `Execute ${toolCall.name}? (Diff is previewed in chat)`,
+                                    options: ['Yes (Approve)', 'No (Deny)'],
+                                },
+                            ],
+                            resolve,
                         })
-                        if (answer !== 'Yes (Approve)') {
-                            return { block: true, reason: 'User denied execution in UI.' }
-                        }
+                    })
+                    if (answer !== 'Yes (Approve)') {
+                        return { block: true, reason: 'User denied execution in UI.' }
                     }
-                    return { block: false }
-                },
+                }
+                return { block: false }
             }
         }
     }, [agent])

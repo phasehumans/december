@@ -34,7 +34,7 @@ const createTestUser = async (overrides: Record<string, unknown> = {}) => {
 }
 
 const createTestSession = async (overrides: Record<string, unknown> = {}) => {
-    return prisma.session.create({
+    return prisma.authSession.create({
         data: {
             id: TEST_SESSION_ID,
             userId: TEST_USER_ID,
@@ -84,7 +84,7 @@ describe('notification.routes.integration', () => {
     beforeEach(async () => {
         mockAuth = true
         await prisma.notification.deleteMany()
-        await prisma.session.deleteMany()
+        await prisma.authSession.deleteMany()
         await prisma.user.deleteMany()
 
         await createTestUser()
@@ -93,7 +93,7 @@ describe('notification.routes.integration', () => {
 
     afterAll(async () => {
         await prisma.notification.deleteMany()
-        await prisma.session.deleteMany()
+        await prisma.authSession.deleteMany()
         await prisma.user.deleteMany()
         await prisma.$disconnect()
     })

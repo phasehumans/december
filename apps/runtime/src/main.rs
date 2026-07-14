@@ -5,6 +5,8 @@ mod http;
 mod sandboxes;
 mod services;
 
+mod grpc;
+
 use std::{env, fs, path::PathBuf, sync::Arc};
 
 use tracing::info;
@@ -48,6 +50,13 @@ async fn main() -> Result<(), RuntimeServiceError> {
         config: config.clone(),
     };
     let app = build_router(app_state);
+
+    let grpc_addr = "0.0.0.0:50051".parse().unwrap();
+    tokio::spawn(async move {
+        if let Err(e) = grpc::start_grpc_server(grpc_addr).await {
+            tracing::error!("gRPC server error: {}", e);
+        }
+    });
 
     let listener = tokio::net::TcpListener::bind(config.bind_addr)
         .await

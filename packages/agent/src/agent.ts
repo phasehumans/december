@@ -1,7 +1,7 @@
 import { LLMProvider } from '@december/providers'
 
 import { SessionRepository } from './harness/session-repository'
-import { AgentOperations } from '@december/shared'
+import { Environment } from '@december/shared'
 import { AgentMessage, Message, Tool, AgentHooks } from '@december/shared'
 
 export interface AgentConfig {
@@ -9,7 +9,7 @@ export interface AgentConfig {
     systemPrompt?: string
     tools: Tool[]
     llm: LLMProvider
-    operations: AgentOperations
+    operations: Environment
     modelOptions?: Record<string, any>
     sessionRepository?: SessionRepository
     hooks?: AgentHooks
@@ -24,7 +24,7 @@ export class Agent {
     public sessionId: string
     public sessionRepository?: SessionRepository
     public hooks?: AgentHooks
-    public operations: AgentOperations
+    public operations: Environment
     public env: Map<string, string>
     public modelOptions?: Record<string, any>
     public steeringQueue: AgentMessage[] = []

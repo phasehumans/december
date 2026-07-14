@@ -25,24 +25,24 @@ async function updateUser(id: string, data: Prisma.UserUpdateInput) {
     })
 }
 
-async function createSession(data: Prisma.SessionUncheckedCreateInput) {
-    return prisma.session.create({ data })
+async function createSession(data: Prisma.AuthSessionUncheckedCreateInput) {
+    return prisma.authSession.create({ data })
 }
 
 async function findSessionById(id: string) {
-    return prisma.session.findUnique({
+    return prisma.authSession.findUnique({
         where: { id },
     })
 }
 
 async function deleteSessionsBySessionId(sessionId: string) {
-    return prisma.session.deleteMany({
+    return prisma.authSession.deleteMany({
         where: { id: sessionId },
     })
 }
 
-async function updateSession(id: string, data: Prisma.SessionUpdateInput) {
-    return prisma.session.update({
+async function updateSession(id: string, data: Prisma.AuthSessionUpdateInput) {
+    return prisma.authSession.update({
         where: { id },
         data,
     })
@@ -58,7 +58,7 @@ async function resetPasswordAndRevokeSessions(userId: string, passwordHash: stri
                 otpExpiresAt: null,
             },
         }),
-        prisma.session.updateMany({
+        prisma.authSession.updateMany({
             where: {
                 userId,
                 isRevoked: false,

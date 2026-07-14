@@ -48,7 +48,7 @@ describe('billing.service.integration', () => {
         await prisma.usageEvent.deleteMany()
         await prisma.redeemCodeClaim.deleteMany()
         await prisma.redeemCode.deleteMany()
-        await prisma.session.deleteMany()
+        await prisma.authSession.deleteMany()
         await prisma.user.deleteMany()
     })
 

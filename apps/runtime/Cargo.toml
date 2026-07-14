@@ -12,10 +12,17 @@ bollard = "0.19.3"
 chrono = { version = "0.4.42", features = ["serde"] }
 dotenvy = "0.15.7"
 futures-util = "0.3.31"
+prost = "0.13"
 reqwest = { version = "0.12.24", default-features = false, features = ["json", "rustls-tls"] }
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.145"
 thiserror = "2.0.17"
 tokio = { version = "1.48.0", features = ["fs", "macros", "process", "rt-multi-thread", "signal", "sync", "time"] }
+tokio-stream = { version = "0.1.18", features = ["sync"] }
+tonic = "0.12.3"
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.20", features = ["env-filter", "fmt"] }
+
+[build-dependencies]
+prost-build = "0.13"
+tonic-build = "0.12.3"
