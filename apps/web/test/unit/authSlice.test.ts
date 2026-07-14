@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'bun:test'
 import { create } from 'zustand'
+
 import { createAuthSlice, AuthSlice } from '@/features/auth/slice'
 
 describe('Auth Slice', () => {

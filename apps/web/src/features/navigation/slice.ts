@@ -1,4 +1,5 @@
 import { StateCreator } from 'zustand'
+
 import { ViewState } from '@/app/types'
 
 export interface NavigationSlice {

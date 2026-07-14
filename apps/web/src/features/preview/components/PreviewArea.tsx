@@ -1,11 +1,11 @@
-import React, { useEffect, useState } from 'react'
+import React from 'react'
 
 import type { PreviewAreaProps } from '@/features/preview/types'
 
 import { PREVIEW_HTML } from '@/features/preview/constants/preview'
-import { cn } from '@/shared/lib/utils'
-import { injectPreviewBridge, RUNTIME_CHECKLISTS } from '@/features/preview/utils/previewUtils'
 import { usePreviewAreaController } from '@/features/preview/hooks/usePreviewAreaController'
+import { injectPreviewBridge, RUNTIME_CHECKLISTS } from '@/features/preview/utils/previewUtils'
+import { cn } from '@/shared/lib/utils'
 
 export const PreviewArea: React.FC<PreviewAreaProps> = ({
     html,

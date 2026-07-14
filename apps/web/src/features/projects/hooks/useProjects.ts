@@ -1,5 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
+
 import { projectAPI } from '../api/project'
+
 import { mapBackendProjectToUIProject } from '@/app/mapProject'
 import { useAppStore } from '@/app/store'
 

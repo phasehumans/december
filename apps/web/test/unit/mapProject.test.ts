@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'bun:test'
-import { mapBackendProjectToUIProject } from '@/app/mapProject'
+
 import type { BackendProject } from '@/features/projects/api/project'
+
+import { mapBackendProjectToUIProject } from '@/app/mapProject'
 
 describe('mapProject utils', () => {
     it('maps backend project to UI project correctly', () => {

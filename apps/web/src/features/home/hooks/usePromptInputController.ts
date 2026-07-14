@@ -1,7 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
-import { useState, useRef, useEffect, useCallback } from 'react'
-import { profileAPI } from '@/features/profile/api/profile'
 import { Code, Puzzle, MessageSquare, BookOpen, Key } from 'lucide-react'
+import { useState, useRef, useEffect, useCallback } from 'react'
+
+import { profileAPI } from '@/features/profile/api/profile'
 import { Icons } from '@/shared/components/ui/Icons'
 
 export const MENTION_PROVIDERS = [

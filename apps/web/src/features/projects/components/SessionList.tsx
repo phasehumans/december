@@ -1,8 +1,9 @@
 import React, { useMemo, useState } from 'react'
-import { useSessions } from '../hooks/useSessions'
-import { Icons } from '@/shared/components/ui/Icons'
 import { useNavigate } from 'react-router-dom'
-import { toProjectSlug } from '@/app/types'
+
+import { useSessions } from '../hooks/useSessions'
+
+import { Icons } from '@/shared/components/ui/Icons'
 
 export const SessionList: React.FC<{
     onNewProject: () => void

@@ -3,9 +3,6 @@ import fs from 'node:fs'
 import path from 'node:path'
 
 import clipboard from 'clipboardy'
-import React from 'react'
-
-import { SettingsDialog, TasksDialog, UsageDialog } from '../dialogs'
 
 import type { Command } from './types'
 
@@ -81,19 +78,95 @@ export const COMMANDS: Command[] = [
         name: 'handoff',
         description: 'Hand off a task to a remote December session (cloud)',
         value: '/handoff',
-        action: (ctx) => {
-            ctx.toast.show({ message: 'Command /handoff coming soon...' })
+        action: async (ctx) => {
+            try {
+                ctx.toast.show({ variant: 'info', message: 'Zipping workspace...' })
+
+                const { execSync } = require('child_process')
+                const fs = require('fs')
+                const path = require('path')
+
+                const archivePath = '.december-handoff.tar.gz'
+                const excludes = ['--exclude=node_modules', '--exclude=.git']
+                try {
+                    if (fs.existsSync('.gitignore')) {
+                        const lines = fs.readFileSync('.gitignore', 'utf8').split('\n')
+                        for (const line of lines) {
+                            const t = line.trim()
+                            if (t && !t.startsWith('#'))
+                                excludes.push(`--exclude=${t.endsWith('/') ? t.slice(0, -1) : t}`)
+                        }
+                    }
+                    if (fs.existsSync('.decemberignore')) {
+                        const lines = fs.readFileSync('.decemberignore', 'utf8').split('\n')
+                        for (const line of lines) {
+                            const t = line.trim()
+                            if (t && !t.startsWith('#'))
+                                excludes.push(`--exclude=${t.endsWith('/') ? t.slice(0, -1) : t}`)
+                        }
+                    }
+                } catch (e) {}
+
+                const excludeArgs = excludes.join(' ')
+                execSync(`tar -czf ${archivePath} ${excludeArgs} .`, { stdio: 'ignore' })
+
+                ctx.toast.show({ variant: 'info', message: 'Requesting upload URL...' })
+
+                const configMod = await import('@december/agent')
+                const config = await configMod.loadConfig()
+
+                if (!config.decemberToken) {
+                    ctx.toast.show({
+                        variant: 'error',
+                        message: 'You must be logged in to use handoff.',
+                    })
+                    fs.unlinkSync(archivePath)
+                    return
+                }
+
+                const proxyUrl = process.env.DECEMBER_SERVER_URL || 'http://localhost:3000/api/v1'
+                const urlRes = await fetch(`${proxyUrl}/cli/handoff/upload-url`, {
+                    headers: { Authorization: `Bearer ${config.decemberToken}` },
+                })
+                if (!urlRes.ok) throw new Error(await urlRes.text())
+                const { uploadUrl, objectKey } = await urlRes.json()
+
+                ctx.toast.show({ variant: 'info', message: 'Uploading to MinIO...' })
+
+                const fileData = fs.readFileSync(archivePath)
+                const uploadRes = await fetch(uploadUrl, {
+                    method: 'PUT',
+                    body: fileData,
+                })
+                if (!uploadRes.ok) throw new Error(`Upload failed: ${uploadRes.statusText}`)
+
+                ctx.toast.show({ variant: 'info', message: 'Completing handoff...' })
+
+                const sessionRes = await fetch(`${proxyUrl}/cli/handoff/complete`, {
+                    method: 'POST',
+                    headers: {
+                        Authorization: `Bearer ${config.decemberToken}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        title: 'Handoff from ' + process.cwd().split('/').pop(),
+                        messages: ctx.agent ? ctx.agent.messages : [],
+                        objectKey,
+                    }),
+                })
+                if (!sessionRes.ok) throw new Error(await sessionRes.text())
+
+                fs.unlinkSync(archivePath)
+
+                ctx.toast.show({ variant: 'success', message: 'Handoff complete! Exiting in 3s.' })
+
+                setTimeout(() => ctx.exit(), 3000)
+            } catch (e: any) {
+                ctx.toast.show({ variant: 'error', message: `Handoff failed: ${e.message}` })
+            }
         },
     },
 
-    {
-        name: 'hooks',
-        description: 'Manage hook configurations for tool events',
-        value: '/hooks',
-        action: (ctx) => {
-            // Forwarded to Chat screen
-        },
-    },
     {
         name: 'init',
         description: 'Create a .december folder with initial agent rules',
@@ -159,14 +232,6 @@ export const COMMANDS: Command[] = [
             ctx.toast.show({ variant: 'success', message: 'Signed out' })
         },
     },
-    {
-        name: 'loop',
-        description: 'Configure agent loop settings',
-        value: '/loop',
-        action: (ctx) => {
-            ctx.toast.show({ message: 'Command /loop coming soon...' })
-        },
-    },
 
     {
         name: 'model',
@@ -201,7 +266,7 @@ export const COMMANDS: Command[] = [
         description: 'Browse and resume past conversations',
         value: '/resume',
         action: (ctx) => {
-            ctx.toast.show({ message: 'Command /resume coming soon...' })
+            // Forwarded to Chat screen
         },
     },
 

@@ -1,4 +1,5 @@
 import React from 'react'
+
 import type { CanvasItem } from '@/features/canvas/types'
 
 export const TEXT_FONT_SIZE = 20

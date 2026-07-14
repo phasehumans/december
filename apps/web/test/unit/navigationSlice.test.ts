@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'bun:test'
 import { create } from 'zustand'
+
 import { createNavigationSlice, NavigationSlice } from '@/features/navigation/slice'
 
 describe('Navigation Slice', () => {

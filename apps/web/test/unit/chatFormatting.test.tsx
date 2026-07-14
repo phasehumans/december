@@ -1,6 +1,7 @@
+import { render } from '@testing-library/react'
 import { describe, it, expect } from 'bun:test'
-import { render, screen, cleanup } from '@testing-library/react'
 import React from 'react'
+
 import { parseInlineFormatting, renderRichContent } from '@/features/chat/utils/chatFormatting'
 
 describe('chatFormatting utils', () => {

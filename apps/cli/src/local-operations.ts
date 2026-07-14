@@ -3,13 +3,14 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import { promisify } from 'node:util'
 
-import { Environment } from '@december/shared'
-import { taskManager } from '@december/agent'
+import { PlatformAdapter } from '@december/agent'
 import fg from 'fast-glob'
+
+import { taskManager } from './task-manager'
 
 const execAsync = promisify(exec)
 
-export const localOperations: Environment = {
+export const localOperations: PlatformAdapter = {
     bash: {
         exec: async (command, onData) => {
             return new Promise((resolve) => {
@@ -95,6 +96,19 @@ export const localOperations: Environment = {
                 return `[${type}] ${entry.name}`
             })
         },
+        mkdir: async (dirPath, options) => {
+            const absolutePath = path.resolve(process.cwd(), dirPath)
+            await fs.mkdir(absolutePath, options)
+        },
+        exists: async (filepath) => {
+            const absolutePath = path.resolve(process.cwd(), filepath)
+            try {
+                await fs.access(absolutePath)
+                return true
+            } catch {
+                return false
+            }
+        },
     },
     search: {
         find: async (dirPath, query) => {
@@ -115,6 +129,10 @@ export const localOperations: Environment = {
                 throw error
             }
         },
+    },
+    env: {
+        cwd: () => process.cwd(),
+        get: (key) => process.env[key],
     },
     ui: {
         askQuestion: async () => {

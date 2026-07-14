@@ -1,13 +1,13 @@
 import { Box, Text, useInput } from 'ink'
-import { TextArea } from './text-area'
 import { useState, useCallback, useRef } from 'react'
 
 import { useDialog, InlineDialog } from '../providers/dialog'
 import { useToast } from '../providers/toast'
 
 import { CommandMenu } from './command-menu'
-import { ShortcutsMenu } from './menus/shortcuts-menu'
 import { useCommandMenu } from './command-menu/use-command-menu'
+import { ShortcutsMenu } from './menus/shortcuts-menu'
+import { TextArea } from './text-area'
 // ModelSelector removed in favor of passing activeModel as prop
 
 import type { Command } from './command-menu/types'
@@ -130,7 +130,6 @@ export function InputBar({
                 command.value === '/resume' ||
                 command.value === '/settings' ||
                 command.value === '/context' ||
-                command.value === '/hooks' ||
                 command.value === '/tasks' ||
                 command.value === '/usage'
             ) {

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 
 export function useSettings() {
     const [settingsNonWorkspace, setSettingsNonWorkspace] = useState(false)

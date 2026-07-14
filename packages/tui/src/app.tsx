@@ -1,15 +1,10 @@
-import { Box } from 'ink'
-import { useState, useCallback, useEffect } from 'react'
-
-import { getModelLabel, getProviderModels } from './utils/models'
-
-import { MessageList, InputBar, TaskHUD } from '@december/tui'
-import { useAgentSession } from './hooks/use-agent-session'
-import { AuthMenus, AskQuestionMenu } from '@december/tui'
 import { Agent } from '@december/agent'
-import type { FileSessionRepository } from '@december/agent'
+import { MessageList, InputBar, TaskHUD, GlobalShortcuts } from '@december/tui'
+import { AuthMenus, AskQuestionMenu } from '@december/tui'
+import { Box, Text } from 'ink'
+import { useState, useCallback } from 'react'
 
-export function Chat({
+export function ChatApp({
     agent,
     isAuthenticated: initialAuth,
     cliVersion,
@@ -17,27 +12,21 @@ export function Chat({
     sessionRepository,
     onLogin,
     onLoginHeadless,
+    session,
 }: {
     agent: Agent
     isAuthenticated: boolean
     cliVersion?: string
     userEmail?: string
-    sessionRepository?: FileSessionRepository
+    sessionRepository?: any
     onLogin?: () => Promise<{ token: string; email: string | null }>
     onLoginHeadless?: (
         onCode: (code: string, uri: string) => void
     ) => Promise<{ token: string; email: string | null }>
+    session: any
 }) {
     const [inputHistory, setInputHistory] = useState<string[]>([])
-    const session = useAgentSession({
-        agent,
-        isAuthenticated: initialAuth,
-        cliVersion,
-        userEmail,
-        sessionRepository,
-        onLogin,
-        onLoginHeadless,
-    })
+
     const {
         staticKey,
         staticMessages,
@@ -50,6 +39,7 @@ export function Chat({
         setStaticMessages,
         setStaticKey,
         setActiveMessages,
+        setAuthMode,
     } = session
     const authUI =
         authMode !== 'none' ? (
@@ -65,7 +55,11 @@ export function Chat({
                     }}
                 />
             ) : (
-                <AuthMenus {...session} agent={agent} getProviderModels={getProviderModels} />
+                <AuthMenus
+                    {...session}
+                    agent={agent}
+                    getProviderModels={session.getProviderModels}
+                />
             )
         ) : null
 
@@ -98,6 +92,7 @@ export function Chat({
 
     return (
         <Box flexDirection="column" width="100%">
+            <GlobalShortcuts {...session} agent={agent} />
             <TaskHUD cwd={process.cwd()} />
             <MessageList
                 staticKey={staticKey}
@@ -136,11 +131,7 @@ export function Chat({
                         .catch(console.error)
                 }}
                 placeholder="Ask December to build..."
-                activeModel={
-                    agent.modelOptions?.model
-                        ? getModelLabel(agent.modelOptions.model)
-                        : getModelLabel('gemini-3.5-flash')
-                }
+                activeModel={agent.modelOptions?.model || 'gemini-3.5-flash'}
                 contextTokens={totalTokens}
                 authUI={
                     hasActiveSubagent ? (

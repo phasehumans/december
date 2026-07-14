@@ -1,7 +1,8 @@
 import { StateCreator } from 'zustand'
+
 import { Message } from '@/features/chat/types'
-import { OutputOperation } from '@/features/preview/types'
 import { getUserFacingGenerationError } from '@/features/chat/utils'
+import { OutputOperation } from '@/features/preview/types'
 
 export interface ChatSlice {
     messages: Message[]

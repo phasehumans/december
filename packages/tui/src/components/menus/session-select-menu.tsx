@@ -1,4 +1,4 @@
-import { Box, Text } from 'ink'
+import { Box, Text, useInput } from 'ink'
 import TextInput from 'ink-text-input'
 
 export function SessionSelectMenu(props: any) {
@@ -12,6 +12,10 @@ export function SessionSelectMenu(props: any) {
         sessionRepository,
         setSessionsData,
         setSessionRenameMode,
+        setSessionSelectedIndex,
+        setSessionPage,
+        handleSessionSelect,
+        setAuthMode,
     } = props
     const SESSION_PAGE_SIZE = 10
     const totalItems = sessionsData.length
@@ -46,6 +50,78 @@ export function SessionSelectMenu(props: any) {
         setSessionRenameMode(false)
         setSessionNewName('')
     }
+
+    useInput((input, key) => {
+        if (sessionRenameMode) return
+
+        if (key.upArrow) {
+            if (sessionSelectedIndex > 0) {
+                setSessionSelectedIndex(sessionSelectedIndex - 1)
+            } else if (sessionPage > 0) {
+                setSessionPage(sessionPage - 1)
+                setSessionSelectedIndex(SESSION_PAGE_SIZE - 1)
+            }
+        } else if (key.downArrow) {
+            if (sessionSelectedIndex < visibleItems.length - 1) {
+                setSessionSelectedIndex(sessionSelectedIndex + 1)
+            } else if (sessionPage < maxPage) {
+                setSessionPage(sessionPage + 1)
+                setSessionSelectedIndex(0)
+            }
+        } else if (key.leftArrow) {
+            if (sessionPage > 0) {
+                setSessionPage(sessionPage - 1)
+                setSessionSelectedIndex(0)
+            }
+        } else if (key.rightArrow) {
+            if (sessionPage < maxPage) {
+                setSessionPage(sessionPage + 1)
+                setSessionSelectedIndex(0)
+            }
+        } else if (key.return) {
+            const absIndex = startIndex + sessionSelectedIndex
+            const session = sessionsData[absIndex]
+            if (session) {
+                handleSessionSelect({ value: session.id })
+            }
+        } else if (input === 'r') {
+            const absIndex = startIndex + sessionSelectedIndex
+            const session = sessionsData[absIndex]
+            if (session) {
+                setSessionRenameMode(true)
+                setSessionNewName(session.preview || session.id)
+            }
+        } else if (input === 'd') {
+            const absIndex = startIndex + sessionSelectedIndex
+            const session = sessionsData[absIndex]
+            if (session && sessionRepository?.deleteSession) {
+                sessionRepository.deleteSession(session.id).then(() => {
+                    const nextData = sessionsData.filter((_: any, i: number) => i !== absIndex)
+                    setSessionsData(nextData)
+                    if (nextData.length === 0) {
+                        setAuthMode('none')
+                    } else {
+                        const newTotal = nextData.length
+                        const newMaxPage = Math.max(0, Math.ceil(newTotal / SESSION_PAGE_SIZE) - 1)
+                        if (sessionPage > newMaxPage) {
+                            setSessionPage(newMaxPage)
+                            setSessionSelectedIndex(
+                                Math.max(0, newTotal - newMaxPage * SESSION_PAGE_SIZE - 1)
+                            )
+                        } else {
+                            const remainingInPage = Math.min(
+                                SESSION_PAGE_SIZE,
+                                newTotal - sessionPage * SESSION_PAGE_SIZE
+                            )
+                            if (sessionSelectedIndex >= remainingInPage) {
+                                setSessionSelectedIndex(Math.max(0, remainingInPage - 1))
+                            }
+                        }
+                    }
+                })
+            }
+        }
+    })
 
     return (
         <Box flexDirection="column" paddingX={1}>
