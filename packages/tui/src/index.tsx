@@ -26,5 +26,9 @@ export * from './components/menus/tasks-mode-menu'
 export * from './components/menus/plan-approve-menu'
 export * from './components/menus/grill-question-menu'
 export * from './components/menus/settings-main-menu'
-export * from './components/menus/hooks-menu'
+export * from './components/menus/tool-permission-menu'
+
 export * from './components/menus/usage-menu'
+export * from './app'
+
+export * from './components/global-shortcuts'

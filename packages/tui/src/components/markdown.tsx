@@ -1,8 +1,7 @@
+import { highlight } from 'cli-highlight'
 import { Box, Text, useFocus, useInput } from 'ink'
 import { marked } from 'marked'
-import type { Token } from 'marked'
 import React, { useState } from 'react'
-import { highlight } from 'cli-highlight'
 
 type Props = {
     children: string

@@ -1,9 +1,6 @@
 import React, { useState, useEffect } from 'react'
 
-import { cn } from '@/shared/lib/utils'
-
 import type { ViewState } from '@/app/types'
-import type { Project } from '@/features/projects/types'
 
 import { MobileSidebar } from '@/features/navigation/components/MobileSidebar'
 import Sidebar from '@/features/navigation/components/Sidebar'

@@ -1,6 +1,5 @@
 'use client'
 
-import { cn } from '@/shared/lib/utils'
 import {
     motion,
     useAnimationFrame,
@@ -11,6 +10,8 @@ import {
     MotionValue,
 } from 'framer-motion'
 import { useEffect, useRef } from 'react'
+
+import { cn } from '@/shared/lib/utils'
 
 // Helper component for gradient layers
 function GradientLayer({

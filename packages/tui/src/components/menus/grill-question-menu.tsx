@@ -1,6 +1,7 @@
 import { Box, Text } from 'ink'
 import SelectInput from 'ink-select-input'
 import TextInput from 'ink-text-input'
+
 import { CustomIndicator, CustomItem } from './menu-items'
 
 export function GrillQuestionMenu(props: any) {

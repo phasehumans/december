@@ -1,5 +1,6 @@
 import { Box, Text } from 'ink'
 import SelectInput from 'ink-select-input'
+
 import { CustomIndicator, CustomItem } from './menu-items'
 
 export function SettingsMainMenu(props: any) {
@@ -9,7 +10,10 @@ export function SettingsMainMenu(props: any) {
         settingsShowTasks,
         settingsShowTips,
         settingsToolPermission,
-        settingsTelemetry,
+        settingsCompactMode,
+        settingsSoundEffects,
+        settingsAutoScroll,
+        settingsStreamSpeed,
         settingsAutoUpdate,
         handleSettingsMainSelect,
     } = props
@@ -35,8 +39,20 @@ export function SettingsMainMenu(props: any) {
             value: 'toolPermission',
         },
         {
-            label: `Telemetry                [${settingsTelemetry ? 'on' : 'off'}]`,
-            value: 'telemetry',
+            label: `Compact Mode             [${settingsCompactMode ? 'on' : 'off'}]`,
+            value: 'compactMode',
+        },
+        {
+            label: `Sound Effects            [${settingsSoundEffects ? 'on' : 'off'}]`,
+            value: 'soundEffects',
+        },
+        {
+            label: `Auto Scroll              [${settingsAutoScroll ? 'on' : 'off'}]`,
+            value: 'autoScroll',
+        },
+        {
+            label: `Stream Speed             [${settingsStreamSpeed}]`,
+            value: 'streamSpeed',
         },
         {
             label: `Auto Update              [${settingsAutoUpdate ? 'on' : 'off'}]`,

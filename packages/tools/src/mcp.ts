@@ -1,5 +1,11 @@
 import { Tool, ToolExecuteContext } from '@december/shared'
 
+let mcpServersConfig: Record<string, any> = {}
+
+export function configureMCP(config: Record<string, any>) {
+    mcpServersConfig = config
+}
+
 export const MCPTool: Tool<any> = {
     name: 'mcp',
     description:
@@ -14,6 +20,10 @@ export const MCPTool: Tool<any> = {
         required: ['server', 'tool'],
     },
     execute: async (input, context: ToolExecuteContext) => {
-        return 'MCPTool is currently a stub and not fully implemented yet.'
+        const { server, tool, args } = input
+        if (!mcpServersConfig || !mcpServersConfig[server]) {
+            return `Error: MCP server '${server}' not found in configuration.`
+        }
+        return `MCPTool is currently a stub. The server '${server}' is configured but MCP stdio protocol execution is not fully implemented yet.`
     },
 }

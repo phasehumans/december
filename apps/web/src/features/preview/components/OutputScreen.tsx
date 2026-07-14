@@ -7,18 +7,12 @@ import { ExitConfirmModal } from './ExitConfirmModal'
 import { OutputScreenMainContent } from './OutputScreenMainContent'
 import { PreviewArea } from './PreviewArea'
 
-import type { Message } from '@/features/chat/types'
-import type {
-    GeneratedProjectFile,
-    PreviewSessionStatus,
-    OutputOperation,
-} from '@/features/preview/types'
 import type { OutputScreenProps } from '@/features/preview/types'
 
+import { useAppStore } from '@/app/store'
 import { billingAPI } from '@/features/billing/api/billing'
 import { ChatThread as ChatSidebar } from '@/features/chat/components/ChatThread'
 import { useOutputScreenController } from '@/features/preview/hooks/useOutputScreenController'
-import { useAppStore } from '@/app/store'
 import { Modal } from '@/shared/components/ui/Modal'
 
 type MobileOutputTab = 'chat' | 'preview'

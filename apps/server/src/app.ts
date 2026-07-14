@@ -8,7 +8,7 @@ import authRouter from './modules/auth/auth.routes'
 import billingRouter from './modules/billing/billing.routes'
 import canvasRouter from './modules/canvas/canvas.routes'
 import cliRouter from './modules/cli/cli.routes'
-import generateRouter from './modules/generation/generation.routes'
+import coreRouter from './modules/core/core.routes'
 import importRouter from './modules/import/import.routes'
 import integrationsRouter from './modules/integration/integration.routes'
 import mcpRouter from './modules/mcp/mcp.routes'
@@ -46,7 +46,6 @@ app.use('/api/v1/auth', authRouter)
 app.use('/api/v1/profile', profileRouter)
 app.use('/api/v1/project', projectRouter)
 app.use('/api/v1/canvas', canvasRouter)
-app.use('/api/v1/generate', generateRouter)
 app.use('/api/v1/runtime', runtimeRouter)
 app.use('/api/v1/upload', importRouter)
 app.use('/api/v1/usage', usageRouter)
@@ -64,6 +63,7 @@ app.use('/api/v1/schedule', scheduleRouter)
 app.use('/api/v1/session', sessionRouter)
 app.use('/api/v1/secrets', secretsRouter)
 
+app.use('/api/v1/core', coreRouter)
 app.use(errorHandler)
 
 export default app

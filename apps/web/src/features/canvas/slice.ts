@@ -1,4 +1,5 @@
 import { StateCreator } from 'zustand'
+
 import { CanvasDocument, createEmptyCanvasDocument } from '@/features/canvas/types'
 
 export interface CanvasSlice {

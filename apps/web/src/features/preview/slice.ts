@@ -1,4 +1,5 @@
 import { StateCreator } from 'zustand'
+
 import { GeneratedProjectFile, PreviewSessionStatus } from '@/features/preview/types'
 import { mapStoredFilesToGeneratedFiles } from '@/features/preview/utils'
 

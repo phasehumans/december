@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Trash2, ArrowLeft, MoreHorizontal, Settings, Bell, RefreshCw } from 'lucide-react'
+import { Trash2, ArrowLeft, MoreHorizontal, Settings, Bell } from 'lucide-react'
 import React, { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 

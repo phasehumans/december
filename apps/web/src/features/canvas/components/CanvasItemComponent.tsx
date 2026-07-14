@@ -7,9 +7,7 @@ import { CanvasFrameItem } from './CanvasFrameItem'
 import { CanvasResizeHandles } from './CanvasResizeHandles'
 import { CanvasVectorItem } from './CanvasVectorItem'
 
-import type { CanvasItem, CanvasItemComponentProps } from '@/features/canvas/types'
-
-import { cn } from '@/shared/lib/utils'
+import type { CanvasItemComponentProps } from '@/features/canvas/types'
 
 import {
     useCanvasItemController,
@@ -17,6 +15,7 @@ import {
     TEXT_FONT,
     measureTextDimensions,
 } from '@/features/canvas/hooks/useCanvasItemController'
+import { cn } from '@/shared/lib/utils'
 
 export const CanvasItemComponent: React.FC<CanvasItemComponentProps> = ({
     item,

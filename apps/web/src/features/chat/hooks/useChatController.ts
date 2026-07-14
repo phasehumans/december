@@ -1,17 +1,18 @@
 import { useQueryClient } from '@tanstack/react-query'
 import React from 'react'
 
-import { useAppStore } from '@/app/store'
 import type { ViewState } from '@/app/types'
+import type { CanvasDocument } from '@/features/canvas/types'
 import type { Message } from '@/features/chat/types'
+import type { PreviewRuntimeError, PreviewSelectedElement } from '@/features/preview/types'
+
+import { useAppStore } from '@/app/store'
+import { mapBackendMessageToUIMessage } from '@/features/chat/utils'
 import {
     generationAPI,
     type AppliedProjectChangeResult,
     type GenerationStreamEvent,
 } from '@/features/generation/api/generation'
-import type { PreviewRuntimeError, PreviewSelectedElement } from '@/features/preview/types'
-import { mapBackendMessageToUIMessage } from '@/features/chat/utils'
-import type { CanvasDocument } from '@/features/canvas/types'
 
 export const useChatController = (
     view: ViewState,

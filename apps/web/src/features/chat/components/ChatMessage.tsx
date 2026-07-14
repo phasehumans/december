@@ -4,10 +4,9 @@ import React from 'react'
 
 import type { ChatMessageProps } from '@/features/chat/types'
 
-import { cn } from '@/shared/lib/utils'
-
 import { useChatMessageController } from '@/features/chat/hooks/useChatMessageController'
 import { renderRichContent } from '@/features/chat/utils/chatFormatting'
+import { cn } from '@/shared/lib/utils'
 
 export const ChatMessage: React.FC<ChatMessageProps> = ({
     id,

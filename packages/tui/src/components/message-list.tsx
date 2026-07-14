@@ -1,10 +1,12 @@
-import React from 'react'
 import { Static } from 'ink'
-import type { Message } from '../types'
+import React from 'react'
+
 import { Header } from './header'
-import { UserMessage } from './messages/user-message'
 import { BotMessage } from './messages/bot-message'
 import { ErrorMessage } from './messages/error-message'
+import { UserMessage } from './messages/user-message'
+
+import type { Message } from '../types'
 export function MessageList({
     staticKey,
     staticMessages,

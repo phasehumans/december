@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
+
 import type { AuthMode } from '@december/tui'
-import { getProviderConfig } from '@december/agent'
 
 export function useAuth({ initialAuth, userEmail, authMode: initialAuthMode }: any) {
     const [isAuthenticated, setIsAuthenticated] = useState(initialAuth)

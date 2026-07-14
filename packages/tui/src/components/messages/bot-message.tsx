@@ -4,8 +4,9 @@ import React from 'react'
 import { Markdown } from '../markdown'
 import { Pill } from '../pill'
 import { Spinner } from '../spinner'
-import { ToolArgumentsDisplay } from './tool-arguments'
+
 import { ParsedOutputLine } from './parsed-output-line'
+import { ToolArgumentsDisplay } from './tool-arguments'
 
 export type MessageBlock =
     | { type: 'text'; content: string }

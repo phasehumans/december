@@ -4,10 +4,10 @@ import { useNavigate } from 'react-router-dom'
 
 import { useAppStore } from '@/app/store'
 import { toProjectSlug, type ViewState } from '@/app/types'
+import { createEmptyCanvasDocument } from '@/features/canvas/types'
+import { mapBackendMessageToUIMessage } from '@/features/chat/utils'
 import { importsAPI, type ProjectImportStatus } from '@/features/home/api'
 import { projectAPI, type BackendProjectDetail } from '@/features/projects/api/project'
-import { mapBackendMessageToUIMessage } from '@/features/chat/utils'
-import { createEmptyCanvasDocument } from '@/features/canvas/types'
 
 const getImportStatusMessage = (status: ProjectImportStatus) => {
     if (status.errorMessage) return status.errorMessage

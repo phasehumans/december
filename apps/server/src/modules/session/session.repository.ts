@@ -1,4 +1,5 @@
 import { prisma } from '@december/database'
+
 import type { Prisma } from '@december/database'
 
 export async function findManySessions(userId: string) {

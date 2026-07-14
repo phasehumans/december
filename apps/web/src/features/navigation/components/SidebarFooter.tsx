@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { Inbox, Copy, Check, ChevronRight } from 'lucide-react'
+import { Inbox, Copy, Check } from 'lucide-react'
 import React, { useState, useRef } from 'react'
 
 import sidebarPng from '../../../../public/sidebar.png'
@@ -11,8 +11,8 @@ import type { SidebarFooterProps } from '@/features/navigation/types'
 import { billingAPI } from '@/features/billing/api/billing'
 import { notificationAPI } from '@/features/notification/api/notification'
 import { profileAPI } from '@/features/profile/api/profile'
-import { cn } from '@/shared/lib/utils'
 import { Icons } from '@/shared/components/ui/Icons'
+import { cn } from '@/shared/lib/utils'
 
 export const SidebarFooter: React.FC<
     SidebarFooterProps & { user?: { name?: string }; onSignOut?: () => void }

@@ -1,4 +1,3 @@
-import type { CanvasDocument } from '@/features/canvas/types'
 import type { ReactNode } from 'react'
 
 export interface PromptSuggestion {

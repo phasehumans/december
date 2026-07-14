@@ -1,7 +1,8 @@
-import { describe, it, expect, afterEach, mock } from 'bun:test'
 import { render, screen, cleanup } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { describe, it, expect, afterEach, mock } from 'bun:test'
 import React from 'react'
+
 import { ProjectDeleteModal } from '@/features/projects/components/ProjectDeleteModal'
 
 describe('ProjectDeleteModal Component', () => {

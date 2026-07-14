@@ -1,20 +1,11 @@
-import React, { useState, useRef, useEffect, useImperativeHandle, forwardRef } from 'react'
+import React, { forwardRef } from 'react'
 
 import { CanvasConnectionsLayer } from './CanvasConnectionsLayer'
 import { CanvasItemComponent } from './CanvasItemComponent'
 import { CanvasTempItemPreview } from './CanvasTempItemPreview'
 import { CanvasToolbar } from './CanvasToolbar'
 
-import type {
-    CanvasConnection,
-    CanvasDocument,
-    CanvasItem,
-    CanvasItemDraft,
-    CanvasProps,
-    CanvasUpdateOptions as UpdateOptions,
-} from '@/features/canvas/types'
-
-import { createEmptyCanvasDocument } from '@/features/canvas/types'
+import type { CanvasProps } from '@/features/canvas/types'
 
 export interface CanvasRef {
     triggerImageUpload: () => void
