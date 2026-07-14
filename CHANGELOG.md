@@ -2,12 +2,27 @@
 
 ### Features
 
+- Implement session architecture
+- Implement session architecture (#193)
+
+### Miscellaneous Tasks
+
+- Add remaining refactor and formatting changes
+
+## [0.2.8] - 2026-07-13
+
+### Features
+
 - Improve uiux
 - Reviews page
 
 ### Bug Fixes
 
 - _(tui)_ Fix chat interface and multi loader (#188)
+
+### Miscellaneous Tasks
+
+- _(release)_ V0.2.8
 
 ## [0.2.7] - 2026-07-12
 
