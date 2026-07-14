@@ -1,0 +1,48 @@
+import { Worker, Queue } from 'bullmq'
+import Redis from 'ioredis'
+import { prisma } from '@december/database'
+import { deletePrefix } from './shared/project-storage'
+
+const redisConnection = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
+    maxRetriesPerRequest: null,
+})
+
+// Setup minio_wipe worker
+const minioWipeWorker = new Worker(
+    'minio_wipe',
+    async (job) => {
+        const { prefix } = job.data
+        console.log(`[Background] Executing minio_wipe for prefix: ${prefix}`)
+        await deletePrefix(prefix)
+    },
+    { connection: redisConnection }
+)
+
+minioWipeWorker.on('failed', (job, err) => {
+    console.error(`[Background] Job ${job?.id} failed with error ${err.message}`)
+})
+
+// Setup sweep_cron worker
+const sweepQueue = new Queue('sweep_jobs', { connection: redisConnection })
+// add repeatable job running daily
+sweepQueue.add('daily_sweep', {}, { repeat: { pattern: '0 0 * * *' } })
+
+const sweepWorker = new Worker(
+    'sweep_jobs',
+    async (job) => {
+        if (job.name === 'daily_sweep') {
+            console.log(`[Background] Running daily garbage collection sweep`)
+            // Cleanup sessions older than 30 days or orphaned DB records
+            await prisma.session.deleteMany({
+                where: {
+                    updatedAt: {
+                        lt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+                    },
+                },
+            })
+        }
+    },
+    { connection: redisConnection }
+)
+
+console.log('[Background] Background workers initialized.')

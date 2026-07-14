@@ -381,4 +381,12 @@ export const projectRepository = {
     findCollaboratorsByProjectId,
     addCollaborator,
     removeCollaborator,
+    findSessionsByProject,
+}
+
+async function findSessionsByProject(projectId: string) {
+    return prisma.session.findMany({
+        where: { projectId },
+        select: { id: true },
+    })
 }

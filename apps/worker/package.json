@@ -7,11 +7,16 @@
         "start": "bun src/index.ts"
     },
     "dependencies": {
-        "bullmq": "^5.0.0",
-        "ioredis": "^5.0.0",
-        "@december/shared": "workspace:*",
         "@december/agent": "workspace:*",
-        "@december/database": "workspace:*"
+        "@december/database": "workspace:*",
+        "@december/shared": "workspace:*",
+        "@december/tools": "workspace:*",
+        "@december/providers": "workspace:*",
+        "@grpc/grpc-js": "1.14.4",
+        "@grpc/proto-loader": "0.8.1",
+        "bullmq": "^5.0.0",
+        "dotenv": "17.4.2",
+        "ioredis": "^5.0.0"
     },
     "devDependencies": {
         "@types/bun": "latest"

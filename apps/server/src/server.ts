@@ -4,6 +4,7 @@ import app from './app'
 import { ensureStorageBucket } from './config/s3'
 import { env } from './env'
 import { initSocket } from './socket'
+import './background'
 
 const PORT = env.PORT
 const ENV = env.ENV

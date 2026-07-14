@@ -23,8 +23,8 @@ impl RuntimeService for MyRuntimeService {
         
         let fc = crate::sandboxes::firecracker::FirecrackerSandbox::new(
             req.vm_id.clone(),
-            std::path::PathBuf::from("build/rootfs.ext4"),
-            std::path::PathBuf::from("build/vmlinux")
+            std::path::PathBuf::from("/home/chaitanya/code/december/ubuntu-rootfs.ext4"),
+            std::path::PathBuf::from("/home/chaitanya/code/december/vmlinux.bin")
         );
 
         let snapshot_path = fc.create_snapshot().await.map_err(|e| Status::internal(e))?;
@@ -53,8 +53,8 @@ impl RuntimeService for MyRuntimeService {
 
         let fc = crate::sandboxes::firecracker::FirecrackerSandbox::new(
             req.vm_id,
-            std::path::PathBuf::from("build/rootfs.ext4"),
-            std::path::PathBuf::from("build/vmlinux")
+            std::path::PathBuf::from("/home/chaitanya/code/december/ubuntu-rootfs.ext4"),
+            std::path::PathBuf::from("/home/chaitanya/code/december/vmlinux.bin")
         );
 
         fc.destroy().await.map_err(|e| Status::internal(e))?;
@@ -79,8 +79,8 @@ impl RuntimeService for MyRuntimeService {
         
         let fc = crate::sandboxes::firecracker::FirecrackerSandbox::new(
             req.vm_id,
-            std::path::PathBuf::from("build/rootfs.ext4"),
-            std::path::PathBuf::from("build/vmlinux")
+            std::path::PathBuf::from("/home/chaitanya/code/december/ubuntu-rootfs.ext4"),
+            std::path::PathBuf::from("/home/chaitanya/code/december/vmlinux.bin")
         );
         let cmd = req.command;
 

@@ -224,11 +224,27 @@ async function main() {
 
             console.log('Uploading to MinIO...')
             const fileData = fs.readFileSync(archivePath)
-            const uploadRes = await fetch(uploadUrl, {
-                method: 'PUT',
-                body: fileData,
-            })
-            if (!uploadRes.ok) throw new Error(`Upload failed: ${uploadRes.statusText}`)
+
+            let uploadSuccess = false
+            let attempts = 0
+            while (!uploadSuccess && attempts < 3) {
+                attempts++
+                try {
+                    const uploadRes = await fetch(uploadUrl, {
+                        method: 'PUT',
+                        body: fileData,
+                    })
+                    if (!uploadRes.ok) throw new Error(`Upload failed: ${uploadRes.statusText}`)
+                    uploadSuccess = true
+                } catch (err: any) {
+                    console.error(`Upload attempt ${attempts} failed: ${err.message}`)
+                    if (attempts >= 3) {
+                        throw new Error('Failed to upload workspace after 3 attempts.')
+                    }
+                    console.log('Retrying upload...')
+                    await new Promise((r) => setTimeout(r, 2000))
+                }
+            }
 
             console.log('Completing handoff...')
             const sessionRes = await fetch(`${proxyUrl}/cli/handoff/complete`, {

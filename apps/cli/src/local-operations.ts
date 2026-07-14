@@ -14,69 +14,82 @@ export const localOperations: PlatformAdapter = {
     bash: {
         exec: async (command, onData) => {
             return new Promise((resolve) => {
-                let stdout = ''
-                let stderr = ''
+                const taskId = `task_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`
+                const logFile = `/tmp/${taskId}.log`
 
-                const child = spawn(command, {
-                    shell: true,
-                    detached: true,
-                    stdio: 'pipe',
-                })
+                // Spawn a detached tmux session running the command, piping output to a logfile
+                const tmuxCmd = `tmux new-session -d -s ${taskId} "bash -c '${command.replace(/'/g, "'\\''")} 2>&1 | tee ${logFile}'"`
 
-                const task = taskManager.addTask(command, child)
-
-                child.stdout?.on('data', (data) => {
-                    const chunk = data.toString()
-                    stdout += chunk
-                    taskManager.appendOutput(task.id, chunk)
-                    onData(chunk)
-                })
-
-                child.stderr?.on('data', (data) => {
-                    const chunk = data.toString()
-                    stderr += chunk
-                    taskManager.appendOutput(task.id, chunk)
-                    onData(chunk)
-                })
-
-                let isFinished = false
+                const child = spawn(tmuxCmd, { shell: true })
 
                 child.on('close', (code) => {
-                    taskManager.markCompleted(task.id, code)
-                    if (isFinished) return
-                    isFinished = true
-                    taskManager.removeTask(task.id)
-                    resolve({ exitCode: code, output: stdout + '\n' + stderr })
+                    if (code !== 0) {
+                        return resolve({
+                            exitCode: code,
+                            output: `Failed to start tmux session for task ${taskId}`,
+                        })
+                    }
+
+                    // Start tailing the log file
+                    const tail = spawn(`tail -f ${logFile}`, { shell: true })
+
+                    let stdout = ''
+                    tail.stdout.on('data', (data) => {
+                        const chunk = data.toString()
+                        stdout += chunk
+                        onData(chunk)
+                    })
+
+                    // Periodically check if tmux session is still alive
+                    const interval = setInterval(() => {
+                        exec(`tmux has-session -t ${taskId}`, (err) => {
+                            if (err) {
+                                // Session is dead, command finished
+                                clearInterval(interval)
+                                tail.kill()
+                                // Optionally read final content
+                                fs.readFile(logFile, 'utf8')
+                                    .then((finalOut) => {
+                                        resolve({ exitCode: null, output: finalOut, taskId })
+                                    })
+                                    .catch(() => {
+                                        resolve({ exitCode: null, output: stdout, taskId })
+                                    })
+                            }
+                        })
+                    }, 2000)
+
+                    // Auto detach from agent loop after 3 seconds
+                    setTimeout(() => {
+                        resolve({
+                            exitCode: null,
+                            output: `Started background task ${taskId}`,
+                            taskId,
+                        })
+                    }, 3000)
                 })
-
-                child.on('error', (err) => {
-                    taskManager.markCompleted(task.id, 1)
-                    if (isFinished) return
-                    isFinished = true
-                    taskManager.removeTask(task.id)
-                    resolve({ exitCode: 1, output: `Failed to start command: ${err.message}` })
-                })
-
-                // Auto-detach logic
-                setTimeout(() => {
-                    if (isFinished) return
-                    isFinished = true
-
-                    child.unref()
-                    child.stdout?.unref()
-                    child.stderr?.unref()
-
-                    resolve({ exitCode: null, output: stdout + '\n' + stderr, taskId: task.id })
-                }, 3000)
             })
         },
         getTaskStatus: async (taskId) => {
-            const task = taskManager.getTask(taskId)
-            if (!task) throw new Error('Task not found')
-            return { status: task.status, output: task.output }
+            return new Promise((resolve) => {
+                exec(`tmux has-session -t ${taskId}`, (err) => {
+                    const status = err ? 'completed' : 'running'
+                    fs.readFile(`/tmp/${taskId}.log`, 'utf8')
+                        .then((out) => {
+                            resolve({ status, output: out })
+                        })
+                        .catch(() => {
+                            resolve({ status, output: 'No output found' })
+                        })
+                })
+            })
         },
         killTask: async (taskId) => {
-            return taskManager.killTask(taskId)
+            return new Promise((resolve) => {
+                exec(`tmux kill-session -t ${taskId}`, (err) => {
+                    resolve(!err)
+                })
+            })
         },
     },
     fs: {

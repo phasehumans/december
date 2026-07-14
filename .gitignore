@@ -51,3 +51,10 @@ infra/nginx/deployments/*
 Thumbs.db
 .DS_Store
 TODO.md
+# Firecracker & Rust build artifacts
+ubuntu-rootfs.ext4
+ubuntu-base.tar
+**/target/
+firecracker
+vmlinux.bin
+release-*/

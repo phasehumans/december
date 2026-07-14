@@ -28,11 +28,17 @@ export async function createSession(
     userId: string,
     data: { title?: string; projectId?: string; type?: 'WEB' | 'CLI' | 'SEARCH' }
 ) {
+    // const activeSessions = await sessionRepository.countActiveSessions(userId)
+    // if (activeSessions >= 1) {
+    //     throw new Error('You have reached the maximum number of concurrent sessions. Please stop an active session first.')
+    // }
+
     return sessionRepository.createSession({
         userId,
         title: data.title,
         projectId: data.projectId,
         type: data.type || 'WEB',
+        vmStatus: 'RUNNING', // Automatically marking as RUNNING on creation for constraints
     })
 }
 

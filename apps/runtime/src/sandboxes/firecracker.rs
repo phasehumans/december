@@ -44,8 +44,8 @@ impl FirecrackerSandbox {
         let tap_name = format!("tap-{}", &self.vm_id[..std::cmp::min(self.vm_id.len(), 11)]);
         
         // Create TAP interface
-        Command::new("ip").args(&["tuntap", "add", "dev", &tap_name, "mode", "tap"]).status().map_err(|e| e.to_string())?;
-        Command::new("ip").args(&["link", "set", "dev", &tap_name, "up"]).status().map_err(|e| e.to_string())?;
+        Command::new("sudo").args(&["ip", "tuntap", "add", "dev", &tap_name, "mode", "tap"]).status().map_err(|e| e.to_string())?;
+        Command::new("sudo").args(&["ip", "link", "set", "dev", &tap_name, "up"]).status().map_err(|e| e.to_string())?;
         
         // In a real system, you'd add this TAP to a bridge or set an IP and enable MASQUERADE
         // Command::new("ip").args(&["addr", "add", "172.16.0.1/24", "dev", &tap_name]).status().map_err(|e| e.to_string())?;
@@ -122,7 +122,7 @@ impl FirecrackerSandbox {
 
         // Spawn firecracker process
         info!("Spawning Firecracker process for {}", self.vm_id);
-        Command::new("firecracker")
+        Command::new("/home/chaitanya/code/december/firecracker")
             .args(&["--api-sock", &sock_path, "--config-file", &cfg_path])
             .spawn()
             .map_err(|e| e.to_string())?;
@@ -133,7 +133,7 @@ impl FirecrackerSandbox {
     pub async fn destroy(&self) -> Result<(), String> {
         info!("Destroying VM {}", self.vm_id);
         let tap_name = format!("tap-{}", &self.vm_id[..std::cmp::min(self.vm_id.len(), 11)]);
-        Command::new("ip").args(&["link", "del", "dev", &tap_name]).status().ok();
+        Command::new("sudo").args(&["ip", "link", "del", "dev", &tap_name]).status().ok();
         
         let rootfs_path = format!("/tmp/fc-vm-{}.ext4", self.vm_id);
         fs::remove_file(rootfs_path).ok();
