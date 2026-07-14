@@ -1,4 +1,4 @@
-## [unreleased]
+## [0.2.9] - 2026-07-14
 
 ### Features
 
@@ -8,6 +8,7 @@
 ### Miscellaneous Tasks
 
 - Add remaining refactor and formatting changes
+- _(release)_ V0.2.9
 
 ## [0.2.8] - 2026-07-13
 
