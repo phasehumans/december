@@ -83,7 +83,9 @@ export const useProjectController = (
                     .findIndex((m) => m.role === 'assistant')
                 if (lastAssistantIdx !== -1) {
                     const idx = uiMessages.length - 1 - lastAssistantIdx
-                    uiMessages[idx].summary = activeVersionSummary
+                    if (uiMessages[idx]) {
+                        uiMessages[idx].summary = activeVersionSummary
+                    }
                 }
             }
             setMessages(uiMessages)

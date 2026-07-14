@@ -98,7 +98,12 @@ async function updateImportedProjectVersion(data: {
     description: string
     summary: string
     manifestJson: Prisma.InputJsonValue
-    messages: Prisma.ProjectMessageCreateWithoutProjectVersionInput[]
+    messages: Array<{
+        role: 'USER' | 'ASSISTANT' | 'SYSTEM'
+        content: string
+        sequence: number
+        status?: string
+    }>
 }) {
     const { projectId, versionId, description, summary, manifestJson, messages } = data
     return prisma.$transaction(async (tx) => {
@@ -110,6 +115,17 @@ async function updateImportedProjectVersion(data: {
             },
         })
 
+        const project = await tx.project.findUniqueOrThrow({ where: { id: projectId } })
+        let session = await tx.session.findFirst({
+            where: { projectId },
+            orderBy: { createdAt: 'desc' },
+        })
+        if (!session) {
+            session = await tx.session.create({
+                data: { userId: project.userId, projectId, type: 'WEB' },
+            })
+        }
+
         await tx.projectVersion.update({
             where: { id: versionId },
             data: {
@@ -117,7 +133,13 @@ async function updateImportedProjectVersion(data: {
                 status: 'READY',
                 manifestJson,
                 messages: {
-                    create: messages,
+                    create: messages.map((msg) => ({
+                        role: msg.role,
+                        content: msg.content,
+                        sequence: msg.sequence,
+                        status: msg.status,
+                        sessionId: session!.id,
+                    })),
                 },
             },
         })

@@ -41,7 +41,7 @@ export type BackendProjectVersionSummary = {
     updatedAt: string
 }
 
-export type BackendProjectMessage = {
+export type BackendMessage = {
     id: string
     role: 'USER' | 'ASSISTANT' | 'SYSTEM'
     content: string
@@ -61,7 +61,7 @@ export type BackendProjectDetail = {
               plan: unknown
           })
         | null
-    chatMessages: BackendProjectMessage[]
+    chatMessages: BackendMessage[]
     generatedFiles: Record<string, string>
     canvasState: CanvasDocument
 }

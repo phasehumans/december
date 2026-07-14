@@ -44,7 +44,7 @@ describe('auth.service.integration', () => {
         sendOTPMock.mockClear()
         sendWelcomeEmailMock.mockClear()
         sendNotificationMock.mockClear()
-        await prisma.session.deleteMany()
+        await prisma.authSession.deleteMany()
         await prisma.user.deleteMany()
         process.env.ACCESS_TOKEN_SECRET = 'test-access'
         process.env.REFRESH_TOKEN_SECRET = 'test-refresh'
@@ -187,7 +187,7 @@ describe('auth.service.integration', () => {
             expect(updatedUser!.emailVerified).toBe(true)
             expect(updatedUser!.otpHash).toBeNull()
 
-            const session = await prisma.session.findFirst({ where: { userId: user.id } })
+            const session = await prisma.authSession.findFirst({ where: { userId: user.id } })
             expect(session).not.toBeNull()
         })
 
@@ -254,7 +254,7 @@ describe('auth.service.integration', () => {
 
             await authService.verifyOtp({ email: user.email, otp })
 
-            const sessions = await prisma.session.findMany({ where: { userId: user.id } })
+            const sessions = await prisma.authSession.findMany({ where: { userId: user.id } })
             expect(sessions.length).toBe(1)
             expect(sessions![0]!.isRevoked).toBe(false)
         })
@@ -301,7 +301,7 @@ describe('auth.service.integration', () => {
             expect(result.accessToken).toBeString()
             expect(result.refreshToken).toBeString()
 
-            const session = await prisma.session.findFirst({ where: { userId: user.id } })
+            const session = await prisma.authSession.findFirst({ where: { userId: user.id } })
             expect(session).not.toBeNull()
         })
 
@@ -381,7 +381,7 @@ describe('auth.service.integration', () => {
 
             await authService.login({ email: user.email, password })
 
-            const session = await prisma.session.findFirst({ where: { userId: user.id } })
+            const session = await prisma.authSession.findFirst({ where: { userId: user.id } })
             expect(session).not.toBeNull()
             expect(session!.isRevoked).toBe(false)
         })
@@ -441,7 +441,7 @@ describe('auth.service.integration', () => {
                 otpExpiresAt: new Date(Date.now() + 10000),
             })
 
-            await prisma.session.create({
+            await prisma.authSession.create({
                 data: {
                     userId: user.id,
                     refreshTokenHash: `hash-${crypto.randomUUID()}`,
@@ -456,7 +456,7 @@ describe('auth.service.integration', () => {
             })
 
             const updatedUser = await prisma.user.findUnique({ where: { id: user.id } })
-            const sessions = await prisma.session.findMany({ where: { userId: user.id } })
+            const sessions = await prisma.authSession.findMany({ where: { userId: user.id } })
 
             expect(await bcrypt.compare('NewPass123', updatedUser!.password!)).toBe(true)
             expect(updatedUser!.otpHash).toBeNull()
@@ -762,7 +762,7 @@ describe('auth.service.integration', () => {
             const sessionId = crypto.randomUUID()
             const token = actualUtils.generateRefreshToken({ userId: user.id, sessionId })
 
-            await prisma.session.create({
+            await prisma.authSession.create({
                 data: {
                     id: sessionId,
                     userId: user.id,
@@ -788,7 +788,7 @@ describe('auth.service.integration', () => {
             const sessionId = crypto.randomUUID()
             const token = actualUtils.generateRefreshToken({ userId: user.id, sessionId })
 
-            await prisma.session.create({
+            await prisma.authSession.create({
                 data: {
                     id: sessionId,
                     userId: otherUser.id, // Mismatch

@@ -366,8 +366,8 @@ async function executeSingleTool(
     let resultStr = ''
     let errorStr = undefined
 
-    if (agent.hooks?.beforeToolCall) {
-        const hookRes = await agent.hooks.beforeToolCall(toolCall)
+    if (agent.operations.ui?.requestPermission) {
+        const hookRes = await agent.operations.ui.requestPermission(toolCall)
         if (hookRes?.block) {
             errorStr = `Tool execution blocked: ${hookRes.reason || 'No reason provided'}`
             const res = { toolCallId: toolCall.id, result: '', error: errorStr }

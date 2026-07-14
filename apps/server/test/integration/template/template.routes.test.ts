@@ -73,7 +73,7 @@ describe('template.routes.integration', () => {
         await prisma.projectLike.deleteMany()
         await prisma.projectVersion.deleteMany()
         await prisma.project.deleteMany()
-        await prisma.session.deleteMany()
+        await prisma.authSession.deleteMany()
         await prisma.user.deleteMany()
 
         await createTestUser()

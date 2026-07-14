@@ -87,7 +87,7 @@ describe('auth.routes.integration', () => {
         verifyIdTokenMock.mockReset()
         sendNotificationMock.mockClear()
 
-        await prisma.session.deleteMany()
+        await prisma.authSession.deleteMany()
         await prisma.user.deleteMany()
 
         process.env.ACCESS_TOKEN_SECRET = 'test-access'

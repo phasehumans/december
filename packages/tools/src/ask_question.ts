@@ -36,9 +36,8 @@ export const AskQuestionTool: Tool<{
         // Since we want this to be intercepted by the TUI, we can just throw an error here,
         // or we can invoke a callback from context.operations if we added one.
 
-        // Actually, if we're not intercepted, we should probably fail or return a message.
-        if ((context.operations as any).askQuestion) {
-            return await (context.operations as any).askQuestion(input.questions)
+        if (context.operations.ui?.askQuestion) {
+            return await context.operations.ui.askQuestion(input.questions)
         }
 
         return 'Error: Interactive menus are only supported in the TUI.'

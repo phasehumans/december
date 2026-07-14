@@ -84,7 +84,7 @@ const pollDeviceToken = asyncHandler(async (req: Request, res: Response) => {
             'unknown'
 
         // Let's create a new session
-        const session = await prisma.session.create({
+        const session = await prisma.authSession.create({
             data: {
                 userId: user.id,
                 refreshTokenHash: crypto

@@ -17,6 +17,10 @@ import {
     GrepSearchTool,
     SubagentTool,
     AskQuestionTool,
+    ManageTaskTool,
+    BrowserTool,
+    GitHubTool,
+    MCPTool,
 } from '@december/tools'
 import { RootLayout } from '@december/tui'
 import { Chat as App } from './app'
@@ -85,6 +89,10 @@ async function main() {
             case 'zai':
                 llm = new OpenAIProvider('https://api.zai.ai/v1', providerConfig.apiKey)
                 break
+            case 'december_proxy':
+                const proxyUrl = process.env.DECEMBER_SERVER_URL || 'http://localhost:3000/api/v1'
+                llm = new OpenAIProvider(proxyUrl, providerConfig.apiKey)
+                break
         }
     } else {
         llm = new OpenAIProvider(undefined, 'dummy-key')
@@ -110,6 +118,10 @@ async function main() {
             GrepSearchTool,
             SubagentTool,
             AskQuestionTool,
+            ManageTaskTool,
+            BrowserTool,
+            GitHubTool,
+            MCPTool,
         ],
         operations: localOperations,
         modelOptions: { model: providerConfig?.model || 'gemini-3.5-flash' },
@@ -129,6 +141,73 @@ async function main() {
 
     const config = await loadConfig()
     const userEmail = config.decemberToken ? config.email : undefined
+
+    const args = process.argv.slice(2)
+    const command = args[0]
+
+    if (command === 'handoff') {
+        console.log('Initiating Cloud Handoff...')
+        if (!config.decemberToken) {
+            console.error('You must be logged in via `december login` to use handoff.')
+            process.exit(1)
+        }
+
+        try {
+            const { execSync } = require('child_process')
+            const fs = require('fs')
+
+            console.log('Zipping workspace state...')
+            const archivePath = '.december-handoff.tar.gz'
+            execSync(`tar -czf ${archivePath} --exclude=node_modules --exclude=.git .`, {
+                stdio: 'inherit',
+            })
+
+            console.log('Requesting pre-signed URL from server...')
+            const proxyUrl = process.env.DECEMBER_SERVER_URL || 'http://localhost:3000/api/v1'
+            const urlRes = await fetch(`${proxyUrl}/cli/handoff/upload-url`, {
+                headers: { Authorization: `Bearer ${config.decemberToken}` },
+            })
+            if (!urlRes.ok) throw new Error(await urlRes.text())
+            const { uploadUrl, objectKey } = await urlRes.json()
+
+            console.log('Uploading to MinIO...')
+            const fileData = fs.readFileSync(archivePath)
+            const uploadRes = await fetch(uploadUrl, {
+                method: 'PUT',
+                body: fileData,
+            })
+            if (!uploadRes.ok) throw new Error(`Upload failed: ${uploadRes.statusText}`)
+
+            console.log('Completing handoff...')
+            const sessionRes = await fetch(`${proxyUrl}/cli/handoff/complete`, {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${config.decemberToken}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    title: 'Handoff from ' + process.cwd().split('/').pop(),
+                    messages: harness.getAgent().messages,
+                    objectKey,
+                }),
+            })
+            if (!sessionRes.ok) throw new Error(await sessionRes.text())
+
+            // Clean up
+            fs.unlinkSync(archivePath)
+
+            console.log('Handoff complete! You can now resume this session on December Cloud.')
+        } catch (e: any) {
+            console.error('Handoff failed:', e.message)
+        }
+        process.exit(0)
+    }
+
+    if (command === 'login') {
+        console.log('Please login via the browser...')
+        await loginViaBrowser()
+        process.exit(0)
+    }
 
     render(
         React.createElement(

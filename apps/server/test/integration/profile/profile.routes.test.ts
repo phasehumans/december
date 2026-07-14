@@ -99,7 +99,7 @@ describe('profile.routes.integration', () => {
         if (isCleaningUp) return
 
         await prisma.feedback.deleteMany({ where: { userId: TEST_USER_ID } })
-        await prisma.session.deleteMany({ where: { userId: TEST_USER_ID } })
+        await prisma.authSession.deleteMany({ where: { userId: TEST_USER_ID } })
         await prisma.user.deleteMany({ where: { id: TEST_USER_ID } })
 
         await createTestUser()

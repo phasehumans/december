@@ -25,7 +25,7 @@ describe('import.routes.integration', () => {
         importFromGithubMock.mockClear()
         getImportStatusMock.mockClear()
 
-        await prisma.session.deleteMany()
+        await prisma.authSession.deleteMany()
         await prisma.user.deleteMany()
 
         user = await prisma.user.create({
@@ -38,7 +38,7 @@ describe('import.routes.integration', () => {
             },
         })
 
-        const session = await prisma.session.create({
+        const session = await prisma.authSession.create({
             data: {
                 userId: user.id,
                 expiresAt: new Date(Date.now() + 3600000),

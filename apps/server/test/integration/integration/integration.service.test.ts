@@ -63,7 +63,7 @@ describe('integrations.service.integration', () => {
     let userId: string
 
     beforeEach(async () => {
-        await prisma.session.deleteMany()
+        await prisma.authSession.deleteMany()
         await prisma.user.deleteMany()
 
         const user = await createUser()

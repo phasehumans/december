@@ -410,17 +410,27 @@ export const markGenerationFailed = async (data: MarkGenerationFailed) => {
 
     await prisma.$transaction(async (tx) => {
         if (!messagesPersisted) {
-            await tx.projectMessage.createMany({
+            let session = await tx.session.findFirst({
+                where: { projectId: project.id },
+                orderBy: { createdAt: 'desc' },
+            })
+            if (!session) {
+                session = await tx.session.create({
+                    data: { userId: project.userId, projectId: project.id, type: 'WEB' },
+                })
+            }
+
+            await tx.message.createMany({
                 data: [
                     {
-                        projectId: project.id,
+                        sessionId: session.id,
                         projectVersionId: versionId,
                         role: 'USER',
                         content: prompt,
                         sequence: 1,
                     },
                     {
-                        projectId: project.id,
+                        sessionId: session.id,
                         projectVersionId: versionId,
                         role: 'ASSISTANT',
                         content: fallbackAssistantMessage,
@@ -569,6 +579,17 @@ export const completeWebsiteGeneration = async (data: {
     } = data
 
     return prisma.$transaction(async (tx) => {
+        const project = await tx.project.findUniqueOrThrow({ where: { id: projectId } })
+        let session = await tx.session.findFirst({
+            where: { projectId },
+            orderBy: { createdAt: 'desc' },
+        })
+        if (!session) {
+            session = await tx.session.create({
+                data: { userId: project.userId, projectId, type: 'WEB' },
+            })
+        }
+
         const updatedVersion = await tx.projectVersion.update({
             where: {
                 id: versionId,
@@ -589,13 +610,13 @@ export const completeWebsiteGeneration = async (data: {
                 messages: {
                     create: [
                         {
-                            projectId,
+                            sessionId: session.id,
                             role: 'USER',
                             content: prompt,
                             sequence: 1,
                         },
                         {
-                            projectId,
+                            sessionId: session.id,
                             role: 'ASSISTANT',
                             content: assistantMessageContent,
                             status: 'done',

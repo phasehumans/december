@@ -3,12 +3,13 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import { promisify } from 'node:util'
 
-import { AgentOperations, taskManager } from '@december/agent'
+import { Environment } from '@december/shared'
+import { taskManager } from '@december/agent'
 import fg from 'fast-glob'
 
 const execAsync = promisify(exec)
 
-export const localOperations: AgentOperations = {
+export const localOperations: Environment = {
     bash: {
         exec: async (command, onData) => {
             return new Promise((resolve) => {
@@ -64,9 +65,17 @@ export const localOperations: AgentOperations = {
                     child.stdout?.unref()
                     child.stderr?.unref()
 
-                    resolve({ exitCode: null, output: stdout + '\n' + stderr })
+                    resolve({ exitCode: null, output: stdout + '\n' + stderr, taskId: task.id })
                 }, 3000)
             })
+        },
+        getTaskStatus: async (taskId) => {
+            const task = taskManager.getTask(taskId)
+            if (!task) throw new Error('Task not found')
+            return { status: task.status, output: task.output }
+        },
+        killTask: async (taskId) => {
+            return taskManager.killTask(taskId)
         },
     },
     fs: {
@@ -105,6 +114,15 @@ export const localOperations: AgentOperations = {
                 if (error.code === 1) return '' // grep returns 1 when no matches
                 throw error
             }
+        },
+    },
+    ui: {
+        askQuestion: async () => {
+            throw new Error('Not implemented here')
+        },
+        // Will be monkey-patched by use-agent-session.tsx
+        requestPermission: async () => {
+            return { block: false }
         },
     },
 }
