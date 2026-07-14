@@ -1,0 +1,278 @@
+import { Agent, SessionInfo, BackgroundTask } from '@december/agent'
+import { Message, AuthMode } from '@december/tui'
+import { create } from 'zustand'
+
+import { DecemberConfig } from '../config'
+
+export interface CliState {
+    // ----------------------------------------------------
+    // AGENT & CORE
+    // ----------------------------------------------------
+    agent: Agent | null
+    setAgent: (agent: Agent) => void
+    settings: DecemberConfig | null
+    setSettings: (settings: DecemberConfig) => void
+
+    // ----------------------------------------------------
+    // AUTH FEATURE
+    // ----------------------------------------------------
+    isAuthenticated: boolean
+    setIsAuthenticated: (val: boolean) => void
+    currentEmail: string | undefined
+    setCurrentEmail: (email: string | undefined) => void
+    authMode: AuthMode
+    setAuthMode: (mode: AuthMode) => void
+    logoutItems: { label: string; value: string }[]
+    setLogoutItems: (items: { label: string; value: string }[]) => void
+    selectedProvider: string
+    setSelectedProvider: (provider: string) => void
+    apiKey: string
+    setApiKey: (key: string) => void
+    openRouterModels: { label: string; value: string }[]
+    setOpenRouterModels: (models: { label: string; value: string }[]) => void
+
+    // ----------------------------------------------------
+    // CHAT FEATURE
+    // ----------------------------------------------------
+    currentPlannedPrompt: string | null
+    setCurrentPlannedPrompt: (prompt: string | null) => void
+    planMode: boolean
+    setPlanMode: (mode: boolean) => void
+    grillMode: boolean
+    setGrillMode: (mode: boolean) => void
+    grillQuestions: { question: string; options: string[] }[]
+    setGrillQuestions: (questions: { question: string; options: string[] }[]) => void
+    currentGrillIndex: number
+    setCurrentGrillIndex: (index: number) => void
+    grillAnswers: string[]
+    setGrillAnswers: (answers: string[]) => void
+    grillPrompt: string | null
+    setGrillPrompt: (prompt: string | null) => void
+    customInputMode: boolean
+    setCustomInputMode: (mode: boolean) => void
+    customAnswer: string
+    setCustomAnswer: (answer: string) => void
+    staticMessages: Message[]
+    setStaticMessages: (msgs: Message[] | ((prev: Message[]) => Message[])) => void
+    staticKey: number
+    setStaticKey: (key: number | ((prev: number) => number)) => void
+    activeMessages: Message[]
+    setActiveMessages: (msgs: Message[] | ((prev: Message[]) => Message[])) => void
+    isStreaming: boolean
+    setIsStreaming: (isStreaming: boolean) => void
+
+    // ----------------------------------------------------
+    // SESSIONS FEATURE
+    // ----------------------------------------------------
+    sessionItems: { label: string; value: string }[]
+    setSessionItems: (items: { label: string; value: string }[]) => void
+    sessionsData: SessionInfo[]
+    setSessionsData: (data: SessionInfo[]) => void
+    sessionPage: number
+    setSessionPage: (page: number) => void
+    sessionSelectedIndex: number
+    setSessionSelectedIndex: (index: number) => void
+    sessionRenameMode: boolean
+    setSessionRenameMode: (mode: boolean) => void
+    sessionNewName: string
+    setSessionNewName: (name: string) => void
+
+    // ----------------------------------------------------
+    // SETTINGS FEATURE
+    // ----------------------------------------------------
+    settingsNonWorkspace: boolean
+    setSettingsNonWorkspace: (val: boolean) => void
+    settingsNotifications: boolean
+    setSettingsNotifications: (val: boolean) => void
+    settingsShowTasks: boolean
+    setSettingsShowTasks: (val: boolean) => void
+    settingsShowTips: boolean
+    setSettingsShowTips: (val: boolean) => void
+    settingsToolPermission: 'always-ask' | 'always-proceed'
+    setSettingsToolPermission: (val: 'always-ask' | 'always-proceed') => void
+    settingsCompactMode: boolean
+    setSettingsCompactMode: (val: boolean) => void
+    settingsSoundEffects: boolean
+    setSettingsSoundEffects: (val: boolean) => void
+    settingsAutoScroll: boolean
+    setSettingsAutoScroll: (val: boolean) => void
+    settingsStreamSpeed: 'smooth' | 'instant'
+    setSettingsStreamSpeed: (val: 'smooth' | 'instant') => void
+    settingsAutoUpdate: boolean
+    setSettingsAutoUpdate: (val: boolean) => void
+    settingsSelectedIndex: number
+    setSettingsSelectedIndex: (val: number) => void
+    settingsDefaultModel: string
+    setSettingsDefaultModel: (val: string) => void
+    settingsMaxTokens: string
+    setSettingsMaxTokens: (val: string) => void
+
+    // ----------------------------------------------------
+    // TASKS FEATURE
+    // ----------------------------------------------------
+    tasksData: BackgroundTask[]
+    setTasksData: (data: BackgroundTask[]) => void
+    taskSelectedIndex: number
+    setTaskSelectedIndex: (index: number | ((prev: number) => number)) => void
+    taskViewingId: string | null
+    setTaskViewingId: (id: string | null) => void
+    taskScrollOffset: number
+    setTaskScrollOffset: (offset: number | ((prev: number) => number)) => void
+
+    // ----------------------------------------------------
+    // INTERCEPTORS (Questions & Permissions)
+    // ----------------------------------------------------
+    pendingQuestions: {
+        questions: Array<{ question: string; options: string[]; is_multi_select?: boolean }>
+        resolve: (answer: string) => void
+    } | null
+    setPendingQuestions: (pendingQuestions: any) => void
+    pendingToolCall: {
+        toolCall: any
+        resolve: (result: { block: boolean; reason?: string }) => void
+    } | null
+    setPendingToolCall: (pendingToolCall: any) => void
+
+    toasts: { id: string; message: string; variant?: string }[]
+    addToast: (message: string, variant?: string) => void
+    removeToast: (id: string) => void
+    shouldExit: boolean
+    setShouldExit: (shouldExit: boolean) => void
+}
+
+export const useCliStore = create<CliState>((set) => ({
+    // Core
+    agent: null,
+    setAgent: (agent) => set({ agent }),
+    settings: null,
+    setSettings: (settings) => set({ settings }),
+
+    // Auth
+    isAuthenticated: false,
+    setIsAuthenticated: (isAuthenticated) => set({ isAuthenticated }),
+    currentEmail: undefined,
+    setCurrentEmail: (currentEmail) => set({ currentEmail }),
+    authMode: 'none',
+    setAuthMode: (authMode) => set({ authMode }),
+    logoutItems: [],
+    setLogoutItems: (logoutItems) => set({ logoutItems }),
+    selectedProvider: '',
+    setSelectedProvider: (selectedProvider) => set({ selectedProvider }),
+    apiKey: '',
+    setApiKey: (apiKey) => set({ apiKey }),
+    openRouterModels: [],
+    setOpenRouterModels: (openRouterModels) => set({ openRouterModels }),
+
+    // Chat
+    currentPlannedPrompt: null,
+    setCurrentPlannedPrompt: (currentPlannedPrompt) => set({ currentPlannedPrompt }),
+    planMode: false,
+    setPlanMode: (planMode) => set({ planMode }),
+    grillMode: false,
+    setGrillMode: (grillMode) => set({ grillMode }),
+    grillQuestions: [],
+    setGrillQuestions: (grillQuestions) => set({ grillQuestions }),
+    currentGrillIndex: 0,
+    setCurrentGrillIndex: (currentGrillIndex) => set({ currentGrillIndex }),
+    grillAnswers: [],
+    setGrillAnswers: (grillAnswers) => set({ grillAnswers }),
+    grillPrompt: null,
+    setGrillPrompt: (grillPrompt) => set({ grillPrompt }),
+    customInputMode: false,
+    setCustomInputMode: (customInputMode) => set({ customInputMode }),
+    customAnswer: '',
+    setCustomAnswer: (customAnswer) => set({ customAnswer }),
+    staticMessages: [{ id: 'header', role: 'header' }],
+    setStaticMessages: (updater) =>
+        set((state) => ({
+            staticMessages: typeof updater === 'function' ? updater(state.staticMessages) : updater,
+        })),
+    staticKey: 0,
+    setStaticKey: (updater) =>
+        set((state) => ({
+            staticKey: typeof updater === 'function' ? updater(state.staticKey) : updater,
+        })),
+    activeMessages: [],
+    setActiveMessages: (updater) =>
+        set((state) => ({
+            activeMessages: typeof updater === 'function' ? updater(state.activeMessages) : updater,
+        })),
+    isStreaming: false,
+    setIsStreaming: (isStreaming) => set({ isStreaming }),
+
+    // Sessions
+    sessionItems: [],
+    setSessionItems: (sessionItems) => set({ sessionItems }),
+    sessionsData: [],
+    setSessionsData: (sessionsData) => set({ sessionsData }),
+    sessionPage: 0,
+    setSessionPage: (sessionPage) => set({ sessionPage }),
+    sessionSelectedIndex: 0,
+    setSessionSelectedIndex: (sessionSelectedIndex) => set({ sessionSelectedIndex }),
+    sessionRenameMode: false,
+    setSessionRenameMode: (sessionRenameMode) => set({ sessionRenameMode }),
+    sessionNewName: '',
+    setSessionNewName: (sessionNewName) => set({ sessionNewName }),
+
+    // Settings Feature
+    settingsNonWorkspace: false,
+    setSettingsNonWorkspace: (settingsNonWorkspace) => set({ settingsNonWorkspace }),
+    settingsNotifications: false,
+    setSettingsNotifications: (settingsNotifications) => set({ settingsNotifications }),
+    settingsShowTasks: true,
+    setSettingsShowTasks: (settingsShowTasks) => set({ settingsShowTasks }),
+    settingsShowTips: true,
+    setSettingsShowTips: (settingsShowTips) => set({ settingsShowTips }),
+    settingsToolPermission: 'always-ask',
+    setSettingsToolPermission: (settingsToolPermission) => set({ settingsToolPermission }),
+    settingsCompactMode: false,
+    setSettingsCompactMode: (settingsCompactMode) => set({ settingsCompactMode }),
+    settingsSoundEffects: false,
+    setSettingsSoundEffects: (settingsSoundEffects) => set({ settingsSoundEffects }),
+    settingsAutoScroll: true,
+    setSettingsAutoScroll: (settingsAutoScroll) => set({ settingsAutoScroll }),
+    settingsStreamSpeed: 'smooth',
+    setSettingsStreamSpeed: (settingsStreamSpeed) => set({ settingsStreamSpeed }),
+    settingsAutoUpdate: true,
+    setSettingsAutoUpdate: (settingsAutoUpdate) => set({ settingsAutoUpdate }),
+    settingsSelectedIndex: 0,
+    setSettingsSelectedIndex: (settingsSelectedIndex) => set({ settingsSelectedIndex }),
+    settingsDefaultModel: '',
+    setSettingsDefaultModel: (settingsDefaultModel) => set({ settingsDefaultModel }),
+    settingsMaxTokens: '',
+    setSettingsMaxTokens: (settingsMaxTokens) => set({ settingsMaxTokens }),
+
+    // Tasks
+    tasksData: [],
+    setTasksData: (tasksData) => set({ tasksData }),
+    taskSelectedIndex: 0,
+    setTaskSelectedIndex: (updater) =>
+        set((state) => ({
+            taskSelectedIndex:
+                typeof updater === 'function' ? updater(state.taskSelectedIndex) : updater,
+        })),
+    taskViewingId: null,
+    setTaskViewingId: (taskViewingId) => set({ taskViewingId }),
+    taskScrollOffset: 0,
+    setTaskScrollOffset: (updater) =>
+        set((state) => ({
+            taskScrollOffset:
+                typeof updater === 'function' ? updater(state.taskScrollOffset) : updater,
+        })),
+
+    // Interceptors
+    pendingQuestions: null,
+    setPendingQuestions: (pendingQuestions) => set({ pendingQuestions }),
+    pendingToolCall: null,
+    setPendingToolCall: (pendingToolCall) => set({ pendingToolCall }),
+
+    // CLI events
+    toasts: [],
+    addToast: (message, variant = 'info') =>
+        set((state) => ({
+            toasts: [...state.toasts, { id: Date.now().toString(), message, variant }],
+        })),
+    removeToast: (id) => set((state) => ({ toasts: state.toasts.filter((t: any) => t.id !== id) })),
+    shouldExit: false,
+    setShouldExit: (shouldExit) => set({ shouldExit }),
+}))

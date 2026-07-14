@@ -1,6 +1,7 @@
-import { describe, it, expect, afterEach } from 'bun:test'
 import { render, screen, cleanup } from '@testing-library/react'
+import { describe, it, expect, afterEach } from 'bun:test'
 import React from 'react'
+
 import { Button } from '@/shared/components/ui/Button'
 
 describe('Button Component', () => {

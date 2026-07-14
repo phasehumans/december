@@ -1,6 +1,8 @@
-import type { Request, Response } from 'express'
 import { AppError } from '../../shared/appError'
+
 import { cliService } from './cli.service'
+
+import type { Request, Response } from 'express'
 
 export const chatCompletions = async (req: Request, res: Response) => {
     try {

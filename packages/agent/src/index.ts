@@ -1,9 +1,8 @@
 export * from './agent'
 export * from './agent-loop'
-export * from './config'
+
 export * from './utils/compaction'
 export * from './harness/session-repository'
-export * from './harness/file-session-repository'
 export * from './harness/agent-harness'
 export * from './proxy'
-export * from './utils/task-manager'
+export * from './platform-adapter'

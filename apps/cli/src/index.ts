@@ -1,11 +1,22 @@
 #!/usr/bin/env node
-import { AgentHarness, FileSessionRepository, getProviderConfig, loadConfig } from '@december/agent'
+import { AgentHarness } from '@december/agent'
+
+import { FileSessionRepository } from './file-session-repository'
+
+function AppWrapper(props: any) {
+    const session = useAgentSession(props)
+    return React.createElement(App, { ...props, session })
+}
+import fs from 'fs'
+import path from 'path'
+
 import {
     OpenAIProvider,
     AnthropicProvider,
     GeminiProvider,
     OpenRouterProvider,
 } from '@december/providers'
+import { configureMCP } from '@december/tools'
 import {
     BashTool,
     ReadFileTool,
@@ -22,14 +33,19 @@ import {
     GitHubTool,
     MCPTool,
 } from '@december/tools'
+import { ChatApp as App } from '@december/tui'
 import { RootLayout } from '@december/tui'
-import { Chat as App } from './app'
+import dotenv from 'dotenv'
 import { render } from 'ink'
 import React from 'react'
+
+dotenv.config()
 
 import pkg from '../package.json' with { type: 'json' }
 
 import { loginViaBrowser, loginViaDeviceCode } from './auth'
+import { getProviderConfig, loadConfig } from './config'
+import { useAgentSession } from './hooks/use-agent-session'
 import { localOperations } from './local-operations'
 
 const originalConsoleError = console.error
@@ -103,6 +119,20 @@ async function main() {
     const sessionRepository = new FileSessionRepository()
     const sessionId = `session-${Date.now()}`
 
+    try {
+        const mcpConfigPath = path.join(process.cwd(), 'mcp.json')
+        const decMcpPath = path.join(process.cwd(), '.december', 'mcp.json')
+        if (fs.existsSync(mcpConfigPath)) {
+            const mcpConfig = JSON.parse(fs.readFileSync(mcpConfigPath, 'utf8'))
+            configureMCP(mcpConfig.mcpServers || mcpConfig)
+        } else if (fs.existsSync(decMcpPath)) {
+            const mcpConfig = JSON.parse(fs.readFileSync(decMcpPath, 'utf8'))
+            configureMCP(mcpConfig.mcpServers || mcpConfig)
+        }
+    } catch (err: any) {
+        console.warn('Failed to parse mcp.json:', err.message)
+    }
+
     const harness = new AgentHarness({
         baseSystemPrompt:
             'You are December, an autonomous software engineer. You have access to tools. When executing code, please use JSON schemas for tool inputs. Before using a tool, you MUST enclose your thought process inside <thought>...</thought> tags. At the end of your work, provide a summary of what you did, highlighting important keywords.',
@@ -158,7 +188,29 @@ async function main() {
 
             console.log('Zipping workspace state...')
             const archivePath = '.december-handoff.tar.gz'
-            execSync(`tar -czf ${archivePath} --exclude=node_modules --exclude=.git .`, {
+
+            const excludes = ['--exclude=node_modules', '--exclude=.git']
+            try {
+                if (fs.existsSync('.gitignore')) {
+                    const lines = fs.readFileSync('.gitignore', 'utf8').split('\n')
+                    for (const line of lines) {
+                        const t = line.trim()
+                        if (t && !t.startsWith('#'))
+                            excludes.push(`--exclude=${t.endsWith('/') ? t.slice(0, -1) : t}`)
+                    }
+                }
+                if (fs.existsSync('.decemberignore')) {
+                    const lines = fs.readFileSync('.decemberignore', 'utf8').split('\n')
+                    for (const line of lines) {
+                        const t = line.trim()
+                        if (t && !t.startsWith('#'))
+                            excludes.push(`--exclude=${t.endsWith('/') ? t.slice(0, -1) : t}`)
+                    }
+                }
+            } catch (e) {}
+
+            const excludeArgs = excludes.join(' ')
+            execSync(`tar -czf ${archivePath} ${excludeArgs} .`, {
                 stdio: 'inherit',
             })
 
@@ -213,7 +265,7 @@ async function main() {
         React.createElement(
             RootLayout,
             null,
-            React.createElement(App, {
+            React.createElement(AppWrapper, {
                 agent,
                 isAuthenticated,
                 cliVersion: pkg.version,

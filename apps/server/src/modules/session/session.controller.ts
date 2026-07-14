@@ -1,7 +1,9 @@
-import type { Request, Response } from 'express'
-import * as sessionService from './session.service'
-import { sendSuccess } from '../../shared/response'
 import { asyncHandler } from '../../shared/asyncHandler'
+import { sendSuccess } from '../../shared/response'
+
+import * as sessionService from './session.service'
+
+import type { Request, Response } from 'express'
 
 export const getSessionsHandler = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user!.userId

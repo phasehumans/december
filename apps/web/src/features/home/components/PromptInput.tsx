@@ -1,6 +1,6 @@
+import { usePromptInputController } from '@/features/home/hooks/usePromptInputController'
 import { Icons } from '@/shared/components/ui/Icons'
 import { PromptFooter } from '@/shared/components/ui/PromptFooter'
-import { usePromptInputController } from '@/features/home/hooks/usePromptInputController'
 
 const PromptInput: React.FC<PromptInputProps & { onFocus?: () => void }> = ({
     onSubmit,

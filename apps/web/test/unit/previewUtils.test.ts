@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'bun:test'
-import { withDocumentShell, injectPreviewBridge } from '@/features/preview/utils/previewUtils'
+
 import { PREVIEW_HTML } from '@/features/preview/constants/preview'
+import { withDocumentShell, injectPreviewBridge } from '@/features/preview/utils/previewUtils'
 
 describe('previewUtils', () => {
     describe('withDocumentShell', () => {

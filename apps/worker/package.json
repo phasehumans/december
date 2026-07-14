@@ -1,0 +1,19 @@
+{
+    "name": "@december/worker",
+    "version": "1.0.0",
+    "private": true,
+    "scripts": {
+        "dev": "bun --watch src/index.ts",
+        "start": "bun src/index.ts"
+    },
+    "dependencies": {
+        "bullmq": "^5.0.0",
+        "ioredis": "^5.0.0",
+        "@december/shared": "workspace:*",
+        "@december/agent": "workspace:*",
+        "@december/database": "workspace:*"
+    },
+    "devDependencies": {
+        "@types/bun": "latest"
+    }
+}

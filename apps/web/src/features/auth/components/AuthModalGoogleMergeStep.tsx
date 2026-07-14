@@ -1,6 +1,7 @@
 import React from 'react'
 
 import { AuthModalGoogleIcon } from './AuthModalGoogleIcon'
+
 import { Icons } from '@/shared/components/ui/Icons'
 
 interface AuthModalGoogleMergeStepProps {

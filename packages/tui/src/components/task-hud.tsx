@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react'
-import { Box, Text } from 'ink'
 import fs from 'fs'
 import path from 'path'
+
+import { Box, Text } from 'ink'
+import React, { useState, useEffect } from 'react'
 
 export function TaskHUD({ cwd }: { cwd: string }) {
     const [taskLines, setTaskLines] = useState<string[]>([])

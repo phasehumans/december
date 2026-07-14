@@ -1,6 +1,7 @@
 import React from 'react'
 
 import type { AuthModalForgotResetStepProps } from '@/features/auth/types'
+
 import { Icons } from '@/shared/components/ui/Icons'
 
 export const AuthModalForgotResetStep: React.FC<AuthModalForgotResetStepProps> = ({

@@ -1,5 +1,5 @@
+import { Text, useInput } from 'ink'
 import React, { useState, useEffect } from 'react'
-import { Text, Box, useInput } from 'ink'
 
 type Props = {
     value: string

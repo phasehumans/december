@@ -1,16 +1,17 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import React from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
+
 import { useAppStore } from '@/app/store'
 import { getViewForPath, type ViewState } from '@/app/types'
 import { canvasAPI } from '@/features/canvas/api'
+import { useChatController } from '@/features/chat/hooks/useChatController'
+import { useNavigationController } from '@/features/navigation/hooks/useNavigationController'
 import { previewAPI } from '@/features/preview/api'
 import { profileAPI } from '@/features/profile/api/profile'
 import { projectAPI } from '@/features/projects/api/project'
-import { refreshAuthSession } from '@/shared/api/client'
-import { useNavigationController } from '@/features/navigation/hooks/useNavigationController'
 import { useProjectController } from '@/features/projects/hooks/useProjectController'
-import { useChatController } from '@/features/chat/hooks/useChatController'
+import { refreshAuthSession } from '@/shared/api/client'
 
 export const useAppController = () => {
     const queryClient = useQueryClient()

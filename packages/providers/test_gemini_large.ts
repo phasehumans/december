@@ -1,4 +1,5 @@
 import fs from 'fs'
+
 import { GoogleGenAI } from '@google/genai'
 async function run() {
     const config = JSON.parse(

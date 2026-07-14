@@ -1,5 +1,4 @@
 import { LLMProvider } from '@december/providers'
-
 import { Message } from '@december/shared'
 
 export const DEFAULT_MAX_TOKENS = 32000 // Assume a generic safe limit

@@ -1,17 +1,23 @@
 import { Box, Text } from 'ink'
 import SelectInput from 'ink-select-input'
+
 import { CustomIndicator, CustomItem } from './menu-items'
 
 export function PlanApproveMenu(props: any) {
-    const { handlePlanApprovalSelect } = props
+    const { handlePlanApprovalSelect, planSummary } = props
     const planItems = [
-        { label: 'Approve and Execute', value: 'approve' },
-        { label: 'Reject / Cancel', value: 'reject' },
+        { label: '1. Approve and Execute', value: 'approve' },
+        { label: '2. Reject / Cancel', value: 'reject' },
     ]
     return (
         <Box flexDirection="column" paddingX={1}>
-            <Box marginBottom={1}>
-                <Text color="#F1C40F" bold>
+            <Box marginBottom={1} flexDirection="column" gap={1}>
+                {planSummary && (
+                    <Box borderStyle="round" borderColor="cyan" paddingX={1}>
+                        <Text color="cyan">{planSummary}</Text>
+                    </Box>
+                )}
+                <Text color="white" bold>
                     Plan generated. Please approve or reject:
                 </Text>
             </Box>
