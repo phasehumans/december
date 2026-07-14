@@ -11,6 +11,11 @@ import {
 } from '../../shared/project-storage'
 import { hydrateCanvasDocument, persistCanvasDocument } from '../canvas/canvas.utils'
 
+import { getIO } from '../../socket'
+import { publishEvent } from '@december/shared'
+import { Queue } from 'bullmq'
+import Redis from 'ioredis'
+
 import { projectRepository } from './project.repository'
 import { parseStoredProjectFiles, mapVersionSummary } from './project.utils'
 
@@ -250,16 +255,34 @@ const updateGeneralSettings = async (data: UpdateGeneralSettings) => {
 const deleteProject = async (data: DeleteProject) => {
     const { userId, projectId } = data
 
+    // Cascade 1: Fetch sessions
+    const sessions = await projectRepository.findSessionsByProject(projectId)
+    const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379')
+
+    for (const session of sessions) {
+        // Cascade 2: Send SIGKILL to running VMs immediately
+        await publishEvent(`session_events:${session.id}`, { type: 'SIGKILL', data: {} })
+        // Cascade 3: Disconnect WebSockets
+        try {
+            getIO().in(`session:${session.id}`).disconnectSockets()
+        } catch (e) {
+            console.warn('Socket not connected or io not available', e)
+        }
+    }
+
+    // Cascade 4: Enqueue MinIO wipe to a queue (retry up to 3 times)
+    const minioWipeQueue = new Queue('minio_wipe', { connection: redis })
+    await minioWipeQueue.add(
+        'wipe',
+        { prefix: projectPrefix(projectId) },
+        { attempts: 3, backoff: { type: 'exponential', delay: 1000 } }
+    )
+
+    // Cascade 5: Delete DB records
     const result = await projectRepository.deleteProjectMany(projectId, userId)
 
     if (result.count === 0) {
         throw new AppError('project not found', 404)
-    }
-
-    try {
-        await deletePrefix(projectPrefix(projectId)) // delete from obj store
-    } catch (error) {
-        console.log('failed to delete project files')
     }
 
     return { message: 'project deleted' }

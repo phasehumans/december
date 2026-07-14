@@ -20,8 +20,10 @@ import { authMiddleware } from '../../middleware/auth.middleware'
 // add cli auth via code (ref devin authflow)
 authRouter.get('/cli-token', authMiddleware, authController.getCliToken)
 
+import { deviceCodeLimiter } from '../../middleware/rate-limiter'
+
 // Device Code Flow
-authRouter.post('/device/code', authDeviceController.generateDeviceCode)
+authRouter.post('/device/code', deviceCodeLimiter, authDeviceController.generateDeviceCode)
 authRouter.post('/device/token', authDeviceController.pollDeviceToken)
 authRouter.post('/device/verify', authMiddleware, authDeviceController.verifyUserCode)
 

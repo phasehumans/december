@@ -25,6 +25,7 @@ import skillsRouter from './modules/skills/skills.routes'
 import templateRouter from './modules/template/template.routes'
 import usageRouter from './modules/usage/usage.routes'
 import wikiRouter from './modules/wiki/wiki.routes'
+import generateRouter from './modules/generate/generate.routes'
 
 const app = express()
 
@@ -41,6 +42,11 @@ app.use(
         credentials: true,
     })
 )
+
+import { apiRateLimiter } from './middleware/rate-limiter'
+
+// Apply rate limiter to socket.io upgrade endpoints
+app.use('/socket.io', apiRateLimiter)
 
 app.use('/api/v1/auth', authRouter)
 app.use('/api/v1/profile', profileRouter)
@@ -64,6 +70,7 @@ app.use('/api/v1/session', sessionRouter)
 app.use('/api/v1/secrets', secretsRouter)
 
 app.use('/api/v1/core', coreRouter)
+app.use('/api/v1/generate', generateRouter)
 app.use(errorHandler)
 
 export default app

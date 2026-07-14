@@ -21,6 +21,15 @@ export async function findManySessions(userId: string) {
     })
 }
 
+export async function countActiveSessions(userId: string) {
+    return prisma.session.count({
+        where: {
+            userId,
+            vmStatus: { in: ['PROVISIONING', 'RUNNING'] },
+        },
+    })
+}
+
 export async function findSessionById(sessionId: string, userId: string) {
     return prisma.session.findFirst({
         where: { id: sessionId, userId },

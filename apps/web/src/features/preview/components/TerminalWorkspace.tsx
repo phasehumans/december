@@ -43,9 +43,29 @@ export const TerminalWorkspace: React.FC<TerminalWorkspaceProps> = ({ previewSes
         fitAddon.fit()
 
         xterm.writeln('\x1b[38;2;135;206;235mDecember Cloud Terminal\x1b[0m')
+
+        let socket: any = null
         if (previewSessionId) {
             xterm.writeln(`Connecting to Firecracker VM session ${previewSessionId}...`)
-            // TODO: Implement actual WebSocket connection to the runtime service
+
+            // Connect to actual WebSocket for terminal stream
+            import('socket.io-client').then(({ io }) => {
+                socket = io('/', { path: '/socket.io/' })
+
+                socket.emit('join_session_terminal', { sessionId: previewSessionId })
+
+                socket.on('TERMINAL_DATA', (data: string) => {
+                    xterm.write(data)
+                })
+
+                xterm.onData((data) => {
+                    socket.emit('TERMINAL_INPUT', { sessionId: previewSessionId, data })
+                })
+
+                socket.on('disconnect', () => {
+                    xterm.writeln('\r\n\x1b[31mDisconnected from VM.\x1b[0m')
+                })
+            })
         } else {
             xterm.writeln('Waiting for VM to boot...')
         }
@@ -64,6 +84,7 @@ export const TerminalWorkspace: React.FC<TerminalWorkspaceProps> = ({ previewSes
         return () => {
             resizeObserver.disconnect()
             xterm.dispose()
+            if (socket) socket.disconnect()
         }
     }, [previewSessionId])
 

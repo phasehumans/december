@@ -14,7 +14,24 @@ export const verifyWalletBalance = async (userId: string) => {
     return usageService.hasMinimumBalance({ userId })
 }
 
+import { prisma } from '@december/database'
+
 export const generateHandoffUrl = async (userId: string) => {
+    // Check for Handoff Conflicts (Phase 3.4)
+    const activeSession = await prisma.session.findFirst({
+        where: {
+            userId,
+            vmStatus: { in: ['RUNNING', 'PROVISIONING'] },
+        },
+    })
+
+    if (activeSession) {
+        throw new AppError(
+            'Conflict: You already have an active cloud session running. Please stop it before handing off.',
+            409
+        )
+    }
+
     const objectKey = `handoffs/${userId}/${Date.now()}-handoff.tar.gz`
 
     const putCommand = new PutObjectCommand({

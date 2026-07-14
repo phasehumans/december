@@ -73,8 +73,12 @@ export const usageRepository = {
 
     async findUserCredits(data: { userId: string }, tx?: any) {
         const { userId } = data
-        const client = tx || prisma
-        return client.user.findUnique({
+        if (tx) {
+            const rows: any[] =
+                await tx.$queryRaw`SELECT "creditBalance" FROM "User" WHERE id = ${userId} FOR UPDATE`
+            return rows.length > 0 ? { creditBalance: rows[0].creditBalance } : null
+        }
+        return prisma.user.findUnique({
             where: { id: userId },
             select: { creditBalance: true },
         })

@@ -1,10 +1,18 @@
 import Redis from 'ioredis'
 import jwt from 'jsonwebtoken'
 import { Server, Socket } from 'socket.io'
+import { createAdapter } from '@socket.io/redis-adapter'
+import { Queue } from 'bullmq'
 
 import { env } from './env'
 
-const redisSubClient = new Redis(process.env.REDIS_URL || 'redis://localhost:6379')
+const pubClient = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
+    maxRetriesPerRequest: null,
+})
+const subClient = pubClient.duplicate()
+
+// This one is specifically for subscribing to worker session events
+const redisSubClient = pubClient.duplicate()
 
 let io: Server
 
@@ -14,6 +22,10 @@ export function initSocket(httpServer: any) {
             origin: env.WEB_URL,
             credentials: true,
         },
+        perMessageDeflate: {
+            threshold: 1024, // only compress payloads larger than 1KB
+        },
+        adapter: createAdapter(pubClient, subClient),
     })
 
     // Subscribe to all session events from Redis (Worker)
@@ -62,6 +74,47 @@ export function initSocket(httpServer: any) {
 
         socket.on('disconnect', () => {
             console.log(`[Socket] User disconnected: ${socket.data.userId} (socket: ${socket.id})`)
+        })
+
+        // Custom application-level heartbeat
+        socket.on('ping', () => {
+            socket.emit('pong', { timestamp: Date.now() })
+        })
+
+        socket.on(
+            'send_prompt',
+            async (data: { sessionId: string; prompt: string; projectId: string }) => {
+                try {
+                    // Fetch user secrets (Phase 3.6 Secrets Management)
+                    // We'll mock decryption here since decryption logic belongs to secret service
+                    const secrets: any[] = [] // Secret model doesn't exist yet, passing empty secrets
+                    const decryptedSecrets = secrets.map((s: any) => ({
+                        key: s.key,
+                        value: s.value, // Assuming decrypted or decryption utility here
+                    }))
+
+                    // Enqueue to worker
+                    const agentJobsQueue = new Queue('agent_jobs', { connection: pubClient })
+                    await agentJobsQueue.add('run_agent', {
+                        sessionId: data.sessionId,
+                        projectId: data.projectId,
+                        userId: socket.data.userId,
+                        prompt: data.prompt,
+                        secrets: decryptedSecrets, // Injecting decrypted secrets into payload
+                    })
+                } catch (err: any) {
+                    console.error('[Socket] Failed to enqueue agent job:', err)
+                    socket.emit('error', { message: 'Failed to start agent: ' + err.message })
+                }
+            }
+        )
+
+        socket.on('stop_session', async (data: { sessionId: string }) => {
+            console.log(`[Socket] Received STOP signal for session ${data.sessionId}`)
+            await pubClient.publish(
+                `session_interrupts:${data.sessionId}`,
+                JSON.stringify({ type: 'INTERRUPT' })
+            )
         })
     })
 
