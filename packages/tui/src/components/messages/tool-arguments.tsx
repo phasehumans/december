@@ -1,5 +1,5 @@
-import React from 'react'
 import { Box, Text } from 'ink'
+import React from 'react'
 
 export function ToolArgumentsDisplay({ toolName, inputObj }: { toolName: string; inputObj: any }) {
     if (!inputObj || typeof inputObj !== 'object') return null

@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'bun:test'
+
 import { useAppStore } from '@/app/store'
 
 describe('App Store', () => {

@@ -31,7 +31,11 @@ export interface DecemberConfig {
     showActiveTasks?: boolean
     showTips?: boolean
     toolPermission?: 'always-proceed' | 'always-ask'
-    telemetry?: boolean
+    compactMode?: boolean
+    soundEffects?: boolean
+    autoScroll?: boolean
+    streamSpeed?: 'smooth' | 'instant'
+    approvedTools?: string[]
     autoUpdate?: boolean
 }
 
@@ -55,18 +59,31 @@ export async function saveConfig(config: DecemberConfig): Promise<void> {
 export async function getProviderConfig(): Promise<ProviderConfig | undefined> {
     const config = await loadConfig()
 
-    if (config.decemberToken) {
-        return {
-            provider: 'december_proxy',
-            apiKey: config.decemberToken,
-        }
-    }
-
+    // 1.8 Wallet vs BYOK priority: BYOK via config file takes precedence.
     if (config.activeProvider && config.providers[config.activeProvider]) {
         return {
             provider: config.activeProvider as any,
             apiKey: config.providers[config.activeProvider],
             model: config.activeModel,
+        }
+    }
+
+    // Check for common env vars for BYOK priority
+    if (process.env.GEMINI_API_KEY) {
+        return { provider: 'gemini', apiKey: process.env.GEMINI_API_KEY }
+    }
+    if (process.env.OPENAI_API_KEY) {
+        return { provider: 'openai', apiKey: process.env.OPENAI_API_KEY }
+    }
+    if (process.env.ANTHROPIC_API_KEY) {
+        return { provider: 'anthropic', apiKey: process.env.ANTHROPIC_API_KEY }
+    }
+
+    // Wallet fallback
+    if (config.decemberToken) {
+        return {
+            provider: 'december_proxy',
+            apiKey: config.decemberToken,
         }
     }
 

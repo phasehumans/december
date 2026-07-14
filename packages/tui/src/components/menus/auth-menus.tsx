@@ -1,17 +1,18 @@
 import React from 'react'
-import { MenuMenu } from './menu-menu'
-import { DecemberLoginSelectMenu } from './december-login-select-menu'
-import { ByokProviderMenu } from './byok-provider-menu'
+
 import { ByokKeyMenu } from './byok-key-menu'
-import { ModelSelectMenu } from './model-select-menu'
+import { ByokProviderMenu } from './byok-provider-menu'
 import { ContextSelectMenu } from './context-select-menu'
-import { LogoutSelectMenu } from './logout-select-menu'
-import { SessionSelectMenu } from './session-select-menu'
-import { TasksModeMenu } from './tasks-mode-menu'
-import { PlanApproveMenu } from './plan-approve-menu'
+import { DecemberLoginSelectMenu } from './december-login-select-menu'
 import { GrillQuestionMenu } from './grill-question-menu'
+import { LogoutSelectMenu } from './logout-select-menu'
+import { MenuMenu } from './menu-menu'
+import { ModelSelectMenu } from './model-select-menu'
+import { PlanApproveMenu } from './plan-approve-menu'
+import { SessionSelectMenu } from './session-select-menu'
 import { SettingsMainMenu } from './settings-main-menu'
-import { HooksMenu } from './hooks-menu'
+import { TasksModeMenu } from './tasks-mode-menu'
+import { ToolPermissionMenu } from './tool-permission-menu'
 import { UsageMenu } from './usage-menu'
 
 export function AuthMenus(props: any) {
@@ -40,8 +41,18 @@ export function AuthMenus(props: any) {
             return <GrillQuestionMenu {...props} />
         case 'settings_main':
             return <SettingsMainMenu {...props} />
-        case 'hooks':
-            return <HooksMenu {...props} />
+        case 'tool_permission':
+            return (
+                <ToolPermissionMenu
+                    questions={props.pendingQuestions?.questions || []}
+                    onComplete={(answer) => {
+                        props.pendingQuestions?.resolve(answer)
+                        props.setAuthMode('none')
+                        props.setPendingQuestions(null)
+                    }}
+                />
+            )
+
         case 'usage':
             return <UsageMenu {...props} />
         default:

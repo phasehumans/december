@@ -1,7 +1,5 @@
 import React, { useRef } from 'react'
 
-import type { CanvasDocument } from '@/features/canvas/types'
-
 import Canvas, { type CanvasRef } from '@/features/canvas/components/Canvas'
 
 interface CanvasPageProps {

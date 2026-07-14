@@ -1,6 +1,6 @@
-import React, { useState } from 'react'
 import { Box, Text } from 'ink'
 import SelectInput from 'ink-select-input'
+import React, { useState } from 'react'
 
 export interface AskQuestionMenuProps {
     questions: Array<{

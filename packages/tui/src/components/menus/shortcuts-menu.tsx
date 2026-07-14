@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react'
 import { Box, Text, useInput } from 'ink'
+import React, { useState } from 'react'
 
 const CMD_COL_WIDTH = 34
 const WINDOW_SIZE = 15

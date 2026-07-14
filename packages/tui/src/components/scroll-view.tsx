@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react'
 import { Box, useInput, useStdout } from 'ink'
+import React, { useState, useEffect } from 'react'
 
 export function ScrollView({ children, height }: { children: React.ReactNode; height?: number }) {
     const { stdout } = useStdout()

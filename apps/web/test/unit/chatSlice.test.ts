@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'bun:test'
 import { create } from 'zustand'
+
 import { createChatSlice, ChatSlice } from '@/features/chat/slice'
 import { Message } from '@/features/chat/types'
 

@@ -7,6 +7,7 @@ import type {
     CanvasItemDraft,
     CanvasUpdateOptions as UpdateOptions,
 } from '@/features/canvas/types'
+
 import { createEmptyCanvasDocument } from '@/features/canvas/types'
 
 export const SHAPE_TOOLS = new Set(['frame', 'square', 'circle', 'line', 'arrow'])

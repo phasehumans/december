@@ -1,6 +1,7 @@
-import { describe, it, expect, afterEach } from 'bun:test'
 import { render, cleanup } from '@testing-library/react'
+import { describe, it, expect, afterEach } from 'bun:test'
 import React from 'react'
+
 import { Skeleton } from '@/shared/components/ui/Skeleton'
 
 describe('Skeleton Component', () => {

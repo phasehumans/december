@@ -1,13 +1,16 @@
-import React, { useState } from 'react'
+import { History } from 'lucide-react'
+import React from 'react'
 import { createPortal } from 'react-dom'
 import { useLocation } from 'react-router-dom'
-import { BookOpen, History } from 'lucide-react'
-import { SidebarFooter } from './SidebarFooter'
+
 import { SearchModal } from './SearchModal'
+import { SidebarFooter } from './SidebarFooter'
+
+import type { MobileSidebarProps } from '@/features/navigation/types'
+
+import { useProjects } from '@/features/projects/hooks/useProjects'
 import { Icons } from '@/shared/components/ui/Icons'
 import { cn } from '@/shared/lib/utils'
-import { useProjects } from '@/features/projects/hooks/useProjects'
-import type { MobileSidebarProps } from '@/features/navigation/types'
 
 export const MobileSidebar: React.FC<
     MobileSidebarProps & { onSignOut?: () => void; onHomeClick?: () => void; user?: any }

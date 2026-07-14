@@ -1,5 +1,4 @@
 import * as sessionRepository from './session.repository'
-import type { Prisma } from '@december/database'
 
 export async function getUserSessions(userId: string) {
     const sessions = await sessionRepository.findManySessions(userId)

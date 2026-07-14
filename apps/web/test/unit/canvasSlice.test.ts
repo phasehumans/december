@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'bun:test'
 import { create } from 'zustand'
+
 import { createCanvasSlice, CanvasSlice } from '@/features/canvas/slice'
 
 describe('Canvas Slice', () => {

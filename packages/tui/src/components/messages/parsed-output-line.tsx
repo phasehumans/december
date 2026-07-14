@@ -1,5 +1,5 @@
-import React from 'react'
 import { Text } from 'ink'
+import React from 'react'
 
 export function ParsedOutputLine({ line, isError }: { line: string; isError: boolean }) {
     const isTruncationMarker = line.startsWith('<...') && line.endsWith('...>')

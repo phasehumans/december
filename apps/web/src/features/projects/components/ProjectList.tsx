@@ -2,7 +2,6 @@ import React, { useEffect, useState, useMemo } from 'react'
 
 import { useProjectListMutations } from '../hooks/useProjectListMutations'
 import { useProjects } from '../hooks/useProjects'
-import { useAppStore } from '@/app/store'
 
 import { ProjectListModals } from './ProjectListModals'
 import { ProjectListView } from './ProjectListView'
@@ -16,6 +15,7 @@ import type {
     ShareModalState,
 } from '@/features/projects/types'
 
+import { useAppStore } from '@/app/store'
 import { toProjectSlug } from '@/app/types'
 import { SettingsBigModal } from '@/features/preview/components/settings/SettingsBigModal'
 

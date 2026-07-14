@@ -5,25 +5,15 @@ import { CanvasPage } from '../../features/canvas/components/CanvasPage'
 import { ReviewPage } from '../../features/projects/components/ReviewPage'
 
 import type { ViewState } from '@/app/types'
-import type { CanvasDocument } from '@/features/canvas/types'
-import type { Message } from '@/features/chat/types'
-import type {
-    GeneratedProjectFile,
-    OutputOperation,
-    PreviewRuntimeError,
-    PreviewSelectedElement,
-    PreviewSessionStatus,
-} from '@/features/preview/types'
-import type { BackendProjectVersionSummary } from '@/features/projects/api/project'
-import type { Project } from '@/features/projects/types'
+import type { PreviewRuntimeError, PreviewSelectedElement } from '@/features/preview/types'
 
+import { DocsView } from '@/features/docs/components/DocsView'
 import { HomeHero } from '@/features/home/components/HomeHero'
 import { OutputScreen } from '@/features/preview/components/OutputScreen'
 import { ProfileSettings } from '@/features/profile/components/ProfileSettings'
 import { ProjectList } from '@/features/projects/components/ProjectList'
 import { SessionList } from '@/features/projects/components/SessionList'
 import { TemplatesView } from '@/features/templates/components/TemplatesView'
-import { DocsView } from '@/features/docs/components/DocsView'
 
 interface AppContentViewProps {
     view: ViewState

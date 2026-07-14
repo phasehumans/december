@@ -1,8 +1,8 @@
-import { v4 as uuidv4 } from 'uuid'
+import { AgentEvent, ToolCall, ToolResult } from '@december/shared'
 import pRetry, { AbortError } from 'p-retry'
+import { v4 as uuidv4 } from 'uuid'
 
 import { Agent } from './agent'
-import { AgentEvent, ToolCall, ToolResult } from '@december/shared'
 import { compactContextIfNeeded } from './utils/compaction'
 
 const delay = (ms: number) => new Promise((res) => setTimeout(res, ms))

@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react'
 import { Home } from 'lucide-react'
+import React, { useState, useEffect } from 'react'
 
 import { Icons } from '@/shared/components/ui/Icons'
 import { cn } from '@/shared/lib/utils'

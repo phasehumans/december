@@ -1,5 +1,6 @@
-import { describe, it, expect, beforeEach, afterEach } from 'bun:test'
 import { renderHook, act, cleanup } from '@testing-library/react'
+import { describe, it, expect, beforeEach, afterEach } from 'bun:test'
+
 import { useChatMessageController } from '@/features/chat/hooks/useChatMessageController'
 
 describe('useChatMessageController hook', () => {

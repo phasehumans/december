@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'bun:test'
 import { create } from 'zustand'
+
 import { createProjectSlice, ProjectSlice } from '@/features/projects/slice'
 
 describe('Project Slice', () => {

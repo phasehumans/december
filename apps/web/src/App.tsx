@@ -4,6 +4,7 @@ import { AppContentView } from './app/components/AppContentView'
 import { AppSideNavigation } from './app/components/AppSideNavigation'
 import { useAppController } from './app/hooks/useAppController'
 import { AuthModal } from './features/auth/components/AuthModal'
+
 import { Icons } from '@/shared/components/ui/Icons'
 
 const App: React.FC = () => {
