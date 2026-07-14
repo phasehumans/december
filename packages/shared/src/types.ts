@@ -1,9 +1,9 @@
 export type Role = 'system' | 'user' | 'assistant' | 'tool' | string
 
-import { AgentOperations } from './operations'
+import { Environment } from './environment'
 
 export interface ToolExecuteContext {
-    operations: AgentOperations
+    operations: Environment
     env: Map<string, string>
     onStream: (chunk: string) => void
     spawnSubagent: (prompt: string) => Promise<string>

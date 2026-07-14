@@ -69,6 +69,12 @@ export const OutputHeaderViewTabs: React.FC<OutputHeaderViewTabsProps> = ({
                     activeTab={activeTab}
                     onSelect={setActiveTab}
                 />
+                <ViewModeTab
+                    label="Terminal"
+                    tab="terminal"
+                    activeTab={activeTab}
+                    onSelect={setActiveTab}
+                />
             </div>
         </div>
     )

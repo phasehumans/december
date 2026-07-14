@@ -48,7 +48,7 @@ describe('usage.routes.integration', () => {
     beforeEach(async () => {
         await prisma.usageEvent.deleteMany()
         await prisma.project.deleteMany()
-        await prisma.session.deleteMany()
+        await prisma.authSession.deleteMany()
         await prisma.user.deleteMany()
 
         await createTestUser()

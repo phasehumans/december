@@ -27,7 +27,7 @@ const createTestUser = async (overrides: Record<string, unknown> = {}) => {
 }
 
 const createTestSession = async (overrides: Record<string, unknown> = {}) => {
-    return prisma.session.create({
+    return prisma.authSession.create({
         data: {
             id: TEST_SESSION_ID,
             userId: TEST_USER_ID,
@@ -89,7 +89,7 @@ describe('project.routes.integration', () => {
 
     beforeEach(async () => {
         await prisma.project.deleteMany()
-        await prisma.session.deleteMany()
+        await prisma.authSession.deleteMany()
         await prisma.user.deleteMany()
 
         await createTestUser()

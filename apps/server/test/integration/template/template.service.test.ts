@@ -41,7 +41,7 @@ describe('template.service.integration', () => {
         await prisma.projectLike.deleteMany()
         await prisma.projectVersion.deleteMany()
         await prisma.project.deleteMany()
-        await prisma.session.deleteMany()
+        await prisma.authSession.deleteMany()
         await prisma.user.deleteMany()
 
         const user = await createUser()

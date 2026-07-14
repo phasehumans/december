@@ -16,13 +16,16 @@ export const BashTool: Tool<BashInput> = {
         required: ['command'],
     },
     execute: async ({ command }, context: ToolExecuteContext) => {
-        const { exitCode, output } = await context.operations.bash.exec(command, (chunk) => {
-            context.onStream(chunk)
-        })
+        const { exitCode, output, taskId } = await context.operations.bash.exec(
+            command,
+            (chunk) => {
+                context.onStream(chunk)
+            }
+        )
 
         let msg = ''
         if (exitCode === null) {
-            msg = `[Auto-Backgrounded] Command is still running in the background.\n`
+            msg = `[Auto-Backgrounded] Task ID: ${taskId}. Command is still running in the background. Use manage_task tool to check status or kill it.\n`
         } else if (exitCode !== 0) {
             msg = `Command failed with exit code ${exitCode}:\n`
         }

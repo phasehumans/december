@@ -1,276 +1,105 @@
-import React, { useEffect, useState, useMemo } from 'react'
-
-import { useProjectListMutations } from '../hooks/useProjectListMutations'
-import { useProjects } from '../hooks/useProjects'
-import { useAppStore } from '@/app/store'
-
-import { ProjectListModals } from './ProjectListModals'
-import { SessionListView } from './SessionListView'
-
-import type {
-    DeleteModalState,
-    DuplicateModalState,
-    Project,
-    ProjectListProps,
-    RenameModalState,
-    ShareModalState,
-} from '@/features/projects/types'
-
+import React, { useMemo, useState } from 'react'
+import { useSessions } from '../hooks/useSessions'
+import { Icons } from '@/shared/components/ui/Icons'
+import { useNavigate } from 'react-router-dom'
 import { toProjectSlug } from '@/app/types'
-import { SettingsBigModal } from '@/features/preview/components/settings/SettingsBigModal'
 
-export type SortOption = 'newest' | 'oldest'
-export type StatusFilter = 'any' | 'Draft' | 'Generating' | 'Generated' | 'Deployed' | 'Failed'
-
-export const SessionList: React.FC<ProjectListProps> = ({ onNewProject, onOpenProject }) => {
-    const { data: projects = [], isLoading, isFetching, error } = useProjects()
-    const errorMessage = error instanceof Error ? error.message : null
-    const { selectedModel, setSelectedModel } = useAppStore()
-    const [menuOpenId, setMenuOpenId] = useState<string | null>(null)
+export const SessionList: React.FC<{
+    onNewProject: () => void
+    onOpenProject: (id: string) => void
+}> = ({ onNewProject, onOpenProject }) => {
+    const { data: sessions = [], isLoading, isFetching, error } = useSessions()
+    const navigate = useNavigate()
     const [searchQuery, setSearchQuery] = useState('')
-    const [sortOption, setSortOption] = useState<SortOption>('newest')
-    const [statusFilter, setStatusFilter] = useState<StatusFilter>('any')
-    const [renameModal, setRenameModal] = useState<RenameModalState>({
-        isOpen: false,
-        project: null,
-        value: '',
-    })
-    const [duplicateModal, setDuplicateModal] = useState<DuplicateModalState>({
-        isOpen: false,
-        project: null,
-    })
-    const [shareModal, setShareModal] = useState<ShareModalState>({
-        isOpen: false,
-        project: null,
-    })
-    const [deleteModal, setDeleteModal] = useState<DeleteModalState>({
-        isOpen: false,
-        project: null,
-    })
-    const [openConfirmModal, setOpenConfirmModal] = useState<{
-        isOpen: boolean
-        project: Project | null
-    }>({
-        isOpen: false,
-        project: null,
-    })
-    const [settingsModal, setSettingsModal] = useState<{
-        isOpen: boolean
-        project: Project | null
-    }>({
-        isOpen: false,
-        project: null,
-    })
-    const [actionError, setActionError] = useState<string | null>(null)
-    const isInitialLoading = isLoading && projects.length === 0
 
-    useEffect(() => {
-        const handleClickOutside = () => setMenuOpenId(null)
-        if (menuOpenId) window.addEventListener('click', handleClickOutside)
-        return () => window.removeEventListener('click', handleClickOutside)
-    }, [menuOpenId])
+    const filteredSessions = useMemo(() => {
+        if (!searchQuery) return sessions
+        const q = searchQuery.toLowerCase()
+        return sessions.filter(
+            (s) =>
+                (s.title && s.title.toLowerCase().includes(q)) ||
+                (s.projectName && s.projectName.toLowerCase().includes(q)) ||
+                (s.lastMessage && s.lastMessage.toLowerCase().includes(q))
+        )
+    }, [sessions, searchQuery])
 
-    const { toggleStarMutation, renameMutation, duplicateMutation, shareMutation, deleteMutation } =
-        useProjectListMutations({
-            setActionError,
-            onRenameMutate: () => setRenameModal({ isOpen: false, project: null, value: '' }),
-            onDuplicateMutate: () => setDuplicateModal({ isOpen: false, project: null }),
-            onShareMutate: () => setShareModal({ isOpen: false, project: null }),
-            onDeleteMutate: () => setDeleteModal({ isOpen: false, project: null }),
-        })
-
-    const filteredAndSortedProjects = useMemo(() => {
-        let result = [...projects]
-
-        // Search filter
-        if (searchQuery.trim()) {
-            const query = searchQuery.toLowerCase().trim()
-            result = result.filter(
-                (project) =>
-                    project.title.toLowerCase().includes(query) ||
-                    project.description.toLowerCase().includes(query)
-            )
-        }
-
-        // Status filter
-        if (statusFilter !== 'any') {
-            result = result.filter((project) => {
-                const projectStatus = project.status || 'Draft'
-                return projectStatus === statusFilter
-            })
-        }
-
-        // Sort
-        if (sortOption === 'oldest') {
-            result.reverse()
-        }
-
-        return result
-    }, [projects, searchQuery, statusFilter, sortOption])
-
-    const toggleStar = (id: string, event: React.MouseEvent) => {
-        event.stopPropagation()
-        const project = projects.find((item) => item.id === id)
-        if (!project) return
-        toggleStarMutation.mutate({ projectId: id, isStarred: !project.isStarred })
+    if (isLoading) {
+        return <div className="p-8 text-neutral-400">Loading sessions...</div>
     }
 
-    const toggleMenu = (id: string, event: React.MouseEvent) => {
-        event.stopPropagation()
-        setMenuOpenId((prev) => (prev === id ? null : id))
-    }
-
-    const openProjectFromMenu = (projectId: string, event: React.MouseEvent) => {
-        event.stopPropagation()
-        setMenuOpenId(null)
-        const proj = projects.find((p) => p.id === projectId)
-        if (proj) {
-            const slug = toProjectSlug(proj.title)
-            window.open(`/project/${slug}`, '_blank')
-        } else {
-            onOpenProject(projectId)
-        }
-    }
-
-    const toggleStarFromMenu = (project: Project, event: React.MouseEvent) => {
-        event.stopPropagation()
-        setMenuOpenId(null)
-        toggleStarMutation.mutate({ projectId: project.id, isStarred: !project.isStarred })
-    }
-
-    const openModal = (event: React.MouseEvent, setter: () => void) => {
-        event.stopPropagation()
-        setter()
-        setMenuOpenId(null)
-    }
-
-    const openRenameModal = (project: Project, event: React.MouseEvent) =>
-        openModal(event, () => setRenameModal({ isOpen: true, project, value: project.title }))
-
-    const openDuplicateModal = (project: Project, event: React.MouseEvent) =>
-        openModal(event, () => setDuplicateModal({ isOpen: true, project }))
-
-    const openShareModal = (project: Project, event: React.MouseEvent) =>
-        openModal(event, () => setShareModal({ isOpen: true, project }))
-
-    const openDeleteModal = (project: Project, event: React.MouseEvent) =>
-        openModal(event, () => setDeleteModal({ isOpen: true, project }))
-
-    const openSettingsModal = (project: Project, event: React.MouseEvent) =>
-        openModal(event, () => setSettingsModal({ isOpen: true, project }))
-
-    const handleRename = (event: React.FormEvent) => {
-        event.preventDefault()
-        if (!renameModal.project || !renameModal.value.trim()) return
-        renameMutation.mutate({
-            projectId: renameModal.project.id,
-            rename: renameModal.value.trim(),
-        })
-    }
-
-    const handleDuplicate = (name: string) => {
-        if (!duplicateModal.project) return
-        duplicateMutation.mutate({ projectId: duplicateModal.project.id, name })
-    }
-
-    const handleShare = (category?: string) => {
-        if (!shareModal.project) return
-        shareMutation.mutate({
-            projectId: shareModal.project.id,
-            isSharedAsTemplate: !shareModal.project.isSharedAsTemplate,
-            projectCategory: category,
-        })
-    }
-
-    const handleDelete = () => {
-        if (!deleteModal.project) return
-        deleteMutation.mutate(deleteModal.project.id)
-    }
-
-    const handleOpenProjectClick = (projectId: string) => {
-        const project = projects.find((p) => p.id === projectId)
-        if (project) {
-            setOpenConfirmModal({
-                isOpen: true,
-                project,
-            })
-        } else {
-            onOpenProject(projectId)
-        }
-    }
-
-    const handleOpenConfirm = () => {
-        if (openConfirmModal.project) {
-            onOpenProject(openConfirmModal.project.id)
-            setOpenConfirmModal({ isOpen: false, project: null })
-        }
+    if (error) {
+        return <div className="p-8 text-red-500">Failed to load sessions</div>
     }
 
     return (
         <div className="relative h-full w-full flex-1 overflow-y-auto bg-background px-8 pb-8 pt-20 font-sans no-scrollbar md:p-16">
             <div className="relative z-10 mx-auto max-w-6xl">
-                <SessionListView
-                    projects={filteredAndSortedProjects}
-                    onNewProject={onNewProject}
-                    onOpenProject={handleOpenProjectClick}
-                    isInitialLoading={isInitialLoading}
-                    isFetching={isFetching}
-                    errorMessage={errorMessage}
-                    actionError={actionError}
-                    menuOpenId={menuOpenId}
-                    isTogglePending={toggleStarMutation.isPending}
-                    onToggleStar={toggleStar}
-                    onToggleMenu={toggleMenu}
-                    onOpenProjectFromMenu={openProjectFromMenu}
-                    onToggleStarFromMenu={toggleStarFromMenu}
-                    onOpenRename={openRenameModal}
-                    onOpenDuplicate={openDuplicateModal}
-                    onOpenShare={openShareModal}
-                    onOpenDelete={openDeleteModal}
-                    onOpenSettings={openSettingsModal}
-                    searchQuery={searchQuery}
-                    onSearchChange={setSearchQuery}
-                    sortOption={sortOption}
-                    onSortChange={setSortOption}
-                    statusFilter={statusFilter}
-                    onStatusFilterChange={setStatusFilter}
-                    hasUnfilteredProjects={projects.length > 0}
-                />
+                <div className="mb-6 flex items-start justify-between gap-4">
+                    <div className="flex flex-col">
+                        <h1 className="text-[24px] font-medium text-[#D6D5C9] mb-1">Sessions</h1>
+                        <p className="text-[13px] text-[#7B7A79]">
+                            Manage and view all your active sessions and past agent workflows.
+                        </p>
+                    </div>
+                </div>
+
+                <div className="relative z-10 mb-6 flex w-full max-w-[480px] items-center">
+                    <Icons.Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#7B7A79]" />
+                    <input
+                        type="text"
+                        placeholder="Search sessions..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full rounded-lg border border-[#383736] bg-[#141414] py-1.5 pl-9 pr-4 text-[13px] text-[#D6D5C9] transition-colors placeholder:text-[#7B7A79] hover:bg-[#191919] focus:border-[#7B7A79] focus:bg-[#191919] focus:outline-none"
+                    />
+                </div>
+
+                {filteredSessions.length === 0 ? (
+                    <div className="text-[#7B7A79] py-8">No sessions found.</div>
+                ) : (
+                    <div className="flex flex-col gap-3">
+                        {filteredSessions.map((session) => {
+                            const date = new Date(session.updatedAt)
+                            return (
+                                <div
+                                    key={session.id}
+                                    className="flex items-center justify-between rounded-xl border border-[#242323]/50 bg-[#191919]/50 p-4 hover:border-[#383736] transition-colors cursor-pointer"
+                                    onClick={() => {
+                                        if (session.projectId) {
+                                            onOpenProject(session.projectId)
+                                        } else {
+                                            // TODO: navigate to chat if we support chat-only sessions
+                                            console.log('Open session', session.id)
+                                        }
+                                    }}
+                                >
+                                    <div className="flex flex-col gap-1">
+                                        <div className="font-medium text-[#D6D5C9]">
+                                            {session.title || 'Untitled Session'}
+                                        </div>
+                                        <div className="text-[13px] text-[#7B7A79] max-w-xl truncate">
+                                            {session.lastMessage || 'No messages yet'}
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-6">
+                                        {session.projectName && (
+                                            <div className="text-[12px] px-2 py-1 bg-[#242323] text-[#7B7A79] rounded-md">
+                                                {session.projectName}
+                                            </div>
+                                        )}
+                                        <div className="text-[12px] px-2 py-1 bg-[#242323] text-[#7B7A79] rounded-md uppercase">
+                                            {session.type}
+                                        </div>
+                                        <div className="text-[12px] text-[#7B7A79] min-w-[100px] text-right">
+                                            {date.toLocaleDateString()}
+                                        </div>
+                                    </div>
+                                </div>
+                            )
+                        })}
+                    </div>
+                )}
             </div>
-
-            <ProjectListModals
-                renameModal={renameModal}
-                duplicateModal={duplicateModal}
-                shareModal={shareModal}
-                deleteModal={deleteModal}
-                openConfirmModal={openConfirmModal}
-                isRenamePending={renameMutation.isPending}
-                isDuplicatePending={duplicateMutation.isPending}
-                isSharePending={shareMutation.isPending}
-                isDeletePending={deleteMutation.isPending}
-                onCloseRename={() => setRenameModal((prev) => ({ ...prev, isOpen: false }))}
-                onRenameChange={(nextValue) =>
-                    setRenameModal((prev) => ({ ...prev, value: nextValue }))
-                }
-                onRenameSubmit={handleRename}
-                onCloseDuplicate={() => setDuplicateModal((prev) => ({ ...prev, isOpen: false }))}
-                onDuplicateConfirm={handleDuplicate}
-                onCloseShare={() => setShareModal((prev) => ({ ...prev, isOpen: false }))}
-                onShareConfirm={handleShare}
-                onCloseDelete={() => setDeleteModal((prev) => ({ ...prev, isOpen: false }))}
-                onDeleteConfirm={handleDelete}
-                onCloseOpenConfirm={() => setOpenConfirmModal({ isOpen: false, project: null })}
-                onOpenConfirm={handleOpenConfirm}
-            />
-
-            {settingsModal.isOpen && settingsModal.project && (
-                <SettingsBigModal
-                    onClose={() => setSettingsModal({ isOpen: false, project: null })}
-                    initialTab="general"
-                    projectName={settingsModal.project.title}
-                    projectId={settingsModal.project.id}
-                />
-            )}
         </div>
     )
 }

@@ -32,7 +32,7 @@ describe('canvas.routes.integration', () => {
 
         await prisma.projectVersion.deleteMany()
         await prisma.project.deleteMany()
-        await prisma.session.deleteMany()
+        await prisma.authSession.deleteMany()
         await prisma.user.deleteMany()
 
         user = await prisma.user.create({
@@ -69,7 +69,7 @@ describe('canvas.routes.integration', () => {
             data: { currentVersionId: version.id },
         })
 
-        const session = await prisma.session.create({
+        const session = await prisma.authSession.create({
             data: {
                 userId: user.id,
                 expiresAt: new Date(Date.now() + 3600000),
