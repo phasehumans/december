@@ -24,7 +24,7 @@ const createUser = async (overrides: Record<string, unknown> = {}) => {
 }
 
 const createSession = async (userId: string) => {
-    return prisma.session.create({
+    return prisma.authSession.create({
         data: {
             userId,
             isRevoked: false,
@@ -42,7 +42,7 @@ describe('profile.service.integration', () => {
         await prisma.feedback.deleteMany({
             where: { user: { email: { startsWith: 'profile-serv-' } } },
         })
-        await prisma.session.deleteMany({
+        await prisma.authSession.deleteMany({
             where: { user: { email: { startsWith: 'profile-serv-' } } },
         })
         await prisma.user.deleteMany({ where: { email: { startsWith: 'profile-serv-' } } })
@@ -263,7 +263,7 @@ describe('profile.service.integration', () => {
             const user = await createUser()
             const session = await createSession(user.id)
             await profileService.signout({ userId: user.id, sessionId: session.id })
-            const dbSession = await prisma.session.findUnique({ where: { id: session.id } })
+            const dbSession = await prisma.authSession.findUnique({ where: { id: session.id } })
             expect(dbSession!.isRevoked).toBe(true)
         })
 
@@ -281,8 +281,8 @@ describe('profile.service.integration', () => {
             const session1 = await createSession(user.id)
             const session2 = await createSession(user.id)
             await profileService.signoutAll({ userId: user.id })
-            const dbSession1 = await prisma.session.findUnique({ where: { id: session1.id } })
-            const dbSession2 = await prisma.session.findUnique({ where: { id: session2.id } })
+            const dbSession1 = await prisma.authSession.findUnique({ where: { id: session1.id } })
+            const dbSession2 = await prisma.authSession.findUnique({ where: { id: session2.id } })
             expect(dbSession1!.isRevoked).toBe(true)
             expect(dbSession2!.isRevoked).toBe(true)
         })
@@ -307,7 +307,7 @@ describe('profile.service.integration', () => {
             const session = await createSession(user.id)
             await profileService.deleteAccount({ userId: user.id })
             const dbUser = await prisma.user.findUnique({ where: { id: user.id } })
-            const dbSession = await prisma.session.findUnique({ where: { id: session.id } })
+            const dbSession = await prisma.authSession.findUnique({ where: { id: session.id } })
             expect(dbUser!.isDeleted).toBe(true)
             expect(dbSession!.isRevoked).toBe(true)
         })

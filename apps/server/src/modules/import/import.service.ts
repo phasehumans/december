@@ -173,7 +173,6 @@ const updateImportedProjectVersion = async (data: UpdateImportedProjectVersionPa
                     ? `Importing GitHub repository: ${sourceLabel}`
                     : `Uploading ZIP archive: ${sourceLabel || 'project.zip'}`,
             sequence: 1,
-            project: { connect: { id: projectId } },
         },
         {
             role: 'ASSISTANT' as const,
@@ -183,7 +182,6 @@ const updateImportedProjectVersion = async (data: UpdateImportedProjectVersionPa
                     : `I am initiating a comprehensive review of the uploaded ZIP archive to map its workspace architecture and build system.\n\nFirst, I will extract and scan the package files in the archive to find standard configuration entrypoints like \`package.json\`, \`tsconfig.json\`, \`vite.config.ts\`, or \`next.config.js\` to identify the runtime, build environment, and core framework dependencies. I also need to check for nested workspaces to correctly set up build scopes.\n\nNext, I will inspect the source folder layout (\`src\`, \`app\`, \`pages\`, or \`components\`) to trace the component architecture, entry routers, and styles (e.g., Tailwind CSS, styled-components, or vanilla CSS modules). I will map how the state is managed and check for API patterns (Axios, Fetch, or tRPC client configurations).\n\nFinally, I will analyze the environment file placeholders, database prisma schemas, or container setups if present, to ensure local execution alignment. This detailed codebase blueprint will allow me to precisely execute any future edit requests or refactoring goals.\n\n### Project Metadata\n\nI have successfully analyzed the codebase and mapped the architecture:\n\n- **Project Type**: Uploaded ZIP Archive\n- **Detected Framework**: ${project.detection.framework}\n- **Workspace Architecture**: ${project.files.length > 50 ? 'Medium-scale Web Application' : 'Single-page React/Vite Application'}\n- **Build Configuration**: Configured and validated\n- **Environment Status**: Container initialized, dependencies mapped\n- **Total Files Mapped**: ${project.files.length}\n\nYou can now ask me to explain specific files, add new features, or debug any issues in the code.`,
             status: 'done' as const,
             sequence: 2,
-            project: { connect: { id: projectId } },
         },
     ]
 

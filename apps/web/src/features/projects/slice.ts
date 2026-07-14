@@ -1,5 +1,5 @@
-import { StateCreator } from 'zustand'
-import { BackendProjectVersionSummary } from '@/features/projects/api/project'
+import type { StateCreator } from 'zustand'
+import type { BackendProjectVersionSummary } from '@/features/projects/api/project'
 
 export interface ProjectSlice {
     activeProjectId: string | null

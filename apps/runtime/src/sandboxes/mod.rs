@@ -1,4 +1,5 @@
 pub mod docker;
+pub mod firecracker;
 
 use std::path::Path;
 

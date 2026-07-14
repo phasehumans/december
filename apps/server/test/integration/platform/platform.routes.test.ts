@@ -144,7 +144,7 @@ describe('platform.routes.integration', () => {
         await prisma.projectMemory.deleteMany({ where: { project: { userId: TEST_USER_ID } } })
         await prisma.projectVersion.deleteMany({ where: { project: { userId: TEST_USER_ID } } })
         await prisma.project.deleteMany({ where: { userId: TEST_USER_ID } })
-        await prisma.session.deleteMany({ where: { userId: TEST_USER_ID } })
+        await prisma.authSession.deleteMany({ where: { userId: TEST_USER_ID } })
         await prisma.user.deleteMany({ where: { id: TEST_USER_ID } })
 
         await createTestUser()

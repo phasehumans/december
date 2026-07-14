@@ -56,10 +56,9 @@ export async function getProviderConfig(): Promise<ProviderConfig | undefined> {
     const config = await loadConfig()
 
     if (config.decemberToken) {
-        // Logged in via December: use OpenRouter under the hood via December proxy
         return {
-            provider: 'openrouter',
-            apiKey: config.decemberToken, // The proxy will exchange this
+            provider: 'december_proxy',
+            apiKey: config.decemberToken,
         }
     }
 

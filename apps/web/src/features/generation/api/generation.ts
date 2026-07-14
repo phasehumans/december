@@ -1,7 +1,7 @@
 import type { CanvasDocument, CanvasItem } from '@/features/canvas/types'
 import type {
     BackendProject,
-    BackendProjectMessage,
+    BackendMessage,
     BackendProjectVersionSummary,
 } from '@/features/projects/api/project'
 
@@ -25,7 +25,7 @@ export interface AppliedProjectChangeResult {
     project: BackendProject
     version: Pick<BackendProjectVersionSummary, 'id' | 'versionNumber' | 'label' | 'status'>
     versions: BackendProjectVersionSummary[]
-    chatMessages: BackendProjectMessage[]
+    chatMessages: BackendMessage[]
     generatedFiles: Record<string, string>
     appliedFiles: string[]
     deletedFiles: string[]
@@ -136,7 +136,7 @@ export type GenerationStreamEvent =
               plan: unknown
               generatedFiles: Record<string, string>
               versions?: BackendProjectVersionSummary[]
-              chatMessages?: BackendProjectMessage[]
+              chatMessages?: BackendMessage[]
               appliedFiles?: string[]
               deletedFiles?: string[]
               assistantMessage?: string

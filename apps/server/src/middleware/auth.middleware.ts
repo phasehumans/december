@@ -41,7 +41,7 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
             })
         }
 
-        const session = await prisma.session.findUnique({
+        const session = await prisma.authSession.findUnique({
             where: {
                 id: decoded.sessionId,
             },

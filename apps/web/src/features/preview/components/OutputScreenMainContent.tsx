@@ -3,6 +3,7 @@ import React from 'react'
 import { CodeWorkspace } from './CodeWorkspace'
 import { OutputHeader } from './OutputHeader'
 import { PreviewArea } from './PreviewArea'
+import { TerminalWorkspace } from './TerminalWorkspace'
 
 import type { CanvasDocument } from '@/features/canvas/types'
 import type {
@@ -144,6 +145,10 @@ export const OutputScreenMainContent: React.FC<OutputScreenMainContentProps> = (
                         />
                     </div>
                 </div>
+            )}
+
+            {activeTab === 'terminal' && (
+                <TerminalWorkspace previewSessionId={previewSession?.previewId} />
             )}
         </div>
     )

@@ -127,7 +127,7 @@ async function updateNotifications(id: string, data: Prisma.UserUpdateInput) {
 }
 
 async function findSession(sessionId: string, userId: string) {
-    return prisma.session.findFirst({
+    return prisma.authSession.findFirst({
         where: {
             id: sessionId,
             userId,
@@ -137,7 +137,7 @@ async function findSession(sessionId: string, userId: string) {
 }
 
 async function revokeSession(sessionId: string) {
-    return prisma.session.update({
+    return prisma.authSession.update({
         where: { id: sessionId },
         data: {
             isRevoked: true,
@@ -147,7 +147,7 @@ async function revokeSession(sessionId: string) {
 }
 
 async function revokeAllSessions(userId: string) {
-    return prisma.session.updateMany({
+    return prisma.authSession.updateMany({
         where: {
             userId,
             isRevoked: false,
@@ -171,7 +171,7 @@ async function findUserByIdForDeleteCheck(id: string) {
 
 async function deleteAccount(userId: string) {
     return prisma.$transaction([
-        prisma.session.updateMany({
+        prisma.authSession.updateMany({
             where: {
                 userId,
                 isRevoked: false,

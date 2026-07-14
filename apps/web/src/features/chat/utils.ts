@@ -1,5 +1,5 @@
 import type { Message } from '@/features/chat/types'
-import type { BackendProjectMessage } from '@/features/projects/api/project'
+import type { BackendMessage } from '@/features/projects/api/project'
 
 export const getUserFacingGenerationError = (message: string) => {
     const normalizedMessage = message.toLowerCase()
@@ -43,7 +43,7 @@ export const getUserFacingGenerationError = (message: string) => {
     return 'Something went wrong while generating this project. Please try again.'
 }
 
-export const mapBackendMessageToUIMessage = (message: BackendProjectMessage): Message => {
+export const mapBackendMessageToUIMessage = (message: BackendMessage): Message => {
     const isAssistant = message.role !== 'USER' && message.role !== 'SYSTEM'
     let thoughts: string | undefined = undefined
     let plan: string | undefined = undefined

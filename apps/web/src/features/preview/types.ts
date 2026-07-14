@@ -4,7 +4,7 @@ import type { BackendProjectVersionSummary } from '@/features/projects/api/proje
 import type { RefObject } from 'react'
 
 export type PreviewDevice = 'desktop' | 'mobile' | 'tablet'
-export type PreviewTab = 'preview' | 'code' | 'canvas'
+export type PreviewTab = 'preview' | 'code' | 'canvas' | 'terminal'
 export type GeneratedFileStatus = 'queued' | 'building' | 'done' | 'error'
 export type OutputOperation = 'build' | 'edit' | 'fix'
 export type PreviewRuntimeLifecycleState =
