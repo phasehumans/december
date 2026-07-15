@@ -90,6 +90,7 @@ export async function* runAgentLoop(
 ): AsyncGenerator<AgentEvent, void, unknown> {
     if (userInput) {
         agent.addMessage({ role: 'user', content: userInput })
+        await agent.saveContext()
     }
     const eventQueue = new AsyncQueue<AgentEvent>()
     const abortController = new AbortController()
@@ -320,6 +321,7 @@ async function streamAssistantResponse(
                 content: assistantMessage + `\n\n*[Generation Interrupted]*`,
                 isUI: true,
             })
+            await agent.saveContext()
             return { assistantMessage, toolCalls, error: 'Aborted' }
         }
 
@@ -341,6 +343,7 @@ async function streamAssistantResponse(
             isUI: true,
             errorMessage: errorMsg,
         })
+        await agent.saveContext()
         return { assistantMessage, toolCalls, error: errorMsg }
     }
 }

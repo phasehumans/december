@@ -183,7 +183,9 @@ export function useAgentSession({
 
             agent.operations.ui!.requestPermission = async (toolCall: any) => {
                 if (
-                    ['replace_file_content', 'multi_replace_file_content'].includes(toolCall.name)
+                    ['replace_file_content', 'multi_replace_file_content', 'run_command'].includes(
+                        toolCall.name
+                    )
                 ) {
                     const answer = await new Promise<string>((resolve) => {
                         setAuthMode('ask_question')
