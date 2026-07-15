@@ -32,6 +32,7 @@ export function useAuthHandlers(
         setHasBothAuth,
         setSettingsAuthPriority,
         setAuthMethod,
+        setStaticKey,
     } = useCliStore()
 
     const handleAuthMenuSelect = async (item: any) => {
@@ -432,6 +433,7 @@ export function useAuthHandlers(
 
     const handleSessionSelect = async (item: any) => {
         setAuthMode('none')
+        console.clear()
         try {
             await agent.loadContext(item.value)
 
@@ -481,7 +483,8 @@ export function useAuthHandlers(
                 }
             }
 
-            setStaticMessages(resumedMessages)
+            setStaticMessages([{ id: 'header', role: 'header' }, ...resumedMessages])
+            setStaticKey((k) => k + 1) // Force Ink <Static> to remount and render the entire array
             setActiveMessages([
                 {
                     id: getNextMsgId(),

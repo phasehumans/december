@@ -61,7 +61,7 @@ export class FileSessionRepository implements SessionRepository {
             // Find the latest message by timestamp
             let latestMsg = msgs[0]
             for (const msg of msgs) {
-                if ((msg.timestamp || 0) > (latestMsg.timestamp || 0)) {
+                if ((msg.timestamp || 0) >= (latestMsg.timestamp || 0)) {
                     latestMsg = msg
                 }
             }
