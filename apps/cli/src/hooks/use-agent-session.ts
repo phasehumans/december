@@ -10,6 +10,7 @@ import { parseErrorMessage } from '../utils/error-parser'
 import { getNextMsgId, processAgentStream } from './use-agent-runner'
 import { useAuthHandlers } from './use-auth-handlers'
 import { useSettingsHandlers } from './use-settings-handlers'
+import { getProviderModels } from '../utils/models'
 
 import type { Message } from '@december/tui'
 
@@ -18,6 +19,9 @@ import type { Message } from '@december/tui'
 export function useAgentSession({
     agent,
     isAuthenticated: initialAuth,
+    authMethod: initialAuthMethod,
+    hasBothAuth: initialHasBothAuth,
+    settingsAuthPriority: initialSettingsAuthPriority,
     cliVersion,
     userEmail,
     sessionRepository,
@@ -26,6 +30,9 @@ export function useAgentSession({
 }: {
     agent: Agent
     isAuthenticated: boolean
+    authMethod?: 'byok' | 'december' | 'env'
+    hasBothAuth?: boolean
+    settingsAuthPriority?: 'byok' | 'december'
     cliVersion?: string
     userEmail?: string
     sessionRepository?: any
@@ -38,6 +45,12 @@ export function useAgentSession({
     const {
         isAuthenticated,
         setIsAuthenticated,
+        authMethod,
+        setAuthMethod,
+        hasBothAuth,
+        setHasBothAuth,
+        settingsAuthPriority,
+        setSettingsAuthPriority,
         currentEmail,
         setCurrentEmail,
         authMode,
@@ -136,6 +149,26 @@ export function useAgentSession({
         settingsFollowUpMode,
         setSettingsFollowUpMode,
     } = state
+
+    useEffect(() => {
+        setIsAuthenticated(initialAuth)
+        setAuthMethod(initialAuthMethod)
+        if (initialHasBothAuth !== undefined) setHasBothAuth(initialHasBothAuth)
+        if (initialSettingsAuthPriority !== undefined)
+            setSettingsAuthPriority(initialSettingsAuthPriority)
+        if (userEmail !== undefined) setCurrentEmail(userEmail)
+    }, [
+        initialAuth,
+        initialAuthMethod,
+        initialHasBothAuth,
+        initialSettingsAuthPriority,
+        userEmail,
+        setIsAuthenticated,
+        setAuthMethod,
+        setHasBothAuth,
+        setSettingsAuthPriority,
+        setCurrentEmail,
+    ])
 
     useEffect(() => {
         if (agent) {
@@ -673,6 +706,9 @@ Explain which files need to be created, modified, or deleted, and what the chang
         setIsStreaming,
         isAuthenticated,
         setIsAuthenticated,
+        authMethod,
+        hasBothAuth,
+        settingsAuthPriority,
         currentEmail,
         setCurrentEmail,
         authMode,
@@ -731,5 +767,6 @@ Explain which files need to be created, modified, or deleted, and what the chang
         handleGrillSelect,
         pendingQuestions,
         setPendingQuestions,
+        getProviderModels,
     }
 }

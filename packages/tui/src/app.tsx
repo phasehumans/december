@@ -100,7 +100,7 @@ export function ChatApp({
                 activeMessages={activeMessages}
                 isAuthenticated={isAuthenticated}
                 cliVersion={cliVersion}
-                userEmail={currentEmail}
+                userEmail={currentEmail || userEmail}
             />
 
             <InputBar
@@ -133,6 +133,8 @@ export function ChatApp({
                 placeholder="Ask December to build..."
                 activeModel={agent.modelOptions?.model || 'gemini-3.5-flash'}
                 contextTokens={totalTokens}
+                authMethod={session.authMethod}
+                hasBothAuth={session.hasBothAuth}
                 authUI={
                     hasActiveSubagent ? (
                         <Box paddingX={1}>

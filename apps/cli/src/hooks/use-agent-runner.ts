@@ -17,122 +17,157 @@ export async function processAgentStream({
     setActiveMessages: any
     assistantMsgId: number
 }) {
-    for await (const event of stream) {
+    let pendingEvents: any[] = []
+    let flushTimeout: NodeJS.Timeout | null = null
+
+    const flush = () => {
+        if (pendingEvents.length === 0) return
+
+        const eventsToProcess = [...pendingEvents]
+        pendingEvents = []
+
         setActiveMessages((prev: Message[]) =>
             prev.map((msg) => {
                 if (msg.id !== assistantMsgId) return msg
-                const blocks = [...(msg.blocks || [])]
-                switch (event.type) {
-                    case 'TurnStart':
-                        blocks.push({ type: 'text', content: 'Working...' })
-                        break
-                    case 'AgentError': {
-                        const errMsg = parseErrorMessage({ message: event.error })
-                        const lastBlock = blocks[blocks.length - 1]
-                        if (
-                            lastBlock &&
-                            lastBlock.type === 'text' &&
-                            (lastBlock.content === 'Working...' ||
-                                lastBlock.content === 'Thinking...' ||
-                                lastBlock.content.startsWith('Rate limit hit'))
-                        ) {
-                            lastBlock.content = `\n\n**Agent Error:** ${errMsg}\n`
-                        } else {
-                            blocks.push({
-                                type: 'text',
-                                content: `\n\n**Agent Error:** ${errMsg}\n`,
-                            })
-                        }
-                        break
-                    }
-                    case 'AgentStatus': {
-                        const statusBlock = blocks[blocks.length - 1]
-                        if (
-                            statusBlock &&
-                            statusBlock.type === 'text' &&
-                            (statusBlock.content === 'Working...' ||
-                                statusBlock.content === 'Thinking...' ||
-                                statusBlock.content.startsWith('Rate limit hit'))
-                        ) {
-                            statusBlock.content = event.message || 'Working...'
-                        } else if (event.message) {
-                            blocks.push({ type: 'text', content: event.message })
-                        }
-                        break
-                    }
-                    case 'StreamChunk':
-                        const lastBlock = blocks[blocks.length - 1]
-                        if (lastBlock && lastBlock.type === 'text') {
-                            lastBlock.content =
-                                (lastBlock.content === 'Working...' ||
-                                lastBlock.content === 'Thinking...' ||
-                                lastBlock.content.startsWith('Rate limit hit')
-                                    ? ''
-                                    : lastBlock.content) + event.content
-                        } else {
-                            blocks.push({ type: 'text', content: event.content })
-                        }
-                        break
-                    case 'ThinkingChunk': {
-                        const lastThinkBlock = blocks[blocks.length - 1]
-                        if (lastThinkBlock && lastThinkBlock.type === 'thinking') {
-                            lastThinkBlock.content += event.content
-                        } else {
+                let blocks = [...(msg.blocks || [])]
+                let finalMsg = { ...msg }
+
+                for (const event of eventsToProcess) {
+                    switch (event.type) {
+                        case 'TurnStart':
+                            blocks.push({ type: 'text', content: 'Working...' })
+                            break
+                        case 'AgentError': {
+                            const errMsg = parseErrorMessage({ message: event.error })
+                            const lastBlock = blocks[blocks.length - 1]
                             if (
-                                blocks.length > 0 &&
-                                blocks[blocks.length - 1].type === 'text' &&
-                                (blocks[blocks.length - 1].content === 'Working...' ||
-                                    blocks[blocks.length - 1].content === 'Thinking...')
+                                lastBlock &&
+                                lastBlock.type === 'text' &&
+                                (lastBlock.content === 'Working...' ||
+                                    lastBlock.content === 'Thinking...' ||
+                                    lastBlock.content.startsWith('Rate limit hit'))
                             ) {
-                                blocks.pop()
+                                lastBlock.content = `\n\n**Agent Error:** ${errMsg}\n`
+                            } else {
+                                blocks.push({
+                                    type: 'text',
+                                    content: `\n\n**Agent Error:** ${errMsg}\n`,
+                                })
                             }
-                            blocks.push({ type: 'thinking', content: event.content })
+                            break
                         }
-                        break
-                    }
-                    case 'ToolCallStart':
-                        blocks.push({
-                            type: 'command',
-                            toolCallId: event.toolCall.id,
-                            toolName: event.toolCall.name,
-                            toolInput: event.toolCall.input,
-                            command: getToolSummary(event.toolCall.name, event.toolCall.input),
-                            status: 'running',
-                            output: '',
-                        })
-                        break
-                    case 'ToolExecutionUpdate': {
-                        const runningCmd = blocks.find(
-                            (b: any) => b.type === 'command' && b.toolCallId === event.toolCallId
-                        ) as any
-                        if (runningCmd && runningCmd.status === 'running') {
-                            runningCmd.output += event.chunk
+                        case 'AgentStatus': {
+                            const statusBlock = blocks[blocks.length - 1]
+                            if (
+                                statusBlock &&
+                                statusBlock.type === 'text' &&
+                                (statusBlock.content === 'Working...' ||
+                                    statusBlock.content === 'Thinking...' ||
+                                    statusBlock.content.startsWith('Rate limit hit'))
+                            ) {
+                                statusBlock.content = event.message || 'Working...'
+                            } else if (event.message) {
+                                blocks.push({ type: 'text', content: event.message })
+                            }
+                            break
                         }
-                        break
-                    }
-                    case 'ToolCallResult': {
-                        const lastCmd = blocks.find(
-                            (b: any) =>
-                                b.type === 'command' && b.toolCallId === event.result.toolCallId
-                        ) as any
-                        if (lastCmd) {
-                            lastCmd.status = event.result.error ? 'error' : 'success'
-                            lastCmd.output = event.result.error || event.result.result
+                        case 'ContextCompacted': {
+                            blocks.push({ type: 'compaction', summary: event.summary })
+                            break
                         }
-                        break
-                    }
-                    case 'AgentUsage': {
-                        return {
-                            ...msg,
-                            usage: {
-                                promptTokens: (event as any).promptTokens,
-                                completionTokens: (event as any).completionTokens,
-                            },
+                        case 'StreamChunk': {
+                            const lastBlock = blocks[blocks.length - 1]
+                            if (lastBlock && lastBlock.type === 'text') {
+                                lastBlock.content =
+                                    (lastBlock.content === 'Working...' ||
+                                    lastBlock.content === 'Thinking...' ||
+                                    lastBlock.content.startsWith('Rate limit hit')
+                                        ? ''
+                                        : lastBlock.content) + event.content
+                            } else {
+                                blocks.push({ type: 'text', content: event.content })
+                            }
+                            break
+                        }
+                        case 'ThinkingChunk': {
+                            const lastThinkBlock = blocks[blocks.length - 1]
+                            if (lastThinkBlock && lastThinkBlock.type === 'thinking') {
+                                lastThinkBlock.content += event.content
+                            } else {
+                                if (
+                                    blocks.length > 0 &&
+                                    blocks[blocks.length - 1].type === 'text' &&
+                                    (blocks[blocks.length - 1].content === 'Working...' ||
+                                        blocks[blocks.length - 1].content === 'Thinking...')
+                                ) {
+                                    blocks.pop()
+                                }
+                                blocks.push({ type: 'thinking', content: event.content })
+                            }
+                            break
+                        }
+                        case 'ToolCallStart':
+                            blocks.push({
+                                type: 'command',
+                                toolCallId: event.toolCall.id,
+                                toolName: event.toolCall.name,
+                                toolInput: event.toolCall.input,
+                                command: getToolSummary(event.toolCall.name, event.toolCall.input),
+                                status: 'running',
+                                output: '',
+                            })
+                            break
+                        case 'ToolExecutionUpdate': {
+                            const runningCmd = blocks.find(
+                                (b: any) =>
+                                    b.type === 'command' && b.toolCallId === event.toolCallId
+                            ) as any
+                            if (runningCmd && runningCmd.status === 'running') {
+                                runningCmd.output += event.chunk
+                            }
+                            break
+                        }
+                        case 'ToolCallResult': {
+                            const lastCmd = blocks.find(
+                                (b: any) =>
+                                    b.type === 'command' && b.toolCallId === event.result.toolCallId
+                            ) as any
+                            if (lastCmd) {
+                                lastCmd.status = event.result.error ? 'error' : 'success'
+                                lastCmd.output = event.result.error || event.result.result
+                            }
+                            break
+                        }
+                        case 'AgentUsage': {
+                            finalMsg = {
+                                ...finalMsg,
+                                usage: {
+                                    promptTokens: (event as any).promptTokens,
+                                    completionTokens: (event as any).completionTokens,
+                                },
+                            } as any
+                            break
                         }
                     }
                 }
-                return { ...msg, blocks }
+                return { ...finalMsg, blocks }
             })
         )
     }
+
+    for await (const event of stream) {
+        pendingEvents.push(event)
+        if (!flushTimeout) {
+            flushTimeout = setTimeout(() => {
+                flush()
+                flushTimeout = null
+            }, 30)
+        }
+    }
+
+    if (flushTimeout) {
+        clearTimeout(flushTimeout)
+        flushTimeout = null
+    }
+    flush()
 }

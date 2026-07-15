@@ -18,6 +18,12 @@ export interface CliState {
     // ----------------------------------------------------
     isAuthenticated: boolean
     setIsAuthenticated: (val: boolean) => void
+    authMethod: 'byok' | 'december' | 'env' | undefined
+    setAuthMethod: (method: 'byok' | 'december' | 'env' | undefined) => void
+    hasBothAuth: boolean
+    setHasBothAuth: (val: boolean) => void
+    settingsAuthPriority: 'byok' | 'december'
+    setSettingsAuthPriority: (val: 'byok' | 'december') => void
     currentEmail: string | undefined
     setCurrentEmail: (email: string | undefined) => void
     authMode: AuthMode
@@ -156,6 +162,12 @@ export const useCliStore = create<CliState>((set) => ({
     // Auth
     isAuthenticated: false,
     setIsAuthenticated: (isAuthenticated) => set({ isAuthenticated }),
+    authMethod: undefined,
+    setAuthMethod: (authMethod) => set({ authMethod }),
+    hasBothAuth: false,
+    setHasBothAuth: (hasBothAuth) => set({ hasBothAuth }),
+    settingsAuthPriority: 'byok',
+    setSettingsAuthPriority: (settingsAuthPriority) => set({ settingsAuthPriority }),
     currentEmail: undefined,
     setCurrentEmail: (currentEmail) => set({ currentEmail }),
     authMode: 'none',

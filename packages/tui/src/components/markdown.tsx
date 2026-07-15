@@ -125,40 +125,49 @@ function CodeBlock({ token }: { token: any }) {
     const lines = token.text.split('\n')
     const isLarge = lines.length > 30
 
+    const lang = token.lang || 'typescript'
+    const barWidth = 60
+    const topBarLength = Math.max(0, barWidth - lang.length - 4)
+    const topBar = `┌── ${lang} ${'─'.repeat(topBarLength)}`
+    const bottomBar = `└${'─'.repeat(barWidth - 1)}`
+
+    let contentToHighlight = token.text
     if (isLarge && !expanded) {
-        const preview = lines.slice(0, 15).join('\n')
-        return (
-            <Box flexDirection="column" paddingLeft={2} borderLeft={false}>
-                <Text color="#555555">│ </Text>
-                <Text>
-                    {highlight(preview, {
-                        language: token.lang || 'typescript',
-                        ignoreIllegals: true,
-                    })}
-                </Text>
-                <Text color={isFocused ? '#89B4F8' : '#888888'}>
-                    {isFocused
-                        ? '> Press Enter to expand (' + (lines.length - 15) + ' more lines)'
-                        : '... (truncated, tab to focus)'}
-                </Text>
-            </Box>
-        )
+        contentToHighlight = lines.slice(0, 15).join('\n')
     }
 
+    const highlighted = highlight(contentToHighlight, {
+        language: lang,
+        ignoreIllegals: true,
+    })
+
+    const renderedLines = highlighted.split('\n')
+
     return (
-        <Box flexDirection="column" paddingLeft={2} borderLeft={false}>
-            <Text color="#555555">│ </Text>
-            <Text>
-                {highlight(token.text, {
-                    language: token.lang || 'typescript',
-                    ignoreIllegals: true,
-                })}
-            </Text>
-            {isLarge && expanded && (
-                <Text color={isFocused ? '#89B4F8' : '#888888'}>
-                    {isFocused ? '> Press Enter to collapse' : ''}
-                </Text>
-            )}
+        <Box flexDirection="column" paddingY={1}>
+            <Text color={isFocused ? '#89B4F8' : '#475569'}>{topBar}</Text>
+            <Box flexDirection="column" paddingLeft={2}>
+                {renderedLines.map((line, idx) => (
+                    <Text key={idx}>{line}</Text>
+                ))}
+            </Box>
+            {isLarge && !expanded ? (
+                <Box flexDirection="column" paddingLeft={2}>
+                    <Text color="#475569">...</Text>
+                    <Text color={isFocused ? '#89B4F8' : '#888888'}>
+                        {isFocused
+                            ? '> Press Enter to expand (' + (lines.length - 15) + ' more lines)'
+                            : '... (truncated, tab to focus)'}
+                    </Text>
+                </Box>
+            ) : isLarge && expanded ? (
+                <Box flexDirection="column" paddingLeft={2}>
+                    <Text color={isFocused ? '#89B4F8' : '#888888'}>
+                        {isFocused ? '> Press Enter to collapse' : ''}
+                    </Text>
+                </Box>
+            ) : null}
+            <Text color={isFocused ? '#89B4F8' : '#475569'}>{bottomBar}</Text>
         </Box>
     )
 }
