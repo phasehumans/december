@@ -1,3 +1,34 @@
+## [unreleased]
+
+### Features
+
+- Agent settings in CLI and comprehensive agent tests
+- Agent settings in CLI & comprehensive agent tests (#196)
+- Add byok fallback config and email display ; log vai december
+
+### Bug Fixes
+
+- _(chaitanya)_ Fix cli renderer err" (#201)
+- _(agent)_ Congif overrides
+- Comprehensive session persistence and TUI UX fixes
+- Comprehensive session persistence and TUI UX fixes (#203)
+
+### Documentation
+
+- Mark Phase 1 and 2 items as complete in AGENTS.md
+
+### Testing
+
+- _(tools)_ Add test to tools
+- _(providers)_ Add test to providers, wrap in factory pattern
+- _(tui)_ Add test in tui
+
+## [0.2.10] - 2026-07-14
+
+### Miscellaneous Tasks
+
+- _(release)_ V0.2.10
+
 ## [0.2.9] - 2026-07-14
 
 ### Features
