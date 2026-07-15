@@ -161,7 +161,7 @@ export async function processAgentStream({
             flushTimeout = setTimeout(() => {
                 flush()
                 flushTimeout = null
-            }, 10)
+            }, 50)
         }
     }
 

@@ -18,13 +18,12 @@ export const localOperations: PlatformAdapter = {
             return localBashOps.exec(command, cwd, options)
         },
         getTaskStatus: async (taskId) => {
-            // Task status check is simplified, as we now track tasks primarily
-            // through the event stream in the CLI, but we can implement it natively later
-            return { status: 'running', output: 'Not implemented' }
+            const task = taskManager.getTask(taskId)
+            if (!task) return { status: 'failed', output: 'Task not found' }
+            return { status: task.status, output: task.output }
         },
         killTask: async (taskId) => {
-            // Native task killing can be managed via the signal controller
-            return false
+            return taskManager.killTask(taskId)
         },
     },
     fs: {

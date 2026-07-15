@@ -21,6 +21,7 @@
         "test:shared": "cd packages/shared && bun test",
         "test:tui": "cd packages/tui && bun test",
         "test:agent": "cd packages/agent && bun test",
+        "test:cli": "cd apps/cli && bun test",
         "clean": "bash scripts/clean.sh",
         "db:generate": "turbo run db:generate",
         "db:migrate": "turbo run db:migrate",

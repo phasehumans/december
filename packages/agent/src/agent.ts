@@ -130,7 +130,7 @@ export class Agent {
     }
 
     public addMessage(message: AgentMessage) {
-        this.messages.push(message)
+        this.conversation.addMessage(message)
     }
 
     public async saveContext() {

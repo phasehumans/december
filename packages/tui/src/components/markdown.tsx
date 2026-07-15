@@ -136,10 +136,12 @@ function CodeBlock({ token }: { token: any }) {
         contentToHighlight = lines.slice(0, 15).join('\n')
     }
 
-    const highlighted = highlight(contentToHighlight, {
-        language: lang,
-        ignoreIllegals: true,
-    })
+    const highlighted = React.useMemo(() => {
+        return highlight(contentToHighlight, {
+            language: lang,
+            ignoreIllegals: true,
+        })
+    }, [contentToHighlight, lang])
 
     return (
         <Box flexDirection="column" paddingY={1}>

@@ -299,6 +299,61 @@ Guidelines:
         const prompt = args.join(' ')
         console.log(`\nExecuting Headless Task: "${prompt}"\n`)
         const { runAgentLoop } = await import('@december/agent')
+
+        const readline = require('readline')
+        const rl = readline.createInterface({
+            input: process.stdin,
+            output: process.stdout,
+        })
+
+        if (!agent.operations) agent.operations = {} as any
+        if (!agent.operations.ui) agent.operations.ui = {} as any
+
+        agent.operations.ui.askQuestion = (questions: any[]) => {
+            return new Promise((resolve) => {
+                const q = questions[0]
+                console.log(`\n\n[Question]: ${q.question}`)
+                if (q.options) {
+                    q.options.forEach((opt: string, i: number) => console.log(`${i + 1}. ${opt}`))
+                }
+                rl.question('\nSelect an option or type your answer: ', (answer: string) => {
+                    const num = parseInt(answer)
+                    if (!isNaN(num) && num > 0 && q.options && num <= q.options.length) {
+                        resolve(q.options[num - 1])
+                    } else {
+                        resolve(answer)
+                    }
+                })
+            })
+        }
+
+        agent.operations.ui.requestPermission = async (toolCall: any) => {
+            if (
+                ['replace_file_content', 'multi_replace_file_content', 'run_command'].includes(
+                    toolCall.name
+                )
+            ) {
+                return new Promise((resolve) => {
+                    rl.question(`\nExecute ${toolCall.name}? (y/n): `, (answer: string) => {
+                        if (answer.toLowerCase().startsWith('y')) {
+                            resolve({ block: false })
+                        } else {
+                            resolve({ block: true, reason: 'User denied execution in UI.' })
+                        }
+                    })
+                })
+            }
+            return { block: false }
+        }
+
+        // Steer while streaming
+        rl.on('line', (input: string) => {
+            if (input.trim()) {
+                agent.steer({ role: 'user', content: input, isUI: true })
+                console.log(`\n[Steering input sent to agent]\n`)
+            }
+        })
+
         const stream = runAgentLoop(agent, prompt)
 
         for await (const event of stream) {
@@ -328,6 +383,7 @@ Guidelines:
             }
         }
         console.log('\n\nHeadless task complete.')
+        rl.close()
         process.exit(0)
     }
 
