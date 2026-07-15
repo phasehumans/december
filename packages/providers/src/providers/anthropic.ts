@@ -2,7 +2,8 @@ import Anthropic from '@anthropic-ai/sdk'
 
 import { LLMProvider, Message, ProviderStreamChunk, ProviderTool } from '../types.ts'
 
-import { createProvider } from '../models.ts'
+import { createProvider, ProviderConfig } from '../models.ts'
+import { safeParseJson } from '@december/shared'
 
 export function anthropicProvider(baseURL?: string, apiKey?: string): LLMProvider {
     const client = new Anthropic({
@@ -49,7 +50,7 @@ export function anthropicProvider(baseURL?: string, apiKey?: string): LLMProvide
                                 type: 'tool_use',
                                 id: tc.id,
                                 name: tc.name,
-                                input: JSON.parse(tc.input || '{}'),
+                                input: safeParseJson(tc.input || '{}'),
                             })
                         }
                     }

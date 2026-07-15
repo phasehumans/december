@@ -5,6 +5,7 @@
     "main": "src/index.ts",
     "private": true,
     "dependencies": {
+        "@december/shared": "workspace:*",
         "@anthropic-ai/sdk": "latest",
         "@google/genai": "latest",
         "openai": "latest"

@@ -32,6 +32,7 @@ import {
     BrowserTool,
     GitHubTool,
     MCPTool,
+    WebSearchTool,
 } from '@december/tools'
 import { ChatApp as App } from '@december/tui'
 import { RootLayout } from '@december/tui'
@@ -135,8 +136,17 @@ async function main() {
     const config = await loadConfig()
 
     const harness = new AgentHarness({
-        baseSystemPrompt:
-            'You are December, an autonomous software engineer. You have access to tools. When executing code, please use JSON schemas for tool inputs. Before using a tool, you MUST enclose your thought process inside <thought>...</thought> tags. At the end of your work, provide a summary of what you did, highlighting important keywords.',
+        baseSystemPrompt: `You are December, an autonomous, expert coding agent. You help the user by exploring codebases, executing terminal commands, editing files, and resolving complex tasks.
+
+You operate across two environments seamlessly: locally via a terminal CLI, and remotely via a secure cloud sandbox.
+
+Guidelines:
+- Plan carefully before making broad changes.
+- Use bash tools to explore the environment before guessing file paths.
+- Be extremely concise in your responses. The user is a developer who values speed and exactness.
+- ALWAYS show absolute file paths when viewing or editing files.
+- Before using a tool, you MUST enclose your thought process inside <thought>...</thought> tags.
+- At the end of your work, provide a summary of what you did, highlighting important keywords.`,
         llm: llm,
         tools: [
             BashTool,
@@ -153,6 +163,7 @@ async function main() {
             BrowserTool,
             GitHubTool,
             MCPTool,
+            WebSearchTool,
         ],
         operations: localOperations,
         modelOptions: { model: providerConfig?.model || 'gemini-3.5-flash' },

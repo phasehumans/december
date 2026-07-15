@@ -1,5 +1,7 @@
 import { Agent } from '../agent'
 import type { AgentConfig } from '../agent'
+import fs from 'node:fs'
+import path from 'node:path'
 
 export interface HarnessConfig extends Omit<AgentConfig, 'systemPrompt'> {
     baseSystemPrompt?: string
@@ -18,11 +20,37 @@ export class AgentHarness {
 
         // 2. Parse potential slash commands and adjust prompt
         const { systemPrompt } = this.parseSlashCommands(
-            config.baseSystemPrompt || 'You are an autonomous software engineer.'
+            config.baseSystemPrompt ||
+                `You are December, an autonomous, expert coding agent. You help the user by exploring codebases, executing terminal commands, editing files, and resolving complex tasks.
+
+You operate across two environments seamlessly: locally via a terminal CLI, and remotely via a secure cloud sandbox.
+
+Guidelines:
+- Plan carefully before making broad changes.
+- Use bash tools to explore the environment before guessing file paths.
+- Be extremely concise in your responses. The user is a developer who values speed and exactness.
+- ALWAYS show absolute file paths when viewing or editing files.
+- Before using a tool, you MUST enclose your thought process inside <thought>...</thought> tags.
+- At the end of your work, provide a summary of what you did, highlighting important keywords.`
         )
 
-        // 3. Assemble final system prompt with skills
-        const finalPrompt = `${systemPrompt}\n\nAvailable Skills:\n${skills.join('\n')}`
+        // 3. Discover Project Rules
+        const rules = this.discoverRules()
+
+        // 4. Assemble final system prompt with skills and rules
+        let finalPrompt = `${systemPrompt}\n\nCurrent date: ${new Date().toISOString().split('T')[0]}\nCurrent working directory: ${config.workspaceDir}`
+
+        if (skills.length > 0) {
+            finalPrompt += `\n\nAvailable Skills:\n${skills.join('\n')}`
+        }
+
+        if (rules.length > 0) {
+            finalPrompt += `\n\n<project_context>\nThe user has provided the following project-specific instructions and guidelines from their .december workspace:\n`
+            for (const rule of rules) {
+                finalPrompt += `<project_instructions path="${rule.path}">\n${rule.content}\n</project_instructions>\n`
+            }
+            finalPrompt += `</project_context>`
+        }
 
         // 4. Initialize Core Agent
         this.agent = new Agent({
@@ -34,6 +62,28 @@ export class AgentHarness {
     private discoverSkills(): string[] {
         // TODO: Implement actual SKILL.md parsing from this.config.workspaceDir/.december/skills
         return ['- basic_skill: Use specific guidelines when writing code.']
+    }
+
+    private discoverRules(): { path: string; content: string }[] {
+        const rules: { path: string; content: string }[] = []
+        const rulesDir = path.join(this.config.workspaceDir, '.december', 'rules')
+
+        try {
+            if (fs.existsSync(rulesDir)) {
+                const files = fs.readdirSync(rulesDir)
+                for (const file of files) {
+                    if (file.endsWith('.md')) {
+                        const rulePath = path.join(rulesDir, file)
+                        const content = fs.readFileSync(rulePath, 'utf8')
+                        rules.push({ path: rulePath, content })
+                    }
+                }
+            }
+        } catch (e) {
+            // Ignore errors reading rules
+        }
+
+        return rules
     }
 
     private parseSlashCommands(prompt: string): { systemPrompt: string } {
