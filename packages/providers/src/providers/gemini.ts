@@ -2,7 +2,8 @@ import { GoogleGenAI, Content } from '@google/genai'
 
 import { LLMProvider, Message, ProviderStreamChunk, ProviderTool } from '../types.ts'
 
-import { createProvider } from '../models.ts'
+import { createProvider, ProviderConfig } from '../models.ts'
+import { safeParseJson } from '@december/shared'
 
 function sanitizeSchemaForGemini(schema: any): any {
     if (!schema || typeof schema !== 'object') return schema
@@ -69,7 +70,7 @@ export function geminiProvider(apiKey?: string): LLMProvider {
                     let name = 'unknown'
                     let extraFields: any = { id: msg.toolCallId }
                     try {
-                        const parsed = JSON.parse(msg.toolCallId!)
+                        const parsed = safeParseJson(msg.toolCallId!)
                         if (parsed && typeof parsed === 'object') {
                             extraFields = parsed
                             if (extraFields.thoughtSignature) {
@@ -114,7 +115,7 @@ export function geminiProvider(apiKey?: string): LLMProvider {
                             let extraFields: any = { id: tc.id }
                             let thoughtSignature: string | undefined
                             try {
-                                const parsed = JSON.parse(tc.id)
+                                const parsed = safeParseJson(tc.id)
                                 if (parsed && typeof parsed === 'object') {
                                     extraFields = parsed
                                     if (parsed.thoughtSignature) {
@@ -128,7 +129,7 @@ export function geminiProvider(apiKey?: string): LLMProvider {
                                 functionCall: {
                                     ...extraFields,
                                     name: tc.name,
-                                    args: JSON.parse(tc.input || '{}'),
+                                    args: safeParseJson(tc.input || '{}'),
                                 },
                             }
                             if (thoughtSignature) {

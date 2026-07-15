@@ -32,6 +32,7 @@ import {
     BrowserTool,
     GitHubTool,
     MCPTool,
+    WebSearchTool,
 } from '@december/tools'
 import { ChatApp as App } from '@december/tui'
 import { RootLayout } from '@december/tui'
@@ -135,8 +136,17 @@ async function main() {
     const config = await loadConfig()
 
     const harness = new AgentHarness({
-        baseSystemPrompt:
-            'You are December, an autonomous software engineer. You have access to tools. When executing code, please use JSON schemas for tool inputs. Before using a tool, you MUST enclose your thought process inside <thought>...</thought> tags. At the end of your work, provide a summary of what you did, highlighting important keywords.',
+        baseSystemPrompt: `You are December, an autonomous, expert coding agent. You help the user by exploring codebases, executing terminal commands, editing files, and resolving complex tasks.
+
+You operate across two environments seamlessly: locally via a terminal CLI, and remotely via a secure cloud sandbox.
+
+Guidelines:
+- Plan carefully before making broad changes.
+- Use bash tools to explore the environment before guessing file paths.
+- Be extremely concise in your responses. The user is a developer who values speed and exactness.
+- ALWAYS show absolute file paths when viewing or editing files.
+- Before using a tool, you MUST enclose your thought process inside <thought>...</thought> tags.
+- At the end of your work, provide a summary of what you did, highlighting important keywords.`,
         llm: llm,
         tools: [
             BashTool,
@@ -153,6 +163,7 @@ async function main() {
             BrowserTool,
             GitHubTool,
             MCPTool,
+            WebSearchTool,
         ],
         operations: localOperations,
         modelOptions: { model: providerConfig?.model || 'gemini-3.5-flash' },
@@ -288,6 +299,61 @@ async function main() {
         const prompt = args.join(' ')
         console.log(`\nExecuting Headless Task: "${prompt}"\n`)
         const { runAgentLoop } = await import('@december/agent')
+
+        const readline = require('readline')
+        const rl = readline.createInterface({
+            input: process.stdin,
+            output: process.stdout,
+        })
+
+        if (!agent.operations) agent.operations = {} as any
+        if (!agent.operations.ui) agent.operations.ui = {} as any
+
+        agent.operations.ui.askQuestion = (questions: any[]) => {
+            return new Promise((resolve) => {
+                const q = questions[0]
+                console.log(`\n\n[Question]: ${q.question}`)
+                if (q.options) {
+                    q.options.forEach((opt: string, i: number) => console.log(`${i + 1}. ${opt}`))
+                }
+                rl.question('\nSelect an option or type your answer: ', (answer: string) => {
+                    const num = parseInt(answer)
+                    if (!isNaN(num) && num > 0 && q.options && num <= q.options.length) {
+                        resolve(q.options[num - 1])
+                    } else {
+                        resolve(answer)
+                    }
+                })
+            })
+        }
+
+        agent.operations.ui.requestPermission = async (toolCall: any) => {
+            if (
+                ['replace_file_content', 'multi_replace_file_content', 'run_command'].includes(
+                    toolCall.name
+                )
+            ) {
+                return new Promise((resolve) => {
+                    rl.question(`\nExecute ${toolCall.name}? (y/n): `, (answer: string) => {
+                        if (answer.toLowerCase().startsWith('y')) {
+                            resolve({ block: false })
+                        } else {
+                            resolve({ block: true, reason: 'User denied execution in UI.' })
+                        }
+                    })
+                })
+            }
+            return { block: false }
+        }
+
+        // Steer while streaming
+        rl.on('line', (input: string) => {
+            if (input.trim()) {
+                agent.steer({ role: 'user', content: input, isUI: true })
+                console.log(`\n[Steering input sent to agent]\n`)
+            }
+        })
+
         const stream = runAgentLoop(agent, prompt)
 
         for await (const event of stream) {
@@ -317,6 +383,7 @@ async function main() {
             }
         }
         console.log('\n\nHeadless task complete.')
+        rl.close()
         process.exit(0)
     }
 
