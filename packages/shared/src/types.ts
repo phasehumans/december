@@ -18,6 +18,8 @@ export interface Message {
 }
 
 export interface AgentMessage extends Message {
+    id?: string
+    parentId?: string
     isUI?: boolean
     errorMessage?: string
     timestamp?: number

@@ -61,14 +61,14 @@ _Fix lag and user experience issues in the local terminal UI._
     - [ ] Ensure text chunks are flushed to stdout in real-time, eliminating "bursty" lag.
     - [ ] Update Ink TUI components to cleanly render nested `<thought>` blocks (collapsible if possible, or dimmed).
     - [ ] Improve syntax highlighting for code blocks within the CLI chat feed.
-- [ ] **2.2 Context Compaction**
-    - [ ] Implement `ConversationManager` to actively track token usage per session.
-    - [ ] Build a summarization prompt that compresses the oldest N messages into a single summary block.
-    - [ ] Test context compaction on a simulated 100-turn conversation to ensure no crucial data is lost.
+- [x] **2.2 Context Compaction**
+    - [x] Implement `ConversationManager` to actively track token usage per session.
+    - [x] Build a summarization prompt that compresses the oldest N messages into a single summary block.
+    - [x] Test context compaction on a simulated 100-turn conversation to ensure no crucial data is lost.
 - [ ] **2.3 Testing & Stability**
     - [ ] Write Unit Tests for `packages/agent` loop generator.
     - [ ] Write Unit Tests for context compaction logic.
-    - [ ] Ensure `mcp.json` parsing strictly injects MCP tools into the agent on CLI boot.
+    - [x] Ensure `mcp.json` parsing strictly injects MCP tools into the agent on CLI boot.
 
 ### Phase 3 (Week 3): Server, DB & Real-time Sync
 

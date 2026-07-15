@@ -47,10 +47,42 @@ export interface DecemberConfig {
 const CONFIG_DIR = path.join(os.homedir(), '.config', 'december')
 const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json')
 
+function deepMergeSettings(base: any, overrides: any): any {
+    const result = { ...base }
+    for (const key of Object.keys(overrides)) {
+        const overrideValue = overrides[key]
+        const baseValue = base[key]
+        if (overrideValue === undefined) continue
+
+        if (
+            typeof overrideValue === 'object' &&
+            overrideValue !== null &&
+            !Array.isArray(overrideValue) &&
+            typeof baseValue === 'object' &&
+            baseValue !== null &&
+            !Array.isArray(baseValue)
+        ) {
+            result[key] = { ...baseValue, ...overrideValue }
+        } else {
+            result[key] = overrideValue
+        }
+    }
+    return result
+}
+
 export async function loadConfig(): Promise<DecemberConfig> {
     try {
         const data = await fs.readFile(CONFIG_FILE, 'utf-8')
-        const config = JSON.parse(data)
+        let config = JSON.parse(data)
+
+        try {
+            const workspacePath = path.join(process.cwd(), '.december', 'settings.json')
+            const wData = await fs.readFile(workspacePath, 'utf-8')
+            const workspaceConfig = JSON.parse(wData)
+            config = deepMergeSettings(config, workspaceConfig)
+        } catch {
+            // Workspace config is optional
+        }
 
         // Self-heal: If providers exist but activeProvider is missing, select the first available
         if (
