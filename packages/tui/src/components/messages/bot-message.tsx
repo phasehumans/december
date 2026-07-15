@@ -1,5 +1,5 @@
-import { Box, Text } from 'ink'
-import React from 'react'
+import { Box, Text, useFocus, useInput } from 'ink'
+import React, { useState } from 'react'
 
 import { Markdown } from '../markdown'
 import { Pill } from '../pill'
@@ -11,6 +11,7 @@ import { ToolArgumentsDisplay } from './tool-arguments'
 export type MessageBlock =
     | { type: 'text'; content: string }
     | { type: 'thinking'; content: string }
+    | { type: 'compaction'; summary: string }
     | {
           type: 'command'
           toolCallId?: string
@@ -32,6 +33,39 @@ export type MessageBlock =
 type Props = {
     blocks: MessageBlock[]
     usage?: { promptTokens: number; completionTokens: number }
+}
+
+function CollapsibleThought({ content }: { content: string }) {
+    const { isFocused } = useFocus({ autoFocus: false })
+    const [expanded, setExpanded] = useState(false)
+
+    useInput((input, key) => {
+        if (isFocused && key.return) {
+            setExpanded((prev) => !prev)
+        }
+    })
+
+    const lines = content.split('\n')
+    const isLarge = lines.length > 5
+
+    return (
+        <Box flexDirection="row" paddingBottom={1}>
+            <Box width={2} flexShrink={0}>
+                <Text color={isFocused ? '#89B4F8' : '#475569'}>│</Text>
+            </Box>
+            <Box flexDirection="column">
+                <Text color={isFocused ? '#89B4F8' : '#64748b'} italic>
+                    Thinking...{' '}
+                    {isFocused ? (expanded ? '(Enter to collapse)' : '(Enter to expand)') : ''}
+                </Text>
+                <Box paddingY={0.5}>
+                    <Text color="#475569" dimColor>
+                        {isLarge && !expanded ? lines.slice(0, 3).join('\n') + '\n...' : content}
+                    </Text>
+                </Box>
+            </Box>
+        </Box>
+    )
 }
 
 function StyledCommand({ command, truncate = true }: { command: string; truncate?: boolean }) {
@@ -93,21 +127,10 @@ export function BotMessage({ blocks, usage }: Props) {
                                             .replace(/<\/thought>$/, '')
                                             .trim()
                                         return (
-                                            <Box key={pidx} flexDirection="row" paddingBottom={1}>
-                                                <Box width={2} flexShrink={0}>
-                                                    <Text color="#475569">│</Text>
-                                                </Box>
-                                                <Box flexDirection="column">
-                                                    <Text color="#64748b" italic>
-                                                        Thinking...
-                                                    </Text>
-                                                    <Box paddingY={0.5}>
-                                                        <Text color="#475569" dimColor>
-                                                            {thoughtContent}
-                                                        </Text>
-                                                    </Box>
-                                                </Box>
-                                            </Box>
+                                            <CollapsibleThought
+                                                key={pidx}
+                                                content={thoughtContent}
+                                            />
                                         )
                                     }
                                     if (part.trim() === '') return null
@@ -121,12 +144,27 @@ export function BotMessage({ blocks, usage }: Props) {
                         )
                     }
                     case 'thinking': {
+                        return <CollapsibleThought key={idx} content={block.content} />
+                    }
+                    case 'compaction': {
                         return (
-                            <Box key={idx} flexDirection="column">
-                                <Box gap={1} alignItems="center">
-                                    <Spinner />
-                                    <Text color="gray" italic>
-                                        {block.content || 'Thinking...'}
+                            <Box key={idx} flexDirection="column" paddingY={1}>
+                                <Box flexDirection="row" gap={1} alignItems="center">
+                                    <Pill
+                                        label="SYSTEM"
+                                        backgroundColor="#303030"
+                                        color="#a78bfa"
+                                    />
+                                    <Text color="#a78bfa" italic>
+                                        Context Compacted
+                                    </Text>
+                                </Box>
+                                <Box paddingLeft={1} paddingTop={1}>
+                                    <Text color="#94a3b8" dimColor>
+                                        {block.summary.replace(
+                                            /^\[COMPACTED HISTORY SUMMARY\]\n/,
+                                            ''
+                                        )}
                                     </Text>
                                 </Box>
                             </Box>

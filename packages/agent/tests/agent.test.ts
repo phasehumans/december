@@ -29,8 +29,8 @@ describe('Agent core functionality', () => {
             operations: mockOperations,
         })
         expect(agent.messages.length).toBe(1)
-        expect(agent.messages[0].role).toBe('system')
-        expect(agent.messages[0].content).toBe('You are a helpful autonomous software engineer.')
+        expect(agent.messages[0]!.role).toBe('system')
+        expect(agent.messages[0]!.content).toBe('You are a helpful autonomous software engineer.')
     })
 
     test('initializes queues based on mode', () => {
@@ -59,12 +59,12 @@ describe('Agent core functionality', () => {
         // one-at-a-time mode
         const drained1 = agent.steeringQueue.drain()
         expect(drained1.length).toBe(1)
-        expect(drained1[0].content).toBe('steer1')
+        expect(drained1[0]!.content).toBe('steer1')
         expect(agent.steeringQueue.length).toBe(1)
 
         const drained2 = agent.steeringQueue.drain()
         expect(drained2.length).toBe(1)
-        expect(drained2[0].content).toBe('steer2')
+        expect(drained2[0]!.content).toBe('steer2')
     })
 
     test('followUp queue drain all mode', () => {
@@ -80,8 +80,8 @@ describe('Agent core functionality', () => {
         // all mode
         const drained = agent.followUpQueue.drain()
         expect(drained.length).toBe(2)
-        expect(drained[0].content).toBe('follow1')
-        expect(drained[1].content).toBe('follow2')
+        expect(drained[0]!.content).toBe('follow1')
+        expect(drained[1]!.content).toBe('follow2')
         expect(agent.followUpQueue.length).toBe(0)
     })
 
@@ -96,6 +96,6 @@ describe('Agent core functionality', () => {
 
         await agent.clearContext()
         expect(agent.messages.length).toBe(1)
-        expect(agent.messages[0].role).toBe('system')
+        expect(agent.messages[0]!.role).toBe('system')
     })
 })

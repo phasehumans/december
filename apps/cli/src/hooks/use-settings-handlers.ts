@@ -1,5 +1,6 @@
-import { loadConfig, saveConfig } from '../config'
+import { loadConfig, saveConfig, getProviderConfig } from '../config'
 import { useCliStore } from '../store'
+import { instantiateProvider } from '../utils/provider-factory'
 
 export function useSettingsHandlers() {
     const {
@@ -24,6 +25,10 @@ export function useSettingsHandlers() {
         setSettingsSteeringMode,
         settingsFollowUpMode,
         setSettingsFollowUpMode,
+        settingsAuthPriority,
+        setSettingsAuthPriority,
+        setAuthMethod,
+        agent,
         addToast,
     } = useCliStore()
 
@@ -88,6 +93,31 @@ export function useSettingsHandlers() {
                 config.followUpMode = settingsFollowUpMode === 'all' ? 'one-at-a-time' : 'all'
                 setSettingsFollowUpMode(config.followUpMode)
                 updated = true
+                break
+            case 'authPriority':
+                const newPriority = settingsAuthPriority === 'december' ? 'byok' : 'december'
+                config.authPriority = newPriority
+                setSettingsAuthPriority(newPriority)
+                updated = true
+
+                // Hot reload the LLM
+                await saveConfig(config)
+                const newProviderConfig = await getProviderConfig()
+                if (newProviderConfig && agent) {
+                    const llm = instantiateProvider(
+                        newProviderConfig.provider,
+                        newProviderConfig.apiKey
+                    )
+                    agent.setLLM(llm)
+                    setAuthMethod(newProviderConfig.authMethod)
+                    addToast(
+                        `Auth priority set to ${newPriority === 'december' ? 'December Cloud' : 'BYOK'} (Hot Reloaded!)`
+                    )
+                } else {
+                    addToast(
+                        `Auth priority set to ${newPriority === 'december' ? 'December Cloud' : 'BYOK'}`
+                    )
+                }
                 break
             case 'back':
                 setAuthMode('none')

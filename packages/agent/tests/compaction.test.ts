@@ -36,11 +36,11 @@ describe('compactContextIfNeeded', () => {
 
         // Output should be: System (1) + Summary (1) + Protected Tail (20) = 22
         expect(result.length).toBe(22)
-        expect(result[0].role).toBe('system')
-        expect(result[1].role).toBe('system')
-        expect(result[1].content).toContain('[COMPACTED HISTORY SUMMARY]')
-        expect(result[1].content).toContain('This is a summary.')
-        expect(result[2].role).toBe('user')
+        expect(result[0]!.role).toBe('system')
+        expect(result[1]!.role).toBe('system')
+        expect(result[1]!.content).toContain('[COMPACTED HISTORY SUMMARY]')
+        expect(result[1]!.content).toContain('This is a summary.')
+        expect(result[2]!.role).toBe('user')
     })
 
     test('does not compact if length <= 21 even if tokens exceed', async () => {
