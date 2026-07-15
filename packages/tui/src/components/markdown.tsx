@@ -141,15 +141,11 @@ function CodeBlock({ token }: { token: any }) {
         ignoreIllegals: true,
     })
 
-    const renderedLines = highlighted.split('\n')
-
     return (
         <Box flexDirection="column" paddingY={1}>
             <Text color={isFocused ? '#89B4F8' : '#475569'}>{topBar}</Text>
             <Box flexDirection="column" paddingLeft={2}>
-                {renderedLines.map((line, idx) => (
-                    <Text key={idx}>{line}</Text>
-                ))}
+                <Text>{highlighted}</Text>
             </Box>
             {isLarge && !expanded ? (
                 <Box flexDirection="column" paddingLeft={2}>

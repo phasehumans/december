@@ -1,4 +1,5 @@
 import type { AgentEvent, ToolCall, ToolResult } from '@december/shared'
+import { safeParseJson } from '@december/shared'
 import pRetry, { AbortError } from 'p-retry'
 import { v4 as uuidv4 } from 'uuid'
 
@@ -60,7 +61,7 @@ function formatError(e: any): string {
     const msgStr = e.error?.error?.message || e.error?.message || e.message || rawData?.message
     if (msgStr && typeof msgStr === 'string') {
         try {
-            const parsedMessage = JSON.parse(msgStr)
+            const parsedMessage = safeParseJson(msgStr)
             // If it's valid JSON, use it as the raw data
             rawData = parsedMessage
         } catch {
@@ -391,7 +392,7 @@ async function executeSingleTool(
         errorStr = `Tool ${toolCall.name} not found.`
     } else {
         try {
-            let parsedArgs = toolCall.input ? JSON.parse(toolCall.input) : {}
+            let parsedArgs = toolCall.input ? safeParseJson(toolCall.input) : {}
             if (tool.prepareArguments) {
                 parsedArgs = tool.prepareArguments(parsedArgs)
             }
