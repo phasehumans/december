@@ -461,9 +461,15 @@ async function executeToolCallsSequential(
     for (const toolCall of toolCalls) {
         if (signal.aborted) break
         const r = await executeSingleTool(agent, toolCall, eventQueue, signal)
+
+        let finalContent = r.resultStr || ''
+        if (r.errorStr) {
+            finalContent = `Tool execution failed: ${r.errorStr}\nPlease adjust your arguments and try again.`
+        }
+
         agent.addMessage({
             role: 'tool',
-            content: r.resultStr || r.errorStr || '',
+            content: finalContent,
             toolCallId: r.toolCall.id,
         })
     }
@@ -478,9 +484,14 @@ async function executeToolCallsParallel(
     const promises = toolCalls.map((tc) => executeSingleTool(agent, tc, eventQueue, signal))
     const results = await Promise.all(promises)
     for (const r of results) {
+        let finalContent = r.resultStr || ''
+        if (r.errorStr) {
+            finalContent = `Tool execution failed: ${r.errorStr}\nPlease adjust your arguments and try again.`
+        }
+
         agent.addMessage({
             role: 'tool',
-            content: r.resultStr || r.errorStr || '',
+            content: finalContent,
             toolCallId: r.toolCall.id,
         })
     }

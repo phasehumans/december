@@ -280,6 +280,46 @@ async function main() {
         process.exit(0)
     }
 
+    if (
+        command &&
+        !['handoff', 'login', 'logout', 'init'].includes(command) &&
+        !command.startsWith('-')
+    ) {
+        const prompt = args.join(' ')
+        console.log(`\nExecuting Headless Task: "${prompt}"\n`)
+        const { runAgentLoop } = await import('@december/agent')
+        const stream = runAgentLoop(agent, prompt)
+
+        for await (const event of stream) {
+            switch (event.type) {
+                case 'StreamChunk':
+                    process.stdout.write(event.content)
+                    break
+                case 'ToolCallStart':
+                    console.log(`\n\n[Tool Executing: ${event.toolCall.name}]`)
+                    console.log(event.toolCall.input)
+                    break
+                case 'ToolCallResult':
+                    if (event.result.error) {
+                        console.error(`[Tool Error] ${event.result.error}`)
+                    } else {
+                        console.log(`[Tool Result Received]`)
+                    }
+                    break
+                case 'AgentUsage':
+                    console.log(
+                        `\n[Usage: ${event.promptTokens} prompt, ${event.completionTokens} completion]`
+                    )
+                    break
+                case 'AgentError':
+                    console.error(`\n[Agent Error: ${event.error}]`)
+                    break
+            }
+        }
+        console.log('\n\nHeadless task complete.')
+        process.exit(0)
+    }
+
     render(
         React.createElement(
             RootLayout,

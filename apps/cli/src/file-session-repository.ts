@@ -20,19 +20,64 @@ export class FileSessionRepository implements SessionRepository {
         this.sessionDir = sessionDir || path.join(os.homedir(), '.config', 'december', 'sessions')
     }
 
-    async saveContext(sessionId: string, messages: Message[]): Promise<void> {
+    async saveContext(sessionId: string, messages: AgentMessage[]): Promise<void> {
         await fs.mkdir(this.sessionDir, { recursive: true })
         const historyPath = path.join(this.sessionDir, `${sessionId}.jsonl`)
-        const content = messages.map((m) => JSON.stringify(m)).join('\n')
+        // Append all messages to the file. (In a real DB, we'd upsert by ID)
+        // For local files, we just write the whole array to ensure it's saved.
+        // Wait, to truly support branching in the same file, we can't just overwrite.
+        // But if we append everything every time, it gets huge.
+        // Let's read existing, merge by ID, and write back.
+        let existing: Record<string, AgentMessage> = {}
+        try {
+            const data = await fs.readFile(historyPath, 'utf-8')
+            const lines = data.split('\n').filter((l) => l.trim().length > 0)
+            for (const l of lines) {
+                const msg = JSON.parse(l) as AgentMessage
+                if (msg.id) existing[msg.id] = msg
+            }
+        } catch (e) {}
+
+        for (const msg of messages) {
+            if (msg.id) existing[msg.id] = msg
+        }
+
+        const content = Object.values(existing)
+            .map((m) => JSON.stringify(m))
+            .join('\n')
         await fs.writeFile(historyPath, content, 'utf-8')
     }
 
-    async loadContext(sessionId: string): Promise<Message[]> {
+    async loadContext(sessionId: string): Promise<AgentMessage[]> {
         const historyPath = path.join(this.sessionDir, `${sessionId}.jsonl`)
         try {
             const data = await fs.readFile(historyPath, 'utf-8')
             const lines = data.split('\n').filter((l) => l.trim().length > 0)
-            return lines.map((l) => JSON.parse(l))
+            const msgs = lines.map((l) => JSON.parse(l) as AgentMessage)
+
+            // Reconstruct the active branch (the one ending with the latest message)
+            if (msgs.length === 0) return []
+
+            // Find the latest message by timestamp
+            let latestMsg = msgs[0]
+            for (const msg of msgs) {
+                if ((msg.timestamp || 0) > (latestMsg.timestamp || 0)) {
+                    latestMsg = msg
+                }
+            }
+
+            // Walk back up the tree using parentId
+            const branch: AgentMessage[] = []
+            const msgMap = new Map(msgs.map((m) => [m.id, m]))
+
+            let current: AgentMessage | undefined = latestMsg
+            while (current) {
+                branch.unshift(current)
+                if (!current.parentId) break
+                current = msgMap.get(current.parentId)
+            }
+
+            return branch
         } catch (e) {
             return []
         }

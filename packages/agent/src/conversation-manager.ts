@@ -18,6 +18,12 @@ export class ConversationManager {
     }
 
     addMessage(msg: AgentMessage) {
+        if (!msg.id) msg.id = require('uuid').v4()
+        if (msg.parentId === undefined) {
+            const parent = this._messages[this._messages.length - 1]
+            msg.parentId = parent ? parent.id : undefined
+        }
+        msg.timestamp = msg.timestamp || Date.now()
         this._messages.push(msg)
     }
 
