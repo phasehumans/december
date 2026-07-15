@@ -3,6 +3,7 @@ import type { AgentMessage, Message, Tool, AgentHooks } from '@december/shared'
 
 import type { SessionRepository } from './harness/session-repository'
 import type { PlatformAdapter } from './platform-adapter'
+import { ConversationManager } from './conversation-manager'
 
 export interface AgentConfig {
     sessionId?: string
@@ -49,7 +50,7 @@ class PendingMessageQueue {
 }
 
 export class Agent {
-    public messages: AgentMessage[] = []
+    public conversation: ConversationManager
     public tools: Map<string, Tool> = new Map()
     public systemPrompt: string
     public llm: LLMProvider
@@ -78,16 +79,25 @@ export class Agent {
         this.convertToLlm = config.convertToLlm || this.defaultConvertToLlm
         this.steeringQueue = new PendingMessageQueue(config.steeringMode || 'one-at-a-time')
         this.followUpQueue = new PendingMessageQueue(config.followUpMode || 'one-at-a-time')
+        this.conversation = new ConversationManager()
 
         for (const tool of config.tools) {
             this.tools.set(tool.name, tool)
         }
 
         // Initialize with system prompt
-        this.messages.push({
+        this.conversation.addMessage({
             role: 'system',
             content: this.systemPrompt,
         })
+    }
+
+    get messages(): AgentMessage[] {
+        return this.conversation.messages
+    }
+
+    set messages(msgs: AgentMessage[]) {
+        this.conversation.messages = msgs
     }
 
     private defaultConvertToLlm(messages: AgentMessage[]): Message[] {

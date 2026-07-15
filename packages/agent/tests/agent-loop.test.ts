@@ -54,10 +54,10 @@ describe('runAgentLoop', () => {
 
         // Ensure the input message was added
         expect(agent.messages.length).toBe(3) // System + User + Assistant
-        expect(agent.messages[1].role).toBe('user')
-        expect(agent.messages[1].content).toBe('say hello')
-        expect(agent.messages[2].role).toBe('assistant')
-        expect(agent.messages[2].content).toBe('hello world')
+        expect(agent.messages[1]!.role).toBe('user')
+        expect(agent.messages[1]!.content).toBe('say hello')
+        expect(agent.messages[2]!.role).toBe('assistant')
+        expect(agent.messages[2]!.content).toBe('hello world')
     })
 
     test('executes tool call and continues loop', async () => {
@@ -99,8 +99,8 @@ describe('runAgentLoop', () => {
 
         // Verify final assistant message
         const lastMsg = agent.messages[agent.messages.length - 1]
-        expect(lastMsg.role).toBe('assistant')
-        expect(lastMsg.content).toBe('tool executed successfully')
+        expect(lastMsg!.role).toBe('assistant')
+        expect(lastMsg!.content).toBe('tool executed successfully')
     })
 
     test('integrates steering messages from queue', async () => {
@@ -122,7 +122,7 @@ describe('runAgentLoop', () => {
 
         // System + Steer + Assistant
         expect(agent.messages.length).toBe(3)
-        expect(agent.messages[1].content).toBe('steer me')
+        expect(agent.messages[1]!.content).toBe('steer me')
     })
 
     test('handles standard API errors gracefully without crashing the loop', async () => {
@@ -145,11 +145,11 @@ describe('runAgentLoop', () => {
 
         expect(events.map((e) => e.type)).toContain('StreamChunk')
         // StreamChunk should contain the error
-        expect(events.find((e) => e.type === 'StreamChunk').content).toContain('Some API error')
+        expect(events.find((e) => e.type === 'StreamChunk')!.content).toContain('Some API error')
 
         const lastMsg = agent.messages[agent.messages.length - 1]
-        expect(lastMsg.role).toBe('assistant')
-        expect(lastMsg.content).toContain('Failed due to API error: Error: Some API error')
+        expect(lastMsg!.role).toBe('assistant')
+        expect(lastMsg!.content).toContain('Failed due to API error: Error: Some API error')
     })
 
     test('tool execution blocked by ui.requestPermission', async () => {

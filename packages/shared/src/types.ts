@@ -115,6 +115,11 @@ export interface AgentErrorEvent {
     error: string
 }
 
+export interface ContextCompactedEvent {
+    type: 'ContextCompacted'
+    summary: string
+}
+
 export type AgentEvent =
     | AgentStartEvent
     | TurnStartEvent
@@ -128,3 +133,4 @@ export type AgentEvent =
     | AgentErrorEvent
     | AgentStatusEvent
     | AgentUsageEvent
+    | ContextCompactedEvent
