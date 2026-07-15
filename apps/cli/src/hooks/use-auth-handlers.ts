@@ -29,6 +29,9 @@ export function useAuthHandlers(
         setStaticMessages,
         setIsStreaming,
         isStreaming,
+        setHasBothAuth,
+        setSettingsAuthPriority,
+        setAuthMethod,
     } = useCliStore()
 
     const handleAuthMenuSelect = async (item: any) => {
