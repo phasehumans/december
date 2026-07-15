@@ -19,7 +19,7 @@ export function openaiProvider(
         {
             id: 'openai',
             name: 'OpenAI',
-            models: [], // to be populated
+            models: [],
             api: client,
         },
         async function* (

@@ -131,6 +131,8 @@ async function main() {
         console.warn('Failed to parse mcp.json:', err.message)
     }
 
+    const config = await loadConfig()
+
     const harness = new AgentHarness({
         baseSystemPrompt:
             'You are December, an autonomous software engineer. You have access to tools. When executing code, please use JSON schemas for tool inputs. Before using a tool, you MUST enclose your thought process inside <thought>...</thought> tags. At the end of your work, provide a summary of what you did, highlighting important keywords.',
@@ -161,13 +163,15 @@ async function main() {
                 // Future integration: Hook into the TUI to request user approval for destructive bash commands
             },
         },
+        thinkingLevel: config.thinkingLevel,
+        steeringMode: config.steeringMode,
+        followUpMode: config.followUpMode,
     })
 
     const agent = harness.getAgent()
 
     await agent.loadContext()
 
-    const config = await loadConfig()
     const userEmail = config.decemberToken ? config.email : undefined
 
     const args = process.argv.slice(2)

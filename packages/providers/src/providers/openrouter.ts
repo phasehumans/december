@@ -9,7 +9,6 @@ export function openrouterProvider(apiKey?: string): LLMProvider {
         'X-Title': 'December Cloud',
     })
 
-    // Override the ID so we know it's OpenRouter
     return {
         ...provider,
         id: 'openrouter',

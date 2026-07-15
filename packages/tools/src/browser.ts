@@ -27,7 +27,6 @@ export const BrowserTool: Tool<BrowserInput> = {
                 return `HTTP Error (${res.status}): ${html}`
             }
 
-            // Extremely simple HTML to text conversion for the LLM
             const cleanText = html
                 .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
                 .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')

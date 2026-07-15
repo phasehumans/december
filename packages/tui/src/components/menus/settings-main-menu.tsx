@@ -15,6 +15,9 @@ export function SettingsMainMenu(props: any) {
         settingsAutoScroll,
         settingsStreamSpeed,
         settingsAutoUpdate,
+        settingsThinkingLevel,
+        settingsSteeringMode,
+        settingsFollowUpMode,
         handleSettingsMainSelect,
     } = props
     const mainItems = [
@@ -57,6 +60,18 @@ export function SettingsMainMenu(props: any) {
         {
             label: `Auto Update              [${settingsAutoUpdate ? 'on' : 'off'}]`,
             value: 'autoUpdate',
+        },
+        {
+            label: `Thinking Level           [${settingsThinkingLevel}]`,
+            value: 'thinkingLevel',
+        },
+        {
+            label: `Steering Mode            [${settingsSteeringMode}]`,
+            value: 'steeringMode',
+        },
+        {
+            label: `Follow-Up Mode           [${settingsFollowUpMode}]`,
+            value: 'followUpMode',
         },
     ]
     return (
