@@ -4,6 +4,45 @@ import { LLMProvider, Message, ProviderStreamChunk, ProviderTool } from '../type
 
 import { createProvider } from '../models.ts'
 
+function sanitizeSchemaForGemini(schema: any): any {
+    if (!schema || typeof schema !== 'object') return schema
+
+    const result = { ...schema }
+
+    if (Array.isArray(result.anyOf)) {
+        const isAllConsts = result.anyOf.every(
+            (item: any) => item && typeof item === 'object' && 'const' in item
+        )
+        if (isAllConsts) {
+            result.enum = result.anyOf.map((item: any) => item.const)
+            delete result.anyOf
+        } else {
+            result.anyOf = result.anyOf.map((item: any) => sanitizeSchemaForGemini(item))
+        }
+    }
+
+    if ('const' in result) {
+        result.enum = [result.const]
+        delete result.const
+    }
+
+    for (const key in result) {
+        if (
+            typeof result[key] === 'object' &&
+            result[key] !== null &&
+            !Array.isArray(result[key])
+        ) {
+            result[key] = sanitizeSchemaForGemini(result[key])
+        } else if (Array.isArray(result[key])) {
+            result[key] = result[key].map((item: any) =>
+                typeof item === 'object' && item !== null ? sanitizeSchemaForGemini(item) : item
+            )
+        }
+    }
+
+    return result
+}
+
 export function geminiProvider(apiKey?: string): LLMProvider {
     const client = new GoogleGenAI({
         apiKey: apiKey || process.env.GEMINI_API_KEY,
@@ -115,7 +154,7 @@ export function geminiProvider(apiKey?: string): LLMProvider {
                           functionDeclarations: tools.map((t) => ({
                               name: t.name,
                               description: t.description,
-                              parameters: t.inputSchema, // Note: Gemini expects OpenAPI 3.0 schemas, usually very similar to JSON Schema
+                              parameters: sanitizeSchemaForGemini(t.inputSchema), // Sanitize OpenAPI 3.0 schema
                           })),
                       },
                   ]

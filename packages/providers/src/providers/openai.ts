@@ -4,10 +4,15 @@ import { LLMProvider, Message, ProviderStreamChunk, ProviderTool } from '../type
 
 import { createProvider, ProviderConfig } from '../models.ts'
 
-export function openaiProvider(baseURL?: string, apiKey?: string): LLMProvider {
+export function openaiProvider(
+    baseURL?: string,
+    apiKey?: string,
+    defaultHeaders?: Record<string, string>
+): LLMProvider {
     const client = new OpenAI({
         baseURL,
         apiKey: apiKey || process.env.OPENAI_API_KEY,
+        defaultHeaders,
     })
 
     return createProvider(
