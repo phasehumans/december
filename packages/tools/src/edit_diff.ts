@@ -1,23 +1,20 @@
 import { Tool, ToolExecuteContext } from '@december/shared'
 import { applyPatch } from 'diff'
 
-export interface EditDiffInput {
-    path: string
-    diff: string
-}
+import { Type, Static } from '@sinclair/typebox'
+
+const diffSchema = Type.Object({
+    path: Type.String(),
+    diff: Type.String({ description: 'The unified diff patch string.' }),
+})
+
+export type EditDiffInput = Static<typeof diffSchema>
 
 export const EditDiffTool: Tool<EditDiffInput> = {
     name: 'edit_diff',
     description:
         'Edits an existing file by applying a unified diff patch. Use standard unified diff format. This is the preferred way to refactor files.',
-    inputSchema: {
-        type: 'object',
-        properties: {
-            path: { type: 'string' },
-            diff: { type: 'string', description: 'The unified diff patch string.' },
-        },
-        required: ['path', 'diff'],
-    },
+    inputSchema: diffSchema,
     execute: async ({ path, diff }, context: ToolExecuteContext) => {
         try {
             const content = await context.operations.fs.readFile(path)

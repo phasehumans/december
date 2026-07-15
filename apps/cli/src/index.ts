@@ -11,10 +11,10 @@ import fs from 'fs'
 import path from 'path'
 
 import {
-    OpenAIProvider,
-    AnthropicProvider,
-    GeminiProvider,
-    OpenRouterProvider,
+    openaiProvider,
+    anthropicProvider,
+    geminiProvider,
+    openrouterProvider,
 } from '@december/providers'
 import { configureMCP } from '@december/tools'
 import {
@@ -68,50 +68,48 @@ async function main() {
     if (providerConfig) {
         switch (providerConfig.provider) {
             case 'openai':
-                llm = new OpenAIProvider(undefined, providerConfig.apiKey)
+                llm = openaiProvider(undefined, providerConfig.apiKey)
                 break
             case 'anthropic':
-                llm = new AnthropicProvider(providerConfig.apiKey)
+                llm = anthropicProvider(undefined, providerConfig.apiKey)
                 break
             case 'google':
-            case 'gemini':
-                llm = new GeminiProvider(providerConfig.apiKey)
+                llm = geminiProvider(providerConfig.apiKey)
                 break
             case 'openrouter':
-                llm = new OpenRouterProvider(providerConfig.apiKey)
+                llm = openrouterProvider(providerConfig.apiKey)
                 break
             case 'deepseek':
-                llm = new OpenAIProvider('https://api.deepseek.com', providerConfig.apiKey)
+                llm = openaiProvider('https://api.deepseek.com', providerConfig.apiKey)
                 break
             case 'groq':
-                llm = new OpenAIProvider('https://api.groq.com/openai/v1', providerConfig.apiKey)
+                llm = openaiProvider('https://api.groq.com/openai/v1', providerConfig.apiKey)
                 break
             case 'huggingface':
-                llm = new OpenAIProvider(
-                    'https://api-inference.huggingface.co/v1',
+                llm = openaiProvider(
+                    'https://api-inference.huggingface.co/v1/',
                     providerConfig.apiKey
                 )
                 break
-            case 'kimi':
-            case 'moonshoot':
-                llm = new OpenAIProvider('https://api.moonshot.cn/v1', providerConfig.apiKey)
+            case 'moonshot':
+                llm = openaiProvider('https://api.moonshot.cn/v1', providerConfig.apiKey)
                 break
             case 'mistral':
-                llm = new OpenAIProvider('https://api.mistral.ai/v1', providerConfig.apiKey)
+                llm = openaiProvider('https://api.mistral.ai/v1', providerConfig.apiKey)
                 break
             case 'xai':
-                llm = new OpenAIProvider('https://api.x.ai/v1', providerConfig.apiKey)
+                llm = openaiProvider('https://api.x.ai/v1', providerConfig.apiKey)
                 break
             case 'zai':
-                llm = new OpenAIProvider('https://api.zai.ai/v1', providerConfig.apiKey)
+                llm = openaiProvider('https://api.zai.ai/v1', providerConfig.apiKey)
                 break
-            case 'december_proxy':
-                const proxyUrl = process.env.DECEMBER_SERVER_URL || 'http://localhost:3000/api/v1'
-                llm = new OpenAIProvider(proxyUrl, providerConfig.apiKey)
+            default:
+                const proxyUrl = `http://localhost:${process.env.DECEMBER_SERVER_PORT || 3000}/api/v1`
+                llm = openaiProvider(proxyUrl, providerConfig.apiKey)
                 break
         }
     } else {
-        llm = new OpenAIProvider(undefined, 'dummy-key')
+        llm = openaiProvider(undefined, 'dummy-key')
     }
 
     const isAuthenticated = !!providerConfig
@@ -132,6 +130,8 @@ async function main() {
     } catch (err: any) {
         console.warn('Failed to parse mcp.json:', err.message)
     }
+
+    const config = await loadConfig()
 
     const harness = new AgentHarness({
         baseSystemPrompt:
@@ -163,13 +163,15 @@ async function main() {
                 // Future integration: Hook into the TUI to request user approval for destructive bash commands
             },
         },
+        thinkingLevel: config.thinkingLevel,
+        steeringMode: config.steeringMode,
+        followUpMode: config.followUpMode,
     })
 
     const agent = harness.getAgent()
 
     await agent.loadContext()
 
-    const config = await loadConfig()
     const userEmail = config.decemberToken ? config.email : undefined
 
     const args = process.argv.slice(2)
