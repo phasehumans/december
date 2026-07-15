@@ -1,22 +1,19 @@
 import { Tool, ToolExecuteContext, truncateOutput } from '@december/shared'
 
-export interface GrepSearchInput {
-    query: string
-    directory?: string
-}
+import { Type, Static } from '@sinclair/typebox'
+
+const grepSchema = Type.Object({
+    query: Type.String(),
+    directory: Type.Optional(Type.String({ description: 'Defaults to ./' })),
+})
+
+export type GrepSearchInput = Static<typeof grepSchema>
 
 export const GrepSearchTool: Tool<GrepSearchInput> = {
     name: 'grep_search',
     description:
         'Searches for a regex query inside files using git grep or raw grep. Highly efficient.',
-    inputSchema: {
-        type: 'object',
-        properties: {
-            query: { type: 'string' },
-            directory: { type: 'string', description: 'Defaults to ./' },
-        },
-        required: ['query'],
-    },
+    inputSchema: grepSchema,
     execute: async ({ query, directory = '.' }, context: ToolExecuteContext) => {
         try {
             const result = await context.operations.search.grep(directory, query)

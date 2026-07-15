@@ -5,6 +5,8 @@
     "types": "src/index.ts",
     "dependencies": {
         "@december/shared": "workspace:*",
+        "@sinclair/typebox": "0.34.52",
+        "cheerio": "1.2.0",
         "diff": "9.0.0",
         "fast-glob": "3.3.3"
     },

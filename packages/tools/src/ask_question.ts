@@ -1,35 +1,23 @@
 import { Tool } from '@december/shared'
 
-export const AskQuestionTool: Tool<{
-    questions: Array<{
-        question: string
-        options: string[]
-        is_multi_select?: boolean
-    }>
-}> = {
+import { Type, Static } from '@sinclair/typebox'
+
+const askQuestionSchema = Type.Object({
+    questions: Type.Array(
+        Type.Object({
+            question: Type.String(),
+            options: Type.Array(Type.String()),
+            is_multi_select: Type.Optional(Type.Boolean()),
+        })
+    ),
+})
+
+export type AskQuestionInput = Static<typeof askQuestionSchema>
+
+export const AskQuestionTool: Tool<AskQuestionInput> = {
     name: 'ask_question',
     description: `Use this tool to ask the user one or more multiple-choice questions. Execution is blocked until the user responds.`,
-    inputSchema: {
-        type: 'object',
-        properties: {
-            questions: {
-                type: 'array',
-                items: {
-                    type: 'object',
-                    properties: {
-                        question: { type: 'string' },
-                        options: {
-                            type: 'array',
-                            items: { type: 'string' },
-                        },
-                        is_multi_select: { type: 'boolean' },
-                    },
-                    required: ['question', 'options'],
-                },
-            },
-        },
-        required: ['questions'],
-    },
+    inputSchema: askQuestionSchema,
     execute: async (input, context) => {
         // The implementation here will be intercepted by the UI, but we provide a fallback
         // in case the UI doesn't intercept it (e.g. running in headless mode).

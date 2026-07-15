@@ -1,24 +1,20 @@
 import { Tool, ToolExecuteContext } from '@december/shared'
 
-export interface EditFileInput {
-    path: string
-    targetContent: string
-    replacementContent: string
-}
+import { Type, Static } from '@sinclair/typebox'
+
+const editSchema = Type.Object({
+    path: Type.String(),
+    targetContent: Type.String(),
+    replacementContent: Type.String(),
+})
+
+export type EditFileInput = Static<typeof editSchema>
 
 export const EditFileTool: Tool<EditFileInput> = {
     name: 'edit_file',
     description:
         'Edits an existing file by searching for a specific block of text (targetContent) and replacing it exactly with replacementContent. targetContent must match exactly.',
-    inputSchema: {
-        type: 'object',
-        properties: {
-            path: { type: 'string' },
-            targetContent: { type: 'string' },
-            replacementContent: { type: 'string' },
-        },
-        required: ['path', 'targetContent', 'replacementContent'],
-    },
+    inputSchema: editSchema,
     execute: async ({ path, targetContent, replacementContent }, context: ToolExecuteContext) => {
         try {
             const content = await context.operations.fs.readFile(path)
