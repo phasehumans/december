@@ -16,7 +16,6 @@ export const BashTool: Tool<BashInput> = {
         'Execute a shell command. Use this tool to run commands on the terminal (e.g., building, testing, or running scripts). Long-running commands (like dev servers) will automatically detach after 3 seconds and run in the background.',
     inputSchema: bashSchema,
     execute: async ({ command, timeout }, context: ToolExecuteContext) => {
-        // We pass timeout into the updated Environment bash operations (if supported)
         const cwd = context.operations.env.cwd()
 
         const { exitCode, output, taskId } = await context.operations.bash.exec(command, cwd, {

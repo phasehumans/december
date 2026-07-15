@@ -1,4 +1,4 @@
-import { AgentEvent, ToolCall, ToolResult } from '@december/shared'
+import type { AgentEvent, ToolCall, ToolResult } from '@december/shared'
 import pRetry, { AbortError } from 'p-retry'
 import { v4 as uuidv4 } from 'uuid'
 
@@ -121,7 +121,7 @@ async function runOuterLoop(agent: Agent, eventQueue: AsyncQueue<AgentEvent>, si
 
         // Follow up queue
         if (agent.followUpQueue.length > 0) {
-            const msgs = agent.followUpQueue.splice(0, agent.followUpQueue.length)
+            const msgs = agent.followUpQueue.drain()
             for (const msg of msgs) {
                 agent.addMessage(msg)
             }
@@ -147,7 +147,7 @@ async function runInnerLoop(agent: Agent, eventQueue: AsyncQueue<AgentEvent>, si
             }
         }
         if (agent.steeringQueue.length > 0) {
-            const msgs = agent.steeringQueue.splice(0, agent.steeringQueue.length)
+            const msgs = agent.steeringQueue.drain()
             for (const msg of msgs) {
                 agent.addMessage(msg)
             }
@@ -225,13 +225,18 @@ async function streamAssistantResponse(
                     inputSchema: t.inputSchema,
                 }))
 
-                const providerMessages = agent.convertToLlm(agent.messages)
+                const providerMessages = agent.convertToLlm(agent.messages) as any
+
+                const providerModelOptions = {
+                    ...agent.modelOptions,
+                    thinkingLevel: agent.thinkingLevel,
+                }
 
                 const generator = agent.llm.stream(
                     providerMessages,
                     toolsArray,
                     agent.systemPrompt,
-                    agent.modelOptions,
+                    providerModelOptions,
                     signal
                 )
 
@@ -386,7 +391,7 @@ async function executeSingleTool(
             }
 
             resultStr = await tool.execute(parsedArgs, {
-                operations: agent.operations,
+                operations: agent.operations as any,
                 env: agent.env,
                 signal,
                 onStream: (chunk) => {

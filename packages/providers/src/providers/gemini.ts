@@ -52,7 +52,7 @@ export function geminiProvider(apiKey?: string): LLMProvider {
         {
             id: 'gemini',
             name: 'Gemini',
-            models: [], // to be populated
+            models: [],
             api: client,
         },
         async function* (
@@ -154,7 +154,7 @@ export function geminiProvider(apiKey?: string): LLMProvider {
                           functionDeclarations: tools.map((t) => ({
                               name: t.name,
                               description: t.description,
-                              parameters: sanitizeSchemaForGemini(t.inputSchema), // Sanitize OpenAPI 3.0 schema
+                              parameters: sanitizeSchemaForGemini(t.inputSchema),
                           })),
                       },
                   ]

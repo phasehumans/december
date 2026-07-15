@@ -37,6 +37,9 @@ export interface DecemberConfig {
     streamSpeed?: 'smooth' | 'instant'
     approvedTools?: string[]
     autoUpdate?: boolean
+    thinkingLevel?: 'off' | 'minimal' | 'low' | 'medium' | 'high'
+    steeringMode?: 'all' | 'one-at-a-time'
+    followUpMode?: 'all' | 'one-at-a-time'
 }
 
 const CONFIG_DIR = path.join(os.homedir(), '.config', 'december')

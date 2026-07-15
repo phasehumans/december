@@ -18,6 +18,12 @@ export function useSettingsHandlers() {
         setAuthMode,
         setSettingsDefaultModel,
         setSettingsMaxTokens,
+        settingsThinkingLevel,
+        setSettingsThinkingLevel,
+        settingsSteeringMode,
+        setSettingsSteeringMode,
+        settingsFollowUpMode,
+        setSettingsFollowUpMode,
         addToast,
     } = useCliStore()
 
@@ -55,6 +61,32 @@ export function useSettingsHandlers() {
             case 'autoUpdate':
                 config.autoUpdate = !settingsAutoUpdate
                 setSettingsAutoUpdate(!settingsAutoUpdate)
+                updated = true
+                break
+            case 'thinkingLevel':
+                const thinkingLevels: ('off' | 'minimal' | 'low' | 'medium' | 'high')[] = [
+                    'off',
+                    'minimal',
+                    'low',
+                    'medium',
+                    'high',
+                ]
+                const nextThinkingLevel =
+                    thinkingLevels[
+                        (thinkingLevels.indexOf(settingsThinkingLevel) + 1) % thinkingLevels.length
+                    ]
+                config.thinkingLevel = nextThinkingLevel
+                setSettingsThinkingLevel(nextThinkingLevel)
+                updated = true
+                break
+            case 'steeringMode':
+                config.steeringMode = settingsSteeringMode === 'all' ? 'one-at-a-time' : 'all'
+                setSettingsSteeringMode(config.steeringMode)
+                updated = true
+                break
+            case 'followUpMode':
+                config.followUpMode = settingsFollowUpMode === 'all' ? 'one-at-a-time' : 'all'
+                setSettingsFollowUpMode(config.followUpMode)
                 updated = true
                 break
             case 'back':

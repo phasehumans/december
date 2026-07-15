@@ -15,7 +15,6 @@ export const FindFilesTool: Tool<FindFilesInput> = {
     inputSchema: findSchema,
     execute: async ({ pattern }, context: ToolExecuteContext) => {
         try {
-            // Find operation handles ignoring node_modules and formatting output
             const result = await context.operations.search.find('.', pattern)
             if (!result) return 'No files found matching pattern.'
             return truncateOutput(result, 10000, 100).text

@@ -25,18 +25,14 @@ export function killProcessTree(pid: number): void {
                 detached: true,
                 windowsHide: true,
             })
-        } catch {
-            // Ignore errors if taskkill fails
-        }
+        } catch {}
     } else {
         try {
             process.kill(-pid, 'SIGKILL')
         } catch {
             try {
                 process.kill(pid, 'SIGKILL')
-            } catch {
-                // Process already dead
-            }
+            } catch {}
         }
     }
 }

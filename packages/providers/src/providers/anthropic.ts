@@ -14,7 +14,7 @@ export function anthropicProvider(baseURL?: string, apiKey?: string): LLMProvide
         {
             id: 'anthropic',
             name: 'Anthropic',
-            models: [], // to be populated
+            models: [],
             api: client,
         },
         async function* (
