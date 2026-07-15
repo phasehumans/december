@@ -213,12 +213,18 @@ async function streamAssistantResponse(
                 toolCalls = []
                 if (signal.aborted) throw new AbortError(new Error('Aborted'))
 
-                agent.messages = await compactContextIfNeeded(
-                    agent.messages,
+                const compactionResult = await agent.conversation.compactIfNeeded(
                     agent.llm,
                     undefined,
                     agent.modelOptions
                 )
+
+                if (compactionResult.compacted) {
+                    eventQueue.push({
+                        type: 'ContextCompacted',
+                        summary: compactionResult.summary || '',
+                    })
+                }
                 const toolsArray = Array.from(agent.tools.values()).map((t) => ({
                     name: t.name,
                     description: t.description,

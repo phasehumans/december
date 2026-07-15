@@ -18,6 +18,8 @@ export function SettingsMainMenu(props: any) {
         settingsThinkingLevel,
         settingsSteeringMode,
         settingsFollowUpMode,
+        hasBothAuth,
+        settingsAuthPriority,
         handleSettingsMainSelect,
     } = props
     const mainItems = [
@@ -74,6 +76,14 @@ export function SettingsMainMenu(props: any) {
             value: 'followUpMode',
         },
     ]
+
+    if (hasBothAuth) {
+        mainItems.unshift({
+            label: `Preferred Auth Method    [${settingsAuthPriority === 'december' ? 'December Cloud' : 'BYOK'}]`,
+            value: 'authPriority',
+        })
+    }
+
     return (
         <Box flexDirection="column" paddingX={1}>
             <Box marginBottom={1}>

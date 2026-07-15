@@ -17,6 +17,8 @@ type Props = {
     disabled?: boolean
     placeholder?: string
     activeModel?: string
+    authMethod?: 'byok' | 'december' | 'env'
+    hasBothAuth?: boolean
     authUI?: React.ReactNode
     agent?: any
     resetChat?: () => void
@@ -33,6 +35,8 @@ export function InputBar({
     disabled = false,
     placeholder = 'Ask December to build...',
     activeModel = 'unknown',
+    authMethod,
+    hasBothAuth = false,
     authUI,
     agent,
     resetChat,
@@ -233,7 +237,12 @@ export function InputBar({
                 <Box width="100%" justifyContent="space-between">
                     <Box gap={2} alignItems="center">
                         <Box gap={1}>
-                            <Text color="#AAAAAA">{activeModel}</Text>
+                            <Text color="#AAAAAA">
+                                {activeModel}
+                                {hasBothAuth && authMethod
+                                    ? ` (via ${authMethod === 'december' ? 'December Cloud' : 'BYOK'})`
+                                    : ''}
+                            </Text>
                             {contextTokens !== undefined && contextTokens > 0 && (
                                 <Text color="#AAAAAA">· {contextTokens} tokens</Text>
                             )}

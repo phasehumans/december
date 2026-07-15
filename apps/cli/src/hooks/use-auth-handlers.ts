@@ -1,9 +1,4 @@
-import {
-    openaiProvider,
-    anthropicProvider,
-    geminiProvider,
-    openrouterProvider,
-} from '@december/providers'
+import { instantiateProvider } from '../utils/provider-factory'
 
 import { loadConfig, saveConfig, getProviderConfig } from '../config'
 import { MESSAGES } from '../constants/messages'
@@ -34,6 +29,9 @@ export function useAuthHandlers(
         setStaticMessages,
         setIsStreaming,
         isStreaming,
+        setHasBothAuth,
+        setSettingsAuthPriority,
+        setAuthMethod,
     } = useCliStore()
 
     const handleAuthMenuSelect = async (item: any) => {
@@ -138,10 +136,19 @@ export function useAuthHandlers(
                 await saveConfig(config)
 
                 const providerConfig = await getProviderConfig()
+                const { getAuthStatus } = await import('../config')
+                const authStatus = await getAuthStatus()
+
                 if (providerConfig) {
-                    const provider = openrouterProvider(providerConfig.apiKey)
+                    const provider = instantiateProvider(
+                        providerConfig.provider,
+                        providerConfig.apiKey
+                    )
                     agent.setLLM(provider)
                     setIsAuthenticated(true)
+                    setAuthMethod(providerConfig.authMethod)
+                    setHasBothAuth(authStatus.hasByok && authStatus.hasDecember)
+                    setSettingsAuthPriority(authStatus.authPriority)
                 }
 
                 setStaticMessages((prev) => [...prev, ...activeMessages])
@@ -183,9 +190,45 @@ export function useAuthHandlers(
         ])
     }
 
-    const handleProviderSelect = (item: any) => {
-        setSelectedProvider(item.value)
-        setAuthMode('byok_key')
+    const handleProviderSelect = async (item: any) => {
+        const config = await loadConfig()
+        if (config.providers && config.providers[item.value]) {
+            const key = config.providers[item.value]
+            config.activeProvider = item.value
+            await saveConfig(config)
+
+            const llm = instantiateProvider(item.value, key)
+            agent.setLLM(llm)
+
+            const { getAuthStatus, getProviderConfig } = await import('../config')
+            const authStatus = await getAuthStatus()
+            const newProviderConfig = await getProviderConfig()
+            if (newProviderConfig) {
+                setAuthMethod(newProviderConfig.authMethod)
+            }
+            setHasBothAuth(authStatus.hasByok && authStatus.hasDecember)
+            setSettingsAuthPriority(authStatus.authPriority)
+            setIsAuthenticated(true)
+
+            setAuthMode('none')
+
+            setStaticMessages((prev) => [...prev, ...activeMessages])
+            setActiveMessages([
+                {
+                    id: getNextMsgId(),
+                    role: 'assistant',
+                    blocks: [
+                        {
+                            type: 'text',
+                            content: `Switched active provider to ${item.value.toUpperCase()} (using saved key).`,
+                        },
+                    ],
+                },
+            ])
+        } else {
+            setSelectedProvider(item.value)
+            setAuthMode('byok_key')
+        }
     }
 
     const handleKeySubmit = async (key: string) => {
@@ -196,43 +239,22 @@ export function useAuthHandlers(
         let testModel: string | undefined
 
         try {
-            switch (selectedProvider) {
-                case 'anthropic':
-                    testProvider = anthropicProvider(undefined, key)
-                    break
-                case 'google':
-                    testProvider = geminiProvider(key)
-                    break
-                case 'openai':
-                    testProvider = openaiProvider(undefined, key)
-                    break
-                case 'openrouter':
-                    testProvider = openrouterProvider(key)
-                    break
-                case 'deepseek':
-                    testProvider = openaiProvider('https://api.deepseek.com', key)
-                    break
-                case 'groq':
-                    testProvider = openaiProvider('https://api.groq.com/openai/v1', key)
-                    break
-                case 'huggingface':
-                    testProvider = openaiProvider('https://api-inference.huggingface.co/v1/', key)
-                    break
-                case 'moonshot':
-                    testProvider = openaiProvider('https://api.moonshot.cn/v1', key)
-                    break
-                case 'mistral':
-                    testProvider = openaiProvider('https://api.mistral.ai/v1', key)
-                    break
-                case 'xai':
-                    testProvider = openaiProvider('https://api.x.ai/v1', key)
-                    break
-                case 'zai':
-                    testProvider = openaiProvider('https://api.zai.ai/v1', key)
-                    break
-                default:
-                    testProvider = openaiProvider(undefined, key)
-                    testModel = 'gpt-4o'
+            testProvider = instantiateProvider(selectedProvider, key)
+            if (
+                selectedProvider !== 'openai' &&
+                selectedProvider !== 'anthropic' &&
+                selectedProvider !== 'google' &&
+                selectedProvider !== 'gemini' &&
+                selectedProvider !== 'openrouter' &&
+                selectedProvider !== 'deepseek' &&
+                selectedProvider !== 'groq' &&
+                selectedProvider !== 'huggingface' &&
+                selectedProvider !== 'moonshot' &&
+                selectedProvider !== 'mistral' &&
+                selectedProvider !== 'xai' &&
+                selectedProvider !== 'zai'
+            ) {
+                testModel = 'gpt-4o'
             }
 
             const stream = testProvider.stream([{ role: 'user', content: 'Hi' }], [], undefined, {
@@ -249,6 +271,16 @@ export function useAuthHandlers(
             agent.setLLM(testProvider)
             agent.modelOptions = { model: testModel }
             setIsAuthenticated(true)
+
+            const { getAuthStatus, getProviderConfig } = await import('../config')
+            const authStatus = await getAuthStatus()
+            const newProviderConfig = await getProviderConfig()
+            if (newProviderConfig) {
+                setAuthMethod(newProviderConfig.authMethod)
+            }
+            setHasBothAuth(authStatus.hasByok && authStatus.hasDecember)
+            setSettingsAuthPriority(authStatus.authPriority)
+
             setAuthMode('none')
             setApiKey('')
 
@@ -284,6 +316,16 @@ export function useAuthHandlers(
                 agent.setLLM(testProvider)
                 agent.modelOptions = { model: testModel }
                 setIsAuthenticated(true)
+
+                const { getAuthStatus, getProviderConfig } = await import('../config')
+                const authStatus = await getAuthStatus()
+                const newProviderConfig = await getProviderConfig()
+                if (newProviderConfig) {
+                    setAuthMethod(newProviderConfig.authMethod)
+                }
+                setHasBothAuth(authStatus.hasByok && authStatus.hasDecember)
+                setSettingsAuthPriority(authStatus.authPriority)
+
                 setAuthMode('none')
                 setApiKey('')
 
@@ -355,7 +397,7 @@ export function useAuthHandlers(
                 delete config.providers[provider]
                 removedName = `${provider.charAt(0).toUpperCase() + provider.slice(1)} API Key`
                 if (config.activeProvider === provider) {
-                    config.activeProvider = undefined
+                    config.activeProvider = Object.keys(config.providers)[0] || undefined
                 }
             }
         }
@@ -363,7 +405,20 @@ export function useAuthHandlers(
         setAuthMode('none')
 
         const providerConfig = await getProviderConfig()
+        const { getAuthStatus } = await import('../config')
+        const authStatus = await getAuthStatus()
+
         setIsAuthenticated(!!providerConfig)
+        setHasBothAuth(authStatus.hasByok && authStatus.hasDecember)
+        setSettingsAuthPriority(authStatus.authPriority)
+
+        if (providerConfig && agent) {
+            const llm = instantiateProvider(providerConfig.provider, providerConfig.apiKey)
+            agent.setLLM(llm)
+            setAuthMethod(providerConfig.authMethod)
+        } else {
+            setAuthMethod(undefined)
+        }
 
         setStaticMessages((prev) => [...prev, ...activeMessages])
         setActiveMessages([

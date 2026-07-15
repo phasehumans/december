@@ -44,7 +44,7 @@ dotenv.config()
 import pkg from '../package.json' with { type: 'json' }
 
 import { loginViaBrowser, loginViaDeviceCode } from './auth'
-import { getProviderConfig, loadConfig } from './config'
+import { getProviderConfig, loadConfig, getAuthStatus } from './config'
 import { useAgentSession } from './hooks/use-agent-session'
 import { localOperations } from './local-operations'
 
@@ -61,6 +61,7 @@ async function main() {
     console.info = () => {}
 
     const providerConfig = await getProviderConfig()
+    const authStatus = await getAuthStatus()
 
     // If not authenticated, we pass a dummy provider so the Agent can boot.
     // The TUI will intercept prompts and force them to /login
@@ -286,6 +287,9 @@ async function main() {
             React.createElement(AppWrapper, {
                 agent,
                 isAuthenticated,
+                authMethod: providerConfig?.authMethod,
+                hasBothAuth: authStatus.hasByok && authStatus.hasDecember,
+                settingsAuthPriority: authStatus.authPriority,
                 cliVersion: pkg.version,
                 userEmail,
                 sessionRepository,
