@@ -50,24 +50,25 @@ To achieve maximum speed, ultimate security, and horizontal scalability, Decembe
 
 _Make the foundational logic bulletproof for both CLI and Cloud execution._
 
-- [ ] Implement strict JSON-mode parsing for tool calls to prevent hallucinated text outside tool blocks.
+- [x] Implement strict JSON-mode parsing for tool calls to prevent hallucinated text outside tool blocks.
 
 ### Phase 2 (Week 2): CLI Perfection & UX
 
 _Fix lag and user experience issues in the local terminal UI._
 
-- [ ] **2.1 CLI UX & Streaming**
-    - [ ] Debug and fix the streaming pipeline from `packages/agent` to `packages/tui`.
-    - [ ] Ensure text chunks are flushed to stdout in real-time, eliminating "bursty" lag.
-    - [ ] Update Ink TUI components to cleanly render nested `<thought>` blocks (collapsible if possible, or dimmed).
-    - [ ] Improve syntax highlighting for code blocks within the CLI chat feed.
+- [x] **2.1 CLI UX & Streaming**
+    - [x] Debug and fix the streaming pipeline from `packages/agent` to `packages/tui`.
+    - [x] Ensure text chunks are flushed to stdout in real-time, eliminating "bursty" lag.
+    - [x] Update Ink TUI components to cleanly render nested `<thought>` blocks (collapsible if possible, or dimmed).
+    - [x] Improve syntax highlighting for code blocks within the CLI chat feed.
+    - [x] Fix session persistence identical-timestamp bugs and UI merging issues.
 - [x] **2.2 Context Compaction**
     - [x] Implement `ConversationManager` to actively track token usage per session.
     - [x] Build a summarization prompt that compresses the oldest N messages into a single summary block.
     - [x] Test context compaction on a simulated 100-turn conversation to ensure no crucial data is lost.
-- [ ] **2.3 Testing & Stability**
-    - [ ] Write Unit Tests for `packages/agent` loop generator.
-    - [ ] Write Unit Tests for context compaction logic.
+- [x] **2.3 Testing & Stability**
+    - [x] Write Unit Tests for `packages/agent` loop generator.
+    - [x] Write Unit Tests for context compaction logic.
     - [x] Ensure `mcp.json` parsing strictly injects MCP tools into the agent on CLI boot.
 
 ### Phase 3 (Week 3): Server, DB & Real-time Sync
