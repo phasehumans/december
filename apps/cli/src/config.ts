@@ -50,7 +50,18 @@ const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json')
 export async function loadConfig(): Promise<DecemberConfig> {
     try {
         const data = await fs.readFile(CONFIG_FILE, 'utf-8')
-        return JSON.parse(data)
+        const config = JSON.parse(data)
+
+        // Self-heal: If providers exist but activeProvider is missing, select the first available
+        if (
+            !config.activeProvider &&
+            config.providers &&
+            Object.keys(config.providers).length > 0
+        ) {
+            config.activeProvider = Object.keys(config.providers)[0]
+        }
+
+        return config
     } catch {
         return { providers: {} }
     }
