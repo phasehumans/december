@@ -1,8 +1,8 @@
 import {
-    OpenAIProvider,
-    AnthropicProvider,
-    GeminiProvider,
-    OpenRouterProvider,
+    openaiProvider,
+    anthropicProvider,
+    geminiProvider,
+    openrouterProvider,
 } from '@december/providers'
 
 import { loadConfig, saveConfig, getProviderConfig } from '../config'
@@ -66,7 +66,7 @@ export function useAuthHandlers(
 
                 const providerConfig = await getProviderConfig()
                 if (providerConfig) {
-                    const provider = new OpenRouterProvider(providerConfig.apiKey)
+                    const provider = openrouterProvider(providerConfig.apiKey)
                     agent.setLLM(provider)
                     setIsAuthenticated(true)
                 }
@@ -139,7 +139,7 @@ export function useAuthHandlers(
 
                 const providerConfig = await getProviderConfig()
                 if (providerConfig) {
-                    const provider = new OpenRouterProvider(providerConfig.apiKey)
+                    const provider = openrouterProvider(providerConfig.apiKey)
                     agent.setLLM(provider)
                     setIsAuthenticated(true)
                 }
@@ -198,55 +198,40 @@ export function useAuthHandlers(
         try {
             switch (selectedProvider) {
                 case 'anthropic':
-                    testProvider = new AnthropicProvider(key)
-                    testModel = 'claude-3-5-sonnet-latest'
+                    testProvider = anthropicProvider(undefined, key)
                     break
                 case 'google':
-                    testProvider = new GeminiProvider(key)
-                    testModel = 'gemini-3.5-flash'
+                    testProvider = geminiProvider(key)
                     break
                 case 'openai':
-                    testProvider = new OpenAIProvider(undefined, key)
-                    testModel = 'gpt-4o'
+                    testProvider = openaiProvider(undefined, key)
                     break
                 case 'openrouter':
-                    testProvider = new OpenRouterProvider(key)
-                    testModel = 'meta-llama/llama-3.2-3b-instruct:free'
+                    testProvider = openrouterProvider(key)
                     break
                 case 'deepseek':
-                    testProvider = new OpenAIProvider('https://api.deepseek.com', key)
-                    testModel = 'deepseek-chat'
+                    testProvider = openaiProvider('https://api.deepseek.com', key)
                     break
                 case 'groq':
-                    testProvider = new OpenAIProvider('https://api.groq.com/openai/v1', key)
-                    testModel = 'llama3-8b-8192'
+                    testProvider = openaiProvider('https://api.groq.com/openai/v1', key)
                     break
                 case 'huggingface':
-                    testProvider = new OpenAIProvider(
-                        'https://api-inference.huggingface.co/v1',
-                        key
-                    )
-                    testModel = 'meta-llama/Meta-Llama-3-8B-Instruct'
+                    testProvider = openaiProvider('https://api-inference.huggingface.co/v1/', key)
                     break
-                case 'kimi':
-                case 'moonshoot':
-                    testProvider = new OpenAIProvider('https://api.moonshot.cn/v1', key)
-                    testModel = 'moonshot-v1-8k'
+                case 'moonshot':
+                    testProvider = openaiProvider('https://api.moonshot.cn/v1', key)
                     break
                 case 'mistral':
-                    testProvider = new OpenAIProvider('https://api.mistral.ai/v1', key)
-                    testModel = 'mistral-large-latest'
+                    testProvider = openaiProvider('https://api.mistral.ai/v1', key)
                     break
                 case 'xai':
-                    testProvider = new OpenAIProvider('https://api.x.ai/v1', key)
-                    testModel = 'grok-beta'
+                    testProvider = openaiProvider('https://api.x.ai/v1', key)
                     break
                 case 'zai':
-                    testProvider = new OpenAIProvider('https://api.zai.ai/v1', key)
-                    testModel = 'zai-v1'
+                    testProvider = openaiProvider('https://api.zai.ai/v1', key)
                     break
                 default:
-                    testProvider = new OpenAIProvider(undefined, key)
+                    testProvider = openaiProvider(undefined, key)
                     testModel = 'gpt-4o'
             }
 

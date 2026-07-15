@@ -1,5 +1,5 @@
-import { LLMProvider } from '@december/providers'
-import { Message } from '@december/shared'
+import type { LLMProvider } from '@december/providers'
+import type { Message } from '@december/shared'
 
 export const DEFAULT_MAX_TOKENS = 32000 // Assume a generic safe limit
 
@@ -59,7 +59,7 @@ ${historyText}`
     const compactionMessages: Message[] = [{ role: 'user', content: summaryPrompt }]
     let summary = ''
 
-    const stream = llm.stream(compactionMessages, [], undefined, modelOptions)
+    const stream = llm.stream(compactionMessages as any, [], undefined, modelOptions)
     for await (const chunk of stream) {
         if (chunk.type === 'text') {
             summary += chunk.text

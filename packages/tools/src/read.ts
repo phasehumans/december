@@ -1,26 +1,21 @@
 import { Tool, truncateOutput, ToolExecuteContext } from '@december/shared'
 
-export interface ReadFileInput {
-    path: string
-    startLine?: number
-    endLine?: number
-    noTruncate?: boolean
-}
+import { Type, Static } from '@sinclair/typebox'
+
+const readSchema = Type.Object({
+    path: Type.String({ description: 'The file path to read.' }),
+    startLine: Type.Optional(Type.Number({ description: 'Optional start line' })),
+    endLine: Type.Optional(Type.Number({ description: 'Optional end line' })),
+    noTruncate: Type.Optional(Type.Boolean({ description: 'Avoid truncating the output' })),
+})
+
+export type ReadFileInput = Static<typeof readSchema>
 
 export const ReadFileTool: Tool<ReadFileInput> = {
     name: 'read_file',
     description:
         'Reads the contents of a file. Automatically truncates massive files to protect context limits. Use noTruncate: true if you absolutely need the full file for AST rewriting, or use startLine/endLine for pagination.',
-    inputSchema: {
-        type: 'object',
-        properties: {
-            path: { type: 'string' },
-            startLine: { type: 'number' },
-            endLine: { type: 'number' },
-            noTruncate: { type: 'boolean' },
-        },
-        required: ['path'],
-    },
+    inputSchema: readSchema,
     execute: async ({ path, startLine, endLine, noTruncate }, context: ToolExecuteContext) => {
         try {
             const content = await context.operations.fs.readFile(path)

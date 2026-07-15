@@ -1,4 +1,5 @@
-import { Agent, AgentConfig } from '../agent'
+import { Agent } from '../agent'
+import type { AgentConfig } from '../agent'
 
 export interface HarnessConfig extends Omit<AgentConfig, 'systemPrompt'> {
     baseSystemPrompt?: string

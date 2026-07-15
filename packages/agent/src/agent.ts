@@ -1,8 +1,8 @@
-import { LLMProvider } from '@december/providers'
-import { AgentMessage, Message, Tool, AgentHooks } from '@december/shared'
+import type { LLMProvider } from '@december/providers'
+import type { AgentMessage, Message, Tool, AgentHooks } from '@december/shared'
 
-import { SessionRepository } from './harness/session-repository'
-import { PlatformAdapter } from './platform-adapter'
+import type { SessionRepository } from './harness/session-repository'
+import type { PlatformAdapter } from './platform-adapter'
 
 export interface AgentConfig {
     sessionId?: string
@@ -14,6 +14,38 @@ export interface AgentConfig {
     sessionRepository?: SessionRepository
     hooks?: AgentHooks
     convertToLlm?: (messages: AgentMessage[]) => Message[]
+    thinkingLevel?: 'off' | 'minimal' | 'low' | 'medium' | 'high'
+    steeringMode?: 'all' | 'one-at-a-time'
+    followUpMode?: 'all' | 'one-at-a-time'
+}
+
+class PendingMessageQueue {
+    private queue: AgentMessage[] = []
+    public mode: 'all' | 'one-at-a-time'
+
+    constructor(mode: 'all' | 'one-at-a-time') {
+        this.mode = mode
+    }
+
+    push(msg: AgentMessage) {
+        this.queue.push(msg)
+    }
+
+    get length() {
+        return this.queue.length
+    }
+
+    drain(): AgentMessage[] {
+        if (this.mode === 'all') {
+            const drained = this.queue.slice()
+            this.queue = []
+            return drained
+        }
+        if (this.queue.length > 0) {
+            return [this.queue.shift()!]
+        }
+        return []
+    }
 }
 
 export class Agent {
@@ -27,8 +59,9 @@ export class Agent {
     public operations: PlatformAdapter
     public env: Map<string, string>
     public modelOptions?: Record<string, any>
-    public steeringQueue: AgentMessage[] = []
-    public followUpQueue: AgentMessage[] = []
+    public thinkingLevel?: 'off' | 'minimal' | 'low' | 'medium' | 'high'
+    public steeringQueue: PendingMessageQueue
+    public followUpQueue: PendingMessageQueue
     public activeAbortController?: AbortController
     public convertToLlm: (messages: AgentMessage[]) => Message[]
 
@@ -41,7 +74,10 @@ export class Agent {
         this.operations = config.operations
         this.env = new Map<string, string>()
         this.modelOptions = config.modelOptions
+        this.thinkingLevel = config.thinkingLevel || 'off'
         this.convertToLlm = config.convertToLlm || this.defaultConvertToLlm
+        this.steeringQueue = new PendingMessageQueue(config.steeringMode || 'one-at-a-time')
+        this.followUpQueue = new PendingMessageQueue(config.followUpMode || 'one-at-a-time')
 
         for (const tool of config.tools) {
             this.tools.set(tool.name, tool)
@@ -106,7 +142,7 @@ export class Agent {
 
     public async clearContext() {
         if (this.messages.length > 0) {
-            this.messages = [this.messages[0]]
+            this.messages = [this.messages[0]!]
             await this.saveContext()
         }
     }
@@ -123,16 +159,25 @@ export class Agent {
 
             let summaryContent = '[System: Conversation compacted]'
             try {
-                const summaryResponse = await this.llm.generate([
-                    { role: 'user', content: summaryPrompt },
-                ])
-                summaryContent = `[System: Conversation compacted. Earlier events summary: ${summaryResponse.content}]`
+                // Collect stream from llm
+                const stream = this.llm.stream(
+                    [{ role: 'user', content: summaryPrompt }],
+                    [], // no tools
+                    '', // no system prompt
+                    this.modelOptions,
+                    new AbortController().signal
+                )
+                let text = ''
+                for await (const chunk of stream) {
+                    if (chunk.type === 'text') text += chunk.text
+                }
+                summaryContent = `[System: Conversation compacted. Earlier events summary: ${text}]`
             } catch (e) {
                 console.error('Failed to generate summary for context compaction:', e)
             }
 
             this.messages = [
-                systemPrompt,
+                systemPrompt!,
                 {
                     role: 'system',
                     content: summaryContent,
@@ -147,7 +192,7 @@ export class Agent {
     public async newContext() {
         this.sessionId = `session-${Date.now()}`
         if (this.messages.length > 0) {
-            this.messages = [this.messages[0]]
+            this.messages = [this.messages[0]!]
         }
         await this.saveContext()
     }

@@ -129,6 +129,12 @@ export function useAgentSession({
         setSettingsMaxTokens,
         settingsAutoUpdate,
         setSettingsAutoUpdate,
+        settingsThinkingLevel,
+        setSettingsThinkingLevel,
+        settingsSteeringMode,
+        setSettingsSteeringMode,
+        settingsFollowUpMode,
+        setSettingsFollowUpMode,
     } = state
 
     useEffect(() => {
@@ -491,6 +497,9 @@ export function useAgentSession({
                     setSettingsShowTips(config.showTips ?? true)
                     setSettingsToolPermission(config.toolPermission ?? 'always-proceed')
                     setSettingsAutoUpdate(config.autoUpdate ?? true)
+                    setSettingsThinkingLevel(config.thinkingLevel ?? 'off')
+                    setSettingsSteeringMode(config.steeringMode ?? 'all')
+                    setSettingsFollowUpMode(config.followUpMode ?? 'all')
                     setAuthMode('settings_main')
                 })
                 return
@@ -700,6 +709,12 @@ Explain which files need to be created, modified, or deleted, and what the chang
         setSettingsToolPermission,
         settingsAutoUpdate,
         setSettingsAutoUpdate,
+        settingsThinkingLevel,
+        setSettingsThinkingLevel,
+        settingsSteeringMode,
+        setSettingsSteeringMode,
+        settingsFollowUpMode,
+        setSettingsFollowUpMode,
         handleSubmit,
         sessionRepository,
         handleSettingsMainSelect,

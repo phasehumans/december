@@ -6,90 +6,25 @@ import { promisify } from 'node:util'
 import { PlatformAdapter } from '@december/agent'
 import fg from 'fast-glob'
 
+import { createLocalBashOperations } from '@december/tools'
 import { taskManager } from './task-manager'
 
 const execAsync = promisify(exec)
+const localBashOps = createLocalBashOperations()
 
 export const localOperations: PlatformAdapter = {
     bash: {
-        exec: async (command, onData) => {
-            return new Promise((resolve) => {
-                const taskId = `task_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`
-                const logFile = `/tmp/${taskId}.log`
-
-                // Spawn a detached tmux session running the command, piping output to a logfile
-                const tmuxCmd = `tmux new-session -d -s ${taskId} "bash -c '${command.replace(/'/g, "'\\''")} 2>&1 | tee ${logFile}'"`
-
-                const child = spawn(tmuxCmd, { shell: true })
-
-                child.on('close', (code) => {
-                    if (code !== 0) {
-                        return resolve({
-                            exitCode: code,
-                            output: `Failed to start tmux session for task ${taskId}`,
-                        })
-                    }
-
-                    // Start tailing the log file
-                    const tail = spawn(`tail -f ${logFile}`, { shell: true })
-
-                    let stdout = ''
-                    tail.stdout.on('data', (data) => {
-                        const chunk = data.toString()
-                        stdout += chunk
-                        onData(chunk)
-                    })
-
-                    // Periodically check if tmux session is still alive
-                    const interval = setInterval(() => {
-                        exec(`tmux has-session -t ${taskId}`, (err) => {
-                            if (err) {
-                                // Session is dead, command finished
-                                clearInterval(interval)
-                                tail.kill()
-                                // Optionally read final content
-                                fs.readFile(logFile, 'utf8')
-                                    .then((finalOut) => {
-                                        resolve({ exitCode: null, output: finalOut, taskId })
-                                    })
-                                    .catch(() => {
-                                        resolve({ exitCode: null, output: stdout, taskId })
-                                    })
-                            }
-                        })
-                    }, 2000)
-
-                    // Auto detach from agent loop after 3 seconds
-                    setTimeout(() => {
-                        resolve({
-                            exitCode: null,
-                            output: `Started background task ${taskId}`,
-                            taskId,
-                        })
-                    }, 3000)
-                })
-            })
+        exec: async (command, cwd, options) => {
+            return localBashOps.exec(command, cwd, options)
         },
         getTaskStatus: async (taskId) => {
-            return new Promise((resolve) => {
-                exec(`tmux has-session -t ${taskId}`, (err) => {
-                    const status = err ? 'completed' : 'running'
-                    fs.readFile(`/tmp/${taskId}.log`, 'utf8')
-                        .then((out) => {
-                            resolve({ status, output: out })
-                        })
-                        .catch(() => {
-                            resolve({ status, output: 'No output found' })
-                        })
-                })
-            })
+            // Task status check is simplified, as we now track tasks primarily
+            // through the event stream in the CLI, but we can implement it natively later
+            return { status: 'running', output: 'Not implemented' }
         },
         killTask: async (taskId) => {
-            return new Promise((resolve) => {
-                exec(`tmux kill-session -t ${taskId}`, (err) => {
-                    resolve(!err)
-                })
-            })
+            // Native task killing can be managed via the signal controller
+            return false
         },
     },
     fs: {

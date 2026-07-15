@@ -2,110 +2,144 @@ import Anthropic from '@anthropic-ai/sdk'
 
 import { LLMProvider, Message, ProviderStreamChunk, ProviderTool } from '../types.ts'
 
-export class AnthropicProvider implements LLMProvider {
-    public id = 'anthropic'
-    private client: Anthropic
+import { createProvider } from '../models.ts'
 
-    constructor(baseURL?: string, apiKey?: string) {
-        this.client = new Anthropic({
-            baseURL,
-            apiKey: apiKey || process.env.ANTHROPIC_API_KEY,
-        })
-    }
+export function anthropicProvider(baseURL?: string, apiKey?: string): LLMProvider {
+    const client = new Anthropic({
+        baseURL,
+        apiKey: apiKey || process.env.ANTHROPIC_API_KEY,
+    })
 
-    async *stream(
-        messages: Message[],
-        tools?: ProviderTool[],
-        systemPrompt?: string,
-        modelOptions?: Record<string, any>,
-        signal?: AbortSignal
-    ): AsyncGenerator<ProviderStreamChunk, void, unknown> {
-        const antMessages: Anthropic.MessageParam[] = []
+    return createProvider(
+        {
+            id: 'anthropic',
+            name: 'Anthropic',
+            models: [],
+            api: client,
+        },
+        async function* (
+            messages: Message[],
+            tools?: ProviderTool[],
+            systemPrompt?: string,
+            modelOptions?: Record<string, any>,
+            signal?: AbortSignal
+        ): AsyncGenerator<ProviderStreamChunk, void, unknown> {
+            const antMessages: Anthropic.MessageParam[] = []
 
-        for (const msg of messages) {
-            if (msg.role === 'tool') {
-                antMessages.push({
-                    role: 'user',
-                    content: [
-                        {
-                            type: 'tool_result',
-                            tool_use_id: msg.toolCallId!,
-                            content: msg.content,
-                        },
-                    ],
-                })
-            } else if (msg.role === 'assistant') {
-                const content: Anthropic.ContentBlockParam[] = []
-                if (msg.content) {
-                    content.push({ type: 'text', text: msg.content })
-                }
-                if (msg.toolCalls && msg.toolCalls.length > 0) {
-                    for (const tc of msg.toolCalls) {
-                        content.push({
-                            type: 'tool_use',
-                            id: tc.id,
-                            name: tc.name,
-                            input: JSON.parse(tc.input || '{}'),
-                        })
+            for (const msg of messages) {
+                if (msg.role === 'tool') {
+                    antMessages.push({
+                        role: 'user',
+                        content: [
+                            {
+                                type: 'tool_result',
+                                tool_use_id: msg.toolCallId!,
+                                content: msg.content,
+                            },
+                        ],
+                    })
+                } else if (msg.role === 'assistant') {
+                    const content: Anthropic.ContentBlockParam[] = []
+                    if (msg.content) {
+                        content.push({ type: 'text', text: msg.content })
                     }
+                    if (msg.toolCalls && msg.toolCalls.length > 0) {
+                        for (const tc of msg.toolCalls) {
+                            content.push({
+                                type: 'tool_use',
+                                id: tc.id,
+                                name: tc.name,
+                                input: JSON.parse(tc.input || '{}'),
+                            })
+                        }
+                    }
+                    if (content.length > 0) {
+                        antMessages.push({ role: 'assistant', content })
+                    }
+                } else {
+                    antMessages.push({
+                        role: msg.role as 'user',
+                        content: msg.content,
+                    })
                 }
-                if (content.length > 0) {
-                    antMessages.push({ role: 'assistant', content })
-                }
-            } else {
-                antMessages.push({
-                    role: msg.role as 'user',
-                    content: msg.content,
-                })
             }
-        }
 
-        const antTools: Anthropic.Tool[] | undefined = tools?.map((t) => ({
-            name: t.name,
-            description: t.description,
-            input_schema: t.inputSchema,
-        }))
+            const antTools: Anthropic.Tool[] | undefined = tools?.map((t) => ({
+                name: t.name,
+                description: t.description,
+                input_schema: t.inputSchema,
+            }))
 
-        const stream = await this.client.messages.create(
-            {
-                model: modelOptions?.model || 'claude-3-5-sonnet-20241022',
-                messages: antMessages,
-                system: systemPrompt,
-                tools: antTools,
-                stream: true,
-                max_tokens: modelOptions?.max_tokens || 4096,
-                temperature: modelOptions?.temperature,
-            },
-            { signal }
-        )
+            const stream = await client.messages.create(
+                {
+                    model: modelOptions?.model || 'claude-3-5-sonnet-20241022',
+                    messages: antMessages,
+                    system: systemPrompt,
+                    tools: antTools,
+                    stream: true,
+                    max_tokens: modelOptions?.max_tokens || 4096,
+                    temperature: modelOptions?.temperature,
+                },
+                { signal }
+            )
 
-        const activeToolCalls = new Map<number, string>()
+            const activeToolCalls = new Map<number, string>()
 
-        for await (const event of stream) {
-            if (event.type === 'content_block_start') {
-                if (event.content_block.type === 'tool_use') {
-                    activeToolCalls.set(event.index, event.content_block.id)
-                    yield {
-                        type: 'tool_call_delta',
-                        id: event.content_block.id,
-                        name: event.content_block.name,
-                        inputDelta: '',
-                    }
-                }
-            } else if (event.type === 'content_block_delta') {
-                if (event.delta.type === 'text_delta') {
-                    yield { type: 'text', text: event.delta.text }
-                } else if (event.delta.type === 'input_json_delta') {
-                    const id = activeToolCalls.get(event.index)
-                    if (id) {
+            for await (const event of stream) {
+                if (event.type === 'content_block_start') {
+                    if (event.content_block.type === 'tool_use') {
+                        activeToolCalls.set(event.index, event.content_block.id)
                         yield {
                             type: 'tool_call_delta',
-                            id,
-                            inputDelta: event.delta.partial_json,
+                            id: event.content_block.id,
+                            name: event.content_block.name,
+                            inputDelta: '',
+                        }
+                    }
+                } else if (event.type === 'content_block_delta') {
+                    if (event.delta.type === 'text_delta') {
+                        yield { type: 'text', text: event.delta.text }
+                    } else if (event.delta.type === 'input_json_delta') {
+                        const id = activeToolCalls.get(event.index)
+                        if (id) {
+                            yield {
+                                type: 'tool_call_delta',
+                                id,
+                                inputDelta: event.delta.partial_json,
+                            }
                         }
                     }
                 }
             }
         }
+    )
+}
+
+export class AnthropicProvider implements LLMProvider {
+    public id = 'anthropic'
+    private provider: LLMProvider
+
+    constructor(arg1?: string, arg2?: string) {
+        let baseURL: string | undefined
+        let apiKey: string | undefined
+        if (arg1 === undefined) {
+            apiKey = arg2
+        } else if (arg1 && arg1.startsWith('http')) {
+            baseURL = arg1
+            apiKey = arg2
+        } else {
+            apiKey = arg1
+        }
+        this.provider = anthropicProvider(baseURL, apiKey)
+    }
+
+    stream(
+        messages: Message[],
+        tools?: ProviderTool[],
+        systemPrompt?: string,
+        modelOptions?: Record<string, any>,
+        signal?: AbortSignal
+    ) {
+        return this.provider.stream(messages, tools, systemPrompt, modelOptions, signal)
     }
 }

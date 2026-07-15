@@ -1,17 +1,19 @@
 import { Tool, ToolExecuteContext } from '@december/shared'
 
-export const WriteFileTool: Tool<{ filePath: string; content: string }> = {
+import { Type, Static } from '@sinclair/typebox'
+
+const writeSchema = Type.Object({
+    filePath: Type.String({ description: 'The relative or absolute path to the file.' }),
+    content: Type.String({ description: 'The complete file contents to write.' }),
+})
+
+export type WriteFileInput = Static<typeof writeSchema>
+
+export const WriteFileTool: Tool<WriteFileInput> = {
     name: 'write_file',
     description:
         'Creates a new file or completely overwrites an existing file with the provided content.',
-    inputSchema: {
-        type: 'object',
-        properties: {
-            filePath: { type: 'string', description: 'The relative or absolute path to the file.' },
-            content: { type: 'string', description: 'The complete file contents to write.' },
-        },
-        required: ['filePath', 'content'],
-    },
+    inputSchema: writeSchema,
     execute: async ({ filePath, content }, context: ToolExecuteContext) => {
         try {
             await context.operations.fs.writeFile(filePath, content)

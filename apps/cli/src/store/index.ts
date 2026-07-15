@@ -106,6 +106,12 @@ export interface CliState {
     setSettingsDefaultModel: (val: string) => void
     settingsMaxTokens: string
     setSettingsMaxTokens: (val: string) => void
+    settingsThinkingLevel: 'off' | 'minimal' | 'low' | 'medium' | 'high'
+    setSettingsThinkingLevel: (val: 'off' | 'minimal' | 'low' | 'medium' | 'high') => void
+    settingsSteeringMode: 'all' | 'one-at-a-time'
+    setSettingsSteeringMode: (val: 'all' | 'one-at-a-time') => void
+    settingsFollowUpMode: 'all' | 'one-at-a-time'
+    setSettingsFollowUpMode: (val: 'all' | 'one-at-a-time') => void
 
     // ----------------------------------------------------
     // TASKS FEATURE
@@ -241,6 +247,12 @@ export const useCliStore = create<CliState>((set) => ({
     setSettingsDefaultModel: (settingsDefaultModel) => set({ settingsDefaultModel }),
     settingsMaxTokens: '',
     setSettingsMaxTokens: (settingsMaxTokens) => set({ settingsMaxTokens }),
+    settingsThinkingLevel: 'off',
+    setSettingsThinkingLevel: (settingsThinkingLevel) => set({ settingsThinkingLevel }),
+    settingsSteeringMode: 'all',
+    setSettingsSteeringMode: (settingsSteeringMode) => set({ settingsSteeringMode }),
+    settingsFollowUpMode: 'all',
+    setSettingsFollowUpMode: (settingsFollowUpMode) => set({ settingsFollowUpMode }),
 
     // Tasks
     tasksData: [],
