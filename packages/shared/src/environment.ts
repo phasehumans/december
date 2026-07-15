@@ -2,7 +2,13 @@ export interface Environment {
     bash: {
         exec: (
             command: string,
-            onData: (chunk: string) => void
+            cwd: string,
+            options: {
+                onData: (chunk: string | Buffer) => void
+                signal?: AbortSignal
+                timeout?: number
+                env?: NodeJS.ProcessEnv
+            }
         ) => Promise<{ exitCode: number | null; output: string; taskId?: string }>
 
         getTaskStatus?: (taskId: string) => Promise<{ status: string; output: string }>
@@ -16,6 +22,10 @@ export interface Environment {
     search: {
         find: (path: string, query: string) => Promise<string>
         grep: (path: string, query: string) => Promise<string>
+    }
+    env: {
+        cwd: () => string
+        get: (key: string) => string | undefined
     }
     ui: {
         askQuestion: (
