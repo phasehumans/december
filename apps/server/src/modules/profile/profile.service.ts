@@ -44,9 +44,6 @@ import type {
     UpdateAvatarUrl,
     ChangePassword,
     UpdateNotifications,
-    Signout,
-    SignoutAll,
-    DeleteAccount,
     ChatSuggestions,
     UpdateGenerationSoundPayload,
     Getdesign,
@@ -234,41 +231,6 @@ const updateNotifications = async (data: UpdateNotifications) => {
     return updatedUser
 }
 
-const signout = async (data: Signout) => {
-    const { userId, sessionId } = data
-
-    const existingSession = await profileRepository.findSession(sessionId, userId)
-
-    if (!existingSession) {
-        // optional: don't throw, just silently succeed
-        return
-    }
-
-    await profileRepository.revokeSession(sessionId)
-}
-
-const signoutAll = async (data: SignoutAll) => {
-    const { userId } = data
-
-    await profileRepository.revokeAllSessions(userId)
-}
-
-const deleteAccount = async (data: DeleteAccount) => {
-    const { userId } = data
-
-    const existingUser = await profileRepository.findUserByIdForDeleteCheck(userId)
-
-    if (!existingUser) {
-        throw new AppError('user not found', 404)
-    }
-
-    if (existingUser.isDeleted) {
-        throw new AppError('user account is already deleted', 409)
-    }
-
-    await profileRepository.deleteAccount(userId)
-}
-
 const chatSuggestions = async (data: ChatSuggestions) => {
     const { userId, chatSuggestions } = data
 
@@ -379,9 +341,6 @@ export const profileService = {
     updateAvatarUrl,
     changePassword,
     updateNotifications,
-    signout,
-    signoutAll,
-    deleteAccount,
     chatSuggestions,
     generationSound,
     getdesign,

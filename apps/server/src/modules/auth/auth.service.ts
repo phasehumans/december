@@ -7,9 +7,11 @@ import { AppError } from '../../shared/appError'
 import { sendNotificationToUser } from '../notification/notification.service'
 
 import { authRepository } from './auth.repository'
+import { getUsername } from '../../shared/username'
 import {
     sendOTP,
-    getUsername,
+    sendWelcomeEmail,
+    generateUserCode,
     generateAccessToken,
     generateRefreshToken,
     verifyRefreshToken,
@@ -25,6 +27,12 @@ import type {
     RequestPasswordReset,
     VerifyPasswordResetOtp,
     ResetPassword,
+    Signout,
+    SignoutAll,
+    DeleteAccount,
+    GetCliToken,
+    PollDeviceToken,
+    VerifyUserCode,
 } from './auth.types'
 
 const signup = async (data: Signup) => {
@@ -34,7 +42,7 @@ const signup = async (data: Signup) => {
 
     if (existingUser) {
         if (!existingUser.password) {
-            throw new AppError('google_account_exists', 400)
+            throw new AppError('account exists with social login', 400)
         }
         if (existingUser.emailVerified) {
             throw new AppError('email already exists', 409)
@@ -159,11 +167,10 @@ const verifyOtp = async (data: VerifyOtp) => {
     }
 
     try {
-        // await sendWelcomeEmail(user.email, user.name || '')
+        await sendWelcomeEmail(user.email, user.name || '')
     } catch (error) {
         console.error('failed to send welcome email:', error)
     }
-
     return {
         accessToken,
         refreshToken,
@@ -312,11 +319,8 @@ const google = async (data: Google) => {
 
     let user = await authRepository.findUserByEmail(email)
 
-    const username = getUsername()
-    let isNewUser = false
-
     if (!user) {
-        isNewUser = true
+        const username = getUsername()
         user = await authRepository.createUser({
             email: email,
             username: username,
@@ -338,7 +342,7 @@ const google = async (data: Google) => {
         }
 
         try {
-            // await sendWelcomeEmail(user.email, user.name || '')
+            await sendWelcomeEmail(user.email, user.name || '')
         } catch (error) {
             console.error('failed to send welcome email:', error)
         }
@@ -389,11 +393,8 @@ const github = async (data: Github) => {
 
     let user = await authRepository.findUserByEmail(email)
 
-    const username = getUsername()
-    let isNewUser = false
-
     if (!user) {
-        isNewUser = true
+        const username = getUsername()
         user = await authRepository.createUser({
             email: email,
             username: username,
@@ -415,7 +416,7 @@ const github = async (data: Github) => {
         }
 
         try {
-            // await sendWelcomeEmail(user.email, user.name || '')
+            await sendWelcomeEmail(user.email, user.name || '')
         } catch (error) {
             console.error('failed to send welcome email:', error)
         }
@@ -537,6 +538,155 @@ const refreshSession = async (data: RefreshSession) => {
     }
 }
 
+const signout = async (data: Signout) => {
+    const { userId, sessionId } = data
+
+    const existingSession = await authRepository.findSessionById(sessionId)
+
+    if (!existingSession || existingSession.userId !== userId) {
+        return
+    }
+
+    await authRepository.revokeSession(sessionId)
+}
+
+const signoutAll = async (data: SignoutAll) => {
+    const { userId } = data
+
+    await authRepository.revokeAllSessions(userId)
+}
+
+const deleteAccount = async (data: DeleteAccount) => {
+    const { userId } = data
+
+    const existingUser = await authRepository.findUserByIdForDeleteCheck(userId)
+
+    if (!existingUser) {
+        throw new AppError('user not found', 404)
+    }
+
+    if (existingUser.isDeleted) {
+        throw new AppError('user account is already deleted', 409)
+    }
+
+    await authRepository.deleteAccount(userId)
+}
+
+const getCliToken = async (data: GetCliToken) => {
+    const { token, userId } = data
+    const user = await authRepository.findUserById(userId)
+    return { token, email: user?.email }
+}
+
+const generateDeviceCode = async () => {
+    const maxRetries = 3
+
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+        const deviceCode = crypto.randomBytes(32).toString('hex')
+        const userCode = generateUserCode()
+        const expiresIn = 900 // 15 minutes
+
+        try {
+            await authRepository.createDeviceCode({
+                deviceCode,
+                userCode,
+                expiresAt: new Date(Date.now() + expiresIn * 1000),
+                status: 'PENDING',
+            })
+
+            return {
+                deviceCode,
+                userCode,
+                verificationUri: 'https://trydecember.com/activate',
+                expiresIn,
+                interval: 5,
+            }
+        } catch (error: any) {
+            // Prisma unique constraint violation — retry with a new code
+            if (error?.code === 'P2002' && attempt < maxRetries - 1) {
+                continue
+            }
+            throw error
+        }
+    }
+
+    throw new AppError('failed to generate device code', 500)
+}
+
+const pollDeviceToken = async (data: PollDeviceToken) => {
+    const { deviceCode, userAgent, ipAddress } = data
+
+    const codeRecord = await authRepository.findDeviceCodeByDeviceCode(deviceCode)
+
+    if (!codeRecord) {
+        throw new AppError('invalid_client', 400)
+    }
+
+    if (codeRecord.expiresAt < new Date()) {
+        await authRepository.updateDeviceCode(codeRecord.id, { status: 'EXPIRED' })
+        throw new AppError('expired_token', 400)
+    }
+
+    if (codeRecord.status === 'PENDING') {
+        throw new AppError('authorization_pending', 400)
+    }
+
+    if (codeRecord.status === 'APPROVED' && codeRecord.userId) {
+        const user = await authRepository.findUserById(codeRecord.userId)
+
+        if (!user) {
+            throw new AppError('User not found', 404)
+        }
+
+        const sessionId = crypto.randomUUID()
+        const refreshToken = generateRefreshToken({ userId: user.id, sessionId })
+        const refreshTokenHash = await bcrypt.hash(refreshToken, env.BCRYPT_SALT_ROUNDS)
+
+        await authRepository.createSession({
+            id: sessionId,
+            userId: user.id,
+            refreshTokenHash,
+            userAgent: userAgent || 'device-cli',
+            ipAddress: ipAddress || 'unknown',
+            expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+        })
+
+        const accessToken = generateAccessToken({ userId: user.id, sessionId })
+
+        await authRepository.deleteDeviceCode(codeRecord.id)
+
+        return {
+            token: accessToken,
+            email: user.email,
+        }
+    }
+
+    throw new AppError('authorization_pending', 400)
+}
+
+const verifyUserCode = async (data: VerifyUserCode) => {
+    const { userCode, userId } = data
+
+    const codeRecord = await authRepository.findDeviceCodeByUserCode(userCode)
+
+    if (!codeRecord) {
+        throw new AppError('Invalid code', 404)
+    }
+
+    if (codeRecord.expiresAt < new Date()) {
+        throw new AppError('This code has expired', 400)
+    }
+
+    if (codeRecord.status !== 'PENDING') {
+        throw new AppError('This code is no longer pending', 400)
+    }
+
+    await authRepository.updateDeviceCode(codeRecord.id, {
+        status: 'APPROVED',
+        user: { connect: { id: userId } },
+    })
+}
+
 export const authService = {
     signup,
     verifyOtp,
@@ -547,4 +697,11 @@ export const authService = {
     google,
     github,
     refreshSession,
+    signout,
+    signoutAll,
+    deleteAccount,
+    getCliToken,
+    generateDeviceCode,
+    pollDeviceToken,
+    verifyUserCode,
 }

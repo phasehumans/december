@@ -56,22 +56,11 @@ export const SearchModal: React.FC<SearchModalProps> = ({
     const allItems: SearchItem[] = [
         // Navigation
         {
-            id: 'go-sessions',
+            id: 'go-projects',
             label: 'Sessions',
             subtitle: 'Go to all sessions',
             category: 'Navigation',
-            icon: <Icons.SessionsIcon className="w-4 h-4 text-neutral-400" />,
-            action: () => {
-                onClose()
-                navigate('/sessions')
-            },
-        },
-        {
-            id: 'go-projects',
-            label: 'Projects',
-            subtitle: 'Go to projects & repositories',
-            category: 'Navigation',
-            icon: <Icons.Layers className="w-4 h-4 text-neutral-400" />,
+            icon: <Icons.Folder className="w-4 h-4 text-neutral-400" />,
             action: () => {
                 onClose()
                 navigate('/projects')
@@ -79,10 +68,10 @@ export const SearchModal: React.FC<SearchModalProps> = ({
         },
         {
             id: 'go-templates',
-            label: 'Templates',
-            subtitle: 'Go to custom templates',
+            label: 'Wiki',
+            subtitle: 'Go to wiki',
             category: 'Navigation',
-            icon: <Icons.Bookmark className="w-4 h-4 text-neutral-400" />,
+            icon: <Icons.BookOpen className="w-4 h-4 text-neutral-400" />,
             action: () => {
                 onClose()
                 navigate('/templates')
@@ -234,7 +223,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({
         },
     ]
 
-    const defaultRecentIds = ['go-projects', 'go-sessions', 'go-settings-account']
+    const defaultRecentIds = ['go-projects', 'go-settings-account']
     const activeRecentIds = recentIds.length > 0 ? recentIds : defaultRecentIds
 
     const recentItems = activeRecentIds

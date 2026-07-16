@@ -5,6 +5,11 @@ export type TokenPayload = {
     exp?: number
 }
 
+export type Signup = {
+    email: string
+    password: string
+}
+
 export type VerifyOtp = {
     email: string
     otp: string
@@ -17,6 +22,19 @@ export type Login = {
     password: string
     userAgent?: string
     ipAddress?: string
+}
+
+export type RequestPasswordReset = {
+    email: string
+}
+
+export type VerifyPasswordResetOtp = {
+    email: string
+    otp: string
+}
+
+export type ResetPassword = VerifyPasswordResetOtp & {
+    newPassword: string
 }
 
 export type Google = {
@@ -35,24 +53,35 @@ export type Github = {
     ipAddress?: string
 }
 
-export type Signup = {
-    email: string
-    password: string
-}
-
 export type RefreshSession = {
     refreshToken?: string
 }
 
-export type RequestPasswordReset = {
-    email: string
+export type Signout = {
+    userId: string
+    sessionId: string
 }
 
-export type VerifyPasswordResetOtp = {
-    email: string
-    otp: string
+export type SignoutAll = {
+    userId: string
 }
 
-export type ResetPassword = VerifyPasswordResetOtp & {
-    newPassword: string
+export type DeleteAccount = {
+    userId: string
+}
+
+export type GetCliToken = {
+    token: string
+    userId: string
+}
+
+export type PollDeviceToken = {
+    deviceCode: string
+    userAgent?: string
+    ipAddress?: string
+}
+
+export type VerifyUserCode = {
+    userCode: string
+    userId: string
 }

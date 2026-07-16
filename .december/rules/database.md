@@ -1,0 +1,2 @@
+- Always use `bunx prisma migrate dev` to update the schema.
+- Never use `prisma db push` to ensure migration files are properly generated.

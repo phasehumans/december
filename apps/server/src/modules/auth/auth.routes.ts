@@ -1,7 +1,8 @@
 import { Router } from 'express'
 
 import { authController } from './auth.controller'
-import { authDeviceController } from './auth.device.controller'
+import { authMiddleware } from '../../middleware/auth.middleware'
+import { deviceCodeLimiter } from '../../middleware/rate-limiter'
 
 const authRouter = Router()
 
@@ -14,17 +15,13 @@ authRouter.post('/forgot-password/reset', authController.resetPassword)
 authRouter.post('/google', authController.google)
 authRouter.post('/github', authController.github)
 authRouter.post('/refresh', authController.refreshSession)
+authRouter.post('/signout', authMiddleware, authController.signout)
+authRouter.post('/signout/all', authMiddleware, authController.signoutAll)
+authRouter.delete('/account', authMiddleware, authController.deleteAccount)
 
-import { authMiddleware } from '../../middleware/auth.middleware'
-
-// add cli auth via code (ref devin authflow)
 authRouter.get('/cli-token', authMiddleware, authController.getCliToken)
-
-import { deviceCodeLimiter } from '../../middleware/rate-limiter'
-
-// Device Code Flow
-authRouter.post('/device/code', deviceCodeLimiter, authDeviceController.generateDeviceCode)
-authRouter.post('/device/token', authDeviceController.pollDeviceToken)
-authRouter.post('/device/verify', authMiddleware, authDeviceController.verifyUserCode)
+authRouter.post('/device/code', deviceCodeLimiter, authController.generateDeviceCode)
+authRouter.post('/device/token', deviceCodeLimiter, authController.pollDeviceToken)
+authRouter.post('/device/verify', authMiddleware, authController.verifyUserCode)
 
 export default authRouter
