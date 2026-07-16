@@ -1,10 +1,9 @@
 import { motion, AnimatePresence, useMotionValue, useSpring } from 'framer-motion'
-import { MessageSquare, ArrowUpRight, Loader2 } from 'lucide-react'
+import { ArrowUpRight, Loader2 } from 'lucide-react'
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import { useBillingOverview } from '@/features/billing/hooks/useBillingData'
-import { ProfileFeedbackModal } from '@/features/profile/components/ProfileFeedbackModal'
 import { Icons } from '@/shared/components/ui/Icons'
 
 interface HomeHeaderProps {
@@ -72,7 +71,6 @@ const MagneticIconWithTooltip = ({ icon: Icon, tooltip, onClick, href }: any) =>
 }
 
 export const HomeHeader: React.FC<HomeHeaderProps> = ({ isAuthenticated, onOpenAuth }) => {
-    const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false)
     const navigate = useNavigate()
 
     const { data: overview, isLoading: isOverviewLoading } = useBillingOverview()
@@ -133,19 +131,6 @@ export const HomeHeader: React.FC<HomeHeaderProps> = ({ isAuthenticated, onOpenA
             {/* Right Icons */}
             <div className="flex-1 flex items-center justify-end pointer-events-auto">
                 <div className="flex items-center gap-0">
-                    {isAuthenticated && (
-                        <div className="hidden md:block">
-                            <MagneticIconWithTooltip
-                                icon={
-                                    <MessageSquare className="w-[17px] h-[17px]" strokeWidth={2} />
-                                }
-                                tooltip="Feedback"
-                                onClick={() => {
-                                    setIsFeedbackModalOpen(true)
-                                }}
-                            />
-                        </div>
-                    )}
                     <MagneticIconWithTooltip
                         icon={<Icons.XLogo className="w-[15px] h-[15px]" />}
                         tooltip="Twitter"
@@ -158,11 +143,6 @@ export const HomeHeader: React.FC<HomeHeaderProps> = ({ isAuthenticated, onOpenA
                     />
                 </div>
             </div>
-
-            <ProfileFeedbackModal
-                isOpen={isFeedbackModalOpen}
-                onClose={() => setIsFeedbackModalOpen(false)}
-            />
         </div>
     )
 }

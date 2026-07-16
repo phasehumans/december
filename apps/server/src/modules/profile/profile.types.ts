@@ -40,19 +40,6 @@ export type UpdateNotifications = {
     notifySecurityAlerts?: boolean
 }
 
-export type Signout = {
-    userId: string
-    sessionId: string
-}
-
-export type SignoutAll = {
-    userId: string
-}
-
-export type DeleteAccount = {
-    userId: string
-}
-
 export type ChatSuggestions = {
     userId: string
     chatSuggestions: boolean

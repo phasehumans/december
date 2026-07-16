@@ -8,6 +8,11 @@ export const signupSchema = z.object({
         .max(20, 'password must be at most 20 characters'),
 })
 
+export const verifyOtpSchema = z.object({
+    email: z.string({ message: 'email is required' }).email('please enter a valid email address'),
+    otp: z.string({ message: 'otp is required' }).regex(/^\d{6}$/, 'otp must be exactly 6 digits'),
+})
+
 export const loginSchema = z.object({
     email: z.string({ message: 'email is required' }).email('please enter a valid email address'),
     password: z
@@ -34,11 +39,6 @@ export const forgotPasswordResetSchema = z.object({
         .max(20, 'new password must be at most 20 characters'),
 })
 
-export const verifyOtpSchema = z.object({
-    email: z.string({ message: 'email is required' }).email('please enter a valid email address'),
-    otp: z.string({ message: 'otp is required' }).regex(/^\d{6}$/, 'otp must be exactly 6 digits'),
-})
-
 export const googleAuthSchema = z.object({
     code: z
         .string({ message: 'authorization code is required' })
@@ -49,4 +49,12 @@ export const githubAuthSchema = z.object({
     code: z
         .string({ message: 'authorization code is required' })
         .min(1, 'authorization code is required'),
+})
+
+export const pollDeviceTokenSchema = z.object({
+    deviceCode: z.string({ message: 'device code is required' }).min(1, 'device code is required'),
+})
+
+export const verifyUserCodeSchema = z.object({
+    userCode: z.string({ message: 'user code is required' }).min(1, 'user code is required'),
 })
