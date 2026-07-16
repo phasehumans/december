@@ -10,6 +10,7 @@ import { authRepository } from './auth.repository'
 import { getUsername } from '../../shared/username'
 import {
     sendOTP,
+    sendWelcomeEmail,
     generateUserCode,
     generateAccessToken,
     generateRefreshToken,
@@ -41,7 +42,7 @@ const signup = async (data: Signup) => {
 
     if (existingUser) {
         if (!existingUser.password) {
-            throw new AppError('google_account_exists', 400)
+            throw new AppError('account exists with social login', 400)
         }
         if (existingUser.emailVerified) {
             throw new AppError('email already exists', 409)
@@ -166,11 +167,10 @@ const verifyOtp = async (data: VerifyOtp) => {
     }
 
     try {
-        // await sendWelcomeEmail(user.email, user.name || '')
+        await sendWelcomeEmail(user.email, user.name || '')
     } catch (error) {
         console.error('failed to send welcome email:', error)
     }
-
     return {
         accessToken,
         refreshToken,
@@ -319,11 +319,8 @@ const google = async (data: Google) => {
 
     let user = await authRepository.findUserByEmail(email)
 
-    const username = getUsername()
-    let isNewUser = false
-
     if (!user) {
-        isNewUser = true
+        const username = getUsername()
         user = await authRepository.createUser({
             email: email,
             username: username,
@@ -345,7 +342,7 @@ const google = async (data: Google) => {
         }
 
         try {
-            // await sendWelcomeEmail(user.email, user.name || '')
+            await sendWelcomeEmail(user.email, user.name || '')
         } catch (error) {
             console.error('failed to send welcome email:', error)
         }
@@ -396,11 +393,8 @@ const github = async (data: Github) => {
 
     let user = await authRepository.findUserByEmail(email)
 
-    const username = getUsername()
-    let isNewUser = false
-
     if (!user) {
-        isNewUser = true
+        const username = getUsername()
         user = await authRepository.createUser({
             email: email,
             username: username,
@@ -422,7 +416,7 @@ const github = async (data: Github) => {
         }
 
         try {
-            // await sendWelcomeEmail(user.email, user.name || '')
+            await sendWelcomeEmail(user.email, user.name || '')
         } catch (error) {
             console.error('failed to send welcome email:', error)
         }
@@ -549,7 +543,7 @@ const signout = async (data: Signout) => {
 
     const existingSession = await authRepository.findSessionById(sessionId)
 
-    if (!existingSession) {
+    if (!existingSession || existingSession.userId !== userId) {
         return
     }
 
@@ -585,25 +579,38 @@ const getCliToken = async (data: GetCliToken) => {
 }
 
 const generateDeviceCode = async () => {
-    const deviceCode = crypto.randomBytes(32).toString('hex')
-    const userCode = generateUserCode()
+    const maxRetries = 3
 
-    const expiresIn = 900 // 15 minutes
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+        const deviceCode = crypto.randomBytes(32).toString('hex')
+        const userCode = generateUserCode()
+        const expiresIn = 900 // 15 minutes
 
-    await authRepository.createDeviceCode({
-        deviceCode,
-        userCode,
-        expiresAt: new Date(Date.now() + expiresIn * 1000),
-        status: 'PENDING',
-    })
+        try {
+            await authRepository.createDeviceCode({
+                deviceCode,
+                userCode,
+                expiresAt: new Date(Date.now() + expiresIn * 1000),
+                status: 'PENDING',
+            })
 
-    return {
-        deviceCode,
-        userCode,
-        verificationUri: 'https://trydecember.com/activate',
-        expiresIn,
-        interval: 5,
+            return {
+                deviceCode,
+                userCode,
+                verificationUri: 'https://trydecember.com/activate',
+                expiresIn,
+                interval: 5,
+            }
+        } catch (error: any) {
+            // Prisma unique constraint violation — retry with a new code
+            if (error?.code === 'P2002' && attempt < maxRetries - 1) {
+                continue
+            }
+            throw error
+        }
     }
+
+    throw new AppError('failed to generate device code', 500)
 }
 
 const pollDeviceToken = async (data: PollDeviceToken) => {
