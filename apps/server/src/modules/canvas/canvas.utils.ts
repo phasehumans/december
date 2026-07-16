@@ -1,10 +1,9 @@
 import { randomUUID } from 'crypto'
-
 import { z } from 'zod'
 
 import {
-    assetKey,
-    assetPrefix,
+    sessionAssetKey,
+    sessionAssetPrefix,
     deleteObject,
     getBinaryFile,
     putBinaryFile,
@@ -80,8 +79,8 @@ const normalizeCanvasDocument = (canvasState?: CanvasDocument | null): CanvasDoc
 }
 
 const persistImageAsset = async (data: PersistImageAsset) => {
-    const { projectId, userId, versionId, item } = data
-    const projectAssetPrefix = assetPrefix(projectId)
+    const { sessionId, userId, item } = data
+    const projectAssetPrefix = sessionAssetPrefix(sessionId)
     const preferredKind = item.assetKind ?? 'upload'
 
     if (
@@ -107,9 +106,9 @@ const persistImageAsset = async (data: PersistImageAsset) => {
         if (temporaryAsset) {
             const nextContentType =
                 item.assetContentType ?? temporaryAsset.contentType ?? 'image/png'
-            const nextKey = assetKey(
-                projectId,
-                `canvas/${versionId}/${preferredKind}/${item.id}-${randomUUID()}.${contentTypeToExtension(nextContentType)}`
+            const nextKey = sessionAssetKey(
+                sessionId,
+                `canvas/${preferredKind}/${item.id}-${randomUUID()}.${contentTypeToExtension(nextContentType)}`
             )
 
             await putBinaryFile({
@@ -132,9 +131,9 @@ const persistImageAsset = async (data: PersistImageAsset) => {
         const parsedDataUrl = parseDataUrl(item.content)
 
         if (parsedDataUrl) {
-            const nextKey = assetKey(
-                projectId,
-                `canvas/${versionId}/${preferredKind}/${item.id}-${randomUUID()}.${contentTypeToExtension(parsedDataUrl.contentType)}`
+            const nextKey = sessionAssetKey(
+                sessionId,
+                `canvas/${preferredKind}/${item.id}-${randomUUID()}.${contentTypeToExtension(parsedDataUrl.contentType)}`
             )
 
             await putBinaryFile({
@@ -156,7 +155,7 @@ const persistImageAsset = async (data: PersistImageAsset) => {
 }
 
 export const persistCanvasDocument = async (data: PersistCanvasDocument) => {
-    const { projectId, userId, versionId, canvasState } = data
+    const { sessionId, userId, canvasState } = data
     const normalizedCanvas = normalizeCanvasDocument(canvasState)
     const assetManifest: CanvasAssetManifestEntry[] = []
 
@@ -167,9 +166,8 @@ export const persistCanvasDocument = async (data: PersistCanvasDocument) => {
             }
 
             const persistedAsset = await persistImageAsset({
-                projectId,
+                sessionId,
                 userId,
-                versionId,
                 item,
             })
 
@@ -212,8 +210,10 @@ export const persistCanvasDocument = async (data: PersistCanvasDocument) => {
     }
 }
 
-export const hydrateCanvasDocument = async (data: HydrateCanvasDocument) => {
-    const { canvasState, canvasAssetManifest } = data
+export const hydrateCanvasDocument = async (
+    canvasState: unknown,
+    canvasAssetManifest?: unknown
+) => {
     const normalizedCanvas = normalizeCanvasDocument(
         canvasState as CanvasDocument | null | undefined
     )

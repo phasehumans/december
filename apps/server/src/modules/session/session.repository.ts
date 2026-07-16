@@ -1,10 +1,11 @@
 import { prisma } from '@december/database'
-
 import type { Prisma } from '@december/database'
 
 export async function findManySessions(userId: string) {
     return prisma.session.findMany({
-        where: { userId },
+        where: {
+            OR: [{ userId }, { collaborators: { some: { userId } } }],
+        },
         orderBy: { updatedAt: 'desc' },
         include: {
             project: {
@@ -32,15 +33,34 @@ export async function countActiveSessions(userId: string) {
 
 export async function findSessionById(sessionId: string, userId: string) {
     return prisma.session.findFirst({
-        where: { id: sessionId, userId },
+        where: {
+            id: sessionId,
+            OR: [{ userId }, { collaborators: { some: { userId } } }],
+        },
         include: {
-            messages: {
-                orderBy: { sequence: 'asc' },
-            },
             project: {
                 select: {
                     id: true,
                     name: true,
+                },
+            },
+            messages: {
+                orderBy: { sequence: 'asc' },
+            },
+            collaborators: {
+                select: {
+                    id: true,
+                    userId: true,
+                    email: true,
+                    user: {
+                        select: {
+                            id: true,
+                            username: true,
+                            email: true,
+                            name: true,
+                            avatarUrl: true,
+                        },
+                    },
                 },
             },
         },
@@ -56,10 +76,124 @@ export async function updateSession(
     userId: string,
     data: Prisma.SessionUpdateInput
 ) {
-    const session = await prisma.session.findFirst({ where: { id: sessionId, userId } })
-    if (!session) throw new Error('Session not found')
+    // Assert access
+    const session = await prisma.session.findFirst({
+        where: {
+            id: sessionId,
+            OR: [{ userId }, { collaborators: { some: { userId } } }],
+        },
+    })
+    if (!session) throw new Error('Session not found or access denied')
+
     return prisma.session.update({
         where: { id: sessionId },
         data,
+    })
+}
+
+export async function deleteSession(sessionId: string) {
+    return prisma.session.delete({
+        where: { id: sessionId },
+    })
+}
+
+export async function findSessionOwner(sessionId: string) {
+    return prisma.session.findUnique({
+        where: { id: sessionId },
+        select: {
+            id: true,
+            userId: true,
+        },
+    })
+}
+
+export async function countCollaborators(sessionId: string) {
+    return prisma.sessionCollaborator.count({
+        where: { sessionId },
+    })
+}
+
+export async function findCollaborator(sessionId: string, email: string) {
+    return prisma.sessionCollaborator.findUnique({
+        where: {
+            sessionId_email: {
+                sessionId,
+                email,
+            },
+        },
+    })
+}
+
+export async function findCollaboratorsBySessionId(sessionId: string) {
+    return prisma.sessionCollaborator.findMany({
+        where: { sessionId },
+        select: {
+            id: true,
+            sessionId: true,
+            userId: true,
+            email: true,
+            createdAt: true,
+            user: {
+                select: {
+                    id: true,
+                    username: true,
+                    email: true,
+                    name: true,
+                    avatarUrl: true,
+                },
+            },
+        },
+    })
+}
+
+export async function addCollaborator(sessionId: string, userId: string, email: string) {
+    return prisma.sessionCollaborator.create({
+        data: {
+            sessionId,
+            userId,
+            email,
+        },
+        select: {
+            id: true,
+            userId: true,
+            email: true,
+            createdAt: true,
+            user: {
+                select: {
+                    id: true,
+                    username: true,
+                    email: true,
+                    name: true,
+                    avatarUrl: true,
+                },
+            },
+        },
+    })
+}
+
+export async function removeCollaborator(sessionId: string, email: string) {
+    return prisma.sessionCollaborator.delete({
+        where: {
+            sessionId_email: {
+                sessionId,
+                email,
+            },
+        },
+    })
+}
+
+export async function findUserByEmailOrUsername(input: string) {
+    return prisma.user.findFirst({
+        where: {
+            OR: [{ email: input }, { username: input }],
+            isDeleted: false,
+        },
+        select: {
+            id: true,
+            email: true,
+            username: true,
+            name: true,
+            isDeleted: true,
+        },
     })
 }

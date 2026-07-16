@@ -14,9 +14,9 @@ const createWebClips = asyncHandler(async (req: Request, res: Response) => {
     }
 
     const parseData = webClipRequestSchema.parse(req.body)
-    const { url, projectId } = parseData
+    const { url, sessionId } = parseData
 
-    const result = await canvasService.createWebClips({ url, userId, projectId })
+    const result = await canvasService.createWebClips({ url, userId, sessionId })
     return sendSuccess(res, 'web clips created successfully', result)
 })
 

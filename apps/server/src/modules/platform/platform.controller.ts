@@ -12,37 +12,21 @@ import { vercelService } from './vercel.service'
 
 import type { Request, Response } from 'express'
 
-const deployDecemberProject = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.user?.userId as string | undefined
-    const projectId = req.params.projectId as string | undefined
-
-    if (!userId) {
-        throw new AppError('unauthorized', 401)
-    }
-
-    if (!projectId) {
-        throw new AppError('project id is required', 400)
-    }
-
-    const result = await platformService.deployDecemberProject({ projectId, userId })
-    return sendSuccess(res, result.message, result)
-})
-
 const downloadProject = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user?.userId as string | undefined
-    const projectId = req.params.projectId as string | undefined
+    const sessionId = req.params.sessionId as string | undefined
 
     if (!userId) {
         throw new AppError('unauthorized', 401)
     }
 
-    if (!projectId) {
-        throw new AppError('project id is required', 400)
+    if (!sessionId) {
+        throw new AppError('session id is required', 400)
     }
 
-    const result = await platformService.downloadProject({
+    const result = await platformService.downloadSession({
         userId,
-        projectId,
+        sessionId,
     })
 
     res.setHeader('Content-Type', 'application/zip')
@@ -52,29 +36,29 @@ const downloadProject = asyncHandler(async (req: Request, res: Response) => {
 
 const deployVercelProject = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user?.userId as string | undefined
-    const projectId = req.params.projectId as string | undefined
+    const sessionId = req.params.sessionId as string | undefined
 
     if (!userId) {
         throw new AppError('unauthorized', 401)
     }
 
-    if (!projectId) {
-        throw new AppError('project id is required', 400)
+    if (!sessionId) {
+        throw new AppError('session id is required', 400)
     }
 
-    const project = await platformRepository.findProjectById({ projectId })
+    const session = await platformRepository.findSessionByIdAndUser({ sessionId, userId })
 
-    if (!project || project.userId !== userId) {
-        throw new AppError('project not found', 404)
+    if (!session || session.userId !== userId) {
+        throw new AppError('session not found', 404)
     }
 
-    let vercelProjectId = project.vercelProjectId
-    let vercelProjectName = project.vercelProjectName
+    let vercelProjectId = session.vercelProjectId
+    let vercelProjectName = session.vercelProjectName
 
-    const isGithubLinked = !!(project.githubRepoOwner && project.githubRepoName)
+    const isGithubLinked = !!(session.githubRepoOwner && session.githubRepoName)
 
     if (!vercelProjectId) {
-        const sanitizedName = project.name
+        const sanitizedName = (session.title || 'session')
             .toLowerCase()
             .replace(/[^a-z0-9-]/g, '-')
             .replace(/-+/g, '-')
@@ -83,14 +67,14 @@ const deployVercelProject = asyncHandler(async (req: Request, res: Response) => 
         const vercelProject = await vercelService.createProject({
             userId,
             name: sanitizedName,
-            repoOwner: project.githubRepoOwner || undefined,
-            repoName: project.githubRepoName || undefined,
+            repoOwner: session.githubRepoOwner || undefined,
+            repoName: session.githubRepoName || undefined,
         })
         vercelProjectId = vercelProject.id
         vercelProjectName = vercelProject.name
 
-        await platformRepository.updateProjectVercelLink({
-            projectId,
+        await platformRepository.updateSessionVercelLink({
+            sessionId,
             vercelProjectId: vercelProject.id,
             vercelProjectName: vercelProject.name,
         })
@@ -99,7 +83,7 @@ const deployVercelProject = asyncHandler(async (req: Request, res: Response) => 
     if (isGithubLinked) {
         const { commitSha } = await platformService.updateRepo({
             userId,
-            projectId,
+            sessionId,
             commitMessage: 'Auto-deploy triggered from December settings',
         })
 
@@ -109,8 +93,8 @@ const deployVercelProject = asyncHandler(async (req: Request, res: Response) => 
             commitSha,
         })
 
-        await platformRepository.updateProjectVercelDeployment({
-            projectId,
+        await platformRepository.updateSessionVercelDeployment({
+            sessionId,
             url: deployment.url,
         })
 
@@ -122,7 +106,7 @@ const deployVercelProject = asyncHandler(async (req: Request, res: Response) => 
     } else {
         const deployment = await platformService.deployVercelDirect({
             userId,
-            projectId,
+            sessionId,
             vercelProjectId: vercelProjectId!,
             vercelProjectName: vercelProjectName!,
         })
@@ -195,20 +179,20 @@ const getUserGithubRepos = asyncHandler(async (req: Request, res: Response) => {
 
 const createRepo = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user?.userId as string | undefined
-    const projectId = req.params.projectId as string | undefined
+    const sessionId = req.params.sessionId as string | undefined
 
     if (!userId) {
         throw new AppError('unauthorized', 401)
     }
 
-    if (!projectId) {
-        throw new AppError('project id is required', 400)
+    if (!sessionId) {
+        throw new AppError('session id is required', 400)
     }
 
     const parsedBody = createGithubRepoSchema.parse(req.body)
     const result = await platformService.createRepo({
         userId,
-        projectId,
+        sessionId,
         ...parsedBody,
     })
 
@@ -217,20 +201,20 @@ const createRepo = asyncHandler(async (req: Request, res: Response) => {
 
 const updateRepo = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user?.userId as string | undefined
-    const projectId = req.params.projectId as string | undefined
+    const sessionId = req.params.sessionId as string | undefined
 
     if (!userId) {
         throw new AppError('unauthorized', 401)
     }
 
-    if (!projectId) {
-        throw new AppError('project id is required', 400)
+    if (!sessionId) {
+        throw new AppError('session id is required', 400)
     }
 
     const parsedBody = syncGithubRepoSchema.parse(req.body)
     const result = await platformService.updateRepo({
         userId,
-        projectId,
+        sessionId,
         ...parsedBody,
     })
 
@@ -239,53 +223,53 @@ const updateRepo = asyncHandler(async (req: Request, res: Response) => {
 
 const unlinkGithubRepo = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user?.userId as string | undefined
-    const projectId = req.params.projectId as string | undefined
+    const sessionId = req.params.sessionId as string | undefined
 
     if (!userId) {
         throw new AppError('unauthorized', 401)
     }
 
-    if (!projectId) {
-        throw new AppError('project id is required', 400)
+    if (!sessionId) {
+        throw new AppError('session id is required', 400)
     }
 
-    const result = await platformService.unlinkGithubRepo({ userId, projectId })
+    const result = await platformService.unlinkGithubRepo({ userId, sessionId })
     return sendSuccess(res, result.message, result)
 })
 
 const unlinkVercelProject = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user?.userId as string | undefined
-    const projectId = req.params.projectId as string | undefined
+    const sessionId = req.params.sessionId as string | undefined
 
     if (!userId) {
         throw new AppError('unauthorized', 401)
     }
 
-    if (!projectId) {
-        throw new AppError('project id is required', 400)
+    if (!sessionId) {
+        throw new AppError('session id is required', 400)
     }
 
-    const result = await platformService.unlinkVercelProject({ userId, projectId })
+    const result = await platformService.unlinkVercelProject({ userId, sessionId })
     return sendSuccess(res, result.message, result)
 })
 
 const syncEnvironmentVariables = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user?.userId as string | undefined
-    const projectId = req.params.projectId as string | undefined
+    const sessionId = req.params.sessionId as string | undefined
 
     if (!userId) {
         throw new AppError('unauthorized', 401)
     }
 
-    if (!projectId) {
-        throw new AppError('project id is required', 400)
+    if (!sessionId) {
+        throw new AppError('session id is required', 400)
     }
 
     const parsedBody = syncEnvVarsSchema.parse(req.body)
 
     const result = await platformService.syncEnvironmentVariables({
         userId,
-        projectId,
+        sessionId,
         keys: parsedBody.keys,
     })
     return sendSuccess(res, result.message, result)
@@ -313,7 +297,6 @@ const handleVercelWebhook = asyncHandler(async (req: Request, res: Response) => 
     const { type, payload: webhookPayload } = req.body
     if (type === 'deployment.succeeded' || type === 'deployment.error') {
         const deploymentUrl = webhookPayload.deployment.url
-        const projectId = webhookPayload.projectId
         console.log(`Vercel Webhook: Deployment ${deploymentUrl} finished with status ${type}`)
     }
 
@@ -321,7 +304,6 @@ const handleVercelWebhook = asyncHandler(async (req: Request, res: Response) => 
 })
 
 export const platformController = {
-    deployDecemberProject,
     downloadProject,
     deployVercelProject,
     getVercelDeploymentStatus,

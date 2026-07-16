@@ -18,14 +18,14 @@ export function extractStyleGuidelines(prompt: string): Record<string, string> {
 }
 
 export async function upsertStyleGuidelines(data: UpsertStyleGuidelines): Promise<void> {
-    const { projectId, guidelines } = data
+    const { sessionId, guidelines } = data
     const entries = Object.entries(guidelines)
     if (entries.length === 0) return
 
     await Promise.all(
         entries.map(async ([key, value]) => {
-            await memoryRepository.upsertProjectMemory({
-                projectId,
+            await memoryRepository.upsertSessionMemory({
+                sessionId,
                 key,
                 value,
             })
@@ -36,22 +36,14 @@ export async function upsertStyleGuidelines(data: UpsertStyleGuidelines): Promis
 export async function loadMemoryPromptInstructions(
     data: LoadMemoryPromptInstructions
 ): Promise<string> {
-    const { projectId, userId } = data
+    const { sessionId } = data
     let instructions = ''
 
-    // 1. Load general design preference (design.md)
-    if (userId) {
-        const user = await memoryRepository.findUserDesignPreference(userId)
-        if (user?.design?.trim()) {
-            instructions += `\n### General Design Preferences (design.md):\n${user.design.trim()}\n`
-        }
-    }
-
-    // 2. Load project-specific guidelines
-    const memories = await memoryRepository.findProjectMemories(projectId)
+    // Load session-specific guidelines
+    const memories = await memoryRepository.findSessionMemories(sessionId)
 
     if (memories.length > 0) {
-        instructions += `\n### Project-Specific Style Guidelines:\n`
+        instructions += `\n### Session-Specific Style Guidelines:\n`
         for (const memory of memories) {
             instructions += `- ${memory.key}: ${memory.value}\n`
         }

@@ -1,7 +1,6 @@
 import { AppError } from '../../shared/appError'
 import { asyncHandler } from '../../shared/asyncHandler'
 import { sendSuccess } from '../../shared/response'
-import { authCookie } from '../auth/auth.cookie'
 
 import {
     changePasswordSchema,
@@ -12,32 +11,20 @@ import {
     updateNotificationSchema,
     updateUsernameSchema,
     updateAvatarUrlSchema,
-    submitFeedbackSchema,
-} from './profile.schema'
-import { profileService } from './profile.service'
+} from './setting.schema'
+import { settingService } from './setting.service'
 
 import type { Request, Response } from 'express'
 
-const getInfo = asyncHandler(async (req: Request, res: Response) => {
+const getMe = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user?.userId as string | undefined
 
     if (!userId) {
         throw new AppError('unauthorized', 401)
     }
 
-    const result = await profileService.getInfo({ userId })
+    const result = await settingService.getMe({ userId })
     return sendSuccess(res, 'info fetched successfully', result)
-})
-
-const getProfileCard = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.user?.userId as string | undefined
-
-    if (!userId) {
-        throw new AppError('unauthorized', 401)
-    }
-
-    const result = await profileService.getProfileCard({ userId })
-    return sendSuccess(res, 'profile card fetched successfully', result)
 })
 
 const getProfile = asyncHandler(async (req: Request, res: Response) => {
@@ -47,7 +34,7 @@ const getProfile = asyncHandler(async (req: Request, res: Response) => {
         throw new AppError('unauthorized', 401)
     }
 
-    const result = await profileService.getProfile({ userId })
+    const result = await settingService.getProfile({ userId })
     return sendSuccess(res, 'profile fetched successfully', result)
 })
 
@@ -61,7 +48,7 @@ const updateName = asyncHandler(async (req: Request, res: Response) => {
     const parseData = updateNameSchema.parse(req.body)
     const { name } = parseData
 
-    const result = await profileService.updateName({ userId, name })
+    const result = await settingService.updateName({ userId, name })
     return sendSuccess(res, 'name updated successfully', result)
 })
 
@@ -75,7 +62,7 @@ const updateUsername = asyncHandler(async (req: Request, res: Response) => {
     const parseData = updateUsernameSchema.parse(req.body)
     const { username } = parseData
 
-    const result = await profileService.updateUsername({ userId, username })
+    const result = await settingService.updateUsername({ userId, username })
     return sendSuccess(res, 'username updated successfully', result)
 })
 
@@ -89,7 +76,7 @@ const updateAvatarUrl = asyncHandler(async (req: Request, res: Response) => {
     const parseData = updateAvatarUrlSchema.parse(req.body)
     const { avatarUrl } = parseData
 
-    const result = await profileService.updateAvatarUrl({ userId, avatarUrl })
+    const result = await settingService.updateAvatarUrl({ userId, avatarUrl })
     return sendSuccess(res, 'avatar updated successfully', result)
 })
 
@@ -103,7 +90,7 @@ const changePassword = asyncHandler(async (req: Request, res: Response) => {
     const parseData = changePasswordSchema.parse(req.body)
     const { currentPassword, newPassword } = parseData
 
-    const result = await profileService.changePassword({
+    const result = await settingService.changePassword({
         userId,
         currentPassword,
         newPassword,
@@ -121,7 +108,7 @@ const updateNotifications = asyncHandler(async (req: Request, res: Response) => 
     const parseData = updateNotificationSchema.parse(req.body)
     const { notifyProjectActivity, notifyProductUpdates, notifySecurityAlerts } = parseData
 
-    const result = await profileService.updateNotifications({
+    const result = await settingService.updateNotifications({
         notifyProjectActivity,
         notifyProductUpdates,
         notifySecurityAlerts,
@@ -140,7 +127,7 @@ const chatSuggestions = asyncHandler(async (req: Request, res: Response) => {
     const parseData = chatSuggestionsSchema.parse(req.body)
     const { chatSuggestions } = parseData
 
-    const result = await profileService.chatSuggestions({ userId, chatSuggestions })
+    const result = await settingService.chatSuggestions({ userId, chatSuggestions })
     return sendSuccess(res, 'chat suggestions updated successfully', result)
 })
 
@@ -154,7 +141,7 @@ const generationSound = asyncHandler(async (req: Request, res: Response) => {
     const parseData = generationSoundSchema.parse(req.body)
     const { generationSound } = parseData
 
-    const result = await profileService.generationSound({ userId, generationSound })
+    const result = await settingService.generationSound({ userId, generationSound })
     return sendSuccess(res, 'generation sound preference updated successfully', result)
 })
 
@@ -165,7 +152,7 @@ const getdesign = asyncHandler(async (req: Request, res: Response) => {
         throw new AppError('unauthorized', 401)
     }
 
-    const result = await profileService.getdesign({ userId })
+    const result = await settingService.getdesign({ userId })
     return sendSuccess(res, 'design fetched successfully', result)
 })
 
@@ -179,7 +166,7 @@ const updatedesign = asyncHandler(async (req: Request, res: Response) => {
     const parseData = designSchema.parse(req.body)
     const { design } = parseData
 
-    const result = await profileService.updatedesign({ userId, design })
+    const result = await settingService.updatedesign({ userId, design })
     return sendSuccess(res, 'design updated successfully', result)
 })
 
@@ -190,31 +177,8 @@ const deletedesign = asyncHandler(async (req: Request, res: Response) => {
         throw new AppError('unauthorized', 401)
     }
 
-    await profileService.deletedesign({ userId })
+    await settingService.deletedesign({ userId })
     return sendSuccess(res, 'design deleted successfully')
-})
-
-const submitFeedback = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.user?.userId as string | undefined
-
-    if (!userId) {
-        throw new AppError('unauthorized', 401)
-    }
-
-    const parseData = submitFeedbackSchema.parse(req.body)
-    const { rating, feedback } = parseData
-
-    const ratingStr = rating !== undefined && rating !== null ? String(rating) : null
-
-    await profileService.createFeedback({
-        userId,
-        rating: ratingStr,
-        feedback,
-    })
-
-    return sendSuccess(res, 'feedback submitted successfully', {
-        message: 'feedback submitted successfully',
-    })
 })
 
 const completeOnboarding = asyncHandler(async (req: Request, res: Response) => {
@@ -224,25 +188,22 @@ const completeOnboarding = asyncHandler(async (req: Request, res: Response) => {
         throw new AppError('unauthorized', 401)
     }
 
-    const result = await profileService.completeOnboarding({ userId })
+    const result = await settingService.completeOnboarding({ userId })
     return sendSuccess(res, 'onboarding completed successfully', result)
 })
 
-export const profileController = {
-    getInfo,
-    getProfileCard,
+export const settingController = {
+    getMe,
     getProfile,
     updateName,
     updateUsername,
     updateAvatarUrl,
     changePassword,
     updateNotifications,
-
     chatSuggestions,
     generationSound,
     getdesign,
     updatedesign,
     deletedesign,
-    submitFeedback,
     completeOnboarding,
 }

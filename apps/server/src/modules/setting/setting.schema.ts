@@ -65,11 +65,3 @@ export const designSchema = z.object({
         .string({ message: 'design content is required' })
         .max(10000, 'design must be at most 10000 characters'),
 })
-
-export const submitFeedbackSchema = z.object({
-    rating: z.union([z.number(), z.string()]).nullable().optional(),
-    feedback: z
-        .string({ message: 'feedback content is required' })
-        .min(1, 'feedback cannot be empty')
-        .max(2000, 'feedback must be at most 2000 characters'),
-})
