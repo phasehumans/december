@@ -1,4 +1,4 @@
-import { randomUUID } from 'crypto'
+import crypto from 'crypto'
 
 import jwt, { type SignOptions } from 'jsonwebtoken'
 
@@ -286,7 +286,7 @@ export const generateAccessToken = (payload: TokenPayload) => {
         {
             userId: payload.userId,
             sessionId: payload.sessionId,
-            jti: randomUUID(),
+            jti: crypto.randomUUID(),
         },
         secret,
         {
@@ -303,7 +303,7 @@ export const generateRefreshToken = (payload: TokenPayload) => {
         {
             userId: payload.userId,
             sessionId: payload.sessionId,
-            jti: randomUUID(),
+            jti: crypto.randomUUID(),
         },
         secret,
         {

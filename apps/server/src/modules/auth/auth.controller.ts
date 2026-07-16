@@ -1,4 +1,3 @@
-import { prisma } from '@december/database'
 import axios from 'axios'
 import { OAuth2Client } from 'google-auth-library'
 
