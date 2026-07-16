@@ -8,59 +8,55 @@ datasource db {
 }
 
 model User {
-  id                     String              @id @default(uuid())
+  id                     String          @id @default(uuid())
   name                   String
-  email                  String              @unique
+  email                  String          @unique
   password               String?
-  createdAt              DateTime            @default(now())
-  updatedAt              DateTime            @updatedAt
-  emailVerified          Boolean             @default(false)
+  createdAt              DateTime        @default(now())
+  updatedAt              DateTime        @updatedAt
+  emailVerified          Boolean         @default(false)
   googleId               String?
   otpExpiresAt           DateTime?
   otpHash                String?
   githubId               String?
   githubToken            String?
   githubUsername         String?
-  githubConnected        Boolean             @default(false)
-  username               String              @unique
-  notifyProductUpdates   Boolean             @default(false)
-  notifyProjectActivity  Boolean             @default(true)
-  notifySecurityAlerts   Boolean             @default(true)
+  githubConnected        Boolean         @default(false)
+  username               String          @unique
+  notifyProductUpdates   Boolean         @default(false)
+  notifyProjectActivity  Boolean         @default(true)
+  notifySecurityAlerts   Boolean         @default(true)
   deletedAt              DateTime?
-  chatSuggestions        Boolean             @default(false)
-  generationSound        GenerationSound     @default(FIRST_GENERATION)
-  isDeleted              Boolean             @default(false)
-  avatarUrl              String?
+  chatSuggestions        Boolean         @default(false)
+  generationSound        GenerationSound @default(FIRST_GENERATION)
+  isDeleted              Boolean         @default(false)
   vercelAccessToken      String?
-  vercelConnected        Boolean             @default(false)
+  vercelConnected        Boolean         @default(false)
   vercelTeamId           String?
   vercelConfigurationId  String?
   notionAccessToken      String?
   notionWorkspaceId      String?
   notionWorkspaceName    String?
   supabaseAccessToken    String?
-  supabaseConnected      Boolean             @default(false)
+  supabaseConnected      Boolean         @default(false)
   supabaseConnectedAt    DateTime?
   supabaseRefreshToken   String?
   supabaseTokenExpiresAt DateTime?
   supabaseTokenScope     String?
   supabaseUserId         String?
-  creditBalance          Int                 @default(0)
-  design                 String?
-  hasCompletedOnboarding Boolean             @default(false)
-  skills                 String?
-  feedbacks              Feedback[]
-  notifications          Notification[]
-  projects               Project[]
-  imports                ProjectImport[]
-  likedProjects          ProjectLike[]
-  redeemClaims           RedeemCodeClaim[]
-  authSessions           AuthSession[]
-  sessions               Session[]
-  walletTransactions     WalletTransaction[]
-  usageEvents            UsageEvent[]
-  collaborations         ProjectCollaborator[]
-  deviceCodes            DeviceCode[]
+  creditBalance          Int             @default(0)
+  hasCompletedOnboarding Boolean         @default(false)
+
+  notifications      Notification[]
+  projects           Project[]
+  imports            SessionImport[]
+  authSessions       AuthSession[]
+  sessions           Session[]
+  walletTransactions WalletTransaction[]
+  usageEvents        UsageEvent[]
+  collaborations     SessionCollaborator[]
+  deviceCodes        DeviceCode[]
+  redeemClaims       RedeemCodeClaim[]
 }
 
 model Notification {
@@ -97,23 +93,96 @@ model AuthSession {
   @@index([userId, isRevoked])
 }
 
-model Session {
-  id        String       @id @default(uuid())
-  userId    String
-  projectId String?
-  title     String?
-  type      SessionType  @default(WEB)
-  vmId      String?
-  vmStatus  VmStatus     @default(STOPPED)
-  createdAt DateTime     @default(now())
-  updatedAt DateTime     @default(now())
+model Project {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  userId      String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  project   Project?     @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  messages  Message[]
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessions  Session[]
+  wikiPages WikiPage[]
+
+  @@index([userId, updatedAt])
+}
+
+model Session {
+  id                   String      @id @default(uuid())
+  title                String?
+  description          String?
+  userId               String
+  projectId            String?
+  type                 SessionType @default(WEB)
+  vmId                 String?
+  vmStatus             VmStatus    @default(STOPPED)
+  isPinned             Boolean     @default(false)
+  isArchived           Boolean     @default(false)
+  tags                 String[]
+  minioPrefix          String?
+  githubLastSyncedAt   DateTime?
+  githubRepoName       String?
+  githubRepoOwner      String?
+  githubRepoUrl        String?
+  vercelDeploymentUrl  String?
+  vercelLastDeployedAt DateTime?
+  vercelProjectId      String?
+  vercelProjectName    String?
+  createdAt            DateTime    @default(now())
+  updatedAt            DateTime    @updatedAt
+  deletedAt            DateTime?
+
+  user            User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project         Project?              @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  messages        Message[]
+  settings        SessionSettings?
+  reviews         ReviewComment[]
+  imports         SessionImport[]
+  memories        SessionMemory[]
+  sessionMemories AgentSessionMemory[]
+  collaborators   SessionCollaborator[]
+  usageEvents     UsageEvent[]
 
   @@index([userId])
   @@index([projectId])
+}
+
+model SessionSettings {
+  id        String   @id @default(uuid())
+  sessionId String   @unique
+  config    Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+}
+
+model ReviewComment {
+  id              String   @id @default(uuid())
+  sessionId       String
+  content         String
+  prUrl           String?
+  githubCommentId String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+}
+
+model WikiPage {
+  id        String   @id @default(uuid())
+  projectId String
+  title     String
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, title])
 }
 
 enum SessionType {
@@ -129,174 +198,86 @@ enum VmStatus {
   FAILED
 }
 
-model Project {
-  id                     String               @id @default(uuid())
-  name                   String
-  prompt                 String
-  createdAt              DateTime             @default(now())
-  updatedAt              DateTime             @updatedAt
-  userId                 String
-  description            String?
-  isStarred              Boolean              @default(false)
-  projectStatus          ProjectStatus        @default(DRAFT)
-  currentVersionId       String?
-  versionCount           Int                  @default(0)
-  isSharedAsTemplate     Boolean              @default(false)
-  projectCategory        ProjectCategory      @default(NONE)
-  isFeatured             Boolean              @default(false)
-  previewImageKey        String?
-  githubLastSyncedAt     DateTime?
-  githubRepoName         String?
-  githubRepoOwner        String?
-  githubRepoUrl          String?
-  vercelDeploymentUrl    String?
-  vercelLastDeployedAt   DateTime?
-  vercelProjectId        String?
-  vercelProjectName      String?
-  decemberDeploymentUrl  String?
-  decemberLastDeployedAt DateTime?
-  minioPrefix            String?
-  sessionMemories        AgentSessionMemory[]
-  currentVersion         ProjectVersion?      @relation("ProjectCurrentVersion", fields: [currentVersionId], references: [id])
-  user                   User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
-  imports                ProjectImport[]
-  likes                  ProjectLike[]
-  memories               ProjectMemory[]
-  sessions               Session[]
-  versions               ProjectVersion[]     @relation("ProjectVersions")
-  usageEvents            UsageEvent[]
-  collaborators          ProjectCollaborator[]
-
-  @@index([userId, updatedAt])
-  @@index([isSharedAsTemplate, updatedAt])
-  @@index([isSharedAsTemplate, isFeatured, updatedAt])
-}
-
-model ProjectVersion {
-  id                      String               @id @default(uuid())
-  versionNumber           Int
-  label                   String?
-  sourcePrompt            String
-  summary                 String?
-  status                  ProjectVersionStatus @default(GENERATING)
-  objectStoragePrefix     String
-  manifestJson            Json
-  intentJson              Json?
-  planJson                Json?
-  isDatabaseEnabled       Boolean              @default(false)
-  databaseUrl             String?
-  createdAt               DateTime             @default(now())
-  updatedAt               DateTime             @updatedAt
-  projectId               String
-  canvasStateJson         Json?
-  canvasAssetManifestJson Json?
-  currentForProjects      Project[]            @relation("ProjectCurrentVersion")
-  imports                 ProjectImport[]
-  messages                Message[]
-  project                 Project              @relation("ProjectVersions", fields: [projectId], references: [id], onDelete: Cascade)
-
-  @@unique([projectId, versionNumber])
-  @@index([projectId, createdAt])
-}
-
-model ProjectMemory {
+model SessionMemory {
   id        String   @id @default(uuid())
-  projectId String
+  sessionId String
   key       String
   value     String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
-  @@unique([projectId, key])
-  @@index([projectId])
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, key])
+  @@index([sessionId])
 }
 
 model AgentSessionMemory {
   id             String   @id @default(uuid())
-  projectId      String
-  versionId      String
+  sessionId      String
   errorSignature String
   createdAt      DateTime @default(now())
-  project        Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
-  @@index([projectId, versionId])
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
 }
 
 model Message {
-  id               String             @id @default(uuid())
-  role             MessageRole
-  content          String
-  status           String?
-  sequence         Int
-  createdAt        DateTime           @default(now())
-  updatedAt        DateTime           @updatedAt
-  sessionId        String
-  projectVersionId String?
+  id        String      @id @default(uuid())
+  role      MessageRole
+  content   String
+  status    String?
+  sequence  Int
+  sessionId String
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
 
-  session          Session            @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  projectVersion   ProjectVersion?    @relation(fields: [projectVersionId], references: [id], onDelete: Cascade)
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
   @@unique([sessionId, sequence])
 }
 
-model ProjectImport {
-  id               String              @id @default(uuid())
-  userId           String
-  sourceType       ProjectImportSource
-  sourceUrl        String?
-  sourceFileName   String?
-  bucket           String?
-  objectPrefix     String?
-  status           ProjectImportStatus @default(PENDING)
-  framework        String?
-  projectId        String?
-  projectVersionId String?
-  previewUrl       String?
-  errorMessage     String?
-  errorsJson       Json?
-  attempts         Int                 @default(0)
-  createdAt        DateTime            @default(now())
-  updatedAt        DateTime            @updatedAt
-  project          Project?            @relation(fields: [projectId], references: [id])
-  projectVersion   ProjectVersion?     @relation(fields: [projectVersionId], references: [id])
-  user             User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+model SessionImport {
+  id             String              @id @default(uuid())
+  userId         String
+  sessionId      String?
+  sourceType     ProjectImportSource
+  sourceUrl      String?
+  sourceFileName String?
+  bucket         String?
+  objectPrefix   String?
+  status         ProjectImportStatus @default(PENDING)
+  framework      String?
+  previewUrl     String?
+  errorMessage   String?
+  errorsJson     Json?
+  attempts       Int                 @default(0)
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  session Session? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt])
   @@index([userId, status])
-  @@index([projectId])
-  @@index([projectVersionId])
+  @@index([sessionId])
 }
 
-model ProjectLike {
+model SessionCollaborator {
   id        String   @id @default(uuid())
-  userId    String
-  projectId String
-  createdAt DateTime @default(now())
-  isLiked   Boolean
-  updatedAt DateTime @updatedAt
-  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, projectId])
-  @@index([userId])
-  @@index([projectId])
-  @@index([projectId, isLiked])
-}
-
-model ProjectCollaborator {
-  id        String   @id @default(uuid())
-  projectId String
+  sessionId String
   userId    String
   email     String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([projectId, userId])
-  @@unique([projectId, email])
-  @@index([projectId])
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, userId])
+  @@unique([sessionId, email])
+  @@index([sessionId])
   @@index([userId])
   @@index([email])
 }
@@ -307,8 +288,8 @@ model WalletTransaction {
   amountInCents     Int
   currency          String          @default("USD")
   provider          PaymentProvider
-  providerOrderId   String? // Razorpay order_id or Coinbase charge_id
-  providerPaymentId String? // Razorpay payment_id
+  providerOrderId   String?
+  providerPaymentId String?
   status            PaymentStatus   @default(PENDING)
   metadata          Json?
   createdAt         DateTime        @default(now())
@@ -330,25 +311,81 @@ enum PaymentStatus {
 model UsageEvent {
   id                String   @id @default(uuid())
   userId            String
+  sessionId         String?
   model             String
   inputTokens       Int      @default(0)
   outputTokens      Int      @default(0)
   totalTokens       Int      @default(0)
   costInCents       Int      @default(0)
-  projectId         String?
   chatId            String?
   externalRequestId String?  @unique
   metadata          Json?
-  createdAt         DateTime @default(now())
   periodStart       DateTime
   periodEnd         DateTime
-  project           Project? @relation(fields: [projectId], references: [id])
-  user              User     @relation(fields: [userId], references: [id])
+  createdAt         DateTime @default(now())
+
+  session Session? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, periodStart])
   @@index([userId, periodStart, createdAt])
-  @@index([projectId, createdAt])
+  @@index([sessionId, createdAt])
   @@index([createdAt])
+}
+
+enum NotificationType {
+  INFO
+  WARNING
+  SUCCESS
+  ERROR
+}
+
+enum GenerationSound {
+  FIRST_GENERATION
+  ALWAYS
+  NEVER
+}
+
+enum MessageRole {
+  USER
+  ASSISTANT
+  SYSTEM
+}
+
+enum ProjectImportSource {
+  GITHUB
+  ZIP
+}
+
+enum ProjectImportStatus {
+  PENDING
+  VALIDATING
+  UPLOADING
+  STARTING_RUNTIME
+  READY
+  FAILED
+}
+
+model DeviceCode {
+  id         String           @id @default(uuid())
+  deviceCode String           @unique
+  userCode   String           @unique
+  userId     String?
+  expiresAt  DateTime
+  status     DeviceCodeStatus @default(PENDING)
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+  user       User?            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([deviceCode])
+  @@index([userCode])
+  @@index([userId])
+}
+
+enum DeviceCodeStatus {
+  PENDING
+  APPROVED
+  EXPIRED
 }
 
 model RedeemCode {
@@ -374,96 +411,4 @@ model RedeemCodeClaim {
 
   @@unique([redeemCodeId, userId])
   @@index([userId])
-}
-
-model Feedback {
-  id        String   @id @default(uuid())
-  userId    String
-  rating    String?
-  feedback  String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-}
-
-
-
-enum NotificationType {
-  INFO
-  WARNING
-  SUCCESS
-  ERROR
-}
-
-enum GenerationSound {
-  FIRST_GENERATION
-  ALWAYS
-  NEVER
-}
-
-enum ProjectStatus {
-  DRAFT
-  GENERATING
-  READY
-  DEPLOYED
-  FAILED
-}
-
-enum ProjectVersionStatus {
-  GENERATING
-  READY
-  FAILED
-}
-
-enum MessageRole {
-  USER
-  ASSISTANT
-  SYSTEM
-}
-
-enum ProjectImportSource {
-  GITHUB
-  ZIP
-}
-
-enum ProjectImportStatus {
-  PENDING
-  VALIDATING
-  UPLOADING
-  STARTING_RUNTIME
-  READY
-  FAILED
-}
-
-enum ProjectCategory {
-  LANDING_PAGE
-  DASHBOARD
-  PORTFOLIO_BLOG
-  SAAS_APP
-  ECOMMERCE
-  NONE
-}
-
-model DeviceCode {
-  id         String           @id @default(uuid())
-  deviceCode String           @unique
-  userCode   String           @unique
-  userId     String?
-  expiresAt  DateTime
-  status     DeviceCodeStatus @default(PENDING)
-  createdAt  DateTime         @default(now())
-  updatedAt  DateTime         @updatedAt
-  user       User?            @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([deviceCode])
-  @@index([userCode])
-  @@index([userId])
-}
-
-enum DeviceCodeStatus {
-  PENDING
-  APPROVED
-  EXPIRED
 }
