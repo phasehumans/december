@@ -25,6 +25,18 @@ export function currentPrefix(projectId: string) {
     return `projects/${projectId}/current-version/`
 }
 
+export function sessionWorkspaceKey(sessionId: string, path: string) {
+    return `sessions/${sessionId}/workspace/${normalizePath(path)}`
+}
+
+export function sessionWorkspacePrefix(sessionId: string) {
+    return `sessions/${sessionId}/workspace/`
+}
+
+export function sessionPrefix(sessionId: string) {
+    return `sessions/${sessionId}/`
+}
+
 export function versionKey(projectId: string, versionId: string, path: string) {
     return `projects/${projectId}/previous-version/${versionId}/${normalizePath(path)}`
 }
@@ -55,6 +67,14 @@ export function assetKey(projectId: string, path: string) {
 
 export function assetPrefix(projectId: string) {
     return `projects/${projectId}/assets/`
+}
+
+export function sessionAssetKey(sessionId: string, path: string) {
+    return `sessions/${sessionId}/assets/${normalizePath(path)}`
+}
+
+export function sessionAssetPrefix(sessionId: string) {
+    return `sessions/${sessionId}/assets/`
 }
 
 export function temporaryCanvasAssetKey(userId: string, path: string) {

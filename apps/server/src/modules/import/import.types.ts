@@ -109,13 +109,11 @@ export type CreateImportRecordParams = {
     sourceType: ImportSource
     sourceUrl?: string | null
     sourceFileName?: string | null
-    projectId?: string | null
-    projectVersionId?: string | null
+    sessionId?: string | null
 }
 
 export type UploadValidatedProjectParams = {
-    projectId: string
-    versionId: string
+    sessionId: string
     project: ValidatedImportProject
 }
 
@@ -125,17 +123,15 @@ export type UploadImportSourceFilesParams = {
     project: ValidatedImportProject
 }
 
-export type CreatePlaceholderProjectParams = {
-    projectId: string
-    versionId: string
+export type CreatePlaceholderSessionParams = {
+    sessionId: string
     userId: string
     name: string
     prompt: string
 }
 
-export type UpdateImportedProjectVersionParams = {
-    projectId: string
-    versionId: string
+export type UpdateImportedSessionWorkspaceParams = {
+    sessionId: string
     project: ValidatedImportProject
     manifestFiles: PreviewManifestFile[]
     sourceType: 'github' | 'zip'
@@ -144,15 +140,13 @@ export type UpdateImportedProjectVersionParams = {
 
 export type StartRuntimeForImportParams = {
     userId: string
-    projectId: string
-    versionId: string
+    sessionId: string
 }
 
-export type FinalizeImportProjectParams = {
+export type FinalizeImportSessionParams = {
     importId: string
     userId: string
-    projectId: string
-    versionId: string
+    sessionId: string
     validatedProject: ValidatedImportProject
     sourceType: 'github' | 'zip'
     sourceLabel?: string
@@ -161,8 +155,7 @@ export type FinalizeImportProjectParams = {
 export type ProcessGithubImportParams = {
     importId: string
     userId: string
-    projectId: string
-    versionId: string
+    sessionId: string
     owner: string
     repo: string
     token: string

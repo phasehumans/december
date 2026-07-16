@@ -39,7 +39,7 @@ export const generateHandoffUrl = async (userId: string) => {
         Key: objectKey,
     })
 
-    const uploadUrl = await getSignedUrl(s3, putCommand, { expiresIn: 3600 })
+    const uploadUrl = await getSignedUrl(s3 as any, putCommand as any, { expiresIn: 3600 })
 
     return {
         uploadUrl,

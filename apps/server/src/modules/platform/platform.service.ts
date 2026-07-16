@@ -1,124 +1,65 @@
-import fs from 'fs'
-import path from 'path'
-
 import { AppError } from '../../shared/appError'
-import { getBinaryFile, getTextFile } from '../../shared/project-storage'
-import { projectService } from '../project/project.service'
-import { parseStoredProjectFiles } from '../project/project.utils'
+import {
+    getBinaryFile,
+    getTextFile,
+    listPrefix,
+    sessionWorkspacePrefix,
+    sessionPrefix,
+} from '../../shared/project-storage'
 import { runtimeService } from '../runtime/runtime.service'
-
 import { platformRepository } from './platform.repository'
 import { buildProjectZip } from './platform.utils'
 import { vercelService } from './vercel.service'
 
-import type {
-    DeployProject,
-    ListGithubRepos,
-    GithubRepo,
-    CreateRepo,
-    UpdateRepo,
-} from './platform.types'
-import type { GetProject } from '../project/project.types'
+import type { ListGithubRepos, GithubRepo, CreateRepo, UpdateRepo } from './platform.types'
 
-async function copyDirRecursive(src: string, dest: string) {
-    await fs.promises.mkdir(dest, { recursive: true })
-    const entries = await fs.promises.readdir(src, { withFileTypes: true })
-
-    for (const entry of entries) {
-        const srcPath = path.join(src, entry.name)
-        const destPath = path.join(dest, entry.name)
-
-        if (entry.isDirectory()) {
-            await copyDirRecursive(srcPath, destPath)
-        } else {
-            await fs.promises.copyFile(srcPath, destPath)
-        }
-    }
-}
-
-const deployDecemberProject = async (data: DeployProject) => {
-    const { projectId, userId } = data
-
-    const project = await platformRepository.findProjectForDeployment({ projectId, userId })
-
-    if (!project) {
-        throw new AppError('project not found', 404)
+const downloadSession = async (data: { sessionId: string; userId: string }) => {
+    const { sessionId, userId } = data
+    const session = await platformRepository.findSessionByIdAndUser({ sessionId, userId })
+    if (!session) {
+        throw new AppError('Session not found', 404)
     }
 
-    if (!project.currentVersionId) {
-        throw new AppError('project has no compiled version to deploy', 400)
-    }
+    const prefix = sessionWorkspacePrefix(sessionId)
+    const objects = await listPrefix(prefix)
+    const filesToZip: { path: string; content: string }[] = []
 
-    let compilationFailed = false
-    let compilationError = ''
-    try {
-        const checkResult = await runtimeService.checkSandboxCompilation({ projectId })
-        if (!checkResult.success) {
-            compilationFailed = true
-            compilationError = checkResult.errors || 'Unknown compilation error'
-        }
-    } catch (err: any) {
-        console.error('[deploy] failed to run checkSandboxCompilation:', err)
-    }
+    await Promise.all(
+        objects.map(async (obj) => {
+            const key = obj.Key
+            if (!key) return
+            const relativePath = key.substring(prefix.length)
+            if (!relativePath || relativePath.endsWith('/')) return
 
-    const workspacesRoot =
-        process.env.RUNTIME_WORKSPACE_ROOT ||
-        path.resolve(__dirname, '../../../../runtime/workspaces')
-    const distPath = path.join(workspacesRoot, projectId, 'dist')
+            const isBinary =
+                relativePath.endsWith('.png') ||
+                relativePath.endsWith('.jpg') ||
+                relativePath.endsWith('.jpeg') ||
+                relativePath.endsWith('.webp') ||
+                relativePath.endsWith('.gif') ||
+                relativePath.endsWith('.ico') ||
+                relativePath.endsWith('.zip') ||
+                relativePath.endsWith('.pdf')
 
-    if (compilationFailed) {
-        throw new AppError(`Compilation check failed: ${compilationError}`, 400)
-    }
-
-    if (!fs.existsSync(distPath)) {
-        throw new AppError(
-            'Built production assets not found. Please trigger a preview first to compile the project.',
-            400
-        )
-    }
-
-    const deploymentsRoot = path.resolve(__dirname, '../../../../infra/nginx/deployments')
-    const projectDeployPath = path.join(deploymentsRoot, projectId)
-
-    if (fs.existsSync(projectDeployPath)) {
-        await fs.promises.rm(projectDeployPath, { recursive: true, force: true })
-    }
-
-    await copyDirRecursive(distPath, projectDeployPath)
-
-    const deployUrl = `http://${projectId}.december.localhost:8085`
-    const updated = await platformRepository.updateProjectDecemberDeployment({
-        projectId,
-        deployUrl,
-    })
-
-    return {
-        message: 'project deployed successfully to december local hosting',
-        deploymentUrl: deployUrl,
-        lastDeployedAt: updated.decemberLastDeployedAt,
-    }
-}
-
-const downloadProject = async (data: GetProject) => {
-    const detail = await projectService.getProjectById(data)
-
-    if (!detail.activeVersion) {
-        throw new AppError('project version not found', 404)
-    }
-
-    const zip = buildProjectZip(
-        Object.entries(detail.generatedFiles).map(([path, content]) => ({
-            path,
-            content,
-        }))
+            if (isBinary) {
+                const bin = await getBinaryFile(key)
+                if (bin) {
+                    filesToZip.push({ path: relativePath, content: '' })
+                }
+            } else {
+                const text = await getTextFile(key)
+                filesToZip.push({ path: relativePath, content: text || '' })
+            }
+        })
     )
 
-    const safeProjectName =
-        detail.project.name
+    const zip = buildProjectZip(filesToZip)
+    const safeSessionName =
+        (session.title || 'session')
             .trim()
             .replace(/[^a-z0-9-_]+/gi, '-')
-            .replace(/^-+|-+$/g, '') || 'project'
-    const fileName = `${safeProjectName}.zip`
+            .replace(/^-+|-+$/g, '') || 'session'
+    const fileName = `${safeSessionName}.zip`
 
     return {
         fileName,
@@ -193,17 +134,17 @@ const getUserGithubRepos = async (data: ListGithubRepos): Promise<GithubRepo[]> 
 }
 
 const createRepo = async (data: CreateRepo) => {
-    const { userId, projectId } = data
+    const { userId, sessionId } = data
     const user = await platformRepository.findUserGithubConnection(userId)
 
     if (!user || !user.githubConnected || !user.githubToken) {
         throw new AppError('GitHub account not connected', 400)
     }
 
-    const project = await platformRepository.findProjectByIdAndUser({ projectId, userId })
+    const session = await platformRepository.findSessionByIdAndUser({ sessionId, userId })
 
-    if (!project) {
-        throw new AppError('Project not found', 404)
+    if (!session) {
+        throw new AppError('Session not found', 404)
     }
 
     const response = await fetch('https://api.github.com/user/repos', {
@@ -217,7 +158,8 @@ const createRepo = async (data: CreateRepo) => {
         body: JSON.stringify({
             name: data.name,
             private: data.private,
-            description: data.description ?? `Generated by December: ${project.name}`,
+            description:
+                data.description ?? `Generated by December: ${session.title || 'Untitled'}`,
             auto_init: true,
         }),
     })
@@ -232,62 +174,49 @@ const createRepo = async (data: CreateRepo) => {
     const repoOwner = repoData.owner.login
     const repoUrl = repoData.html_url
 
-    const updatedProject = await platformRepository.updateProjectGithub({
-        projectId,
+    const updatedSession = await platformRepository.updateSessionGithub({
+        sessionId,
         githubRepoName: repoName,
         githubRepoOwner: repoOwner,
         githubRepoUrl: repoUrl,
     })
 
     try {
-        await updateRepo({ userId, projectId, commitMessage: 'Initial sync from December' })
+        await updateRepo({ userId, sessionId, commitMessage: 'Initial sync from December' })
     } catch (syncError) {
         console.error('Initial sync failed:', syncError)
     }
 
-    return updatedProject
+    return updatedSession
 }
 
 const updateRepo = async (data: UpdateRepo) => {
-    const { userId, projectId } = data
+    const { userId, sessionId } = data
     const user = await platformRepository.findUserGithubConnection(userId)
 
     if (!user || !user.githubConnected || !user.githubToken) {
         throw new AppError('GitHub account not connected', 400)
     }
 
-    const project = await platformRepository.findProjectByIdAndUser({ projectId, userId })
+    const session = await platformRepository.findSessionByIdAndUser({ sessionId, userId })
 
-    if (!project) {
-        throw new AppError('Project not found', 404)
+    if (!session) {
+        throw new AppError('Session not found', 404)
     }
 
-    if (!project.githubRepoName || !project.githubRepoOwner) {
-        throw new AppError('Project is not linked to any GitHub repository', 400)
+    if (!session.githubRepoName || !session.githubRepoOwner) {
+        throw new AppError('Session is not linked to any GitHub repository', 400)
     }
 
-    const repoOwner = project.githubRepoOwner
-    const repoName = project.githubRepoName
+    const repoOwner = session.githubRepoOwner
+    const repoName = session.githubRepoName
     const githubToken = user.githubToken
-    const commitMessage = data.commitMessage ?? 'Update project files'
+    const commitMessage = data.commitMessage ?? 'Update session files'
 
-    const activeVersionId = project.currentVersionId
-    if (!activeVersionId) {
-        throw new AppError('No active version found for this project', 400)
-    }
-
-    const activeVersion = await platformRepository.findProjectVersionByIdAndProject({
-        versionId: activeVersionId,
-        projectId,
-    })
-
-    if (!activeVersion) {
-        throw new AppError('Active version not found', 404)
-    }
-
-    const manifest = parseStoredProjectFiles(activeVersion.manifestJson)
-    if (manifest.length === 0) {
-        throw new AppError('No files found in active project version to sync', 400)
+    const prefix = sessionWorkspacePrefix(sessionId)
+    const objects = await listPrefix(prefix)
+    if (objects.length === 0) {
+        throw new AppError('No files found in active session workspace to sync', 400)
     }
 
     const headers = {
@@ -354,21 +283,28 @@ const updateRepo = async (data: UpdateRepo) => {
     const treeEntries: any[] = []
 
     const chunkSize = 5
-    for (let i = 0; i < manifest.length; i += chunkSize) {
-        const chunk = manifest.slice(i, i + chunkSize)
+    for (let i = 0; i < objects.length; i += chunkSize) {
+        const chunk = objects.slice(i, i + chunkSize)
 
         await Promise.all(
             chunk.map(async (file) => {
+                const key = file.Key
+                if (!key) return
+                const relativePath = key.substring(prefix.length)
+                if (!relativePath || relativePath.endsWith('/')) return
+
                 const isBinary =
-                    file.contentType &&
-                    !file.contentType.startsWith('text/') &&
-                    !file.contentType.includes('json') &&
-                    !file.contentType.includes('javascript') &&
-                    !file.contentType.includes('typescript') &&
-                    !file.contentType.includes('xml')
+                    relativePath.endsWith('.png') ||
+                    relativePath.endsWith('.jpg') ||
+                    relativePath.endsWith('.jpeg') ||
+                    relativePath.endsWith('.webp') ||
+                    relativePath.endsWith('.gif') ||
+                    relativePath.endsWith('.ico') ||
+                    relativePath.endsWith('.zip') ||
+                    relativePath.endsWith('.pdf')
 
                 if (isBinary) {
-                    const binaryFile = await getBinaryFile(file.key)
+                    const binaryFile = await getBinaryFile(key)
                     if (binaryFile) {
                         const base64Content = Buffer.from(binaryFile.body).toString('base64')
                         const blobResponse = await fetch(
@@ -386,23 +322,23 @@ const updateRepo = async (data: UpdateRepo) => {
                         if (!blobResponse.ok) {
                             const errorText = await blobResponse.text()
                             throw new AppError(
-                                `Failed to create binary blob for ${file.path}: ${errorText}`,
+                                `Failed to create binary blob for ${relativePath}: ${errorText}`,
                                 blobResponse.status
                             )
                         }
 
                         const blobData = (await blobResponse.json()) as any
                         treeEntries.push({
-                            path: file.path,
+                            path: relativePath,
                             mode: '100644',
                             type: 'blob',
                             sha: blobData.sha,
                         })
                     }
                 } else {
-                    const textContent = await getTextFile(file.key)
+                    const textContent = await getTextFile(key)
                     treeEntries.push({
-                        path: file.path,
+                        path: relativePath,
                         mode: '100644',
                         type: 'blob',
                         content: textContent ?? '',
@@ -473,46 +409,46 @@ const updateRepo = async (data: UpdateRepo) => {
         )
     }
 
-    const updatedProject = await platformRepository.updateProjectSynced(projectId)
+    const updatedSession = await platformRepository.updateSessionSynced(sessionId)
 
     return {
-        project: updatedProject,
+        session: updatedSession,
         commitSha: newCommitSha,
     }
 }
 
-const unlinkGithubRepo = async (data: { projectId: string; userId: string }) => {
-    const { projectId, userId } = data
-    const project = await platformRepository.findProjectByIdAndUser({ projectId, userId })
-    if (!project) throw new AppError('Project not found', 404)
+const unlinkGithubRepo = async (data: { sessionId: string; userId: string }) => {
+    const { sessionId, userId } = data
+    const session = await platformRepository.findSessionByIdAndUser({ sessionId, userId })
+    if (!session) throw new AppError('Session not found', 404)
 
-    await platformRepository.unlinkProjectGithub(projectId)
+    await platformRepository.unlinkSessionGithub(sessionId)
     return { message: 'GitHub repository unlinked successfully' }
 }
 
-const unlinkVercelProject = async (data: { projectId: string; userId: string }) => {
-    const { projectId, userId } = data
-    const project = await platformRepository.findProjectByIdAndUser({ projectId, userId })
-    if (!project) throw new AppError('Project not found', 404)
+const unlinkVercelProject = async (data: { sessionId: string; userId: string }) => {
+    const { sessionId, userId } = data
+    const session = await platformRepository.findSessionByIdAndUser({ sessionId, userId })
+    if (!session) throw new AppError('Session not found', 404)
 
-    await platformRepository.unlinkProjectVercel(projectId)
+    await platformRepository.unlinkSessionVercel(sessionId)
     return { message: 'Vercel project unlinked successfully' }
 }
 
 const syncEnvironmentVariables = async (data: {
-    projectId: string
+    sessionId: string
     userId: string
     keys?: string[]
 }) => {
-    const { projectId, userId, keys } = data
-    const project = await platformRepository.findProjectByIdAndUser({ projectId, userId })
-    if (!project) throw new AppError('Project not found', 404)
+    const { sessionId, userId, keys } = data
+    const session = await platformRepository.findSessionByIdAndUser({ sessionId, userId })
+    if (!session) throw new AppError('Session not found', 404)
 
-    if (!project.vercelProjectId) {
-        throw new AppError('Project is not linked to a Vercel project', 400)
+    if (!session.vercelProjectId) {
+        throw new AppError('Session is not linked to a Vercel project', 400)
     }
 
-    const memories = await platformRepository.getProjectMemories(projectId)
+    const memories = await platformRepository.getSessionMemories(sessionId)
 
     const memoriesToSync = keys ? memories.filter((m) => keys.includes(m.key)) : memories
 
@@ -529,7 +465,7 @@ const syncEnvironmentVariables = async (data: {
 
     await vercelService.addEnvVars({
         userId,
-        vercelProjectId: project.vercelProjectId,
+        vercelProjectId: session.vercelProjectId,
         envVars,
     })
 
@@ -538,53 +474,52 @@ const syncEnvironmentVariables = async (data: {
 
 const deployVercelDirect = async (data: {
     userId: string
-    projectId: string
+    sessionId: string
     vercelProjectId: string
     vercelProjectName: string
 }) => {
-    const { userId, projectId, vercelProjectId, vercelProjectName } = data
+    const { userId, sessionId, vercelProjectId, vercelProjectName } = data
 
-    const project = await platformRepository.findProjectByIdAndUser({ projectId, userId })
-    if (!project) throw new AppError('Project not found', 404)
+    const session = await platformRepository.findSessionByIdAndUser({ sessionId, userId })
+    if (!session) throw new AppError('Session not found', 404)
 
-    const activeVersionId = project.currentVersionId
-    if (!activeVersionId) throw new AppError('No active version found for this project', 400)
-
-    const activeVersion = await platformRepository.findProjectVersionByIdAndProject({
-        versionId: activeVersionId,
-        projectId,
-    })
-    if (!activeVersion) throw new AppError('Active version not found', 404)
-
-    const manifest = parseStoredProjectFiles(activeVersion.manifestJson)
-    if (manifest.length === 0)
-        throw new AppError('No files found in active project version to deploy', 400)
+    const prefix = sessionWorkspacePrefix(sessionId)
+    const objects = await listPrefix(prefix)
+    if (objects.length === 0)
+        throw new AppError('No files found in active session workspace to deploy', 400)
 
     const filesToDeploy: { file: string; data: string; encoding?: string }[] = []
 
-    for (const file of manifest) {
+    for (const file of objects) {
+        const key = file.Key
+        if (!key) return
+        const relativePath = key.substring(prefix.length)
+        if (!relativePath || relativePath.endsWith('/')) return
+
         const isBinary =
-            file.contentType &&
-            !file.contentType.startsWith('text/') &&
-            !file.contentType.includes('json') &&
-            !file.contentType.includes('javascript') &&
-            !file.contentType.includes('typescript') &&
-            !file.contentType.includes('xml')
+            relativePath.endsWith('.png') ||
+            relativePath.endsWith('.jpg') ||
+            relativePath.endsWith('.jpeg') ||
+            relativePath.endsWith('.webp') ||
+            relativePath.endsWith('.gif') ||
+            relativePath.endsWith('.ico') ||
+            relativePath.endsWith('.zip') ||
+            relativePath.endsWith('.pdf')
 
         if (isBinary) {
-            const binaryFile = await getBinaryFile(file.key)
+            const binaryFile = await getBinaryFile(key)
             if (binaryFile) {
                 const base64Content = Buffer.from(binaryFile.body).toString('base64')
                 filesToDeploy.push({
-                    file: file.path,
+                    file: relativePath,
                     data: base64Content,
                     encoding: 'base64',
                 })
             }
         } else {
-            const textContent = await getTextFile(file.key)
+            const textContent = await getTextFile(key)
             filesToDeploy.push({
-                file: file.path,
+                file: relativePath,
                 data: textContent ?? '',
             })
         }
@@ -597,8 +532,8 @@ const deployVercelDirect = async (data: {
         files: filesToDeploy,
     })
 
-    await platformRepository.updateProjectVercelDeployment({
-        projectId,
+    await platformRepository.updateSessionVercelDeployment({
+        sessionId,
         url: deployment.url,
     })
 
@@ -606,8 +541,7 @@ const deployVercelDirect = async (data: {
 }
 
 export const platformService = {
-    deployDecemberProject,
-    downloadProject,
+    downloadSession,
     getUserGithubRepos,
     createRepo,
     updateRepo,

@@ -2,9 +2,9 @@ import bcrypt from 'bcrypt'
 
 import { AppError } from '../../shared/appError'
 
-import { profileRepository } from './profile.repository'
+import { settingRepository } from './setting.repository'
 
-export const profileSelect = {
+export const settingSelect = {
     id: true,
     name: true,
     username: true,
@@ -28,16 +28,14 @@ export const profileSelect = {
     notifySecurityAlerts: true,
     chatSuggestions: true,
     generationSound: true,
-    design: true,
-    avatarUrl: true,
+
     creditBalance: true,
     isDeleted: true,
     hasCompletedOnboarding: true,
 }
 
 import type {
-    GetInfo,
-    GetProfileCard,
+    GetMe,
     GetProfile,
     UpdateName,
     UpdateUsername,
@@ -49,13 +47,12 @@ import type {
     Getdesign,
     Updatedesign,
     Deletedesign,
-    CreateFeedback,
     CompleteOnboarding,
-} from './profile.types'
+} from './setting.types'
 
-const getInfo = async (data: GetInfo) => {
+const getMe = async (data: GetMe) => {
     const { userId } = data
-    const profile = await profileRepository.findUserByIdForInfo(userId)
+    const profile = await settingRepository.findUserByIdForInfo(userId)
 
     if (!profile) {
         throw new AppError('user not found', 404)
@@ -67,20 +64,9 @@ const getInfo = async (data: GetInfo) => {
     return { fullName, isGithubConnected }
 }
 
-const getProfileCard = async (data: GetProfileCard) => {
-    const { userId } = data
-    const profile = await profileRepository.findUserByIdForCard(userId)
-
-    if (!profile) {
-        throw new AppError('user not found', 404)
-    }
-
-    return profile
-}
-
 const getProfile = async (data: GetProfile) => {
     const { userId } = data
-    const profile = await profileRepository.findUserByIdForProfile(userId, profileSelect)
+    const profile = await settingRepository.findUserByIdForProfile(userId, settingSelect)
 
     if (!profile) {
         throw new AppError('user not found', 404)
@@ -96,13 +82,13 @@ const getProfile = async (data: GetProfile) => {
 const updateName = async (data: UpdateName) => {
     const { name, userId } = data
 
-    const existingUser = await profileRepository.findUserByIdForExistCheck(userId)
+    const existingUser = await settingRepository.findUserByIdForExistCheck(userId)
 
     if (!existingUser) {
         throw new AppError('user not found', 404)
     }
 
-    const updatedUser = await profileRepository.updateUserName(userId, name)
+    const updatedUser = await settingRepository.updateUserName(userId, name)
 
     return updatedUser
 }
@@ -110,7 +96,7 @@ const updateName = async (data: UpdateName) => {
 const updateUsername = async (data: UpdateUsername) => {
     const { userId, username } = data
 
-    const existingUser = await profileRepository.findUserByIdForUsernameCheck(userId)
+    const existingUser = await settingRepository.findUserByIdForUsernameCheck(userId)
 
     if (!existingUser) {
         throw new AppError('user not found', 404)
@@ -120,14 +106,14 @@ const updateUsername = async (data: UpdateUsername) => {
         throw new AppError('new username must be different from the current one', 400)
     }
 
-    const existingUsername = await profileRepository.findUserByUsername(username)
+    const existingUsername = await settingRepository.findUserByUsername(username)
 
     if (existingUsername) {
         throw new AppError(`${username} is already taken, try another one`, 409)
     }
 
     try {
-        const updatedUser = await profileRepository.updateUsername(userId, username)
+        const updatedUser = await settingRepository.updateUsername(userId, username)
 
         return updatedUser
     } catch (error: any) {
@@ -141,23 +127,13 @@ const updateUsername = async (data: UpdateUsername) => {
 }
 
 const updateAvatarUrl = async (data: UpdateAvatarUrl) => {
-    const { userId, avatarUrl } = data
-
-    const existingUser = await profileRepository.findUserByIdForExistCheck(userId)
-
-    if (!existingUser) {
-        throw new AppError('user not found', 404)
-    }
-
-    const updatedUser = await profileRepository.updateAvatarUrl(userId, avatarUrl)
-
-    return updatedUser
+    return { avatarUrl: data.avatarUrl }
 }
 
 const changePassword = async (data: ChangePassword) => {
     const { currentPassword, newPassword, userId } = data
 
-    const existingUser = await profileRepository.findUserPasswordById(userId)
+    const existingUser = await settingRepository.findUserPasswordById(userId)
 
     if (!existingUser) {
         throw new AppError('user not found', 404)
@@ -167,7 +143,7 @@ const changePassword = async (data: ChangePassword) => {
         // OAuth only user setting password for the first time
         const hashPassword = await bcrypt.hash(newPassword, 10)
 
-        await profileRepository.updatePassword(userId, hashPassword)
+        await settingRepository.updatePassword(userId, hashPassword)
 
         return { success: true }
     }
@@ -190,7 +166,7 @@ const changePassword = async (data: ChangePassword) => {
 
     const hashPassword = await bcrypt.hash(newPassword, 10)
 
-    await profileRepository.updatePassword(userId, hashPassword)
+    await settingRepository.updatePassword(userId, hashPassword)
 
     return { success: true }
 }
@@ -198,7 +174,7 @@ const changePassword = async (data: ChangePassword) => {
 const updateNotifications = async (data: UpdateNotifications) => {
     const { userId, notifyProductUpdates, notifyProjectActivity, notifySecurityAlerts } = data
 
-    const existingUser = await profileRepository.findUserByIdForExistCheck(userId)
+    const existingUser = await settingRepository.findUserByIdForExistCheck(userId)
 
     if (!existingUser) {
         throw new AppError('user not found', 404)
@@ -226,7 +202,7 @@ const updateNotifications = async (data: UpdateNotifications) => {
         throw new AppError('at least one notification setting must be provided', 400)
     }
 
-    const updatedUser = await profileRepository.updateNotifications(userId, updateData)
+    const updatedUser = await settingRepository.updateNotifications(userId, updateData)
 
     return updatedUser
 }
@@ -234,7 +210,7 @@ const updateNotifications = async (data: UpdateNotifications) => {
 const chatSuggestions = async (data: ChatSuggestions) => {
     const { userId, chatSuggestions } = data
 
-    const existingUser = await profileRepository.findUserByIdForChatSuggestions(userId)
+    const existingUser = await settingRepository.findUserByIdForChatSuggestions(userId)
 
     if (!existingUser) {
         throw new AppError('user not found', 404)
@@ -247,7 +223,7 @@ const chatSuggestions = async (data: ChatSuggestions) => {
         )
     }
 
-    const updatedUser = await profileRepository.updateChatSuggestions(userId, chatSuggestions)
+    const updatedUser = await settingRepository.updateChatSuggestions(userId, chatSuggestions)
 
     return updatedUser
 }
@@ -255,7 +231,7 @@ const chatSuggestions = async (data: ChatSuggestions) => {
 const generationSound = async (data: UpdateGenerationSoundPayload) => {
     const { userId, generationSound } = data
 
-    const existingUser = await profileRepository.findUserByIdForGenerationSound(userId)
+    const existingUser = await settingRepository.findUserByIdForGenerationSound(userId)
 
     if (!existingUser) {
         throw new AppError('user not found', 404)
@@ -268,73 +244,38 @@ const generationSound = async (data: UpdateGenerationSoundPayload) => {
         )
     }
 
-    const updatedUser = await profileRepository.updateGenerationSound(userId, generationSound)
+    const updatedUser = await settingRepository.updateGenerationSound(userId, generationSound)
 
     return updatedUser
 }
 
 const getdesign = async (data: Getdesign) => {
-    const { userId } = data
-    const user = await profileRepository.getUserDesign(userId)
-
-    if (!user) {
-        throw new AppError('user not found', 404)
-    }
-
-    return { design: user.design }
+    return { design: null }
 }
 
 const updatedesign = async (data: Updatedesign) => {
-    const { userId, design } = data
-
-    const existingUser = await profileRepository.findUserByIdForExistCheck(userId)
-
-    if (!existingUser) {
-        throw new AppError('user not found', 404)
-    }
-
-    const updatedUser = await profileRepository.updateUserDesign(userId, design)
-
-    return { design: updatedUser.design }
+    return { design: null }
 }
 
 const deletedesign = async (data: Deletedesign) => {
-    const { userId } = data
-    const existingUser = await profileRepository.findUserByIdForExistCheck(userId)
-
-    if (!existingUser) {
-        throw new AppError('user not found', 404)
-    }
-
-    await profileRepository.deleteUserDesign(userId)
+    // No-op
 }
 
 const completeOnboarding = async (data: CompleteOnboarding) => {
     const { userId } = data
-    const existingUser = await profileRepository.findUserByIdForExistCheck(userId)
+    const existingUser = await settingRepository.findUserByIdForExistCheck(userId)
 
     if (!existingUser) {
         throw new AppError('user not found', 404)
     }
 
-    const updatedUser = await profileRepository.updateCompleteOnboarding(userId)
+    const updatedUser = await settingRepository.updateCompleteOnboarding(userId)
 
     return updatedUser
 }
 
-const createFeedback = async (data: CreateFeedback) => {
-    const { userId, rating, feedback } = data
-    const ratingStr = rating !== undefined && rating !== null ? String(rating) : null
-    return profileRepository.createFeedback({
-        userId: userId,
-        rating: ratingStr,
-        feedback: feedback,
-    })
-}
-
-export const profileService = {
-    getInfo,
-    getProfileCard,
+export const settingService = {
+    getMe,
     getProfile,
     updateName,
     updateUsername,
@@ -347,5 +288,4 @@ export const profileService = {
     updatedesign,
     deletedesign,
     completeOnboarding,
-    createFeedback,
 }

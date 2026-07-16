@@ -1,6 +1,12 @@
+import { AppError } from '../../shared/appError'
 import { asyncHandler } from '../../shared/asyncHandler'
 import { sendSuccess } from '../../shared/response'
 
+import {
+    createSessionSchema,
+    updateSessionSettingsSchema,
+    addCollaboratorSchema,
+} from './session.schema'
 import * as sessionService from './session.service'
 
 import type { Request, Response } from 'express'
@@ -8,27 +14,155 @@ import type { Request, Response } from 'express'
 export const getSessionsHandler = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user!.userId
     const sessions = await sessionService.getUserSessions(userId)
-    return sendSuccess(res, 'Sessions retrieved successfully', { sessions })
+    return sendSuccess(res, 'sessions fetched successfully', { sessions })
 })
 
 export const getSessionByIdHandler = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user!.userId
-    const { id } = req.params
-    const session = await sessionService.getSession(id as string, userId)
-    return sendSuccess(res, 'Session retrieved successfully', { session })
+    const id = req.params.id as string
+
+    if (!id) {
+        throw new AppError('session id is required', 400)
+    }
+
+    const result = await sessionService.getSession(id, userId)
+    return sendSuccess(res, 'session fetched successfully', result)
 })
 
 export const createSessionHandler = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user!.userId
-    const { title, projectId, type } = req.body
-    const session = await sessionService.createSession(userId, { title, projectId, type })
-    return sendSuccess(res, 'Session created successfully', { session }, 201)
+
+    const parseData = createSessionSchema.parse(req.body)
+    const { title, projectId, type, prompt } = parseData
+
+    const session = await sessionService.createSession({
+        userId,
+        title,
+        projectId,
+        type,
+        prompt,
+    })
+    return sendSuccess(res, 'session created successfully', { session }, 201)
 })
 
 export const updateSessionHandler = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user!.userId
-    const { id } = req.params
+    const id = req.params.id as string
     const { title, projectId } = req.body
-    const session = await sessionService.updateSession(id as string, userId, { title, projectId })
-    return sendSuccess(res, 'Session updated successfully', { session })
+
+    if (!id) {
+        throw new AppError('session id is required', 400)
+    }
+
+    const session = await sessionService.updateSession(id, userId, { title, projectId })
+    return sendSuccess(res, 'session updated successfully', { session })
+})
+
+export const updateSessionSettingsHandler = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user!.userId
+    const id = req.params.id as string
+
+    if (!id) {
+        throw new AppError('session id is required', 400)
+    }
+
+    const parseData = updateSessionSettingsSchema.parse(req.body)
+    const { title, projectId, isPinned, isArchived, tags } = parseData
+
+    const session = await sessionService.updateSessionSettings({
+        userId,
+        sessionId: id,
+        title,
+        projectId,
+        isPinned,
+        isArchived,
+        tags,
+    })
+    return sendSuccess(res, 'session settings updated successfully', { session })
+})
+
+export const deleteSessionHandler = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user!.userId
+    const id = req.params.id as string
+
+    if (!id) {
+        throw new AppError('session id is required', 400)
+    }
+
+    const result = await sessionService.deleteSession({
+        userId,
+        sessionId: id,
+    })
+    return sendSuccess(res, result.message, result)
+})
+
+export const duplicateSessionHandler = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user!.userId
+    const id = req.params.id as string
+    const { title } = req.body
+
+    if (!id) {
+        throw new AppError('session id is required', 400)
+    }
+
+    const session = await sessionService.duplicateSession({
+        userId,
+        sessionId: id,
+        title,
+    })
+    return sendSuccess(res, 'session duplicated successfully', { session })
+})
+
+export const getCollaboratorsHandler = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user!.userId
+    const id = req.params.id as string
+
+    if (!id) {
+        throw new AppError('session id is required', 400)
+    }
+
+    const collaborators = await sessionService.getCollaborators({
+        userId,
+        sessionId: id,
+    })
+    return sendSuccess(res, 'collaborators fetched successfully', collaborators)
+})
+
+export const addCollaboratorHandler = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user!.userId
+    const id = req.params.id as string
+
+    if (!id) {
+        throw new AppError('session id is required', 400)
+    }
+
+    const parseData = addCollaboratorSchema.parse(req.body)
+    const { email } = parseData
+
+    const collaborator = await sessionService.addCollaborator({
+        userId,
+        sessionId: id,
+        email,
+    })
+    return sendSuccess(res, 'collaborator added successfully', collaborator)
+})
+
+export const removeCollaboratorHandler = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user!.userId
+    const id = req.params.id as string
+    const email = req.params.email as string
+
+    if (!id) {
+        throw new AppError('session id is required', 400)
+    }
+    if (!email) {
+        throw new AppError('collaborator email is required', 400)
+    }
+
+    const result = await sessionService.removeCollaborator({
+        userId,
+        sessionId: id,
+        email,
+    })
+    return sendSuccess(res, result.message, result)
 })

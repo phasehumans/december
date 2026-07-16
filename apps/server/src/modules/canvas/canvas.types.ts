@@ -3,27 +3,24 @@ import type { CanvasDocument } from './canvas.schema'
 export type CreateWebClips = {
     url: string
     userId: string
-    projectId?: string
+    sessionId?: string
 }
 
 export type SaveCanvas = {
-    projectId: string
+    sessionId: string
     userId: string
-    versionId?: string
     canvasState: any
 }
 
 export type PersistImageAsset = {
-    projectId: string
+    sessionId: string
     userId: string
-    versionId: string
     item: CanvasDocument['items'][number]
 }
 
 export type PersistCanvasDocument = {
-    projectId: string
+    sessionId: string
     userId: string
-    versionId: string
     canvasState?: CanvasDocument | null
 }
 

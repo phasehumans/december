@@ -2,12 +2,17 @@ import {
     getLatestPreviewManifestRef,
     publishStoredPreviewManifest,
 } from '../../shared/preview-manifest'
-import { getBinaryFile, putBinaryFile } from '../../shared/project-storage'
+import { getBinaryFile, putBinaryFile, listPrefix, sessionWorkspacePrefix } from '../../shared/project-storage'
 import { chromium } from 'playwright'
 import { runtimeRepository } from './runtime.repository'
 
 import type { PreviewManifestRef } from '../../shared/preview-manifest.types'
-import type { StoredProjectFile } from '../project/project.types'
+type StoredProjectFile = {
+    path: string
+    key: string
+    contentType?: string
+    size: number
+}
 import type {
     RuntimePreviewError,
     RuntimePreviewStatus,
@@ -17,10 +22,8 @@ import type {
     RecordRuntimeStatus,
     CheckSandboxCompilation,
     EnsureManifestRef,
-    ProjectVersionRecord,
+    SessionRecord,
 } from './runtime.types'
-
-
 
 const previewStatusStore = new Map<string, RuntimePreviewStatus>()
 const runtimeBaseUrl = (process.env.RUNTIME_BASE_URL ?? 'http://127.0.0.1:5050').replace(/\/+$/, '')
@@ -28,35 +31,35 @@ const runtimeSharedSecret = process.env.RUNTIME_SHARED_SECRET
 
 const pendingDeletions = new Map<string, NodeJS.Timeout>()
 
-export function cancelPendingDeletion(projectId: string) {
-    const timer = pendingDeletions.get(projectId)
+export function cancelPendingDeletion(sessionId: string) {
+    const timer = pendingDeletions.get(sessionId)
     if (timer) {
         clearTimeout(timer)
-        pendingDeletions.delete(projectId)
-        console.log(`[runtime] Cancelled pending 5-minute deletion for project ${projectId}`)
+        pendingDeletions.delete(sessionId)
+        console.log(`[runtime] Cancelled pending 5-minute deletion for session ${sessionId}`)
     }
 }
 
-export function scheduleDeletion(projectId: string, delayMs: number) {
-    cancelPendingDeletion(projectId)
+export function scheduleDeletion(sessionId: string, delayMs: number) {
+    cancelPendingDeletion(sessionId)
     const timer = setTimeout(async () => {
         try {
-            console.log(`[runtime] Deleting preview container for project ${projectId} after 5 min delay`)
-            await runtimeRequest<{ deleted: boolean }>(`/previews/${encodeURIComponent(projectId)}`, {
+            console.log(`[runtime] Deleting preview container for session ${sessionId} after 5 min delay`)
+            await runtimeRequest<{ deleted: boolean }>(`/previews/${encodeURIComponent(sessionId)}`, {
                 method: 'DELETE',
             }).catch(() => null)
-            previewStatusStore.delete(projectId)
-            pendingDeletions.delete(projectId)
+            previewStatusStore.delete(sessionId)
+            pendingDeletions.delete(sessionId)
         } catch (err) {
-            console.error(`Failed to delete preview container after delay for project ${projectId}:`, err)
-            pendingDeletions.delete(projectId)
+            console.error(`Failed to delete preview container after delay for session ${sessionId}:`, err)
+            pendingDeletions.delete(sessionId)
         }
     }, delayMs)
-    pendingDeletions.set(projectId, timer)
+    pendingDeletions.set(sessionId, timer)
 }
 
-async function takePreviewScreenshot(projectId: string, previewUrl: string) {
-    console.log(`[Screenshot] Starting screenshot capture workflow for project ${projectId}`)
+async function takePreviewScreenshot(sessionId: string, previewUrl: string) {
+    console.log(`[Screenshot] Starting screenshot capture workflow for session ${sessionId}`)
     console.log(`[Screenshot] Target URL: ${previewUrl}`)
     let browser;
     try {
@@ -88,7 +91,7 @@ async function takePreviewScreenshot(projectId: string, previewUrl: string) {
         const screenshotBuffer = await page.screenshot({ type: 'png' })
         console.log(`[Screenshot] Screenshot buffer captured. Buffer size: ${screenshotBuffer.byteLength} bytes.`)
         
-        const key = `projects/${projectId}/preview.png`
+        const key = `sessions/${sessionId}/preview.png`
         console.log(`[Screenshot] Uploading screenshot to object storage (MinIO) at key: ${key}...`)
         await putBinaryFile({
             key,
@@ -97,54 +100,23 @@ async function takePreviewScreenshot(projectId: string, previewUrl: string) {
         })
         console.log(`[Screenshot] Screenshot uploaded to object storage successfully.`)
         
-        console.log(`[Screenshot] Updating database for project ${projectId} with previewImageKey...`)
-        await runtimeRepository.updateProjectPreviewImage({ projectId, key })
+        console.log(`[Screenshot] Updating database for session ${sessionId} with previewImageKey...`)
+        await runtimeRepository.updateSessionPreviewImage({ sessionId, key })
         console.log(`[Screenshot] Database updated successfully.`)
         
-        console.log(`[Screenshot] Screenshot capture workflow completed successfully for project ${projectId}.`)
+        console.log(`[Screenshot] Screenshot capture workflow completed successfully for session ${sessionId}.`)
     } catch (error) {
-        console.error(`[Screenshot] Capture workflow failed for project ${projectId}:`, error)
+        console.error(`[Screenshot] Capture workflow failed for session ${sessionId}:`, error)
     } finally {
         if (browser) {
             console.log(`[Screenshot] Closing browser...`)
             await browser.close()
             console.log(`[Screenshot] Browser closed.`)
         }
-        console.log(`[Screenshot] Scheduling container cleanup for project ${projectId} in 5 minutes...`)
-        scheduleDeletion(projectId, 5 * 60 * 1000)
+        console.log(`[Screenshot] Scheduling container cleanup for session ${sessionId} in 5 minutes...`)
+        scheduleDeletion(sessionId, 5 * 60 * 1000)
     }
 }
-
-const parseStoredProjectFiles = (value: unknown): StoredProjectFile[] => {
-    if (!Array.isArray(value)) {
-        return []
-    }
-
-    return value.reduce<StoredProjectFile[]>((files, item) => {
-        if (!item || typeof item !== 'object') {
-            return files
-        }
-
-        const candidate = item as Partial<StoredProjectFile>
-
-        if (typeof candidate.path !== 'string' || typeof candidate.key !== 'string') {
-            return files
-        }
-
-        files.push({
-            path: candidate.path,
-            key: candidate.key,
-            ...(typeof candidate.contentType === 'string'
-                ? { contentType: candidate.contentType }
-                : {}),
-            size: typeof candidate.size === 'number' ? candidate.size : 0,
-        })
-
-        return files
-    }, [])
-}
-
-const previewIdForProject = (projectId: string) => projectId
 
 const runtimeRequest = async <T>(path: string, init?: RequestInit) => {
     const headers = new Headers(init?.headers)
@@ -177,54 +149,59 @@ const runtimeRequest = async <T>(path: string, init?: RequestInit) => {
     return payload.data
 }
 
-const loadProjectVersion = async (data: StartPreview) => {
-    const { userId, projectId, versionId } = data
-    const project = await runtimeRepository.findProjectForPreview({ projectId, userId })
+const loadSession = async (data: StartPreview) => {
+    const { userId, projectId: sessionId } = data
+    const session = await runtimeRepository.findSessionForPreview({ sessionId, userId })
 
-    if (!project) {
-        throw new Error('project not found')
-    }
-
-    const version = await runtimeRepository.findProjectVersion({
-        projectId: project.id,
-        versionId: versionId ?? project.currentVersionId ?? undefined,
-    })
-
-    if (!version) {
-        throw new Error('project version not found')
+    if (!session) {
+        throw new Error('session not found')
     }
 
     return {
-        project,
-        version,
+        session,
     }
 }
 
 const ensureManifestRef = async (data: EnsureManifestRef) => {
-    const { projectId, version } = data
-    const latestRef = await getLatestPreviewManifestRef(projectId, version.id)
+    const { sessionId } = data
+    const latestRef = await getLatestPreviewManifestRef(sessionId, sessionId)
 
     if (latestRef) {
         return latestRef
     }
 
-    const storedFiles = parseStoredProjectFiles(version.manifestJson)
+    const prefix = sessionWorkspacePrefix(sessionId)
+    const objects = await listPrefix(prefix)
+    const storedFiles: StoredProjectFile[] = []
+
+    for (const obj of objects) {
+        const key = obj.Key
+        if (!key) continue
+        const relativePath = key.substring(prefix.length)
+        if (!relativePath || relativePath.endsWith('/')) continue
+
+        storedFiles.push({
+            path: relativePath,
+            key,
+            size: obj.Size ?? 0,
+        })
+    }
 
     if (storedFiles.length === 0) {
         return null
     }
 
     return publishStoredPreviewManifest({
-        projectId,
-        versionId: version.id,
+        projectId: sessionId,
+        versionId: sessionId,
         manifestVersion: 'final',
         files: storedFiles,
     })
 }
 
-const getInvalidStructureStatus = (projectId: string, message: string): RuntimePreviewStatus => ({
-    previewId: projectId,
-    projectId: projectId,
+const getInvalidStructureStatus = (sessionId: string, message: string): RuntimePreviewStatus => ({
+    previewId: sessionId,
+    sessionId: sessionId,
     state: 'Failed',
     backendStatus: 'failed',
     lastError: {
@@ -236,9 +213,8 @@ const getInvalidStructureStatus = (projectId: string, message: string): RuntimeP
     updatedAt: new Date().toISOString(),
 })
 
-const validateProjectStructure = async (
-    projectId: string,
-    version: ProjectVersionRecord
+const validateSessionStructure = async (
+    sessionId: string
 ): Promise<{ isValid: boolean; error?: string }> => {
     return { isValid: true }
 }
@@ -250,46 +226,38 @@ const recordRuntimeStatus = (data: RecordRuntimeStatus) => {
 }
 
 const startPreview = async (data: StartPreview) => {
-    const { userId, projectId, versionId } = data
-    cancelPendingDeletion(projectId)
-    const { project, version } = await loadProjectVersion(data)
+    const { userId, projectId: sessionId } = data
+    cancelPendingDeletion(sessionId)
+    const { session } = await loadSession(data)
 
-    if (version.status !== 'READY') {
-        return {
-            previewId: project.id,
-            projectId: project.id,
-            state: 'Bootstrapping',
-            backendStatus: 'loading',
-            updatedAt: new Date().toISOString(),
-        } as RuntimePreviewStatus
-    }
-
-    // Validate project structure
-    const validation = await validateProjectStructure(project.id, version)
+    // Validate session structure
+    const validation = await validateSessionStructure(session.id)
     if (!validation.isValid) {
-        return getInvalidStructureStatus(project.id, validation.error!)
+        return getInvalidStructureStatus(session.id, validation.error!)
     }
 
     const initialManifest = await ensureManifestRef({
-        projectId: project.id,
-        version,
+        sessionId: session.id,
     })
 
-    const isImported = await runtimeRepository.findProjectImport({ projectId: project.id })
-    const isGithub = !!project.githubRepoUrl
+    const isImported = await runtimeRepository.findSessionImport({ sessionId: session.id })
+    const isGithub = !!session.githubRepoUrl
     
-    // Check if it's a duplicate or remix by checking if the manifest has files other than the scaffold
-    const manifestFiles = parseStoredProjectFiles(version.manifestJson)
-    const scaffoldPaths = ['package.json', 'vite.config.ts', 'tsconfig.json', 'index.html', 'src/main.tsx']
-    const hasOtherFiles = manifestFiles.some((f) => !scaffoldPaths.includes(f.path))
+    // Check if it's a duplicate or remix by checking S3 files
+    const prefix = sessionWorkspacePrefix(session.id)
+    const objects = await listPrefix(prefix)
+    const storedFiles = objects.map((obj) => obj.Key?.substring(prefix.length) || '').filter(Boolean)
 
-    const isNewProject = version.versionNumber === 1 && !isImported && !isGithub && !hasOtherFiles
+    const scaffoldPaths = ['package.json', 'vite.config.ts', 'tsconfig.json', 'index.html', 'src/main.tsx']
+    const hasOtherFiles = storedFiles.some((p) => !scaffoldPaths.includes(p))
+
+    const isNewProject = !isImported && !isGithub && !hasOtherFiles
 
     return runtimeRequest<RuntimePreviewStatus>('/previews/start', {
         method: 'POST',
         body: JSON.stringify({
-            previewId: previewIdForProject(project.id),
-            projectId: project.id,
+            previewId: session.id,
+            projectId: session.id,
             isNewProject,
             ...(initialManifest ? { initialManifest } : {}),
         }),
@@ -297,13 +265,13 @@ const startPreview = async (data: StartPreview) => {
 }
 
 const notifyManifestPublished = async (data: NotifyManifestPublished) => {
-    const { projectId, manifest } = data
+    const { sessionId, manifest } = data
     return runtimeRequest<RuntimePreviewStatus>(
-        `/previews/${encodeURIComponent(previewIdForProject(projectId))}/manifest-published`,
+        `/previews/${encodeURIComponent(sessionId)}/manifest-published`,
         {
             method: 'POST',
             body: JSON.stringify({
-                projectId,
+                projectId: sessionId,
                 manifest,
             }),
         }
@@ -312,33 +280,10 @@ const notifyManifestPublished = async (data: NotifyManifestPublished) => {
 
 const getPreviewStatus = async (data: PreviewIdentifier) => {
     const { userId, previewId } = data
-    const project = await runtimeRepository.findProjectForStatus({ previewId, userId })
+    const session = await runtimeRepository.findSessionForStatus({ previewId, userId })
 
-    if (!project) {
-        throw new Error('project not found')
-    }
-
-    // Check project version structure before getting status
-    const version = await runtimeRepository.findProjectVersion({
-        projectId: project.id,
-        versionId: project.currentVersionId ?? undefined,
-    })
-
-    if (version && version.status !== 'READY') {
-        return {
-            previewId: project.id,
-            projectId: project.id,
-            state: 'Bootstrapping',
-            backendStatus: 'loading',
-            updatedAt: new Date().toISOString(),
-        } as RuntimePreviewStatus
-    }
-
-    if (version) {
-        const validation = await validateProjectStructure(project.id, version)
-        if (!validation.isValid) {
-            return getInvalidStructureStatus(project.id, validation.error!)
-        }
+    if (!session) {
+        throw new Error('session not found')
     }
 
     try {
@@ -358,10 +303,10 @@ const getPreviewStatus = async (data: PreviewIdentifier) => {
 
 const deletePreview = async (data: PreviewIdentifier) => {
     const { userId, previewId } = data
-    const project = await runtimeRepository.findProjectForDelete({ previewId, userId })
+    const session = await runtimeRepository.findSessionForDelete({ previewId, userId })
 
-    if (!project) {
-        throw new Error('project not found')
+    if (!session) {
+        throw new Error('session not found')
     }
 
     let status: RuntimePreviewStatus | undefined
@@ -380,7 +325,7 @@ const deletePreview = async (data: PreviewIdentifier) => {
 
     if (hasValidPreview && status && status.previewUrl) {
         // Capture screenshot in the background (which will schedule container deletion in 5 min)
-        takePreviewScreenshot(project.id, status.previewUrl).catch((err) => {
+        takePreviewScreenshot(session.id, status.previewUrl).catch((err) => {
             console.error('Unhandled error in takePreviewScreenshot:', err)
         })
     } else {
@@ -402,9 +347,9 @@ export type CompileCheckResult = {
 }
 
 const checkSandboxCompilation = async (data: CheckSandboxCompilation): Promise<CompileCheckResult> => {
-    const { projectId } = data
+    const { sessionId } = data
     return runtimeRequest<CompileCheckResult>(
-        `/previews/${encodeURIComponent(previewIdForProject(projectId))}/validate`,
+        `/previews/${encodeURIComponent(sessionId)}/validate`,
         {
             method: 'POST',
         }

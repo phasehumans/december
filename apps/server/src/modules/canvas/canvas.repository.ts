@@ -1,11 +1,11 @@
 import { prisma } from '@december/database'
 
-async function findProjectAccess(data: { projectId: string; userId: string }) {
-    const { projectId, userId } = data
-    return prisma.project.findFirst({
+async function findSessionAccess(data: { sessionId: string; userId: string }) {
+    const { sessionId, userId } = data
+    return prisma.session.findFirst({
         where: {
-            id: projectId,
-            userId,
+            id: sessionId,
+            OR: [{ userId }, { collaborators: { some: { userId } } }],
         },
         select: {
             id: true,
@@ -13,30 +13,6 @@ async function findProjectAccess(data: { projectId: string; userId: string }) {
     })
 }
 
-async function findProjectById(projectId: string) {
-    return prisma.project.findUnique({
-        where: { id: projectId },
-        select: { currentVersionId: true },
-    })
-}
-
-async function updateProjectVersion(data: {
-    versionId: string
-    canvasStateJson: any
-    canvasAssetManifestJson: any
-}) {
-    const { versionId, canvasStateJson, canvasAssetManifestJson } = data
-    return prisma.projectVersion.update({
-        where: { id: versionId },
-        data: {
-            canvasStateJson,
-            canvasAssetManifestJson,
-        },
-    })
-}
-
 export const canvasRepository = {
-    findProjectAccess,
-    findProjectById,
-    updateProjectVersion,
+    findSessionAccess,
 }

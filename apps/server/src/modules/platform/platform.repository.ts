@@ -1,25 +1,12 @@
 import { prisma } from '@december/database'
+import type { Prisma } from '@december/database'
 
-async function findProjectForDeployment(data: { projectId: string; userId: string }) {
-    const { projectId, userId } = data
-    return prisma.project.findFirst({
+async function findSessionForDeployment(data: { sessionId: string; userId: string }) {
+    const { sessionId, userId } = data
+    return prisma.session.findFirst({
         where: {
-            id: projectId,
+            id: sessionId,
             userId,
-        },
-        include: {
-            currentVersion: true,
-        },
-    })
-}
-
-async function updateProjectDecemberDeployment(data: { projectId: string; deployUrl: string }) {
-    const { projectId, deployUrl } = data
-    return prisma.project.update({
-        where: { id: projectId },
-        data: {
-            decemberDeploymentUrl: deployUrl,
-            decemberLastDeployedAt: new Date(),
         },
     })
 }
@@ -36,21 +23,21 @@ async function getVercelCredentials(data: { userId: string }) {
     })
 }
 
-async function findProjectById(data: { projectId: string }) {
-    const { projectId } = data
-    return prisma.project.findUnique({
-        where: { id: projectId },
+async function findSessionById(data: { sessionId: string }) {
+    const { sessionId } = data
+    return prisma.session.findUnique({
+        where: { id: sessionId },
     })
 }
 
-async function updateProjectVercelLink(data: {
-    projectId: string
+async function updateSessionVercelLink(data: {
+    sessionId: string
     vercelProjectId: string
     vercelProjectName: string
 }) {
-    const { projectId, vercelProjectId, vercelProjectName } = data
-    return prisma.project.update({
-        where: { id: projectId },
+    const { sessionId, vercelProjectId, vercelProjectName } = data
+    return prisma.session.update({
+        where: { id: sessionId },
         data: {
             vercelProjectId,
             vercelProjectName,
@@ -58,10 +45,10 @@ async function updateProjectVercelLink(data: {
     })
 }
 
-async function updateProjectVercelDeployment(data: { projectId: string; url: string }) {
-    const { projectId, url } = data
-    return prisma.project.update({
-        where: { id: projectId },
+async function updateSessionVercelDeployment(data: { sessionId: string; url: string }) {
+    const { sessionId, url } = data
+    return prisma.session.update({
+        where: { id: sessionId },
         data: {
             vercelDeploymentUrl: url,
             vercelLastDeployedAt: new Date(),
@@ -80,25 +67,25 @@ async function findUserGithubConnection(id: string) {
     })
 }
 
-async function findProjectByIdAndUser(data: { projectId: string; userId: string }) {
-    const { projectId, userId } = data
-    return prisma.project.findFirst({
+async function findSessionByIdAndUser(data: { sessionId: string; userId: string }) {
+    const { sessionId, userId } = data
+    return prisma.session.findFirst({
         where: {
-            id: projectId,
-            userId,
+            id: sessionId,
+            OR: [{ userId }, { collaborators: { some: { userId } } }],
         },
     })
 }
 
-async function updateProjectGithub(data: {
-    projectId: string
+async function updateSessionGithub(data: {
+    sessionId: string
     githubRepoName: string
     githubRepoOwner: string
     githubRepoUrl: string
 }) {
-    const { projectId, githubRepoName, githubRepoOwner, githubRepoUrl } = data
-    return prisma.project.update({
-        where: { id: projectId },
+    const { sessionId, githubRepoName, githubRepoOwner, githubRepoUrl } = data
+    return prisma.session.update({
+        where: { id: sessionId },
         data: {
             githubRepoName,
             githubRepoOwner,
@@ -107,28 +94,18 @@ async function updateProjectGithub(data: {
     })
 }
 
-async function findProjectVersionByIdAndProject(data: { versionId: string; projectId: string }) {
-    const { versionId, projectId } = data
-    return prisma.projectVersion.findFirst({
-        where: {
-            id: versionId,
-            projectId,
-        },
-    })
-}
-
-async function updateProjectSynced(projectId: string) {
-    return prisma.project.update({
-        where: { id: projectId },
+async function updateSessionSynced(sessionId: string) {
+    return prisma.session.update({
+        where: { id: sessionId },
         data: {
             githubLastSyncedAt: new Date(),
         },
     })
 }
 
-async function unlinkProjectGithub(projectId: string) {
-    return prisma.project.update({
-        where: { id: projectId },
+async function unlinkSessionGithub(sessionId: string) {
+    return prisma.session.update({
+        where: { id: sessionId },
         data: {
             githubRepoName: null,
             githubRepoOwner: null,
@@ -138,9 +115,9 @@ async function unlinkProjectGithub(projectId: string) {
     })
 }
 
-async function unlinkProjectVercel(projectId: string) {
-    return prisma.project.update({
-        where: { id: projectId },
+async function unlinkSessionVercel(sessionId: string) {
+    return prisma.session.update({
+        where: { id: sessionId },
         data: {
             vercelProjectId: null,
             vercelProjectName: null,
@@ -150,25 +127,23 @@ async function unlinkProjectVercel(projectId: string) {
     })
 }
 
-async function getProjectMemories(projectId: string) {
-    return prisma.projectMemory.findMany({
-        where: { projectId },
+async function getSessionMemories(sessionId: string) {
+    return prisma.sessionMemory.findMany({
+        where: { sessionId },
     })
 }
 
 export const platformRepository = {
-    findProjectForDeployment,
-    updateProjectDecemberDeployment,
+    findSessionForDeployment,
     getVercelCredentials,
-    findProjectById,
-    updateProjectVercelLink,
-    updateProjectVercelDeployment,
+    findSessionById,
+    updateSessionVercelLink,
+    updateSessionVercelDeployment,
     findUserGithubConnection,
-    findProjectByIdAndUser,
-    updateProjectGithub,
-    findProjectVersionByIdAndProject,
-    updateProjectSynced,
-    unlinkProjectGithub,
-    unlinkProjectVercel,
-    getProjectMemories,
+    findSessionByIdAndUser,
+    updateSessionGithub,
+    updateSessionSynced,
+    unlinkSessionGithub,
+    unlinkSessionVercel,
+    getSessionMemories,
 }

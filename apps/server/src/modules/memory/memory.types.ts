@@ -1,9 +1,9 @@
 export type UpsertStyleGuidelines = {
-    projectId: string
+    sessionId: string
     guidelines: Record<string, string>
 }
 
 export type LoadMemoryPromptInstructions = {
-    projectId: string
+    sessionId: string
     userId?: string
 }

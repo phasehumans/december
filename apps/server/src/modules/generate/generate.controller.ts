@@ -1,4 +1,4 @@
-import { Request, Response } from 'express'
+import type { Request, Response } from 'express'
 import { Queue } from 'bullmq'
 import Redis from 'ioredis'
 import crypto from 'crypto'
@@ -53,7 +53,7 @@ export const generateProjectStream = asyncHandler(async (req: Request, res: Resp
 
     // Enqueue job
     try {
-        const agentJobsQueue = new Queue('agent_jobs', { connection: pubClient })
+        const agentJobsQueue = new Queue('agent_jobs', { connection: pubClient as any })
         await agentJobsQueue.add('run_agent', {
             sessionId,
             projectId,
