@@ -99,7 +99,6 @@ const Sidebar: React.FC<
 
     const isHomeActive = path === '/'
     const isProjectsActive = path.startsWith('/projects') || path.startsWith('/all-projects')
-    const isSessionsActive = path.startsWith('/sessions')
     const isReviewActive = path.startsWith('/review')
     const isTemplatesActive = path.startsWith('/templates')
     const isDocsActive = path.startsWith('/docs')
@@ -109,11 +108,10 @@ const Sidebar: React.FC<
     if (isSearchOpen) {
         activeIndex = 1
     } else if (!isHomeActive) {
-        if (isSessionsActive) activeIndex = 2
+        if (isProjectsActive) activeIndex = 2
         else if (isReviewActive) activeIndex = 3
-        else if (isProjectsActive) activeIndex = 4
-        else if (isTemplatesActive) activeIndex = 5
-        else if (isSettingsActive) activeIndex = 6
+        else if (isTemplatesActive) activeIndex = 4
+        else if (isSettingsActive) activeIndex = 5
     } else {
         activeIndex = 0
     }
@@ -150,10 +148,10 @@ const Sidebar: React.FC<
             },
         },
         {
-            id: 'sessions',
+            id: 'projects',
             label: 'Sessions',
-            icon: <Icons.SessionsIcon className="w-[18px] h-[18px]" />,
-            onClick: onSessions,
+            icon: <Icons.Folder className="w-[18px] h-[18px]" />,
+            onClick: onAllProjects,
         },
         {
             id: 'review',
@@ -162,15 +160,9 @@ const Sidebar: React.FC<
             onClick: onReview,
         },
         {
-            id: 'projects',
-            label: 'Projects',
-            icon: <Icons.Folder className="w-[18px] h-[18px]" />,
-            onClick: onAllProjects,
-        },
-        {
             id: 'templates',
-            label: 'Templates',
-            icon: <Icons.Bookmark className="w-[18px] h-[18px]" />,
+            label: 'Wiki',
+            icon: <Icons.BookOpen className="w-[18px] h-[18px]" />,
             onClick: onTemplates,
         },
         {
@@ -234,7 +226,7 @@ const Sidebar: React.FC<
                             </div>
                         </div>
                     </div>
-                    <div className="flex flex-col gap-[2px] relative items-center">
+                    <div className="flex flex-col gap-[1px] relative items-center">
                         {navItems.map((item, idx) => {
                             return (
                                 <button
@@ -284,7 +276,7 @@ const Sidebar: React.FC<
                             </div>
                         )}
                     </div>
-                    <div className="flex flex-col gap-[2px] relative">
+                    <div className="flex flex-col gap-[1px] relative">
                         {navItems.map((item, idx) => (
                             <button
                                 key={item.id}

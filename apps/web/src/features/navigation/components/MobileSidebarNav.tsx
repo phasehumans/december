@@ -10,7 +10,6 @@ interface MobileSidebarNavProps {
     onAllProjects: () => void
     onSessions?: () => void
     onReview?: () => void
-    onAutomations?: () => void
     onTemplates: () => void
     onDocs: () => void
     onWiki?: () => void
@@ -32,13 +31,13 @@ export const MobileSidebarNav: React.FC<MobileSidebarNavProps> = ({
     onOpenAuth,
 }) => {
     return (
-        <div className="flex flex-col gap-1 px-3">
+        <div className="flex flex-col gap-[1px] px-3">
             <SidebarNavItem
-                icon={<Icons.SessionsIcon className="w-[18px] h-[18px]" />}
+                icon={<Icons.Folder className="w-[18px] h-[18px]" />}
                 label="Sessions"
                 collapsed={false}
                 onClick={() => {
-                    onSessions?.()
+                    onAllProjects()
                     onClose()
                 }}
             />
@@ -52,17 +51,8 @@ export const MobileSidebarNav: React.FC<MobileSidebarNavProps> = ({
                 }}
             />
             <SidebarNavItem
-                icon={<Icons.Folder />}
-                label="Projects"
-                collapsed={false}
-                onClick={() => {
-                    onAllProjects()
-                    onClose()
-                }}
-            />
-            <SidebarNavItem
-                icon={<Icons.Bookmark />}
-                label="Templates"
+                icon={<Icons.BookOpen className="w-[18px] h-[18px]" />}
+                label="Wiki"
                 collapsed={false}
                 onClick={() => {
                     onTemplates()

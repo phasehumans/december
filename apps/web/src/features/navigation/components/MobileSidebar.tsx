@@ -37,7 +37,6 @@ export const MobileSidebar: React.FC<
 
     const isHomeActive = path === '/'
     const isProjectsActive = path.startsWith('/projects')
-    const isSessionsActive = path.startsWith('/sessions')
     const isReviewActive = path.startsWith('/review')
     const isTemplatesActive = path.startsWith('/templates')
     const isDocsActive = path.startsWith('/docs')
@@ -56,11 +55,10 @@ export const MobileSidebar: React.FC<
     if (isSearchOpen) {
         activeIndex = 1
     } else if (!isHomeActive) {
-        if (isSessionsActive) activeIndex = 2
+        if (isProjectsActive) activeIndex = 2
         else if (isReviewActive) activeIndex = 3
-        else if (isProjectsActive) activeIndex = 4
-        else if (isTemplatesActive) activeIndex = 5
-        else if (isSettingsActive) activeIndex = 6
+        else if (isTemplatesActive) activeIndex = 4
+        else if (isSettingsActive) activeIndex = 5
     } else {
         activeIndex = 0
     }
@@ -99,11 +97,11 @@ export const MobileSidebar: React.FC<
             },
         },
         {
-            id: 'sessions',
+            id: 'projects',
             label: 'Sessions',
-            icon: <Icons.SessionsIcon className="w-[18px] h-[18px]" />,
+            icon: <Icons.Folder className="w-[18px] h-[18px]" />,
             onClick: () => {
-                if (onSessions) onSessions()
+                onAllProjects()
                 onClose()
             },
         },
@@ -117,18 +115,9 @@ export const MobileSidebar: React.FC<
             },
         },
         {
-            id: 'projects',
-            label: 'Projects',
-            icon: <Icons.Folder className="w-[18px] h-[18px]" />,
-            onClick: () => {
-                onAllProjects()
-                onClose()
-            },
-        },
-        {
             id: 'templates',
-            label: 'Templates',
-            icon: <Icons.Bookmark className="w-[18px] h-[18px]" />,
+            label: 'Wiki',
+            icon: <Icons.BookOpen className="w-[18px] h-[18px]" />,
             onClick: () => {
                 onTemplates()
                 onClose()
@@ -208,7 +197,7 @@ export const MobileSidebar: React.FC<
                             <Icons.SidebarToggle className="w-4 h-4" />
                         </div>
                     </div>
-                    <div className="flex flex-col gap-[2px] relative">
+                    <div className="flex flex-col gap-[1px] relative">
                         {navItems.map((item, idx) => (
                             <button
                                 key={item.id}

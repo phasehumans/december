@@ -18,6 +18,8 @@ import {
     verifyOtpSchema,
     googleAuthSchema,
     githubAuthSchema,
+    pollDeviceTokenSchema,
+    verifyUserCodeSchema,
 } from './auth.schema'
 import { authService } from './auth.service'
 
@@ -251,16 +253,88 @@ const refreshSession = async (req: Request, res: Response, next: NextFunction) =
     }
 }
 
+const signout = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.userId
+    const sessionId = req.user?.sessionId
+
+    if (!userId || !sessionId) {
+        throw new AppError('unauthorized', 401)
+    }
+
+    await authService.signout({ userId, sessionId })
+    authCookie.clearAuthCookies(res)
+
+    return sendSuccess(res, 'signed out successfully')
+})
+
+const signoutAll = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.userId
+
+    if (!userId) {
+        throw new AppError('unauthorized', 401)
+    }
+
+    await authService.signoutAll({ userId })
+    authCookie.clearAuthCookies(res)
+
+    return sendSuccess(res, 'signed out from all devices successfully')
+})
+
+const deleteAccount = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.userId
+
+    if (!userId) {
+        throw new AppError('unauthorized', 401)
+    }
+
+    await authService.deleteAccount({ userId })
+    authCookie.clearAuthCookies(res)
+
+    return sendSuccess(res, 'account deleted successfully')
+})
+
 const getCliToken = asyncHandler(async (req: Request, res: Response) => {
     const token = req.cookies?.accessToken
     if (!token || !req.user?.userId) {
         throw new AppError('No active session found', 401)
     }
 
-    const user = await prisma.user.findUnique({ where: { id: req.user.userId } })
-    const email = user?.email
+    const result = await authService.getCliToken({ token, userId: req.user.userId })
 
-    return sendSuccess(res, 'cli token retrieved successfully', { token, email })
+    return sendSuccess(res, 'cli token retrieved successfully', result)
+})
+
+const generateDeviceCode = asyncHandler(async (req: Request, res: Response) => {
+    const result = await authService.generateDeviceCode()
+
+    return sendSuccess(res, 'Device code generated', result)
+})
+
+const pollDeviceToken = asyncHandler(async (req: Request, res: Response) => {
+    const parseData = pollDeviceTokenSchema.parse(req.body)
+
+    const userAgent = req.get('user-agent') || 'device-cli'
+    const ipAddress =
+        (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
+        req.socket.remoteAddress ||
+        'unknown'
+
+    const result = await authService.pollDeviceToken({ ...parseData, userAgent, ipAddress })
+
+    return sendSuccess(res, 'Token retrieved successfully', result)
+})
+
+const verifyUserCode = asyncHandler(async (req: Request, res: Response) => {
+    const parseData = verifyUserCodeSchema.parse(req.body)
+    const userId = req.user?.userId
+
+    if (!userId) {
+        throw new AppError('Unauthorized', 401)
+    }
+
+    await authService.verifyUserCode({ ...parseData, userId })
+
+    return sendSuccess(res, 'Device successfully authorized')
 })
 
 export const authController = {
@@ -273,5 +347,11 @@ export const authController = {
     google,
     github,
     refreshSession,
+    signout,
+    signoutAll,
+    deleteAccount,
     getCliToken,
+    generateDeviceCode,
+    pollDeviceToken,
+    verifyUserCode,
 }

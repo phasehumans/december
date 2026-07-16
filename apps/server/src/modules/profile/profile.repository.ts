@@ -126,91 +126,6 @@ async function updateNotifications(id: string, data: Prisma.UserUpdateInput) {
     })
 }
 
-async function findSession(sessionId: string, userId: string) {
-    return prisma.authSession.findFirst({
-        where: {
-            id: sessionId,
-            userId,
-            isRevoked: false,
-        },
-    })
-}
-
-async function revokeSession(sessionId: string) {
-    return prisma.authSession.update({
-        where: { id: sessionId },
-        data: {
-            isRevoked: true,
-            revokedAt: new Date(),
-        },
-    })
-}
-
-async function revokeAllSessions(userId: string) {
-    return prisma.authSession.updateMany({
-        where: {
-            userId,
-            isRevoked: false,
-        },
-        data: {
-            isRevoked: true,
-            revokedAt: new Date(),
-        },
-    })
-}
-
-async function findUserByIdForDeleteCheck(id: string) {
-    return prisma.user.findUnique({
-        where: { id },
-        select: {
-            id: true,
-            isDeleted: true,
-        },
-    })
-}
-
-async function deleteAccount(userId: string) {
-    return prisma.$transaction([
-        prisma.authSession.updateMany({
-            where: {
-                userId,
-                isRevoked: false,
-            },
-            data: {
-                isRevoked: true,
-                revokedAt: new Date(),
-            },
-        }),
-        prisma.user.update({
-            where: { id: userId },
-            data: {
-                isDeleted: true,
-                deletedAt: new Date(),
-                githubToken: null,
-                githubConnected: false,
-                githubUsername: null,
-                vercelAccessToken: null,
-                vercelConnected: false,
-                vercelTeamId: null,
-                vercelConfigurationId: null,
-                supabaseConnected: false,
-                supabaseAccessToken: null,
-                supabaseRefreshToken: null,
-                supabaseTokenExpiresAt: null,
-                supabaseTokenScope: null,
-                supabaseUserId: null,
-                supabaseConnectedAt: null,
-                notionAccessToken: null,
-                notionWorkspaceId: null,
-                notionWorkspaceName: null,
-            },
-            select: {
-                id: true,
-            },
-        }),
-    ])
-}
-
 async function findUserByIdForChatSuggestions(id: string) {
     return prisma.user.findUnique({
         where: { id },
@@ -311,11 +226,7 @@ export const profileRepository = {
     findUserPasswordById,
     updatePassword,
     updateNotifications,
-    findSession,
-    revokeSession,
-    revokeAllSessions,
-    findUserByIdForDeleteCheck,
-    deleteAccount,
+
     findUserByIdForChatSuggestions,
     updateChatSuggestions,
     findUserByIdForGenerationSound,

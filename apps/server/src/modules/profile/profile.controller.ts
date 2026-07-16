@@ -130,46 +130,6 @@ const updateNotifications = asyncHandler(async (req: Request, res: Response) => 
     return sendSuccess(res, 'notifications preferences updated', result)
 })
 
-const signout = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.user?.userId
-    const sessionId = req.user?.sessionId
-
-    if (!userId || !sessionId) {
-        throw new AppError('unauthorized', 401)
-    }
-
-    await profileService.signout({ userId, sessionId })
-    authCookie.clearAuthCookies(res)
-
-    return sendSuccess(res, 'signed out successfully')
-})
-
-const signoutAll = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.user?.userId
-
-    if (!userId) {
-        throw new AppError('unauthorized', 401)
-    }
-
-    await profileService.signoutAll({ userId })
-    authCookie.clearAuthCookies(res)
-
-    return sendSuccess(res, 'signed out from all devices successfully')
-})
-
-const deleteAccount = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.user?.userId
-
-    if (!userId) {
-        throw new AppError('unauthorized', 401)
-    }
-
-    await profileService.deleteAccount({ userId })
-    authCookie.clearAuthCookies(res)
-
-    return sendSuccess(res, 'account deleted successfully')
-})
-
 const chatSuggestions = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user?.userId as string | undefined
 
@@ -277,9 +237,7 @@ export const profileController = {
     updateAvatarUrl,
     changePassword,
     updateNotifications,
-    signout,
-    signoutAll,
-    deleteAccount,
+
     chatSuggestions,
     generationSound,
     getdesign,
