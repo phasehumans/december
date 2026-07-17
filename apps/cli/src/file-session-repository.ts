@@ -2,9 +2,9 @@ import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 
-import { Message } from '@december/shared'
+import { Message, AgentMessage } from '@december/shared'
 
-import { SessionRepository } from './session-repository'
+import { SessionRepository } from '@december/agent'
 
 export interface SessionInfo {
     id: string

@@ -36,7 +36,7 @@ export function useAuth({ initialAuth, userEmail, authMode: initialAuthMode }: a
         if (authMode === 'model_select' && selectedProvider === 'openrouter') {
             fetch('https://openrouter.ai/api/v1/models')
                 .then((res) => res.json())
-                .then((data) => {
+                .then((data: any) => {
                     const models = data.data.map((m: any) => {
                         const isFree = m.pricing?.prompt === '0' && m.pricing?.completion === '0'
                         return {

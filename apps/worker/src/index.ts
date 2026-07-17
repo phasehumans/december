@@ -7,7 +7,7 @@ import { prisma } from '@december/database'
 
 const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379'
 
-const redisConnection = new Redis(REDIS_URL, {
+const redisConnection: any = new Redis(REDIS_URL, {
     maxRetriesPerRequest: null,
 })
 

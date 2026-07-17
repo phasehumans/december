@@ -49,12 +49,6 @@ export const useVerifyRazorpayPayment = () => {
     })
 }
 
-export const useCreateCryptoOrder = () => {
-    return useMutation({
-        mutationFn: billingAPI.createCryptoOrder,
-    })
-}
-
 export const useRedeemCode = () => {
     const queryClient = useQueryClient()
 

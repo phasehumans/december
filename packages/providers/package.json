@@ -4,6 +4,11 @@
     "type": "module",
     "main": "src/index.ts",
     "private": true,
+    "scripts": {
+        "build": "echo 'No build required for providers'",
+        "typecheck": "tsc --noEmit",
+        "test": "bun test"
+    },
     "dependencies": {
         "@december/shared": "workspace:*",
         "@anthropic-ai/sdk": "latest",

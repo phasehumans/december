@@ -15,13 +15,6 @@ export const updateUsernameSchema = z.object({
         .regex(/^[a-z_]+$/, 'username can only contain lowercase letters and underscores'),
 })
 
-export const updateAvatarUrlSchema = z.object({
-    avatarUrl: z
-        .string({ message: 'avatar URL is required' })
-        .url('avatar must be a valid URL')
-        .max(500, 'avatar URL must be at most 500 characters'),
-})
-
 export const changePasswordSchema = z.object({
     currentPassword: z
         .string()
@@ -58,10 +51,4 @@ export enum GenerationSound {
 
 export const generationSoundSchema = z.object({
     generationSound: z.nativeEnum(GenerationSound, { message: 'invalid generation sound option' }),
-})
-
-export const designSchema = z.object({
-    design: z
-        .string({ message: 'design content is required' })
-        .max(10000, 'design must be at most 10000 characters'),
 })

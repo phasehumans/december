@@ -25,7 +25,8 @@
     ],
     "scripts": {
         "build": "bun build ./src/index.ts --target=node --outfile=./dist/december.js",
-        "prepublishOnly": "bun run build"
+        "prepublishOnly": "bun run build",
+        "typecheck": "tsc --noEmit"
     },
     "devDependencies": {
         "@december/agent": "workspace:*",

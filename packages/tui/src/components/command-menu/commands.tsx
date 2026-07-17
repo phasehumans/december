@@ -112,7 +112,7 @@ export const COMMANDS: Command[] = [
 
                 ctx.toast.show({ variant: 'info', message: 'Requesting upload URL...' })
 
-                const configMod = await import('@december/agent')
+                const configMod = (await import('@december/agent')) as any
                 const config = await configMod.loadConfig()
 
                 if (!config.decemberToken) {
@@ -129,7 +129,7 @@ export const COMMANDS: Command[] = [
                     headers: { Authorization: `Bearer ${config.decemberToken}` },
                 })
                 if (!urlRes.ok) throw new Error(await urlRes.text())
-                const { uploadUrl, objectKey } = await urlRes.json()
+                const { uploadUrl, objectKey } = (await urlRes.json()) as any
 
                 ctx.toast.show({ variant: 'info', message: 'Uploading to MinIO...' })
 

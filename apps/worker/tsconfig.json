@@ -1,13 +1,11 @@
 {
     "extends": "../../tsconfig.base.json",
     "compilerOptions": {
-        "jsx": "react-jsx",
-        "jsxImportSource": "react",
-        "types": ["bun"],
         "verbatimModuleSyntax": false,
         "strict": false,
         "strictNullChecks": false,
         "noImplicitAny": false,
         "noImplicitOverride": false
-    }
+    },
+    "include": ["src/**/*"]
 }

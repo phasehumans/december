@@ -1,6 +1,4 @@
 import { Tool, ToolExecuteContext } from '@december/shared'
-
-import { Tool, ToolExecuteContext } from '@december/shared'
 import { Type, Static } from '@sinclair/typebox'
 
 const githubSchema = Type.Object({

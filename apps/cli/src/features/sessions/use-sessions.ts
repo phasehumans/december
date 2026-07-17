@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-import type { SessionInfo } from '@december/agent'
+import type { SessionInfo } from '../../file-session-repository'
 
 export function useSessions() {
     const [sessionItems, setSessionItems] = useState<{ label: string; value: string }[]>([])

@@ -39,14 +39,10 @@ import type {
     GetProfile,
     UpdateName,
     UpdateUsername,
-    UpdateAvatarUrl,
     ChangePassword,
     UpdateNotifications,
     ChatSuggestions,
     UpdateGenerationSoundPayload,
-    Getdesign,
-    Updatedesign,
-    Deletedesign,
     CompleteOnboarding,
 } from './setting.types'
 
@@ -124,10 +120,6 @@ const updateUsername = async (data: UpdateUsername) => {
 
         throw error
     }
-}
-
-const updateAvatarUrl = async (data: UpdateAvatarUrl) => {
-    return { avatarUrl: data.avatarUrl }
 }
 
 const changePassword = async (data: ChangePassword) => {
@@ -249,18 +241,6 @@ const generationSound = async (data: UpdateGenerationSoundPayload) => {
     return updatedUser
 }
 
-const getdesign = async (data: Getdesign) => {
-    return { design: null }
-}
-
-const updatedesign = async (data: Updatedesign) => {
-    return { design: null }
-}
-
-const deletedesign = async (data: Deletedesign) => {
-    // No-op
-}
-
 const completeOnboarding = async (data: CompleteOnboarding) => {
     const { userId } = data
     const existingUser = await settingRepository.findUserByIdForExistCheck(userId)
@@ -279,13 +259,9 @@ export const settingService = {
     getProfile,
     updateName,
     updateUsername,
-    updateAvatarUrl,
     changePassword,
     updateNotifications,
     chatSuggestions,
     generationSound,
-    getdesign,
-    updatedesign,
-    deletedesign,
     completeOnboarding,
 }

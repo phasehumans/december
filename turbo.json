@@ -20,6 +20,14 @@
             "dependsOn": ["^build", "db:generate"],
             "outputs": ["dist/**", "build/**", "target/**"]
         },
+        "typecheck": {
+            "dependsOn": ["db:generate"],
+            "cache": true
+        },
+        "test": {
+            "dependsOn": ["db:generate"],
+            "cache": false
+        },
         "dev": {
             "dependsOn": ["db:generate"],
             "cache": false,
