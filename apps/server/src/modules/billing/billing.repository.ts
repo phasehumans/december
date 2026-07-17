@@ -131,9 +131,9 @@ export const billingRepository = {
                 createdAt: 'desc',
             },
             include: {
-                project: {
+                session: {
                     select: {
-                        name: true,
+                        title: true,
                     },
                 },
             },

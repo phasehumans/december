@@ -1,6 +1,6 @@
 export type Role = 'system' | 'user' | 'assistant' | 'tool' | string
 
-import { Environment } from './environment'
+import type { Environment } from './environment'
 
 export interface ToolExecuteContext {
     operations: Environment
