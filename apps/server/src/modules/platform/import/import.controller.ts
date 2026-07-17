@@ -1,6 +1,6 @@
-import { AppError } from '../../shared/appError'
-import { asyncHandler } from '../../shared/asyncHandler'
-import { sendSuccess } from '../../shared/response'
+import { AppError } from '../../../shared/appError'
+import { asyncHandler } from '../../../shared/asyncHandler'
+import { sendSuccess } from '../../../shared/response'
 
 import { importIdParamSchema, uploadRepoSchema } from './import.schema'
 import { uploadService } from './import.service'

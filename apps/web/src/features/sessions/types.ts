@@ -90,3 +90,8 @@ export interface ProjectShareModalProps {
     onClose: () => void
     onConfirm: (category?: string) => void
 }
+
+export type SessionRenameModalProps = ProjectRenameModalProps
+export type SessionDeleteModalProps = ProjectDeleteModalProps
+export type SessionDuplicateModalProps = ProjectDuplicateModalProps
+export type SessionShareModalProps = ProjectShareModalProps

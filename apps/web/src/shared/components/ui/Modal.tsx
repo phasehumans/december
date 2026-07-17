@@ -30,7 +30,7 @@ export const Modal: React.FC<ModalProps> = ({
             <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 pointer-events-auto">
                 <div className="absolute inset-0 bg-black/75 backdrop-blur-sm" onClick={onClose} />
                 <div
-                    className={`relative w-full ${premiumMaxWidth} bg-[#121211] border border-white/5 rounded-[20px] shadow-2xl overflow-visible animate-in fade-in zoom-in-95 duration-200`}
+                    className={`relative w-full ${premiumMaxWidth} bg-[#1E1E1E] border border-[#272727] rounded-[20px] shadow-2xl overflow-visible animate-in fade-in zoom-in-95 duration-200`}
                 >
                     <button
                         onClick={onClose}
@@ -65,7 +65,7 @@ export const Modal: React.FC<ModalProps> = ({
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 pointer-events-auto">
             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
             <div
-                className={`relative w-full ${maxWidth} bg-[#141414] border border-white/10 rounded-xl shadow-2xl overflow-visible animate-in fade-in zoom-in-95 duration-200`}
+                className={`relative w-full ${maxWidth} bg-[#1E1E1E] border border-[#272727] rounded-xl shadow-2xl overflow-visible animate-in fade-in zoom-in-95 duration-200`}
             >
                 <div className="p-6">
                     <div className="flex items-start justify-between mb-4">

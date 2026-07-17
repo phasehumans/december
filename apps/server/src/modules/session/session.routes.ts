@@ -6,16 +6,17 @@ const sessionRouter = Router()
 
 sessionRouter.use(authMiddleware)
 
-sessionRouter.get('/', sessionController.getSessionsHandler)
-sessionRouter.post('/', sessionController.createSessionHandler)
-sessionRouter.get('/:id', sessionController.getSessionByIdHandler)
-sessionRouter.put('/:id', sessionController.updateSessionHandler)
-sessionRouter.patch('/:id/settings', sessionController.updateSessionSettingsHandler)
-sessionRouter.delete('/:id', sessionController.deleteSessionHandler)
-sessionRouter.post('/:id/duplicate', sessionController.duplicateSessionHandler)
-
-sessionRouter.get('/:id/collaborators', sessionController.getCollaboratorsHandler)
-sessionRouter.post('/:id/collaborators', sessionController.addCollaboratorHandler)
-sessionRouter.delete('/:id/collaborators/:email', sessionController.removeCollaboratorHandler)
+sessionRouter.get('/', sessionController.getSessions)
+sessionRouter.post('/', sessionController.createSession)
+sessionRouter.get('/:id', sessionController.getSessionById)
+sessionRouter.patch('/:id/rename', sessionController.renameSession)
+sessionRouter.patch('/:id/archive', sessionController.archiveSession)
+sessionRouter.patch('/:id/unarchive', sessionController.unarchiveSession)
+sessionRouter.put('/:id/tags', sessionController.updateSessionTags)
+sessionRouter.get('/:id/insights', sessionController.getSessionInsights)
+sessionRouter.delete('/:id', sessionController.deleteSession)
+sessionRouter.get('/:id/collaborators', sessionController.getCollaborators)
+sessionRouter.post('/:id/collaborators', sessionController.addCollaborator)
+sessionRouter.delete('/:id/collaborators/:email', sessionController.removeCollaborator)
 
 export default sessionRouter

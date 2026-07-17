@@ -29,6 +29,8 @@ interface SessionListViewProps {
     onOpenShare: (project: any, event: React.MouseEvent) => void
     onOpenDelete: (project: any, event: React.MouseEvent) => void
     onOpenSettings: (project: any, event: React.MouseEvent) => void
+    onOpenTags: (project: any, event: React.MouseEvent) => void
+    onOpenInsights: (project: any, event: React.MouseEvent) => void
     searchQuery: string
     onSearchChange: (query: string) => void
     sortOption: SortOption
@@ -170,6 +172,8 @@ export const SessionListView: React.FC<SessionListViewProps> = ({
     onOpenShare,
     onOpenDelete,
     onOpenSettings,
+    onOpenTags,
+    onOpenInsights,
     searchQuery,
     onSearchChange,
     sortOption,
@@ -240,7 +244,7 @@ export const SessionListView: React.FC<SessionListViewProps> = ({
             </div>
 
             <div className="relative z-10 mb-4 flex w-full items-center">
-                <div className="relative w-full max-w-[480px]">
+                <div className="relative w-full max-w-[320px]">
                     <Icons.Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#7B7A79]" />
                     <input
                         type="text"
@@ -330,6 +334,8 @@ export const SessionListView: React.FC<SessionListViewProps> = ({
                                     onOpenShare={onOpenShare}
                                     onOpenDelete={onOpenDelete}
                                     onOpenSettings={onOpenSettings}
+                                    onOpenTags={onOpenTags}
+                                    onOpenInsights={onOpenInsights}
                                 />
                             ))}
                         </div>
