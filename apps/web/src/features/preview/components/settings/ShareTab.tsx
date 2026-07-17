@@ -5,7 +5,7 @@ import { PremiumInput } from './SettingsFormControls'
 
 import type { Profile } from '@/features/profile/api/profile'
 
-import { projectAPI, type BackendProject } from '@/features/projects/api/project'
+import { projectAPI, type BackendProject } from '@/features/sessions/api/project'
 
 interface ShareTabProps {
     visibility: 'private' | 'link' | 'public'

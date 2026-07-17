@@ -1,10 +1,10 @@
 import React, { useState } from 'react'
 
-import type { ProjectDeleteModalProps } from '@/features/projects/types'
+import type { SessionDeleteModalProps } from '@/features/sessions/types'
 
 import { Modal } from '@/shared/components/ui/Modal'
 
-export const ProjectDeleteModal: React.FC<ProjectDeleteModalProps> = ({
+export const SessionDeleteModal: React.FC<SessionDeleteModalProps> = ({
     isOpen,
     projectTitle,
     isPending,

@@ -2,7 +2,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import React from 'react'
 
 import { CanvasPage } from '../../features/canvas/components/CanvasPage'
-import { ReviewPage } from '../../features/projects/components/ReviewPage'
+import { ReviewPage } from '../../features/sessions/components/ReviewPage'
 
 import type { ViewState } from '@/app/types'
 import type { PreviewRuntimeError, PreviewSelectedElement } from '@/features/preview/types'
@@ -11,8 +11,7 @@ import { DocsView } from '@/features/docs/components/DocsView'
 import { HomeHero } from '@/features/home/components/HomeHero'
 import { OutputScreen } from '@/features/preview/components/OutputScreen'
 import { ProfileSettings } from '@/features/profile/components/ProfileSettings'
-import { ProjectList } from '@/features/projects/components/ProjectList'
-import { SessionList } from '@/features/projects/components/SessionList'
+import { SessionList } from '@/features/sessions/components/SessionList'
 import { TemplatesView } from '@/features/templates/components/TemplatesView'
 
 interface AppContentViewProps {
@@ -93,17 +92,6 @@ export const AppContentView: React.FC<AppContentViewProps> = ({
 }) => {
     return (
         <AnimatePresence mode="wait" initial={false}>
-            {view === 'all-projects' && (
-                <AnimatedPage pageKey="all-projects">
-                    <ProjectList
-                        onNewProject={onNewProject}
-                        onOpenProject={onOpenProject}
-                        selectedModel={selectedModel}
-                        setSelectedModel={setSelectedModel}
-                    />
-                </AnimatedPage>
-            )}
-
             {view === 'sessions' && (
                 <AnimatedPage pageKey="sessions">
                     <SessionList

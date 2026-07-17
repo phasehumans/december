@@ -13,7 +13,22 @@ import type { Request, Response } from 'express'
 
 export const getSessionsHandler = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user!.userId
-    const sessions = await sessionService.getUserSessions(userId)
+
+    const filters: import('./session.types').SessionFilters = {}
+    if (req.query.type) filters.type = req.query.type as 'WEB' | 'CLI' | 'SEARCH'
+    if (req.query.isArchived) filters.isArchived = req.query.isArchived === 'true'
+    if (req.query.isPinned) filters.isPinned = req.query.isPinned === 'true'
+    if (req.query.tags) {
+        const tagsRaw = req.query.tags as string
+        filters.tags = tagsRaw
+            .split(',')
+            .map((t) => t.trim())
+            .filter(Boolean)
+    }
+    if (req.query.sortBy) filters.sortBy = req.query.sortBy as 'updatedAt' | 'createdAt'
+    if (req.query.sortOrder) filters.sortOrder = req.query.sortOrder as 'asc' | 'desc'
+
+    const sessions = await sessionService.getUserSessions(userId, filters)
     return sendSuccess(res, 'sessions fetched successfully', { sessions })
 })
 

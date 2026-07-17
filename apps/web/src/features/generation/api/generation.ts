@@ -3,7 +3,7 @@ import type {
     BackendProject,
     BackendMessage,
     BackendProjectVersionSummary,
-} from '@/features/projects/api/project'
+} from '@/features/sessions/api/project'
 
 import { ApiError, apiFetch } from '@/shared/api/client'
 

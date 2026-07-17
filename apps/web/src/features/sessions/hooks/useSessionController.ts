@@ -7,7 +7,7 @@ import { toProjectSlug, type ViewState } from '@/app/types'
 import { createEmptyCanvasDocument } from '@/features/canvas/types'
 import { mapBackendMessageToUIMessage } from '@/features/chat/utils'
 import { importsAPI, type ProjectImportStatus } from '@/features/home/api'
-import { projectAPI, type BackendProjectDetail } from '@/features/projects/api/project'
+import { projectAPI, type BackendProjectDetail } from '@/features/sessions/api/project'
 
 const getImportStatusMessage = (status: ProjectImportStatus) => {
     if (status.errorMessage) return status.errorMessage
@@ -19,7 +19,7 @@ const getImportStatusMessage = (status: ProjectImportStatus) => {
     return 'Import failed'
 }
 
-export const useProjectController = (
+export const useSessionController = (
     view: ViewState,
     abortGenerationRequest: () => void,
     resetGenerationRefs: () => void,

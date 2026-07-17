@@ -2,7 +2,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronDown, Check } from 'lucide-react'
 import React, { useState, useRef, useEffect } from 'react'
 
-import type { ProjectShareModalProps } from '@/features/projects/types'
+import type { SessionShareModalProps } from '@/features/sessions/types'
 
 import { Modal } from '@/shared/components/ui/Modal'
 
@@ -15,7 +15,7 @@ const CATEGORIES = [
     { id: 'ECOMMERCE', label: 'E-commerce' },
 ]
 
-export const ProjectShareModal: React.FC<ProjectShareModalProps> = ({
+export const SessionShareModal: React.FC<SessionShareModalProps> = ({
     isOpen,
     projectTitle,
     isSharedAsTemplate,

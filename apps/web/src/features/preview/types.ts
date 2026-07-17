@@ -1,4 +1,4 @@
-import type { BackendProjectVersionSummary } from '@/features/projects/api/project'
+import type { BackendProjectVersionSummary } from '@/features/sessions/api/project'
 import type { RefObject } from 'react'
 
 export type PreviewDevice = 'desktop' | 'mobile' | 'tablet'
