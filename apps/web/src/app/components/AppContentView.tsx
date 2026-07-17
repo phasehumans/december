@@ -170,44 +170,6 @@ export const AppContentView: React.FC<AppContentViewProps> = ({
                         />
                     </AnimatedPage>
                 ))}
-
-            {view === 'project' && (
-                <AnimatedPage pageKey="project-output">
-                    <OutputScreen
-                        onBack={onBackFromOutput}
-                        onPromptSubmit={(prompt, options) =>
-                            onOutputPromptSubmit(prompt, options?.selectedElement)
-                        }
-                        onRuntimeError={onPreviewRuntimeError}
-                        messages={messages}
-                        generatedFiles={generatedFiles}
-                        activeFilesToDisplay={activeFilesToDisplay}
-                        activeGeneratedFilePath={activeGeneratedFilePath}
-                        generationPhase={generationPhase}
-                        activeOperation={activeOperation}
-                        isGenerating={isGenerating}
-                        projectName={projectName}
-                        projectId={activeProjectId}
-                        canvasState={canvasState}
-                        onCanvasStateChange={onCanvasStateChange}
-                        versions={projectVersions}
-                        activeVersionId={activeProjectVersionId}
-                        isVersionLoading={isProjectOpening}
-                        onSelectVersion={onSelectVersion}
-                        onDownload={onDownloadProject}
-                        previewSession={previewSession}
-                        projectType={projectType}
-                        previewSessionError={
-                            importState.status === 'failed'
-                                ? importState.message || 'Import failed'
-                                : previewSessionError
-                        }
-                        selectedModel={selectedModel}
-                        setSelectedModel={setSelectedModel}
-                        onOpenFile={onOpenFile}
-                    />
-                </AnimatedPage>
-            )}
         </AnimatePresence>
     )
 }

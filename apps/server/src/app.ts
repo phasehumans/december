@@ -23,7 +23,6 @@ import sessionRouter from './modules/session/session.routes'
 import skillsRouter from './modules/skills/skills.routes'
 import usageRouter from './modules/usage/usage.routes'
 import wikiRouter from './modules/wiki/wiki.routes'
-import generateRouter from './modules/generate/generate.routes'
 
 const app = express()
 
@@ -66,7 +65,6 @@ app.use('/api/v1/session', sessionRouter)
 app.use('/api/v1/secrets', secretsRouter)
 
 app.use('/api/v1/core', coreRouter)
-app.use('/api/v1/generate', generateRouter)
 app.use(errorHandler)
 
 export default app

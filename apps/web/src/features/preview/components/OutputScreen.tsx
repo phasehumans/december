@@ -30,7 +30,7 @@ export const OutputScreen: React.FC<OutputScreenProps> = ({
     const {
         messages,
         generatedFiles,
-        activeFilesToDisplay,
+        currentGenerationFilePaths,
         activeGeneratedFilePath,
         generationPhase,
         activeOperation,
@@ -50,15 +50,25 @@ export const OutputScreen: React.FC<OutputScreenProps> = ({
         setSelectedModel,
     } = useAppStore()
 
+    const activeFilesToDisplay = React.useMemo(() => {
+        if (!currentGenerationFilePaths || currentGenerationFilePaths.length === 0)
+            return generatedFiles
+        const filtered: Record<string, any> = {}
+        for (const path of currentGenerationFilePaths) {
+            if (generatedFiles[path]) filtered[path] = generatedFiles[path]
+        }
+        return filtered
+    }, [generatedFiles, currentGenerationFilePaths])
+
     const { data: overview } = useQuery({
         queryKey: ['billing-overview'],
         queryFn: billingAPI.getOverview,
         staleTime: 10 * 1000,
     })
 
-    const remainingInCents = overview?.credits?.remainingInCents ?? 100
-    const unlimited = overview?.credits?.unlimited ?? false
-    const isPro = overview?.plan === 'PRO'
+    const remainingInCents = (overview as any)?.credits?.remainingInCents ?? 100
+    const unlimited = (overview as any)?.credits?.unlimited ?? false
+    const isPro = (overview as any)?.plan === 'PRO'
 
     const isOutOfCredits = !unlimited && overview !== undefined && remainingInCents === 0
     const showLowCreditsWarning = !unlimited && remainingInCents > 0 && remainingInCents < 10

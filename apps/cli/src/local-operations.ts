@@ -25,7 +25,7 @@ export const localOperations: PlatformAdapter = {
         killTask: async (taskId) => {
             return taskManager.killTask(taskId)
         },
-    },
+    } as any,
     fs: {
         readFile: async (filepath) => {
             return fs.readFile(path.resolve(process.cwd(), filepath), 'utf8')

@@ -64,7 +64,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
         )
     }
 
-    const allFilesArray = generatedFiles ? Object.values(generatedFiles) : []
+    const allFilesArray = generatedFiles ? (Object.values(generatedFiles) as any[]) : []
     const filesArray =
         appliedFiles && appliedFiles.length > 0
             ? allFilesArray.filter((f: any) => appliedFiles.includes(f.path))

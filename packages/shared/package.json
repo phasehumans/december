@@ -5,6 +5,11 @@
     "main": "src/index.ts",
     "types": "src/index.ts",
     "private": true,
+    "scripts": {
+        "build": "echo 'No build required for shared'",
+        "typecheck": "tsc --noEmit",
+        "test": "bun test"
+    },
     "dependencies": {
         "bullmq": "5.80.2",
         "ioredis": "5.11.1"

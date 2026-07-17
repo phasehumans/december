@@ -18,11 +18,6 @@ export type UpdateUsername = {
     username: string
 }
 
-export type UpdateAvatarUrl = {
-    userId: string
-    avatarUrl: string
-}
-
 export type ChangePassword = {
     userId: string
     currentPassword?: string
@@ -44,19 +39,6 @@ export type ChatSuggestions = {
 export type UpdateGenerationSoundPayload = {
     userId: string
     generationSound: GenerationSoundEnum
-}
-
-export type Getdesign = {
-    userId: string
-}
-
-export type Updatedesign = {
-    userId: string
-    design: string
-}
-
-export type Deletedesign = {
-    userId: string
 }
 
 export type CompleteOnboarding = {

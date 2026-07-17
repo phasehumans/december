@@ -1,4 +1,5 @@
 import { usePromptInputController } from '@/features/home/hooks/usePromptInputController'
+import type { PromptInputProps } from '@/features/home/types'
 import { Icons } from '@/shared/components/ui/Icons'
 import { PromptFooter } from '@/shared/components/ui/PromptFooter'
 

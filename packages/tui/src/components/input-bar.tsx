@@ -28,6 +28,7 @@ type Props = {
     onInterrupt?: () => void
     onCopy?: () => void
     contextTokens?: number
+    history?: string[]
 }
 
 export function InputBar({

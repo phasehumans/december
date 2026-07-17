@@ -29,7 +29,10 @@ export const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({
     const generatedFileContents = React.useMemo(
         () =>
             Object.fromEntries(
-                Object.entries(generatedFiles ?? {}).map(([path, file]) => [path, file.content])
+                Object.entries(generatedFiles ?? {}).map(([path, file]) => [
+                    path,
+                    (file as any).content,
+                ])
             ),
         [generatedFiles]
     )

@@ -58,7 +58,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         handleCreatePassword,
     } = useAuthModalController({
         isOpen,
-        initialMode,
+        initialMode: initialMode as any,
         onAuthSuccess,
     })
 

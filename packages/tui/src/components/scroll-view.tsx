@@ -10,7 +10,9 @@ export function ScrollView({ children, height }: { children: React.ReactNode; he
         if (!stdout || typeof stdout.on !== 'function') return
         const handleResize = () => setRows(stdout.rows)
         stdout.on('resize', handleResize)
-        return () => stdout.off('resize', handleResize)
+        return () => {
+            stdout.off('resize', handleResize)
+        }
     }, [stdout])
 
     useInput((input, key) => {

@@ -187,7 +187,7 @@ async function runInnerLoop(agent: Agent, eventQueue: AsyncQueue<AgentEvent>, si
         eventQueue.push({ type: 'TurnEnd' })
 
         if (agent.hooks?.prepareNextTurn) {
-            const nextTurn = await agent.hooks.prepareNextTurn()
+            const nextTurn = (await agent.hooks.prepareNextTurn()) as any
             if (nextTurn?.modelOptions)
                 agent.modelOptions = { ...agent.modelOptions, ...nextTurn.modelOptions }
             if (nextTurn?.systemPrompt) agent.systemPrompt = nextTurn.systemPrompt

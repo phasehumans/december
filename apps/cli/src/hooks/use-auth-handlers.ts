@@ -65,7 +65,7 @@ export function useAuthHandlers(
 
                 const providerConfig = await getProviderConfig()
                 if (providerConfig) {
-                    const provider = openrouterProvider(providerConfig.apiKey)
+                    const provider = instantiateProvider('openrouter', providerConfig.apiKey)
                     agent.setLLM(provider)
                     setIsAuthenticated(true)
                 }

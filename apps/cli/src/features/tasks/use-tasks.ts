@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-import type { BackgroundTask } from '@december/agent'
+import type { BackgroundTask } from '../../task-manager'
 
 export function useTasks() {
     const [tasksData, setTasksData] = useState<BackgroundTask[]>([])
