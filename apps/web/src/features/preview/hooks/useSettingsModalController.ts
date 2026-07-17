@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 
 import { toProjectSlug } from '@/app/types'
 import { profileAPI, type Profile } from '@/features/profile/api/profile'
-import { projectAPI } from '@/features/projects/api/project'
+import { projectAPI } from '@/features/sessions/api/project'
 import { API_BASE_URL } from '@/shared/api/client'
 
 export const useSettingsModalController = (

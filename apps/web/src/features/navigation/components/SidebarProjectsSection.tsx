@@ -3,7 +3,7 @@ import React from 'react'
 import { SidebarProjectItem } from './SidebarProjectItem'
 import { SidebarSectionHeader } from './SidebarSectionHeader'
 
-import type { Project } from '@/features/projects/types'
+import type { Project } from '@/features/sessions/types'
 
 import { Skeleton } from '@/shared/components/ui/Skeleton'
 

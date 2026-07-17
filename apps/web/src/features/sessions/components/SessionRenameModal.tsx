@@ -1,10 +1,10 @@
 import React, { useState } from 'react'
 
-import type { ProjectRenameModalProps } from '@/features/projects/types'
+import type { SessionRenameModalProps } from '@/features/sessions/types'
 
 import { Modal } from '@/shared/components/ui/Modal'
 
-export const ProjectRenameModal: React.FC<ProjectRenameModalProps> = ({
+export const SessionRenameModal: React.FC<SessionRenameModalProps> = ({
     isOpen,
     value,
     isPending,

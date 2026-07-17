@@ -12,7 +12,7 @@ import type {
     PreviewSessionStatus,
     PreviewTab,
 } from '@/features/preview/types'
-import type { BackendProjectVersionSummary } from '@/features/projects/api/project'
+import type { BackendProjectVersionSummary } from '@/features/sessions/api/project'
 
 import Canvas from '@/features/canvas/components/Canvas'
 

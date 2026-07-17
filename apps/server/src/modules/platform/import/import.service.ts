@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
 
-import { AppError } from '../../shared/appError'
-import { publishPreviewManifest } from '../../shared/preview-manifest'
+import { AppError } from '../../../shared/appError'
+import { publishPreviewManifest } from '../../../shared/preview-manifest'
 import {
     deletePrefix,
     importObjectKey,
@@ -11,8 +11,8 @@ import {
     storageBucket,
     sessionWorkspaceKey,
     sessionWorkspacePrefix,
-} from '../../shared/project-storage'
-import { runtimeService } from '../runtime/runtime.service'
+} from '../../../shared/project-storage'
+import { runtimeService } from '../../runtime/runtime.service'
 
 import { downloadGitHubRepoArchive } from './downloadzip'
 import { importRepository } from './import.repository'
@@ -38,8 +38,8 @@ import type {
     ProcessGithubImportParams,
     FailImportParams,
 } from './import.types'
-import type { PreviewManifestFile } from '../../shared/preview-manifest.types'
-import type { RuntimePreviewStatus } from '../runtime/runtime.types'
+import type { PreviewManifestFile } from '../../../shared/preview-manifest.types'
+import type { RuntimePreviewStatus } from '../../runtime/runtime.types'
 
 const publicImportSelect = {
     id: true,

@@ -1,4 +1,4 @@
-import type { BackendProject } from '@/features/projects/api/project'
+import type { BackendProject } from '@/features/sessions/api/project'
 
 import { apiRequest } from '@/shared/api/client'
 

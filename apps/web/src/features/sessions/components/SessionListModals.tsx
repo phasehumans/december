@@ -1,10 +1,12 @@
 import React from 'react'
 
-import { ProjectDeleteModal } from './ProjectDeleteModal'
-import { ProjectDuplicateModal } from './ProjectDuplicateModal'
-import { ProjectOpenConfirmModal } from './ProjectOpenConfirmModal'
-import { ProjectRenameModal } from './ProjectRenameModal'
-import { ProjectShareModal } from './ProjectShareModal'
+import { SessionDeleteModal } from './SessionDeleteModal'
+import { SessionDuplicateModal } from './SessionDuplicateModal'
+import { SessionOpenConfirmModal } from './SessionOpenConfirmModal'
+import { SessionRenameModal } from './SessionRenameModal'
+import { SessionShareModal } from './SessionShareModal'
+import { SessionTagsModal } from './SessionTagsModal'
+import { SessionInsightsModal } from './SessionInsightsModal'
 
 import type {
     DeleteModalState,
@@ -12,18 +14,21 @@ import type {
     RenameModalState,
     ShareModalState,
     Project,
-} from '@/features/projects/types'
+} from '@/features/sessions/types'
 
-interface ProjectListModalsProps {
+interface SessionListModalsProps {
     renameModal: RenameModalState
     duplicateModal: DuplicateModalState
     shareModal: ShareModalState
     deleteModal: DeleteModalState
     openConfirmModal: { isOpen: boolean; project: Project | null }
+    tagsModal: { isOpen: boolean; project: any | null }
+    insightsModal: { isOpen: boolean; project: any | null }
     isRenamePending: boolean
     isDuplicatePending: boolean
     isSharePending: boolean
     isDeletePending: boolean
+    isTagsPending: boolean
     onCloseRename: () => void
     onRenameChange: (nextValue: string) => void
     onRenameSubmit: (event: React.FormEvent) => void
@@ -35,18 +40,24 @@ interface ProjectListModalsProps {
     onDeleteConfirm: () => void
     onCloseOpenConfirm: () => void
     onOpenConfirm: () => void
+    onCloseTags: () => void
+    onSaveTags: (tags: string[]) => void
+    onCloseInsights: () => void
 }
 
-export const ProjectListModals: React.FC<ProjectListModalsProps> = ({
+export const SessionListModals: React.FC<SessionListModalsProps> = ({
     renameModal,
     duplicateModal,
     shareModal,
     deleteModal,
     openConfirmModal,
+    tagsModal,
+    insightsModal,
     isRenamePending,
     isDuplicatePending,
     isSharePending,
     isDeletePending,
+    isTagsPending,
     onCloseRename,
     onRenameChange,
     onRenameSubmit,
@@ -58,10 +69,13 @@ export const ProjectListModals: React.FC<ProjectListModalsProps> = ({
     onDeleteConfirm,
     onCloseOpenConfirm,
     onOpenConfirm,
+    onCloseTags,
+    onSaveTags,
+    onCloseInsights,
 }) => {
     return (
         <>
-            <ProjectRenameModal
+            <SessionRenameModal
                 isOpen={renameModal.isOpen}
                 value={renameModal.value}
                 isPending={isRenamePending}
@@ -70,7 +84,7 @@ export const ProjectListModals: React.FC<ProjectListModalsProps> = ({
                 onSubmit={onRenameSubmit}
             />
 
-            <ProjectDuplicateModal
+            <SessionDuplicateModal
                 isOpen={duplicateModal.isOpen}
                 projectTitle={duplicateModal.project?.title}
                 isPending={isDuplicatePending}
@@ -78,7 +92,7 @@ export const ProjectListModals: React.FC<ProjectListModalsProps> = ({
                 onConfirm={onDuplicateConfirm}
             />
 
-            <ProjectShareModal
+            <SessionShareModal
                 isOpen={shareModal.isOpen}
                 projectTitle={shareModal.project?.title}
                 isSharedAsTemplate={shareModal.project?.isSharedAsTemplate ?? false}
@@ -87,7 +101,7 @@ export const ProjectListModals: React.FC<ProjectListModalsProps> = ({
                 onConfirm={onShareConfirm}
             />
 
-            <ProjectDeleteModal
+            <SessionDeleteModal
                 isOpen={deleteModal.isOpen}
                 projectTitle={deleteModal.project?.title}
                 isPending={isDeletePending}
@@ -95,11 +109,25 @@ export const ProjectListModals: React.FC<ProjectListModalsProps> = ({
                 onConfirm={onDeleteConfirm}
             />
 
-            <ProjectOpenConfirmModal
+            <SessionOpenConfirmModal
                 isOpen={openConfirmModal.isOpen}
                 projectTitle={openConfirmModal.project?.title}
                 onClose={onCloseOpenConfirm}
                 onConfirm={onOpenConfirm}
+            />
+
+            <SessionTagsModal
+                isOpen={tagsModal.isOpen}
+                session={tagsModal.project}
+                isPending={isTagsPending}
+                onClose={onCloseTags}
+                onSave={onSaveTags}
+            />
+
+            <SessionInsightsModal
+                isOpen={insightsModal.isOpen}
+                session={insightsModal.project}
+                onClose={onCloseInsights}
             />
         </>
     )

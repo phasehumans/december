@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react'
 
-import type { ProjectDuplicateModalProps } from '@/features/projects/types'
+import type { SessionDuplicateModalProps } from '@/features/sessions/types'
 
 import { Modal } from '@/shared/components/ui/Modal'
 
-export const ProjectDuplicateModal: React.FC<ProjectDuplicateModalProps> = ({
+export const SessionDuplicateModal: React.FC<SessionDuplicateModalProps> = ({
     isOpen,
     projectTitle,
     isPending,

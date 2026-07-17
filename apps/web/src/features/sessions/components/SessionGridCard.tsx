@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 
-import type { ProjectListRowProps } from '@/features/projects/types'
+import type { ProjectListRowProps } from '@/features/sessions/types'
 
 import { API_BASE_URL } from '@/shared/api/client'
 import { Icons } from '@/shared/components/ui/Icons'
