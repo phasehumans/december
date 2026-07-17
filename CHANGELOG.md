@@ -1,4 +1,4 @@
-## [unreleased]
+## [0.2.13] - 2026-07-17
 
 ### Features
 
@@ -15,6 +15,10 @@
 ### Refactor
 
 - _(lint)_ Lint check
+
+### Miscellaneous Tasks
+
+- _(release)_ V0.2.13
 
 ## [0.2.12] - 2026-07-17
 
