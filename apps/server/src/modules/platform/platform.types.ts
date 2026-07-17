@@ -1,9 +1,9 @@
-export type DeployProject = {
-    projectId: string
+import type { Response } from 'express'
+
+export type DeploySession = {
+    sessionId: string
     userId: string
 }
-
-import type { Response } from 'express'
 
 export type CreateVercelProject = {
     userId: string
@@ -57,7 +57,7 @@ export type GithubRepo = {
 
 export type CreateRepo = {
     userId: string
-    projectId: string
+    sessionId: string
     name: string
     private: boolean
     description?: string
@@ -65,18 +65,18 @@ export type CreateRepo = {
 
 export type UpdateRepo = {
     userId: string
-    projectId: string
+    sessionId: string
     commitMessage?: string
 }
 
-export type UnlinkProject = {
+export type UnlinkSession = {
     userId: string
-    projectId: string
+    sessionId: string
 }
 
 export type SyncEnvVars = {
     userId: string
-    projectId: string
+    sessionId: string
     keys?: string[]
 }
 

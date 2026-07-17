@@ -65,11 +65,10 @@ export const webClipRequestSchema = z.object({
             (value) => value.startsWith('http://') || value.startsWith('https://'),
             'URL must start with http:// or https://'
         ),
-    projectId: z.string().uuid().optional(),
+    sessionId: z.string().uuid().optional(),
 })
 
 export const saveCanvasSchema = z.object({
-    projectId: z.string().uuid(),
-    versionId: z.string().uuid().optional(),
+    sessionId: z.string().uuid(),
     canvasState: canvasDocumentSchema,
 })

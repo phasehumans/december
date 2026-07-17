@@ -12,20 +12,6 @@ async function findUserByIdForInfo(id: string) {
     })
 }
 
-async function findUserByIdForCard(id: string) {
-    return prisma.user.findUnique({
-        where: { id },
-        select: {
-            id: true,
-            name: true,
-            username: true,
-            email: true,
-            avatarUrl: true,
-            createdAt: true,
-        },
-    })
-}
-
 async function findUserByIdForProfile(id: string, selectFields: Prisma.UserSelect) {
     return prisma.user.findUnique({
         where: { id },
@@ -80,16 +66,6 @@ async function updateUsername(id: string, username: string) {
         data: { username },
         select: {
             username: true,
-        },
-    })
-}
-
-async function updateAvatarUrl(id: string, avatarUrl: string) {
-    return prisma.user.update({
-        where: { id },
-        data: { avatarUrl },
-        select: {
-            avatarUrl: true,
         },
     })
 }
@@ -169,35 +145,6 @@ async function updateGenerationSound(
     })
 }
 
-async function getUserDesign(id: string) {
-    return prisma.user.findUnique({
-        where: { id },
-        select: {
-            design: true,
-        },
-    })
-}
-
-async function updateUserDesign(id: string, design: string) {
-    return prisma.user.update({
-        where: { id },
-        data: { design },
-        select: {
-            design: true,
-        },
-    })
-}
-
-async function deleteUserDesign(id: string) {
-    return prisma.user.update({
-        where: { id },
-        data: { design: null },
-        select: {
-            id: true,
-        },
-    })
-}
-
 async function updateCompleteOnboarding(id: string) {
     return prisma.user.update({
         where: { id },
@@ -209,31 +156,22 @@ async function updateCompleteOnboarding(id: string) {
     })
 }
 
-async function createFeedback(data: Prisma.FeedbackUncheckedCreateInput) {
-    return prisma.feedback.create({ data })
-}
-
-export const profileRepository = {
+export const settingRepository = {
     findUserByIdForInfo,
-    findUserByIdForCard,
     findUserByIdForProfile,
     findUserByIdForExistCheck,
     findUserByIdForUsernameCheck,
     findUserByUsername,
     updateUserName,
     updateUsername,
-    updateAvatarUrl,
+
     findUserPasswordById,
     updatePassword,
     updateNotifications,
-
     findUserByIdForChatSuggestions,
     updateChatSuggestions,
     findUserByIdForGenerationSound,
     updateGenerationSound,
-    getUserDesign,
-    updateUserDesign,
-    deleteUserDesign,
+
     updateCompleteOnboarding,
-    createFeedback,
 }

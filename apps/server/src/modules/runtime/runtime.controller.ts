@@ -75,7 +75,7 @@ const receiveRuntimeStatus = asyncHandler(async (req: Request, res: Response) =>
         previewId: parseParams.id,
         status: {
             previewId: parseBody.previewId,
-            projectId: parseBody.projectId,
+            sessionId: parseBody.projectId,
             state: parseBody.state,
             backendStatus: parseBody.status,
             currentVersion: parseBody.currentVersion ?? null,

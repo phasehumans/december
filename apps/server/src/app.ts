@@ -11,18 +11,16 @@ import cliRouter from './modules/cli/cli.routes'
 import coreRouter from './modules/core/core.routes'
 import importRouter from './modules/import/import.routes'
 import integrationsRouter from './modules/integration/integration.routes'
-import mcpRouter from './modules/mcp/mcp.routes'
 import notificationRouter from './modules/notification/notification.routes'
 import platformRouter from './modules/platform/platform.routes'
-import profileRouter from './modules/profile/profile.routes'
-import projectRouter from './modules/project/project.routes'
+import settingRouter from './modules/setting/setting.routes'
+
 import reviewRouter from './modules/review/review.routes'
 import runtimeRouter from './modules/runtime/runtime.routes'
 import scheduleRouter from './modules/schedule/schedule.routes'
 import secretsRouter from './modules/secrets/secrets.routes'
 import sessionRouter from './modules/session/session.routes'
 import skillsRouter from './modules/skills/skills.routes'
-import templateRouter from './modules/template/template.routes'
 import usageRouter from './modules/usage/usage.routes'
 import wikiRouter from './modules/wiki/wiki.routes'
 import generateRouter from './modules/generate/generate.routes'
@@ -49,13 +47,12 @@ import { apiRateLimiter } from './middleware/rate-limiter'
 app.use('/socket.io', apiRateLimiter)
 
 app.use('/api/v1/auth', authRouter)
-app.use('/api/v1/profile', profileRouter)
-app.use('/api/v1/project', projectRouter)
+app.use('/api/v1/setting', settingRouter)
+
 app.use('/api/v1/canvas', canvasRouter)
 app.use('/api/v1/runtime', runtimeRouter)
 app.use('/api/v1/upload', importRouter)
 app.use('/api/v1/usage', usageRouter)
-app.use('/api/v1/template', templateRouter)
 app.use('/api/v1/integrations', integrationsRouter)
 app.use('/api/v1/notification', notificationRouter)
 app.use('/api/v1/billing', billingRouter)
@@ -63,7 +60,6 @@ app.use('/api/v1/platform', platformRouter)
 app.use('/api/v1/cli', cliRouter)
 app.use('/api/v1/review', reviewRouter)
 app.use('/api/v1/skills', skillsRouter)
-app.use('/api/v1/mcp', mcpRouter)
 app.use('/api/v1/wiki', wikiRouter)
 app.use('/api/v1/schedule', scheduleRouter)
 app.use('/api/v1/session', sessionRouter)

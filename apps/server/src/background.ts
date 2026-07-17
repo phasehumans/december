@@ -15,7 +15,7 @@ const minioWipeWorker = new Worker(
         console.log(`[Background] Executing minio_wipe for prefix: ${prefix}`)
         await deletePrefix(prefix)
     },
-    { connection: redisConnection }
+    { connection: redisConnection as any }
 )
 
 minioWipeWorker.on('failed', (job, err) => {
@@ -23,7 +23,7 @@ minioWipeWorker.on('failed', (job, err) => {
 })
 
 // Setup sweep_cron worker
-const sweepQueue = new Queue('sweep_jobs', { connection: redisConnection })
+const sweepQueue = new Queue('sweep_jobs', { connection: redisConnection as any })
 // add repeatable job running daily
 sweepQueue.add('daily_sweep', {}, { repeat: { pattern: '0 0 * * *' } })
 
@@ -42,7 +42,7 @@ const sweepWorker = new Worker(
             })
         }
     },
-    { connection: redisConnection }
+    { connection: redisConnection as any }
 )
 
 console.log('[Background] Background workers initialized.')

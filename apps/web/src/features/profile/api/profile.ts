@@ -146,79 +146,79 @@ const buildUrl = (baseUrl: string, params: Record<string, string>) => {
 }
 
 const getProfile = () => {
-    return apiRequest<BackendProfile>('/profile')
+    return apiRequest<BackendProfile>('/setting')
 }
 
 const updateName = (data: UpdateNameInput) => {
-    return apiRequest<BackendProfile>('/profile/name', {
+    return apiRequest<BackendProfile>('/setting/name', {
         method: 'PATCH',
         body: JSON.stringify(data),
     })
 }
 
 const updateUsername = (data: UpdateUsernameInput) => {
-    return apiRequest<BackendProfile>('/profile/username', {
+    return apiRequest<BackendProfile>('/setting/username', {
         method: 'PATCH',
         body: JSON.stringify(data),
     })
 }
 
 const updateAvatarUrl = (data: UpdateAvatarUrlInput) => {
-    return apiRequest<BackendProfile>('/profile/avatar', {
+    return apiRequest<BackendProfile>('/setting/avatar', {
         method: 'PATCH',
         body: JSON.stringify(data),
     })
 }
 
 const changePassword = (data: ChangePasswordInput) => {
-    return apiRequest<BackendProfile>('/profile/password', {
+    return apiRequest<BackendProfile>('/setting/password', {
         method: 'PATCH',
         body: JSON.stringify(data),
     })
 }
 
 const updateNotifications = (data: UpdateNotificationInput) => {
-    return apiRequest<BackendProfile>('/profile/notifications', {
+    return apiRequest<BackendProfile>('/setting/notifications', {
         method: 'PATCH',
         body: JSON.stringify(data),
     })
 }
 
 const updateChatSuggestions = (data: UpdateChatSuggestionsInput) => {
-    return apiRequest<BackendProfile>('/profile/suggestions', {
+    return apiRequest<BackendProfile>('/setting/suggestions', {
         method: 'POST',
         body: JSON.stringify(data),
     })
 }
 
 const updateGenerationSound = (data: UpdateGenerationSoundInput) => {
-    return apiRequest<BackendProfile>('/profile/sound', {
+    return apiRequest<BackendProfile>('/setting/sound', {
         method: 'POST',
         body: JSON.stringify(data),
     })
 }
 
 const getQuickInfo = () => {
-    return apiRequest<BackendQuickInfo>('/profile/info').then((info) => ({
+    return apiRequest<BackendQuickInfo>('/setting/me').then((info) => ({
         fullName: info.fullName,
         githubConnected: info.isGithubConnected,
     }))
 }
 
 const signout = () => {
-    return apiRequest<void>('/profile/signout', {
+    return apiRequest<void>('/auth/signout', {
         method: 'POST',
     })
 }
 
 const signoutAll = () => {
-    return apiRequest<void>('/profile/signout/all', {
+    return apiRequest<void>('/auth/signout/all', {
         method: 'POST',
     })
 }
 
 const deleteAccount = () => {
-    return apiRequest<void>('/profile', {
+    return apiRequest<void>('/auth/account', {
         method: 'DELETE',
     })
 }
@@ -230,18 +230,18 @@ type UpdateMemoriesInput = {
 }
 
 const getMemories = () => {
-    return apiRequest<{ memories: string | null }>('/profile/memories')
+    return apiRequest<{ memories: string | null }>('/setting/memories')
 }
 
 const updateMemories = (data: UpdateMemoriesInput) => {
-    return apiRequest<{ memories: string | null }>('/profile/memories', {
+    return apiRequest<{ memories: string | null }>('/setting/memories', {
         method: 'POST',
         body: JSON.stringify(data),
     })
 }
 
 const deleteMemories = () => {
-    return apiRequest<void>('/profile/memories', {
+    return apiRequest<void>('/setting/memories', {
         method: 'DELETE',
     })
 }
@@ -253,18 +253,18 @@ type UpdatedesignInput = {
 }
 
 const getdesign = () => {
-    return apiRequest<{ design: string | null }>('/profile/design')
+    return apiRequest<{ design: string | null }>('/setting/design')
 }
 
 const updatedesign = (data: UpdatedesignInput) => {
-    return apiRequest<{ design: string | null }>('/profile/design', {
+    return apiRequest<{ design: string | null }>('/setting/design', {
         method: 'POST',
         body: JSON.stringify(data),
     })
 }
 
 const deletedesign = () => {
-    return apiRequest<void>('/profile/design', {
+    return apiRequest<void>('/setting/design', {
         method: 'DELETE',
     })
 }
@@ -335,15 +335,8 @@ const getNotionConnectUrl = (userId: string) => {
     })
 }
 
-const submitFeedback = (data: { rating: 'sad' | 'neutral' | 'happy' | null; feedback: string }) => {
-    return apiRequest<{ message: string }>('/profile/feedback', {
-        method: 'POST',
-        body: JSON.stringify(data),
-    })
-}
-
 const completeOnboarding = () => {
-    return apiRequest<BackendProfile>('/profile/onboarding', {
+    return apiRequest<BackendProfile>('/setting/onboarding', {
         method: 'PATCH',
     })
 }
@@ -389,7 +382,6 @@ export const profileAPI = {
     getVercelConnectUrl,
     getSupabaseConnectUrl,
     getNotionConnectUrl,
-    submitFeedback,
     completeOnboarding,
     createGithubRepo,
     syncGithubRepo,
