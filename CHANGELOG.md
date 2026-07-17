@@ -1,3 +1,9 @@
+## [0.2.14] - 2026-07-17
+
+### Miscellaneous Tasks
+
+- _(release)_ V0.2.14
+
 ## [0.2.13] - 2026-07-17
 
 ### Features
