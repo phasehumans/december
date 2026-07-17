@@ -133,7 +133,7 @@ export const AppContentView: React.FC<AppContentViewProps> = ({
                 </AnimatedPage>
             )}
 
-            {view === 'chat' &&
+            {(view === 'chat' || view === 'project') &&
                 (isHome ? (
                     <AnimatedPage pageKey="chat-home">
                         <HomeHero

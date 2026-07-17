@@ -51,6 +51,20 @@ export const SessionList: React.FC<{
         isOpen: false,
         project: null,
     })
+    const [tagsModal, setTagsModal] = useState<{
+        isOpen: boolean
+        project: any | null
+    }>({
+        isOpen: false,
+        project: null,
+    })
+    const [insightsModal, setInsightsModal] = useState<{
+        isOpen: boolean
+        project: any | null
+    }>({
+        isOpen: false,
+        project: null,
+    })
     const [settingsModal, setSettingsModal] = useState<{
         isOpen: boolean
         project: any | null
@@ -67,12 +81,17 @@ export const SessionList: React.FC<{
         return () => window.removeEventListener('click', handleClickOutside)
     }, [menuOpenId])
 
-    const { togglePinMutation, toggleArchiveMutation, renameMutation, deleteMutation } =
-        useSessionListMutations({
-            setActionError,
-            onRenameMutate: () => setRenameModal({ isOpen: false, project: null, value: '' }),
-            onDeleteMutate: () => setDeleteModal({ isOpen: false, project: null }),
-        })
+    const {
+        togglePinMutation,
+        toggleArchiveMutation,
+        renameMutation,
+        deleteMutation,
+        updateTagsMutation,
+    } = useSessionListMutations({
+        setActionError,
+        onRenameMutate: () => setRenameModal({ isOpen: false, project: null, value: '' }),
+        onDeleteMutate: () => setDeleteModal({ isOpen: false, project: null }),
+    })
 
     // Collect all unique tags from sessions for the tag filter
     const availableTags = useMemo(() => {
@@ -148,7 +167,7 @@ export const SessionList: React.FC<{
     const openProjectFromMenu = (id: string, event: React.MouseEvent) => {
         event.stopPropagation()
         setMenuOpenId(null)
-        onOpenProject(id)
+        handleOpenProjectClick(id)
     }
 
     const toggleStarFromMenu = (session: any, event: React.MouseEvent) => {
@@ -179,6 +198,24 @@ export const SessionList: React.FC<{
 
     const openSettingsModal = (session: any, event: React.MouseEvent) =>
         openModal(event, () => setSettingsModal({ isOpen: true, project: session }))
+
+    const openTagsModal = (session: any, event: React.MouseEvent) =>
+        openModal(event, () => setTagsModal({ isOpen: true, project: session }))
+
+    const openInsightsModal = (session: any, event: React.MouseEvent) =>
+        openModal(event, () => setInsightsModal({ isOpen: true, project: session }))
+
+    const handleSaveTags = (tags: string[]) => {
+        if (!tagsModal.project) return
+        updateTagsMutation.mutate(
+            { sessionId: tagsModal.project.id, tags },
+            {
+                onSuccess: () => {
+                    setTagsModal({ isOpen: false, project: null })
+                },
+            }
+        )
+    }
 
     const handleRename = (event: React.FormEvent) => {
         event.preventDefault()
@@ -240,6 +277,8 @@ export const SessionList: React.FC<{
                     onOpenShare={() => {}}
                     onOpenDelete={openDeleteModal}
                     onOpenSettings={openSettingsModal}
+                    onOpenTags={openTagsModal}
+                    onOpenInsights={openInsightsModal}
                     searchQuery={searchQuery}
                     onSearchChange={setSearchQuery}
                     sortOption={sortOption}
@@ -259,10 +298,13 @@ export const SessionList: React.FC<{
                 shareModal={shareModal}
                 deleteModal={deleteModal}
                 openConfirmModal={openConfirmModal}
+                tagsModal={tagsModal}
+                insightsModal={insightsModal}
                 isRenamePending={renameMutation.isPending}
                 isDuplicatePending={false}
                 isSharePending={false}
                 isDeletePending={deleteMutation.isPending}
+                isTagsPending={updateTagsMutation.isPending}
                 onCloseRename={() => setRenameModal((prev) => ({ ...prev, isOpen: false }))}
                 onRenameChange={(nextValue) =>
                     setRenameModal((prev) => ({ ...prev, value: nextValue }))
@@ -276,6 +318,9 @@ export const SessionList: React.FC<{
                 onDeleteConfirm={handleDelete}
                 onCloseOpenConfirm={() => setOpenConfirmModal({ isOpen: false, project: null })}
                 onOpenConfirm={handleOpenConfirm}
+                onCloseTags={() => setTagsModal({ isOpen: false, project: null })}
+                onSaveTags={handleSaveTags}
+                onCloseInsights={() => setInsightsModal({ isOpen: false, project: null })}
             />
 
             {settingsModal.isOpen && settingsModal.project && settingsModal.project.projectId && (

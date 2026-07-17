@@ -58,7 +58,9 @@ export const useSessionListMutations = ({
 
     const toggleArchiveMutation = useMutation({
         mutationFn: ({ sessionId, isArchived }: { sessionId: string; isArchived: boolean }) =>
-            sessionAPI.updateSessionSettings(sessionId, { isArchived }),
+            isArchived
+                ? sessionAPI.archiveSession(sessionId)
+                : sessionAPI.unarchiveSession(sessionId),
         onMutate: async ({ sessionId, isArchived }) => {
             setActionError(null)
             await queryClient.cancelQueries({ queryKey: sessionQueryKey })
@@ -89,7 +91,7 @@ export const useSessionListMutations = ({
 
     const renameMutation = useMutation({
         mutationFn: ({ sessionId, rename }: { sessionId: string; rename: string }) =>
-            sessionAPI.updateSession(sessionId, { title: rename }),
+            sessionAPI.renameSession(sessionId, rename),
         onMutate: async ({ sessionId, rename }) => {
             setActionError(null)
             await queryClient.cancelQueries({ queryKey: sessionQueryKey })
@@ -121,9 +123,7 @@ export const useSessionListMutations = ({
     })
 
     const deleteMutation = useMutation({
-        // Fallback to archive if delete is not in API, but let's assume we want to just archive for "delete" if no hard delete exists.
-        mutationFn: (sessionId: string) =>
-            sessionAPI.updateSessionSettings(sessionId, { isArchived: true }),
+        mutationFn: (sessionId: string) => sessionAPI.deleteSession(sessionId),
         onMutate: async (sessionId) => {
             setActionError(null)
             await queryClient.cancelQueries({ queryKey: sessionQueryKey })
@@ -152,10 +152,42 @@ export const useSessionListMutations = ({
         },
     })
 
+    const updateTagsMutation = useMutation({
+        mutationFn: ({ sessionId, tags }: { sessionId: string; tags: string[] }) =>
+            sessionAPI.updateSessionTags(sessionId, tags),
+        onMutate: async ({ sessionId, tags }) => {
+            setActionError(null)
+            await queryClient.cancelQueries({ queryKey: sessionQueryKey })
+
+            const previousSessions = queryClient.getQueryData<BackendSession[]>(sessionQueryKey)
+
+            queryClient.setQueryData<BackendSession[]>(sessionQueryKey, (currentSessions = []) =>
+                currentSessions.map((session) =>
+                    session.id === sessionId ? { ...session, tags } : session
+                )
+            )
+
+            return { previousSessions }
+        },
+        onError: (error, _variables, context) => {
+            if (context?.previousSessions) {
+                queryClient.setQueryData(sessionQueryKey, context.previousSessions)
+            }
+            setActionError(getErrorMessage(error, 'Failed to update tags'))
+        },
+        onSuccess: () => {
+            setActionError(null)
+        },
+        onSettled: () => {
+            queryClient.invalidateQueries({ queryKey: sessionQueryKey })
+        },
+    })
+
     return {
         togglePinMutation,
         toggleArchiveMutation,
         renameMutation,
         deleteMutation,
+        updateTagsMutation,
     }
 }

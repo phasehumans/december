@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 
 import { Icons } from '@/shared/components/ui/Icons'
 
@@ -17,6 +17,8 @@ interface SessionListRowProps {
     onOpenShare: (session: any, event: React.MouseEvent) => void
     onOpenDelete: (session: any, event: React.MouseEvent) => void
     onOpenSettings: (session: any, event: React.MouseEvent) => void
+    onOpenTags: (session: any, event: React.MouseEvent) => void
+    onOpenInsights: (session: any, event: React.MouseEvent) => void
 }
 
 export const SessionListRow: React.FC<SessionListRowProps> = ({
@@ -34,9 +36,25 @@ export const SessionListRow: React.FC<SessionListRowProps> = ({
     onOpenShare,
     onOpenDelete,
     onOpenSettings,
+    onOpenTags,
+    onOpenInsights,
 }) => {
     const [menuDirection, setMenuDirection] = useState<'down' | 'up'>('down')
     const session = project // alias for clarity
+    const menuRef = useRef<HTMLDivElement>(null)
+
+    useEffect(() => {
+        if (!isMenuOpen) return
+
+        const handleClickOutside = (event: MouseEvent) => {
+            if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+                onToggleMenu(session.id, event as any)
+            }
+        }
+
+        document.addEventListener('mousedown', handleClickOutside)
+        return () => document.removeEventListener('mousedown', handleClickOutside)
+    }, [isMenuOpen, session.id, onToggleMenu])
 
     const updatedDate = new Date(session.updatedAt || session.createdAt)
     const createdDate = new Date(session.createdAt)
@@ -53,6 +71,7 @@ export const SessionListRow: React.FC<SessionListRowProps> = ({
                     ? 'opacity-60 border-transparent hover:opacity-100'
                     : 'border-transparent'
             }`}
+            style={{ zIndex: isMenuOpen ? 50 : undefined }}
             onClick={() => onOpenProject(session.id)}
         >
             {/* Name */}
@@ -141,49 +160,55 @@ export const SessionListRow: React.FC<SessionListRowProps> = ({
                 </button>
                 {isMenuOpen && (
                     <div
-                        className={`absolute right-0 ${menuDirection === 'up' ? 'bottom-9' : 'top-9'} z-30 flex w-56 flex-col rounded-xl border border-[#383736] bg-[#1E1E1E] p-1.5 shadow-xl`}
+                        ref={menuRef}
+                        className={`absolute right-0 ${menuDirection === 'up' ? 'bottom-9' : 'top-9'} z-50 flex w-44 flex-col rounded-xl border border-[#272727] bg-[#1E1E1E] p-1 shadow-xl`}
                         onClick={(e) => e.stopPropagation()}
                     >
                         <button
                             onClick={(e) => onOpenProjectFromMenu(session.id, e)}
-                            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-[14px] text-[#D6D5C9] transition-colors hover:bg-[#262626]"
+                            className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[13px] text-[#D6D5C9] transition-colors hover:bg-[#262626]"
                         >
-                            <Icons.ExternalLink className="h-4 w-4 text-[#7B7A79]" /> Open
+                            <Icons.ExternalLink className="h-3.5 w-3.5 text-[#7B7A79]" /> Open
                         </button>
                         <button
                             onClick={(e) => onOpenRename(session, e)}
-                            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-[14px] text-[#D6D5C9] transition-colors hover:bg-[#262626]"
+                            className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[13px] text-[#D6D5C9] transition-colors hover:bg-[#262626]"
                         >
-                            <Icons.Edit className="h-4 w-4 text-[#7B7A79]" /> Rename
+                            <Icons.Edit className="h-3.5 w-3.5 text-[#7B7A79]" /> Rename
                         </button>
                         <button
-                            onClick={(e) => onToggleStarFromMenu(session, e)}
-                            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-[14px] text-[#D6D5C9] transition-colors hover:bg-[#262626]"
+                            onClick={(e) => onOpenTags(session, e)}
+                            className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[13px] text-[#D6D5C9] transition-colors hover:bg-[#262626]"
                         >
-                            <Icons.Pin className="h-4 w-4 text-[#7B7A79]" />{' '}
-                            {session.isPinned ? 'Unpin session' : 'Pin session'}
+                            <Icons.Tag className="h-3.5 w-3.5 text-[#7B7A79]" /> Tags
+                        </button>
+                        <button
+                            onClick={(e) => onOpenInsights(session, e)}
+                            className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[13px] text-[#D6D5C9] transition-colors hover:bg-[#262626]"
+                        >
+                            <Icons.LineChart className="h-3.5 w-3.5 text-[#7B7A79]" /> Insights
                         </button>
                         <button
                             onClick={(e) => onToggleArchiveFromMenu(session, e)}
-                            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-[14px] text-[#D6D5C9] transition-colors hover:bg-[#262626]"
+                            className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[13px] text-[#D6D5C9] transition-colors hover:bg-[#262626]"
                         >
-                            <Icons.Archive className="h-4 w-4 text-[#7B7A79]" />{' '}
+                            <Icons.Archive className="h-3.5 w-3.5 text-[#7B7A79]" />{' '}
                             {session.isArchived ? 'Unarchive' : 'Archive'}
                         </button>
                         {session.projectId && (
                             <button
                                 onClick={(e) => onOpenSettings(session, e)}
-                                className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-[14px] text-[#D6D5C9] transition-colors hover:bg-[#262626]"
+                                className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[13px] text-[#D6D5C9] transition-colors hover:bg-[#262626]"
                             >
-                                <Icons.Settings className="h-4 w-4 text-[#7B7A79]" /> Settings
+                                <Icons.Settings className="h-3.5 w-3.5 text-[#7B7A79]" /> Settings
                             </button>
                         )}
-                        <div className="mx-2 my-1.5 h-px bg-[#383736]" />
+                        <div className="mx-1.5 my-1 h-px bg-[#383736]" />
                         <button
                             onClick={(e) => onOpenDelete(session, e)}
-                            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-[14px] text-red-400 transition-colors hover:bg-[#262626] hover:text-red-300"
+                            className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[13px] text-red-400 transition-colors hover:bg-[#262626] hover:text-red-300"
                         >
-                            <Icons.Trash className="h-4 w-4" /> Delete
+                            <Icons.Trash className="h-3.5 w-3.5" /> Delete
                         </button>
                     </div>
                 )}

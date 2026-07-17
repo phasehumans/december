@@ -1,4 +1,3 @@
-import crypto from 'crypto'
 import { Queue } from 'bullmq'
 import Redis from 'ioredis'
 import { AppError } from '../../shared/appError'
@@ -19,9 +18,12 @@ import * as sessionRepository from './session.repository'
 import type {
     CreateSession,
     GetSession,
-    UpdateSessionSettings,
+    RenameSession,
+    ArchiveSession,
+    UnarchiveSession,
+    UpdateSessionTags,
+    GetSessionInsights,
     DeleteSession,
-    DuplicateSession,
     GetCollaborators,
     AddCollaborator,
     RemoveCollaborator,
@@ -81,7 +83,6 @@ export async function getUserSessions(
                 ? session.messages[0].content.substring(0, 50) + '...'
                 : 'New Chat'),
         type: session.type,
-        isPinned: session.isPinned,
         isArchived: session.isArchived,
         tags: session.tags,
         createdAt: session.createdAt,
@@ -92,14 +93,37 @@ export async function getUserSessions(
     }))
 }
 
+export async function createSession(data: CreateSession) {
+    const { userId, title, projectId, type, prompt } = data
+
+    const session = await sessionRepository.createSession({
+        userId,
+        title: title || 'New Session',
+        projectId,
+        type: type || 'WEB',
+        vmStatus: 'RUNNING',
+    })
+
+    if (prompt) {
+        await prisma.message.create({
+            data: {
+                sessionId: session.id,
+                role: 'USER',
+                content: prompt,
+                sequence: 1,
+            },
+        })
+    }
+
+    return session
+}
+
 export async function getSession(sessionId: string, userId: string) {
     const session = await sessionRepository.findSessionById(sessionId, userId)
     if (!session) throw new AppError('Session not found', 404)
 
-    // Load generated files from S3
     const generatedFiles = await loadSessionFiles(sessionId)
 
-    // Load canvas state from S3
     let canvasState = null
     try {
         const canvasContent = await getTextFile(`sessions/${sessionId}/canvas.json`)
@@ -128,55 +152,28 @@ export async function getSession(sessionId: string, userId: string) {
     }
 }
 
-export async function createSession(data: CreateSession) {
-    const { userId, title, projectId, type, prompt } = data
-
-    // const activeSessions = await sessionRepository.countActiveSessions(userId)
-    // if (activeSessions >= 3) {
-    //     throw new AppError('Maximum concurrent active sessions limit reached', 400)
-    // }
-
-    const session = await sessionRepository.createSession({
-        userId,
-        title: title || 'New Session',
-        projectId,
-        type: type || 'WEB',
-        vmStatus: 'RUNNING',
-    })
-
-    if (prompt) {
-        await prisma.message.create({
-            data: {
-                sessionId: session.id,
-                role: 'USER',
-                content: prompt,
-                sequence: 1,
-            },
-        })
-    }
-
-    return session
+export async function renameSession(data: RenameSession) {
+    const { userId, sessionId, title } = data
+    return sessionRepository.updateSession(sessionId, userId, { title })
 }
 
-export async function updateSession(
-    sessionId: string,
-    userId: string,
-    data: { title?: string; projectId?: string | null }
-) {
-    return sessionRepository.updateSession(sessionId, userId, data)
+export async function archiveSession(data: ArchiveSession) {
+    const { userId, sessionId } = data
+    return sessionRepository.updateSession(sessionId, userId, { isArchived: true })
 }
 
-export async function updateSessionSettings(data: UpdateSessionSettings) {
-    const { userId, sessionId, title, projectId, isPinned, isArchived, tags } = data
+export async function unarchiveSession(data: UnarchiveSession) {
+    const { userId, sessionId } = data
+    return sessionRepository.updateSession(sessionId, userId, { isArchived: false })
+}
 
-    const updateData: any = {}
-    if (title !== undefined) updateData.title = title
-    if (projectId !== undefined) updateData.projectId = projectId
-    if (isPinned !== undefined) updateData.isPinned = isPinned
-    if (isArchived !== undefined) updateData.isArchived = isArchived
-    if (tags !== undefined) updateData.tags = tags
+export async function updateSessionTags(data: UpdateSessionTags) {
+    const { userId, sessionId, tags } = data
+    return sessionRepository.updateSession(sessionId, userId, { tags })
+}
 
-    return sessionRepository.updateSession(sessionId, userId, updateData)
+export async function getSessionInsights(data: GetSessionInsights) {
+    return { insights: [] }
 }
 
 export async function deleteSession(data: DeleteSession) {
@@ -187,17 +184,14 @@ export async function deleteSession(data: DeleteSession) {
         throw new AppError('Only the session creator can delete this session', 403)
     }
 
-    // Cascade 1: Terminate running VM immediately
     await publishEvent(`session_events:${sessionId}`, { type: 'SIGKILL', data: {} })
 
-    // Cascade 2: Disconnect WebSockets
     try {
         getIO().in(`session:${sessionId}`).disconnectSockets()
     } catch (e) {
         console.warn('Socket not connected or io not available', e)
     }
 
-    // Cascade 3: Enqueue S3/MinIO wipe
     const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379')
     const minioWipeQueue = new Queue('minio_wipe', { connection: redis as any })
     await minioWipeQueue.add(
@@ -206,68 +200,9 @@ export async function deleteSession(data: DeleteSession) {
         { attempts: 3, backoff: { type: 'exponential', delay: 1000 } }
     )
 
-    // Cascade 4: Delete database record
     await sessionRepository.deleteSession(sessionId)
 
     return { message: 'session deleted successfully' }
-}
-
-export async function duplicateSession(data: DuplicateSession) {
-    const { userId, sessionId, title } = data
-
-    const sourceSession = await sessionRepository.findSessionById(sessionId, userId)
-    if (!sourceSession) {
-        throw new AppError('Session not found', 404)
-    }
-
-    const newSession = await sessionRepository.createSession({
-        userId,
-        title: title || `Copy of ${sourceSession.title || 'Untitled Session'}`,
-        projectId: sourceSession.projectId,
-        type: sourceSession.type,
-        vmStatus: 'RUNNING',
-    })
-
-    // Copy S3 files
-    const prefix = sessionWorkspacePrefix(sessionId)
-    const objects = await listPrefix(prefix)
-    await Promise.all(
-        objects.map(async (obj) => {
-            const key = obj.Key
-            if (!key) return
-            const relativePath = key.substring(prefix.length)
-            const destinationKey = `sessions/${newSession.id}/workspace/${relativePath}`
-            await copyObject({ sourceKey: key, destinationKey })
-        })
-    )
-
-    // Copy canvas.json if exists
-    try {
-        const sourceCanvasKey = `sessions/${sessionId}/canvas.json`
-        const destinationCanvasKey = `sessions/${newSession.id}/canvas.json`
-        await copyObject({
-            sourceKey: sourceCanvasKey,
-            destinationKey: destinationCanvasKey,
-        }).catch(() => undefined)
-    } catch (err) {
-        // Silently skip if canvas doesn't exist
-    }
-
-    // Copy database messages
-    if (sourceSession.messages.length > 0) {
-        await prisma.message.createMany({
-            data: sourceSession.messages.map((msg) => ({
-                sessionId: newSession.id,
-                role: msg.role,
-                content: msg.content,
-                status: msg.status,
-                sequence: msg.sequence,
-                createdAt: msg.createdAt,
-            })),
-        })
-    }
-
-    return newSession
 }
 
 export async function getCollaborators(data: GetCollaborators) {

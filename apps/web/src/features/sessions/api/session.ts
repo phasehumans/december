@@ -84,4 +84,44 @@ export const sessionAPI = {
         })
         return res.session
     },
+
+    renameSession: async (id: string, title: string): Promise<BackendSession> => {
+        const res = await apiRequest<{ session: BackendSession }>(`/session/${id}/rename`, {
+            method: 'PATCH',
+            body: JSON.stringify({ title }),
+        })
+        return res.session
+    },
+
+    archiveSession: async (id: string): Promise<BackendSession> => {
+        const res = await apiRequest<{ session: BackendSession }>(`/session/${id}/archive`, {
+            method: 'PATCH',
+        })
+        return res.session
+    },
+
+    unarchiveSession: async (id: string): Promise<BackendSession> => {
+        const res = await apiRequest<{ session: BackendSession }>(`/session/${id}/unarchive`, {
+            method: 'PATCH',
+        })
+        return res.session
+    },
+
+    updateSessionTags: async (id: string, tags: string[]): Promise<BackendSession> => {
+        const res = await apiRequest<{ session: BackendSession }>(`/session/${id}/tags`, {
+            method: 'PUT',
+            body: JSON.stringify({ tags }),
+        })
+        return res.session
+    },
+
+    deleteSession: async (id: string): Promise<void> => {
+        await apiRequest<void>(`/session/${id}`, {
+            method: 'DELETE',
+        })
+    },
+
+    getSessionInsights: async (id: string): Promise<{ insights: any[] }> => {
+        return apiRequest<{ insights: any[] }>(`/session/${id}/insights`)
+    },
 }

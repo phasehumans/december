@@ -118,7 +118,6 @@ model Session {
   type                 SessionType @default(WEB)
   vmId                 String?
   vmStatus             VmStatus    @default(STOPPED)
-  isPinned             Boolean     @default(false)
   isArchived           Boolean     @default(false)
   tags                 String[]
   minioPrefix          String?
