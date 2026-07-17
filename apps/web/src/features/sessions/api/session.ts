@@ -12,6 +12,9 @@ export type BackendSession = {
     isPinned?: boolean
     isArchived?: boolean
     tags?: string[]
+    prNumber?: number | null
+    prState?: 'open' | 'closed' | 'merged' | 'draft' | null
+    createdBy?: string | null
 }
 
 export type SessionFilters = {
