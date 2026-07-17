@@ -11,7 +11,7 @@ export function safeParseJson(text: string): any {
         // Remove the first line (e.g. ```json)
         lines.shift()
         // Remove the last line if it's just ```
-        if (lines[lines.length - 1].trim() === '```') {
+        if (lines.length > 0 && lines[lines.length - 1]?.trim() === '```') {
             lines.pop()
         }
         cleanText = lines.join('\n').trim()

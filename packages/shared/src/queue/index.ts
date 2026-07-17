@@ -22,7 +22,7 @@ export function getRedisSubClient() {
 let _agentQueue: Queue | null = null
 export function getAgentQueue() {
     if (!_agentQueue) {
-        _agentQueue = new Queue('agent_jobs', { connection: getRedisClient() })
+        _agentQueue = new Queue('agent_jobs', { connection: getRedisClient() as any })
     }
     return _agentQueue
 }
