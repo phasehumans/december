@@ -1,5 +1,5 @@
 import type { Message } from '@/features/chat/types'
-import type { BackendMessage } from '@/features/projects/api/project'
+import type { BackendMessage } from '@/features/sessions/api/project'
 
 export const getUserFacingGenerationError = (message: string) => {
     const normalizedMessage = message.toLowerCase()

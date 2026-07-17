@@ -10,7 +10,7 @@ import type { SidebarProps } from '@/features/navigation/types'
 
 import { useBillingOverview } from '@/features/billing/hooks/useBillingData'
 import { SettingsBigModal } from '@/features/preview/components/settings/SettingsBigModal'
-import { useProjects } from '@/features/projects/hooks/useProjects'
+import { useProjects } from '@/features/sessions/hooks/useProjects'
 import { Icons } from '@/shared/components/ui/Icons'
 import { cn } from '@/shared/lib/utils'
 
@@ -148,10 +148,10 @@ const Sidebar: React.FC<
             },
         },
         {
-            id: 'projects',
+            id: 'sessions',
             label: 'Sessions',
             icon: <Icons.Folder className="w-[18px] h-[18px]" />,
-            onClick: onAllProjects,
+            onClick: onSessions,
         },
         {
             id: 'review',
@@ -411,7 +411,7 @@ const Sidebar: React.FC<
                                             <button
                                                 onClick={() => {
                                                     setIsRecentMenuOpen(false)
-                                                    onAllProjects?.()
+                                                    onSessions?.()
                                                 }}
                                                 className="flex items-center gap-3 w-full px-3 py-1.5 rounded-xl hover:bg-[#252525] text-[#CBCACA] hover:text-white transition-colors text-left text-[12px] cursor-pointer outline-none group"
                                             >

@@ -55,3 +55,12 @@ export type StoredSessionFile = {
     contentType?: string
     size: number
 }
+
+export type SessionFilters = {
+    type?: 'WEB' | 'CLI' | 'SEARCH'
+    isArchived?: boolean
+    isPinned?: boolean
+    tags?: string[]
+    sortBy?: 'updatedAt' | 'createdAt'
+    sortOrder?: 'asc' | 'desc'
+}

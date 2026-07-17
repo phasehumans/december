@@ -54,7 +54,6 @@ export const AppSideNavigation: React.FC<AppSideNavigationProps> = ({
                 onNewThread={onNewThread}
                 onSessions={() => onNavigate('sessions')}
                 onReview={() => onNavigate('review')}
-                onAllProjects={() => onNavigate('all-projects')}
                 onTemplates={() => onNavigate('templates')}
                 onDocs={() => onNavigate('docs')}
                 onProfile={() => onNavigate('profile')}

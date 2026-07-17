@@ -8,9 +8,9 @@ import { BigModalOverlay } from './SettingsFormControls'
 import { ShareTab } from './ShareTab'
 
 import { useSettingsModalController } from '@/features/preview/hooks/useSettingsModalController'
-import { ProjectDeleteModal } from '@/features/projects/components/ProjectDeleteModal'
-import { ProjectDuplicateModal } from '@/features/projects/components/ProjectDuplicateModal'
-import { ProjectShareModal } from '@/features/projects/components/ProjectShareModal'
+import { SessionDeleteModal } from '@/features/sessions/components/SessionDeleteModal'
+import { SessionDuplicateModal } from '@/features/sessions/components/SessionDuplicateModal'
+import { SessionShareModal } from '@/features/sessions/components/SessionShareModal'
 
 const VercelIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
     <svg viewBox="0 0 24 24" fill="currentColor" {...props}>
@@ -290,7 +290,7 @@ export const SettingsBigModal: React.FC<SettingsModalProps> = ({
                 </div>
             </div>
 
-            <ProjectShareModal
+            <SessionShareModal
                 isOpen={isShareModalOpen}
                 projectTitle={projName}
                 isSharedAsTemplate={isTemplate}
@@ -299,7 +299,7 @@ export const SettingsBigModal: React.FC<SettingsModalProps> = ({
                 onConfirm={handleShareConfirm}
             />
 
-            <ProjectDuplicateModal
+            <SessionDuplicateModal
                 isOpen={isDuplicateModalOpen}
                 projectTitle={projName}
                 isPending={isDuplicating}
@@ -307,7 +307,7 @@ export const SettingsBigModal: React.FC<SettingsModalProps> = ({
                 onConfirm={handleDuplicateConfirm}
             />
 
-            <ProjectDeleteModal
+            <SessionDeleteModal
                 isOpen={isDeleteModalOpen}
                 projectTitle={projName}
                 isPending={false}

@@ -8,7 +8,7 @@ import { SidebarFooter } from './SidebarFooter'
 
 import type { MobileSidebarProps } from '@/features/navigation/types'
 
-import { useProjects } from '@/features/projects/hooks/useProjects'
+import { useProjects } from '@/features/sessions/hooks/useProjects'
 import { Icons } from '@/shared/components/ui/Icons'
 import { cn } from '@/shared/lib/utils'
 

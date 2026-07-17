@@ -9,8 +9,8 @@ import { useChatController } from '@/features/chat/hooks/useChatController'
 import { useNavigationController } from '@/features/navigation/hooks/useNavigationController'
 import { previewAPI } from '@/features/preview/api'
 import { profileAPI } from '@/features/profile/api/profile'
-import { projectAPI } from '@/features/projects/api/project'
-import { useProjectController } from '@/features/projects/hooks/useProjectController'
+import { projectAPI } from '@/features/sessions/api/project'
+import { useSessionController } from '@/features/sessions/hooks/useSessionController'
 import { refreshAuthSession } from '@/shared/api/client'
 
 export const useAppController = () => {
@@ -99,7 +99,7 @@ export const useAppController = () => {
         handleImportZip,
         lastSavedCanvasRef,
         lastAutoFixSignatureRef,
-    } = useProjectController(
+    } = useSessionController(
         view,
         () => {
             generationAbortControllerRef.current?.abort()

@@ -68,8 +68,11 @@ export const loadSessionFiles = async (sessionId: string) => {
     return files
 }
 
-export async function getUserSessions(userId: string) {
-    const sessions = await sessionRepository.findManySessions(userId)
+export async function getUserSessions(
+    userId: string,
+    filters?: import('./session.types').SessionFilters
+) {
+    const sessions = await sessionRepository.findManySessions(userId, filters)
     return sessions.map((session) => ({
         id: session.id,
         title:
@@ -78,6 +81,9 @@ export async function getUserSessions(userId: string) {
                 ? session.messages[0].content.substring(0, 50) + '...'
                 : 'New Chat'),
         type: session.type,
+        isPinned: session.isPinned,
+        isArchived: session.isArchived,
+        tags: session.tags,
         createdAt: session.createdAt,
         updatedAt: session.updatedAt,
         projectId: session.projectId,

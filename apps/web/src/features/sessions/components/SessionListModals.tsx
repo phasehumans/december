@@ -1,10 +1,10 @@
 import React from 'react'
 
-import { ProjectDeleteModal } from './ProjectDeleteModal'
-import { ProjectDuplicateModal } from './ProjectDuplicateModal'
+import { SessionDeleteModal } from './SessionDeleteModal'
+import { SessionDuplicateModal } from './SessionDuplicateModal'
 import { ProjectOpenConfirmModal } from './ProjectOpenConfirmModal'
-import { ProjectRenameModal } from './ProjectRenameModal'
-import { ProjectShareModal } from './ProjectShareModal'
+import { SessionRenameModal } from './SessionRenameModal'
+import { SessionShareModal } from './SessionShareModal'
 
 import type {
     DeleteModalState,
@@ -12,7 +12,7 @@ import type {
     RenameModalState,
     ShareModalState,
     Project,
-} from '@/features/projects/types'
+} from '@/features/sessions/types'
 
 interface ProjectListModalsProps {
     renameModal: RenameModalState
@@ -61,7 +61,7 @@ export const ProjectListModals: React.FC<ProjectListModalsProps> = ({
 }) => {
     return (
         <>
-            <ProjectRenameModal
+            <SessionRenameModal
                 isOpen={renameModal.isOpen}
                 value={renameModal.value}
                 isPending={isRenamePending}
@@ -70,7 +70,7 @@ export const ProjectListModals: React.FC<ProjectListModalsProps> = ({
                 onSubmit={onRenameSubmit}
             />
 
-            <ProjectDuplicateModal
+            <SessionDuplicateModal
                 isOpen={duplicateModal.isOpen}
                 projectTitle={duplicateModal.project?.title}
                 isPending={isDuplicatePending}
@@ -78,7 +78,7 @@ export const ProjectListModals: React.FC<ProjectListModalsProps> = ({
                 onConfirm={onDuplicateConfirm}
             />
 
-            <ProjectShareModal
+            <SessionShareModal
                 isOpen={shareModal.isOpen}
                 projectTitle={shareModal.project?.title}
                 isSharedAsTemplate={shareModal.project?.isSharedAsTemplate ?? false}
@@ -87,7 +87,7 @@ export const ProjectListModals: React.FC<ProjectListModalsProps> = ({
                 onConfirm={onShareConfirm}
             />
 
-            <ProjectDeleteModal
+            <SessionDeleteModal
                 isOpen={deleteModal.isOpen}
                 projectTitle={deleteModal.project?.title}
                 isPending={isDeletePending}

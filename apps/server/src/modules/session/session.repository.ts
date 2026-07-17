@@ -1,12 +1,31 @@
 import { prisma } from '@december/database'
 import type { Prisma } from '@december/database'
 
-export async function findManySessions(userId: string) {
+export async function findManySessions(
+    userId: string,
+    filters?: import('./session.types').SessionFilters
+) {
+    const where: Prisma.SessionWhereInput = {
+        OR: [{ userId }, { collaborators: { some: { userId } } }],
+    }
+
+    if (filters?.type) where.type = filters.type
+    if (filters?.isArchived !== undefined) where.isArchived = filters.isArchived
+    if (filters?.isPinned !== undefined) where.isPinned = filters.isPinned
+    if (filters?.tags && filters.tags.length > 0) {
+        where.tags = { hasEvery: filters.tags }
+    }
+
+    const orderBy: Prisma.SessionOrderByWithRelationInput = {}
+    if (filters?.sortBy) {
+        orderBy[filters.sortBy] = filters.sortOrder || 'desc'
+    } else {
+        orderBy.updatedAt = 'desc'
+    }
+
     return prisma.session.findMany({
-        where: {
-            OR: [{ userId }, { collaborators: { some: { userId } } }],
-        },
-        orderBy: { updatedAt: 'desc' },
+        where,
+        orderBy,
         include: {
             project: {
                 select: {

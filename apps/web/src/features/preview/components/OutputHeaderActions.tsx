@@ -3,7 +3,7 @@ import React, { useState } from 'react'
 
 import { SettingsBigModal } from './settings/SettingsBigModal'
 
-import { type BackendProjectVersionSummary } from '@/features/projects/api/project'
+import { type BackendProjectVersionSummary } from '@/features/sessions/api/project'
 import { Button } from '@/shared/components/ui/Button'
 
 interface OutputHeaderActionsProps {

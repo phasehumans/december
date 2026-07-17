@@ -13,7 +13,7 @@ import type {
     ProjectListProps,
     RenameModalState,
     ShareModalState,
-} from '@/features/projects/types'
+} from '@/features/sessions/types'
 
 import { useAppStore } from '@/app/store'
 import { toProjectSlug } from '@/app/types'
