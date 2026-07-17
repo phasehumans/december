@@ -1,7 +1,9 @@
 import { describe, expect, it, mock } from 'bun:test'
+
 import { runAgentLoop } from '../src/agent-loop'
+
 import type { Agent } from '../src/agent'
-import type { LLMProvider, ProviderStreamChunk } from '@december/providers'
+import type { LLMProvider } from '@december/providers'
 
 describe('Agent Loop Generator', () => {
     it('should handle a basic text response', async () => {

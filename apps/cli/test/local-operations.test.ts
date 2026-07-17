@@ -1,8 +1,9 @@
+import fs from 'node:fs/promises'
+
 import { expect, test, describe, mock, spyOn, afterEach, beforeEach } from 'bun:test'
+
 import { localOperations } from '../src/local-operations'
 import { taskManager } from '../src/task-manager'
-import fs from 'node:fs/promises'
-import fg from 'fast-glob'
 
 // Note: localOperations.bash uses createLocalBashOperations, which we would mock ideally,
 // but since we are testing the CLI glue code, we can just test task status overrides.

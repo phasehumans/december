@@ -1,4 +1,5 @@
 import { describe, expect, test, mock, afterEach } from 'bun:test'
+
 import { openaiProvider } from '../src/providers/openai'
 
 // Mock the OpenAI client module completely

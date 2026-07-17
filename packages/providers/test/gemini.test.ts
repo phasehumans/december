@@ -1,4 +1,5 @@
 import { describe, expect, test, mock } from 'bun:test'
+
 import { geminiProvider } from '../src/providers/gemini'
 
 // Mock the Gemini client module completely

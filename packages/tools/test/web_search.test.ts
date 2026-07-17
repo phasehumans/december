@@ -1,5 +1,7 @@
 import { describe, expect, test, mock, afterAll } from 'bun:test'
+
 import { WebSearchTool } from '../src/web_search'
+
 import { createMockContext } from './mock-context'
 
 describe('WebSearchTool', () => {

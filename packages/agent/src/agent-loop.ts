@@ -1,10 +1,10 @@
-import type { AgentEvent, ToolCall, ToolResult } from '@december/shared'
 import { safeParseJson } from '@december/shared'
 import pRetry, { AbortError } from 'p-retry'
 import { v4 as uuidv4 } from 'uuid'
 
 import { Agent } from './agent'
-import { compactContextIfNeeded } from './utils/compaction'
+
+import type { AgentEvent, ToolCall, ToolResult } from '@december/shared'
 
 const delay = (ms: number) => new Promise((res) => setTimeout(res, ms))
 

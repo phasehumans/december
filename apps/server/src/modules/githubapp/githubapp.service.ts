@@ -1,6 +1,6 @@
-import { prisma } from '@december/database'
 import crypto from 'crypto'
-import { env } from '../../env'
+
+import { prisma } from '@december/database'
 
 export async function processInstallation(installationId: string, userId: string) {
     return prisma.githubAppInstallation.upsert({

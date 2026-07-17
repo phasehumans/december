@@ -1,5 +1,5 @@
-import Redis from 'ioredis'
 import { prisma } from '@december/database'
+import Redis from 'ioredis'
 
 const redisPub = new Redis(process.env.REDIS_URL || 'redis://localhost:6379')
 

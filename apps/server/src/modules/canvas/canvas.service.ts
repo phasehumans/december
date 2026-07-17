@@ -1,14 +1,9 @@
 import { AppError } from '../../shared/appError'
-import {
-    putBinaryFile,
-    temporaryCanvasAssetPrefix,
-    listPrefix,
-    getBinaryFile,
-    deleteObject,
-} from '../../shared/project-storage'
+import { putTextFile } from '../../shared/project-storage'
+
 import { canvasRepository } from './canvas.repository'
 import { persistCanvasDocument } from './canvas.utils'
-import { putTextFile } from '../../shared/project-storage'
+
 import type { SaveCanvas, CreateWebClips } from './canvas.types'
 
 const assertSessionAccess = async (sessionId: string, userId: string) => {

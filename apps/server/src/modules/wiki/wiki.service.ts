@@ -1,4 +1,5 @@
 import { prisma } from '@december/database'
+
 import type { CreateWikiDto, UpdateWikiDto } from './wiki.schema'
 
 export async function createWikiPage(userId: string, data: CreateWikiDto) {

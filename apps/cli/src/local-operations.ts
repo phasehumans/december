@@ -1,12 +1,12 @@
-import { spawn, exec } from 'node:child_process'
+import { exec } from 'node:child_process'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import { promisify } from 'node:util'
 
 import { PlatformAdapter } from '@december/agent'
+import { createLocalBashOperations } from '@december/tools'
 import fg from 'fast-glob'
 
-import { createLocalBashOperations } from '@december/tools'
 import { taskManager } from './task-manager'
 
 const execAsync = promisify(exec)

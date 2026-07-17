@@ -1,13 +1,14 @@
-import { Agent } from '@december/agent'
-import { getProvider, registerProvider, OpenAIProvider } from '@december/providers'
-import { BashTool } from '@december/tools'
-import { WireAgentEvent, toWire } from '@december/shared'
-import { PlatformAdapter } from '@december/agent/src/platform-adapter'
 import { exec } from 'child_process'
-import { promisify } from 'util'
-import * as fs from 'fs/promises'
 import * as fsSync from 'fs'
+import * as fs from 'fs/promises'
 import path from 'path'
+import { promisify } from 'util'
+
+import { Agent } from '@december/agent'
+import { PlatformAdapter } from '@december/agent/src/platform-adapter'
+import { getProvider, registerProvider, OpenAIProvider } from '@december/providers'
+import { WireAgentEvent, toWire } from '@december/shared'
+import { BashTool } from '@december/tools'
 
 const execAsync = promisify(exec)
 

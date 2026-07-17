@@ -1,4 +1,5 @@
 import { randomUUID } from 'crypto'
+
 import { z } from 'zod'
 
 import {
@@ -11,11 +12,7 @@ import {
 
 import { canvasDocumentSchema, canvasAssetKindSchema, type CanvasDocument } from './canvas.schema'
 
-import type {
-    PersistImageAsset,
-    PersistCanvasDocument,
-    HydrateCanvasDocument,
-} from './canvas.types'
+import type { PersistImageAsset, PersistCanvasDocument } from './canvas.types'
 
 type CanvasAssetManifestEntry = {
     itemId: string

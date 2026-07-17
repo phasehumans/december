@@ -1,5 +1,7 @@
 import { Router } from 'express'
+
 import { authMiddleware } from '../../middleware/auth.middleware'
+
 import { CreateSecretSchema } from './secrets.schema'
 import * as secretsService from './secrets.service'
 

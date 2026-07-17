@@ -4,10 +4,10 @@ import bcrypt from 'bcrypt'
 
 import { env } from '../../env'
 import { AppError } from '../../shared/appError'
+import { getUsername } from '../../shared/username'
 import { sendNotificationToUser } from '../notification/notification.service'
 
 import { authRepository } from './auth.repository'
-import { getUsername } from '../../shared/username'
 import {
     sendOTP,
     sendWelcomeEmail,

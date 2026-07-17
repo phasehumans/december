@@ -1,7 +1,6 @@
 import { Tool, ToolExecuteContext } from '@december/shared'
-import { applyPatch } from 'diff'
-
 import { Type, Static } from '@sinclair/typebox'
+import { applyPatch } from 'diff'
 
 const diffSchema = Type.Object({
     path: Type.String(),

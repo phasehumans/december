@@ -1,5 +1,7 @@
 import { describe, expect, test, mock } from 'bun:test'
+
 import { LsTool } from '../src/ls'
+
 import { createMockContext } from './mock-context'
 
 describe('LsTool', () => {

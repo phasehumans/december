@@ -1,5 +1,4 @@
 import { Tool, truncateOutput, ToolExecuteContext } from '@december/shared'
-
 import { Type, Static } from '@sinclair/typebox'
 
 const manageTaskSchema = Type.Object({

@@ -1,6 +1,7 @@
-import React from 'react'
 import { describe, expect, it } from 'bun:test'
 import { render } from 'ink-testing-library'
+import React from 'react'
+
 import { Spinner } from '../src/components/spinner'
 
 describe('Spinner Component', () => {

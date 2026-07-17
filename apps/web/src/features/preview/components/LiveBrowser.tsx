@@ -1,6 +1,6 @@
+import RFB from '@novnc/novnc/core/rfb'
 import React, { useEffect, useRef, useState } from 'react'
 // @ts-expect-error - noVNC types might not perfectly cover core/rfb or require root import
-import RFB from '@novnc/novnc/core/rfb'
 
 interface LiveBrowserProps {
     vncUrl?: string // WebSocket URL for VNC

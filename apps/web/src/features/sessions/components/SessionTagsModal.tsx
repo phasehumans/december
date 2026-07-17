@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 
-import { Modal } from '@/shared/components/ui/Modal'
 import { Icons } from '@/shared/components/ui/Icons'
+import { Modal } from '@/shared/components/ui/Modal'
 
 interface SessionTagsModalProps {
     isOpen: boolean

@@ -1,5 +1,4 @@
 import { prisma } from '@december/database'
-import type { Prisma } from '@december/database'
 
 async function findSessionForDeployment(data: { sessionId: string; userId: string }) {
     const { sessionId, userId } = data

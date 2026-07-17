@@ -1,5 +1,7 @@
-import { describe, expect, test, mock, beforeAll, afterAll } from 'bun:test'
+import { describe, expect, test, mock, afterAll } from 'bun:test'
+
 import { GitHubTool } from '../src/github'
+
 import { createMockContext } from './mock-context'
 
 describe('GitHubTool', () => {

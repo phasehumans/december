@@ -1,4 +1,5 @@
 import { expect, test, describe } from 'bun:test'
+
 import { parseErrorMessage } from '../src/utils/error-parser'
 
 describe('error-parser', () => {

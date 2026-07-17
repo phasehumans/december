@@ -1,7 +1,9 @@
-import React from 'react'
 import { describe, expect, it } from 'bun:test'
 import { render } from 'ink-testing-library'
+import React from 'react'
+
 import { BotMessage } from '../src/components/messages/bot-message'
+
 import type { MessageBlock } from '../src/components/messages/bot-message'
 
 describe('BotMessage Component', () => {

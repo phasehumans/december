@@ -1,9 +1,8 @@
-import { instantiateProvider } from '../utils/provider-factory'
-
 import { loadConfig, saveConfig, getProviderConfig } from '../config'
 import { MESSAGES } from '../constants/messages'
 import { useCliStore } from '../store'
 import { getToolSummary } from '../utils/formatters'
+import { instantiateProvider } from '../utils/provider-factory'
 
 import { getNextMsgId } from './use-agent-runner'
 

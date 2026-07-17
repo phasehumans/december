@@ -1,5 +1,7 @@
-import { describe, test, expect, mock } from 'bun:test'
+import { describe, test, expect } from 'bun:test'
+
 import { Agent } from '../src/agent'
+
 import type { LLMProvider, ProviderStreamChunk, ProviderTool } from '@december/providers'
 import type { Message } from '@december/shared'
 

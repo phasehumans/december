@@ -1,5 +1,7 @@
 import express, { Router } from 'express'
+
 import { authMiddleware } from '../../middleware/auth.middleware'
+
 import * as githubAppService from './githubapp.service'
 
 const router = Router()

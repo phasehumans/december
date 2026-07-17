@@ -2,11 +2,11 @@ import React from 'react'
 
 import { SessionDeleteModal } from './SessionDeleteModal'
 import { SessionDuplicateModal } from './SessionDuplicateModal'
+import { SessionInsightsModal } from './SessionInsightsModal'
 import { SessionOpenConfirmModal } from './SessionOpenConfirmModal'
 import { SessionRenameModal } from './SessionRenameModal'
 import { SessionShareModal } from './SessionShareModal'
 import { SessionTagsModal } from './SessionTagsModal'
-import { SessionInsightsModal } from './SessionInsightsModal'
 
 import type {
     DeleteModalState,

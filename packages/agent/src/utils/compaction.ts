@@ -1,5 +1,6 @@
-import type { LLMProvider } from '@december/providers'
 import { MODEL_CONTEXT_WINDOWS } from '@december/providers'
+
+import type { LLMProvider } from '@december/providers'
 import type { Message } from '@december/shared'
 
 export const DEFAULT_MAX_TOKENS = 32000 // Assume a generic safe limit

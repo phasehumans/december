@@ -1,5 +1,7 @@
 import { describe, expect, test, mock } from 'bun:test'
+
 import { BashTool } from '../src/bash'
+
 import { createMockContext } from './mock-context'
 
 describe('BashTool', () => {

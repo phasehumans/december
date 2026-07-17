@@ -3,20 +3,12 @@ import React, { useEffect, useState, useMemo } from 'react'
 import { useSessionListMutations } from '../hooks/useSessionListMutations'
 import { useSessions } from '../hooks/useSessions'
 
+import { type SessionFilterState, DEFAULT_FILTERS } from './SessionFilterDropdown'
 import { SessionListModals } from './SessionListModals'
 import { SessionListView } from './SessionListView'
-import { type SessionFilterState, DEFAULT_FILTERS } from './SessionFilterDropdown'
 
-import type {
-    DeleteModalState,
-    DuplicateModalState,
-    RenameModalState,
-    ShareModalState,
-} from '@/features/sessions/types'
-import type { BackendSession } from '@/features/sessions/api/session'
+import type { DeleteModalState, RenameModalState } from '@/features/sessions/types'
 
-import { useAppStore } from '@/app/store'
-import { toProjectSlug } from '@/app/types'
 import { SettingsBigModal } from '@/features/preview/components/settings/SettingsBigModal'
 
 export type SortOption = 'newest' | 'oldest'

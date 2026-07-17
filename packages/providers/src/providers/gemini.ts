@@ -1,9 +1,8 @@
+import { safeParseJson } from '@december/shared'
 import { GoogleGenAI, Content } from '@google/genai'
 
+import { createProvider } from '../models.ts'
 import { LLMProvider, Message, ProviderStreamChunk, ProviderTool } from '../types.ts'
-
-import { createProvider, ProviderConfig } from '../models.ts'
-import { safeParseJson } from '@december/shared'
 
 function sanitizeSchemaForGemini(schema: any): any {
     if (!schema || typeof schema !== 'object') return schema

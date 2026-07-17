@@ -1,6 +1,7 @@
+import { prisma } from '@december/database'
 import { Worker, Queue } from 'bullmq'
 import Redis from 'ioredis'
-import { prisma } from '@december/database'
+
 import { deletePrefix } from './shared/project-storage'
 
 const redisConnection = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {

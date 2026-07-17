@@ -1,8 +1,7 @@
 import './env'
-import { publishEvent } from '@december/shared'
+import { prisma } from '@december/database'
 import { Worker, Job } from 'bullmq'
 import Redis from 'ioredis'
-import { prisma } from '@december/database'
 
 const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379'
 

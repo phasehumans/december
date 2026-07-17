@@ -1,6 +1,7 @@
 import { compactContextIfNeeded } from './utils/compaction'
-import type { AgentMessage } from '@december/shared'
+
 import type { LLMProvider } from '@december/providers'
+import type { AgentMessage } from '@december/shared'
 
 export class ConversationManager {
     private _messages: AgentMessage[] = []

@@ -5,8 +5,8 @@ import type {
     BackendProjectVersionSummary,
 } from '@/features/sessions/api/project'
 
-import { ApiError, apiFetch, API_BASE_URL } from '@/shared/api/client'
 import { sessionAPI } from '@/features/sessions/api/session'
+import { ApiError, API_BASE_URL } from '@/shared/api/client'
 
 export type GenerationMessageStatus = 'thinking' | 'building' | 'done' | 'error'
 

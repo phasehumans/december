@@ -1,5 +1,7 @@
 import { describe, expect, test, mock } from 'bun:test'
+
 import { GrepSearchTool } from '../src/grep'
+
 import { createMockContext } from './mock-context'
 
 describe('GrepSearchTool', () => {

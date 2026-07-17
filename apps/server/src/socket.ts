@@ -1,8 +1,8 @@
+import { createAdapter } from '@socket.io/redis-adapter'
+import { Queue } from 'bullmq'
 import Redis from 'ioredis'
 import jwt from 'jsonwebtoken'
 import { Server, Socket } from 'socket.io'
-import { createAdapter } from '@socket.io/redis-adapter'
-import { Queue } from 'bullmq'
 
 import { env } from './env'
 

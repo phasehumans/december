@@ -1,5 +1,4 @@
 import { Tool } from '@december/shared'
-
 import { Type, Static } from '@sinclair/typebox'
 
 const askQuestionSchema = Type.Object({

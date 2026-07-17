@@ -1,9 +1,8 @@
 import Anthropic from '@anthropic-ai/sdk'
-
-import { LLMProvider, Message, ProviderStreamChunk, ProviderTool } from '../types.ts'
-
-import { createProvider, ProviderConfig } from '../models.ts'
 import { safeParseJson } from '@december/shared'
+
+import { createProvider } from '../models.ts'
+import { LLMProvider, Message, ProviderStreamChunk, ProviderTool } from '../types.ts'
 
 export function anthropicProvider(baseURL?: string, apiKey?: string): LLMProvider {
     const client = new Anthropic({

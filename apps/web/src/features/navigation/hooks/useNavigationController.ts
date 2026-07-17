@@ -3,8 +3,8 @@ import React from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import { useAppStore } from '@/app/store'
-import { createEmptyCanvasDocument } from '@/features/canvas/types'
 import { getPathForView, type ViewState } from '@/app/types'
+import { createEmptyCanvasDocument } from '@/features/canvas/types'
 import { previewAPI } from '@/features/preview/api'
 import { profileAPI } from '@/features/profile/api/profile'
 

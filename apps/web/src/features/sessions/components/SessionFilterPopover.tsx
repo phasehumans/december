@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react'
+
 import { Icons } from '@/shared/components/ui/Icons'
 
 export type SessionFiltersState = {

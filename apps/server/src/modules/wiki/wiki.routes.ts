@@ -1,5 +1,7 @@
 import { Router } from 'express'
+
 import { authMiddleware } from '../../middleware/auth.middleware'
+
 import { CreateWikiSchema, UpdateWikiSchema } from './wiki.schema'
 import * as wikiService from './wiki.service'
 

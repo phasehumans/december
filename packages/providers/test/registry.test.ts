@@ -1,4 +1,5 @@
-import { describe, expect, test, beforeEach } from 'bun:test'
+import { describe, expect, test } from 'bun:test'
+
 import { registerProvider, getProvider, getAllProviders } from '../src/registry'
 import { LLMProvider } from '../src/types'
 

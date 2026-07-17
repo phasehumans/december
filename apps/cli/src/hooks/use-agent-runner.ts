@@ -29,7 +29,7 @@ export async function processAgentStream({
         setActiveMessages((prev: Message[]) =>
             prev.map((msg) => {
                 if (msg.id !== assistantMsgId) return msg
-                let blocks = [...(msg.blocks || [])]
+                const blocks = [...(msg.blocks || [])]
                 let finalMsg = { ...msg }
 
                 for (const event of eventsToProcess) {

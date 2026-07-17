@@ -1,23 +1,22 @@
+import { prisma } from '@december/database'
+import { publishEvent } from '@december/shared'
 import { Queue } from 'bullmq'
 import Redis from 'ioredis'
-import { AppError } from '../../shared/appError'
-import { getIO } from '../../socket'
-import { publishEvent } from '@december/shared'
-import { prisma } from '@december/database'
 
+import { AppError } from '../../shared/appError'
 import {
     sessionPrefix,
     sessionWorkspacePrefix,
     listPrefix,
     getTextFile,
-    copyObject,
-    putTextFile,
 } from '../../shared/project-storage'
+import { getIO } from '../../socket'
 import { hydrateCanvasDocument } from '../canvas/canvas.utils'
+
 import * as sessionRepository from './session.repository'
+
 import type {
     CreateSession,
-    GetSession,
     RenameSession,
     ArchiveSession,
     UnarchiveSession,

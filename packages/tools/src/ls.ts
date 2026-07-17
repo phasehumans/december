@@ -1,5 +1,4 @@
 import { Tool, ToolExecuteContext, truncateOutput } from '@december/shared'
-
 import { Type, Static } from '@sinclair/typebox'
 
 const lsSchema = Type.Object({

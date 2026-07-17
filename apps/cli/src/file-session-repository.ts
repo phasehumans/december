@@ -2,9 +2,8 @@ import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 
-import { Message, AgentMessage } from '@december/shared'
-
 import { SessionRepository } from '@december/agent'
+import { AgentMessage } from '@december/shared'
 
 export interface SessionInfo {
     id: string
@@ -28,7 +27,7 @@ export class FileSessionRepository implements SessionRepository {
         // Wait, to truly support branching in the same file, we can't just overwrite.
         // But if we append everything every time, it gets huge.
         // Let's read existing, merge by ID, and write back.
-        let existing: Record<string, AgentMessage> = {}
+        const existing: Record<string, AgentMessage> = {}
         try {
             const data = await fs.readFile(historyPath, 'utf-8')
             const lines = data.split('\n').filter((l) => l.trim().length > 0)

@@ -1,7 +1,8 @@
 import { enqueueJob } from '@december/shared'
-import type { Request, Response } from 'express'
 
 import { asyncHandler } from '../../shared/asyncHandler'
+
+import type { Request, Response } from 'express'
 
 export const handlePrompt = asyncHandler(async (req: Request, res: Response) => {
     const { prompt, projectId, sessionId } = req.body

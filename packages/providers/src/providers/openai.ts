@@ -1,8 +1,7 @@
 import { OpenAI } from 'openai'
 
+import { createProvider } from '../models.ts'
 import { LLMProvider, Message, ProviderStreamChunk, ProviderTool } from '../types.ts'
-
-import { createProvider, ProviderConfig } from '../models.ts'
 
 export function openaiProvider(
     baseURL?: string,

@@ -1,6 +1,7 @@
-import React from 'react'
 import { describe, expect, it } from 'bun:test'
 import { render } from 'ink-testing-library'
+import React from 'react'
+
 import { Markdown } from '../src/components/markdown'
 
 describe('Markdown Component', () => {

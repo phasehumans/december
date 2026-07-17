@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 
 import type { BackendSession } from '@/features/sessions/api/session'
+
 import { sessionAPI } from '@/features/sessions/api/session'
 
 const sessionQueryKey = ['sessions'] as const

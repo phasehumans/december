@@ -6,11 +6,11 @@ import { getGrillPrompt, getPlanPrompt } from '../constants/prompts'
 import { useCliStore } from '../store'
 import { taskManager } from '../task-manager'
 import { parseErrorMessage } from '../utils/error-parser'
+import { getProviderModels } from '../utils/models'
 
 import { getNextMsgId, processAgentStream } from './use-agent-runner'
 import { useAuthHandlers } from './use-auth-handlers'
 import { useSettingsHandlers } from './use-settings-handlers'
-import { getProviderModels } from '../utils/models'
 
 import type { Message } from '@december/tui'
 

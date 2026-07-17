@@ -1,8 +1,9 @@
 import { Router } from 'express'
 
-import { authController } from './auth.controller'
 import { authMiddleware } from '../../middleware/auth.middleware'
 import { deviceCodeLimiter } from '../../middleware/rate-limiter'
+
+import { authController } from './auth.controller'
 
 const authRouter = Router()
 

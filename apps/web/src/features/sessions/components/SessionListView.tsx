@@ -1,7 +1,7 @@
 import React from 'react'
 
-import { SessionListRow } from './SessionListRow'
 import { SessionFilterDropdown, type SessionFilterState } from './SessionFilterDropdown'
+import { SessionListRow } from './SessionListRow'
 
 import type { SortOption, TypeFilter } from './SessionList'
 

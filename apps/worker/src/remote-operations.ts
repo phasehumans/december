@@ -1,4 +1,5 @@
 import { PlatformAdapter } from '@december/agent'
+
 import { executeCommand } from './runtime'
 
 export class RemotePlatformAdapter implements PlatformAdapter {

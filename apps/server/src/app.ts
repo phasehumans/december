@@ -4,22 +4,22 @@ import express from 'express'
 
 import { env } from './env'
 import { errorHandler } from './middleware/error.middleware'
+import { apiRateLimiter } from './middleware/rate-limiter'
 import authRouter from './modules/auth/auth.routes'
 import billingRouter from './modules/billing/billing.routes'
 import canvasRouter from './modules/canvas/canvas.routes'
 import cliRouter from './modules/cli/cli.routes'
 import coreRouter from './modules/core/core.routes'
-import importRouter from './modules/platform/import/import.routes'
 import integrationsRouter from './modules/integration/integration.routes'
 import notificationRouter from './modules/notification/notification.routes'
+import importRouter from './modules/platform/import/import.routes'
 import platformRouter from './modules/platform/platform.routes'
-import settingRouter from './modules/setting/setting.routes'
-
 import reviewRouter from './modules/review/review.routes'
 import runtimeRouter from './modules/runtime/runtime.routes'
 import scheduleRouter from './modules/schedule/schedule.routes'
 import secretsRouter from './modules/secrets/secrets.routes'
 import sessionRouter from './modules/session/session.routes'
+import settingRouter from './modules/setting/setting.routes'
 import skillsRouter from './modules/skills/skills.routes'
 import usageRouter from './modules/usage/usage.routes'
 import wikiRouter from './modules/wiki/wiki.routes'
@@ -39,8 +39,6 @@ app.use(
         credentials: true,
     })
 )
-
-import { apiRateLimiter } from './middleware/rate-limiter'
 
 // Apply rate limiter to socket.io upgrade endpoints
 app.use('/socket.io', apiRateLimiter)

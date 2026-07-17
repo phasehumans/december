@@ -1,8 +1,8 @@
-import React, { useState } from 'react'
 import { describe, expect, it } from 'bun:test'
 import { render } from 'ink-testing-library'
+import React from 'react'
+
 import { TextArea } from '../src/components/text-area'
-import { Box } from 'ink'
 
 describe('TextArea Component', () => {
     it('renders with placeholder', () => {

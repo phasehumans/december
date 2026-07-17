@@ -4,9 +4,8 @@ import {
     getTextFile,
     listPrefix,
     sessionWorkspacePrefix,
-    sessionPrefix,
 } from '../../shared/project-storage'
-import { runtimeService } from '../runtime/runtime.service'
+
 import { platformRepository } from './platform.repository'
 import { buildProjectZip } from './platform.utils'
 import { vercelService } from './vercel.service'

@@ -1,6 +1,6 @@
 import { describe, expect, test, mock } from 'bun:test'
+
 import { openrouterProvider } from '../src/providers/openrouter'
-import { openaiProvider } from '../src/providers/openai'
 
 // Mock the openaiProvider factory to see what arguments it gets called with
 mock.module('../src/providers/openai', () => {

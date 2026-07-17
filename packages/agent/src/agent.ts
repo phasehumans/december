@@ -1,9 +1,9 @@
-import type { LLMProvider } from '@december/providers'
-import type { AgentMessage, Message, Tool, AgentHooks } from '@december/shared'
+import { ConversationManager } from './conversation-manager'
 
 import type { SessionRepository } from './harness/session-repository'
 import type { PlatformAdapter } from './platform-adapter'
-import { ConversationManager } from './conversation-manager'
+import type { LLMProvider } from '@december/providers'
+import type { AgentMessage, Message, Tool, AgentHooks } from '@december/shared'
 
 export interface AgentConfig {
     sessionId?: string
