@@ -2,6 +2,24 @@
 
 ### Features
 
+- _(phase0)_ Database migration, settings cleanup, and monorepo typecheck fixes (#207)
+- _(sessions)_ Add session page ui
+- _(sessions)_ Add sessions crud and fix sessions ui" (#208)
+
+### Bug Fixes
+
+- _(sessions)_ Fix sessions page, add filters
+- _(sessions)_ Link endpoint and add insights option
+- _(sidecar and vm)_ Add sidecard and vm boots scripts
+
+### Refactor
+
+- _(lint)_ Lint check
+
+## [0.2.12] - 2026-07-17
+
+### Features
+
 - _(db)_ Change schema as session first approach and auth fix
 - _(sessions)_ Sessions migration
 - _(sessions)_ Sessions migration (#206)
@@ -17,6 +35,10 @@
 ### Refactor
 
 - _(server)_ Migrated from project based to session based
+
+### Miscellaneous Tasks
+
+- _(release)_ V0.2.12
 
 ## [0.2.11] - 2026-07-15
 

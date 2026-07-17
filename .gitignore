@@ -58,3 +58,4 @@ ubuntu-base.tar
 firecracker
 vmlinux.bin
 release-*/
+apps/sidecar/december-agent
