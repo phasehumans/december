@@ -32,6 +32,7 @@ export const CanvasItemComponent: React.FC<CanvasItemComponentProps> = ({
     scale,
     activeTool,
 }) => {
+    const [isDropdownOpen, setIsDropdownOpen] = React.useState(false)
     const {
         isChild,
         isEditing,

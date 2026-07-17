@@ -1,5 +1,3 @@
-import { Tool, ToolExecuteContext } from '@december/shared'
-
 import { Tool, ToolExecuteContext, truncateOutput } from '@december/shared'
 import { Type, Static } from '@sinclair/typebox'
 

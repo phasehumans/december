@@ -6,11 +6,9 @@ import {
     changePasswordSchema,
     chatSuggestionsSchema,
     generationSoundSchema,
-    designSchema,
     updateNameSchema,
     updateNotificationSchema,
     updateUsernameSchema,
-    updateAvatarUrlSchema,
 } from './setting.schema'
 import { settingService } from './setting.service'
 
@@ -64,20 +62,6 @@ const updateUsername = asyncHandler(async (req: Request, res: Response) => {
 
     const result = await settingService.updateUsername({ userId, username })
     return sendSuccess(res, 'username updated successfully', result)
-})
-
-const updateAvatarUrl = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.user?.userId as string | undefined
-
-    if (!userId) {
-        throw new AppError('unauthorized', 401)
-    }
-
-    const parseData = updateAvatarUrlSchema.parse(req.body)
-    const { avatarUrl } = parseData
-
-    const result = await settingService.updateAvatarUrl({ userId, avatarUrl })
-    return sendSuccess(res, 'avatar updated successfully', result)
 })
 
 const changePassword = asyncHandler(async (req: Request, res: Response) => {
@@ -145,42 +129,6 @@ const generationSound = asyncHandler(async (req: Request, res: Response) => {
     return sendSuccess(res, 'generation sound preference updated successfully', result)
 })
 
-const getdesign = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.user?.userId as string | undefined
-
-    if (!userId) {
-        throw new AppError('unauthorized', 401)
-    }
-
-    const result = await settingService.getdesign({ userId })
-    return sendSuccess(res, 'design fetched successfully', result)
-})
-
-const updatedesign = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.user?.userId as string | undefined
-
-    if (!userId) {
-        throw new AppError('unauthorized', 401)
-    }
-
-    const parseData = designSchema.parse(req.body)
-    const { design } = parseData
-
-    const result = await settingService.updatedesign({ userId, design })
-    return sendSuccess(res, 'design updated successfully', result)
-})
-
-const deletedesign = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.user?.userId as string | undefined
-
-    if (!userId) {
-        throw new AppError('unauthorized', 401)
-    }
-
-    await settingService.deletedesign({ userId })
-    return sendSuccess(res, 'design deleted successfully')
-})
-
 const completeOnboarding = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user?.userId as string | undefined
 
@@ -197,13 +145,9 @@ export const settingController = {
     getProfile,
     updateName,
     updateUsername,
-    updateAvatarUrl,
     changePassword,
     updateNotifications,
     chatSuggestions,
     generationSound,
-    getdesign,
-    updatedesign,
-    deletedesign,
     completeOnboarding,
 }

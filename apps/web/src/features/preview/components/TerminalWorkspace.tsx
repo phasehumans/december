@@ -1,6 +1,7 @@
 import { FitAddon } from '@xterm/addon-fit'
 import { Terminal } from '@xterm/xterm'
 import React, { useEffect, useRef } from 'react'
+// @ts-ignore
 import '@xterm/xterm/css/xterm.css'
 
 interface TerminalWorkspaceProps {

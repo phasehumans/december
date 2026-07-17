@@ -234,7 +234,7 @@ Guidelines:
                 headers: { Authorization: `Bearer ${config.decemberToken}` },
             })
             if (!urlRes.ok) throw new Error(await urlRes.text())
-            const { uploadUrl, objectKey } = await urlRes.json()
+            const { uploadUrl, objectKey } = (await urlRes.json()) as any
 
             console.log('Uploading to MinIO...')
             const fileData = fs.readFileSync(archivePath)

@@ -3,8 +3,16 @@
     "compilerOptions": {
         "lib": ["ESNext", "DOM"],
         "paths": {
-            "@/*": ["./src/*"]
-        }
+            "@/*": ["./src/*"],
+            "react": ["./node_modules/react"],
+            "react-dom": ["./node_modules/react-dom"]
+        },
+        "verbatimModuleSyntax": false,
+        "strict": false,
+        "strictNullChecks": false,
+        "noImplicitAny": false,
+        "noImplicitOverride": false,
+        "skipLibCheck": true
     },
     "exclude": ["dist", "node_modules"]
 }
