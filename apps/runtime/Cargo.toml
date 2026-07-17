@@ -22,7 +22,10 @@ tokio-stream = { version = "0.1.18", features = ["sync"] }
 tonic = "0.12.3"
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.20", features = ["env-filter", "fmt"] }
-
+tokio-vsock = "0.5.0"
+bytes = "1.0"
+aes-gcm = "0.10.3"
+rand = "0.8.5"
 [build-dependencies]
 prost-build = "0.13"
 tonic-build = "0.12.3"

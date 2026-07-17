@@ -39,7 +39,7 @@ export function initSocket(httpServer: any) {
             const sessionId = channel.replace('session_events:', '')
             try {
                 const event = JSON.parse(message)
-                io.to(`session:${sessionId}`).emit(event.type, event.data)
+                io.to(`session:${sessionId}`).emit('agent_event', event)
             } catch (err) {
                 console.error(`[Socket] Failed to parse Redis message on ${channel}`, err)
             }
@@ -47,7 +47,16 @@ export function initSocket(httpServer: any) {
     })
 
     io.use((socket, next) => {
-        const token = socket.handshake.auth.token
+        let token = socket.handshake.auth.token
+        if (!token && socket.request.headers.cookie) {
+            const cookies = socket.request.headers.cookie.split(';').reduce((acc: any, cookie) => {
+                const [key, value] = cookie.trim().split('=')
+                acc[key] = value
+                return acc
+            }, {})
+            token = cookies['accessToken']
+        }
+
         if (!token) {
             return next(new Error('Authentication error'))
         }

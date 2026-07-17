@@ -51,20 +51,23 @@ export const TerminalWorkspace: React.FC<TerminalWorkspaceProps> = ({ previewSes
 
             // Connect to actual WebSocket for terminal stream
             import('socket.io-client').then(({ io }) => {
-                socket = io('/', { path: '/socket.io/' })
+                import('@/shared/api/client').then(({ API_BASE_URL }) => {
+                    const baseUrl = API_BASE_URL.replace('/api/v1', '')
+                    socket = io(baseUrl, { path: '/socket.io/' })
 
-                socket.emit('join_session_terminal', { sessionId: previewSessionId })
+                    socket.emit('join_session_terminal', { sessionId: previewSessionId })
 
-                socket.on('TERMINAL_DATA', (data: string) => {
-                    xterm.write(data)
-                })
+                    socket.on('TERMINAL_DATA', (data: string) => {
+                        xterm.write(data)
+                    })
 
-                xterm.onData((data) => {
-                    socket.emit('TERMINAL_INPUT', { sessionId: previewSessionId, data })
-                })
+                    xterm.onData((data) => {
+                        socket.emit('TERMINAL_INPUT', { sessionId: previewSessionId, data })
+                    })
 
-                socket.on('disconnect', () => {
-                    xterm.writeln('\r\n\x1b[31mDisconnected from VM.\x1b[0m')
+                    socket.on('disconnect', () => {
+                        xterm.writeln('\r\n\x1b[31mDisconnected from VM.\x1b[0m')
+                    })
                 })
             })
         } else {

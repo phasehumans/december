@@ -5,7 +5,8 @@ import type {
     BackendProjectVersionSummary,
 } from '@/features/sessions/api/project'
 
-import { ApiError, apiFetch } from '@/shared/api/client'
+import { ApiError, apiFetch, API_BASE_URL } from '@/shared/api/client'
+import { sessionAPI } from '@/features/sessions/api/session'
 
 export type GenerationMessageStatus = 'thinking' | 'building' | 'done' | 'error'
 
@@ -199,52 +200,82 @@ const sanitizeCanvasStateForRequest = (canvasState?: CanvasDocument) => {
     }
 }
 
-const toApiError = async (res: Response) => {
-    let payload: { message?: string; errors?: unknown } | null
+const runOverSocket = async (
+    sessionId: string,
+    prompt: string,
+    onEvent: (event: GenerationStreamEvent) => void,
+    signal?: AbortSignal
+): Promise<any> => {
+    return new Promise((resolve, reject) => {
+        import('socket.io-client').then(({ io }) => {
+            const baseUrl = API_BASE_URL.replace('/api/v1', '')
+            const socket = io(baseUrl, { path: '/socket.io/', withCredentials: true })
 
-    try {
-        payload = await res.json()
-    } catch {
-        payload = null
-    }
+            let hasResolved = false
+            let resultData: any = null
 
-    const genericMessage =
-        payload?.message && ['internal server error', 'server error'].includes(payload.message)
+            if (signal) {
+                signal.addEventListener('abort', () => {
+                    if (!hasResolved) {
+                        hasResolved = true
+                        socket.disconnect()
+                        reject(new Error('Aborted'))
+                    }
+                })
+            }
 
-    const message =
-        (typeof payload?.errors === 'string' && (genericMessage || !payload?.message)
-            ? payload.errors
-            : payload?.message) ||
-        (typeof payload?.errors === 'string' ? payload.errors : undefined) ||
-        `Request failed with status ${res.status}`
+            socket.on('connect', () => {
+                onEvent({ type: 'connected', data: { ok: true } })
 
-    return new ApiError(message, res.status, payload?.errors)
-}
+                socket.emit('join_session', sessionId)
 
-const parseEventBlock = (block: string) => {
-    const lines = block.split('\n')
-    let eventType = 'message'
-    const dataLines: string[] = []
+                socket.emit('send_prompt', {
+                    sessionId: sessionId,
+                    projectId: sessionId,
+                    prompt: prompt,
+                })
+            })
 
-    for (const line of lines) {
-        if (line.startsWith('event:')) {
-            eventType = line.slice(6).trim()
-            continue
-        }
+            socket.on('agent_event', (event: any) => {
+                let parsedData = event.data
+                if (typeof parsedData === 'string') {
+                    try {
+                        parsedData = JSON.parse(parsedData)
+                    } catch (e) {}
+                }
 
-        if (line.startsWith('data:')) {
-            dataLines.push(line.slice(5).trimStart())
-        }
-    }
+                const streamEvent = { type: event.type, data: parsedData } as GenerationStreamEvent
+                onEvent(streamEvent)
 
-    if (dataLines.length === 0) {
-        return null
-    }
+                if (event.type === 'result') {
+                    resultData = parsedData
+                    hasResolved = true
+                    socket.disconnect()
+                    resolve(resultData)
+                }
+                if (event.type === 'error') {
+                    hasResolved = true
+                    socket.disconnect()
+                    reject(new ApiError(parsedData.message || 'Error', 500))
+                }
+            })
 
-    return {
-        type: eventType,
-        data: JSON.parse(dataLines.join('\n')),
-    } as GenerationStreamEvent
+            socket.on('error', (err: any) => {
+                if (!hasResolved) {
+                    hasResolved = true
+                    socket.disconnect()
+                    reject(new ApiError(err.message || 'Socket error', 500))
+                }
+            })
+
+            socket.on('disconnect', () => {
+                if (!hasResolved) {
+                    hasResolved = true
+                    reject(new Error('Socket disconnected prematurely'))
+                }
+            })
+        })
+    })
 }
 
 const generateProjectStream = async ({
@@ -255,166 +286,42 @@ const generateProjectStream = async ({
     signal,
     onEvent,
 }: GenerateProjectInput) => {
-    const sanitizedCanvasState = sanitizeCanvasStateForRequest(canvasState)
-    const res = await apiFetch('/generate', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+    let targetSessionId = projectId
+
+    if (!targetSessionId) {
+        // Create new session if no projectId provided
+        const newSession = await sessionAPI.createSession({
             prompt,
-            ...(projectId ? { projectId } : {}),
-            ...(sanitizedCanvasState ? { canvasState: sanitizedCanvasState } : {}),
-            ...(model ? { model } : {}),
-        }),
-        signal,
-    })
+            type: 'WEB',
+        })
+        targetSessionId = newSession.id
 
-    if (!res.ok) {
-        throw await toApiError(res)
+        onEvent({
+            type: 'project-created',
+            data: {
+                project: newSession as unknown as BackendProject,
+                version: {
+                    id: newSession.id,
+                    versionNumber: 1,
+                    label: 'Initial',
+                },
+            },
+        })
     }
 
-    if (!res.body) {
-        throw new Error('generation stream body is missing')
-    }
-
-    const reader = res.body.getReader()
-    const decoder = new TextDecoder()
-    let buffer = ''
-    let resultEvent: Extract<GenerationStreamEvent, { type: 'result' }> | null = null
-
-    while (true) {
-        const { done, value } = await reader.read()
-        buffer += decoder.decode(value, { stream: !done })
-        buffer = buffer.replace(/\r/g, '')
-
-        let boundaryIndex = buffer.indexOf('\n\n')
-
-        while (boundaryIndex !== -1) {
-            const block = buffer.slice(0, boundaryIndex).trim()
-            buffer = buffer.slice(boundaryIndex + 2)
-
-            if (block) {
-                const parsedEvent = parseEventBlock(block)
-
-                if (parsedEvent) {
-                    onEvent(parsedEvent)
-
-                    if (parsedEvent.type === 'error') {
-                        throw new ApiError(parsedEvent.data.message, 500, parsedEvent.data)
-                    }
-
-                    if (parsedEvent.type === 'result') {
-                        resultEvent = parsedEvent
-                    }
-                }
-            }
-
-            boundaryIndex = buffer.indexOf('\n\n')
-        }
-
-        if (done) {
-            break
-        }
-    }
-
-    return resultEvent?.data ?? null
-}
-
-const readGenerationStream = async (
-    res: Response,
-    onEvent: (event: GenerationStreamEvent) => void
-) => {
-    if (!res.ok) {
-        throw await toApiError(res)
-    }
-
-    if (!res.body) {
-        throw new Error('generation stream body is missing')
-    }
-
-    const reader = res.body.getReader()
-    const decoder = new TextDecoder()
-    let buffer = ''
-    let resultEvent: Extract<GenerationStreamEvent, { type: 'result' }> | null = null
-
-    while (true) {
-        const { done, value } = await reader.read()
-        buffer += decoder.decode(value, { stream: !done })
-        buffer = buffer.replace(/\r/g, '')
-
-        let boundaryIndex = buffer.indexOf('\n\n')
-
-        while (boundaryIndex !== -1) {
-            const block = buffer.slice(0, boundaryIndex).trim()
-            buffer = buffer.slice(boundaryIndex + 2)
-
-            if (block) {
-                const parsedEvent = parseEventBlock(block)
-
-                if (parsedEvent) {
-                    onEvent(parsedEvent)
-
-                    if (parsedEvent.type === 'error') {
-                        throw new ApiError(parsedEvent.data.message, 500, parsedEvent.data)
-                    }
-
-                    if (parsedEvent.type === 'result') {
-                        resultEvent = parsedEvent
-                    }
-                }
-            }
-
-            boundaryIndex = buffer.indexOf('\n\n')
-        }
-
-        if (done) {
-            break
-        }
-    }
-
-    return resultEvent?.data ?? null
+    return await runOverSocket(targetSessionId, prompt, onEvent, signal)
 }
 
 const applyProjectEdit = async (data: ApplyProjectEditInput) => {
-    const sanitizedCanvasState = sanitizeCanvasStateForRequest(data.canvasState)
-
-    const res = await apiFetch('/generate/edit', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            projectId: data.projectId,
-            ...(data.versionId ? { versionId: data.versionId } : {}),
-            prompt: data.prompt,
-            ...(data.selectedElement ? { selectedElement: data.selectedElement } : {}),
-            ...(sanitizedCanvasState ? { canvasState: sanitizedCanvasState } : {}),
-            ...(data.model ? { model: data.model } : {}),
-        }),
-        signal: data.signal,
-    })
-
-    return (await readGenerationStream(res, data.onEvent)) as AppliedProjectChangeResult | null
+    // For now, treat edit as a regular prompt in the session
+    const prompt = `[EDIT] ${data.prompt}${data.selectedElement ? ` (Element: ${data.selectedElement.tagName})` : ''}`
+    return await runOverSocket(data.projectId, prompt, data.onEvent, data.signal)
 }
 
 const applyProjectFix = async (data: ApplyProjectFixInput) => {
-    const res = await apiFetch('/generate/fix', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            projectId: data.projectId,
-            ...(data.versionId ? { versionId: data.versionId } : {}),
-            errorMessage: data.errorMessage,
-            ...(data.stack ? { stack: data.stack } : {}),
-            ...(data.model ? { model: data.model } : {}),
-        }),
-        signal: data.signal,
-    })
-
-    return (await readGenerationStream(res, data.onEvent)) as AppliedProjectChangeResult | null
+    // Treat fix as a regular prompt in the session
+    const prompt = `[FIX ERROR] ${data.errorMessage}\n\nStack:\n${data.stack || ''}`
+    return await runOverSocket(data.projectId, prompt, data.onEvent, data.signal)
 }
 
 export const generationAPI = {

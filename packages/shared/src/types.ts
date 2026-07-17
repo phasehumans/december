@@ -122,6 +122,18 @@ export interface ContextCompactedEvent {
     summary: string
 }
 
+export interface TerminalDataEvent {
+    type: 'TerminalData'
+    taskId: string
+    chunk: string
+}
+
+export interface FileModifiedEvent {
+    type: 'FileModified'
+    path: string
+    diff?: string
+}
+
 export type AgentEvent =
     | AgentStartEvent
     | TurnStartEvent
@@ -136,3 +148,21 @@ export type AgentEvent =
     | AgentStatusEvent
     | AgentUsageEvent
     | ContextCompactedEvent
+    | TerminalDataEvent
+    | FileModifiedEvent
+
+export interface WireAgentEvent {
+    type: string
+    data: unknown
+}
+
+export function toWire(event: AgentEvent): WireAgentEvent {
+    return {
+        type: event.type,
+        data: event,
+    }
+}
+
+export function fromWire(wireEvent: WireAgentEvent): AgentEvent {
+    return wireEvent.data as AgentEvent
+}

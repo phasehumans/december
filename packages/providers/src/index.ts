@@ -1,6 +1,7 @@
 export * from './types.ts'
-export * from './registry.ts'
+export { registerProvider, getProvider, getAllProviders } from './registry.ts'
 
+export { MODEL_CONTEXT_WINDOWS } from './models.ts'
 export * from './providers/openai.ts'
 export * from './providers/anthropic.ts'
 export * from './providers/gemini.ts'

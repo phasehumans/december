@@ -1,7 +1,6 @@
 import './env'
-import { Agent } from '@december/agent'
 import { publishEvent } from '@december/shared'
-import { Worker, Job, Queue } from 'bullmq'
+import { Worker, Job } from 'bullmq'
 import Redis from 'ioredis'
 import { prisma } from '@december/database'
 
@@ -13,204 +12,64 @@ const redisConnection: any = new Redis(REDIS_URL, {
 
 console.log("Worker started, waiting for jobs on 'agent_jobs'...")
 
-const sessionTimers = new Map<string, NodeJS.Timeout>()
-const IDLE_TIMEOUT_MS = 15 * 60 * 1000 // 15 minutes
-
-async function handleIdleTimeout(sessionId: string) {
-    console.log(
-        `[Worker] Session ${sessionId} has been idle for 15 minutes. Triggering backup and shutdown.`
-    )
-    try {
-        await prisma.session.update({
-            where: { id: sessionId },
-            data: { vmStatus: 'STOPPED' },
-        })
-        const minioWipeQueue = new Queue('minio_wipe', { connection: redisConnection })
-        // In reality, we'd have a backup_workspace job, but we'll queue minio_wipe for now as a placeholder
-        // or a new queue for backing up
-        const backupQueue = new Queue('backup_workspace', { connection: redisConnection })
-        await backupQueue.add('backup', { sessionId })
-    } catch (e) {
-        console.error(`[Worker] Failed to handle idle timeout for ${sessionId}`, e)
-    } finally {
-        sessionTimers.delete(sessionId)
-    }
-}
-
-function resetIdleTimer(sessionId: string) {
-    if (sessionTimers.has(sessionId)) {
-        clearTimeout(sessionTimers.get(sessionId)!)
-    }
-    sessionTimers.set(
-        sessionId,
-        setTimeout(() => handleIdleTimeout(sessionId), IDLE_TIMEOUT_MS)
-    )
-}
-
 const worker = new Worker(
     'agent_jobs',
     async (job: Job) => {
-        const { prompt, projectId, sessionId, userId, secrets } = job.data
+        const { sessionId, userId } = job.data
         console.log(`Processing job ${job.id} for session ${sessionId}`)
 
         try {
-            const sessionStartTime = Date.now()
+            await prisma.session.update({
+                where: { id: sessionId },
+                data: { vmStatus: 'RUNNING' },
+            })
 
-            // Call gRPC Runtime to boot VM
-            const { createVM } = require('./runtime')
+            // Generate short-lived JWT
+            const jwt = require('jsonwebtoken')
+            const token = jwt.sign(
+                { userId, sessionId },
+                process.env.AGENT_TOKEN_SECRET || 'secret',
+                { expiresIn: '15m' }
+            )
+
+            // START THE FIRECRACKER VM!
+            const { createVM, startAgentSession } = require('./runtime')
+            const { processGrpcStream } = require('./listener')
+
             console.log(`Booting Firecracker VM for session ${sessionId}...`)
-            await createVM(sessionId) // TODO: pass workspaceUrl if handoff
+            await createVM(sessionId, job.data.workspaceZipUrl)
+            console.log(`VM booted successfully. Establishing VSOCK Agent session...`)
 
-            // Send starting event
-            await publishEvent(`session_events:${sessionId}`, {
-                type: 'connected',
-                data: { ok: true },
-            })
-
-            const { RemotePlatformAdapter } = require('./remote-operations')
-            const { AgentHarness } = require('@december/agent')
-            const { runAgentLoop } = require('@december/agent')
-            const {
-                BashTool,
-                ReadFileTool,
-                WriteFileTool,
-                LsTool,
-                EditFileTool,
-                EditDiffTool,
-                FindFilesTool,
-                GrepSearchTool,
-                SubagentTool,
-                ManageTaskTool,
-                BrowserTool,
-                GithubTool,
-            } = require('@december/tools')
-            const { AnthropicProvider } = require('@december/providers')
-
-            const operations = new RemotePlatformAdapter(sessionId)
-            const llm = new AnthropicProvider({
-                apiKey: process.env.ANTHROPIC_API_KEY || process.env.VITE_ANTHROPIC_API_KEY || '',
-            })
-
-            const tools = [
-                new BashTool(),
-                new ReadFileTool(),
-                new WriteFileTool(),
-                new LsTool(),
-                new EditFileTool(),
-                new EditDiffTool(),
-                new FindFilesTool(),
-                new GrepSearchTool(),
-                new SubagentTool(),
-                new ManageTaskTool(),
-                new BrowserTool(),
-                new GithubTool(),
-            ]
-
-            const harness = new AgentHarness({
-                baseSystemPrompt:
-                    'You are December, an autonomous software engineer. You have access to tools. When executing code, please use JSON schemas for tool inputs. Before using a tool, you MUST enclose your thought process inside <thought>...</thought> tags. At the end of your work, provide a summary of what you did, highlighting important keywords.',
-                llm,
-                tools,
-                operations,
+            const apiHostUrl = process.env.API_URL || 'http://localhost:4000/api/v1'
+            const stream = startAgentSession(
                 sessionId,
-                workspaceDir: '/root',
+                '/workspace',
+                job.data.prompt || 'You are Antigravity, an AI agent.',
+                token,
+                apiHostUrl
+            )
+
+            // Start listening in the background without blocking the worker pool
+            processGrpcStream(sessionId, stream).catch((e: any) =>
+                console.error('Stream failed', e)
+            )
+
+            return { status: 'RUNNING', token }
+        } catch (e: any) {
+            console.error(`Failed to process job ${job.id}`, e)
+            await prisma.session.update({
+                where: { id: sessionId },
+                data: { vmStatus: 'FAILED' },
             })
-            const agent = harness.getAgent()
-
-            if (secrets) {
-                for (const secret of secrets) {
-                    agent.env.set(secret.name, secret.value)
-                }
-            }
-
-            // Subscribe to interrupts (Phase 4.4 Agent Interruption)
-            const interruptSubscriber = redisConnection.duplicate()
-            await interruptSubscriber.subscribe(`session_interrupts:${sessionId}`)
-            interruptSubscriber.on('message', (channel, message) => {
-                if (channel === `session_interrupts:${sessionId}`) {
-                    const evt = JSON.parse(message)
-                    if (evt.type === 'INTERRUPT') {
-                        console.log(
-                            `[Worker] Interruption received for session ${sessionId}, aborting agent...`
-                        )
-                        agent.abort()
-                    }
-                }
-            })
-
-            let sessionUsage = { inputTokens: 0, outputTokens: 0, totalTokens: 0 }
-            let userCredits = await prisma.user.findUnique({
-                where: { id: userId },
-                select: { creditBalance: true },
-            })
-
-            const stream = runAgentLoop(agent, prompt)
-            for await (const event of stream) {
-                resetIdleTimer(sessionId)
-                if (event.type === 'AgentUsage') {
-                    sessionUsage.inputTokens += event.data?.inputTokens || 0
-                    sessionUsage.outputTokens += event.data?.outputTokens || 0
-                    sessionUsage.totalTokens += event.data?.totalTokens || 0
-
-                    // Cache in Redis
-                    await redisConnection.hset(`session_usage:${sessionId}`, sessionUsage)
-
-                    // Calculate session duration markup (Phase 5.3 Compute Abuse)
-                    const sessionDurationSeconds = (Date.now() - sessionStartTime) / 1000
-                    const computeCostMarkup = sessionDurationSeconds * 0.0005 // Arbitrary 0.05 cents per second compute fee
-
-                    // Estimate cost roughly (assuming 1 cent per 1k tokens + compute markup)
-                    // We will sync actual usage to a BullMQ job for the Server to handle exact cost deduction later
-                    const tokenCost = Math.ceil(sessionUsage.totalTokens / 1000)
-                    const estimatedCost = tokenCost + computeCostMarkup
-
-                    if (userCredits && userCredits.creditBalance - estimatedCost <= 0) {
-                        await publishEvent(`session_events:${sessionId}`, {
-                            type: 'LOW_BALANCE',
-                            data: { message: 'Out of credits. Terminating.' },
-                        })
-                        // Hard stop
-                        throw new Error('Zero balance hard stop triggered')
-                    }
-                }
-
-                await publishEvent(`session_events:${sessionId}`, event)
-            }
-
-            resetIdleTimer(sessionId)
-
-            // Clean up interrupt subscriber
-            await interruptSubscriber.unsubscribe(`session_interrupts:${sessionId}`)
-            interruptSubscriber.quit()
-
-            // Stream ended, dispatch sync job to a usage_sync queue so Server can accurately bill and save to DB
-            const sessionDurationSeconds = (Date.now() - sessionStartTime) / 1000
-            const computeCostMarkup = sessionDurationSeconds * 0.0005
-
-            const usageSyncQueue = new Queue('usage_sync', { connection: redisConnection })
-            await usageSyncQueue.add('sync', {
-                userId,
-                projectId,
-                sessionId,
-                model: 'auto', // default
-                computeCostMarkup,
-                durationSeconds: sessionDurationSeconds,
-                ...sessionUsage,
-            })
-
-            await publishEvent(`session_events:${sessionId}`, { type: 'done' })
-        } catch (error: any) {
-            console.error(`Error in job ${job.id}:`, error)
-            await publishEvent(`session_events:${sessionId}`, {
-                type: 'error',
-                data: { message: error.message },
-            })
-            throw error
+            throw e
         }
     },
-    { connection: redisConnection }
+    {
+        connection: redisConnection,
+        concurrency: 5,
+    }
 )
 
-worker.on('failed', (job, err) => {
-    console.error(`Job ${job?.id} failed with error ${err.message}`)
+worker.on('failed', (job: any, err: any) => {
+    console.error(`Job ${job?.id} failed with ${err.message}`)
 })

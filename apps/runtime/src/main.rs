@@ -1,9 +1,11 @@
-mod actors;
-mod app;
-mod domain;
-mod http;
-mod sandboxes;
-mod services;
+pub mod actors;
+pub mod app;
+pub mod config;
+pub mod domain;
+pub mod http;
+pub mod sandboxes;
+pub mod services;
+pub mod vsock_relay;
 
 mod grpc;
 

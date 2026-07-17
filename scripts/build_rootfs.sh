@@ -8,11 +8,13 @@ IMAGE_FILE="ubuntu-rootfs.ext4"
 echo "Building Firecracker Ubuntu Rootfs Image ($IMAGE_SIZE)..."
 
 # Step 1: Create an empty file and format it as ext4
+rm -f $IMAGE_FILE ubuntu-base.tar
 dd if=/dev/zero of=$IMAGE_FILE bs=1M count=0 seek=10240
 mkfs.ext4 -F $IMAGE_FILE
 
 # Step 2: Use Docker to create an Ubuntu container with necessary tools
 TMP_CONTAINER="ubuntu-fc-base"
+docker rm -f $TMP_CONTAINER || true
 docker run -d --name $TMP_CONTAINER ubuntu:24.04 sleep 3600
 
 # Install basic dev tools inside the container
@@ -34,6 +36,11 @@ echo "Compiling and baking sidecar daemon..."
 cargo build --release --manifest-path apps/sidecar/Cargo.toml
 sudo cp apps/sidecar/target/release/sidecar /tmp/fc-mount/usr/local/bin/december-sidecar
 sudo chmod +x /tmp/fc-mount/usr/local/bin/december-sidecar
+
+echo "Compiling and baking December TS agent..."
+bun run --cwd apps/sidecar build:agent
+sudo cp apps/sidecar/december-agent /tmp/fc-mount/usr/local/bin/december-agent
+sudo chmod +x /tmp/fc-mount/usr/local/bin/december-agent
 
 # Add systemd service for sidecar
 cat << 'EOF' | sudo tee /tmp/fc-mount/etc/systemd/system/december-sidecar.service

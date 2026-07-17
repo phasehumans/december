@@ -63,6 +63,10 @@ const envSchema = z.object({
     OPENROUTER_API_KEY: z.string().min(1).optional(),
     AUTO_MODEL: z.string().optional(),
     BCRYPT_SALT_ROUNDS: z.coerce.number().default(10),
+    SECRETS_ENC_KEY: z
+        .string()
+        .min(64)
+        .default('0000000000000000000000000000000000000000000000000000000000000000'),
 })
 
 const parsedEnv = envSchema.safeParse(process.env)

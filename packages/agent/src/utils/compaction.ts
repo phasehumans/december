@@ -1,4 +1,5 @@
 import type { LLMProvider } from '@december/providers'
+import { MODEL_CONTEXT_WINDOWS } from '@december/providers'
 import type { Message } from '@december/shared'
 
 export const DEFAULT_MAX_TOKENS = 32000 // Assume a generic safe limit
@@ -14,13 +15,23 @@ function estimateTokens(messages: Message[]): number {
 export async function compactContextIfNeeded(
     messages: Message[],
     llm: LLMProvider,
-    maxTokens: number = DEFAULT_MAX_TOKENS,
+    maxTokens?: number,
     modelOptions?: Record<string, any>
 ): Promise<Message[]> {
+    let limit = maxTokens
+    if (!limit) {
+        const modelName = modelOptions?.model
+        if (modelName && MODEL_CONTEXT_WINDOWS[modelName]) {
+            limit = MODEL_CONTEXT_WINDOWS[modelName]
+        } else {
+            limit = DEFAULT_MAX_TOKENS
+        }
+    }
+
     const currentTokens = estimateTokens(messages)
 
     // Trigger at 80% capacity
-    if (currentTokens < maxTokens * 0.8) {
+    if (currentTokens < limit * 0.8) {
         return messages
     }
 

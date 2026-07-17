@@ -96,6 +96,82 @@ impl RuntimeService for MyRuntimeService {
 
         Ok(Response::new(ReceiverStream::new(rx)))
     }
+
+    type StartAgentSessionStream = ReceiverStream<Result<runtime::SidecarEvent, Status>>;
+
+    async fn start_agent_session(
+        &self,
+        request: Request<runtime::SessionConfig>,
+    ) -> Result<Response<Self::StartAgentSessionStream>, Status> {
+        let req = request.into_inner();
+        let vm_id = req.vm_id.clone();
+        println!("Starting agent session for VM {}", vm_id);
+        
+        let (tx, rx) = mpsc::channel(100);
+        
+        // Connect to VSOCK Unix socket
+        tokio::spawn(async move {
+            match crate::vsock_relay::VsockRelay::connect_unix(&vm_id, 50051).await {
+                Ok(mut relay) => {
+                    // Send config frame
+                    let config_json = serde_json::json!({
+                        "session_id": req.vm_id,
+                        "workspace_directory": req.workspace_directory,
+                        "provider_settings": { "id": "openai" },
+                        "prompts": { "system": req.prompts.get(0).cloned().unwrap_or_default() }
+                    }).to_string();
+                    
+                    if let Err(e) = relay.send_config(&config_json).await {
+                        println!("Failed to send config: {}", e);
+                        return;
+                    }
+                    
+                    // Loop and read frames, send to tx
+                    loop {
+                        match relay.read_frame().await {
+                            Ok(payload) => {
+                                match serde_json::from_slice::<crate::vsock_relay::WireAgentEvent>(&payload) {
+                                    Ok(event) => {
+                                        let prost_event = runtime::SidecarEvent {
+                                            r#type: event.r#type,
+                                            data: event.data.to_string(),
+                                        };
+                                        let _ = tx.send(Ok(prost_event)).await;
+                                    }
+                                    Err(e) => {
+                                        println!("Failed to parse WireAgentEvent: {}", e);
+                                    }
+                                }
+                            }
+                            Err(e) => {
+                                println!("Vsock read error: {}", e);
+                                break;
+                            }
+                        }
+                    }
+                }
+                Err(e) => {
+                    println!("Failed to connect to VSOCK: {}", e);
+                }
+            }
+        });
+        
+        Ok(Response::new(ReceiverStream::new(rx)))
+    }
+
+    async fn send_control(
+        &self,
+        _request: Request<runtime::ControlMessage>,
+    ) -> Result<Response<runtime::ControlAck>, Status> {
+        Err(Status::unimplemented("Not implemented"))
+    }
+
+    async fn interrupt_session(
+        &self,
+        _request: Request<runtime::InterruptRequest>,
+    ) -> Result<Response<runtime::InterruptResponse>, Status> {
+        Err(Status::unimplemented("Not implemented"))
+    }
 }
 
 pub async fn start_grpc_server(addr: std::net::SocketAddr) -> Result<(), Box<dyn std::error::Error>> {

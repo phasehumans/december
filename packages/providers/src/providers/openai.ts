@@ -83,6 +83,7 @@ export function openaiProvider(
                     stream: true,
                     temperature: modelOptions?.temperature,
                     max_tokens: modelOptions?.max_tokens,
+                    stream_options: { include_usage: true },
                 },
                 { signal }
             )
@@ -90,6 +91,16 @@ export function openaiProvider(
             const activeToolCalls = new Map<number, string>()
 
             for await (const chunk of stream) {
+                if (chunk.usage) {
+                    yield {
+                        type: 'usage',
+                        promptTokens: chunk.usage.prompt_tokens,
+                        completionTokens: chunk.usage.completion_tokens,
+                    }
+                }
+
+                if (!chunk.choices || chunk.choices.length === 0) continue
+
                 const choice = chunk.choices[0]
                 if (!choice) continue
 

@@ -86,7 +86,16 @@ export function anthropicProvider(baseURL?: string, apiKey?: string): LLMProvide
 
             const activeToolCalls = new Map<number, string>()
 
+            let promptTokens = 0
+            let completionTokens = 0
+
             for await (const event of stream) {
+                if (event.type === 'message_start' && event.message.usage) {
+                    promptTokens += event.message.usage.input_tokens
+                } else if (event.type === 'message_delta' && event.usage) {
+                    completionTokens += event.usage.output_tokens
+                }
+
                 if (event.type === 'content_block_start') {
                     if (event.content_block.type === 'tool_use') {
                         activeToolCalls.set(event.index, event.content_block.id)
@@ -111,6 +120,10 @@ export function anthropicProvider(baseURL?: string, apiKey?: string): LLMProvide
                         }
                     }
                 }
+            }
+
+            if (promptTokens > 0 || completionTokens > 0) {
+                yield { type: 'usage', promptTokens, completionTokens }
             }
         }
     )

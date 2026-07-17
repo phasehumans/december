@@ -1,51 +1,64 @@
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio_vsock::VsockListener;
-use std::process::Stdio;
 use tokio::process::Command;
+use tokio_vsock::{VsockListener, VsockStream};
+use std::process::Stdio;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    println!("Starting sidecar vsock daemon...");
-    
-    // Listen on vsock CID: VMADDR_CID_ANY, Port: 50051
+    // Listen on vsock port 50051 (VMADDR_CID_ANY)
     let mut listener = VsockListener::bind(libc::VMADDR_CID_ANY, 50051)?;
-    println!("Sidecar listening on vsock port 50051");
+    println!("Listening on vsock port 50051...");
 
-    loop {
-        let (mut socket, addr) = listener.accept().await?;
-        println!("Accepted connection from: {:?}", addr);
-        
+    while let Ok((mut stream, _addr)) = listener.accept().await {
         tokio::spawn(async move {
-            let mut buf = [0; 8192];
-            
-            // Read incoming agent execution payload
-            match socket.read(&mut buf).await {
-                Ok(n) if n == 0 => return,
-                Ok(n) => {
-                    let payload = String::from_utf8_lossy(&buf[0..n]).to_string();
-                    println!("Executing payload...");
-                    
-                    let mut child = Command::new("bash")
-                        .arg("-c")
-                        .arg(payload)
-                        .stdout(Stdio::piped())
-                        .stderr(Stdio::piped())
-                        .spawn()
-                        .expect("failed to spawn bash");
-
-                    let mut stdout = child.stdout.take().expect("failed to get stdout");
-                    let mut stdout_buf = [0; 4096];
-                    
-                    // Stream output back via socket
-                    while let Ok(len) = stdout.read(&mut stdout_buf).await {
-                        if len == 0 { break; }
-                        let _ = socket.write_all(&stdout_buf[0..len]).await;
-                    }
-                }
-                Err(e) => {
-                    eprintln!("failed to read from vsock; err = {:?}", e);
-                }
+            if let Err(e) = handle_connection(stream).await {
+                eprintln!("Connection error: {}", e);
             }
         });
     }
+    
+    Ok(())
+}
+
+async fn handle_connection(mut stream: VsockStream) -> Result<(), Box<dyn std::error::Error>> {
+    // Read the first frame (config)
+    let len = stream.read_u32().await?;
+    let mut config_buf = vec![0u8; len as usize];
+    stream.read_exact(&mut config_buf).await?;
+
+    // Spawn december-agent
+    let mut child = Command::new("december-agent")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()?;
+
+    let mut child_stdin = child.stdin.take().unwrap();
+    let mut child_stdout = child.stdout.take().unwrap();
+    
+    // Send the config as the first frame to the agent's stdin
+    child_stdin.write_u32(len).await?;
+    child_stdin.write_all(&config_buf).await?;
+    child_stdin.flush().await?;
+
+    // We split vsock stream and pipe to/from the agent
+    let (mut read_stream, mut write_stream) = tokio::io::split(stream);
+
+    let pipe_stdin = tokio::spawn(async move {
+        tokio::io::copy(&mut read_stream, &mut child_stdin).await
+    });
+
+    let pipe_stdout = tokio::spawn(async move {
+        tokio::io::copy(&mut child_stdout, &mut write_stream).await
+    });
+
+    tokio::select! {
+        _ = child.wait() => {
+            println!("Agent exited");
+        }
+        _ = pipe_stdin => {}
+        _ = pipe_stdout => {}
+    }
+
+    Ok(())
 }

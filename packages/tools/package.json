@@ -10,6 +10,7 @@
     },
     "dependencies": {
         "@december/shared": "workspace:*",
+        "@modelcontextprotocol/sdk": "1.29.0",
         "@sinclair/typebox": "0.34.52",
         "cheerio": "1.2.0",
         "diff": "9.0.0",

@@ -60,8 +60,24 @@ Guidelines:
     }
 
     private discoverSkills(): string[] {
-        // TODO: Implement actual SKILL.md parsing from this.config.workspaceDir/.december/skills
-        return ['- basic_skill: Use specific guidelines when writing code.']
+        const skills: string[] = []
+        const skillsDir = path.join(this.config.workspaceDir, '.december', 'skills')
+
+        try {
+            if (fs.existsSync(skillsDir)) {
+                const folders = fs.readdirSync(skillsDir)
+                for (const folder of folders) {
+                    const skillPath = path.join(skillsDir, folder, 'SKILL.md')
+                    if (fs.existsSync(skillPath)) {
+                        const content = fs.readFileSync(skillPath, 'utf8')
+                        skills.push(`- ${folder}:\n${content}`)
+                    }
+                }
+            }
+        } catch (e) {
+            // Ignore errors reading skills
+        }
+        return skills
     }
 
     private discoverRules(): { path: string; content: string }[] {
@@ -87,8 +103,9 @@ Guidelines:
     }
 
     private parseSlashCommands(prompt: string): { systemPrompt: string } {
-        // TODO: Implement slash command matching and templating
-        return { systemPrompt: prompt }
+        let finalPrompt = prompt
+        finalPrompt += `\n\nSlash Commands Available:\n- /plan: Instructs the agent to output a detailed step-by-step plan before execution.\n- /schedule: Instructs the agent to configure a background timer or cron job.`
+        return { systemPrompt: finalPrompt }
     }
 
     public getAgent(): Agent {

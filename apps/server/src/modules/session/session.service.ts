@@ -96,12 +96,23 @@ export async function getUserSessions(
 export async function createSession(data: CreateSession) {
     const { userId, title, projectId, type, prompt } = data
 
+    const activeSessions = await prisma.session.count({
+        where: {
+            userId,
+            vmStatus: { in: ['PROVISIONING', 'RUNNING'] },
+        },
+    })
+
+    if (activeSessions > 0) {
+        throw new AppError('An active session is already running', 409)
+    }
+
     const session = await sessionRepository.createSession({
         userId,
         title: title || 'New Session',
         projectId,
         type: type || 'WEB',
-        vmStatus: 'RUNNING',
+        vmStatus: 'STOPPED',
     })
 
     if (prompt) {

@@ -4,6 +4,7 @@ import {
 } from '../../shared/preview-manifest'
 import { getBinaryFile, putBinaryFile, listPrefix, sessionWorkspacePrefix } from '../../shared/project-storage'
 import { chromium } from 'playwright'
+import { prisma } from '@december/database'
 import { runtimeRepository } from './runtime.repository'
 
 import type { PreviewManifestRef } from '../../shared/preview-manifest.types'
@@ -229,6 +230,18 @@ const startPreview = async (data: StartPreview) => {
     const { userId, projectId: sessionId } = data
     cancelPendingDeletion(sessionId)
     const { session } = await loadSession(data)
+
+    const activeSessions = await prisma.session.count({
+        where: {
+            userId,
+            id: { not: sessionId },
+            vmStatus: { in: ['PROVISIONING', 'RUNNING'] }
+        }
+    })
+    
+    if (activeSessions > 0) {
+        throw new Error('An active session is already running')
+    }
 
     // Validate session structure
     const validation = await validateSessionStructure(session.id)

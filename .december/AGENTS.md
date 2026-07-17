@@ -133,64 +133,64 @@ _Focuses on establishing typecheck validation, resolving monorepo dependency con
 
 _Focuses on establishing the gRPC contracts, building the guest rootfs, managing Firecracker VM lifecycles, and relaying events/input over secure vsock channels._
 
-- [ ] **P1.T0: Canonical Real-time Event Wire Shape**
+- [x] **P1.T0: Canonical Real-time Event Wire Shape**
     - _Task Details:_
         - Define `WireAgentEvent = { type: string, data: unknown }` wrapper with serialization utilities `toWire()` and `fromWire()` in `packages/shared/src/types.ts`.
         - Keep the base `AgentEvent` union flat in `packages/shared` so local Ink CLI/TUI components don't break.
         - Add flat events `TerminalData` (having `taskId` and `chunk`) and `FileModified` (having `path` and optional `diff`).
         - Route Socket.io events on a single `agent_event` channel rather than separate channels.
     - _Verification:_ Unit tests verify encoding and decoding flat event variants (like terminal chunks) to/from the `WireAgentEvent` schema.
-- [ ] **P1.T1: Protobuf gRPC Definitions & Streaming RPCs**
+- [x] **P1.T1: Protobuf gRPC Definitions & Streaming RPCs**
     - _Task Details:_
         - Write gRPC contracts in `packages/proto/runtime.proto` for `StartAgentSession(SessionConfig) returns (stream SidecarEvent)`, `SendControl(ControlMessage) returns (ControlAck)`, and `InterruptSession(InterruptRequest) returns (InterruptResponse)`.
         - Struct `SessionConfig` to pass VM identifier, prompts, workspace directory, model/provider settings, secrets list (`[{name, value}]`), temporary JWT tokens, and API host URLs.
         - Extend `CreateVMRequest` with `sidecar_binary_url` and `workspace_zip_url` presigned fields.
         - Configure compilation pipeline to compile TS proto bindings into `packages/proto/generated/`.
     - _Verification:_ `bun run build` in `packages/proto` generates bindings; `cargo build` in `apps/runtime` builds proto modules.
-- [ ] **P1.T2: Base rootfs & Guest Kernel Provisioning**
+- [x] **P1.T2: Base rootfs & Guest Kernel Provisioning**
     - _Task Details:_
         - Extend `apps/runtime/scripts/build_rootfs.sh` to compile an ext4 base filesystem container containing an init wrapper that executes `december-sidecar` on guest VM boot.
         - Ensure Node or Bun are not pre-installed inside the rootfs (the sidecar agent is a compiled standalone binary).
         - Create `fetch-kernel.sh` to download/compile a Firecracker-ready kernel (`vmlinux`).
     - _Verification:_ Kernel and rootfs files are generated; mock booting launches `december-sidecar` binding to vsock port 50051.
-- [ ] **P1.T3: Firecracker Runtime Hardening & Lifecycle Management**
+- [x] **P1.T3: Firecracker Runtime Hardening & Lifecycle Management**
     - _Task Details:_
         - Map paths, network bridges, subnets (`172.16.0.0/24`), TAP interfaces, and memory boundaries from environment configurations in `config.rs`.
         - Implement nat rules (`iptables -A POSTROUTING -o <egress> -j MASQUERADE`) inside network setup to provide public internet egress to guest VMs.
         - Implement `restore_workspace` to mount the guest filesystem, download and extract the workspace zip file, and copy `december-sidecar` and `december-agent` binaries to `/usr/local/bin/`.
         - Implement vsock CID paths `/tmp/fc-<vmid>.vsock` with guest CID >= 3.
     - _Verification:_ Creating a VM boots Firecracker, binds vsock ports, configures network access, and destroys VM cleanly upon calling destroy.
-- [ ] **P1.T4: Host-Guest Vsock-to-gRPC Relay**
+- [x] **P1.T4: Host-Guest Vsock-to-gRPC Relay**
     - _Task Details:_
         - Integrate `tokio-vsock` in `apps/runtime/Cargo.toml`.
         - Build `vsock_relay.rs` using a 4-byte big-endian length-prefixed frame decoder.
         - Implement the handshake protocol: downstream config frame #0 is written first, then upstream events and downstream control inputs are relayed concurrently over full-duplex vsock connections.
         - Link gRPC stream methods to return Receiver streams of these events.
     - _Verification:_ Relay codec unit tests verify envelope serialization; mock vsock endpoints verify configuration delivery.
-- [ ] **P1.T5: In-VM Compiled Sidecar Shim & Bun Agent Execution**
+- [x] **P1.T5: In-VM Compiled Sidecar Shim & Bun Agent Execution**
     - _Task Details:_
         - Build `december-sidecar` in Rust as a simple vsock ↔ stdio wrapper inside `apps/sidecar/src/main.rs`. It binds to vsock, launches `december-agent` as a child process, and pipes the vsock stream directly to standard input/output.
         - Build `december-agent` inside `apps/sidecar/index.ts` by compiling using `bun build --compile`. It reads config frame #0 from stdin, configures LLM providers, runs the agent loop, and monitors background tasks under a PTY.
         - Route background stdout/stderr streams to emit flat `TerminalData` events under the matching `taskId`.
     - _Verification:_ Running compiled binaries locally runs loop prompts, executes tools inside VM paths, and streams xterm PTY chunks.
-- [ ] **P1.T6: Secret Encryption Model & Service**
+- [x] **P1.T6: Secret Encryption Model & Service**
     - _Task Details:_
         - Add `Secret` schema to Prisma with encrypt/decrypt operations based on an encryption key (`SECRETS_ENC_KEY`) using AES-256-GCM.
         - Create controller routes (`GET/POST/DELETE /api/v1/secrets`) with zod validators and auth middlewares.
     - _Verification:_ Secrets repository unit tests verify that encrypting a key and decrypting it returns the matching value, and lists mask raw keys.
-- [ ] **P1.T7: Worker State Machine & Persistent Event Listener**
+- [x] **P1.T7: Worker State Machine & Persistent Event Listener**
     - _Task Details:_
         - Build `apps/worker/src/workspace.ts` to compress repositories, push packages to MinIO, and return presigned URLs.
         - Refactor the BullMQ job processor to provision VMs, set `vmStatus` to `RUNNING`, record metadata, and exit the job handler instantly.
         - Build `listener.ts` to process gRPC streams, publish events to Redis socket rooms, track token usage, check credit balances, and trigger workspace backups upon termination or 15-minute idle timeouts.
     - _Verification:_ Job states transition correctly; event streams route to Redis queues; idle timeouts shut down VMs cleanly.
-- [ ] **P1.T8: Secrets & Token Secure In-Memory Delivery**
+- [x] **P1.T8: Secrets & Token Secure In-Memory Delivery**
     - _Task Details:_
         - Retrieve user secrets and merge API keys (Google, OpenAI, Anthropic) in the socket controller.
         - Mint a short-lived JWT token (`agent_api_token`) using a dedicated backend server secret (`AGENT_TOKEN_SECRET`).
         - Inject secrets and JWT tokens directly into `SessionConfig` parameters, flowing them into VM memory via vsock frame #0.
     - _Verification:_ VM agent loads credential variables in-memory (`agent.env.get`); auditing disk paths verifies no credentials touch filesystems.
-- [ ] **P1.T9: Real-time Web Socket Transport Cutover**
+- [x] **P1.T9: Real-time Web Socket Transport Cutover**
     - _Task Details:_
         - Update Socket.io middleware to authorize handshakes using `httpOnly` `accessToken` cookies. Restrict socket rooms and actions to verified session owners.
         - Wire xterm.js terminal instances to send inputs to `terminal_input` socket routes, routing PTY updates back.
@@ -201,73 +201,73 @@ _Focuses on establishing the gRPC contracts, building the guest rootfs, managing
 
 _Focuses on completing the Devin-style split-pane workstation interface, code diff viewers, and auxiliary tools (Wiki, PR Reviews)._
 
-- [ ] **P2.T1: Review Backend Service**
+- [x] **P2.T1: Review Backend Service**
     - _Task Details:_
         - Create CRUD database schemas and controllers for `ReviewComment` under `apps/server/src/modules/review/`.
         - Validate session ownership when fetching review comment lists.
     - _Verification:_ Review controller unit tests verify CRUD actions; requests from non-owners return 404/403 errors.
-- [ ] **P2.T2: Folder-Level Wiki Backend Service**
+- [x] **P2.T2: Folder-Level Wiki Backend Service**
     - _Task Details:_
         - Create CRUD schemas and endpoints in `apps/server/src/modules/wiki/` to support project-level `WikiPage` configurations.
         - Add conflict logic returning 409 status codes for duplicate wiki titles.
     - _Verification:_ Pages can be fetched, saved, and updated; unique title conflicts throw correct HTTP exceptions.
-- [ ] **P2.T3: GitHub App OAuth & Installation Webhook Flow**
+- [x] **P2.T3: GitHub App OAuth & Installation Webhook Flow**
     - _Task Details:_
         - Create OAuth redirect controllers (`/install-start`) and verify installation callback tokens.
         - Implement signature verification for webhooks (`GITHUB_APP_WEBHOOK_SECRET`) and update installations in `GithubAppInstallation`.
         - Build integration API wrappers to interact with GitHub REST interfaces using installation tokens.
     - _Verification:_ Webhook signatures verify successfully; mock calls generate installation tokens without hitting GitHub rates.
-- [ ] **P2.T4: Session Concurrency Limit Enforcement**
+- [x] **P2.T4: Session Concurrency Limit Enforcement**
     - _Task Details:_
         - Update `session.service.ts` to initialize sessions as `STOPPED`.
         - Query active sessions upon session startup, throwing a workspace exception if an active session is running for the user.
     - _Verification:_ Starting a second concurrent session fails validation checks.
-- [ ] **P2.T5: Activity Log Component**
+- [x] **P2.T5: Activity Log Component**
     - _Task Details:_
         - Build `ActivityLog.tsx` in the web application.
         - Parse incoming agent events, filter thought logs, and show structured tool execution steps (tool name, parameters, execution times, outputs).
     - _Verification:_ Component lists execution steps sequentially based on stream updates.
-- [ ] **P2.T6: Live Browser Tab (noVNC Integration)**
+- [x] **P2.T6: Live Browser Tab (noVNC Integration)**
     - _Task Details:_
         - Install `@novnc/novnc` in `apps/web`.
         - Build `LiveBrowser.tsx` to render VNC WebSocket streams within an iframe.
     - _Verification:_ Renders a placeholder state when VNC endpoints are empty, and initializes noVNC when URLs are available.
-- [ ] **P2.T7: Sessions Hub landing & Filters**
+- [x] **P2.T7: Sessions Hub landing & Filters**
     - _Task Details:_
         - Convert `/sessions` into the primary landing dashboard.
         - Update session query endpoints and views to support searching, tagging, pinning, and archiving workspaces.
     - _Verification:_ Query variables filter lists correctly; landing route opens session hub dashboard.
-- [ ] **P2.T8: Review Pane Wiring**
+- [x] **P2.T8: Review Pane Wiring**
     - _Task Details:_
         - Build `ReviewPage.tsx` and integrate backend API wrappers.
         - List review feedback comments, accept user PR URLs, and display verification statuses.
     - _Verification:_ Submitting a verification review records comment details and shows updates in the view list.
-- [ ] **P2.T9: Folder Wiki Interface**
+- [x] **P2.T9: Folder Wiki Interface**
     - _Task Details:_
         - Build `WikiView.tsx` and `WikiEditor.tsx` in the UI directory.
         - Bind sidebar link to project folders, rendering markdown layouts and routing edits to wiki endpoints.
     - _Verification:_ Wiki pages render, support editing, and update project-specific directories.
-- [ ] **P2.T10: Session Settings Modal**
+- [x] **P2.T10: Session Settings Modal**
     - _Task Details:_
         - Build `SessionSettingsModal.tsx` to configure tags, archive sessions, and adjust folder/project linkages.
     - _Verification:_ Submitting changes routes request payloads to session update endpoints.
-- [ ] **P2.T11: Legacy View Cleanups, Route Rename & Endpoint Overhaul**
+- [x] **P2.T11: Legacy View Cleanups, Route Rename & Endpoint Overhaul**
     - _Task Details:_
         - Rename workspace paths from `/project/:id` to `/session/:id` and configure redirects.
         - Delete legacy routes and files for projects dashboards, templates, version selectors, and Canvas components.
         - Update all TRPC/REST endpoints in `apps/server` to query `Session` instead of `Project` for app data, and completely delete all templates and project versioning API routes.
     - _Verification:_ Workspace routes open sessions dashboard; legacy paths redirect or return 404s.
-- [ ] **P2.T12: Agent Wiki & PR Tools**
+- [x] **P2.T12: Agent Wiki & PR Tools**
     - _Task Details:_
         - Write tools `read_wiki`, `update_wiki`, `create_pr_review`, and `submit_pr` under `packages/tools/src/`.
         - Ensure tools use the session's temporary JWT `agent_api_token` for authorization rather than user cookie parameters.
     - _Verification:_ Mock tool invocations send headers containing JWT tokens and verify request properties.
-- [ ] **P2.T13: Browser Preview Tab**
+- [x] **P2.T13: Browser Preview Tab**
     - _Task Details:_
         - Build `BrowserPreview.tsx` to render guest VM dev-servers using an iframe.
         - Provide URL search inputs, refresh actions, and placeholder states when no dev server is active.
     - _Verification:_ Iframe reloads correctly; active dev server view renders guest workspace screens.
-- [ ] **P2.T14: VM Lifecycle Header Controls**
+- [x] **P2.T14: VM Lifecycle Header Controls**
     - _Task Details:_
         - Build `SessionStatusHeader.tsx` to show status badges and lifecycle actions (Start/Stop controls) based on `vmStatus`.
     - _Verification:_ Status updates trigger badge updates and toggle start/stop button states.
@@ -276,19 +276,19 @@ _Focuses on completing the Devin-style split-pane workstation interface, code di
 
 _Enhances reasoning accuracy, token measurement, and extensibility._
 
-- [ ] **P3.T1: Token Usage Tracking and Context Window Compaction**
+- [x] **P3.T1: Token Usage Tracking and Context Window Compaction**
     - _Task Details:_
         - Parse token usage headers from OpenAI and Anthropic streams.
         - Map dynamic context windows based on `MODEL_CONTEXT_WINDOWS`.
         - Replace static conversation compaction limits with dynamic boundaries computed from model catalog details.
     - _Verification:_ Prompt outputs contain usage statistics; compaction hooks trigger at correct limits.
-- [ ] **P3.T2: Model Context Protocol (MCP) Stdio Client**
+- [x] **P3.T2: Model Context Protocol (MCP) Stdio Client**
     - _Task Details:_
         - Integrate `@modelcontextprotocol/sdk` in `packages/tools/package.json`.
         - Build stdio transport managers inside `packages/tools/src/mcp.ts` to spawn server processes listed in `mcp.json`.
         - Route MCP commands to target processes.
     - _Verification:_ MCP integration tests verify transport setup, tool discovery, and tool call routing.
-- [ ] **P3.T3: Skills Directory Discovery & Slash Commands**
+- [x] **P3.T3: Skills Directory Discovery & Slash Commands**
     - _Task Details:_
         - Write `discoverSkills()` inside `agent-harness.ts` to read files under `<workspace>/.december/skills/*/SKILL.md`.
         - Map leading slash keys (like `/plan` or `/schedule`) to format prompt buffers.
@@ -299,21 +299,21 @@ _Enhances reasoning accuracy, token measurement, and extensibility._
 
 _Focuses on security containment, network performance constraints, and live browser streaming._
 
-- [ ] **P4.T1: Subnet Traffic Isolation**
+- [x] **P4.T1: Subnet Traffic Isolation**
     - _Task Details:_
         - Update network setup scripts in `firecracker.rs` to apply `iptables` drop filters.
         - Restrict guest VM access to private subnets (e.g. `10.0.0.0/8`, `172.16.0.0/12` except the VM subnet, and `192.168.0.0/16`) to prevent VMs from reaching internal host infrastructure.
     - _Verification:_ Running commands inside VM to reach host gateways fails, while public web addresses are reachable.
-- [ ] **P4.T2: VM Network Bandwidth Limiting**
+- [x] **P4.T2: VM Network Bandwidth Limiting**
     - _Task Details:_
         - Apply traffic control (`tc`) shaper configurations on the host tap interface to restrict VM egress to 100 Mbps.
     - _Verification:_ Network testing tools verify transfer rates do not exceed 100 Mbps.
-- [ ] **P4.T3: Snapshot Warm Boots & Secure Config Encryptions**
+- [x] **P4.T3: Snapshot Warm Boots & Secure Config Encryptions**
     - _Task Details:_
         - Implement Firecracker snapshot-restore configurations to bypass cold boots.
         - Encrypt configuration packages passed over vsock.
     - _Verification:_ VM boot times are reduced; vsock payload decodes only with matching keys.
-- [ ] **P4.T4: Live Browser Container Execution**
+- [x] **P4.T4: Live Browser Container Execution**
     - _Task Details:_
         - Build a VNC server configuration inside the sidecar browser tool to stream Playwright browser instances.
         - Expose VNC websocket streams to client widgets via `noVNC`.

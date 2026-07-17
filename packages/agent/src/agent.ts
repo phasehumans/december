@@ -157,48 +157,6 @@ export class Agent {
         }
     }
 
-    public async compactContext() {
-        if (this.messages.length > 8) {
-            const systemPrompt = this.messages[0]
-            const toSummarize = this.messages.slice(1, -5)
-            const recentMessages = this.messages.slice(-5)
-
-            const summaryPrompt =
-                `Summarize the following past events in this session. Keep it extremely concise but retain all key facts, file paths, and current goals:\n` +
-                JSON.stringify(toSummarize)
-
-            let summaryContent = '[System: Conversation compacted]'
-            try {
-                // Collect stream from llm
-                const stream = this.llm.stream(
-                    [{ role: 'user', content: summaryPrompt }],
-                    [], // no tools
-                    '', // no system prompt
-                    this.modelOptions,
-                    new AbortController().signal
-                )
-                let text = ''
-                for await (const chunk of stream) {
-                    if (chunk.type === 'text') text += chunk.text
-                }
-                summaryContent = `[System: Conversation compacted. Earlier events summary: ${text}]`
-            } catch (e) {
-                console.error('Failed to generate summary for context compaction:', e)
-            }
-
-            this.messages = [
-                systemPrompt!,
-                {
-                    role: 'system',
-                    content: summaryContent,
-                    isUI: true,
-                },
-                ...recentMessages,
-            ]
-            await this.saveContext()
-        }
-    }
-
     public async newContext() {
         this.sessionId = `session-${Date.now()}`
         if (this.messages.length > 0) {

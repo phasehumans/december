@@ -94,49 +94,49 @@ const buildVersionQuery = (versionId?: string | null) =>
     versionId ? `?versionId=${encodeURIComponent(versionId)}` : ''
 
 const getProjects = () => {
-    return apiRequest<BackendProject[]>('/project')
+    return apiRequest<BackendProject[]>('/session')
 }
 
 const getProject = (projectId: string, versionId?: string | null) => {
-    return apiRequest<BackendProjectDetail>(`/project/${projectId}${buildVersionQuery(versionId)}`)
+    return apiRequest<BackendProjectDetail>(`/session/${projectId}${buildVersionQuery(versionId)}`)
 }
 
 const createProject = (data: CreateProjectInput) => {
-    return apiRequest<BackendProject>('/project', {
+    return apiRequest<BackendProject>('/session', {
         method: 'POST',
         body: JSON.stringify(data),
     })
 }
 
 const updateProject = (projectId: string, data: UpdateProjectInput) => {
-    return apiRequest<{ message: string }>(`/project/${projectId}`, {
+    return apiRequest<{ message: string }>(`/session/${projectId}`, {
         method: 'PATCH',
         body: JSON.stringify(data),
     })
 }
 
 const updateGeneralSettings = (projectId: string, data: UpdateGeneralSettingsInput) => {
-    return apiRequest<{ message: string }>(`/project/${projectId}/general-settings`, {
+    return apiRequest<{ message: string }>(`/session/${projectId}/general-settings`, {
         method: 'PATCH',
         body: JSON.stringify(data),
     })
 }
 
 const toggleStarProject = (projectId: string, isStarred: boolean) => {
-    return apiRequest<{ message: string }>(`/project/${projectId}/star`, {
+    return apiRequest<{ message: string }>(`/session/${projectId}/star`, {
         method: 'POST',
         body: JSON.stringify({ isStarred }),
     })
 }
 
 const deleteProject = (projectId: string) => {
-    return apiRequest<{ message: string }>(`/project/${projectId}`, {
+    return apiRequest<{ message: string }>(`/session/${projectId}`, {
         method: 'DELETE',
     })
 }
 
 const duplicateProject = (projectId: string, name?: string) => {
-    return apiRequest<BackendProject>(`/project/${projectId}/duplicate`, {
+    return apiRequest<BackendProject>(`/session/${projectId}/duplicate`, {
         method: 'POST',
         body: JSON.stringify({ name }),
     })
@@ -147,14 +147,14 @@ const shareProjectAsTemplate = (
     isSharedAsTemplate: boolean,
     projectCategory?: string
 ) => {
-    return apiRequest<{ message: string }>(`/project/${projectId}/share`, {
+    return apiRequest<{ message: string }>(`/session/${projectId}/share`, {
         method: 'POST',
         body: JSON.stringify({ isSharedAsTemplate, projectCategory }),
     })
 }
 
 const downloadProject = async (projectId: string, versionId?: string | null) => {
-    const res = await apiFetch(`/project/${projectId}/download${buildVersionQuery(versionId)}`, {})
+    const res = await apiFetch(`/session/${projectId}/download${buildVersionQuery(versionId)}`, {})
 
     if (!res.ok) {
         let payload: { message?: string; errors?: unknown } | null
@@ -186,7 +186,7 @@ const deployToVercel = (projectId: string) => {
         deploymentId: string
         url: string
         readyState: string
-    }>(`/platform/projects/${projectId}/vercel/deploy`, {
+    }>(`/platform/sessions/${projectId}/vercel/deploy`, {
         method: 'POST',
     })
 }
@@ -201,7 +201,7 @@ const getVercelDeploymentStatus = (deploymentId: string) => {
 
 const searchUsers = (query: string) => {
     return apiRequest<{ id: string; username: string; email: string; name?: string | null }[]>(
-        `/project/users/search?query=${encodeURIComponent(query)}`
+        `/session/users/search?query=${encodeURIComponent(query)}`
     )
 }
 
@@ -215,7 +215,7 @@ const getCollaborators = (projectId: string) => {
             createdAt: string
             user?: { username: string; name?: string | null }
         }[]
-    >(`/project/${projectId}/collaborators`)
+    >(`/session/${projectId}/collaborators`)
 }
 
 const addCollaborator = (projectId: string, email: string) => {
@@ -225,7 +225,7 @@ const addCollaborator = (projectId: string, email: string) => {
         userId: string
         email: string
         createdAt: string
-    }>(`/project/${projectId}/collaborators`, {
+    }>(`/session/${projectId}/collaborators`, {
         method: 'POST',
         body: JSON.stringify({ email }),
     })
@@ -233,7 +233,7 @@ const addCollaborator = (projectId: string, email: string) => {
 
 const removeCollaborator = (projectId: string, email: string) => {
     return apiRequest<{ message: string }>(
-        `/project/${projectId}/collaborators/${encodeURIComponent(email)}`,
+        `/session/${projectId}/collaborators/${encodeURIComponent(email)}`,
         {
             method: 'DELETE',
         }

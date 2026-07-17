@@ -9,18 +9,22 @@
         "typecheck": "tsc --noEmit"
     },
     "dependencies": {
+        "@aws-sdk/client-s3": "3.1089.0",
+        "@aws-sdk/s3-request-presigner": "3.1089.0",
         "@december/agent": "workspace:*",
         "@december/database": "workspace:*",
+        "@december/providers": "workspace:*",
         "@december/shared": "workspace:*",
         "@december/tools": "workspace:*",
-        "@december/providers": "workspace:*",
         "@grpc/grpc-js": "1.14.4",
         "@grpc/proto-loader": "0.8.1",
+        "archiver": "8.0.0",
         "bullmq": "^5.0.0",
         "dotenv": "17.4.2",
         "ioredis": "^5.0.0"
     },
     "devDependencies": {
+        "@types/archiver": "8.0.0",
         "@types/bun": "latest"
     }
 }

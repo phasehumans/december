@@ -40,6 +40,25 @@ export async function destroyVM(vmId: string): Promise<boolean> {
     })
 }
 
+export function startAgentSession(
+    sessionId: string,
+    workspaceDir: string,
+    systemPrompt: string,
+    token: string,
+    apiHostUrl: string
+): any {
+    const config = {
+        vm_id: sessionId,
+        workspace_directory: workspaceDir,
+        prompts: [systemPrompt],
+        provider_settings: JSON.stringify({ id: 'openai' }),
+        temp_jwt_token: token,
+        api_host_url: apiHostUrl,
+    }
+    const call = client.StartAgentSession(config)
+    return call
+}
+
 export function executeCommand(
     vmId: string,
     command: string,
