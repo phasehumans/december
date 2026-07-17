@@ -5,13 +5,12 @@ import { AppError } from '../../shared/appError'
 import { publishPreviewManifest } from '../../shared/preview-manifest'
 import {
     deletePrefix,
-    currentKey,
     importObjectKey,
     importPrefix,
     putBinaryFile,
     storageBucket,
-    versionKey,
-    versionPrefix,
+    sessionWorkspaceKey,
+    sessionWorkspacePrefix,
 } from '../../shared/project-storage'
 import { runtimeService } from '../runtime/runtime.service'
 
@@ -32,10 +31,10 @@ import type {
     CreateImportRecordParams,
     UploadValidatedProjectParams,
     UploadImportSourceFilesParams,
-    CreatePlaceholderProjectParams,
-    UpdateImportedProjectVersionParams,
+    CreatePlaceholderSessionParams,
+    UpdateImportedSessionWorkspaceParams,
     StartRuntimeForImportParams,
-    FinalizeImportProjectParams,
+    FinalizeImportSessionParams,
     ProcessGithubImportParams,
     FailImportParams,
 } from './import.types'
@@ -51,8 +50,7 @@ const publicImportSelect = {
     objectPrefix: true,
     status: true,
     framework: true,
-    projectId: true,
-    projectVersionId: true,
+    sessionId: true,
     previewUrl: true,
     errorMessage: true,
     errorsJson: true,
@@ -76,38 +74,30 @@ const updateImportStatus = async (data: UpdateImportStatusParams) => {
 }
 
 const createImportRecord = async (data: CreateImportRecordParams) => {
-    const { userId, sourceType, sourceUrl, sourceFileName, projectId, projectVersionId } = data
+    const { userId, sourceType, sourceUrl, sourceFileName, sessionId } = data
     return importRepository.createImport({
         userId,
         sourceType,
         sourceUrl: sourceUrl ?? undefined,
         sourceFileName: sourceFileName ?? undefined,
-        projectId: projectId ?? undefined,
-        projectVersionId: projectVersionId ?? undefined,
+        sessionId: sessionId ?? undefined,
         select: publicImportSelect,
     })
 }
 
 const uploadValidatedProject = async (data: UploadValidatedProjectParams) => {
-    const { projectId, versionId, project } = data
+    const { sessionId, project } = data
     const files: PreviewManifestFile[] = []
 
     for (const file of project.files) {
-        const objectKey = versionKey(projectId, versionId, file.path)
+        const objectKey = sessionWorkspaceKey(sessionId, file.path)
         const content = await readFile(file.absolutePath)
 
-        await Promise.all([
-            putBinaryFile({
-                key: objectKey,
-                content,
-                contentType: file.contentType,
-            }),
-            putBinaryFile({
-                key: currentKey(projectId, file.path),
-                content,
-                contentType: file.contentType,
-            }),
-        ])
+        await putBinaryFile({
+            key: objectKey,
+            content,
+            contentType: file.contentType,
+        })
 
         files.push({
             path: file.path,
@@ -136,35 +126,25 @@ const uploadImportSourceFiles = async (data: UploadImportSourceFilesParams) => {
     )
 }
 
-const createPlaceholderProject = async (data: CreatePlaceholderProjectParams) => {
-    const { projectId, versionId, userId, name, prompt } = data
+const createPlaceholderSession = async (data: CreatePlaceholderSessionParams) => {
+    const { sessionId, userId, name, prompt } = data
     const displayName =
         name
             .trim()
             .replace(/\.zip$/i, '')
-            .slice(0, 20) || 'Imported project'
+            .slice(0, 20) || 'Imported session'
 
-    return importRepository.createPlaceholderProject({
-        projectId,
-        versionId,
+    return importRepository.createPlaceholderSession({
+        sessionId,
         userId,
         displayName,
         prompt,
-        versionPrefix: versionPrefix(projectId, versionId),
     })
 }
 
-const updateImportedProjectVersion = async (data: UpdateImportedProjectVersionParams) => {
-    const { projectId, versionId, project, manifestFiles, sourceType, sourceLabel } = data
+const updateImportedSessionWorkspace = async (data: UpdateImportedSessionWorkspaceParams) => {
+    const { sessionId, project, manifestFiles, sourceType, sourceLabel } = data
 
-    const description = `Imported ${project.detection.framework} project`.slice(0, 30)
-    const summary = `Imported ${project.files.length} files`
-    const manifestJson = manifestFiles.map((file) => ({
-        path: file.path,
-        key: file.objectKey,
-        contentType: file.contentType,
-        size: file.size,
-    }))
     const messages = [
         {
             role: 'USER' as const,
@@ -185,18 +165,14 @@ const updateImportedProjectVersion = async (data: UpdateImportedProjectVersionPa
         },
     ]
 
-    return importRepository.updateImportedProjectVersion({
-        projectId,
-        versionId,
-        description,
-        summary,
-        manifestJson,
+    return importRepository.updateImportedSessionWorkspace({
+        sessionId,
         messages,
     })
 }
 
 const startRuntimeForImport = async (data: StartRuntimeForImportParams) => {
-    const { userId, projectId, versionId } = data
+    const { userId, sessionId } = data
     const timeout = new Promise<never>((_, reject) => {
         setTimeout(() => reject(new Error('Runtime start timed out')), 60_000)
     })
@@ -204,16 +180,15 @@ const startRuntimeForImport = async (data: StartRuntimeForImportParams) => {
     return Promise.race([
         runtimeService.startPreview({
             userId,
-            projectId,
-            versionId,
+            projectId: sessionId, // sessionId matches previewId/projectId in runtimeService
+            versionId: sessionId, // Use sessionId as the versionId since versioning is dropped
         }),
         timeout,
     ])
 }
 
-const finalizeImportProject = async (data: FinalizeImportProjectParams) => {
-    const { importId, userId, projectId, versionId, validatedProject, sourceType, sourceLabel } =
-        data
+const finalizeImportSession = async (data: FinalizeImportSessionParams) => {
+    const { importId, userId, sessionId, validatedProject, sourceType, sourceLabel } = data
 
     await updateImportStatus({
         importId,
@@ -236,20 +211,18 @@ const finalizeImportProject = async (data: FinalizeImportProjectParams) => {
         importId,
         status: 'UPLOADING',
         data: {
-            objectPrefix: versionPrefix(projectId, versionId),
+            objectPrefix: sessionWorkspacePrefix(sessionId),
             errorMessage: 'Copying project files to object storage...',
         },
     })
 
     const uploadedFiles = await uploadValidatedProject({
-        projectId,
-        versionId,
+        sessionId,
         project: validatedProject,
     })
 
-    await updateImportedProjectVersion({
-        projectId,
-        versionId,
+    await updateImportedSessionWorkspace({
+        sessionId,
         project: validatedProject,
         manifestFiles: uploadedFiles,
         sourceType,
@@ -258,8 +231,8 @@ const finalizeImportProject = async (data: FinalizeImportProjectParams) => {
 
     await publishPreviewManifest({
         manifestVersion: 'import',
-        projectId,
-        projectVersionId: versionId,
+        projectId: sessionId,
+        projectVersionId: sessionId,
         publishedAt: new Date().toISOString(),
         runnable: true,
         files: uploadedFiles,
@@ -290,8 +263,7 @@ const finalizeImportProject = async (data: FinalizeImportProjectParams) => {
 
     const preview = await startRuntimeForImport({
         userId,
-        projectId,
-        versionId,
+        sessionId,
     })
 
     await updateImportStatus({
@@ -320,7 +292,7 @@ const failImport = async (data: FailImportParams) => {
         return null
     })
 
-    if (importRecord?.objectPrefix && !importRecord.projectId) {
+    if (importRecord?.objectPrefix && !importRecord.sessionId) {
         await deletePrefix(importRecord.objectPrefix).catch((delErr) => {
             console.error(`[import:${importId}] failed to delete prefix:`, delErr)
         })
@@ -339,7 +311,7 @@ const failImport = async (data: FailImportParams) => {
 }
 
 const processGithubImport = async (data: ProcessGithubImportParams) => {
-    const { importId, userId, projectId, versionId, owner, repo, token } = data
+    const { importId, userId, sessionId, owner, repo, token } = data
     let tempRootDir: string | null = null
 
     try {
@@ -397,11 +369,10 @@ const processGithubImport = async (data: ProcessGithubImportParams) => {
             sourceDir: validatedProject.rootDir,
         })
 
-        await finalizeImportProject({
+        await finalizeImportSession({
             importId,
             userId,
-            projectId,
-            versionId,
+            sessionId,
             validatedProject,
             sourceType: 'github',
             sourceLabel: repoAccessInfo.normalizedUrl,
@@ -432,13 +403,11 @@ const importFromGithub = async (data: ImportFromGithub) => {
         throw new AppError('github access token not found', 404)
     }
 
-    const projectId = randomUUID()
-    const versionId = randomUUID()
+    const sessionId = randomUUID()
 
-    // Create placeholder Project immediately
-    await createPlaceholderProject({
-        projectId,
-        versionId,
+    // Create placeholder Session immediately
+    await createPlaceholderSession({
+        sessionId,
         userId,
         name: parseData.repo,
         prompt: `Imported from ${parseData.normalizedUrl}`,
@@ -448,15 +417,13 @@ const importFromGithub = async (data: ImportFromGithub) => {
         userId,
         sourceType: 'GITHUB',
         sourceUrl: parseData.normalizedUrl,
-        projectId,
-        projectVersionId: versionId,
+        sessionId,
     })
 
     void processGithubImport({
         importId: importRecord.id,
         userId,
-        projectId,
-        versionId,
+        sessionId,
         owner: parseData.owner,
         repo: parseData.repo,
         token: user.githubToken,
@@ -479,11 +446,11 @@ const getImportStatus = async (data: GetImportStatus) => {
 
     let runtimeStatus: RuntimePreviewStatus | null = null
 
-    if (importRecord.projectId) {
+    if (importRecord.sessionId) {
         try {
             runtimeStatus = await runtimeService.getPreviewStatus({
                 userId,
-                previewId: importRecord.projectId,
+                previewId: importRecord.sessionId,
             })
 
             if (

@@ -1,15 +1,14 @@
 import { prisma } from '@december/database'
-
 import type { Prisma, ProjectImportStatus } from '@december/database'
 
 async function updateImport(data: {
     importId: string
     status: ProjectImportStatus
-    updateData?: Prisma.ProjectImportUpdateInput
-    select: Prisma.ProjectImportSelect
+    updateData?: Prisma.SessionImportUpdateInput
+    select: Prisma.SessionImportSelect
 }) {
     const { importId, status, updateData, select } = data
-    return prisma.projectImport.update({
+    return prisma.sessionImport.update({
         where: { id: importId },
         data: {
             status,
@@ -24,18 +23,15 @@ async function createImport(data: {
     sourceType: 'GITHUB' | 'ZIP'
     sourceUrl?: string | null
     sourceFileName?: string | null
-    projectId?: string | null
-    projectVersionId?: string | null
-    select: Prisma.ProjectImportSelect
+    sessionId?: string | null
+    select: Prisma.SessionImportSelect
 }) {
-    const { userId, sourceType, sourceUrl, sourceFileName, projectId, projectVersionId, select } =
-        data
-    return prisma.projectImport.create({
+    const { userId, sourceType, sourceUrl, sourceFileName, sessionId, select } = data
+    return prisma.sessionImport.create({
         data: {
             userId,
             sourceType,
-            projectId: projectId ?? undefined,
-            projectVersionId: projectVersionId ?? undefined,
+            sessionId: sessionId ?? undefined,
             sourceUrl: sourceUrl ?? undefined,
             sourceFileName: sourceFileName ?? undefined,
         },
@@ -43,61 +39,28 @@ async function createImport(data: {
     })
 }
 
-async function createPlaceholderProject(data: {
-    projectId: string
-    versionId: string
+async function createPlaceholderSession(data: {
+    sessionId: string
     userId: string
     displayName: string
     prompt: string
-    versionPrefix: string
 }) {
-    const { projectId, versionId, userId, displayName, prompt, versionPrefix } = data
-    return prisma.$transaction(async (tx) => {
-        const createdProject = await tx.project.create({
-            data: {
-                id: projectId,
-                name: displayName,
-                description: `Importing project...`.slice(0, 30),
-                prompt: prompt,
-                projectStatus: 'GENERATING',
-                userId,
-                versionCount: 1,
-                versions: {
-                    create: {
-                        id: versionId,
-                        versionNumber: 1,
-                        label: 'import',
-                        sourcePrompt: prompt,
-                        summary: 'Importing project files...',
-                        status: 'GENERATING',
-                        objectStoragePrefix: versionPrefix,
-                        manifestJson: [],
-                    },
-                },
-            },
-            select: {
-                id: true,
-            },
-        })
-
-        await tx.project.update({
-            where: { id: createdProject.id },
-            data: {
-                currentVersionId: versionId,
-            },
-            select: { id: true },
-        })
-
-        return createdProject
+    const { sessionId, userId, displayName, prompt } = data
+    return prisma.session.create({
+        data: {
+            id: sessionId,
+            title: displayName,
+            userId,
+            type: 'WEB',
+        },
+        select: {
+            id: true,
+        },
     })
 }
 
-async function updateImportedProjectVersion(data: {
-    projectId: string
-    versionId: string
-    description: string
-    summary: string
-    manifestJson: Prisma.InputJsonValue
+async function updateImportedSessionWorkspace(data: {
+    sessionId: string
     messages: Array<{
         role: 'USER' | 'ASSISTANT' | 'SYSTEM'
         content: string
@@ -105,59 +68,34 @@ async function updateImportedProjectVersion(data: {
         status?: string
     }>
 }) {
-    const { projectId, versionId, description, summary, manifestJson, messages } = data
+    const { sessionId, messages } = data
     return prisma.$transaction(async (tx) => {
-        await tx.project.update({
-            where: { id: projectId },
-            data: {
-                description,
-                projectStatus: 'READY',
-            },
-        })
-
-        const project = await tx.project.findUniqueOrThrow({ where: { id: projectId } })
-        let session = await tx.session.findFirst({
-            where: { projectId },
-            orderBy: { createdAt: 'desc' },
-        })
-        if (!session) {
-            session = await tx.session.create({
-                data: { userId: project.userId, projectId, type: 'WEB' },
+        if (messages.length > 0) {
+            await tx.message.createMany({
+                data: messages.map((msg) => ({
+                    role: msg.role,
+                    content: msg.content,
+                    sequence: msg.sequence,
+                    status: msg.status ?? 'SENT',
+                    sessionId,
+                })),
             })
         }
-
-        await tx.projectVersion.update({
-            where: { id: versionId },
-            data: {
-                summary,
-                status: 'READY',
-                manifestJson,
-                messages: {
-                    create: messages.map((msg) => ({
-                        role: msg.role,
-                        content: msg.content,
-                        sequence: msg.sequence,
-                        status: msg.status,
-                        sessionId: session!.id,
-                    })),
-                },
-            },
-        })
     })
 }
 
 async function findImportForFail(importId: string) {
-    return prisma.projectImport.findUnique({
+    return prisma.sessionImport.findUnique({
         where: { id: importId },
         select: {
             objectPrefix: true,
-            projectId: true,
+            sessionId: true,
         },
     })
 }
 
 async function incrementAttempts(importId: string) {
-    return prisma.projectImport.update({
+    return prisma.sessionImport.update({
         where: { id: importId },
         data: {
             attempts: { increment: 1 },
@@ -177,7 +115,7 @@ async function findUserForImport(userId: string) {
 
 async function countUserImports(data: { userId: string; sourceType: 'GITHUB' | 'ZIP' }) {
     const { userId, sourceType } = data
-    return prisma.projectImport.count({
+    return prisma.sessionImport.count({
         where: {
             userId,
             sourceType,
@@ -188,10 +126,10 @@ async function countUserImports(data: { userId: string; sourceType: 'GITHUB' | '
 async function findImportForStatus(data: {
     id: string
     userId: string
-    select: Prisma.ProjectImportSelect
+    select: Prisma.SessionImportSelect
 }) {
     const { id, userId, select } = data
-    return prisma.projectImport.findFirst({
+    return prisma.sessionImport.findFirst({
         where: {
             id,
             userId,
@@ -203,8 +141,8 @@ async function findImportForStatus(data: {
 export const importRepository = {
     updateImport,
     createImport,
-    createPlaceholderProject,
-    updateImportedProjectVersion,
+    createPlaceholderSession,
+    updateImportedSessionWorkspace,
     findImportForFail,
     incrementAttempts,
     findUserForImport,

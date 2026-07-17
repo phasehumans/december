@@ -7,8 +7,8 @@ export const apiRateLimiter = rateLimit({
     legacyHeaders: false, // Disable the `X-RateLimit-*` headers
     keyGenerator: (req) => {
         // Use userId if available (set by authMiddleware), otherwise fallback to IP
-        if (req.user && req.user.id) {
-            return req.user.id
+        if (req.user && req.user.userId) {
+            return req.user.userId
         }
         const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress
         return String(clientIp || 'unknown')

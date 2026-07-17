@@ -1,10 +1,6 @@
-import { GenerationSound as GenerationSoundEnum } from './profile.schema'
+import { GenerationSound as GenerationSoundEnum } from './setting.schema'
 
-export type GetInfo = {
-    userId: string
-}
-
-export type GetProfileCard = {
+export type GetMe = {
     userId: string
 }
 
@@ -61,12 +57,6 @@ export type Updatedesign = {
 
 export type Deletedesign = {
     userId: string
-}
-
-export type CreateFeedback = {
-    userId: string
-    rating?: string | null
-    feedback: string
 }
 
 export type CompleteOnboarding = {

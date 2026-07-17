@@ -1,12 +1,12 @@
 import { prisma } from '@december/database'
 
 export const memoryRepository = {
-    async upsertProjectMemory(data: { projectId: string; key: string; value: string }) {
-        const { projectId, key, value } = data
-        return prisma.projectMemory.upsert({
+    async upsertSessionMemory(data: { sessionId: string; key: string; value: string }) {
+        const { sessionId, key, value } = data
+        return prisma.sessionMemory.upsert({
             where: {
-                projectId_key: {
-                    projectId,
+                sessionId_key: {
+                    sessionId,
                     key,
                 },
             },
@@ -14,23 +14,16 @@ export const memoryRepository = {
                 value,
             },
             create: {
-                projectId,
+                sessionId,
                 key,
                 value,
             },
         })
     },
 
-    async findUserDesignPreference(userId: string) {
-        return prisma.user.findUnique({
-            where: { id: userId },
-            select: { design: true },
-        })
-    },
-
-    async findProjectMemories(projectId: string) {
-        return prisma.projectMemory.findMany({
-            where: { projectId },
+    async findSessionMemories(sessionId: string) {
+        return prisma.sessionMemory.findMany({
+            where: { sessionId },
             select: { key: true, value: true },
             orderBy: { key: 'asc' },
         })

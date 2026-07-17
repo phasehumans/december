@@ -94,7 +94,7 @@ export function initSocket(httpServer: any) {
                     }))
 
                     // Enqueue to worker
-                    const agentJobsQueue = new Queue('agent_jobs', { connection: pubClient })
+                    const agentJobsQueue = new Queue('agent_jobs', { connection: pubClient as any })
                     await agentJobsQueue.add('run_agent', {
                         sessionId: data.sessionId,
                         projectId: data.projectId,

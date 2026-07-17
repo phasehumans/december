@@ -2,13 +2,12 @@ import { prisma } from '@december/database'
 
 import type { PreviewManifestRef } from '../../shared/preview-manifest.types'
 
-export type ProjectVersionRecord = NonNullable<
-    Awaited<ReturnType<typeof prisma.projectVersion.findFirst>>
+export type SessionRecord = NonNullable<
+    Awaited<ReturnType<typeof prisma.session.findFirst>>
 >
 
 export type EnsureManifestRef = {
-    projectId: string
-    version: ProjectVersionRecord
+    sessionId: string
 }
 
 export type RuntimePreviewError = {
@@ -25,7 +24,7 @@ export type RuntimePreviewError = {
 
 export type RuntimePreviewStatus = {
     previewId: string
-    projectId: string
+    sessionId: string
     state:
         | 'WaitingForRunnableVersion'
         | 'Bootstrapping'
@@ -55,7 +54,7 @@ export type PreviewIdentifier = {
 }
 
 export type NotifyManifestPublished = {
-    projectId: string
+    sessionId: string
     manifest: PreviewManifestRef
 }
 
@@ -65,5 +64,5 @@ export type RecordRuntimeStatus = {
 }
 
 export type CheckSandboxCompilation = {
-    projectId: string
+    sessionId: string
 }
