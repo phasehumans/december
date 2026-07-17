@@ -91,20 +91,18 @@ In the refactored architecture, we completely separate workspace environments an
 
 ## 5. Section 2: Detailed Phase-Wise Implementation Roadmap & TODOs
 
-The following roadmap compiles all tasks from the monorepo blueprints ([plan.md](file:///home/chaitanya/code/december/plan.md) and [phase3.md](file:///home/chaitanya/code/december/phase3.md)) into a granular, step-by-step TODO checklist:
-
-### Phase 0: Unbreak the Build (Prisma Schema Migration & Deprecation Cleanup)
+### Phase 0: Unbreak the Build (Prisma Schema Migration & Deprecation Cleanup) [DONE]
 
 _Focuses on establishing typecheck validation, resolving monorepo dependency conflicts, applying the new Prisma schema, and cleaning up legacy modules._
 
-- [ ] **P0.T0: Establish Per-Workspace Scripts & Turbo Pipelines**
+- [x] **P0.T0: Establish Per-Workspace Scripts & Turbo Pipelines**
     - _Task Details:_
         - Add `"typecheck": "tsc --noEmit"` and `"build"` scripts into all package files (`apps/server`, `apps/web`, `apps/worker`, `packages/*`).
         - Configure `"test": "bun test"` where tests are implemented.
         - Update root `turbo.json` with a clean `typecheck` task and map `build` dependencies to include `db:generate` as a prerequisite.
         - Document these gates (`turbo run build`, `turbo run typecheck`, `turbo run test`) inside the root [README.md](file:///home/chaitanya/code/december/README.md).
     - _Verification:_ Running `turbo run typecheck` runs compilation checks across all monorepo workspaces and returns typescript errors cleanly.
-- [ ] **P0.T1: Toolchain Paths, TS Compilation, and Dependency Deduplication**
+- [x] **P0.T1: Toolchain Paths, TS Compilation, and Dependency Deduplication**
     - _Task Details:_
         - Map `@december/shared` to `./packages/shared/src/index.ts` under compiler options in `tsconfig.base.json`.
         - Add `"@december/shared": "workspace:*"` dependency inside `apps/server/package.json`.
@@ -112,7 +110,7 @@ _Focuses on establishing typecheck validation, resolving monorepo dependency con
         - Resolve compiler duplication errors by merging `truncateOutput` and cleaning duplicate imports of `Tool` and `ToolExecuteContext` inside `packages/tools/src/github.ts` and `browser.ts`.
         - Fix `rate-limiter.ts` inside `apps/server` to map `req.user.id` to `req.user.userId`.
     - _Verification:_ Running `cd apps/server && bunx tsc --noEmit` and compilation in `packages/tools` completes without path errors.
-- [ ] **P0.T2: Database Migration & Schema Reconciliation**
+- [x] **P0.T2: Database Migration & Schema Reconciliation**
     - _Task Details:_
         - Apply schema migrations to create `SessionSettings`, `ReviewComment`, `WikiPage`, `GithubAppInstallation` models and delete `ProjectVersion`, `ProjectLike` models.
         - Rebuild the local database schema via `bunx prisma migrate dev` or database reset since there is no production user data to preserve.
@@ -124,7 +122,7 @@ _Focuses on establishing typecheck validation, resolving monorepo dependency con
             - `canvas/` & `memory/`: Rename queries to use `sessionMemory` and `SessionSettings` config JSON.
             - `profile/`: Delete endpoints and controller logic for user-design preferences, avatar uploads, and feedbacks.
     - _Verification:_ Monorepo builds with zero typescript compile-time errors; database integration tests verify session creation.
-- [ ] **P0.T3: Remove Legacy Server-Sent Events (SSE) Generate Module**
+- [x] **P0.T3: Remove Legacy Server-Sent Events (SSE) Generate Module**
     - _Task Details:_
         - Delete the `apps/server/src/modules/generate/` directory completely.
         - Remove SSE imports and route mountings inside `app.ts`.

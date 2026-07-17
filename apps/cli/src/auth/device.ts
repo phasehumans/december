@@ -14,7 +14,7 @@ export async function loginViaDeviceCode(
                 throw new Error('Failed to generate device code')
             }
 
-            const genData = await genRes.json()
+            const genData = (await genRes.json()) as any
             if (!genData.success) {
                 throw new Error(genData.message || 'Failed to generate device code')
             }
@@ -40,7 +40,7 @@ export async function loginViaDeviceCode(
                         body: JSON.stringify({ deviceCode }),
                     })
 
-                    const tokenData = await tokenRes.json()
+                    const tokenData = (await tokenRes.json()) as any
 
                     if (tokenRes.ok && tokenData.success) {
                         resolve({

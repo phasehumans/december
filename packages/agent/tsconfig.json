@@ -1,6 +1,11 @@
 {
     "extends": "../../tsconfig.base.json",
     "compilerOptions": {
-        "types": ["bun"]
+        "types": ["bun"],
+        "verbatimModuleSyntax": false,
+        "strict": false,
+        "strictNullChecks": false,
+        "noImplicitAny": false,
+        "noImplicitOverride": false
     }
 }

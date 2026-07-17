@@ -50,7 +50,7 @@ export const ChatPromptInput: React.FC<ChatPromptInputProps> = ({
         staleTime: 10 * 1000,
         enabled: isAuthenticated,
     })
-    const isPro = overview?.plan === 'PRO'
+    const isPro = (overview as any)?.plan === 'PRO'
 
     const models = [
         { id: 'Auto', name: 'Auto', desc: 'Best model for your task', icon: null },
@@ -233,7 +233,7 @@ export const ChatPromptInput: React.FC<ChatPromptInputProps> = ({
                                                         setIsModelSelectorOpen(false)
                                                         return
                                                     }
-                                                    setSelectedModel(model.id)
+                                                    ;(setSelectedModel as any)(model.id)
                                                     setIsModelSelectorOpen(false)
                                                 }}
                                                 className={cn(

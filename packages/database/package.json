@@ -11,7 +11,9 @@
         "db:migrate:dev": "bunx dotenv-cli -e ../../.env -- prisma migrate dev",
         "db:migrate:test": "bunx --bun dotenv-cli -e ../../.env.test -- bunx --bun prisma migrate deploy",
         "db:studio": "prisma studio --browser none --port 5555",
-        "db:clear": "bunx dotenv-cli -e ../../.env -- prisma migrate reset --force"
+        "db:clear": "bunx dotenv-cli -e ../../.env -- prisma migrate reset --force",
+        "build": "bun run db:generate",
+        "typecheck": "tsc --noEmit"
     },
     "dependencies": {
         "@prisma/client": "7.8.0",

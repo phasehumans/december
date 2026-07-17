@@ -67,7 +67,7 @@ export const SidebarFooter: React.FC<
         staleTime: 10 * 1000,
         enabled: isAuthenticated,
     })
-    const isPro = overview?.plan === 'PRO'
+    const isPro = (overview as any)?.plan === 'PRO'
     const hasUnread = notifications.some((n: any) => !n.isRead)
 
     const handleMouseEnter = () => {

@@ -161,7 +161,7 @@ export function geminiProvider(apiKey?: string): LLMProvider {
                   ]
                 : undefined
 
-            const responseStream = await client.models.generateContentStream({
+            const responseStream = await (client.models.generateContentStream as any)({
                 model: modelOptions?.model || 'gemini-2.5-pro',
                 contents: geminiMessages,
                 config: {

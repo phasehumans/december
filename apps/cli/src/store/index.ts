@@ -1,4 +1,6 @@
-import { Agent, SessionInfo, BackgroundTask } from '@december/agent'
+import { Agent } from '@december/agent'
+import type { SessionInfo } from '../file-session-repository'
+import type { BackgroundTask } from '../task-manager'
 import { Message, AuthMode } from '@december/tui'
 import { create } from 'zustand'
 

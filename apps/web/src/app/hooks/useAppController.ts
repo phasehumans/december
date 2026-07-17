@@ -87,7 +87,6 @@ export const useAppController = () => {
         !(!isHome && (view === 'chat' || view === 'project')) &&
         view !== 'profile' &&
         view !== 'docs' &&
-        view !== 'cli' &&
         view !== 'canvas'
     const { handleNewThread, handleHomeClick, handleNavigate, handleSignOut } =
         useNavigationController()

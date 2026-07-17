@@ -177,7 +177,7 @@ const Sidebar: React.FC<
     // No collapse option
 
     const { data: overview } = useBillingOverview()
-    const isPro = overview?.plan === 'PRO'
+    const isPro = (overview as any)?.plan === 'PRO'
 
     const recentProjects = isAuthenticated
         ? [...projects]

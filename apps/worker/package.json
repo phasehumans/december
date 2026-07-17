@@ -4,7 +4,9 @@
     "private": true,
     "scripts": {
         "dev": "bun --watch src/index.ts",
-        "start": "bun src/index.ts"
+        "start": "bun src/index.ts",
+        "build": "echo 'No build required for worker'",
+        "typecheck": "tsc --noEmit"
     },
     "dependencies": {
         "@december/agent": "workspace:*",

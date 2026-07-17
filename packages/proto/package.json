@@ -2,6 +2,10 @@
     "name": "@december/proto",
     "version": "0.2.12",
     "private": true,
+    "scripts": {
+        "build": "echo 'No build required for proto'",
+        "typecheck": "tsc --noEmit"
+    },
     "main": "index.js",
     "exports": {
         "./*": "./*"

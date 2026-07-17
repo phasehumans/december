@@ -83,9 +83,9 @@ export function ContextSelectMenu(props: any) {
                         {pct(totalTokens)}%)
                     </Text>
                 </Box>
-                <Text color="white" marginTop={1}>
-                    Token usage by category
-                </Text>
+                <Box marginTop={1}>
+                    <Text color="white">Token usage by category</Text>
+                </Box>
                 <Box flexDirection="column">
                     <Box gap={1}>
                         <Text color="#89B4F8">●</Text>

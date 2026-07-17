@@ -14,12 +14,12 @@ describe('local-operations', () => {
             task.output = 'hello'
             task.status = 'running'
 
-            const res = await localOperations.bash.getTaskStatus(task.id)
+            const res = await (localOperations.bash as any).getTaskStatus(task.id)
             expect(res).toEqual({ status: 'running', output: 'hello' })
         })
 
         test('getTaskStatus handles missing task', async () => {
-            const res = await localOperations.bash.getTaskStatus('task-999')
+            const res = await (localOperations.bash as any).getTaskStatus('task-999')
             expect(res).toEqual({ status: 'failed', output: 'Task not found' })
         })
 
@@ -33,7 +33,7 @@ describe('local-operations', () => {
             } as any
             const task = taskManager.addTask('echo hello', mockCp)
 
-            const res = await localOperations.bash.killTask(task.id)
+            const res = await (localOperations.bash as any).killTask(task.id)
             expect(res).toBe(true)
             expect(killed).toBe(true)
         })
