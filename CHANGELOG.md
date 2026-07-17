@@ -2,6 +2,26 @@
 
 ### Features
 
+- _(db)_ Change schema as session first approach and auth fix
+- _(sessions)_ Sessions migration
+- _(sessions)_ Sessions migration (#206)
+
+### Bug Fixes
+
+- _(auth)_ Db migrations fix and merge device flow
+
+### Other
+
+- _(db/auth)_ Fix auth and device code and alter projects into sessions (#205)
+
+### Refactor
+
+- _(server)_ Migrated from project based to session based
+
+## [0.2.11] - 2026-07-15
+
+### Features
+
 - Agent settings in CLI and comprehensive agent tests
 - Agent settings in CLI & comprehensive agent tests (#196)
 - Add byok fallback config and email display ; log vai december
@@ -22,6 +42,10 @@
 - _(tools)_ Add test to tools
 - _(providers)_ Add test to providers, wrap in factory pattern
 - _(tui)_ Add test in tui
+
+### Miscellaneous Tasks
+
+- _(release)_ V0.2.11
 
 ## [0.2.10] - 2026-07-14
 
