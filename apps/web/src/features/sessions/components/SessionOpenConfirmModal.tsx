@@ -2,14 +2,14 @@ import React from 'react'
 
 import { Modal } from '@/shared/components/ui/Modal'
 
-interface ProjectOpenConfirmModalProps {
+interface SessionOpenConfirmModalProps {
     isOpen: boolean
     projectTitle?: string
     onClose: () => void
     onConfirm: () => void
 }
 
-export const ProjectOpenConfirmModal: React.FC<ProjectOpenConfirmModalProps> = ({
+export const SessionOpenConfirmModal: React.FC<SessionOpenConfirmModalProps> = ({
     isOpen,
     projectTitle,
     onClose,

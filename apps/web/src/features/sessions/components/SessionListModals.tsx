@@ -2,7 +2,7 @@ import React from 'react'
 
 import { SessionDeleteModal } from './SessionDeleteModal'
 import { SessionDuplicateModal } from './SessionDuplicateModal'
-import { ProjectOpenConfirmModal } from './ProjectOpenConfirmModal'
+import { SessionOpenConfirmModal } from './SessionOpenConfirmModal'
 import { SessionRenameModal } from './SessionRenameModal'
 import { SessionShareModal } from './SessionShareModal'
 
@@ -14,7 +14,7 @@ import type {
     Project,
 } from '@/features/sessions/types'
 
-interface ProjectListModalsProps {
+interface SessionListModalsProps {
     renameModal: RenameModalState
     duplicateModal: DuplicateModalState
     shareModal: ShareModalState
@@ -37,7 +37,7 @@ interface ProjectListModalsProps {
     onOpenConfirm: () => void
 }
 
-export const ProjectListModals: React.FC<ProjectListModalsProps> = ({
+export const SessionListModals: React.FC<SessionListModalsProps> = ({
     renameModal,
     duplicateModal,
     shareModal,
@@ -95,7 +95,7 @@ export const ProjectListModals: React.FC<ProjectListModalsProps> = ({
                 onConfirm={onDeleteConfirm}
             />
 
-            <ProjectOpenConfirmModal
+            <SessionOpenConfirmModal
                 isOpen={openConfirmModal.isOpen}
                 projectTitle={openConfirmModal.project?.title}
                 onClose={onCloseOpenConfirm}

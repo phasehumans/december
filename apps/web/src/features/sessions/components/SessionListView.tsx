@@ -1,16 +1,16 @@
 import React from 'react'
 
-import { ProjectListRow } from './ProjectListRow'
+import { SessionListRow } from './SessionListRow'
+import { SessionFilterDropdown, type SessionFilterState } from './SessionFilterDropdown'
 
-import type { SortOption, StatusFilter } from './ProjectList'
-import type { Project } from '@/features/sessions/types'
+import type { SortOption, TypeFilter } from './SessionList'
 
 import { ErrorAlert } from '@/shared/components/ui/ErrorAlert'
 import { Icons } from '@/shared/components/ui/Icons'
 import { Skeleton } from '@/shared/components/ui/Skeleton'
 
-interface ProjectListViewProps {
-    projects: Project[]
+interface SessionListViewProps {
+    projects: any[]
     onNewProject: () => void
     onOpenProject: (projectId: string) => void
     isInitialLoading: boolean
@@ -22,38 +22,42 @@ interface ProjectListViewProps {
     onToggleStar: (id: string, event: React.MouseEvent) => void
     onToggleMenu: (id: string, event: React.MouseEvent) => void
     onOpenProjectFromMenu: (projectId: string, event: React.MouseEvent) => void
-    onToggleStarFromMenu: (project: Project, event: React.MouseEvent) => void
-    onOpenRename: (project: Project, event: React.MouseEvent) => void
-    onOpenDuplicate: (project: Project, event: React.MouseEvent) => void
-    onOpenShare: (project: Project, event: React.MouseEvent) => void
-    onOpenDelete: (project: Project, event: React.MouseEvent) => void
-    onOpenSettings: (project: Project, event: React.MouseEvent) => void
+    onToggleStarFromMenu: (project: any, event: React.MouseEvent) => void
+    onToggleArchiveFromMenu: (project: any, event: React.MouseEvent) => void
+    onOpenRename: (project: any, event: React.MouseEvent) => void
+    onOpenDuplicate: (project: any, event: React.MouseEvent) => void
+    onOpenShare: (project: any, event: React.MouseEvent) => void
+    onOpenDelete: (project: any, event: React.MouseEvent) => void
+    onOpenSettings: (project: any, event: React.MouseEvent) => void
     searchQuery: string
     onSearchChange: (query: string) => void
     sortOption: SortOption
     onSortChange: (option: SortOption) => void
-    statusFilter: StatusFilter
-    onStatusFilterChange: (filter: StatusFilter) => void
+    typeFilter: TypeFilter
+    onTypeFilterChange: (filter: TypeFilter) => void
+    advancedFilters: SessionFilterState
+    onAdvancedFiltersChange: (filters: SessionFilterState) => void
+    availableTags: string[]
     hasUnfilteredProjects: boolean
 }
 
-const ProjectListAreaSkeleton: React.FC = () => {
+const SessionListAreaSkeleton: React.FC = () => {
     return (
         <div className="min-h-[420px] flex flex-col gap-1 pb-4">
             {Array.from({ length: 6 }).map((_, index) => (
                 <div
-                    key={`project-list-skeleton-${index}`}
-                    className="grid grid-cols-[minmax(0,2fr)_minmax(100px,1fr)_minmax(150px,1fr)_minmax(150px,1fr)_8rem_2.5rem] items-center gap-3 rounded-xl border border-[#242323]/10 bg-[#191919]/5 px-5 py-3 md:gap-4"
+                    key={`session-list-skeleton-${index}`}
+                    className="grid grid-cols-[minmax(0,2fr)_minmax(100px,auto)_minmax(100px,auto)_minmax(150px,1fr)_8rem_2.5rem] items-center gap-3 rounded-xl border border-[#242323]/10 bg-[#191919]/5 pl-1 pr-5 py-3 md:gap-4"
                 >
                     <div className="flex flex-col gap-1.5 w-full max-w-xs pr-4">
                         <Skeleton className="h-4 w-[85%] bg-white/[0.06]" />
                         <Skeleton className="h-3 w-[60%] bg-white/[0.04]" />
                     </div>
                     <div>
-                        <Skeleton className="h-3.5 w-20 bg-white/[0.04]" />
+                        <Skeleton className="h-3.5 w-16 bg-white/[0.04]" />
                     </div>
                     <div>
-                        <Skeleton className="h-3.5 w-24 bg-white/[0.04]" />
+                        <Skeleton className="h-3.5 w-16 bg-white/[0.04]" />
                     </div>
                     <div>
                         <Skeleton className="h-3.5 w-20 bg-white/[0.04]" />
@@ -68,7 +72,7 @@ const ProjectListAreaSkeleton: React.FC = () => {
     )
 }
 
-const EmptyProjectsState: React.FC<{ onNewProject: () => void }> = ({ onNewProject }) => {
+const EmptySessionsState: React.FC<{ onNewProject: () => void }> = ({ onNewProject }) => {
     return (
         <div className="flex min-h-[420px] flex-col items-center justify-center px-6 py-16 text-center">
             <div className="relative mb-6 h-28 w-32">
@@ -94,15 +98,15 @@ const EmptyProjectsState: React.FC<{ onNewProject: () => void }> = ({ onNewProje
                 </svg>
             </div>
 
-            <h2 className="text-[17px] font-medium text-[#D6D5C9]">No projects</h2>
+            <h2 className="text-[17px] font-medium text-[#D6D5C9]">No sessions</h2>
             <p className="mt-2 max-w-sm text-[13px] leading-6 text-[#7B7A79]">
-                Projects you create or import will appear here.
+                Sessions you create or launch will appear here.
             </p>
             <button
                 onClick={onNewProject}
                 className="mt-5 rounded-lg border border-[#383736] bg-[#1A1918] px-4 py-2 text-[13px] font-medium text-[#D6D5C9] transition-colors hover:bg-[#262626]"
             >
-                New project
+                New session
             </button>
         </div>
     )
@@ -133,7 +137,7 @@ const NoResultsState: React.FC = () => {
                     />
                 </svg>
             </div>
-            <h2 className="text-[17px] font-medium text-[#D6D5C9]">No Projects Found</h2>
+            <h2 className="text-[17px] font-medium text-[#D6D5C9]">No Sessions Found</h2>
             <p className="mt-2 max-w-sm text-[13px] leading-6 text-[#7B7A79]">
                 Try adjusting your search or filters.
             </p>
@@ -146,17 +150,8 @@ const SORT_LABELS: Record<SortOption, string> = {
     oldest: 'Oldest',
 }
 
-const STATUS_LABELS: Record<StatusFilter, string> = {
-    any: 'Any',
-    Draft: 'Draft',
-    Generating: 'Generating',
-    Generated: 'Generated',
-    Deployed: 'Deployed',
-    Failed: 'Failed',
-}
-
-export const ProjectListView: React.FC<ProjectListViewProps> = ({
-    projects,
+export const SessionListView: React.FC<SessionListViewProps> = ({
+    projects: sessions,
     onNewProject,
     onOpenProject,
     isInitialLoading,
@@ -169,6 +164,7 @@ export const ProjectListView: React.FC<ProjectListViewProps> = ({
     onToggleMenu,
     onOpenProjectFromMenu,
     onToggleStarFromMenu,
+    onToggleArchiveFromMenu,
     onOpenRename,
     onOpenDuplicate,
     onOpenShare,
@@ -178,14 +174,17 @@ export const ProjectListView: React.FC<ProjectListViewProps> = ({
     onSearchChange,
     sortOption,
     onSortChange,
-    statusFilter,
-    onStatusFilterChange,
-    hasUnfilteredProjects,
+    typeFilter,
+    onTypeFilterChange,
+    advancedFilters,
+    onAdvancedFiltersChange,
+    availableTags,
+    hasUnfilteredProjects: hasUnfilteredSessions,
 }) => {
     const [activeDropdown, setActiveDropdown] = React.useState<string | null>(null)
     const [dropdownDirection, setDropdownDirection] = React.useState<'down' | 'up'>('down')
     const [visibleCount, setVisibleCount] = React.useState(10)
-    const dropdownRef = React.useRef<HTMLDivElement>(null)
+    const sortDropdownRef = React.useRef<HTMLDivElement>(null)
 
     const toggleDropdown = (type: string, event: React.MouseEvent<HTMLButtonElement>) => {
         if (activeDropdown === type) {
@@ -193,7 +192,6 @@ export const ProjectListView: React.FC<ProjectListViewProps> = ({
             return
         }
         const rect = event.currentTarget.getBoundingClientRect()
-        // Check if there is at least 250px below, if not and there's space above, open up
         if (window.innerHeight - rect.bottom < 250 && rect.top > 250) {
             setDropdownDirection('up')
         } else {
@@ -204,7 +202,10 @@ export const ProjectListView: React.FC<ProjectListViewProps> = ({
 
     React.useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
-            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+            if (
+                sortDropdownRef.current &&
+                !sortDropdownRef.current.contains(event.target as Node)
+            ) {
                 setActiveDropdown(null)
             }
         }
@@ -214,23 +215,21 @@ export const ProjectListView: React.FC<ProjectListViewProps> = ({
 
     React.useEffect(() => {
         setVisibleCount(10)
-    }, [projects.length])
+    }, [sessions.length])
 
     const displayedError = actionError ?? errorMessage
-    const hasProjects = projects.length > 0
+    const hasSessions = sessions.length > 0
 
     return (
         <>
             <div className="mb-6 flex items-start justify-between gap-4">
                 <div className="flex flex-col">
-                    <h1 className="text-[24px] font-medium text-[#D6D5C9] mb-1">Projects</h1>
-                    <p className="text-[13px] text-[#7B7A79]">
-                        Manage and view all your projects and sessions.
-                    </p>
+                    <h1 className="text-[24px] font-medium text-[#D6D5C9] mb-1">Sessions</h1>
+                    <p className="text-[13px] text-[#7B7A79]">Manage and view all your sessions.</p>
                 </div>
                 <div className="flex flex-col items-end gap-2">
                     {isFetching && !isInitialLoading && (
-                        <div className="text-[12px] text-neutral-500 mt-1">Syncing projects...</div>
+                        <div className="text-[12px] text-neutral-500 mt-1">Syncing...</div>
                     )}
                     {displayedError && (
                         <div className="mt-1 w-full flex justify-end">
@@ -245,7 +244,7 @@ export const ProjectListView: React.FC<ProjectListViewProps> = ({
                     <Icons.Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#7B7A79]" />
                     <input
                         type="text"
-                        placeholder="Search projects..."
+                        placeholder="Search sessions..."
                         value={searchQuery}
                         onChange={(e) => onSearchChange(e.target.value)}
                         className="w-full rounded-lg border border-[#383736] bg-[#141414] py-1.5 pl-9 pr-4 text-[13px] text-[#D6D5C9] transition-colors placeholder:text-[#7B7A79] hover:bg-[#191919] focus:border-[#7B7A79] focus:bg-[#191919] focus:outline-none"
@@ -254,8 +253,16 @@ export const ProjectListView: React.FC<ProjectListViewProps> = ({
 
                 <div className="flex-1" />
 
-                <div className="hidden md:flex items-center gap-2" ref={dropdownRef}>
-                    <div className="relative">
+                <div className="hidden md:flex items-center gap-2">
+                    {/* Filter dropdown */}
+                    <SessionFilterDropdown
+                        filters={advancedFilters}
+                        onFiltersChange={onAdvancedFiltersChange}
+                        availableTags={availableTags}
+                    />
+
+                    {/* Sort dropdown */}
+                    <div className="relative" ref={sortDropdownRef}>
                         <button
                             onClick={(e) => toggleDropdown('sort', e)}
                             className="flex items-center gap-2 rounded-full border border-[#383736] bg-[#141414] px-4 py-1.5 text-[13px] text-[#D6D5C9] transition-colors hover:bg-[#191919]"
@@ -296,38 +303,28 @@ export const ProjectListView: React.FC<ProjectListViewProps> = ({
                 </div>
             </div>
 
-            {hasProjects && (
-                <div className="mb-2 grid grid-cols-[minmax(0,2fr)_minmax(100px,1fr)_minmax(150px,1fr)_minmax(150px,1fr)_8rem_2.5rem] gap-3 border-b border-[#242323] px-5 py-3 text-[13px] font-medium text-[#D6D5C9] select-none md:gap-4">
-                    <div>Name</div>
-                    <div>Sessions</div>
-                    <div>Updated at</div>
-                    <div>Created by</div>
-                    <div className="text-center">Starred projects</div>
-                    <div></div>
-                </div>
-            )}
-
             {isInitialLoading ? (
-                <ProjectListAreaSkeleton />
-            ) : !hasUnfilteredProjects ? (
-                <EmptyProjectsState onNewProject={onNewProject} />
-            ) : !hasProjects ? (
+                <SessionListAreaSkeleton />
+            ) : !hasUnfilteredSessions ? (
+                <EmptySessionsState onNewProject={onNewProject} />
+            ) : !hasSessions ? (
                 <NoResultsState />
             ) : (
                 <div className="flex flex-col h-full">
                     <div className="pb-4">
                         <div className="flex flex-col gap-1">
-                            {projects.slice(0, visibleCount).map((project) => (
-                                <ProjectListRow
-                                    key={project.id}
-                                    project={project}
-                                    isMenuOpen={menuOpenId === project.id}
+                            {sessions.slice(0, visibleCount).map((session) => (
+                                <SessionListRow
+                                    key={session.id}
+                                    project={session}
+                                    isMenuOpen={menuOpenId === session.id}
                                     isTogglePending={isTogglePending}
                                     onOpenProject={onOpenProject}
                                     onToggleStar={onToggleStar}
                                     onToggleMenu={onToggleMenu}
                                     onOpenProjectFromMenu={onOpenProjectFromMenu}
                                     onToggleStarFromMenu={onToggleStarFromMenu}
+                                    onToggleArchiveFromMenu={onToggleArchiveFromMenu}
                                     onOpenRename={onOpenRename}
                                     onOpenDuplicate={onOpenDuplicate}
                                     onOpenShare={onOpenShare}
@@ -338,11 +335,11 @@ export const ProjectListView: React.FC<ProjectListViewProps> = ({
                         </div>
                     </div>
 
-                    {visibleCount < projects.length && (
+                    {visibleCount < sessions.length && (
                         <div className="flex justify-center pt-2 mb-8">
                             <button
                                 onClick={() =>
-                                    setVisibleCount((prev) => Math.min(prev + 10, projects.length))
+                                    setVisibleCount((prev) => Math.min(prev + 10, sessions.length))
                                 }
                                 className="px-4 py-1.5 rounded-md border border-[#383736] text-[13px] text-[#D6D5C9] hover:bg-[#191919] transition-colors"
                             >
