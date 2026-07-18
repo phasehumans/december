@@ -11,12 +11,14 @@
     },
     "dependencies": {
         "@december/shared": "workspace:*",
-        "@anthropic-ai/sdk": "latest",
-        "@google/genai": "latest",
-        "openai": "latest"
+        "@anthropic-ai/sdk": "^0.112.3",
+        "@google/genai": "^2.12.0",
+        "openai": "^6.48.0",
+        "uuid": "^11.0.0"
     },
     "devDependencies": {
         "@types/bun": "latest",
+        "@types/uuid": "^10.0.0",
         "typescript": "^5.0.0"
     },
     "author": "Chaitanya Sonawane",

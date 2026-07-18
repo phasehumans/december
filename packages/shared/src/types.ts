@@ -12,7 +12,6 @@ export interface ToolExecuteContext {
 export interface Message {
     role: Role
     content: string
-    // Optional fields for tracking tool calls in the message history
     toolCalls?: ToolCall[]
     toolCallId?: string
 }

@@ -3,7 +3,7 @@ import { MODEL_CONTEXT_WINDOWS } from '@december/providers'
 import type { LLMProvider } from '@december/providers'
 import type { Message } from '@december/shared'
 
-export const DEFAULT_MAX_TOKENS = 32000 // Assume a generic safe limit
+export const DEFAULT_MAX_TOKENS = 32000 // safe limit
 
 function estimateTokens(messages: Message[]): number {
     return messages.reduce((acc, msg) => {
@@ -31,16 +31,16 @@ export async function compactContextIfNeeded(
 
     const currentTokens = estimateTokens(messages)
 
-    // Trigger at 80% capacity
+    // trigger at 80% capacity
     if (currentTokens < limit * 0.8) {
         return messages
     }
 
-    // Always protect System prompt (index 0) and the last 20 messages (approx 10 turns)
+    // always protect system prompt (index 0) and the last 20 messages (approx 10 turns)
     const PROTECTED_TAIL = 20
 
     if (messages.length <= PROTECTED_TAIL + 1) {
-        return messages // Not enough messages to compact
+        return messages // not enough messages to compact
     }
 
     const systemPrompt = messages[0]!

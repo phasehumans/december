@@ -1,4 +1,5 @@
 import { compactContextIfNeeded } from './utils/compaction'
+import { v4 as uuidv4 } from 'uuid'
 
 import type { LLMProvider } from '@december/providers'
 import type { AgentMessage } from '@december/shared'
@@ -19,7 +20,7 @@ export class ConversationManager {
     }
 
     addMessage(msg: AgentMessage) {
-        if (!msg.id) msg.id = require('uuid').v4()
+        if (!msg.id) msg.id = uuidv4()
         if (msg.parentId === undefined) {
             const parent = this._messages[this._messages.length - 1]
             msg.parentId = parent ? parent.id : undefined
@@ -35,7 +36,7 @@ export class ConversationManager {
     ): Promise<{ compacted: boolean; summary?: string }> {
         const originalLength = this._messages.length
 
-        // compactContextIfNeeded will execute only if token count > maxTokens * 0.8
+        // token > max * 0.8 (80% limit)
         const newMessages = (await compactContextIfNeeded(
             this._messages as any,
             llm,
@@ -45,7 +46,6 @@ export class ConversationManager {
 
         if (newMessages.length < originalLength) {
             this._messages = newMessages
-            // The summary is typically the second message (index 1) in the compacted format
             const summaryMsg = newMessages[1]
             return { compacted: true, summary: summaryMsg?.content || '' }
         }

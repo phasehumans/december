@@ -6,8 +6,6 @@ import { Agent } from './agent'
 
 import type { AgentEvent, ToolCall, ToolResult } from '@december/shared'
 
-const delay = (ms: number) => new Promise((res) => setTimeout(res, ms))
-
 class AsyncQueue<T> {
     private queue: T[] = []
     private resolvers: ((value: IteratorResult<T>) => void)[] = []
@@ -50,22 +48,22 @@ class AsyncQueue<T> {
 function formatError(e: any): string {
     if (!e) return 'Unknown error'
     if (typeof e === 'string') return e
-    if (e.originalError) return formatError(e.originalError) // p-retry AbortError
+    if (e.originalError) return formatError(e.originalError) // p-retry aborterror
     if (e.cause) return formatError(e.cause)
 
-    // Ensure we capture the raw response data if available (axios/fetch style)
-    // Ensure we capture the raw response data if available (axios/fetch style)
+    // ensure we capture the raw response data if available (axios/fetch style)
+    // ensure we capture the raw response data if available (axios/fetch style)
     let rawData = e.response?.data || e.error || e
 
-    // If it's a Gemini SDK ApiError, the detailed JSON is often stuffed into a message string
+    // if it's a gemini sdk apierror, the detailed json is often stuffed into a message string
     const msgStr = e.error?.error?.message || e.error?.message || e.message || rawData?.message
     if (msgStr && typeof msgStr === 'string') {
         try {
             const parsedMessage = safeParseJson(msgStr)
-            // If it's valid JSON, use it as the raw data
+            // if it's valid json, use it as the raw data
             rawData = parsedMessage
         } catch {
-            // Not JSON, just keep the original rawData but we'll include the message string if it's the only thing we have
+            // not json, just keep the original rawdata but we'll include the message string if it's the only thing we have
             if (rawData === e && !e.response && !e.error) {
                 return msgStr
             }
@@ -116,12 +114,12 @@ export async function* runAgentLoop(
 
 async function runOuterLoop(agent: Agent, eventQueue: AsyncQueue<AgentEvent>, signal: AbortSignal) {
     while (!signal.aborted) {
-        // Run inner loop for turns
+        // run inner loop for turns
         await runInnerLoop(agent, eventQueue, signal)
 
         if (signal.aborted) break
 
-        // Follow up queue
+        // follow up queue
         if (agent.followUpQueue.length > 0) {
             const msgs = agent.followUpQueue.drain()
             for (const msg of msgs) {
@@ -141,7 +139,7 @@ async function runInnerLoop(agent: Agent, eventQueue: AsyncQueue<AgentEvent>, si
     while (!isDone && turnCount < 100 && !signal.aborted) {
         turnCount++
 
-        // Handle steering messages
+        // handle steering messages
         if (agent.hooks?.getSteeringMessages) {
             const steeringMessages = await agent.hooks.getSteeringMessages()
             for (const msg of steeringMessages) {
@@ -157,7 +155,7 @@ async function runInnerLoop(agent: Agent, eventQueue: AsyncQueue<AgentEvent>, si
 
         eventQueue.push({ type: 'TurnStart' })
 
-        // Stream assistant response
+        // stream assistant response
         const { assistantMessage, toolCalls, error } = await streamAssistantResponse(
             agent,
             eventQueue,
@@ -179,7 +177,7 @@ async function runInnerLoop(agent: Agent, eventQueue: AsyncQueue<AgentEvent>, si
                 toolCalls: toolCalls,
             })
 
-            // Execute tools
+            // execute tools
             await executeToolCalls(agent, toolCalls, eventQueue, signal)
         }
 
@@ -309,7 +307,7 @@ async function streamAssistantResponse(
             }
         )
 
-        eventQueue.push({ type: 'AgentStatus', message: '' }) // Clear status on success
+        eventQueue.push({ type: 'AgentStatus', message: '' }) // clear status on success
         return { assistantMessage, toolCalls }
     } catch (error: any) {
         let errorMsg = formatError(error)
