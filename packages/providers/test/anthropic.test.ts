@@ -115,7 +115,7 @@ describe('Anthropic Provider', () => {
             'You are an AI'
         )
 
-        // Trigger execution
+        // trigger execution
         const it = gen[Symbol.asyncIterator]()
         await it.next()
 

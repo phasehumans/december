@@ -26,4 +26,7 @@ export interface PlatformAdapter {
         cwd: () => string
         get: (key: string) => string | undefined
     }
+    browser?: {
+        navigate: (url: string) => Promise<{ text: string; vncUrl?: string; error?: string }>
+    }
 }

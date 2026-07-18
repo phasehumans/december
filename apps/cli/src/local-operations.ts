@@ -90,4 +90,30 @@ export const localOperations: PlatformAdapter = {
             return { block: false }
         },
     },
+    browser: {
+        navigate: async (url: string) => {
+            try {
+                const res = await fetch(url, {
+                    headers: {
+                        'User-Agent': 'Mozilla/5.0 (compatible; DecemberAgent/1.0)',
+                    },
+                })
+                const html = await res.text()
+                if (!res.ok) {
+                    return { text: '', error: `HTTP Error (${res.status}): ${html}` }
+                }
+
+                const cleanText = html
+                    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+                    .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
+                    .replace(/<[^>]+>/g, ' ')
+                    .replace(/\s+/g, ' ')
+                    .trim()
+
+                return { text: cleanText }
+            } catch (error: any) {
+                return { text: '', error: error.message }
+            }
+        },
+    },
 }

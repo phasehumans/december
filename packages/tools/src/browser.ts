@@ -14,36 +14,22 @@ export const BrowserTool: Tool<BrowserInput> = {
     inputSchema: browserSchema,
     execute: async ({ url }, context: ToolExecuteContext) => {
         try {
-            // P4.T4: Live Browser Container Execution
-            // VNC Server Configuration for Playwright
-            // Start a subprocess or configure Playwright to stream over VNC websocket.
-            // Expose VNC websocket streams to client widgets via noVNC.
-            const vncServerPort = 5900
-            const websockifyPort = 6080
-            // console.log(`Starting Playwright with VNC Server on port ${vncServerPort} mapped to ws://localhost:${websockifyPort}`);
-
-            const res = await fetch(url, {
-                headers: {
-                    'User-Agent': 'Mozilla/5.0 (compatible; DecemberAgent/1.0)',
-                },
-            })
-
-            const html = await res.text()
-            if (!res.ok) {
-                return `HTTP Error (${res.status}): ${html}`
+            if (!context.operations.browser) {
+                return `Failed to fetch URL: Browser operations are not supported in this environment.`
             }
 
-            const cleanText = html
-                .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-                .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
-                .replace(/<[^>]+>/g, ' ')
-                .replace(/\s+/g, ' ')
-                .trim()
+            const result = await context.operations.browser.navigate(url)
 
-            return (
-                truncateOutput(cleanText, 25000, 100).text +
-                `\n\n[VNC STREAM STARTED: ws://localhost:${websockifyPort}]`
-            )
+            if (result.error) {
+                return `Failed to fetch URL: ${result.error}`
+            }
+
+            let output = truncateOutput(result.text, 25000, 100).text
+            if (result.vncUrl) {
+                output += `\n\n[VNC STREAM STARTED: ${result.vncUrl}]`
+            }
+
+            return output
         } catch (error: any) {
             return `Failed to fetch URL: ${error.message}`
         }

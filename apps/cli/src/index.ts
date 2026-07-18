@@ -33,6 +33,10 @@ import {
     GitHubTool,
     MCPTool,
     WebSearchTool,
+    readWikiTool,
+    updateWikiTool,
+    createPrReviewTool,
+    submitPrTool,
 } from '@december/tools'
 import { ChatApp as App } from '@december/tui'
 import { RootLayout } from '@december/tui'
@@ -137,9 +141,6 @@ async function main() {
 
     const harness = new AgentHarness({
         baseSystemPrompt: `You are December, an autonomous, expert coding agent. You help the user by exploring codebases, executing terminal commands, editing files, and resolving complex tasks.
-
-You operate across two environments seamlessly: locally via a terminal CLI, and remotely via a secure cloud sandbox.
-
 Guidelines:
 - Plan carefully before making broad changes.
 - Use bash tools to explore the environment before guessing file paths.
@@ -164,6 +165,10 @@ Guidelines:
             GitHubTool,
             MCPTool,
             WebSearchTool,
+            readWikiTool,
+            updateWikiTool,
+            createPrReviewTool,
+            submitPrTool,
         ],
         operations: localOperations,
         modelOptions: { model: providerConfig?.model || 'gemini-3.5-flash' },
