@@ -1,8 +1,20 @@
 ## [unreleased]
 
+### Features
+
+- Implement browser DI, add missing CLI tools, and lowercase comments
+- Agent tools architecture and test expansion (#209)
+
+### Testing
+
+- _(agent/provider)_ Add test to agent and provider
+
+## [0.2.15] - 2026-07-17
+
 ### Miscellaneous Tasks
 
 - _(release)_ V0.2.13
+- _(release)_ V0.2.15
 
 ## [0.2.14] - 2026-07-17
 
