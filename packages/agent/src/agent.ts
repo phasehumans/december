@@ -68,7 +68,7 @@ export class Agent {
 
     constructor(config: AgentConfig) {
         this.llm = config.llm
-        this.systemPrompt = config.systemPrompt || 'You are a helpful autonomous software engineer.'
+        this.systemPrompt = config.systemPrompt || 'You are a helpful coding agent.'
         this.sessionId = config.sessionId || 'default'
         this.sessionRepository = config.sessionRepository
         this.hooks = config.hooks
@@ -85,7 +85,6 @@ export class Agent {
             this.tools.set(tool.name, tool)
         }
 
-        // Initialize with system prompt
         this.conversation.addMessage({
             role: 'system',
             content: this.systemPrompt,
@@ -146,7 +145,6 @@ export class Agent {
             if (loaded.length > 0) {
                 this.messages = loaded
             }
-            // If empty, keep the constructor's messages (system prompt)
         }
     }
 

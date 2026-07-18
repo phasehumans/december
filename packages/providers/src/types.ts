@@ -28,12 +28,12 @@ export type ProviderStreamChunk =
 
 export interface LLMProvider {
     /**
-     * The unique identifier for this provider (e.g. 'anthropic', 'openai')
+     * the unique identifier for this provider (e.g. 'anthropic', 'openai')
      */
     id: string
 
     /**
-     * Stream a response from the LLM
+     * stream a response from the llm
      */
     stream(
         messages: Message[],

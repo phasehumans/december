@@ -4,7 +4,7 @@ import { registerProvider, getProvider, getAllProviders } from '../src/registry'
 import { LLMProvider } from '../src/types'
 
 describe('Provider Registry', () => {
-    // Reset is not easily possible if the Map isn't exported, but we can add dummy providers.
+    // reset is not easily possible if the map isn't exported, but we can add dummy providers.
 
     test('should register and retrieve a provider successfully', () => {
         const dummyProvider: LLMProvider = {
@@ -31,7 +31,7 @@ describe('Provider Registry', () => {
     test('should return all registered providers', () => {
         const providers = getAllProviders()
         expect(Array.isArray(providers)).toBe(true)
-        // At least the dummy provider we just added should be here
+        // at least the dummy provider we just added should be here
         const ids = providers.map((p) => p.id)
         expect(ids).toContain('dummy')
     })

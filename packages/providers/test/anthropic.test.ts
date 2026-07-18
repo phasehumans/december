@@ -1,16 +1,20 @@
-import { describe, expect, test, mock } from 'bun:test'
-
+import { describe, expect, test, mock, beforeEach } from 'bun:test'
 import { anthropicProvider } from '../src/providers/anthropic'
 
-// Mock the Anthropic client module completely
+let capturedOptions: any = null
+
 mock.module('@anthropic-ai/sdk', () => {
     return {
         default: class MockAnthropic {
             public messages = {
                 create: mock(async (options: any) => {
-                    // Return an async iterable simulating a stream
+                    capturedOptions = options
                     return {
                         async *[Symbol.asyncIterator]() {
+                            yield {
+                                type: 'message_start',
+                                message: { usage: { input_tokens: 15, output_tokens: 0 } },
+                            }
                             yield {
                                 type: 'content_block_start',
                                 index: 0,
@@ -46,6 +50,10 @@ mock.module('@anthropic-ai/sdk', () => {
                                 index: 1,
                                 delta: { type: 'input_json_delta', partial_json: 'test"}' },
                             }
+                            yield {
+                                type: 'message_delta',
+                                usage: { output_tokens: 25 },
+                            }
                         },
                     }
                 }),
@@ -59,12 +67,16 @@ mock.module('@anthropic-ai/sdk', () => {
 })
 
 describe('Anthropic Provider', () => {
+    beforeEach(() => {
+        capturedOptions = null
+    })
+
     test('should initialize with correct API key', () => {
         const provider = anthropicProvider('test-anthropic-key')
         expect(provider.id).toBe('anthropic')
     })
 
-    test('should stream text and tool chunks correctly', async () => {
+    test('should stream text, tool, and usage chunks correctly', async () => {
         const provider = anthropicProvider('test-key')
         const gen = provider.stream([{ role: 'user', content: 'Say hi' }])
 
@@ -73,7 +85,7 @@ describe('Anthropic Provider', () => {
             chunks.push(chunk)
         }
 
-        expect(chunks.length).toBe(5)
+        expect(chunks.length).toBe(6)
         expect(chunks[0]).toEqual({ type: 'text', text: 'Anthropic ' })
         expect(chunks[1]).toEqual({ type: 'text', text: 'says hi' })
         expect(chunks[2]).toEqual({
@@ -84,5 +96,44 @@ describe('Anthropic Provider', () => {
         })
         expect(chunks[3]).toEqual({ type: 'tool_call_delta', id: 'tool_1', inputDelta: '{"q":"' })
         expect(chunks[4]).toEqual({ type: 'tool_call_delta', id: 'tool_1', inputDelta: 'test"}' })
+        expect(chunks[5]).toEqual({ type: 'usage', promptTokens: 15, completionTokens: 25 })
+    })
+
+    test('should correctly transform messages and tools to Anthropic format', async () => {
+        const provider = anthropicProvider('test-key')
+        const gen = provider.stream(
+            [
+                { role: 'user', content: 'hello' },
+                {
+                    role: 'assistant',
+                    content: 'thinking',
+                    toolCalls: [{ id: 't1', name: 'calc', input: '{}' }],
+                },
+                { role: 'tool', content: '42', toolCallId: 't1' },
+            ],
+            [{ name: 'calc', description: 'calculate', inputSchema: {} }],
+            'You are an AI'
+        )
+
+        // trigger execution
+        const it = gen[Symbol.asyncIterator]()
+        await it.next()
+
+        expect(capturedOptions).not.toBeNull()
+        expect(capturedOptions.system).toBe('You are an AI')
+        expect(capturedOptions.messages).toEqual([
+            { role: 'user', content: 'hello' },
+            {
+                role: 'assistant',
+                content: [
+                    { type: 'text', text: 'thinking' },
+                    { type: 'tool_use', id: 't1', name: 'calc', input: {} },
+                ],
+            },
+            { role: 'user', content: [{ type: 'tool_result', tool_use_id: 't1', content: '42' }] },
+        ])
+        expect(capturedOptions.tools).toEqual([
+            { name: 'calc', description: 'calculate', input_schema: {} },
+        ])
     })
 })

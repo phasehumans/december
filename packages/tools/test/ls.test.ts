@@ -20,7 +20,7 @@ describe('LsTool', () => {
         const context = createMockContext()
         context.operations.fs.readdir = mock(async () => [])
 
-        const result = await LsTool.execute({}, context) // dirPath is optional
+        const result = await LsTool.execute({}, context) // dirpath is optional
 
         expect(context.operations.fs.readdir).toHaveBeenCalledWith('.')
         expect(result).toContain('Directory is empty')

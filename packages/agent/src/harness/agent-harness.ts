@@ -17,10 +17,10 @@ export class AgentHarness {
     constructor(config: HarnessConfig) {
         this.config = config
 
-        // 1. Discover Skills
+        // 1. discover skills
         const skills = this.discoverSkills()
 
-        // 2. Parse potential slash commands and adjust prompt
+        // 2. parse potential slash commands and adjust prompt
         const { systemPrompt } = this.parseSlashCommands(
             config.baseSystemPrompt ||
                 `You are December, an autonomous, expert coding agent. You help the user by exploring codebases, executing terminal commands, editing files, and resolving complex tasks.
@@ -36,10 +36,10 @@ Guidelines:
 - At the end of your work, provide a summary of what you did, highlighting important keywords.`
         )
 
-        // 3. Discover Project Rules
+        // 3. discover project rules
         const rules = this.discoverRules()
 
-        // 4. Assemble final system prompt with skills and rules
+        // 4. assemble final system prompt with skills and rules
         let finalPrompt = `${systemPrompt}\n\nCurrent date: ${new Date().toISOString().split('T')[0]}\nCurrent working directory: ${config.workspaceDir}`
 
         if (skills.length > 0) {
@@ -54,7 +54,7 @@ Guidelines:
             finalPrompt += `</project_context>`
         }
 
-        // 4. Initialize Core Agent
+        // 4. initialize core agent
         this.agent = new Agent({
             ...config,
             systemPrompt: finalPrompt,
@@ -77,7 +77,7 @@ Guidelines:
                 }
             }
         } catch (e) {
-            // Ignore errors reading skills
+            // ignore errors reading skills
         }
         return skills
     }
@@ -98,7 +98,7 @@ Guidelines:
                 }
             }
         } catch (e) {
-            // Ignore errors reading rules
+            // ignore errors reading rules
         }
 
         return rules

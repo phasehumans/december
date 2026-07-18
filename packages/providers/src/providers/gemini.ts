@@ -1,5 +1,6 @@
 import { safeParseJson } from '@december/shared'
 import { GoogleGenAI, Content } from '@google/genai'
+import { v4 as uuidv4 } from 'uuid'
 
 import { createProvider } from '../models.ts'
 import { LLMProvider, Message, ProviderStreamChunk, ProviderTool } from '../types.ts'
@@ -76,7 +77,9 @@ export function geminiProvider(apiKey?: string): LLMProvider {
                                 delete extraFields.thoughtSignature
                             }
                         }
-                    } catch {}
+                    } catch (e) {
+                        console.warn('[gemini provider] failed to parse toolCallId:', e)
+                    }
 
                     for (let i = geminiMessages.length - 1; i >= 0; i--) {
                         const prev = geminiMessages[i]
@@ -122,7 +125,9 @@ export function geminiProvider(apiKey?: string): LLMProvider {
                                         delete extraFields.thoughtSignature
                                     }
                                 }
-                            } catch {}
+                            } catch (e) {
+                                console.warn('[gemini provider] failed to parse tool call id:', e)
+                            }
 
                             const part: any = {
                                 functionCall: {
@@ -204,7 +209,7 @@ export function geminiProvider(apiKey?: string): LLMProvider {
                         if ((fc as any).id) {
                             extraFields.id = (fc as any).id
                         } else {
-                            extraFields.id = Math.random().toString(36).substring(7)
+                            extraFields.id = uuidv4()
                         }
 
                         if ((part as any).thoughtSignature) {

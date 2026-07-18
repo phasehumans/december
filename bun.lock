@@ -32,7 +32,7 @@
     },
     "apps/cli": {
       "name": "@trydecember/cli",
-      "version": "0.2.12",
+      "version": "0.2.15",
       "bin": {
         "december": "./dist/december.js",
       },
@@ -60,11 +60,11 @@
     },
     "apps/runtime": {
       "name": "@december/runtime",
-      "version": "0.2.12",
+      "version": "0.2.15",
     },
     "apps/server": {
       "name": "@december/server",
-      "version": "0.2.12",
+      "version": "0.2.15",
       "dependencies": {
         "@aws-sdk/client-s3": "^3.1014.0",
         "@aws-sdk/s3-request-presigner": "3.1086.0",
@@ -123,7 +123,7 @@
     },
     "apps/sidecar": {
       "name": "december-agent",
-      "version": "0.1.0",
+      "version": "0.2.15",
       "dependencies": {
         "@december/agent": "workspace:*",
         "@december/providers": "workspace:*",
@@ -133,7 +133,7 @@
     },
     "apps/web": {
       "name": "@december/web",
-      "version": "0.2.12",
+      "version": "0.2.15",
       "dependencies": {
         "@codemirror/commands": "^6.10.3",
         "@codemirror/lang-css": "^6.3.1",
@@ -181,7 +181,7 @@
     },
     "apps/worker": {
       "name": "@december/worker",
-      "version": "0.2.12",
+      "version": "0.2.15",
       "dependencies": {
         "@aws-sdk/client-s3": "3.1089.0",
         "@aws-sdk/s3-request-presigner": "3.1089.0",
@@ -204,7 +204,7 @@
     },
     "packages/agent": {
       "name": "@december/agent",
-      "version": "0.2.12",
+      "version": "0.2.15",
       "dependencies": {
         "@anthropic-ai/sdk": "0.109.0",
         "@december/providers": "workspace:*",
@@ -223,7 +223,7 @@
     },
     "packages/database": {
       "name": "@december/database",
-      "version": "0.2.12",
+      "version": "0.2.15",
       "dependencies": {
         "@prisma/adapter-pg": "7.8.0",
         "@prisma/client": "7.8.0",
@@ -242,7 +242,7 @@
     },
     "packages/proto": {
       "name": "@december/proto",
-      "version": "0.2.12",
+      "version": "0.2.15",
       "dependencies": {
         "@grpc/grpc-js": "^1.10.0",
         "protobufjs": "8.7.1",
@@ -253,21 +253,23 @@
     },
     "packages/providers": {
       "name": "@december/providers",
-      "version": "0.2.12",
+      "version": "0.2.15",
       "dependencies": {
-        "@anthropic-ai/sdk": "latest",
+        "@anthropic-ai/sdk": "^0.112.3",
         "@december/shared": "workspace:*",
-        "@google/genai": "latest",
-        "openai": "latest",
+        "@google/genai": "^2.12.0",
+        "openai": "^6.48.0",
+        "uuid": "^11.0.0",
       },
       "devDependencies": {
         "@types/bun": "latest",
+        "@types/uuid": "^10.0.0",
         "typescript": "^5.0.0",
       },
     },
     "packages/shared": {
       "name": "@december/shared",
-      "version": "0.2.12",
+      "version": "0.2.15",
       "dependencies": {
         "bullmq": "5.80.2",
         "ioredis": "5.11.1",
@@ -279,7 +281,7 @@
     },
     "packages/tools": {
       "name": "@december/tools",
-      "version": "0.2.12",
+      "version": "0.2.15",
       "dependencies": {
         "@december/shared": "workspace:*",
         "@modelcontextprotocol/sdk": "1.29.0",
@@ -294,7 +296,7 @@
     },
     "packages/tui": {
       "name": "@december/tui",
-      "version": "0.2.12",
+      "version": "0.2.15",
       "dependencies": {
         "@december/shared": "workspace:*",
         "cli-highlight": "2.1.11",
@@ -2457,11 +2459,15 @@
 
     "@conventional-changelog/git-client/semver": ["semver@7.8.4", "", { "bin": { "semver": "bin/semver.js" } }, "sha512-rUCObTnP32Q08R2uuIrt7r9PlEonuTmtuXYcW6s5kjdlj3xbnwe+21yXptAUYcMAABLkYYTtnmzb3w3EDZfueA=="],
 
-    "@december/providers/@anthropic-ai/sdk": ["@anthropic-ai/sdk@0.112.1", "", { "dependencies": { "json-schema-to-ts": "^3.1.1", "standardwebhooks": "^1.0.0" }, "peerDependencies": { "zod": "^3.25.0 || ^4.0.0" }, "optionalPeers": ["zod"], "bin": { "anthropic-ai-sdk": "bin/cli" } }, "sha512-vPRhHWxG9gIDyI9anVET2tBkmMBOXyTpIFvQgUVveiAV0ihmQgBYzQHb/s9+pZ/FxprSWcQnj15YnRfPxOIEmg=="],
+    "@december/providers/@anthropic-ai/sdk": ["@anthropic-ai/sdk@0.112.3", "", { "dependencies": { "json-schema-to-ts": "^3.1.1", "standardwebhooks": "^1.0.0" }, "peerDependencies": { "zod": "^3.25.0 || ^4.0.0" }, "optionalPeers": ["zod"], "bin": { "anthropic-ai-sdk": "bin/cli" } }, "sha512-wjcozJlitVIuBEw9cj/xBuRznwkhcLmXmNzlFoeHbh4AvrDG3HGZrdvEOTTmobcbhjGkfOpKbmDTCQ4s9LQvCg=="],
+
+    "@december/providers/@types/uuid": ["@types/uuid@10.0.0", "", {}, "sha512-7gqG38EyHgyP1S+7+xomFtL+ZNHcKv6DwNaCZmJmo1vgMugyF3TCnXVg4t1uk89mLNwnLtnY3TpOpCOyp1/xHQ=="],
 
     "@december/providers/openai": ["openai@6.48.0", "", { "peerDependencies": { "@aws-sdk/credential-provider-node": ">=3.972.0 <4", "@smithy/hash-node": ">=4.3.0 <5", "@smithy/signature-v4": ">=5.4.0 <6", "ws": "^8.18.0", "zod": "^3.25 || ^4.0" }, "optionalPeers": ["@aws-sdk/credential-provider-node", "@smithy/hash-node", "@smithy/signature-v4", "ws", "zod"] }, "sha512-KhVp+FyV50QrXNextvL9hIU5l6ox5HYuKQjGVk7lIqprgJol90+dQXWONV6S1lRWsKA1bXjrow8RsUT14M1hNA=="],
 
     "@december/providers/typescript": ["typescript@5.9.3", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw=="],
+
+    "@december/providers/uuid": ["uuid@11.1.1", "", { "bin": { "uuid": "dist/esm/bin/uuid" } }, "sha512-vIYxrBCC/N/K+Js3qSN88go7kIfNPssr/hHCesKCQNAjmgvYS2oqr69kIufEG+O4+PfezOH4EbIeHCfFov8ZgQ=="],
 
     "@december/server/openai": ["openai@6.48.0", "", { "peerDependencies": { "@aws-sdk/credential-provider-node": ">=3.972.0 <4", "@smithy/hash-node": ">=4.3.0 <5", "@smithy/signature-v4": ">=5.4.0 <6", "ws": "^8.18.0", "zod": "^3.25 || ^4.0" }, "optionalPeers": ["@aws-sdk/credential-provider-node", "@smithy/hash-node", "@smithy/signature-v4", "ws", "zod"] }, "sha512-KhVp+FyV50QrXNextvL9hIU5l6ox5HYuKQjGVk7lIqprgJol90+dQXWONV6S1lRWsKA1bXjrow8RsUT14M1hNA=="],
 

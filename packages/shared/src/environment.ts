@@ -33,4 +33,7 @@ export interface Environment {
         ) => Promise<string>
         requestPermission?: (toolCall: any) => Promise<{ block: boolean; reason?: string }>
     }
+    browser?: {
+        navigate: (url: string) => Promise<{ text: string; vncUrl?: string; error?: string }>
+    }
 }
