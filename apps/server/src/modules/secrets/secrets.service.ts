@@ -4,7 +4,7 @@ import { prisma } from '@december/database'
 
 import { env } from '../../env'
 
-// AES-256-GCM settings
+// aes-256-gcm settings
 const ALGORITHM = 'aes-256-gcm'
 const KEY = Buffer.from(env.SECRETS_ENC_KEY, 'hex')
 

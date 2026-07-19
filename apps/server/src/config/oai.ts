@@ -8,6 +8,6 @@ export const openai = new OpenAI({
     defaultHeaders: {
         'HTTP-Referer': env.SERVER_URL,
         'X-OpenRouter-Title': 'december',
-        // 'X-Title': 'december',
+        // 'x-title': 'december',
     },
 })

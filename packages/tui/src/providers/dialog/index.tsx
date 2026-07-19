@@ -48,11 +48,11 @@ export function DialogProvider({ children }: DialogProviderProps) {
 
     const value: DialogContextValue = { open, close, isOpen: currentDialog !== null, currentDialog }
 
-    // Dialog always renders alongside children — never replaces the screen
+    // dialog always renders alongside children — never replaces the screen
     return <DialogContext.Provider value={value}>{children}</DialogContext.Provider>
 }
 
-// Inline dialog panel — rendered beside the input area, above the prompt
+// inline dialog panel — rendered beside the input area, above the prompt
 type InlineDialogProps = {
     config: DialogConfig
     close: () => void
@@ -61,7 +61,7 @@ type InlineDialogProps = {
 export function InlineDialog({ config, close }: InlineDialogProps) {
     const { isTopLayer } = useKeyboardLayer()
     const cols = useTerminalColumns()
-    // Panel sits on the right half of the terminal
+    // panel sits on the right half of the terminal
     const panelWidth = Math.floor(cols * 0.45)
 
     useInput((_input, key) => {

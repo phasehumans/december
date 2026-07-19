@@ -6,7 +6,7 @@ import '@xterm/xterm/css/xterm.css'
 
 interface TerminalWorkspaceProps {
     previewSessionId?: string | null
-    // Here we'd typically pass a WebSocket URL or connection function
+    // here we'd typically pass a websocket url or connection function
 }
 
 export const TerminalWorkspace: React.FC<TerminalWorkspaceProps> = ({ previewSessionId }) => {
@@ -49,7 +49,7 @@ export const TerminalWorkspace: React.FC<TerminalWorkspaceProps> = ({ previewSes
         if (previewSessionId) {
             xterm.writeln(`Connecting to Firecracker VM session ${previewSessionId}...`)
 
-            // Connect to actual WebSocket for terminal stream
+            // connect to actual websocket for terminal stream
             import('socket.io-client').then(({ io }) => {
                 import('@/shared/api/client').then(({ API_BASE_URL }) => {
                     const baseUrl = API_BASE_URL.replace('/api/v1', '')

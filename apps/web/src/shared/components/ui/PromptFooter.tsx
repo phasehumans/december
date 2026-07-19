@@ -300,11 +300,11 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
                 multiple
                 accept="image/*,.pdf,.doc,.docx,.txt"
                 onChange={(e) => {
-                    // File handling will be implemented here
+                    // file handling will be implemented here
                     if (e.target.files && e.target.files.length > 0) {
                         console.log('Files selected:', e.target.files)
                     }
-                    // Reset input so the same file can be selected again
+                    // reset input so the same file can be selected again
                     if (fileInputRef.current) {
                         fileInputRef.current.value = ''
                     }

@@ -1,8 +1,8 @@
 /**
- * This file is the entry point for the React app, it sets up the root
- * element and renders the App component to the DOM.
+ * this file is the entry point for the react app, it sets up the root
+ * element and renders the app component to the dom.
  *
- * It is included in `src/index.html`.
+ * it is included in `src/index.html`.
  */
 
 import { GoogleOAuthProvider } from '@react-oauth/google'
@@ -32,10 +32,10 @@ const app = (
 )
 
 if (import.meta.hot) {
-    // With hot module reloading, `import.meta.hot.data` is persisted.
+    // with hot module reloading, `import.meta.hot.data` is persisted.
     const root = (import.meta.hot.data.root ??= createRoot(elem))
     root.render(app)
 } else {
-    // The hot module reloading API is not available in production.
+    // the hot module reloading api is not available in production.
     createRoot(elem).render(app)
 }

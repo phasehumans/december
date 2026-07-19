@@ -23,7 +23,7 @@ const worker = new Worker(
                 data: { vmStatus: 'RUNNING' },
             })
 
-            // Generate short-lived JWT
+            // generate short-lived jwt
             const jwt = require('jsonwebtoken')
             const token = jwt.sign(
                 { userId, sessionId },
@@ -31,7 +31,7 @@ const worker = new Worker(
                 { expiresIn: '15m' }
             )
 
-            // START THE FIRECRACKER VM!
+            // start the firecracker vm!
             const { createVM, startAgentSession } = require('./runtime')
             const { processGrpcStream } = require('./listener')
 
@@ -48,7 +48,7 @@ const worker = new Worker(
                 apiHostUrl
             )
 
-            // Start listening in the background without blocking the worker pool
+            // start listening in the background without blocking the worker pool
             processGrpcStream(sessionId, stream).catch((e: any) =>
                 console.error('Stream failed', e)
             )

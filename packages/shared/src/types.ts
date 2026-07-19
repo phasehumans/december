@@ -27,7 +27,7 @@ export interface AgentMessage extends Message {
 export interface ToolCall {
     id: string
     name: string
-    input: string // The raw JSON string or parsed object
+    input: string // the raw json string or parsed object
 }
 
 export interface ToolResult {
@@ -56,7 +56,7 @@ export interface AgentHooks {
     prepareNextTurn?: () => Promise<{ modelOptions?: any; systemPrompt?: string } | void>
 }
 
-// Event Stream Types (The Async Generator Yields These)
+// event stream types (the async generator yields these)
 
 export interface AgentStartEvent {
     type: 'AgentStart'

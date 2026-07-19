@@ -5,12 +5,12 @@ export function safeParseJson(text: string): any {
 
     let cleanText = text.trim()
 
-    // Remove markdown code blocks if present
+    // remove markdown code blocks if present
     if (cleanText.startsWith('```')) {
         const lines = cleanText.split('\n')
-        // Remove the first line (e.g. ```json)
+        // remove the first line (e.g. ```json)
         lines.shift()
-        // Remove the last line if it's just ```
+        // remove the last line if it's just ```
         if (lines.length > 0 && lines[lines.length - 1]?.trim() === '```') {
             lines.pop()
         }
@@ -20,8 +20,8 @@ export function safeParseJson(text: string): any {
     try {
         return JSON.parse(cleanText)
     } catch (err: any) {
-        // Attempt basic fixes for common LLM hallucinations:
-        // 1. Missing closing brace
+        // attempt basic fixes for common llm hallucinations:
+        // 1. missing closing brace
         if (cleanText.startsWith('{') && !cleanText.endsWith('}')) {
             try {
                 return JSON.parse(cleanText + '}')
@@ -29,7 +29,7 @@ export function safeParseJson(text: string): any {
                 // fall through
             }
         }
-        // 2. Extra trailing comma
+        // 2. extra trailing comma
         if (cleanText.endsWith(',}') || cleanText.endsWith(', }') || cleanText.match(/,\s*\}/)) {
             try {
                 return JSON.parse(cleanText.replace(/,\s*\}/g, '}'))

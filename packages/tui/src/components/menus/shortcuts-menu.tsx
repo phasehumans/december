@@ -49,14 +49,14 @@ export function ShortcutsMenu({ onClose }: { onClose: () => void }) {
 
     return (
         <Box flexDirection="column">
-            {/* ↑ N more */}
+            {/* ↑ n more */}
             {itemsAbove > 0 && (
                 <Box paddingLeft={2}>
                     <Text color="#AAAAAA">↑ {itemsAbove} more</Text>
                 </Box>
             )}
 
-            {/* Rows */}
+            {/* rows */}
             {visibleItems.map((cmd, relIdx) => {
                 const absIdx = windowStart + relIdx
                 const isSelected = absIdx === selectedIndex
@@ -75,7 +75,7 @@ export function ShortcutsMenu({ onClose }: { onClose: () => void }) {
                 )
             })}
 
-            {/* ↓ N more */}
+            {/* ↓ n more */}
             {itemsBelow > 0 && (
                 <Box paddingLeft={2}>
                     <Text color="#AAAAAA">↓ {itemsBelow} more</Text>
@@ -88,7 +88,7 @@ export function ShortcutsMenu({ onClose }: { onClose: () => void }) {
                 </Text>
             </Box>
 
-            {/* Footer */}
+            {/* footer */}
             <Box flexDirection="column" paddingLeft={2} paddingTop={1} paddingBottom={1}>
                 <Box gap={2}>
                     <Box gap={1}>

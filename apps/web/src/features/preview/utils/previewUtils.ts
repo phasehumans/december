@@ -17,7 +17,7 @@ export const previewBridgeStyle = `
         box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.12) !important;
     }
 
-    /* Custom scrollbar styling to match code workspace/scrollbar */
+    /* custom scrollbar styling to match code workspace/scrollbar */
     ::-webkit-scrollbar {
         width: 4px;
         height: 4px;

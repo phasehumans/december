@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react'
 
 import { Icons } from '@/shared/components/ui/Icons'
 
-// ── Filter state type ──────────────────────────────────────────────
+// ── filter state type ──────────────────────────────────────────────
 export type SessionFilterState = {
     types: Array<'WEB' | 'CLI' | 'SEARCH'>
     archivedStatus: 'any' | 'archived' | 'not_archived'
@@ -32,7 +32,7 @@ export const countActiveFilters = (filters: SessionFilterState): number => {
     return count
 }
 
-// ── Filter menu category definitions ──────────────────────────────
+// ── filter menu category definitions ──────────────────────────────
 type FilterCategory = {
     id: string
     label: string
@@ -62,7 +62,7 @@ const FILTER_CATEGORIES: FilterCategory[] = [
     },
 ]
 
-// ── Sub-panel: Type ───────────────────────────────────────────────
+// ── sub-panel: type ───────────────────────────────────────────────
 const TypeSubPanel: React.FC<{
     selected: Array<'WEB' | 'CLI' | 'SEARCH'>
     onChange: (types: Array<'WEB' | 'CLI' | 'SEARCH'>) => void
@@ -131,7 +131,7 @@ const TypeSubPanel: React.FC<{
     )
 }
 
-// ── Sub-panel: Archived Status ────────────────────────────────────
+// ── sub-panel: archived status ────────────────────────────────────
 const ArchivedSubPanel: React.FC<{
     selected: 'any' | 'archived' | 'not_archived'
     onChange: (val: 'any' | 'archived' | 'not_archived') => void
@@ -185,7 +185,7 @@ const ArchivedSubPanel: React.FC<{
     )
 }
 
-// ── Sub-panel: Pinned Status ──────────────────────────────────────
+// ── sub-panel: pinned status ──────────────────────────────────────
 const PinnedSubPanel: React.FC<{
     selected: 'any' | 'pinned' | 'not_pinned'
     onChange: (val: 'any' | 'pinned' | 'not_pinned') => void
@@ -239,7 +239,7 @@ const PinnedSubPanel: React.FC<{
     )
 }
 
-// ── Sub-panel: Tags ───────────────────────────────────────────────
+// ── sub-panel: tags ───────────────────────────────────────────────
 const TagsSubPanel: React.FC<{
     selected: string[]
     onChange: (tags: string[]) => void
@@ -310,7 +310,7 @@ const TagsSubPanel: React.FC<{
     )
 }
 
-// ── Main dropdown component ───────────────────────────────────────
+// ── main dropdown component ───────────────────────────────────────
 interface SessionFilterDropdownProps {
     filters: SessionFilterState
     onFiltersChange: (filters: SessionFilterState) => void
@@ -383,7 +383,7 @@ export const SessionFilterDropdown: React.FC<SessionFilterDropdownProps> = ({
         }
     }
 
-    // Check if a category has active filters for a dot indicator
+    // check if a category has active filters for a dot indicator
     const isCategoryActive = (id: string): boolean => {
         switch (id) {
             case 'type':
@@ -424,7 +424,7 @@ export const SessionFilterDropdown: React.FC<SessionFilterDropdownProps> = ({
 
             {isOpen && (
                 <div className="absolute right-0 top-full mt-2 z-50 flex gap-0">
-                    {/* Main category menu */}
+                    {/* main category menu */}
                     <div className="w-52 rounded-xl border border-[#383736] bg-[#1E1E1E] py-1.5 shadow-xl">
                         {FILTER_CATEGORIES.map((cat) => (
                             <button
@@ -450,7 +450,7 @@ export const SessionFilterDropdown: React.FC<SessionFilterDropdownProps> = ({
                             </button>
                         ))}
 
-                        {/* Divider + Clear all */}
+                        {/* divider + clear all */}
                         <div className="mx-2 my-1.5 h-px bg-[#383736]" />
                         <button
                             onClick={handleClearAll}
@@ -466,7 +466,7 @@ export const SessionFilterDropdown: React.FC<SessionFilterDropdownProps> = ({
                         </button>
                     </div>
 
-                    {/* Sub-panel rendered to the right */}
+                    {/* sub-panel rendered to the right */}
                     {hoveredCategory && <div className="ml-1">{renderSubPanel()}</div>}
                 </div>
             )}

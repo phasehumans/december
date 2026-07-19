@@ -1,10 +1,9 @@
 export async function loginViaDeviceCode(
-    baseUrl: string = 'http://localhost:4000',
+    baseUrl: string = process.env.DECEMBER_SERVER_URL || 'https://api.trydecember.com',
     onCodeGenerated: (userCode: string, verificationUri: string) => void
 ): Promise<{ token: string; email: string | null }> {
     return new Promise(async (resolve, reject) => {
         try {
-            // 1. Generate Code
             const genRes = await fetch(`${baseUrl}/api/v1/auth/device/code`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -23,7 +22,7 @@ export async function loginViaDeviceCode(
 
             onCodeGenerated(userCode, verificationUri)
 
-            // 2. Poll for token
+            // 2. poll for token
             const startTime = Date.now()
             const pollInterval = interval * 1000 || 5000
 
@@ -50,14 +49,14 @@ export async function loginViaDeviceCode(
                         return
                     }
 
-                    // If not ok, check if it's authorization_pending
+                    // if not ok, check if it's authorization_pending
                     if (tokenData.message === 'authorization_pending') {
                         setTimeout(poll, pollInterval)
                     } else {
                         reject(new Error(tokenData.message || 'Polling failed'))
                     }
                 } catch (err) {
-                    // Network errors during polling, just keep trying
+                    // network errors during polling, just keep trying
                     setTimeout(poll, pollInterval)
                 }
             }

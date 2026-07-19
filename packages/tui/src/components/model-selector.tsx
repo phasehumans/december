@@ -79,6 +79,6 @@ export function ModelSelector() {
         )
     }
 
-    // Closed: just show model name
+    // closed: just show model name
     return <Text color="#888888">{currentModel.label}</Text>
 }

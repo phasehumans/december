@@ -9,7 +9,7 @@ export async function processGrpcStream(sessionId: string, stream: any) {
             // publish to socket rooms
             await redisPub.publish(`session_events:${sessionId}`, event.data)
 
-            // Handle specific events like usage and credits
+            // handle specific events like usage and credits
             const parsedEvent = JSON.parse(event.data)
             if (parsedEvent.type === 'AgentUsage') {
                 await updateCredits(sessionId, parsedEvent)

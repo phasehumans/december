@@ -183,7 +183,7 @@ export const MobileSidebar: React.FC<
                         : '-translate-x-full pointer-events-none'
                 )}
             >
-                {/* Header & Nav Items */}
+                {/* header & nav items */}
                 <div className="px-3 mb-2 mt-0 z-30 relative">
                     <div className="flex items-center justify-between px-2 mb-6 mt-4">
                         <Icons.DecemberLogo className="w-6 h-6 text-[#D6D5D4]" />

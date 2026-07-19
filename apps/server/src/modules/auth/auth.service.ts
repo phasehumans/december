@@ -602,7 +602,7 @@ const generateDeviceCode = async () => {
                 interval: 5,
             }
         } catch (error: any) {
-            // Prisma unique constraint violation — retry with a new code
+            // prisma unique constraint violation — retry with a new code
             if (error?.code === 'P2002' && attempt < maxRetries - 1) {
                 continue
             }

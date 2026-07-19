@@ -2,7 +2,7 @@ import { prisma } from '@december/database'
 
 export const runtimeRepository = {
     async updateSessionPreviewImage(data: { sessionId: string; key: string }) {
-        // No previewImageKey field in Session schema, we just keep the image in S3
+        // no previewimagekey field in session schema, we just keep the image in s3
     },
 
     async findSessionForPreview(data: { sessionId: string; userId: string }) {

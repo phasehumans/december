@@ -38,14 +38,14 @@ const getPreviewHtmlFromFiles = (generatedFiles?: Record<string, GeneratedProjec
         generatedFiles['src/index.html']?.content
 
     if (!html) {
-        // Fallback: Find any index.html
+        // fallback: find any index.html
         const anyIndexHtml = Object.values(generatedFiles).find((f) =>
             f.path.endsWith('index.html')
         )
         if (anyIndexHtml) {
             html = anyIndexHtml.content
         } else {
-            // Fallback: Find any .html file
+            // fallback: find any .html file
             const anyHtml = Object.values(generatedFiles).find((f) => f.path.endsWith('.html'))
             html = anyHtml?.content || ''
         }

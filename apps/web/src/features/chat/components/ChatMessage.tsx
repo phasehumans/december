@@ -74,7 +74,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
     const isCompletedPhase = status === 'done'
     const showActions = !isGenerating && isCompletedPhase && isStreamFinished
 
-    // Segment calculation
+    // segment calculation
     const showThinking = isThinkingPhase || Boolean(thoughts)
 
     const showPlan = Boolean(plan)
@@ -88,8 +88,8 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
 
     const showSummary = projectType === 'generated' && Boolean(summary)
 
-    // For normal messages, we don't animate thoughts because SSE handles it.
-    // But for forceStream messages, we simulate the thoughts streaming too.
+    // for normal messages, we don't animate thoughts because sse handles it.
+    // but for forcestream messages, we simulate the thoughts streaming too.
     const activeThoughtsText = shouldForceStream ? displayedThoughts : thinkingText
 
     return (
@@ -100,7 +100,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                 transition={{ duration: 0.3, delay: 0.06 }}
                 className="pl-1 flex flex-col gap-2.5"
             >
-                {/* Assistant Meta */}
+                {/* assistant meta */}
                 <div className="flex items-center gap-2 text-[11px] font-medium tracking-wide">
                     <span className="text-[#8E8D8C]">December</span>
                     {(isThinkingPhase || isBuildingPhase || status === 'error') && (
@@ -120,7 +120,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                     )}
                 </div>
 
-                {/* 1. Thinking phase collapsible block */}
+                {/* 1. thinking phase collapsible block */}
                 {showThinking && activeThoughtsText.trim().length > 0 && (
                     <div className="space-y-1.5">
                         <button
@@ -161,14 +161,14 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                     </div>
                 )}
 
-                {/* 2. Plan of Action (normal text, streamed) */}
+                {/* 2. plan of action (normal text, streamed) */}
                 {showPlan && displayedPlan.trim().length > 0 && (
                     <div className="space-y-2.5 animate-in fade-in duration-300 w-full">
                         {renderRichContent(displayedPlan)}
                     </div>
                 )}
 
-                {/* 3. Edited files container */}
+                {/* 3. edited files container */}
                 {showFiles && (
                     <div className="mt-2 pl-0.5 animate-in fade-in duration-300">
                         <div className="flex items-center gap-2 text-[#91908F] mb-1.5">
@@ -213,14 +213,14 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                     </div>
                 )}
 
-                {/* 4. Final summary (normal text, streamed) */}
+                {/* 4. final summary (normal text, streamed) */}
                 {showSummary && displayedSummary.trim().length > 0 && (
                     <div className="space-y-3 pt-1 animate-in fade-in duration-300 w-full">
                         {renderRichContent(displayedSummary)}
                     </div>
                 )}
 
-                {/* 5. Sleek white Actions Footer + Restore button */}
+                {/* 5. sleek white actions footer + restore button */}
                 {showActions && (
                     <div className="flex items-center justify-between pt-1.5 mt-1">
                         <div className="flex items-center gap-3">

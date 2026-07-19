@@ -2,11 +2,11 @@ import rateLimit from 'express-rate-limit'
 
 export const apiRateLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    limit: 500, // Limit each IP or User to 500 requests per `window` (here, per 15 minutes)
-    standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
-    legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+    limit: 500, // limit each ip or user to 500 requests per `window` (here, per 15 minutes)
+    standardHeaders: true, // return rate limit info in the `ratelimit-*` headers
+    legacyHeaders: false, // disable the `x-ratelimit-*` headers
     keyGenerator: (req) => {
-        // Use userId if available (set by authMiddleware), otherwise fallback to IP
+        // use userid if available (set by authmiddleware), otherwise fallback to ip
         if (req.user && req.user.userId) {
             return req.user.userId
         }
@@ -17,14 +17,14 @@ export const apiRateLimiter = rateLimit({
         status: 'error',
         message: 'Too many requests from this IP or User, please try again after 15 minutes',
         metadata: {
-            upgradeUrl: 'http://localhost:3000/settings/billing', // Provide upgrade URLs for 429
+            upgradeUrl: 'http://localhost:3000/settings/billing', // provide upgrade urls for 429
         },
     },
 })
 
 export const deviceCodeLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    limit: 5, // Limit each IP to 5 requests per windowMs for device code generation
+    limit: 5, // limit each ip to 5 requests per windowms for device code generation
     standardHeaders: true,
     legacyHeaders: false,
     keyGenerator: (req) => {

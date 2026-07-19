@@ -71,7 +71,7 @@ export const ProfileRepositoriesSettings: React.FC<ProfileRepositoriesSettingsPr
 
     return (
         <div className="flex flex-col w-full max-w-[800px] text-[#D6D5C9]">
-            {/* GitHub Repositories */}
+            {/* github repositories */}
             <div className="flex flex-col mb-10">
                 <h1 className="text-[16px] font-medium mb-4">GitHub Repositories</h1>
 
@@ -98,11 +98,11 @@ export const ProfileRepositoriesSettings: React.FC<ProfileRepositoriesSettingsPr
                     </div>
                 ) : reposQuery.isLoading ? (
                     <div className="flex flex-col border border-[#2B2A29] rounded-xl overflow-hidden bg-[#131211]">
-                        {/* Header skeleton */}
+                        {/* header skeleton */}
                         <div className="flex items-center px-5 py-3 bg-[#141414] border-b border-[#2B2A29]">
                             <Skeleton className="h-4.5 w-40 bg-white/[0.06] rounded" />
                         </div>
-                        {/* Repo list skeleton */}
+                        {/* repo list skeleton */}
                         {Array.from({ length: INITIAL_REPOS_COUNT }).map((_, i) => (
                             <div
                                 key={i}
@@ -144,7 +144,7 @@ export const ProfileRepositoriesSettings: React.FC<ProfileRepositoriesSettingsPr
                     </div>
                 ) : (
                     <div className="flex flex-col border border-[#2B2A29] rounded-xl overflow-hidden bg-[#131211]">
-                        {/* Header */}
+                        {/* header */}
                         <div className="flex items-center px-5 py-3 bg-[#141414] border-b border-[#2B2A29]">
                             <span className="text-[12px] text-[#7B7A79] font-medium">
                                 {showAllRepos
@@ -153,7 +153,7 @@ export const ProfileRepositoriesSettings: React.FC<ProfileRepositoriesSettingsPr
                             </span>
                         </div>
 
-                        {/* Repo list */}
+                        {/* repo list */}
                         {displayedRepos.map((repo: GithubRepo) => (
                             <div
                                 key={repo.id}
@@ -218,7 +218,7 @@ export const ProfileRepositoriesSettings: React.FC<ProfileRepositoriesSettingsPr
                             </div>
                         ))}
 
-                        {/* Footer - Browse all repos */}
+                        {/* footer - browse all repos */}
                         {hasMoreRepos && (
                             <div className="px-5 py-3.5 bg-[#141414] border-t border-[#2B2A29] flex items-center justify-between">
                                 <span className="text-[12px] text-[#5A5958]">

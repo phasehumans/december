@@ -1,6 +1,6 @@
 import { ChevronDown, ChevronRight, FileText, Folder } from 'lucide-react'
 import React from 'react'
-// ChevronRight is still used for folder expansion in the tree, ChevronDown for open state
+// chevronright is still used for folder expansion in the tree, chevrondown for open state
 
 import type { CodeFilePath, CodeFileTreeNode } from '@/features/preview/types'
 

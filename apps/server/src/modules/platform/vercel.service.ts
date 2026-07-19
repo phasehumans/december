@@ -41,7 +41,7 @@ function buildVercelUrl(path: string, credentials: VercelCredentials): string {
 }
 
 /**
- * Creates a project on Vercel and links it to a GitHub repository.
+ * creates a project on vercel and links it to a github repository.
  */
 async function createProject(data: CreateVercelProject) {
     const { userId, name, repoOwner, repoName } = data
@@ -86,8 +86,8 @@ async function createProject(data: CreateVercelProject) {
 }
 
 /**
- * Queries Vercel deployments to find the one associated with a specific git commit SHA.
- * Retries with backoff since Vercel webhooks take a brief moment to trigger after a push.
+ * queries vercel deployments to find the one associated with a specific git commit sha.
+ * retries with backoff since vercel webhooks take a brief moment to trigger after a push.
  */
 async function getDeploymentByCommit(data: GetDeploymentByCommit) {
     const { userId, vercelProjectId, commitSha } = data
@@ -97,7 +97,7 @@ async function getDeploymentByCommit(data: GetDeploymentByCommit) {
     url.searchParams.set('projectId', vercelProjectId)
     url.searchParams.set('meta-githubCommitSha', commitSha)
 
-    // Retry loop (max 30 attempts, every 2s) to wait for Vercel webhook registration
+    // retry loop (max 30 attempts, every 2s) to wait for vercel webhook registration
     for (let attempt = 1; attempt <= 30; attempt++) {
         try {
             const response = await axios.get(url.toString(), {
@@ -118,7 +118,7 @@ async function getDeploymentByCommit(data: GetDeploymentByCommit) {
             console.error(`Attempt ${attempt} to find Vercel deployment failed:`, error)
         }
 
-        // Wait 2 seconds before retrying
+        // wait 2 seconds before retrying
         await new Promise((resolve) => setTimeout(resolve, 2000))
     }
 
@@ -126,7 +126,7 @@ async function getDeploymentByCommit(data: GetDeploymentByCommit) {
 }
 
 /**
- * Retrieves the status of a specific Vercel deployment.
+ * retrieves the status of a specific vercel deployment.
  */
 async function getDeploymentStatus(data: GetDeploymentStatus) {
     const { userId, deploymentId } = data
@@ -153,7 +153,7 @@ async function getDeploymentStatus(data: GetDeploymentStatus) {
 }
 
 /**
- * Pipes build events stream from Vercel's real-time events API directly to Express response.
+ * pipes build events stream from vercel's real-time events api directly to express response.
  */
 async function streamBuildLogs(data: StreamBuildLogs) {
     const { userId, deploymentId, res } = data
@@ -199,8 +199,8 @@ async function streamBuildLogs(data: StreamBuildLogs) {
 }
 
 /**
- * Retrieves the latest deployment created for a specific Vercel project.
- * Retries since Vercel might take a moment to register the GitHub commit webhook.
+ * retrieves the latest deployment created for a specific vercel project.
+ * retries since vercel might take a moment to register the github commit webhook.
  */
 async function getLatestDeployment(data: GetLatestDeployment) {
     const { userId, vercelProjectId } = data
@@ -230,7 +230,7 @@ async function getLatestDeployment(data: GetLatestDeployment) {
             console.error(`Attempt ${attempt} to find latest Vercel deployment failed:`, error)
         }
 
-        // Wait 2 seconds before retrying
+        // wait 2 seconds before retrying
         await new Promise((resolve) => setTimeout(resolve, 2000))
     }
 

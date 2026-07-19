@@ -85,7 +85,7 @@ export const SessionList: React.FC<{
         onDeleteMutate: () => setDeleteModal({ isOpen: false, project: null }),
     })
 
-    // Collect all unique tags from sessions for the tag filter
+    // collect all unique tags from sessions for the tag filter
     const availableTags = useMemo(() => {
         const tagSet = new Set<string>()
         sessions.forEach((s) => {
@@ -97,7 +97,7 @@ export const SessionList: React.FC<{
     const filteredAndSortedSessions = useMemo(() => {
         let result = [...sessions]
 
-        // Search filter
+        // search filter
         if (searchQuery.trim()) {
             const query = searchQuery.toLowerCase().trim()
             result = result.filter(
@@ -108,33 +108,33 @@ export const SessionList: React.FC<{
             )
         }
 
-        // Advanced filter: type (multi-select)
+        // advanced filter: type (multi-select)
         if (advancedFilters.types.length > 0) {
             result = result.filter((session) => advancedFilters.types.includes(session.type))
         }
 
-        // Advanced filter: archived status
+        // advanced filter: archived status
         if (advancedFilters.archivedStatus === 'archived') {
             result = result.filter((session) => session.isArchived === true)
         } else if (advancedFilters.archivedStatus === 'not_archived') {
             result = result.filter((session) => !session.isArchived)
         }
 
-        // Advanced filter: pinned status
+        // advanced filter: pinned status
         if (advancedFilters.pinnedStatus === 'pinned') {
             result = result.filter((session) => session.isPinned === true)
         } else if (advancedFilters.pinnedStatus === 'not_pinned') {
             result = result.filter((session) => !session.isPinned)
         }
 
-        // Advanced filter: tags
+        // advanced filter: tags
         if (advancedFilters.tags.length > 0) {
             result = result.filter((session) =>
                 advancedFilters.tags.some((tag) => session.tags?.includes(tag))
             )
         }
 
-        // Sort
+        // sort
         result.sort((a, b) => {
             const dateA = new Date(a.updatedAt || a.createdAt).getTime()
             const dateB = new Date(b.updatedAt || b.createdAt).getTime()
@@ -242,7 +242,7 @@ export const SessionList: React.FC<{
         }
     }
 
-    // Dummy states for unused modals from old ProjectListModals that we haven't stripped yet
+    // dummy states for unused modals from old projectlistmodals that we haven't stripped yet
     const duplicateModal = { isOpen: false, project: null }
     const shareModal = { isOpen: false, project: null }
 

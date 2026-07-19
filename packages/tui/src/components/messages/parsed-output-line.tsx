@@ -19,10 +19,10 @@ export function ParsedOutputLine({ line, isError }: { line: string; isError: boo
         )
     }
 
-    // A regex to match common file paths with line/column numbers
-    // Matches:
+    // a regex to match common file paths with line/column numbers
+    // matches:
     // /path/to/file.ts:12:34
-    // C:\path\to\file.ts:12:34
+    // c:\path\to\file.ts:12:34
     // src/components/file.tsx(12,34)
     // path/to/file.js:12
     const pathRegex =

@@ -10,12 +10,12 @@ export const Logo = ({ className = '', showText = true }: LogoProps) => {
         <div className={`flex items-center select-none group cursor-pointer ${className}`}>
             {showText && (
                 <div className="relative flex items-baseline">
-                    {/* Phase: Monospace */}
+                    {/* phase: monospace */}
                     <span className="font-mono text-xl font-medium text-[#D6D5D4] tracking-tight transition-colors duration-300">
                         phase
                     </span>
 
-                    {/* Humans: Monospace */}
+                    {/* humans: monospace */}
                     <span className="font-mono text-xl font-medium text-[#D6D5D4] tracking-tight ml-[1px]">
                         humans
                     </span>

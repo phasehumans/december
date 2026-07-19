@@ -19,14 +19,14 @@ export const useSettingsModalController = (
     const [isTemplate, setIsTemplate] = useState(false)
     const [visibility, setVisibility] = useState<'private' | 'link' | 'public'>('link')
 
-    // Toggles state
+    // toggles state
     const [analytics, setAnalytics] = useState(true)
 
-    // Collaborators mock state
+    // collaborators mock state
     const [email, setEmail] = useState('')
     const [inviteRole, setInviteRole] = useState('edit')
 
-    // Publish states
+    // publish states
     const [deploying, setDeploying] = useState(false)
     const [deployed, setDeployed] = useState(false)
     const [buildLogs, setBuildLogs] = useState<string[]>([])
@@ -34,13 +34,13 @@ export const useSettingsModalController = (
     const [vercelDeploymentUrl, setVercelDeploymentUrl] = useState<string | null>(null)
     const [vercelLastDeployedAt, setVercelLastDeployedAt] = useState<string | null>(null)
 
-    // Modals state
+    // modals state
     const [isShareModalOpen, setIsShareModalOpen] = useState(false)
     const [isDuplicateModalOpen, setIsDuplicateModalOpen] = useState(false)
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
     const [hasSavedChanges, setHasSavedChanges] = useState(false)
 
-    // GitHub Integration states
+    // github integration states
     const [project, setProject] = useState<any>(null)
     const [profile, setProfile] = useState<Profile | null>(null)
     const [githubRepoName, setGithubRepoName] = useState('')

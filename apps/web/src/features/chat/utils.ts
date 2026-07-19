@@ -60,7 +60,7 @@ export const mapBackendMessageToUIMessage = (message: BackendMessage): Message =
             if (parts.length > 1) {
                 thoughts = parts[0]
                 plan = parts.slice(1).join('\n\n')
-                summary = '' // We don't use summary anymore
+                summary = '' // we don't use summary anymore
             } else {
                 plan = message.content
                 summary = ''

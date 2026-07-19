@@ -12,7 +12,7 @@ export const ReviewPage: React.FC<ReviewPageProps> = () => {
     return (
         <div className="relative h-full w-full flex-1 overflow-y-auto bg-background px-4 pb-8 pt-16 font-sans no-scrollbar md:p-16">
             <div className="relative z-10 mx-auto max-w-6xl">
-                {/* Header matching Sessions page */}
+                {/* header matching sessions page */}
                 <div className="mb-6 flex items-start justify-between gap-4">
                     <div className="flex flex-col">
                         <h1 className="text-[24px] font-medium text-[#D6D5C9] mb-1">Review</h1>
@@ -22,9 +22,9 @@ export const ReviewPage: React.FC<ReviewPageProps> = () => {
                     </div>
                 </div>
 
-                {/* Top Action Bar */}
+                {/* top action bar */}
                 <div className="relative z-10 mb-12 flex flex-col md:flex-row w-full items-start md:items-center gap-4 md:gap-0">
-                    {/* Left: URL Input and Button */}
+                    {/* left: url input and button */}
                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:max-w-[480px]">
                         <div className="relative w-full">
                             <input
@@ -40,7 +40,7 @@ export const ReviewPage: React.FC<ReviewPageProps> = () => {
 
                     <div className="flex-1" />
 
-                    {/* Right: Repository Dropdown */}
+                    {/* right: repository dropdown */}
                     <div className="flex items-center gap-2 w-full md:w-auto">
                         <div className="relative w-full md:w-auto">
                             <button className="flex w-full items-center justify-between gap-2 rounded-lg md:rounded-full border border-[#383736] bg-[#141414] px-4 py-2 md:py-1.5 text-[13px] text-[#D6D5C9] transition-colors hover:bg-[#191919]">
@@ -51,7 +51,7 @@ export const ReviewPage: React.FC<ReviewPageProps> = () => {
                     </div>
                 </div>
 
-                {/* Main Big Input Area */}
+                {/* main big input area */}
                 <div className="flex w-full flex-col items-center justify-center mt-16 md:mt-32 mb-20">
                     <div className="w-full max-w-[560px] flex flex-col">
                         <h2 className="text-[15px] font-medium text-[#D6D5C9] mb-3">

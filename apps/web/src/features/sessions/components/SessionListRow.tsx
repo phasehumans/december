@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { Icons } from '@/shared/components/ui/Icons'
 
 interface SessionListRowProps {
-    project: any // Actually a BackendSession
+    project: any // actually a backendsession
     isMenuOpen: boolean
     isTogglePending: boolean
     onOpenProject: (id: string) => void
@@ -74,7 +74,7 @@ export const SessionListRow: React.FC<SessionListRowProps> = ({
             style={{ zIndex: isMenuOpen ? 50 : undefined }}
             onClick={() => onOpenProject(session.id)}
         >
-            {/* Name */}
+            {/* name */}
             <div className="flex flex-1 items-center gap-3 min-w-0">
                 <div className="flex flex-1 flex-col overflow-hidden">
                     <div className="flex items-center gap-2">
@@ -96,17 +96,17 @@ export const SessionListRow: React.FC<SessionListRowProps> = ({
                 </div>
             </div>
 
-            {/* Created At */}
+            {/* created at */}
             <div className="truncate pr-2 text-[13px] text-[#7B7A79] transition-colors group-hover:text-[#A3A2A0]">
                 {formatDate(createdDate)}
             </div>
 
-            {/* Updated At */}
+            {/* updated at */}
             <div className="truncate pr-2 text-[13px] text-[#7B7A79] transition-colors group-hover:text-[#A3A2A0]">
                 {formatDate(updatedDate)}
             </div>
 
-            {/* Tags & PR */}
+            {/* tags & pr */}
             <div className="flex items-center gap-2 overflow-hidden">
                 {session.tags && session.tags.length > 0 && (
                     <div className="flex items-center gap-1.5 overflow-hidden">
@@ -135,12 +135,12 @@ export const SessionListRow: React.FC<SessionListRowProps> = ({
                 )}
             </div>
 
-            {/* Created By */}
+            {/* created by */}
             <div className="truncate text-[13px] text-[#7B7A79] transition-colors group-hover:text-[#A3A2A0]">
                 {session.createdBy || '--'}
             </div>
 
-            {/* Menu */}
+            {/* menu */}
             <div
                 className={`relative flex justify-center ${isMenuOpen ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 transition-opacity'}`}
             >

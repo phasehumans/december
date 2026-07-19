@@ -6,14 +6,14 @@ import * as githubAppService from './githubapp.service'
 
 const router = Router()
 
-// OAuth flow start (placeholder)
+// oauth flow start (placeholder)
 router.get('/install-start', authMiddleware, (req, res) => {
-    // Generate state and redirect to GitHub App installation URL
+    // generate state and redirect to github app installation url
     const appName = process.env.GITHUB_APP_NAME || 'december-bot'
     res.redirect(`https://github.com/apps/${appName}/installations/new`)
 })
 
-// Webhook listener
+// webhook listener
 router.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
     const signature = req.headers['x-hub-signature-256'] as string
     if (!signature) return res.status(401).send('Missing signature')
@@ -29,8 +29,8 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
     try {
         if (event === 'installation' && payload.action === 'created') {
             const installationId = payload.installation.id.toString()
-            // In a real flow, the sender's account needs to map to a december user, or state token is used.
-            // For now, placeholder user.
+            // in a real flow, the sender's account needs to map to a december user, or state token is used.
+            // for now, placeholder user.
             const userId = 'system'
             await githubAppService.processInstallation(installationId, userId)
         } else if (event === 'installation' && payload.action === 'deleted') {

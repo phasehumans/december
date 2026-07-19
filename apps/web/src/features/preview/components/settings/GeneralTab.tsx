@@ -61,9 +61,9 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
                     />
                 </div>
 
-                {/* Grouped Rows with gap-2 */}
+                {/* grouped rows with gap-2 */}
                 <div className="flex flex-col gap-2">
-                    {/* Star / Favourite Row */}
+                    {/* star / favourite row */}
                     <div className="flex items-center justify-between">
                         <div className="flex flex-col gap-0.5 text-left">
                             <span className="text-[14px] text-[#D6D5C9]">Add to Favourites</span>
@@ -77,7 +77,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
                         />
                     </div>
 
-                    {/* Share as Template Row */}
+                    {/* share as template row */}
                     <div className="flex items-center justify-between">
                         <div className="flex flex-col gap-0.5 text-left">
                             <span className="text-[14px] text-[#D6D5C9]">
@@ -96,7 +96,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
                         </button>
                     </div>
 
-                    {/* Delete Project Row */}
+                    {/* delete project row */}
                     <div className="flex items-center justify-between">
                         <div className="flex flex-col gap-0.5 text-left">
                             <span className="text-[14px] text-[#D6D5C9]">Delete Project</span>

@@ -79,7 +79,7 @@ export const SidebarNavItem: React.FC<
                 </kbd>
             )}
 
-            {/* Premium Tooltip */}
+            {/* premium tooltip */}
             {tooltipLabel && (
                 <div className="absolute top-[calc(100%+4px)] left-1/2 -translate-x-1/2 z-50 hidden group-hover:flex items-center gap-1.5 bg-[#1F1F1F] border border-[#282828] px-2.5 py-1 rounded-lg shadow-none whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
                     <span className="text-[12px] font-medium text-[#EDEDEF]">{tooltipLabel}</span>

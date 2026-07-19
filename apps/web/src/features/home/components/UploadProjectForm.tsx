@@ -92,7 +92,7 @@ export const UploadProjectForm: React.FC<UploadProjectFormProps> = ({
             transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
             className="w-full max-w-[638px] mt-3 rounded-[14px] bg-[#141414] border border-[#242322]"
         >
-            {/* Header */}
+            {/* header */}
             <div className="flex items-center justify-between px-4 py-2.5 bg-[#242322] rounded-t-[13px]">
                 <div className="flex items-center gap-2.5">
                     <Icons.FolderUp className="w-[16px] h-[16px] text-[#989796]" />
@@ -106,10 +106,10 @@ export const UploadProjectForm: React.FC<UploadProjectFormProps> = ({
                 </button>
             </div>
 
-            {/* Body */}
+            {/* body */}
             <div className="px-4 py-3.5">
                 {selectedFiles.length === 0 ? (
-                    /* Drop Zone */
+                    /* drop zone */
                     <div
                         onClick={() => fileInputRef.current?.click()}
                         onDrop={handleDrop}
@@ -158,7 +158,7 @@ export const UploadProjectForm: React.FC<UploadProjectFormProps> = ({
                         />
                     </div>
                 ) : (
-                    /* Selected State */
+                    /* selected state */
                     <div className="relative flex flex-col justify-center px-6 rounded-[12px] border-2 border-dashed border-[#2E2D2C] h-[160px]">
                         <div className="flex flex-col items-center justify-center gap-3">
                             <div className="flex flex-col items-center gap-1 mt-1">

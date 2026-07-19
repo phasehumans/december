@@ -100,7 +100,7 @@ export const billingRepository = {
         providerPaymentId: string
     ) {
         return prisma.$transaction(async (tx) => {
-            // Acquire row-level lock on the User record to prevent race conditions during concurrent wallet transactions
+            // acquire row-level lock on the user record to prevent race conditions during concurrent wallet transactions
             await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${userId} FOR UPDATE`
 
             await tx.walletTransaction.update({

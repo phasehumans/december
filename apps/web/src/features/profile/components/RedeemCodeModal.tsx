@@ -30,13 +30,13 @@ export const RedeemCodeModal: React.FC<RedeemCodeModalProps> = ({ onClose }) => 
                 `Successfully redeemed code and claimed $${(res.creditAmount / 100).toFixed(2)} in gifted credits!`
             )
 
-            // Invalidate billing overview and profile to trigger updates across the app
+            // invalidate billing overview and profile to trigger updates across the app
             await Promise.all([
                 queryClient.invalidateQueries({ queryKey: ['billing-overview'] }),
                 queryClient.invalidateQueries({ queryKey: ['profile'] }),
             ])
 
-            // Automatically close the modal after 2.5 seconds on success
+            // automatically close the modal after 2.5 seconds on success
             setTimeout(() => {
                 onClose()
             }, 2500)

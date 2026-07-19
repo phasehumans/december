@@ -12,11 +12,11 @@ interface ConnectCliModalProps {
 export const ConnectCliModal: React.FC<ConnectCliModalProps> = ({ isOpen, onClose, userId }) => {
     const [copied, setCopied] = useState(false)
 
-    // Generate a realistic authentication token using the user's ID
+    // generate a realistic authentication token using the user's id
     const shortId = userId ? userId.substring(0, 8) : 'guest'
 
-    // Generate a stable-ish mock token for this render session, or regenerate if needed.
-    // We can use a React ref or state if we want it to remain exactly the same when copying,
+    // generate a stable-ish mock token for this render session, or regenerate if needed.
+    // we can use a react ref or state if we want it to remain exactly the same when copying,
     // which it will since this component mounts/unmounts with the modal open/close.
     const [generatedToken] = useState(() => {
         const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'

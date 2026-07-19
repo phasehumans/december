@@ -81,10 +81,10 @@ export async function loadConfig(): Promise<DecemberConfig> {
             const workspaceConfig = JSON.parse(wData)
             config = deepMergeSettings(config, workspaceConfig)
         } catch {
-            // Workspace config is optional
+            // workspace config is optional
         }
 
-        // Self-heal: If providers exist but activeProvider is missing, select the first available
+        // self-heal: if providers exist but activeprovider is missing, select the first available
         if (
             !config.activeProvider &&
             config.providers &&
@@ -109,15 +109,18 @@ export async function getProviderConfig(): Promise<ProviderConfig | undefined> {
 
     const hasByokConfig = config.activeProvider && config.providers[config.activeProvider]
     const hasEnvVars =
-        process.env.GEMINI_API_KEY || process.env.OPENAI_API_KEY || process.env.ANTHROPIC_API_KEY
+        process.env.GEMINI_API_KEY ||
+        process.env.OPENAI_API_KEY ||
+        process.env.ANTHROPIC_API_KEY ||
+        process.env.OPENROUTER_API_KEY
     const hasDecember = !!config.decemberToken
 
-    // If preferred is december and it exists, use it first
+    // if preferred is december and it exists, use it first
     if (config.authPriority === 'december' && hasDecember) {
         return { provider: 'december_proxy', apiKey: config.decemberToken!, authMethod: 'december' }
     }
 
-    // 1.8 Wallet vs BYOK priority: BYOK via config file takes precedence.
+    // wallet vs byok priority: byok via config file takes precedence.
     if (hasByokConfig) {
         return {
             provider: config.activeProvider as any,
@@ -127,7 +130,7 @@ export async function getProviderConfig(): Promise<ProviderConfig | undefined> {
         }
     }
 
-    // Check for common env vars for BYOK priority
+    // check for common env vars for byok priority
     if (process.env.GEMINI_API_KEY) {
         return { provider: 'gemini', apiKey: process.env.GEMINI_API_KEY, authMethod: 'env' }
     }
@@ -137,8 +140,11 @@ export async function getProviderConfig(): Promise<ProviderConfig | undefined> {
     if (process.env.ANTHROPIC_API_KEY) {
         return { provider: 'anthropic', apiKey: process.env.ANTHROPIC_API_KEY, authMethod: 'env' }
     }
+    if (process.env.OPENROUTER_API_KEY) {
+        return { provider: 'openrouter', apiKey: process.env.OPENROUTER_API_KEY, authMethod: 'env' }
+    }
 
-    // Wallet fallback
+    // wallet fallback
     if (hasDecember) {
         return {
             provider: 'december_proxy',

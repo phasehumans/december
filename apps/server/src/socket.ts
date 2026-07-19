@@ -11,7 +11,7 @@ const pubClient = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
 })
 const subClient = pubClient.duplicate()
 
-// This one is specifically for subscribing to worker session events
+// this one is specifically for subscribing to worker session events
 const redisSubClient = pubClient.duplicate()
 
 let io: Server
@@ -23,12 +23,12 @@ export function initSocket(httpServer: any) {
             credentials: true,
         },
         perMessageDeflate: {
-            threshold: 1024, // only compress payloads larger than 1KB
+            threshold: 1024, // only compress payloads larger than 1kb
         },
         adapter: createAdapter(pubClient, subClient),
     })
 
-    // Subscribe to all session events from Redis (Worker)
+    // subscribe to all session events from redis (worker)
     redisSubClient.psubscribe('session_events:*', (err, count) => {
         if (err) console.error('Failed to psubscribe:', err)
         else console.log(`[Socket] Subscribed to ${count} Redis pattern(s)`)
@@ -85,7 +85,7 @@ export function initSocket(httpServer: any) {
             console.log(`[Socket] User disconnected: ${socket.data.userId} (socket: ${socket.id})`)
         })
 
-        // Custom application-level heartbeat
+        // custom application-level heartbeat
         socket.on('ping', () => {
             socket.emit('pong', { timestamp: Date.now() })
         })
@@ -94,22 +94,22 @@ export function initSocket(httpServer: any) {
             'send_prompt',
             async (data: { sessionId: string; prompt: string; projectId: string }) => {
                 try {
-                    // Fetch user secrets (Phase 3.6 Secrets Management)
-                    // We'll mock decryption here since decryption logic belongs to secret service
-                    const secrets: any[] = [] // Secret model doesn't exist yet, passing empty secrets
+                    // fetch user secrets (phase 3.6 secrets management)
+                    // we'll mock decryption here since decryption logic belongs to secret service
+                    const secrets: any[] = [] // secret model doesn't exist yet, passing empty secrets
                     const decryptedSecrets = secrets.map((s: any) => ({
                         key: s.key,
-                        value: s.value, // Assuming decrypted or decryption utility here
+                        value: s.value, // assuming decrypted or decryption utility here
                     }))
 
-                    // Enqueue to worker
+                    // enqueue to worker
                     const agentJobsQueue = new Queue('agent_jobs', { connection: pubClient as any })
                     await agentJobsQueue.add('run_agent', {
                         sessionId: data.sessionId,
                         projectId: data.projectId,
                         userId: socket.data.userId,
                         prompt: data.prompt,
-                        secrets: decryptedSecrets, // Injecting decrypted secrets into payload
+                        secrets: decryptedSecrets, // injecting decrypted secrets into payload
                     })
                 } catch (err: any) {
                     console.error('[Socket] Failed to enqueue agent job:', err)

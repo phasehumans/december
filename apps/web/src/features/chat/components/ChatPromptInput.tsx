@@ -117,14 +117,14 @@ export const ChatPromptInput: React.FC<ChatPromptInputProps> = ({
         onTranscript: handleVoiceTranscript,
     })
 
-    // Reset voice base when listening stops
+    // reset voice base when listening stops
     useEffect(() => {
         if (!isListening) {
             isVoiceActiveRef.current = false
         }
     }, [isListening])
 
-    // Auto-resize textarea
+    // auto-resize textarea
     useEffect(() => {
         if (textareaRef.current) {
             textareaRef.current.style.height = 'auto'
@@ -148,7 +148,7 @@ export const ChatPromptInput: React.FC<ChatPromptInputProps> = ({
                     'w-full bg-[#1F1F1F] rounded-[17px] border border-[#363534] transition-all relative group flex flex-col'
                 )}
             >
-                {/* Integrated Selected Element Display */}
+                {/* integrated selected element display */}
                 <AnimatePresence>
                     {selectedElement && (
                         <motion.div

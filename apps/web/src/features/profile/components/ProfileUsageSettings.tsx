@@ -66,7 +66,7 @@ export const ProfileUsageSettings: React.FC = () => {
         }
     }
 
-    // Compute active date range from quick filter
+    // compute active date range from quick filter
     const activeDateRange = React.useMemo(() => {
         const end = new Date()
         const start = new Date()
@@ -84,7 +84,7 @@ export const ProfileUsageSettings: React.FC = () => {
         }
     }, [timeRange])
 
-    // Fetch credits history
+    // fetch credits history
     const {
         data: history,
         isLoading: isHistoryLoading,
@@ -96,12 +96,12 @@ export const ProfileUsageSettings: React.FC = () => {
         periodEnd: activeDateRange.end,
     })
 
-    // Reset offset when filters change
+    // reset offset when filters change
     useEffect(() => {
         setOffset(0)
     }, [activeDateRange.start, activeDateRange.end, limit])
 
-    // Use real data. Apply date filtering on frontend.
+    // use real data. apply date filtering on frontend.
     const displayEvents = React.useMemo(() => {
         const events = history?.events ?? []
 
@@ -114,7 +114,7 @@ export const ProfileUsageSettings: React.FC = () => {
         })
     }, [history, activeDateRange])
 
-    // Compute Metrics Stats
+    // compute metrics stats
     const stats = React.useMemo(() => {
         const totalCost = displayEvents.reduce((sum, e) => sum + e.costInCents, 0) / 100
         const totalTokens = displayEvents.reduce((sum, e) => sum + e.totalTokens, 0)
@@ -137,9 +137,9 @@ export const ProfileUsageSettings: React.FC = () => {
             <div className="flex flex-col mb-8">
                 <h1 className="text-[16px] font-medium mb-4">Usage</h1>
                 <div className="flex flex-col border-t border-[#242323] pt-6">
-                    {/* Controls Row */}
+                    {/* controls row */}
                     <div className="flex items-center justify-between mb-6">
-                        {/* Quick Filters */}
+                        {/* quick filters */}
                         <div className="flex items-center gap-1 bg-[#100E12] p-0.5 rounded-lg border border-[#242323]">
                             {['1d', '7d', '30d', '90d'].map((range) => {
                                 const isHighlighted = range === timeRange
@@ -159,7 +159,7 @@ export const ProfileUsageSettings: React.FC = () => {
                             })}
                         </div>
 
-                        {/* Total Spent in place of download button */}
+                        {/* total spent in place of download button */}
                         {isLoading ? (
                             <div className="flex items-center gap-1.5 text-[13px] text-neutral-400 font-medium">
                                 <span>Total spent:</span>
@@ -175,12 +175,12 @@ export const ProfileUsageSettings: React.FC = () => {
                         )}
                     </div>
 
-                    {/* Table / Loader / Error */}
+                    {/* table / loader / error */}
                     {isLoading ? (
                         <div className="flex flex-col gap-6">
-                            {/* Table skeleton */}
+                            {/* table skeleton */}
                             <div className="flex flex-col border border-[#242323] rounded-xl overflow-hidden bg-[#100E12] shadow-sm">
-                                {/* Table Header skeleton */}
+                                {/* table header skeleton */}
                                 <div className="grid grid-cols-[130px_200px_1fr_100px_70px] items-center py-3.5 px-5 border-b border-[#242323] bg-[#141414] text-[12px] text-[#7B7A79] font-medium">
                                     <div>Date</div>
                                     <div>Project</div>
@@ -188,7 +188,7 @@ export const ProfileUsageSettings: React.FC = () => {
                                     <div>Token Usage</div>
                                     <div className="text-right">Cost</div>
                                 </div>
-                                {/* Table rows skeleton */}
+                                {/* table rows skeleton */}
                                 {Array.from({ length: 8 }).map((_, i) => (
                                     <div
                                         key={i}
@@ -219,9 +219,9 @@ export const ProfileUsageSettings: React.FC = () => {
                         </div>
                     ) : (
                         <div className="flex flex-col gap-6">
-                            {/* Table */}
+                            {/* table */}
                             <div className="flex flex-col border border-[#242323] rounded-xl overflow-hidden bg-[#100E12] shadow-sm">
-                                {/* Header */}
+                                {/* header */}
                                 <div className="grid grid-cols-[130px_200px_1fr_100px_70px] items-center py-3.5 px-5 border-b border-[#242323] bg-[#141414] text-[12px] text-[#7B7A79] font-medium">
                                     <div>Date</div>
                                     <div>Project</div>
@@ -230,7 +230,7 @@ export const ProfileUsageSettings: React.FC = () => {
                                     <div className="text-right">Cost</div>
                                 </div>
 
-                                {/* Rows */}
+                                {/* rows */}
                                 <div className="flex flex-col min-h-[420px]">
                                     {paginatedEvents.length === 0 ? (
                                         <div className="flex flex-col items-center justify-center flex-1 h-[420px] text-[#7B7A79] text-[13px]">
@@ -252,27 +252,27 @@ export const ProfileUsageSettings: React.FC = () => {
                                                         }
                                                         className="grid grid-cols-[130px_200px_1fr_100px_70px] items-center py-5 px-5 text-[13px] hover:bg-[#1A1918] transition-colors cursor-pointer select-none"
                                                     >
-                                                        {/* Date */}
+                                                        {/* date */}
                                                         <div className="text-[#D6D5C9]">
                                                             {formatRowDate(row.createdAt)}
                                                         </div>
 
-                                                        {/* Project */}
+                                                        {/* project */}
                                                         <div className="text-[#D6D5C9] truncate pr-2 font-medium">
                                                             {row.project?.name || '-'}
                                                         </div>
 
-                                                        {/* Model */}
+                                                        {/* model */}
                                                         <div className="text-[#7B7A79] truncate pr-2">
                                                             {formatModelName(row.model)}
                                                         </div>
 
-                                                        {/* Token Usage */}
+                                                        {/* token usage */}
                                                         <div className="text-[#D6D5C9] font-mono text-[12px]">
                                                             {row.totalTokens.toLocaleString()}
                                                         </div>
 
-                                                        {/* Cost */}
+                                                        {/* cost */}
                                                         <div className="text-right">
                                                             <span className="text-[#D6D5C9]">
                                                                 $
@@ -347,10 +347,10 @@ export const ProfileUsageSettings: React.FC = () => {
                         </div>
                     )}
 
-                    {/* Footer Controls */}
+                    {/* footer controls */}
                     {totalEvents > 0 && (
                         <div className="flex items-center justify-between mt-5">
-                            {/* Left limit selector */}
+                            {/* left limit selector */}
                             <div className="flex items-center gap-2">
                                 <span className="text-[12.5px] text-[#7B7A79]">Show</span>
                                 <div className="relative">
@@ -394,7 +394,7 @@ export const ProfileUsageSettings: React.FC = () => {
                                 </div>
                             </div>
 
-                            {/* Right page selectors */}
+                            {/* right page selectors */}
                             <div className="flex items-center gap-4 text-[12.5px] text-[#7B7A79] font-medium">
                                 <span>
                                     {currentPage} of {totalPages}

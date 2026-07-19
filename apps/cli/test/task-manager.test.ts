@@ -8,7 +8,7 @@ describe('taskManager', () => {
     let mockProcessKill: any
 
     beforeEach(() => {
-        // Clear tasks before each test
+        // clear tasks before each test
         const tasks = taskManager.getTasks()
         for (const task of tasks) {
             taskManager.removeTask(task.id)

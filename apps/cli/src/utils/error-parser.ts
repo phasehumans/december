@@ -1,3 +1,4 @@
+import util from 'util'
 export function parseErrorMessage(err: any): string {
     let errMsg = ''
     try {
@@ -12,7 +13,7 @@ export function parseErrorMessage(err: any): string {
     const extractMessage = (str: string): string | null => {
         if (!str) return null
 
-        // 1. Try regex extraction first, since it's the most robust against broken JSON
+        // 1. try regex extraction first, since it's the most robust against broken json
         const msgMatch = str.match(/"message"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"/)
         if (msgMatch) {
             try {
@@ -22,11 +23,11 @@ export function parseErrorMessage(err: any): string {
             }
         }
 
-        // 2. Try JSON parse
+        // 2. try json parse
         try {
             const parsed = JSON.parse(str)
             if (parsed && typeof parsed === 'object') {
-                // If the error field itself is a stringified JSON, recurse
+                // if the error field itself is a stringified json, recurse
                 if (typeof parsed.error === 'string' && parsed.error.trim().startsWith('{')) {
                     const extracted = extractMessage(parsed.error)
                     if (extracted) return extracted
@@ -36,14 +37,14 @@ export function parseErrorMessage(err: any): string {
                     if (extracted) return extracted
                 }
 
-                // Normal object access
+                // normal object access
                 if (typeof parsed.error?.message === 'string') return parsed.error.message
                 if (typeof parsed.message === 'string') return parsed.message
                 if (typeof parsed.error === 'string') return parsed.error
             }
         } catch (e) {}
 
-        // 3. Try JSON block extraction
+        // 3. try json block extraction
         const firstBrace = str.indexOf('{')
         const lastBrace = str.lastIndexOf('}')
         if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
@@ -64,7 +65,7 @@ export function parseErrorMessage(err: any): string {
 
     if (errMsg === '[object Object]' && err && typeof err === 'object') {
         try {
-            return require('util').inspect(err)
+            return util.inspect(err)
         } catch {}
     }
 

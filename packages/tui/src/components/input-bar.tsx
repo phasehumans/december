@@ -8,7 +8,7 @@ import { CommandMenu } from './command-menu'
 import { useCommandMenu } from './command-menu/use-command-menu'
 import { ShortcutsMenu } from './menus/shortcuts-menu'
 import { TextArea } from './text-area'
-// ModelSelector removed in favor of passing activeModel as prop
+// modelselector removed in favor of passing activemodel as prop
 
 import type { Command } from './command-menu/types'
 
@@ -118,7 +118,7 @@ export function InputBar({
             setValue('')
             handleContentChange('')
 
-            // Autocomplete these commands instead of submitting
+            // autocomplete these commands instead of submitting
             if (command.value === '/plan' || command.value === '/grill-me') {
                 const next = command.value + ' '
                 setValue(next)
@@ -126,7 +126,7 @@ export function InputBar({
                 return
             }
 
-            // Forward auth commands to Chat component
+            // forward auth commands to chat component
             if (
                 command.value === '/login' ||
                 command.value === '/logout' ||
@@ -169,7 +169,7 @@ export function InputBar({
             }
             const trimmed = text.trim()
             if (trimmed.length === 0) return
-            // Save to history (we will implement global history in app, or just pass it in here later)
+            // save to history (we will implement global history in app, or just pass it in here later)
             onSubmit(trimmed)
             setValue('')
             handleContentChange('')
@@ -189,20 +189,20 @@ export function InputBar({
 
     return (
         <Box flexDirection="column" paddingX={2}>
-            {/* Inline dialog — shown on right above prompt when open */}
+            {/* inline dialog — shown on right above prompt when open */}
             {dialog.isOpen && dialog.currentDialog && (
                 <Box justifyContent="flex-end">
                     <InlineDialog config={dialog.currentDialog} close={dialog.close} />
                 </Box>
             )}
-            {/* Top separator */}
+            {/* top separator */}
             <Box overflow="hidden" height={1} width="100%">
                 <Text color="#555555" wrap="truncate">
                     {sep}
                 </Text>
             </Box>
 
-            {/* Content: Prompt */}
+            {/* content: prompt */}
             <Box width="100%" paddingRight={4}>
                 <Text color={disabled ? '#555555' : '#89B4F8'}>{`❭ `}</Text>
                 {planMode && <Text color="#89B4F8">/plan </Text>}
@@ -226,14 +226,14 @@ export function InputBar({
                 )}
             </Box>
 
-            {/* Bottom separator */}
+            {/* bottom separator */}
             <Box overflow="hidden" height={1} width="100%">
                 <Text color="#555555" wrap="truncate">
                     {sep}
                 </Text>
             </Box>
 
-            {/* Status row — model left, december studio right */}
+            {/* status row — model left, december studio right */}
             {!showCommandMenu && !showShortcutsMenu && !authUI && (
                 <Box width="100%" justifyContent="space-between">
                     <Box gap={2} alignItems="center">
@@ -270,10 +270,10 @@ export function InputBar({
                 </Box>
             )}
 
-            {/* Auth UI */}
+            {/* auth ui */}
             {authUI && <Box paddingBottom={1}>{authUI}</Box>}
 
-            {/* Command dropdown */}
+            {/* command dropdown */}
             {showCommandMenu && (
                 <CommandMenu
                     query={commandQuery}
@@ -288,7 +288,7 @@ export function InputBar({
                 />
             )}
 
-            {/* Shortcuts dropdown */}
+            {/* shortcuts dropdown */}
             {showShortcutsMenu && (
                 <ShortcutsMenu
                     onClose={() => {

@@ -26,7 +26,7 @@ export const WikiView: React.FC = () => {
                 />
             ) : (
                 <div className="prose prose-blue max-w-none">
-                    {/* Placeholder for markdown rendering */}
+                    {/* placeholder for markdown rendering */}
                     <div dangerouslySetInnerHTML={{ __html: content.replace(/\n/g, '<br/>') }} />
                 </div>
             )}

@@ -86,12 +86,12 @@ class LocalPlatformAdapter implements PlatformAdapter {
 }
 
 async function main() {
-    // Read config frame #0 from stdin (4 byte length, then JSON payload)
+    // read config frame #0 from stdin (4 byte length, then json payload)
     const stdin = Bun.file('/dev/stdin')
     const stream = stdin.stream()
     const reader = stream.getReader()
 
-    // Simplistic frame reader for stdin
+    // simplistic frame reader for stdin
     const firstChunk = await reader.read()
     if (!firstChunk.value) {
         process.exit(1)
@@ -106,7 +106,7 @@ async function main() {
     const configStr = new TextDecoder().decode(buf.slice(4, 4 + len))
     const config = JSON.parse(configStr)
 
-    // configure LLM providers
+    // configure llm providers
     registerProvider(new OpenAIProvider())
     const llm = getProvider(config.provider_settings?.id || 'openai')
 

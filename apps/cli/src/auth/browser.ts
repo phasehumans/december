@@ -3,7 +3,9 @@ import http from 'node:http'
 import open from 'open'
 
 export async function loginViaBrowser(
-    baseUrl: string = 'http://localhost:3000/cli/login'
+    baseUrl: string = process.env.DECEMBER_WEB_URL
+        ? `${process.env.DECEMBER_WEB_URL}/cli/login`
+        : 'https://trydecember.com/cli/login'
 ): Promise<{ token: string; email: string | null }> {
     return new Promise((resolve, reject) => {
         const server = http.createServer((req, res) => {
@@ -122,7 +124,7 @@ export async function loginViaBrowser(
             }
         })
 
-        // Timeout after 5 minutes
+        // timeout after 5 minutes
         setTimeout(
             () => {
                 server.close()

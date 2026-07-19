@@ -30,7 +30,7 @@ export const TemplateCard: React.FC<TemplateCardProps> = ({
 
     return (
         <div className="group flex flex-col gap-3.5 cursor-pointer w-full">
-            {/* Image Container */}
+            {/* image container */}
             <div className="relative aspect-[16/10] bg-[#111] overflow-hidden rounded-xl border border-[#242323] transition-all duration-300">
                 {template.previewImageKey ? (
                     <img
@@ -59,12 +59,12 @@ export const TemplateCard: React.FC<TemplateCardProps> = ({
                     </div>
                 )}
 
-                {/* Soft bottom gradient for depth */}
+                {/* soft bottom gradient for depth */}
                 <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/60 to-transparent pointer-events-none opacity-60"></div>
             </div>
 
             <div className="flex items-start justify-between w-full gap-4 px-1 mt-1">
-                {/* Left Info */}
+                {/* left info */}
                 <div className="flex flex-col gap-1 min-w-0 flex-1">
                     <h3 className="text-[14px] font-medium text-[#D6D5C9] truncate leading-tight">
                         {template.title}
@@ -78,7 +78,7 @@ export const TemplateCard: React.FC<TemplateCardProps> = ({
                     </div>
                 </div>
 
-                {/* Right Actions */}
+                {/* right actions */}
                 <div className="flex flex-col items-end gap-2.5 shrink-0">
                     <button
                         onClick={(e) => {

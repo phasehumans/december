@@ -75,7 +75,7 @@ function StyledCommand({ command, truncate = true }: { command: string; truncate
         if (truncate && args.length > 80) {
             args = args.substring(0, 80) + '...'
         }
-        const cmdColor = '#fef08a' // Yellow
+        const cmdColor = '#fef08a' // yellow
 
         return (
             <Text>
@@ -114,7 +114,7 @@ export function BotMessage({ blocks, usage }: Props) {
                             )
                         }
 
-                        // Split by <thought> tags
+                        // split by <thought> tags
                         const parts = block.content.split(
                             /(<thought>[\s\S]*?<\/thought>|<thought>[\s\S]*)/
                         )
@@ -310,7 +310,7 @@ export function BotMessage({ blocks, usage }: Props) {
                                 )
                             }
 
-                            // Collapsed state for other completed tools
+                            // collapsed state for other completed tools
                             return (
                                 <Box key={idx} flexDirection="column" gap={1}>
                                     <Box alignItems="center" gap={1}>
@@ -324,7 +324,7 @@ export function BotMessage({ blocks, usage }: Props) {
                             )
                         }
 
-                        // Expanded state for running tools
+                        // expanded state for running tools
                         let statusLabel = 'Working...'
                         if (block.toolName === 'read_file' || block.toolName === 'view_file')
                             statusLabel = 'Reading...'

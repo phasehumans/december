@@ -1,5 +1,6 @@
-import { exec } from 'child_process'
+import { execSync, exec } from 'child_process'
 import fs from 'node:fs'
+import os from 'node:os'
 import path from 'node:path'
 
 import clipboard from 'clipboardy'
@@ -12,7 +13,7 @@ export const COMMANDS: Command[] = [
         description: 'Visualize current context usage',
         value: '/context',
         action: (ctx) => {
-            // Forwarded to Chat screen
+            // forwarded to chat screen
         },
     },
     {
@@ -71,7 +72,7 @@ export const COMMANDS: Command[] = [
         description: 'Interview me to align on a plan',
         value: '/grill-me',
         action: (ctx) => {
-            // Forwarded to Chat screen
+            // forwarded to chat screen
         },
     },
     {
@@ -80,14 +81,30 @@ export const COMMANDS: Command[] = [
         value: '/handoff',
         action: async (ctx) => {
             try {
+                const configPath = path.join(os.homedir(), '.config', 'december', 'config.json')
+                let config: any = {}
+                try {
+                    if (fs.existsSync(configPath)) {
+                        config = JSON.parse(fs.readFileSync(configPath, 'utf8'))
+                    }
+                } catch (e) {}
+
+                if (!config.decemberToken) {
+                    ctx.toast.show({
+                        variant: 'error',
+                        message: 'You must be logged in to use handoff.',
+                    })
+                    return
+                }
+
                 ctx.toast.show({ variant: 'info', message: 'Zipping workspace...' })
 
-                const { execSync } = require('child_process')
-                const fs = require('fs')
-                const path = require('path')
-
                 const archivePath = '.december-handoff.tar.gz'
-                const excludes = ['--exclude=node_modules', '--exclude=.git']
+                const excludes = [
+                    '--exclude=node_modules',
+                    '--exclude=.git',
+                    `--exclude=${archivePath}`,
+                ]
                 try {
                     if (fs.existsSync('.gitignore')) {
                         const lines = fs.readFileSync('.gitignore', 'utf8').split('\n')
@@ -108,23 +125,16 @@ export const COMMANDS: Command[] = [
                 } catch (e) {}
 
                 const excludeArgs = excludes.join(' ')
-                execSync(`tar -czf ${archivePath} ${excludeArgs} .`, { stdio: 'ignore' })
+                try {
+                    execSync(`tar -czf ${archivePath} ${excludeArgs} .`, { stdio: 'ignore' })
+                } catch (e: any) {
+                    if (e.status !== 1) throw e
+                }
 
                 ctx.toast.show({ variant: 'info', message: 'Requesting upload URL...' })
 
-                const configMod = (await import('@december/agent')) as any
-                const config = await configMod.loadConfig()
-
-                if (!config.decemberToken) {
-                    ctx.toast.show({
-                        variant: 'error',
-                        message: 'You must be logged in to use handoff.',
-                    })
-                    fs.unlinkSync(archivePath)
-                    return
-                }
-
-                const proxyUrl = process.env.DECEMBER_SERVER_URL || 'http://localhost:3000/api/v1'
+                const serverUrl = process.env.DECEMBER_SERVER_URL || 'https://api.trydecember.com'
+                const proxyUrl = `${serverUrl}/api/v1`
                 const urlRes = await fetch(`${proxyUrl}/cli/handoff/upload-url`, {
                     headers: { Authorization: `Bearer ${config.decemberToken}` },
                 })
@@ -258,7 +268,7 @@ export const COMMANDS: Command[] = [
         description: 'Switch to plan mode',
         value: '/plan',
         action: (ctx) => {
-            // Forwarded to Chat screen
+            // forwarded to chat screen
         },
     },
     {
@@ -266,7 +276,7 @@ export const COMMANDS: Command[] = [
         description: 'Browse and resume past conversations',
         value: '/resume',
         action: (ctx) => {
-            // Forwarded to Chat screen
+            // forwarded to chat screen
         },
     },
 
@@ -275,7 +285,7 @@ export const COMMANDS: Command[] = [
         description: 'Open settings',
         value: '/settings',
         action: (ctx) => {
-            // Forwarded to Chat screen
+            // forwarded to chat screen
         },
     },
 
@@ -284,7 +294,7 @@ export const COMMANDS: Command[] = [
         description: 'View background tasks',
         value: '/tasks',
         action: (ctx) => {
-            // Forwarded to Chat screen
+            // forwarded to chat screen
         },
     },
     {
@@ -294,7 +304,7 @@ export const COMMANDS: Command[] = [
         action: (ctx) => {
             exec('npm install -g @trydecember/cli', (err) => {
                 if (err) {
-                    // Update failed silently in bg, but we can't easily toast here if app is closed.
+                    // update failed silently in bg, but we can't easily toast here if app is closed.
                 }
             })
             ctx.toast.show({ message: 'Updating CLI in the background. Please restart soon.' })
@@ -305,7 +315,7 @@ export const COMMANDS: Command[] = [
         description: 'View quota usage',
         value: '/usage',
         action: (ctx) => {
-            // Forwarded to Chat screen
+            // forwarded to chat screen
         },
     },
 ]

@@ -16,7 +16,7 @@ const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
 const runtimeProto = grpc.loadPackageDefinition(packageDefinition).december as any
 const runtimeService = runtimeProto.runtime.RuntimeService
 
-// Assumes the Rust VMM daemon runs on localhost:50051 on the host machine
+// assumes the rust vmm daemon runs on localhost:50051 on the host machine
 const client = new runtimeService('localhost:50051', grpc.credentials.createInsecure())
 
 export async function createVM(vmId: string, workspaceZipUrl?: string): Promise<boolean> {
@@ -78,7 +78,7 @@ export function executeCommand(
         })
 
         call.on('end', () => {
-            resolve(0) // Default success exit code if stream ends normally
+            resolve(0) // default success exit code if stream ends normally
         })
 
         call.on('error', (err: any) => {

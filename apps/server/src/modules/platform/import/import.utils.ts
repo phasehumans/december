@@ -14,8 +14,8 @@ import type {
 
 export const IMPORT_STAGING_DIR = '.december-imports'
 
-export const MAX_FILE_BYTES = 10 * 1024 * 1024 // 10MB
-export const MAX_UNCOMPRESSED_BYTES = 100 * 1024 * 1024 // 100MB
+export const MAX_FILE_BYTES = 10 * 1024 * 1024 // 10mb
+export const MAX_UNCOMPRESSED_BYTES = 100 * 1024 * 1024 // 100mb
 export const MAX_FILES = 1000 // 1000 files
 
 const IGNORED_DIRS = new Set([

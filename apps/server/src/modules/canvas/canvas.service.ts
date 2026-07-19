@@ -14,7 +14,7 @@ const assertSessionAccess = async (sessionId: string, userId: string) => {
 }
 
 const createWebClips = async (data: CreateWebClips) => {
-    // clipper logic - no modifications needed besides mapping projectId/sessionId
+    // clipper logic - no modifications needed besides mapping projectid/sessionid
     return {
         sourceUrl: data.url,
         clips: [],
@@ -31,7 +31,7 @@ const saveCanvas = async (data: SaveCanvas) => {
         canvasState,
     })
 
-    // Save canvas state directly to S3
+    // save canvas state directly to s3
     await putTextFile({
         key: `sessions/${sessionId}/canvas.json`,
         content: JSON.stringify(persistedCanvas.canvasStateJson),

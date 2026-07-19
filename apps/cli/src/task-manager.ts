@@ -47,6 +47,8 @@ class TaskManager {
         const task = this.getTask(id)
         if (task && task.status === 'running') {
             task.status = exitCode === 0 ? 'completed' : 'failed'
+            delete task.childProcess
+            this.cleanupHistory()
         }
     }
 
@@ -69,6 +71,8 @@ class TaskManager {
                 }
             }
             task.status = 'killed'
+            delete task.childProcess
+            this.cleanupHistory()
             return true
         }
         return false
@@ -76,6 +80,15 @@ class TaskManager {
 
     removeTask(id: string) {
         this.tasks = this.tasks.filter((t) => t.id !== id)
+    }
+
+    private cleanupHistory() {
+        const completed = this.tasks.filter((t) => t.status !== 'running')
+        if (completed.length > 50) {
+            const toRemove = completed.slice(0, completed.length - 50)
+            const removeIds = new Set(toRemove.map((t) => t.id))
+            this.tasks = this.tasks.filter((t) => !removeIds.has(t.id))
+        }
     }
 }
 

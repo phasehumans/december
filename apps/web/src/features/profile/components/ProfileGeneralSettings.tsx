@@ -117,11 +117,11 @@ Use this template file to specify coding styles, design tokens, responsive grids
 
     return (
         <div className="flex flex-col w-full max-w-[800px] text-[#D6D5C9]">
-            {/* Preferences */}
+            {/* preferences */}
             <div className="flex flex-col mb-10">
                 <h1 className="text-[16px] font-medium mb-4">Preferences</h1>
                 <div className="flex flex-col gap-7 border-t border-[#242323] pt-6">
-                    {/* Chat suggestions */}
+                    {/* chat suggestions */}
                     <div className="flex items-center justify-between">
                         <div className="flex flex-col gap-0.5">
                             <span className="text-[14px] text-[#D6D5C9]">Chat suggestions</span>
@@ -147,7 +147,7 @@ Use this template file to specify coding styles, design tokens, responsive grids
                         </button>
                     </div>
 
-                    {/* Generation complete sound */}
+                    {/* generation complete sound */}
                     <div className="flex items-start justify-between">
                         <div className="flex flex-col gap-0.5 max-w-[60%]">
                             <span className="text-[14px] text-[#D6D5C9]">
@@ -229,7 +229,7 @@ Use this template file to specify coding styles, design tokens, responsive grids
                 </div>
             </div>
 
-            {/* Custom Design */}
+            {/* custom design */}
             <div className="flex flex-col mb-10">
                 <h1 className="text-[16px] font-medium mb-4">Custom Design</h1>
                 <div className="flex flex-col gap-4 border-t border-[#242323] pt-6">

@@ -15,7 +15,7 @@ type UseProfileSettingsDataOptions = {
 }
 
 const getErrorMessage = (error: unknown, fallback: string) => {
-    // Check for ApiError with Zod validation details (fieldErrors object)
+    // check for apierror with zod validation details (fielderrors object)
     if (
         error &&
         typeof error === 'object' &&
@@ -37,7 +37,7 @@ const getErrorMessage = (error: unknown, fallback: string) => {
     }
 
     if (error instanceof Error) {
-        // Don't show generic "validation failed" — we already tried details above
+        // don't show generic "validation failed" — we already tried details above
         if (error.message.toLowerCase() === 'validation failed') {
             return fallback
         }

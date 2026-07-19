@@ -12,7 +12,7 @@ export const DeviceActivate: React.FC = () => {
     const [status, setStatus] = useState<'idle' | 'verifying' | 'success' | 'error'>('idle')
     const [errorMessage, setErrorMessage] = useState('')
 
-    // Check if user is logged in
+    // check if user is logged in
     const {
         data: profile,
         isLoading,
@@ -24,7 +24,7 @@ export const DeviceActivate: React.FC = () => {
     })
 
     const handleCodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        // Format as ABCD-EFGH automatically
+        // format as abcd-efgh automatically
         let val = e.target.value.replace(/[^A-Za-z0-9]/g, '').toUpperCase()
         if (val.length > 4) {
             val = val.substring(0, 4) + '-' + val.substring(4, 8)

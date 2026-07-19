@@ -1,2 +1,2 @@
-// Protobuf TS bindings placeholder
+// protobuf ts bindings placeholder
 export {}

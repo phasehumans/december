@@ -80,7 +80,7 @@ export function useCommandMenu(): UseCommandMenuReturn {
                     next = Math.min(maxIdx, prev + 1)
                 }
 
-                // Scroll window to keep selected item visible
+                // scroll window to keep selected item visible
                 setWindowStart((ws) => {
                     if (next < ws) return next // scroll up
                     if (next >= ws + WINDOW_SIZE) return next - WINDOW_SIZE + 1 // scroll down
