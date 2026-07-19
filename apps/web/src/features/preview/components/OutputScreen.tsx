@@ -300,14 +300,14 @@ export const OutputScreen: React.FC<OutputScreenProps> = ({
                 />
             </div>
 
-            {/* Low Credits Warning Toast */}
+            {/* low credits warning toast */}
             {showLowCreditsWarning && !isOutOfCredits && (
                 <div className="absolute top-6 left-1/2 -translate-x-1/2 z-50 bg-amber-500/10 border border-amber-500/20 text-amber-500 px-4 py-2 rounded-xl text-sm font-medium shadow-xl flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
                     Low Credits! You have less than $0.10 remaining.
                 </div>
             )}
-            {/* Out of Credits Upgrade Card Overlay */}
+            {/* out of credits upgrade card overlay */}
             <Modal
                 isOpen={isOutOfCredits}
                 onClose={handleTriggerExit}

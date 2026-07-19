@@ -52,14 +52,14 @@ const calculateGenerationCost = (data: CalculateGenerationCost): number => {
         outputRatePer1M = matchedRate.outputRate
     }
 
-    // Convert USD per 1M tokens to cents per token:
-    // cents/token = (USD/1M * 100) / 1,000,000 = USD/1M / 10,000
+    // convert usd per 1m tokens to cents per token:
+    // cents/token = (usd/1m * 100) / 1,000,000 = usd/1m / 10,000
     const inputCentsPerToken = inputRatePer1M / 10000
     const outputCentsPerToken = outputRatePer1M / 10000
 
     const rawCost = inputTokens * inputCentsPerToken + outputTokens * outputCentsPerToken
 
-    // Ceiling rounding, minimum 1 cent
+    // ceiling rounding, minimum 1 cent
     return Math.max(Math.ceil(rawCost), 1)
 }
 
@@ -180,7 +180,7 @@ const recordUsageEvent = async (data: RecordUsageEvent) => {
         const result = await usageRepository.runTransaction(async (tx) => {
             const costLogged = calculatedCost
 
-            // Re-fetch user inside transaction to avoid race conditions
+            // re-fetch user inside transaction to avoid race conditions
             const dbUser = await usageRepository.findUserCredits({ userId: user.id }, tx)
             if (!dbUser) {
                 throw new AppError('user not found', 404)
@@ -189,7 +189,7 @@ const recordUsageEvent = async (data: RecordUsageEvent) => {
             let newCreditBalance = dbUser.creditBalance
             newCreditBalance = Math.max(newCreditBalance - calculatedCost, 0)
 
-            // Update user balance
+            // update user balance
             await usageRepository.updateUserCredits(
                 {
                     userId: user.id,
@@ -198,7 +198,7 @@ const recordUsageEvent = async (data: RecordUsageEvent) => {
                 tx
             )
 
-            // Create usage event
+            // create usage event
             const event = await usageRepository.createUsageEvent(
                 {
                     userId: user.id,

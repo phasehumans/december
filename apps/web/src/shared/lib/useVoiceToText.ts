@@ -24,24 +24,24 @@ interface SpeechRecognitionInstance {
 }
 
 interface UseVoiceToTextOptions {
-    /** Called with the current transcript (interim + final) on every speech result */
+    /** called with the current transcript (interim + final) on every speech result */
     onTranscript: (text: string) => void
-    /** Language for recognition, defaults to 'en-US' */
+    /** language for recognition, defaults to 'en-us' */
     lang?: string
 }
 
 interface UseVoiceToTextReturn {
-    /** Whether the mic is currently listening */
+    /** whether the mic is currently listening */
     isListening: boolean
-    /** Whether the browser supports the Web Speech API */
+    /** whether the browser supports the web speech api */
     isSupported: boolean
-    /** Current volume level 0-1 for visual feedback */
+    /** current volume level 0-1 for visual feedback */
     volume: number
-    /** Start listening */
+    /** start listening */
     startListening: () => void
-    /** Stop listening */
+    /** stop listening */
     stopListening: () => void
-    /** Toggle listening on/off */
+    /** toggle listening on/off */
     toggleListening: () => void
 }
 
@@ -59,14 +59,14 @@ export function useVoiceToText({
     const recognitionRef = useRef<SpeechRecognitionInstance | null>(null)
     const volumeIntervalRef = useRef<number | null>(null)
 
-    // Robust references to prevent race conditions and closure staleness
+    // robust references to prevent race conditions and closure staleness
     const isListeningRef = useRef(false)
     const accumulatedRef = useRef('')
     const sessionFinalRef = useRef('')
     const sessionInterimRef = useRef('')
     const onTranscriptRef = useRef(onTranscript)
 
-    // Keep the callback ref fresh so we don't re-create recognition on every render
+    // keep the callback ref fresh so we don't re-create recognition on every render
     useEffect(() => {
         onTranscriptRef.current = onTranscript
     }, [onTranscript])
@@ -84,7 +84,7 @@ export function useVoiceToText({
     const startVolumeSimulation = useCallback(() => {
         stopVolumeSimulation()
 
-        // Simulates realistic voice volume/pitch dynamics for beautiful visual animations
+        // simulates realistic voice volume/pitch dynamics for beautiful visual animations
         volumeIntervalRef.current = window.setInterval(() => {
             setVolume((prev) => {
                 const target = Math.random() * 0.4 + 0.1 // organic base pulsing
@@ -120,7 +120,7 @@ export function useVoiceToText({
             return
         }
 
-        // Stop any existing session
+        // stop any existing session
         if (recognitionRef.current) {
             try {
                 recognitionRef.current.abort()
@@ -133,7 +133,7 @@ export function useVoiceToText({
         try {
             const recognition = new SpeechRecognition()
 
-            // Set continuous to true for natural pauses and longer listening duration
+            // set continuous to true for natural pauses and longer listening duration
             recognition.continuous = true
             recognition.interimResults = true
             recognition.lang = lang
@@ -155,7 +155,7 @@ export function useVoiceToText({
                     let sessionFinal = ''
                     let sessionInterim = ''
 
-                    // Loop through all results in the current session (index from 0 to length - 1)
+                    // loop through all results in the current session (index from 0 to length - 1)
                     // this ensures we fetch the entire state of the current session
                     for (let i = 0; i < event.results.length; i++) {
                         const result = event.results[i]
@@ -197,7 +197,7 @@ export function useVoiceToText({
                     event.message
                 )
 
-                // Critical errors should halt listening
+                // critical errors should halt listening
                 const criticalErrors = [
                     'not-allowed',
                     'audio-capture',
@@ -213,7 +213,7 @@ export function useVoiceToText({
             recognition.onend = () => {
                 console.log('[VoiceToText] Recognition session ended.')
 
-                // Self-healing: if we are still in listening mode, commit the last session's final transcript to accumulated
+                // self-healing: if we are still in listening mode, commit the last session's final transcript to accumulated
                 // and auto-restart a new session to recover from long silence cutoffs or network hiccups.
                 if (isListeningRef.current) {
                     const base = accumulatedRef.current
@@ -254,7 +254,7 @@ export function useVoiceToText({
         }
     }, [isListening, startListening, stopListening])
 
-    // Cleanup on unmount
+    // cleanup on unmount
     useEffect(() => {
         return () => {
             isListeningRef.current = false

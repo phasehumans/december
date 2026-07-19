@@ -13,7 +13,7 @@ export function SettingsDialog({ close, toast }: Props) {
     const { isTopLayer } = useKeyboardLayer()
     const [menuState, setMenuState] = useState<'main' | 'agent' | 'ui' | 'keys' | 'prompt'>('main')
 
-    // Local dummy settings states
+    // local dummy settings states
     const [soundEnabled, setSoundEnabled] = useState(true)
     const [density, setDensity] = useState<'compact' | 'spacious'>('compact')
     const [defaultModel, setDefaultModel] = useState('gemini-2.5-flash')
@@ -86,7 +86,7 @@ export function SettingsDialog({ close, toast }: Props) {
         }
     }
 
-    // Custom items renderer to show checkmarks/badges
+    // custom items renderer to show checkmarks/badges
     const CustomIndicator = ({ isSelected }: { isSelected?: boolean }) => (
         <Text color="#89B4F8">{isSelected ? '❭ ' : '  '}</Text>
     )

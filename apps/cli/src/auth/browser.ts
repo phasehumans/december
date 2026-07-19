@@ -124,7 +124,7 @@ export async function loginViaBrowser(
             }
         })
 
-        // Timeout after 5 minutes
+        // timeout after 5 minutes
         setTimeout(
             () => {
                 server.close()

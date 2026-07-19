@@ -85,7 +85,7 @@ export const localOperations: PlatformAdapter = {
         askQuestion: async () => {
             throw new Error('Not implemented here')
         },
-        // Will be monkey-patched by use-agent-session.tsx
+        // will be monkey-patched by use-agent-session.tsx
         requestPermission: async () => {
             return { block: false }
         },

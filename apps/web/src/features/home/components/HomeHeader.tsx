@@ -104,7 +104,7 @@ export const HomeHeader: React.FC<HomeHeaderProps> = ({ isAuthenticated, onOpenA
                 )}
             </div>
 
-            {/* Center Heading */}
+            {/* center heading */}
             <div className="flex-initial flex items-center justify-center pointer-events-auto">
                 <div
                     onClick={() => {
@@ -128,7 +128,7 @@ export const HomeHeader: React.FC<HomeHeaderProps> = ({ isAuthenticated, onOpenA
                 </div>
             </div>
 
-            {/* Right Icons */}
+            {/* right icons */}
             <div className="flex-1 flex items-center justify-end pointer-events-auto">
                 <div className="flex items-center gap-0">
                     <MagneticIconWithTooltip

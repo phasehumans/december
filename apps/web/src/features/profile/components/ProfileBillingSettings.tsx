@@ -100,11 +100,11 @@ export const ProfileBillingSettings: React.FC<ProfileBillingSettingsProps> = (pr
 
     return (
         <div className="flex flex-col w-full max-w-[800px] text-[#D6D5C9] animate-in fade-in duration-200">
-            {/* Credits Section */}
+            {/* credits section */}
             <div className="flex flex-col mb-6">
                 <h1 className="text-[16px] font-medium text-[#D6D5C9] mb-3">Credits</h1>
                 <div className="flex flex-col gap-4 border-t border-[#242323] pt-4">
-                    {/* Compact credits balance box */}
+                    {/* compact credits balance box */}
                     <div className="flex items-end justify-between border border-[#242323] rounded-2xl p-6 w-full max-w-[520px]">
                         <div className="flex flex-col gap-2">
                             <span className="text-[13px] text-[#7B7A79]">Credit remaining</span>
@@ -125,7 +125,7 @@ export const ProfileBillingSettings: React.FC<ProfileBillingSettingsProps> = (pr
                 </div>
             </div>
 
-            {/* Credits History Section */}
+            {/* credits history section */}
             <div className="flex flex-col mb-6">
                 <h2 className="text-[16px] font-medium text-[#D6D5C9] mb-3">Credits History</h2>
                 <div className="flex flex-col border-t border-[#242323] pt-4">
@@ -135,14 +135,14 @@ export const ProfileBillingSettings: React.FC<ProfileBillingSettingsProps> = (pr
                         </div>
                     ) : (
                         <div className="flex flex-col gap-4">
-                            {/* Header Row */}
+                            {/* header row */}
                             <div className="grid grid-cols-5 gap-4 text-[11px] font-semibold uppercase tracking-wider text-neutral-500 pb-1">
                                 <div className="col-span-1">Date</div>
                                 <div className="col-span-2">Details</div>
                                 <div className="col-span-1">Status</div>
                                 <div className="col-span-1 text-right">Amount</div>
                             </div>
-                            {/* Data Rows */}
+                            {/* data rows */}
                             <div className="flex flex-col gap-3.5">
                                 {mergedHistory.map((tx) => {
                                     const formattedDate = new Date(tx.date).toLocaleDateString(
@@ -158,7 +158,7 @@ export const ProfileBillingSettings: React.FC<ProfileBillingSettingsProps> = (pr
                                             ? tx.id
                                             : `tx_${tx.id}`
 
-                                    // Status styling mapping
+                                    // status styling mapping
                                     const statusConfig = {
                                         SUCCESS: { label: 'Success', color: 'text-emerald-500' },
                                         PENDING: { label: 'Pending', color: 'text-amber-500' },
@@ -204,11 +204,11 @@ export const ProfileBillingSettings: React.FC<ProfileBillingSettingsProps> = (pr
                 </div>
             </div>
 
-            {/* Promotions & Usage Section */}
+            {/* promotions & usage section */}
             <div className="flex flex-col mb-6">
                 <h2 className="text-[16px] font-medium text-[#D6D5C9] mb-3">Promotions & Usage</h2>
                 <div className="flex flex-col gap-6 border-t border-[#242323] pt-4">
-                    {/* Gifted credits / Coupon */}
+                    {/* gifted credits / coupon */}
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
                         <div className="flex flex-col gap-0.5">
                             <span className="text-[14px] text-[#D6D5C9]">Redeem Coupon Code</span>
@@ -225,7 +225,7 @@ export const ProfileBillingSettings: React.FC<ProfileBillingSettingsProps> = (pr
                         </button>
                     </div>
 
-                    {/* Usage Dashboard Link */}
+                    {/* usage dashboard link */}
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
                         <div className="flex flex-col gap-0.5">
                             <span className="text-[14px] text-[#D6D5C9]">Usage Dashboard</span>
@@ -245,7 +245,7 @@ export const ProfileBillingSettings: React.FC<ProfileBillingSettingsProps> = (pr
                 </div>
             </div>
 
-            {/* Modals */}
+            {/* modals */}
             {showRedeemModal && <RedeemCodeModal onClose={() => setShowRedeemModal(false)} />}
             {showAddCreditsModal && (
                 <AddCreditsModal onClose={() => setShowAddCreditsModal(false)} />

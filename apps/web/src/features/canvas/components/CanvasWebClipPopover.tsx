@@ -169,7 +169,7 @@ export const CanvasWebClipPopover: React.FC<CanvasWebClipPopoverProps> = ({
                     </>
                 ) : (
                     <div className="flex flex-col items-center justify-center py-10 text-center gap-4 animate-in fade-in duration-300">
-                        {/* Elegant, minimal spinner */}
+                        {/* elegant, minimal spinner */}
                         <div className="w-6 h-6 border-[2px] border-[#D6D5C9]/20 border-t-[#D6D5C9] rounded-full animate-spin" />
                         <div className="flex flex-col gap-1 max-w-[280px]">
                             <h3 className="text-white font-medium text-[14px]">

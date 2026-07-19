@@ -30,7 +30,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClos
                 className="relative w-full max-w-[520px] bg-[#121211] border border-white/5 rounded-[20px] shadow-[0_24px_50px_-12px_rgba(0,0,0,0.9)] overflow-hidden flex flex-col p-6 animate-in zoom-in-95 duration-200"
                 onClick={(e) => e.stopPropagation()}
             >
-                {/* 1. Video Player Container */}
+                {/* 1. video player container */}
                 <div className="w-full aspect-video rounded-2xl overflow-hidden border border-white/10 relative bg-black shadow-inner flex items-center justify-center">
                     {shouldRenderVideo ? (
                         <iframe
@@ -47,7 +47,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClos
                     )}
                 </div>
 
-                {/* 2. Text Info */}
+                {/* 2. text info */}
                 <div className="flex flex-col mt-6 mb-6">
                     <h2 className="text-[17px] font-semibold text-white tracking-tight leading-tight mb-2">
                         Introducing December
@@ -59,7 +59,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClos
                     </p>
                 </div>
 
-                {/* 3. Bottom Footer */}
+                {/* 3. bottom footer */}
                 <div className="flex items-center justify-end mt-auto">
                     <button
                         onClick={onConfirm}

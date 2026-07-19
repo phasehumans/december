@@ -8,17 +8,11 @@ import type { SessionInfo } from '../file-session-repository'
 import type { BackgroundTask } from '../task-manager'
 
 export interface CliState {
-    // ----------------------------------------------------
-    // AGENT & CORE
-    // ----------------------------------------------------
     agent: Agent | null
     setAgent: (agent: Agent) => void
     settings: DecemberConfig | null
     setSettings: (settings: DecemberConfig) => void
 
-    // ----------------------------------------------------
-    // AUTH FEATURE
-    // ----------------------------------------------------
     isAuthenticated: boolean
     setIsAuthenticated: (val: boolean) => void
     authMethod: 'byok' | 'december' | 'env' | undefined
@@ -40,9 +34,7 @@ export interface CliState {
     openRouterModels: { label: string; value: string }[]
     setOpenRouterModels: (models: { label: string; value: string }[]) => void
 
-    // ----------------------------------------------------
-    // CHAT FEATURE
-    // ----------------------------------------------------
+    // chat feature
     currentPlannedPrompt: string | null
     setCurrentPlannedPrompt: (prompt: string | null) => void
     planMode: boolean
@@ -70,9 +62,7 @@ export interface CliState {
     isStreaming: boolean
     setIsStreaming: (isStreaming: boolean) => void
 
-    // ----------------------------------------------------
-    // SESSIONS FEATURE
-    // ----------------------------------------------------
+    // sessions feature
     sessionItems: { label: string; value: string }[]
     setSessionItems: (items: { label: string; value: string }[]) => void
     sessionsData: SessionInfo[]
@@ -86,9 +76,7 @@ export interface CliState {
     sessionNewName: string
     setSessionNewName: (name: string) => void
 
-    // ----------------------------------------------------
-    // SETTINGS FEATURE
-    // ----------------------------------------------------
+    // settings feature
     settingsNonWorkspace: boolean
     setSettingsNonWorkspace: (val: boolean) => void
     settingsNotifications: boolean
@@ -122,9 +110,7 @@ export interface CliState {
     settingsFollowUpMode: 'all' | 'one-at-a-time'
     setSettingsFollowUpMode: (val: 'all' | 'one-at-a-time') => void
 
-    // ----------------------------------------------------
-    // TASKS FEATURE
-    // ----------------------------------------------------
+    // tasks feature
     tasksData: BackgroundTask[]
     setTasksData: (data: BackgroundTask[]) => void
     taskSelectedIndex: number
@@ -134,9 +120,7 @@ export interface CliState {
     taskScrollOffset: number
     setTaskScrollOffset: (offset: number | ((prev: number) => number)) => void
 
-    // ----------------------------------------------------
-    // INTERCEPTORS (Questions & Permissions)
-    // ----------------------------------------------------
+    // interceptors (questions & permissions)
     pendingQuestions: {
         questions: Array<{ question: string; options: string[]; is_multi_select?: boolean }>
         resolve: (answer: string) => void
@@ -156,13 +140,13 @@ export interface CliState {
 }
 
 export const useCliStore = create<CliState>((set) => ({
-    // Core
+    // core
     agent: null,
     setAgent: (agent) => set({ agent }),
     settings: null,
     setSettings: (settings) => set({ settings }),
 
-    // Auth
+    // auth
     isAuthenticated: false,
     setIsAuthenticated: (isAuthenticated) => set({ isAuthenticated }),
     authMethod: undefined,
@@ -184,7 +168,7 @@ export const useCliStore = create<CliState>((set) => ({
     openRouterModels: [],
     setOpenRouterModels: (openRouterModels) => set({ openRouterModels }),
 
-    // Chat
+    // chat
     currentPlannedPrompt: null,
     setCurrentPlannedPrompt: (currentPlannedPrompt) => set({ currentPlannedPrompt }),
     planMode: false,
@@ -221,7 +205,7 @@ export const useCliStore = create<CliState>((set) => ({
     isStreaming: false,
     setIsStreaming: (isStreaming) => set({ isStreaming }),
 
-    // Sessions
+    // sessions
     sessionItems: [],
     setSessionItems: (sessionItems) => set({ sessionItems }),
     sessionsData: [],
@@ -235,7 +219,7 @@ export const useCliStore = create<CliState>((set) => ({
     sessionNewName: '',
     setSessionNewName: (sessionNewName) => set({ sessionNewName }),
 
-    // Settings Feature
+    // settings feature
     settingsNonWorkspace: false,
     setSettingsNonWorkspace: (settingsNonWorkspace) => set({ settingsNonWorkspace }),
     settingsNotifications: false,
@@ -269,7 +253,7 @@ export const useCliStore = create<CliState>((set) => ({
     settingsFollowUpMode: 'all',
     setSettingsFollowUpMode: (settingsFollowUpMode) => set({ settingsFollowUpMode }),
 
-    // Tasks
+    // tasks
     tasksData: [],
     setTasksData: (tasksData) => set({ tasksData }),
     taskSelectedIndex: 0,
@@ -287,13 +271,13 @@ export const useCliStore = create<CliState>((set) => ({
                 typeof updater === 'function' ? updater(state.taskScrollOffset) : updater,
         })),
 
-    // Interceptors
+    // interceptors
     pendingQuestions: null,
     setPendingQuestions: (pendingQuestions) => set({ pendingQuestions }),
     pendingToolCall: null,
     setPendingToolCall: (pendingToolCall) => set({ pendingToolCall }),
 
-    // CLI events
+    // cli events
     toasts: [],
     addToast: (message, variant = 'info') =>
         set((state) => ({

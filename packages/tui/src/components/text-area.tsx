@@ -31,9 +31,9 @@ export function TextArea({
         if (!focus) return
 
         if (key.return) {
-            // Some terminals send shift+enter as a specific escape sequence, but usually it's indistinguishable.
-            // Let's check for alt+enter (meta) or we can just make enter submit.
-            // If we want alt+enter for newline:
+            // some terminals send shift+enter as a specific escape sequence, but usually it's indistinguishable.
+            // let's check for alt+enter (meta) or we can just make enter submit.
+            // if we want alt+enter for newline:
             if (key.meta) {
                 const newValue = value.slice(0, cursorOffset) + '\n' + value.slice(cursorOffset)
                 onChange(newValue)
@@ -54,7 +54,7 @@ export function TextArea({
             return
         }
         if (key.upArrow) {
-            // Simple up: go to start of line or previous line
+            // simple up: go to start of line or previous line
             const lines = value.slice(0, cursorOffset).split('\n')
             if (lines.length > 1) {
                 const currentLineLength = lines[lines.length - 1]?.length || 0
@@ -130,7 +130,7 @@ export function TextArea({
             return
         }
 
-        // Ignore other ctrl commands here, let parent handle ctrl+w or handle it here
+        // ignore other ctrl commands here, let parent handle ctrl+w or handle it here
         if (key.ctrl) return
 
         if (input) {

@@ -16,7 +16,7 @@ export const CliLogin: React.FC = () => {
     const [status, setStatus] = useState<'idle' | 'authorizing' | 'success' | 'error'>('idle')
     const [errorMessage, setErrorMessage] = useState('')
 
-    // Check if user is logged in
+    // check if user is logged in
     const {
         data: profile,
         isLoading,
@@ -54,7 +54,7 @@ export const CliLogin: React.FC = () => {
 
             if (token) {
                 setStatus('success')
-                // Redirect back to CLI server
+                // redirect back to cli server
                 let redirectUrl = `${redirectUri}?token=${token}`
                 if (email) {
                     redirectUrl += `&email=${encodeURIComponent(email)}`

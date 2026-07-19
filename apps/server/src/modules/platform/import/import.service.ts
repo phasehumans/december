@@ -180,8 +180,8 @@ const startRuntimeForImport = async (data: StartRuntimeForImportParams) => {
     return Promise.race([
         runtimeService.startPreview({
             userId,
-            projectId: sessionId, // sessionId matches previewId/projectId in runtimeService
-            versionId: sessionId, // Use sessionId as the versionId since versioning is dropped
+            projectId: sessionId, // sessionid matches previewid/projectid in runtimeservice
+            versionId: sessionId, // use sessionid as the versionid since versioning is dropped
         }),
         timeout,
     ])
@@ -238,7 +238,7 @@ const finalizeImportSession = async (data: FinalizeImportSessionParams) => {
         files: uploadedFiles,
     })
 
-    // Check if the project structure is valid
+    // check if the project structure is valid
     if (!validatedProject.isValid) {
         await updateImportStatus({
             importId,
@@ -405,7 +405,7 @@ const importFromGithub = async (data: ImportFromGithub) => {
 
     const sessionId = randomUUID()
 
-    // Create placeholder Session immediately
+    // create placeholder session immediately
     await createPlaceholderSession({
         sessionId,
         userId,

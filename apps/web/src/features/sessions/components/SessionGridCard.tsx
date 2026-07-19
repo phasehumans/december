@@ -24,7 +24,7 @@ export const ProjectGridCard: React.FC<ProjectListRowProps> = ({
 
     return (
         <div className="group flex flex-col gap-3.5 w-full">
-            {/* Image Container */}
+            {/* image container */}
             <div
                 className="relative aspect-[16/10] bg-[#111] overflow-hidden rounded-xl border border-[#242323] transition-all duration-300 cursor-pointer"
                 onClick={() => onOpenProject(project.id)}
@@ -55,12 +55,12 @@ export const ProjectGridCard: React.FC<ProjectListRowProps> = ({
                         e.currentTarget.style.display = 'none'
                     }}
                 />
-                {/* Soft bottom gradient for depth */}
+                {/* soft bottom gradient for depth */}
                 <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/60 to-transparent pointer-events-none opacity-60"></div>
             </div>
 
             <div className="flex items-start justify-between w-full gap-4 px-1 mt-1">
-                {/* Left Info */}
+                {/* left info */}
                 <div className="flex flex-col gap-1 min-w-0 flex-1">
                     <h3 className="text-[14px] font-medium text-[#D6D5C9] truncate leading-tight">
                         {project.title}
@@ -74,7 +74,7 @@ export const ProjectGridCard: React.FC<ProjectListRowProps> = ({
                     </div>
                 </div>
 
-                {/* Right Actions (Star + 3 dots menu) */}
+                {/* right actions (star + 3 dots menu) */}
                 <div className="flex items-center gap-1 shrink-0 relative">
                     <button
                         onClick={(e) => onToggleStar(project.id, e)}

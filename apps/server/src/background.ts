@@ -8,7 +8,7 @@ const redisConnection = new Redis(process.env.REDIS_URL || 'redis://localhost:63
     maxRetriesPerRequest: null,
 })
 
-// Setup minio_wipe worker
+// setup minio_wipe worker
 const minioWipeWorker = new Worker(
     'minio_wipe',
     async (job) => {
@@ -23,7 +23,7 @@ minioWipeWorker.on('failed', (job, err) => {
     console.error(`[Background] Job ${job?.id} failed with error ${err.message}`)
 })
 
-// Setup sweep_cron worker
+// setup sweep_cron worker
 const sweepQueue = new Queue('sweep_jobs', { connection: redisConnection as any })
 // add repeatable job running daily
 sweepQueue.add('daily_sweep', {}, { repeat: { pattern: '0 0 * * *' } })
@@ -33,7 +33,7 @@ const sweepWorker = new Worker(
     async (job) => {
         if (job.name === 'daily_sweep') {
             console.log(`[Background] Running daily garbage collection sweep`)
-            // Cleanup sessions older than 30 days or orphaned DB records
+            // cleanup sessions older than 30 days or orphaned db records
             await prisma.session.deleteMany({
                 where: {
                     updatedAt: {

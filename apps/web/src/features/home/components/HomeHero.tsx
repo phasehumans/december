@@ -109,7 +109,7 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
             <HomeHeader isAuthenticated={isAuthenticated} onOpenAuth={onOpenAuth} />
 
             <div className="flex flex-col items-center justify-start pt-[19vh] md:pt-[26vh] h-full flex-1 gap-6 animate-in fade-in duration-500 max-w-4xl mx-auto px-4 w-full shrink-0 relative">
-                {/* Hidden original logo to preserve exact vertical layout flow */}
+                {/* hidden original logo to preserve exact vertical layout flow */}
                 <div
                     className="flex flex-col items-center gap-3 text-center relative -left-[8px] opacity-0 pointer-events-none select-none"
                     aria-hidden="true"
@@ -156,7 +156,7 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
                             </h2>
                         </div>
                         <div className="relative flex items-center bg-[#252525] rounded-full shadow-sm w-[94px] overflow-hidden mr-1.5 md:mr-2">
-                            {/* Sliding Indicator */}
+                            {/* sliding indicator */}
                             <div
                                 className={`absolute left-0 top-0 bottom-0 w-1/2 rounded-full bg-[#87B2F4] transition-transform duration-300 ease-out shadow-sm ${
                                     chatMode === 'agent' ? 'translate-x-0' : 'translate-x-full'

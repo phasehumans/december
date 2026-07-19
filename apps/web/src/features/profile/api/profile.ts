@@ -223,7 +223,7 @@ const deleteAccount = () => {
     })
 }
 
-// --- Memories ---
+// --- memories ---
 
 type UpdateMemoriesInput = {
     memories: string
@@ -269,7 +269,7 @@ const deletedesign = () => {
     })
 }
 
-// --- Integrations ---
+// --- integrations ---
 
 export type GithubRepo = {
     id: number

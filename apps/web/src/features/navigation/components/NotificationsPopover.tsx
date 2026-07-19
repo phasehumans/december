@@ -134,7 +134,7 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
         }
     }, [anchorRef, isOpen])
 
-    // Reset selected notification and menu when popover closes
+    // reset selected notification and menu when popover closes
     useEffect(() => {
         if (!isOpen) {
             setSelectedNotification(null)
@@ -211,7 +211,7 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
         setSelectedNotification(notification)
     }
 
-    // --- Detail View ---
+    // --- detail view ---
     if (selectedNotification) {
         return createPortal(
             <div
@@ -277,7 +277,7 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
         )
     }
 
-    // --- List View ---
+    // --- list view ---
     return createPortal(
         <div
             ref={popoverRef}
@@ -293,7 +293,7 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
                 <div className="flex items-center gap-1.5">
                     <span className="text-[13px] font-medium text-[#CBCACA]">Notifications</span>
                 </div>
-                {/* 3 Dots Menu Button */}
+                {/* 3 dots menu button */}
                 <div className="relative">
                     <button
                         ref={menuTriggerRef}
@@ -425,7 +425,7 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
                                     })}
                                 </span>
 
-                                {/* Hover Delete Button */}
+                                {/* hover delete button */}
                                 <button
                                     type="button"
                                     onClick={(e) => {

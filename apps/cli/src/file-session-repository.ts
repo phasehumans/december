@@ -9,11 +9,12 @@ export interface SessionInfo {
     id: string
     updatedAt: Date
     messageCount: number
-    preview: string // First user message or empty
+    preview: string // first user message or empty
 }
 
 export class FileSessionRepository implements SessionRepository {
     private sessionDir: string
+    private sessionCache: Record<string, Record<string, AgentMessage>> = {}
 
     constructor(sessionDir?: string) {
         this.sessionDir = sessionDir || path.join(os.homedir(), '.config', 'december', 'sessions')
@@ -22,29 +23,37 @@ export class FileSessionRepository implements SessionRepository {
     async saveContext(sessionId: string, messages: AgentMessage[]): Promise<void> {
         await fs.mkdir(this.sessionDir, { recursive: true })
         const historyPath = path.join(this.sessionDir, `${sessionId}.jsonl`)
-        // Append all messages to the file. (In a real DB, we'd upsert by ID)
-        // For local files, we just write the whole array to ensure it's saved.
-        // Wait, to truly support branching in the same file, we can't just overwrite.
-        // But if we append everything every time, it gets huge.
-        // Let's read existing, merge by ID, and write back.
-        const existing: Record<string, AgentMessage> = {}
-        try {
-            const data = await fs.readFile(historyPath, 'utf-8')
-            const lines = data.split('\n').filter((l) => l.trim().length > 0)
-            for (const l of lines) {
-                const msg = JSON.parse(l) as AgentMessage
-                if (msg.id) existing[msg.id] = msg
-            }
-        } catch (e) {}
 
-        for (const msg of messages) {
-            if (msg.id) existing[msg.id] = msg
+        let existing = this.sessionCache[sessionId]
+        if (!existing) {
+            existing = {}
+            this.sessionCache[sessionId] = existing
+            try {
+                const data = await fs.readFile(historyPath, 'utf-8')
+                const lines = data.split('\n').filter((l) => l.trim().length > 0)
+                for (const l of lines) {
+                    try {
+                        const msg = JSON.parse(l) as AgentMessage
+                        if (msg.id) existing[msg.id] = msg
+                    } catch {}
+                }
+            } catch (e) {}
         }
 
-        const content = Object.values(existing)
-            .map((m) => JSON.stringify(m))
-            .join('\n')
-        await fs.writeFile(historyPath, content, 'utf-8')
+        let appendContent = ''
+        for (const msg of messages) {
+            if (msg.id) {
+                const cached = existing[msg.id]
+                if (!cached || JSON.stringify(cached) !== JSON.stringify(msg)) {
+                    existing[msg.id] = { ...msg }
+                    appendContent += JSON.stringify(msg) + '\n'
+                }
+            }
+        }
+
+        if (appendContent) {
+            await fs.appendFile(historyPath, appendContent, 'utf-8')
+        }
     }
 
     async loadContext(sessionId: string): Promise<AgentMessage[]> {
@@ -52,12 +61,20 @@ export class FileSessionRepository implements SessionRepository {
         try {
             const data = await fs.readFile(historyPath, 'utf-8')
             const lines = data.split('\n').filter((l) => l.trim().length > 0)
-            const msgs = lines.map((l) => JSON.parse(l) as AgentMessage)
 
-            // Reconstruct the active branch (the one ending with the latest message)
+            const msgMap = new Map<string, AgentMessage>()
+            for (const l of lines) {
+                try {
+                    const msg = JSON.parse(l) as AgentMessage
+                    if (msg.id) msgMap.set(msg.id, msg)
+                } catch {
+                    // ignore corrupted lines
+                }
+            }
+
+            const msgs = Array.from(msgMap.values())
             if (msgs.length === 0) return []
 
-            // Find the latest message by timestamp
             let latestMsg = msgs[0]
             for (const msg of msgs) {
                 if ((msg.timestamp || 0) >= (latestMsg.timestamp || 0)) {
@@ -65,16 +82,26 @@ export class FileSessionRepository implements SessionRepository {
                 }
             }
 
-            // Walk back up the tree using parentId
             const branch: AgentMessage[] = []
-            const msgMap = new Map(msgs.map((m) => [m.id, m]))
-
             let current: AgentMessage | undefined = latestMsg
             while (current) {
                 branch.unshift(current)
                 if (!current.parentId) break
                 current = msgMap.get(current.parentId)
             }
+
+            // compaction: clean up token-deltas from previous streaming sessions
+            if (msgs.length < lines.length) {
+                const compacted = msgs.map((m) => JSON.stringify(m)).join('\n')
+                await fs.writeFile(historyPath, compacted, 'utf-8').catch(() => {})
+            }
+
+            // warm up cache
+            const cacheObj: Record<string, AgentMessage> = {}
+            for (const msg of msgs) {
+                cacheObj[msg.id] = { ...msg }
+            }
+            this.sessionCache[sessionId] = cacheObj
 
             return branch
         } catch (e) {
@@ -97,7 +124,7 @@ export class FileSessionRepository implements SessionRepository {
                     const data = await fs.readFile(filePath, 'utf-8')
                     const lines = data.split('\n').filter((l) => l.trim().length > 0)
 
-                    // Find first user message for preview
+                    // find first user message for preview
                     let preview = ''
                     for (const line of lines) {
                         try {
@@ -118,7 +145,7 @@ export class FileSessionRepository implements SessionRepository {
                 } catch {}
             }
 
-            // Sort by most recently updated first
+            // sort by most recently updated first
             sessions.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())
             return sessions
         } catch {
@@ -131,7 +158,7 @@ export class FileSessionRepository implements SessionRepository {
         try {
             await fs.unlink(historyPath)
         } catch (e) {
-            // Ignore if it doesn't exist
+            // ignore if it doesn't exist
         }
     }
 

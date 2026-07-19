@@ -13,14 +13,14 @@ export const chatCompletions = async (req: Request, res: Response) => {
 
         const body = req.body
 
-        // Verify balance before forwarding
+        // verify balance before forwarding
         const hasBalance = await cliService.verifyWalletBalance(userId)
         if (!hasBalance) {
             res.status(402).json({ error: 'Insufficient credits in December Wallet.' })
             return
         }
 
-        // Delegate to service to proxy the stream
+        // delegate to service to proxy the stream
         await cliService.proxyChatCompletions(userId, body, res)
     } catch (error: any) {
         console.error('[CLI Proxy Error]:', error)

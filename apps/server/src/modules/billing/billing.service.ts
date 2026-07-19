@@ -58,8 +58,8 @@ const getOverview = async (data: GetOverview) => {
 const createRazorpayOrder = async (data: CreateRazorpayOrder) => {
     const { userId, amountInCents } = data
 
-    // Razorpay requires INR to enable UPI and domestic payment options.
-    // Convert USD cents to INR paise using a rate of 84 (1 USD = 84 INR).
+    // razorpay requires inr to enable upi and domestic payment options.
+    // convert usd cents to inr paise using a rate of 84 (1 usd = 84 inr).
     const USD_TO_INR_RATE = 84 //store in env
     const amountInPaise = amountInCents * USD_TO_INR_RATE
 
@@ -74,7 +74,7 @@ const createRazorpayOrder = async (data: CreateRazorpayOrder) => {
 
     await billingRepository.createWalletTransaction({
         userId,
-        amountInCents, // We keep the USD cents for the user's wallet credit amount
+        amountInCents, // we keep the usd cents for the user's wallet credit amount
         currency: 'INR',
         provider: 'RAZORPAY',
         providerOrderId: order.id,

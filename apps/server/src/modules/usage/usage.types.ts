@@ -43,6 +43,6 @@ export type UsageUser = {
 
 export type ModelRate = {
     name: string
-    inputRate: number // USD per 1M tokens
-    outputRate: number // USD per 1M tokens
+    inputRate: number // usd per 1m tokens
+    outputRate: number // usd per 1m tokens
 }

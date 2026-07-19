@@ -47,7 +47,7 @@ export const PreviewArea: React.FC<PreviewAreaProps> = ({
         previewState === 'Installing' ||
         previewState === 'Starting'
 
-    // Determine loading state
+    // determine loading state
     const showFullscreenLoader =
         !showFailedState &&
         !hasLoadedOnce &&
@@ -55,7 +55,7 @@ export const PreviewArea: React.FC<PreviewAreaProps> = ({
 
     const showFullscreenFailed = showFailedState && !isLivePreview
 
-    // Resolve checklist items
+    // resolve checklist items
     const checklistItems = RUNTIME_CHECKLISTS[projectType] || RUNTIME_CHECKLISTS.generated
     const stateKeys = ['WaitingForRunnableVersion', 'Bootstrapping', 'Installing', 'Starting']
     const activeIndex = previewState ? stateKeys.indexOf(previewState) : 0
@@ -95,11 +95,11 @@ export const PreviewArea: React.FC<PreviewAreaProps> = ({
                             : 'rounded-xl border border-[#262626] shadow-2xl'
                 )}
             >
-                {/* 1. Dynamic Checklist Logs Loader Screen */}
+                {/* 1. dynamic checklist logs loader screen */}
                 {showFullscreenLoader ? (
                     <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-[#121110] font-sans p-6">
                         <div className="flex flex-col max-w-sm w-full select-none text-left">
-                            {/* Top Header */}
+                            {/* top header */}
                             <div className="flex flex-col gap-0.5 select-none mb-6">
                                 <span className="text-[14px] font-bold text-white tracking-wider uppercase">
                                     RUNTIME SANDBOX
@@ -113,7 +113,7 @@ export const PreviewArea: React.FC<PreviewAreaProps> = ({
                                 </span>
                             </div>
 
-                            {/* Minimal Checklist UI */}
+                            {/* minimal checklist ui */}
                             <div className="flex flex-col gap-4 pl-0">
                                 {checklistItems.map((item, idx) => {
                                     const isDone = allCompleted || idx < activeIndex
@@ -151,10 +151,10 @@ export const PreviewArea: React.FC<PreviewAreaProps> = ({
                         </div>
                     </div>
                 ) : showFullscreenFailed ? (
-                    /* 1.5. Solid dark background for failed state to hide iframe fallback */
+                    /* 1.5. solid dark background for failed state to hide iframe fallback */
                     <div className="absolute inset-0 z-50 bg-[#141414]" />
                 ) : showStructurePlaceholder ? (
-                    /* 2. Structure Placeholder */
+                    /* 2. structure placeholder */
                     <div className="absolute inset-0 z-40 bg-[#171716] p-5">
                         <div className="h-full w-full rounded-xl border border-white/10 bg-[#141414] p-4 md:p-5 flex flex-col gap-3">
                             <div className="h-8 w-40 rounded-md bg-white/10" />
@@ -168,7 +168,7 @@ export const PreviewArea: React.FC<PreviewAreaProps> = ({
                         </div>
                     </div>
                 ) : (
-                    /* 3. Main IFrame browser viewport (kept visible even on errors unless explicitly failed during startup) */
+                    /* 3. main iframe browser viewport (kept visible even on errors unless explicitly failed during startup) */
                     <iframe
                         ref={iframeRef}
                         className={cn(
@@ -180,7 +180,7 @@ export const PreviewArea: React.FC<PreviewAreaProps> = ({
                     />
                 )}
 
-                {/* 4. Minimal floating error pill */}
+                {/* 4. minimal floating error pill */}
                 {showFailedState && (
                     <div className="absolute bottom-4 right-4 z-50 flex items-center gap-2.5 bg-red-50 border border-red-200/60 rounded-lg px-3.5 py-2 shadow-sm animate-in slide-in-from-bottom-2 duration-300 font-sans">
                         <span className="text-[11px] font-medium text-red-700 whitespace-nowrap">

@@ -38,7 +38,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({
         }
     })
 
-    // Reset search query and selected index on open
+    // reset search query and selected index on open
     useEffect(() => {
         if (isOpen) {
             setSearchQuery('')
@@ -54,7 +54,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({
     }
 
     const allItems: SearchItem[] = [
-        // Navigation
+        // navigation
         {
             id: 'go-projects',
             label: 'Sessions',
@@ -88,7 +88,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({
                 navigate('/docs')
             },
         },
-        // Settings
+        // settings
         {
             id: 'go-settings-account',
             label: 'Account Settings',
@@ -234,7 +234,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({
     let displayedItems: SearchItem[] = []
 
     if (searchQuery.trim() === '') {
-        // Show Recent first, then the rest
+        // show recent first, then the rest
         displayedItems = [...recentItems, ...allItems]
     } else {
         const query = searchQuery.toLowerCase()
@@ -246,7 +246,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({
         )
     }
 
-    // Group items by category
+    // group items by category
     const categories: ('Recent' | 'Navigation' | 'Settings')[] = [
         'Recent',
         'Navigation',
@@ -283,7 +283,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({
                     const item = displayedItems[selectedIndex]
                     saveRecent(item.id)
                     if (e.ctrlKey || e.metaKey) {
-                        // Open in new tab behavior simulation
+                        // open in new tab behavior simulation
                         window.open(window.location.origin, '_blank')
                         onClose()
                     } else {
@@ -313,7 +313,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({
                 className="w-full max-w-[640px] bg-[#1E1E1E] border border-[#282828] rounded-xl shadow-[0_0_80px_rgba(0,0,0,0.8)] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200 font-sans"
                 onClick={(e) => e.stopPropagation()}
             >
-                {/* Search Input */}
+                {/* search input */}
                 <div className="flex items-center px-4 py-3.5 border-b border-[#282828] bg-[#1E1E1E]">
                     <Icons.Search className="w-4 h-4 text-[#888888] mr-3 shrink-0" />
                     <input
@@ -325,7 +325,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({
                     />
                 </div>
 
-                {/* Results List */}
+                {/* results list */}
                 <div className="flex flex-col py-2 max-h-[420px] overflow-y-auto no-scrollbar">
                     {categories.map((category) => {
                         const categoryItems = displayedItems.filter(
@@ -333,8 +333,8 @@ export const SearchModal: React.FC<SearchModalProps> = ({
                         )
                         if (categoryItems.length === 0) return null
 
-                        // Ensure we use a Set to deduplicate Recents if needed, but they are mapped uniquely by index in render
-                        // Note: Recent category might show duplicate items if they are also in Navigation/Settings. That's typical command palette behavior.
+                        // ensure we use a set to deduplicate recents if needed, but they are mapped uniquely by index in render
+                        // note: recent category might show duplicate items if they are also in navigation/settings. that's typical command palette behavior.
 
                         return (
                             <div key={category} className="flex flex-col mb-2 last:mb-0">

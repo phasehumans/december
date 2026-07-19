@@ -34,7 +34,7 @@ const getNotificationById = asyncHandler(async (req: Request, res: Response) => 
         throw new AppError('notification not found', 404)
     }
 
-    // Mark as read when fetched in detail
+    // mark as read when fetched in detail
     if (!notification.isRead) {
         await notificationService.markAsRead({ userId, id })
         notification.isRead = true

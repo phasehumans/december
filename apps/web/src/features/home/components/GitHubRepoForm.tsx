@@ -27,13 +27,13 @@ export const GitHubRepoForm: React.FC<GitHubRepoFormProps> = ({
     const [searchQuery, setSearchQuery] = useState('')
     const [showAllRepos, setShowAllRepos] = useState(false)
 
-    // Fetch quickInfo to check GitHub connection status
+    // fetch quickinfo to check github connection status
     const { data: quickInfo, isLoading: isQuickInfoLoading } = useQuery({
         queryKey: ['quickinfo'],
         queryFn: profileAPI.getQuickInfo,
     })
 
-    // Profile for github auth state ID
+    // profile for github auth state id
     const { data: profile } = useQuery({
         queryKey: ['profile'],
         queryFn: profileAPI.getProfile,
@@ -41,7 +41,7 @@ export const GitHubRepoForm: React.FC<GitHubRepoFormProps> = ({
 
     const isGithubConnected = profile?.githubConnected || (quickInfo?.githubConnected ?? false)
 
-    // Fetch GitHub repositories if connected
+    // fetch github repositories if connected
     const { data: repos = [], isLoading: isReposLoading } = useQuery({
         queryKey: ['github-repos'],
         queryFn: profileAPI.getGithubRepos,
@@ -81,7 +81,7 @@ export const GitHubRepoForm: React.FC<GitHubRepoFormProps> = ({
             className="w-full max-w-[400px] mt-3 rounded-2xl bg-[#1E1E1E] border border-[#2E2D2C] shadow-2xl overflow-hidden font-sans flex flex-col"
         >
             <div className="flex flex-col p-3 gap-3">
-                {/* Header Row */}
+                {/* header row */}
                 <div className="flex items-center justify-between">
                     <span className="text-[13px] font-medium text-[#CBCACA] ml-1">
                         Import from GitHub
@@ -95,12 +95,12 @@ export const GitHubRepoForm: React.FC<GitHubRepoFormProps> = ({
                 </div>
 
                 {isQuickInfoLoading ? (
-                    // Loading State
+                    // loading state
                     <div className="flex items-center justify-center py-8">
                         <div className="w-5 h-5 border-2 border-[#2E2D2C] border-t-[#8F8E8D] rounded-full animate-spin" />
                     </div>
                 ) : !isGithubConnected ? (
-                    // Not Connected State
+                    // not connected state
                     <div
                         onClick={handleConnectGithub}
                         className="flex flex-col items-center justify-center gap-2 py-8 px-4 rounded-xl border border-dashed border-[#3A3938] hover:border-[#4A4948] hover:bg-[#252525]/30 cursor-pointer transition-all duration-200"
@@ -115,9 +115,9 @@ export const GitHubRepoForm: React.FC<GitHubRepoFormProps> = ({
                         )}
                     </div>
                 ) : (
-                    // Connected State
+                    // connected state
                     <div className="flex flex-col gap-3">
-                        {/* Search Bar */}
+                        {/* search bar */}
                         <div className="relative">
                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                 <Icons.Search className="w-3.5 h-3.5 text-[#8F8E8D]" />
@@ -132,7 +132,7 @@ export const GitHubRepoForm: React.FC<GitHubRepoFormProps> = ({
                             />
                         </div>
 
-                        {/* Repo List */}
+                        {/* repo list */}
                         {isReposLoading ? (
                             <div className="flex items-center justify-center py-8">
                                 <div className="w-4 h-4 border-2 border-[#2E2D2C] border-t-[#8F8E8D] rounded-full animate-spin" />
@@ -182,7 +182,7 @@ export const GitHubRepoForm: React.FC<GitHubRepoFormProps> = ({
                             </div>
                         )}
 
-                        {/* Status/Error Messages */}
+                        {/* status/error messages */}
                         {(importError || importMessage) && (
                             <div className="text-[12px] px-1">
                                 <p

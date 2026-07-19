@@ -14,7 +14,7 @@ type UseAuthMutationsOptions = {
 }
 
 const getErrorMessage = (error: unknown) => {
-    // Check for ApiError with Zod validation details (fieldErrors object)
+    // check for apierror with zod validation details (fielderrors object)
     if (
         error &&
         typeof error === 'object' &&

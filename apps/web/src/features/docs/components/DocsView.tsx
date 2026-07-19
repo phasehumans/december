@@ -11,7 +11,7 @@ export const DocsView: React.FC<DocsViewProps> = ({ onBack }) => {
     return (
         <div className="flex w-full h-full bg-[#100E12] overflow-hidden p-1.5 md:p-[8px]">
             <div className="flex w-full h-full bg-[#141414] rounded-lg border border-[#242323] overflow-hidden">
-                {/* Docs Sidebar */}
+                {/* docs sidebar */}
                 <div className="w-[220px] shrink-0 border-r border-[#242323] flex flex-col py-4">
                     <div className="px-4 mb-6">
                         <button
@@ -78,7 +78,7 @@ export const DocsView: React.FC<DocsViewProps> = ({ onBack }) => {
                     </div>
                 </div>
 
-                {/* Main Content */}
+                {/* main content */}
                 <div className="flex-1 overflow-y-auto [&::-webkit-scrollbar]:w-[12px] [&::-webkit-scrollbar-track]:bg-[#141414] [&::-webkit-scrollbar-thumb]:bg-[#383736] [&::-webkit-scrollbar-thumb]:bg-clip-padding [&::-webkit-scrollbar-thumb]:border-[4px] [&::-webkit-scrollbar-thumb]:border-solid [&::-webkit-scrollbar-thumb]:border-transparent [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-[#4A4948]">
                     <div className="w-full flex justify-center px-8 md:px-16 py-8 md:py-12 relative z-10">
                         <div className="flex flex-col gap-6 w-full max-w-3xl">

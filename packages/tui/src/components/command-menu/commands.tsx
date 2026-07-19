@@ -1,4 +1,4 @@
-import { execSync } from 'child_process'
+import { execSync, exec } from 'child_process'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -13,7 +13,7 @@ export const COMMANDS: Command[] = [
         description: 'Visualize current context usage',
         value: '/context',
         action: (ctx) => {
-            // Forwarded to Chat screen
+            // forwarded to chat screen
         },
     },
     {
@@ -72,7 +72,7 @@ export const COMMANDS: Command[] = [
         description: 'Interview me to align on a plan',
         value: '/grill-me',
         action: (ctx) => {
-            // Forwarded to Chat screen
+            // forwarded to chat screen
         },
     },
     {
@@ -268,7 +268,7 @@ export const COMMANDS: Command[] = [
         description: 'Switch to plan mode',
         value: '/plan',
         action: (ctx) => {
-            // Forwarded to Chat screen
+            // forwarded to chat screen
         },
     },
     {
@@ -276,7 +276,7 @@ export const COMMANDS: Command[] = [
         description: 'Browse and resume past conversations',
         value: '/resume',
         action: (ctx) => {
-            // Forwarded to Chat screen
+            // forwarded to chat screen
         },
     },
 
@@ -285,7 +285,7 @@ export const COMMANDS: Command[] = [
         description: 'Open settings',
         value: '/settings',
         action: (ctx) => {
-            // Forwarded to Chat screen
+            // forwarded to chat screen
         },
     },
 
@@ -294,7 +294,7 @@ export const COMMANDS: Command[] = [
         description: 'View background tasks',
         value: '/tasks',
         action: (ctx) => {
-            // Forwarded to Chat screen
+            // forwarded to chat screen
         },
     },
     {
@@ -304,7 +304,7 @@ export const COMMANDS: Command[] = [
         action: (ctx) => {
             exec('npm install -g @trydecember/cli', (err) => {
                 if (err) {
-                    // Update failed silently in bg, but we can't easily toast here if app is closed.
+                    // update failed silently in bg, but we can't easily toast here if app is closed.
                 }
             })
             ctx.toast.show({ message: 'Updating CLI in the background. Please restart soon.' })
@@ -315,7 +315,7 @@ export const COMMANDS: Command[] = [
         description: 'View quota usage',
         value: '/usage',
         action: (ctx) => {
-            // Forwarded to Chat screen
+            // forwarded to chat screen
         },
     },
 ]

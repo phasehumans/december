@@ -132,7 +132,7 @@ const changePassword = async (data: ChangePassword) => {
     }
 
     if (!existingUser.password) {
-        // OAuth only user setting password for the first time
+        // oauth only user setting password for the first time
         const hashPassword = await bcrypt.hash(newPassword, 10)
 
         await settingRepository.updatePassword(userId, hashPassword)

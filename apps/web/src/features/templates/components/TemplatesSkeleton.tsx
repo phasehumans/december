@@ -5,7 +5,7 @@ import { Skeleton } from '@/shared/components/ui/Skeleton'
 export const TemplatesSkeleton: React.FC = () => {
     return (
         <div className="flex flex-col gap-10">
-            {/* Featured Templates Skeleton */}
+            {/* featured templates skeleton */}
             <div className="mb-4">
                 <div className="flex items-center justify-between mb-5">
                     <Skeleton className="h-[18px] w-40 bg-white/[0.06]" />
@@ -39,7 +39,7 @@ export const TemplatesSkeleton: React.FC = () => {
                 </div>
             </div>
 
-            {/* Standard Templates Grid Skeleton */}
+            {/* standard templates grid skeleton */}
             <div>
                 <div className="flex items-center justify-between mb-6 border-b border-[#242323] pb-4">
                     <Skeleton className="h-5 w-28 bg-white/[0.06]" />

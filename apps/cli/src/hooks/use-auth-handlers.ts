@@ -483,7 +483,7 @@ export function useAuthHandlers(
             }
 
             setStaticMessages([{ id: 'header', role: 'header' }, ...resumedMessages])
-            setStaticKey((k) => k + 1) // Force Ink <Static> to remount and render the entire array
+            setStaticKey((k) => k + 1) // force ink <static> to remount and render the entire array
             setActiveMessages([
                 {
                     id: getNextMsgId(),

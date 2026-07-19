@@ -157,7 +157,7 @@ export const useAppController = () => {
         }
     }, [activeProjectId, profile?.username, activeProjectName, setProjectLoadError])
 
-    // Deep-link resolution
+    // deep-link resolution
     React.useEffect(() => {
         if (!isAuthenticated || activeProjectId || isProjectOpening) return
 
@@ -184,7 +184,7 @@ export const useAppController = () => {
         queryClient,
     ])
 
-    // Sync selected model to localStorage
+    // sync selected model to localstorage
     React.useEffect(() => {
         if (selectedModel) {
             localStorage.setItem('december_selected_model', selectedModel)
@@ -193,7 +193,7 @@ export const useAppController = () => {
         }
     }, [selectedModel])
 
-    // Auto-save canvas state
+    // auto-save canvas state
     React.useEffect(() => {
         if (!isAuthenticated || !activeProjectId) return
         const serialized = JSON.stringify(canvasState)
@@ -215,7 +215,7 @@ export const useAppController = () => {
         return () => clearTimeout(timer)
     }, [canvasState, activeProjectId, activeProjectVersionId, isAuthenticated, lastSavedCanvasRef])
 
-    // Poll preview session
+    // poll preview session
     React.useEffect(() => {
         if (!isAuthenticated || !activeProjectId || !activeProjectVersionId) {
             setPreviewSession(null)

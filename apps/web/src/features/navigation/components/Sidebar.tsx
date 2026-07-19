@@ -173,8 +173,8 @@ const Sidebar: React.FC<
         },
     ]
 
-    // Keep exact same size (was 200px when open)
-    // No collapse option
+    // keep exact same size (was 200px when open)
+    // no collapse option
 
     const { data: overview } = useBillingOverview()
     const isPro = (overview as any)?.plan === 'PRO'

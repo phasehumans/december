@@ -31,7 +31,7 @@ export const AddCreditsModal: React.FC<AddCreditsModalProps> = ({ onClose }) => 
     const [successMessage, setSuccessMessage] = useState<string | null>(null)
 
     const handleAmountChange = (val: string) => {
-        // Enforce whole numbers only by stripping any non-digits
+        // enforce whole numbers only by stripping any non-digits
         const cleanVal = val.replace(/\D/g, '')
         setAmountStr(cleanVal)
         setError(null)
@@ -121,7 +121,7 @@ export const AddCreditsModal: React.FC<AddCreditsModalProps> = ({ onClose }) => 
                     email: '',
                 },
                 theme: {
-                    color: '#FFFFFF', // Clean white theme for checkout button
+                    color: '#FFFFFF', // clean white theme for checkout button
                 },
             }
 
@@ -144,7 +144,7 @@ export const AddCreditsModal: React.FC<AddCreditsModalProps> = ({ onClose }) => 
             variant="premium"
         >
             <div className="flex flex-col gap-6 py-2">
-                {/* Amount Input */}
+                {/* amount input */}
                 <div className="flex flex-col gap-2">
                     <label
                         htmlFor="credit-amount-input"
@@ -169,7 +169,7 @@ export const AddCreditsModal: React.FC<AddCreditsModalProps> = ({ onClose }) => 
                             autoComplete="off"
                         />
                     </div>
-                    {/* Error displayed directly below input in simple red text */}
+                    {/* error displayed directly below input in simple red text */}
                     {error && (
                         <p className="text-[12px] text-red-500 mt-1 px-1 animate-in fade-in duration-200">
                             {error}
@@ -177,7 +177,7 @@ export const AddCreditsModal: React.FC<AddCreditsModalProps> = ({ onClose }) => 
                     )}
                 </div>
 
-                {/* Success Messaging (Error is displayed above) */}
+                {/* success messaging (error is displayed above) */}
                 {successMessage && (
                     <div className="flex items-center gap-2 text-xs text-emerald-500 bg-emerald-500/5 border border-emerald-500/10 p-3.5 rounded-xl animate-in fade-in slide-in-from-top-2 duration-200">
                         <Check className="h-4 w-4 shrink-0" />
@@ -185,7 +185,7 @@ export const AddCreditsModal: React.FC<AddCreditsModalProps> = ({ onClose }) => 
                     </div>
                 )}
 
-                {/* Footer Controls */}
+                {/* footer controls */}
                 <div className="mt-2 flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2 opacity-60">
                         <svg

@@ -36,7 +36,7 @@ export function KeyboardLayerProvider({ children }: { children: React.ReactNode 
         else responders.current.delete(id)
     }, [])
 
-    // Ctrl+C does nothing — user must use /exit
+    // ctrl+c does nothing — user must use /exit
     useInput((_input, key) => {
         if (key.ctrl && _input === 'c') {
             // intentionally swallowed — no exit

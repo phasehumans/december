@@ -13,7 +13,7 @@ import { useEffect, useRef } from 'react'
 
 import { cn } from '@/shared/lib/utils'
 
-// Helper component for gradient layers
+// helper component for gradient layers
 function GradientLayer({
     springX,
     springY,
@@ -67,17 +67,17 @@ export const NoiseBackground = ({
     const x = useMotionValue(0)
     const y = useMotionValue(0)
 
-    // Use spring animation for smooth movement
+    // use spring animation for smooth movement
     const springX = useSpring(x, { stiffness: 100, damping: 30 })
     const springY = useSpring(y, { stiffness: 100, damping: 30 })
 
-    // Transform for top gradient strip
+    // transform for top gradient strip
     const topGradientX = useTransform(springX, (val) => val * 0.1 - 50)
 
     const velocityRef = useRef({ x: 0, y: 0 })
     const lastDirectionChangeRef = useRef(0)
 
-    // Initialize position to center
+    // initialize position to center
     useEffect(() => {
         if (!containerRef.current) return
 
@@ -89,17 +89,17 @@ export const NoiseBackground = ({
         y.set(centerY)
     }, [x, y])
 
-    // Generate random velocity
+    // generate random velocity
     const generateRandomVelocityRef = useRef(() => {
         const angle = Math.random() * Math.PI * 2
-        const magnitude = speed * (0.5 + Math.random() * 0.5) // Random speed between 0.5x and 1x
+        const magnitude = speed * (0.5 + Math.random() * 0.5) // random speed between 0.5x and 1x
         return {
             x: Math.cos(angle) * magnitude,
             y: Math.sin(angle) * magnitude,
         }
     })
 
-    // Update generateRandomVelocity when speed changes
+    // update generaterandomvelocity when speed changes
     useEffect(() => {
         generateRandomVelocityRef.current = () => {
             const angle = Math.random() * Math.PI * 2
@@ -112,7 +112,7 @@ export const NoiseBackground = ({
         velocityRef.current = generateRandomVelocityRef.current()
     }, [speed])
 
-    // Animate using motion/react's useAnimationFrame
+    // animate using motion/react's useanimationframe
     useAnimationFrame((time) => {
         if (!animating || !containerRef.current) return
 
@@ -120,35 +120,35 @@ export const NoiseBackground = ({
         const maxX = rect.width
         const maxY = rect.height
 
-        // Change direction randomly every 1.5-3 seconds
+        // change direction randomly every 1.5-3 seconds
         if (time - lastDirectionChangeRef.current > 1500 + Math.random() * 1500) {
             velocityRef.current = generateRandomVelocityRef.current()
             lastDirectionChangeRef.current = time
         }
 
-        // Update position based on velocity (deltaTime is ~16ms per frame at 60fps)
-        const deltaTime = 16 // Approximate frame time
+        // update position based on velocity (deltatime is ~16ms per frame at 60fps)
+        const deltaTime = 16 // approximate frame time
         const currentX = x.get()
         const currentY = y.get()
 
         let newX = currentX + velocityRef.current.x * deltaTime
         let newY = currentY + velocityRef.current.y * deltaTime
 
-        // When hitting edges, generate a completely new random direction
-        // This ensures truly random movement in all 360 degrees, not just horizontal/vertical
-        const padding = 20 // Keep some distance from edges
+        // when hitting edges, generate a completely new random direction
+        // this ensures truly random movement in all 360 degrees, not just horizontal/vertical
+        const padding = 20 // keep some distance from edges
 
         if (newX < padding || newX > maxX - padding || newY < padding || newY > maxY - padding) {
-            // Generate completely random direction (full 360 degrees)
+            // generate completely random direction (full 360 degrees)
             const angle = Math.random() * Math.PI * 2
             const magnitude = speed * (0.5 + Math.random() * 0.5)
             velocityRef.current = {
                 x: Math.cos(angle) * magnitude,
                 y: Math.sin(angle) * magnitude,
             }
-            // Reset timer to allow immediate new direction
+            // reset timer to allow immediate new direction
             lastDirectionChangeRef.current = time
-            // Clamp position to stay within bounds
+            // clamp position to stay within bounds
             newX = Math.max(padding, Math.min(maxX - padding, newX))
             newY = Math.max(padding, Math.min(maxY - padding, newY))
         }
@@ -174,7 +174,7 @@ export const NoiseBackground = ({
                 } as React.CSSProperties
             }
         >
-            {/* Moving gradient layers */}
+            {/* moving gradient layers */}
             <GradientLayer
                 springX={springX}
                 springY={springY}
@@ -197,7 +197,7 @@ export const NoiseBackground = ({
                 multiplier={1.2}
             />
 
-            {/* Top gradient strip */}
+            {/* top gradient strip */}
             <motion.div
                 className="absolute inset-x-0 top-0 h-1 rounded-t-2xl opacity-80 blur-sm"
                 style={{
@@ -206,7 +206,7 @@ export const NoiseBackground = ({
                 }}
             />
 
-            {/* Static Noise Pattern */}
+            {/* static noise pattern */}
             <div className="pointer-events-none absolute inset-0 overflow-hidden">
                 <img
                     src="https://assets.aceternity.com/noise.webp"
@@ -216,7 +216,7 @@ export const NoiseBackground = ({
                 />
             </div>
 
-            {/* Content */}
+            {/* content */}
             <div className={cn('relative z-10', className)}>{children}</div>
         </div>
     )

@@ -15,8 +15,8 @@ export function AskQuestionMenu({ questions, onComplete }: AskQuestionMenuProps)
     const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0)
     const [answers, setAnswers] = useState<string[]>([])
 
-    // For now we just support single-select because standard ink-select-input doesn't do multi-select natively well
-    // If we need multi-select, we'd build a custom checkbox list.
+    // for now we just support single-select because standard ink-select-input doesn't do multi-select natively well
+    // if we need multi-select, we'd build a custom checkbox list.
     const currentQ = questions[currentQuestionIdx]
 
     if (!currentQ) return null

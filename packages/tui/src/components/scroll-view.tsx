@@ -23,7 +23,7 @@ export function ScrollView({ children, height }: { children: React.ReactNode; he
         }
     })
 
-    const viewHeight = height || rows - 5 // Subtract some lines for input bar
+    const viewHeight = height || rows - 5 // subtract some lines for input bar
 
     return (
         <Box flexDirection="column" overflow="hidden" height={viewHeight}>

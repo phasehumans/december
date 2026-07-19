@@ -79,11 +79,11 @@ export const ProfileSettingsContent: React.FC<ProfileSettingsContentProps> = (pr
 
     return (
         <div className="flex flex-col w-full max-w-[800px] text-[#D6D5C9]">
-            {/* Account */}
+            {/* account */}
             <div className="flex flex-col mb-6">
                 <h1 className="text-[16px] font-medium mb-3">Account</h1>
                 <div className="flex flex-col gap-2 border-t border-[#242323] pt-4">
-                    {/* Full Name Row */}
+                    {/* full name row */}
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
                         <div className="flex flex-col gap-0.5">
                             <span className="text-[14px] text-[#D6D5C9]">Full Name</span>
@@ -99,7 +99,7 @@ export const ProfileSettingsContent: React.FC<ProfileSettingsContentProps> = (pr
                         </button>
                     </div>
 
-                    {/* Username Row */}
+                    {/* username row */}
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
                         <div className="flex flex-col gap-0.5">
                             <span className="text-[14px] text-[#D6D5C9]">Username</span>
@@ -115,7 +115,7 @@ export const ProfileSettingsContent: React.FC<ProfileSettingsContentProps> = (pr
                         </button>
                     </div>
 
-                    {/* Email Row */}
+                    {/* email row */}
                     <div className="flex items-center justify-between">
                         <div className="flex flex-col gap-0.5">
                             <span className="text-[14px] text-[#D6D5C9]">Email</span>
@@ -125,7 +125,7 @@ export const ProfileSettingsContent: React.FC<ProfileSettingsContentProps> = (pr
                         </div>
                     </div>
 
-                    {/* Change Password Row */}
+                    {/* change password row */}
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
                         <div className="flex flex-col gap-0.5">
                             <span className="text-[14px] text-[#D6D5C9]">Password</span>
@@ -147,7 +147,7 @@ export const ProfileSettingsContent: React.FC<ProfileSettingsContentProps> = (pr
                 </div>
             </div>
 
-            {/* Notifications */}
+            {/* notifications */}
             <div className="flex flex-col mb-6">
                 <h2 className="text-[16px] font-medium text-[#D6D5C9] mb-3">Notifications</h2>
                 <div className="flex flex-col gap-6 border-t border-[#242323] pt-6 pb-2">
@@ -233,7 +233,7 @@ export const ProfileSettingsContent: React.FC<ProfileSettingsContentProps> = (pr
                 </div>
             </div>
 
-            {/* System */}
+            {/* system */}
             <div className="flex flex-col mb-6">
                 <h2 className="text-[16px] font-medium text-[#D6D5C9] mb-3">System</h2>
                 <div className="flex flex-col gap-6 sm:gap-2 border-t border-[#242323] pt-4">

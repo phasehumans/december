@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 
 interface BrowserPreviewProps {
-    sessionUrl?: string // The base URL where the dev server is exposed (e.g., a proxy route)
+    sessionUrl?: string // the base url where the dev server is exposed (e.g., a proxy route)
 }
 
 export const BrowserPreview: React.FC<BrowserPreviewProps> = ({ sessionUrl }) => {
@@ -32,7 +32,7 @@ export const BrowserPreview: React.FC<BrowserPreviewProps> = ({ sessionUrl }) =>
 
                 <div className="flex space-x-2">
                     <button
-                        onClick={() => window.history.back()} // Mock back action
+                        onClick={() => window.history.back()} // mock back action
                         className="p-1 rounded text-gray-500 hover:bg-gray-200 transition-colors"
                         title="Go back"
                     >

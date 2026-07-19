@@ -32,7 +32,7 @@ export const PublishTab: React.FC<PublishTabProps> = ({
     handleConnectVercel,
     onSwitchToGithubTab,
 }) => {
-    // Determine connection states
+    // determine connection states
     const showBothNotConnected = !isGithubConnected && !isVercelConnected
     const showGithubNotConnected = !isGithubConnected && isVercelConnected
     const showVercelNotConnected = isGithubConnected && !isVercelConnected
@@ -41,7 +41,7 @@ export const PublishTab: React.FC<PublishTabProps> = ({
         <div className="flex flex-col w-full max-w-[680px] text-[#D6D5C9] animate-in fade-in duration-200">
             <h1 className="text-[16px] font-medium mb-3">Vercel</h1>
             <div className="flex flex-col gap-6 border-t border-[#242323] pt-6 w-full">
-                {/* Connection/Deployment status UI */}
+                {/* connection/deployment status ui */}
                 {showBothNotConnected ? (
                     <div className="border border-dashed border-[#383736] rounded-xl py-14 flex flex-col items-center justify-center gap-4 bg-[#100E12]/30 hover:border-[#4A4948] transition-colors w-full">
                         <div className="flex items-center gap-3">
@@ -128,7 +128,7 @@ export const PublishTab: React.FC<PublishTabProps> = ({
                     </div>
                 ) : (
                     <div className="flex flex-col w-full animate-in fade-in duration-200">
-                        {/* Connected Header */}
+                        {/* connected header */}
                         <div className="flex items-center justify-between mb-6 w-full">
                             <div className="flex items-center gap-4 text-left">
                                 <div className="w-10 h-10 rounded-lg bg-[#191919] border border-[#383736] flex items-center justify-center shrink-0">
@@ -149,7 +149,7 @@ export const PublishTab: React.FC<PublishTabProps> = ({
                             </span>
                         </div>
 
-                        {/* Deployment Info Card */}
+                        {/* deployment info card */}
                         <div className="bg-[#1A1918] border border-[#2B2A29] p-5 rounded-xl flex flex-col gap-4 text-left mb-6 w-full">
                             <div className="flex items-center justify-between">
                                 <span className="text-[12px] text-[#7B7A79] font-medium uppercase tracking-[0.05em]">
@@ -194,7 +194,7 @@ export const PublishTab: React.FC<PublishTabProps> = ({
                             )}
                         </div>
 
-                        {/* Deploy Action and Helper Banner */}
+                        {/* deploy action and helper banner */}
                         <div className="flex flex-col gap-4 w-full">
                             <div className="flex flex-col gap-1.5 text-left w-full">
                                 <button
@@ -245,7 +245,7 @@ export const PublishTab: React.FC<PublishTabProps> = ({
                                 </div>
                             )}
 
-                            {/* Build Logs Console */}
+                            {/* build logs console */}
                             <div className="flex flex-col gap-2 border-t border-[#242323] pt-6 text-left w-full">
                                 <span className="text-[13px] font-medium text-[#7B7A79]">
                                     Terminal Build Logs & History

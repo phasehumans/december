@@ -12,7 +12,7 @@ export const handlePrompt = asyncHandler(async (req: Request, res: Response) => 
         return res.status(401).json({ success: false, message: 'unauthorized' })
     }
 
-    // Push job to Redis
+    // push job to redis
     await enqueueJob('prompt_job', {
         prompt,
         projectId,

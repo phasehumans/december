@@ -5,8 +5,8 @@ import { expect, test, describe, mock, spyOn, afterEach, beforeEach } from 'bun:
 import { localOperations } from '../src/local-operations'
 import { taskManager } from '../src/task-manager'
 
-// Note: localOperations.bash uses createLocalBashOperations, which we would mock ideally,
-// but since we are testing the CLI glue code, we can just test task status overrides.
+// note: localoperations.bash uses createlocalbashoperations, which we would mock ideally,
+// but since we are testing the cli glue code, we can just test task status overrides.
 
 describe('local-operations', () => {
     describe('bash task management', () => {

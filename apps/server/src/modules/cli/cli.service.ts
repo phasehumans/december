@@ -17,7 +17,7 @@ export const verifyWalletBalance = async (userId: string) => {
 import { prisma } from '@december/database'
 
 export const generateHandoffUrl = async (userId: string) => {
-    // Check for Handoff Conflicts (Phase 3.4)
+    // check for handoff conflicts (phase 3.4)
     const activeSession = await prisma.session.findFirst({
         where: {
             userId,
@@ -48,7 +48,7 @@ export const generateHandoffUrl = async (userId: string) => {
 }
 
 export const proxyChatCompletions = async (userId: string, body: any, res: Response) => {
-    // Force stream and include usage
+    // force stream and include usage
     body.stream = true
     if (!body.stream_options) {
         body.stream_options = { include_usage: true }
@@ -99,7 +99,7 @@ export const proxyChatCompletions = async (userId: string, body: any, res: Respo
             const chunk = decoder.decode(value, { stream: true })
             res.write(chunk)
 
-            // Extract usage from SSE
+            // extract usage from sse
             const lines = chunk.split('\n')
             for (const line of lines) {
                 if (line.startsWith('data: ') && line !== 'data: [DONE]') {
@@ -117,7 +117,7 @@ export const proxyChatCompletions = async (userId: string, body: any, res: Respo
     } finally {
         res.end()
 
-        // Record usage asynchronously after stream ends
+        // record usage asynchronously after stream ends
         if (usage) {
             usageService
                 .recordUsageEvent({
@@ -139,9 +139,9 @@ export const completeHandoff = async (
     messages: any[],
     objectKey: string
 ) => {
-    // If we wanted to link objectKey, we'd alter the DB or store it in ProjectMemory.
-    // For now, we will store it inside messages as a system note or create a ProjectImport.
-    // Let's just create a Session.
+    // if we wanted to link objectkey, we'd alter the db or store it in projectmemory.
+    // for now, we will store it inside messages as a system note or create a projectimport.
+    // let's just create a session.
     const session = await cliRepository.createSession({
         userId,
         title: title || 'Handoff Session',

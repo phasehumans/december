@@ -76,7 +76,7 @@ export const SidebarHeader: React.FC<{
     return (
         <div className="px-3 mb-2 mt-0 z-30 relative">
             <div className="bg-[#1F1F1F] rounded-[14px] p-1 flex flex-col gap-0.5 -mx-1 relative">
-                {/* Sliding Background */}
+                {/* sliding background */}
                 <div
                     className={`absolute left-1 right-1 h-[32px] bg-[#141414] border border-white/5 shadow-sm rounded-[10px] transition-transform duration-300 ease-[cubic-bezier(0.2,1,0.2,1)] ${
                         activeTab === 'canvas' ? 'translate-y-[34px]' : 'translate-y-0'

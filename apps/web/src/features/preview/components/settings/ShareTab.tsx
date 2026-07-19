@@ -47,7 +47,7 @@ export const ShareTab: React.FC<ShareTabProps> = ({
 
     const isOwner = profile?.id === project?.userId
 
-    // Fetch initial collaborators
+    // fetch initial collaborators
     useEffect(() => {
         if (!projectId) return
         const fetchCollabs = async () => {
@@ -108,7 +108,7 @@ export const ShareTab: React.FC<ShareTabProps> = ({
         <div className="flex flex-col w-full max-w-[680px] text-[#D6D5C9] animate-in fade-in duration-200">
             <h1 className="text-[16px] font-medium mb-3 text-left">Share & Collaboration</h1>
             <div className="flex flex-col gap-8 border-t border-[#242323] pt-6">
-                {/* Banners */}
+                {/* banners */}
                 {errorMsg && (
                     <div className="flex items-center justify-between gap-3 bg-red-950/40 border border-red-900/50 text-red-200 px-4 py-3 rounded-xl text-[13px] animate-in fade-in duration-200 text-left shadow-sm">
                         <div className="flex items-center gap-2.5">
@@ -125,7 +125,7 @@ export const ShareTab: React.FC<ShareTabProps> = ({
                     </div>
                 )}
 
-                {/* Success Banner */}
+                {/* success banner */}
                 {successMsg && (
                     <div className="flex items-center justify-between gap-3 bg-emerald-950/40 border border-emerald-900/50 text-emerald-200 px-4 py-3 rounded-xl text-[13px] animate-in fade-in duration-200 text-left shadow-sm">
                         <div className="flex items-center gap-2.5">
@@ -142,7 +142,7 @@ export const ShareTab: React.FC<ShareTabProps> = ({
                     </div>
                 )}
 
-                {/* Invite User */}
+                {/* invite user */}
                 {isOwner && (
                     <div className="flex flex-col gap-3 text-left">
                         <span className="text-[14px] font-medium text-[#D6D5C9]">
@@ -177,13 +177,13 @@ export const ShareTab: React.FC<ShareTabProps> = ({
                     </div>
                 )}
 
-                {/* Collaborators List (Minimal & List View) */}
+                {/* collaborators list (minimal & list view) */}
                 <div className="flex flex-col gap-3 text-left">
                     <span className="text-[14px] font-medium text-[#D6D5C9]">
                         Active Collaborators
                     </span>
                     <div className="flex flex-col divide-y divide-[#242323] border border-[#242323] rounded-xl bg-[#141414] overflow-hidden">
-                        {/* Project Owner Row */}
+                        {/* project owner row */}
                         {project?.user && (
                             <div className="flex items-center justify-between px-4 py-3.5 hover:bg-[#1A1918] transition-colors">
                                 <div className="flex items-center gap-3 min-w-0">
@@ -202,7 +202,7 @@ export const ShareTab: React.FC<ShareTabProps> = ({
                             </div>
                         )}
 
-                        {/* Collaborator Rows */}
+                        {/* collaborator rows */}
                         {isLoadingCollaborators ? (
                             <div className="flex items-center justify-center py-8 text-[#7B7A79] text-[13px] gap-2">
                                 <Loader2 size={16} className="animate-spin text-[#7B7A79]" />

@@ -63,7 +63,7 @@ export const UserProfilePopover: React.FC<UserProfilePopoverProps> = ({
             setPosition({
                 bottom: window.innerHeight - rect.top + 8,
                 left: rect.left,
-                width: 280, // Decreased width by 20px
+                width: 280, // decreased width by 20px
             })
         }
 
@@ -175,7 +175,7 @@ export const UserProfilePopover: React.FC<UserProfilePopoverProps> = ({
                 width: position.width,
             }}
         >
-            {/* User Info Header */}
+            {/* user info header */}
             <div className="flex items-center gap-2.5 px-2 py-1.5 mb-1">
                 <div className="flex items-center justify-center w-7 h-7 rounded-full bg-white/[0.04] text-[#8F8E8D] shrink-0 overflow-hidden">
                     <Icons.UserCircle className="w-3.5 h-3.5" />
@@ -192,7 +192,7 @@ export const UserProfilePopover: React.FC<UserProfilePopoverProps> = ({
 
             <div className="h-[1px] bg-[#2B2A29] mx-1 mb-1.5 mt-1" />
 
-            {/* Menu Items */}
+            {/* menu items */}
             <div className="flex flex-col gap-0">
                 {menuItems.map((item, index) => (
                     <button
@@ -227,7 +227,7 @@ export const UserProfilePopover: React.FC<UserProfilePopoverProps> = ({
 
             <div className="h-[1px] bg-[#2B2A29] mx-1 my-1" />
 
-            {/* Sign Out Section */}
+            {/* sign out section */}
             <button
                 onClick={() => {
                     onSignOut?.()

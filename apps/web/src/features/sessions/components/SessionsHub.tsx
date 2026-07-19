@@ -4,7 +4,7 @@ export const SessionsHub: React.FC = () => {
     const [searchQuery, setSearchQuery] = useState('')
     const [filterArchived, setFilterArchived] = useState(false)
 
-    // Placeholder data
+    // placeholder data
     const sessions = [
         {
             id: '1',

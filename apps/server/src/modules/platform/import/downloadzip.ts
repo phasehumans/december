@@ -23,7 +23,7 @@ export async function downloadGitHubRepoArchive(
     try {
         await mkdir(tempRootDir, { recursive: true })
 
-        // Execute git clone
+        // execute git clone
         const cloneCommand = resolvedRef
             ? `git clone --depth 1 -b ${resolvedRef} ${cloneUrl} "${tempRootDir}"`
             : `git clone --depth 1 ${cloneUrl} "${tempRootDir}"`
@@ -31,7 +31,7 @@ export async function downloadGitHubRepoArchive(
         try {
             await execAsync(cloneCommand)
         } catch (err: any) {
-            // If it fails with a specific ref, fallback to default clone
+            // if it fails with a specific ref, fallback to default clone
             if (resolvedRef) {
                 await execAsync(`git clone --depth 1 ${cloneUrl} "${tempRootDir}"`)
             } else {
@@ -39,7 +39,7 @@ export async function downloadGitHubRepoArchive(
             }
         }
 
-        // Remove the .git directory so it doesn't get validated/uploaded
+        // remove the .git directory so it doesn't get validated/uploaded
         await rm(join(tempRootDir, '.git'), { recursive: true, force: true }).catch(() => undefined)
 
         return {
@@ -54,7 +54,7 @@ export async function downloadGitHubRepoArchive(
             repoRootDir: tempRootDir,
         }
     } catch (error: any) {
-        // Remove token from output
+        // remove token from output
         const sanitizedError = error.message
             ? error.message.replace(accessToken, '***')
             : 'Git clone failed'

@@ -32,14 +32,14 @@ export function CommandMenu({ query, selectedIndex, windowStart }: CommandMenuPr
 
     return (
         <Box flexDirection="column">
-            {/* ↑ N more */}
+            {/* ↑ n more */}
             {itemsAbove > 0 && (
                 <Box paddingLeft={2}>
                     <Text color="#AAAAAA">↑ {itemsAbove} more</Text>
                 </Box>
             )}
 
-            {/* Command rows */}
+            {/* command rows */}
             {visibleItems.map((cmd, relIdx) => {
                 const absIdx = windowStart + relIdx
                 const isSelected = absIdx === selectedIndex
@@ -58,14 +58,14 @@ export function CommandMenu({ query, selectedIndex, windowStart }: CommandMenuPr
                 )
             })}
 
-            {/* ↓ N more */}
+            {/* ↓ n more */}
             {itemsBelow > 0 && (
                 <Box paddingLeft={2}>
                     <Text color="#AAAAAA">↓ {itemsBelow} more</Text>
                 </Box>
             )}
 
-            {/* Footer */}
+            {/* footer */}
             <Box flexDirection="column" paddingLeft={2} paddingTop={1} paddingBottom={1}>
                 <Box gap={1}>
                     <Text color="#89B4F8">↑/↓</Text>

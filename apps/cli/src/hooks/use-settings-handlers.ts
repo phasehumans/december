@@ -100,7 +100,7 @@ export function useSettingsHandlers() {
                 setSettingsAuthPriority(newPriority)
                 updated = true
 
-                // Hot reload the LLM
+                // hot reload the llm
                 await saveConfig(config)
                 const newProviderConfig = await getProviderConfig()
                 if (newProviderConfig && agent) {

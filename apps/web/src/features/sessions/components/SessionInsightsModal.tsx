@@ -36,7 +36,7 @@ export const SessionInsightsModal: React.FC<SessionInsightsModalProps> = ({
         }
     }, [session, isOpen])
 
-    // Generate dynamic focus areas based on session details
+    // generate dynamic focus areas based on session details
     const getFocusAreas = () => {
         const areas = []
         if (session?.tags && session.tags.length > 0) {
@@ -94,7 +94,7 @@ export const SessionInsightsModal: React.FC<SessionInsightsModalProps> = ({
                 </div>
             ) : (
                 <div className="flex flex-col gap-5 mt-2 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                    {/* Insights from Backend (if any) */}
+                    {/* insights from backend (if any) */}
                     {insights.length > 0 && (
                         <div className="flex flex-col gap-2">
                             <h3 className="text-[11px] font-semibold text-[#8F8E8D] uppercase tracking-wider">
@@ -113,7 +113,7 @@ export const SessionInsightsModal: React.FC<SessionInsightsModalProps> = ({
                         </div>
                     )}
 
-                    {/* Dashboard Grid */}
+                    {/* dashboard grid */}
                     <div className="grid grid-cols-2 gap-3">
                         <div className="bg-white/[0.02] border border-white/5 p-3.5 rounded-xl flex flex-col gap-1">
                             <span className="text-[11px] text-[#7B7A79] font-medium">
@@ -150,7 +150,7 @@ export const SessionInsightsModal: React.FC<SessionInsightsModalProps> = ({
                         </div>
                     </div>
 
-                    {/* Focus Areas */}
+                    {/* focus areas */}
                     <div className="flex flex-col gap-2">
                         <h4 className="text-[11px] font-semibold text-[#8F8E8D] uppercase tracking-wider">
                             Key Focus Areas
@@ -167,7 +167,7 @@ export const SessionInsightsModal: React.FC<SessionInsightsModalProps> = ({
                         </div>
                     </div>
 
-                    {/* Recommendations / Tips */}
+                    {/* recommendations / tips */}
                     <div className="bg-amber-500/5 border border-amber-500/20 p-4 rounded-xl flex gap-3">
                         <Icons.Sparkles className="w-5 h-5 text-amber-400 shrink-0 mt-0.5 animate-pulse" />
                         <div className="flex flex-col gap-1">
@@ -181,7 +181,7 @@ export const SessionInsightsModal: React.FC<SessionInsightsModalProps> = ({
                         </div>
                     </div>
 
-                    {/* Close Button */}
+                    {/* close button */}
                     <div className="mt-2 flex items-center justify-end">
                         <button
                             type="button"

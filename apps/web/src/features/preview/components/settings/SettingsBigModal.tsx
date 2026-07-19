@@ -109,7 +109,7 @@ export const SettingsBigModal: React.FC<SettingsModalProps> = ({
             icon={<Settings size={16} />}
             onClose={handleClose}
         >
-            {/* Sidebar */}
+            {/* sidebar */}
             <div className="w-[220px] shrink-0 border-r border-[#242323] flex flex-col py-4 bg-[#141414]">
                 <div className="px-4 mb-6">
                     <button
@@ -149,9 +149,9 @@ export const SettingsBigModal: React.FC<SettingsModalProps> = ({
                 </div>
             </div>
 
-            {/* Right Pane */}
+            {/* right pane */}
             <div className="flex-1 flex flex-col min-w-0 h-full bg-[#141414] relative">
-                {/* Content Area */}
+                {/* content area */}
                 <div className="flex-1 overflow-y-auto [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/10 hover:[&::-webkit-scrollbar-thumb]:bg-white/20 p-8 pr-16">
                     {isLoading ? (
                         <div className="flex items-center justify-center py-20 text-[#7B7A79] text-[13px]">

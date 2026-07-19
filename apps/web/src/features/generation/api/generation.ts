@@ -289,7 +289,7 @@ const generateProjectStream = async ({
     let targetSessionId = projectId
 
     if (!targetSessionId) {
-        // Create new session if no projectId provided
+        // create new session if no projectid provided
         const newSession = await sessionAPI.createSession({
             prompt,
             type: 'WEB',
@@ -313,13 +313,13 @@ const generateProjectStream = async ({
 }
 
 const applyProjectEdit = async (data: ApplyProjectEditInput) => {
-    // For now, treat edit as a regular prompt in the session
+    // for now, treat edit as a regular prompt in the session
     const prompt = `[EDIT] ${data.prompt}${data.selectedElement ? ` (Element: ${data.selectedElement.tagName})` : ''}`
     return await runOverSocket(data.projectId, prompt, data.onEvent, data.signal)
 }
 
 const applyProjectFix = async (data: ApplyProjectFixInput) => {
-    // Treat fix as a regular prompt in the session
+    // treat fix as a regular prompt in the session
     const prompt = `[FIX ERROR] ${data.errorMessage}\n\nStack:\n${data.stack || ''}`
     return await runOverSocket(data.projectId, prompt, data.onEvent, data.signal)
 }

@@ -36,7 +36,7 @@ export const OutputHeaderActions: React.FC<OutputHeaderActionsProps> = ({
 
     return (
         <div className="flex items-center gap-0.5 relative">
-            {/* Settings */}
+            {/* settings */}
             <Button
                 variant="ghost"
                 size="icon"
@@ -47,7 +47,7 @@ export const OutputHeaderActions: React.FC<OutputHeaderActionsProps> = ({
                 <Settings size={16} />
             </Button>
 
-            {/* Download */}
+            {/* download */}
             <Button
                 variant="ghost"
                 size="icon"
@@ -59,7 +59,7 @@ export const OutputHeaderActions: React.FC<OutputHeaderActionsProps> = ({
                 <Download size={16} />
             </Button>
 
-            {/* Publish */}
+            {/* publish */}
             <Button
                 onClick={() => openSettings('publish')}
                 variant="secondary"
@@ -68,7 +68,7 @@ export const OutputHeaderActions: React.FC<OutputHeaderActionsProps> = ({
                 Publish
             </Button>
 
-            {/* Big full-screen settings overlay */}
+            {/* big full-screen settings overlay */}
             {activePanel === 'settings' && (
                 <SettingsBigModal
                     onClose={() => setActivePanel(null)}

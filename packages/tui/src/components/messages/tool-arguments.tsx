@@ -4,7 +4,7 @@ import React from 'react'
 export function ToolArgumentsDisplay({ toolName, inputObj }: { toolName: string; inputObj: any }) {
     if (!inputObj || typeof inputObj !== 'object') return null
 
-    // For file replacement tools, we show a clean table of what's being edited
+    // for file replacement tools, we show a clean table of what's being edited
     if (toolName === 'multi_replace_file_content' || toolName === 'replace_file_content') {
         const path = inputObj.TargetFile || inputObj.path || ''
         const chunks =
@@ -49,7 +49,7 @@ export function ToolArgumentsDisplay({ toolName, inputObj }: { toolName: string;
         )
     }
 
-    // For general tools, avoid massive dumps
+    // for general tools, avoid massive dumps
     const entries = Object.entries(inputObj).filter(([key]) => {
         if (toolName === 'run_command' || toolName === 'bash') {
             if (key === 'command' || key === 'CommandLine') return false

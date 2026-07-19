@@ -195,7 +195,7 @@ export const useCanvasController = (
                 }
             }
 
-            // Spacebar or Shift key down: temporarily shift to 'hand' tool
+            // spacebar or shift key down: temporarily shift to 'hand' tool
             if (e.key === ' ' || e.key === 'Shift') {
                 const currentTool = activeToolRef.current
                 if (currentTool !== 'hand' && !previousToolRef.current) {

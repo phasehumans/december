@@ -61,7 +61,7 @@ async function main() {
     process.title = 'december'
     process.stdout.write('\x1b]0;december\x07')
 
-    // Suppress noisy SDK console logs that corrupt the Ink TUI layout
+    // suppress noisy sdk console logs that corrupt the ink tui layout
     console.warn = () => {}
     console.error = () => {}
     console.log = () => {}
@@ -70,8 +70,8 @@ async function main() {
     const providerConfig = await getProviderConfig()
     const authStatus = await getAuthStatus()
 
-    // If not authenticated, we pass a dummy provider so the Agent can boot.
-    // The TUI will intercept prompts and force them to /login
+    // if not authenticated, we pass a dummy provider so the agent can boot.
+    // the tui will intercept prompts and force them to /login
     let llm: any
     if (providerConfig) {
         switch (providerConfig.provider) {
@@ -180,7 +180,7 @@ Guidelines:
         workspaceDir: process.cwd(),
         hooks: {
             beforeToolCall: async (toolCall) => {
-                // Future integration: Hook into the TUI to request user approval for destructive bash commands
+                // future integration: hook into the tui to request user approval for destructive bash commands
             },
         },
         thinkingLevel: config.thinkingLevel,
@@ -289,7 +289,7 @@ Guidelines:
             })
             if (!sessionRes.ok) throw new Error(await sessionRes.text())
 
-            // Clean up
+            // clean up
             fs.unlinkSync(archivePath)
 
             console.log('Handoff complete! You can now resume this session on December Cloud.')
@@ -359,7 +359,7 @@ Guidelines:
             return { block: false }
         }
 
-        // Steer while streaming
+        // steer while streaming
         rl.on('line', (input: string) => {
             if (input.trim()) {
                 agent.steer({ role: 'user', content: input, isUI: true })

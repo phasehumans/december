@@ -243,7 +243,7 @@ const startPreview = async (data: StartPreview) => {
         throw new Error('An active session is already running')
     }
 
-    // Validate session structure
+    // validate session structure
     const validation = await validateSessionStructure(session.id)
     if (!validation.isValid) {
         return getInvalidStructureStatus(session.id, validation.error!)
@@ -256,7 +256,7 @@ const startPreview = async (data: StartPreview) => {
     const isImported = await runtimeRepository.findSessionImport({ sessionId: session.id })
     const isGithub = !!session.githubRepoUrl
     
-    // Check if it's a duplicate or remix by checking S3 files
+    // check if it's a duplicate or remix by checking s3 files
     const prefix = sessionWorkspacePrefix(session.id)
     const objects = await listPrefix(prefix)
     const storedFiles = objects.map((obj) => obj.Key?.substring(prefix.length) || '').filter(Boolean)
@@ -337,12 +337,12 @@ const deletePreview = async (data: PreviewIdentifier) => {
         status.previewUrl
 
     if (hasValidPreview && status && status.previewUrl) {
-        // Capture screenshot in the background (which will schedule container deletion in 5 min)
+        // capture screenshot in the background (which will schedule container deletion in 5 min)
         takePreviewScreenshot(session.id, status.previewUrl).catch((err) => {
             console.error('Unhandled error in takePreviewScreenshot:', err)
         })
     } else {
-        // Delete container immediately
+        // delete container immediately
         await runtimeRequest<{ deleted: boolean }>(`/previews/${encodeURIComponent(previewId)}`, {
             method: 'DELETE',
         }).catch(() => null)

@@ -14,7 +14,7 @@ import { useSettingsHandlers } from './use-settings-handlers'
 
 import type { Message } from '@december/tui'
 
-// formatters and msgId extracted
+// formatters and msgid extracted
 
 export function useAgentSession({
     agent,
@@ -208,7 +208,7 @@ export function useAgentSession({
         }
     }, [agent])
 
-    // Hooks state
+    // hooks state
 
     useEffect(() => {
         if (authMode === 'tasks_mode') {
@@ -479,7 +479,7 @@ export function useAgentSession({
                 return
             }
 
-            // Intercept /plan commands anywhere in the text
+            // intercept /plan commands anywhere in the text
             const planMatch = text.trim().match(/(.*?)(?:\s|^)\/plan(?:\s(.*))?$/s)
             if (planMatch) {
                 const before = planMatch[1] || ''
@@ -488,7 +488,7 @@ export function useAgentSession({
 
                 if (planPromptText.length > 0) {
                     text = planPromptText
-                    // Fallthrough to handleMessage but with isPlanningTurn = true (set below)
+                    // fallthrough to handlemessage but with isplanningturn = true (set below)
                 } else {
                     setPlanMode(!planMode)
                     setGrillMode(false)
@@ -496,7 +496,7 @@ export function useAgentSession({
                 }
             }
 
-            // Intercept /grill-me or /grill commands anywhere in the text
+            // intercept /grill-me or /grill commands anywhere in the text
             const grillMatch = text.trim().match(/(.*?)(?:\s|^)\/(grill-me|grill)(?:\s(.*))?$/s)
             if (grillMatch) {
                 const before = grillMatch[1] || ''
@@ -512,7 +512,7 @@ export function useAgentSession({
                 return
             }
 
-            // Handle active modes (if the user previously toggled them on)
+            // handle active modes (if the user previously toggled them on)
             if (grillMode) {
                 setGrillMode(false)
                 await generateGrillQuestions(text.trim())
@@ -569,7 +569,7 @@ export function useAgentSession({
                 return
             }
 
-            // Normal chat logic
+            // normal chat logic
             if (isStreaming) {
                 agent.steer({ role: 'user', content: text, isUI: true })
                 setActiveMessages((prev) => [...prev, { id: getNextMsgId(), role: 'user', text }])

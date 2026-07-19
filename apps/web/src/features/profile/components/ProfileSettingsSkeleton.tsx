@@ -12,11 +12,11 @@ export const ProfileSettingsSkeleton: React.FC<ProfileSettingsSkeletonProps> = (
     if (activeTab === 'Preferences' || activeTab === 'General') {
         return (
             <div className="flex flex-col w-full max-w-[800px] text-[#D6D5C9]">
-                {/* Preferences Section */}
+                {/* preferences section */}
                 <div className="flex flex-col mb-10">
                     <Skeleton className="h-[18px] w-28 mb-4 bg-white/[0.06]" />
                     <div className="flex flex-col gap-7 border-t border-[#242323] pt-6">
-                        {/* Chat suggestions skeleton */}
+                        {/* chat suggestions skeleton */}
                         <div className="flex items-center justify-between">
                             <div className="flex flex-col gap-2">
                                 <Skeleton className="h-4 w-32 bg-white/[0.06]" />
@@ -24,7 +24,7 @@ export const ProfileSettingsSkeleton: React.FC<ProfileSettingsSkeletonProps> = (
                             </div>
                             <Skeleton className="h-5 w-9 rounded-full bg-white/[0.06]" />
                         </div>
-                        {/* Generation sound skeleton */}
+                        {/* generation sound skeleton */}
                         <div className="flex items-start justify-between">
                             <div className="flex flex-col gap-2 max-w-[60%]">
                                 <Skeleton className="h-4 w-48 bg-white/[0.06]" />
@@ -43,14 +43,14 @@ export const ProfileSettingsSkeleton: React.FC<ProfileSettingsSkeletonProps> = (
                     </div>
                 </div>
 
-                {/* Custom design Section */}
+                {/* custom design section */}
                 <div className="flex flex-col mb-10">
                     <Skeleton className="h-[18px] w-32 mb-4 bg-white/[0.06]" />
                     <div className="flex flex-col gap-4 border border-[#242323] rounded-xl p-5 bg-[#141414]">
                         <Skeleton className="h-3.5 w-[90%] bg-white/[0.04]" />
                         <Skeleton className="h-3.5 w-3/4 mb-4 bg-white/[0.04]" />
 
-                        {/* design Editor skeleton */}
+                        {/* design editor skeleton */}
                         <div className="flex flex-col border border-[#2B2A29] rounded-xl overflow-hidden bg-[#131211]">
                             <div className="flex items-center justify-between px-4 py-3 bg-[#131211] border-b border-[#2B2A29]">
                                 <Skeleton className="h-4 w-20 bg-white/[0.06]" />
@@ -73,7 +73,7 @@ export const ProfileSettingsSkeleton: React.FC<ProfileSettingsSkeletonProps> = (
     if (activeTab === 'Billing') {
         return (
             <div className="flex flex-col w-full max-w-[680px] text-[#D6D5C9] animate-in fade-in duration-200">
-                {/* Current Plan Skeleton */}
+                {/* current plan skeleton */}
                 <div className="flex flex-col mb-8">
                     <Skeleton className="h-[18px] w-32 mb-4 bg-white/[0.06]" />
                     <div className="flex flex-col gap-7 border-t border-[#242323] pt-6">
@@ -87,7 +87,7 @@ export const ProfileSettingsSkeleton: React.FC<ProfileSettingsSkeletonProps> = (
                     </div>
                 </div>
 
-                {/* Plans Comparison Skeleton */}
+                {/* plans comparison skeleton */}
                 <div className="flex flex-col mb-8">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                         {[1, 2].map((i) => (
@@ -113,7 +113,7 @@ export const ProfileSettingsSkeleton: React.FC<ProfileSettingsSkeletonProps> = (
                     </div>
                 </div>
 
-                {/* Credit Balance Skeleton */}
+                {/* credit balance skeleton */}
                 <div className="flex flex-col mb-8">
                     <Skeleton className="h-[18px] w-32 mb-4 bg-white/[0.06]" />
                     <div className="flex flex-col gap-6 border-t border-[#242323] pt-6">
@@ -136,7 +136,7 @@ export const ProfileSettingsSkeleton: React.FC<ProfileSettingsSkeletonProps> = (
                     </div>
                 </div>
 
-                {/* Credit Expiration Schedule Skeleton */}
+                {/* credit expiration schedule skeleton */}
                 <div className="flex flex-col mb-8">
                     <Skeleton className="h-[18px] w-48 mb-4 bg-white/[0.06]" />
                     <div className="flex flex-col border-t border-[#242323]">
@@ -153,7 +153,7 @@ export const ProfileSettingsSkeleton: React.FC<ProfileSettingsSkeletonProps> = (
                     </div>
                 </div>
 
-                {/* Used and Expired Credits Skeleton */}
+                {/* used and expired credits skeleton */}
                 <div className="flex flex-col mb-8">
                     <Skeleton className="h-[18px] w-56 mb-4 bg-white/[0.06]" />
                     <div className="flex flex-col border-t border-[#242323]">
@@ -190,7 +190,7 @@ export const ProfileSettingsSkeleton: React.FC<ProfileSettingsSkeletonProps> = (
                         </div>
 
                         <div className="flex flex-col border border-[#242323] rounded-xl overflow-hidden bg-[#100E12] shadow-sm">
-                            {/* Table Header skeleton */}
+                            {/* table header skeleton */}
                             <div className="grid grid-cols-[130px_1fr_140px_100px_70px] items-center py-3.5 px-5 border-b border-[#242323] bg-[#141414] text-[12px] text-[#7B7A79] font-medium">
                                 <div>Date</div>
                                 <div>Project</div>
@@ -198,7 +198,7 @@ export const ProfileSettingsSkeleton: React.FC<ProfileSettingsSkeletonProps> = (
                                 <div>Token Usage</div>
                                 <div className="text-right">Cost</div>
                             </div>
-                            {/* Table rows skeleton */}
+                            {/* table rows skeleton */}
                             {Array.from({ length: 8 }).map((_, i) => (
                                 <div
                                     key={i}
@@ -237,7 +237,7 @@ export const ProfileSettingsSkeleton: React.FC<ProfileSettingsSkeletonProps> = (
                         <Skeleton className="h-4 w-full mb-2 bg-white/[0.04]" />
                         <Skeleton className="h-4 w-3/4 mb-8 bg-white/[0.04]" />
 
-                        {/* API keys card skeleton */}
+                        {/* api keys card skeleton */}
                         <div className="w-full rounded-xl border border-dashed border-[#383736] py-20 flex flex-col items-center justify-center gap-4 bg-[#100E12]/30">
                             <Skeleton className="h-4 w-32 bg-white/[0.04]" />
                             <Skeleton className="h-8 w-24 rounded-lg bg-white/[0.04]" />
@@ -251,7 +251,7 @@ export const ProfileSettingsSkeleton: React.FC<ProfileSettingsSkeletonProps> = (
     if (activeTab === 'Integrations') {
         return (
             <div className="flex flex-col w-full max-w-[720px] text-[#D6D5C9]">
-                {/* Integrations list skeleton */}
+                {/* integrations list skeleton */}
                 <div className="flex flex-col mb-10">
                     <Skeleton className="h-[18px] w-28 mb-4 bg-white/[0.06]" />
                     <div className="flex flex-col gap-5 border-t border-[#242323] pt-6">
@@ -270,15 +270,15 @@ export const ProfileSettingsSkeleton: React.FC<ProfileSettingsSkeletonProps> = (
                     </div>
                 </div>
 
-                {/* Repositories section skeleton */}
+                {/* repositories section skeleton */}
                 <div className="flex flex-col mb-10">
                     <Skeleton className="h-[18px] w-48 mb-4 bg-white/[0.06]" />
                     <div className="flex flex-col border border-[#2B2A29] rounded-xl overflow-hidden bg-[#131211]">
-                        {/* Header skeleton */}
+                        {/* header skeleton */}
                         <div className="flex items-center px-5 py-3 bg-[#141414] border-b border-[#2B2A29]">
                             <Skeleton className="h-4 w-40 bg-white/[0.06] rounded" />
                         </div>
-                        {/* Repo list skeleton */}
+                        {/* repo list skeleton */}
                         {[1, 2, 3, 4, 5].map((i) => (
                             <div
                                 key={i}
@@ -304,10 +304,10 @@ export const ProfileSettingsSkeleton: React.FC<ProfileSettingsSkeletonProps> = (
         )
     }
 
-    // Default to Account skeleton
+    // default to account skeleton
     return (
         <div className="flex flex-col w-full max-w-[680px] text-[#D6D5C9]">
-            {/* Account Skeleton */}
+            {/* account skeleton */}
             <div className="flex flex-col mb-8">
                 <Skeleton className="h-[18px] w-24 mb-4 bg-white/[0.06]" />
                 <div className="flex flex-col gap-3 border-t border-[#242323] pt-5">
@@ -327,7 +327,7 @@ export const ProfileSettingsSkeleton: React.FC<ProfileSettingsSkeletonProps> = (
                 </div>
             </div>
 
-            {/* Your Subscription Skeleton */}
+            {/* your subscription skeleton */}
             <div className="flex flex-col mb-8">
                 <Skeleton className="h-[18px] w-36 mb-4 bg-white/[0.06]" />
                 <div className="flex items-center justify-between border-t border-[#242323] pt-5">
@@ -339,7 +339,7 @@ export const ProfileSettingsSkeleton: React.FC<ProfileSettingsSkeletonProps> = (
                 </div>
             </div>
 
-            {/* Notifications Skeleton */}
+            {/* notifications skeleton */}
             <div className="flex flex-col mb-8">
                 <Skeleton className="h-[18px] w-28 mb-4 bg-white/[0.06]" />
                 <div className="flex flex-col gap-7 border-t border-[#242323] pt-6 pb-2">
@@ -355,7 +355,7 @@ export const ProfileSettingsSkeleton: React.FC<ProfileSettingsSkeletonProps> = (
                 </div>
             </div>
 
-            {/* System Skeleton */}
+            {/* system skeleton */}
             <div className="flex flex-col mb-8">
                 <Skeleton className="h-[18px] w-20 mb-4 bg-white/[0.06]" />
                 <div className="flex flex-col gap-6 border-t border-[#242323] pt-6 pb-2">

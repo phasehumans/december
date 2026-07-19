@@ -258,14 +258,14 @@ export const SessionListView: React.FC<SessionListViewProps> = ({
                 <div className="flex-1" />
 
                 <div className="hidden md:flex items-center gap-2">
-                    {/* Filter dropdown */}
+                    {/* filter dropdown */}
                     <SessionFilterDropdown
                         filters={advancedFilters}
                         onFiltersChange={onAdvancedFiltersChange}
                         availableTags={availableTags}
                     />
 
-                    {/* Sort dropdown */}
+                    {/* sort dropdown */}
                     <div className="relative" ref={sortDropdownRef}>
                         <button
                             onClick={(e) => toggleDropdown('sort', e)}

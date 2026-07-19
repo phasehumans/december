@@ -40,7 +40,7 @@ app.use(
     })
 )
 
-// Apply rate limiter to socket.io upgrade endpoints
+// apply rate limiter to socket.io upgrade endpoints
 app.use('/socket.io', apiRateLimiter)
 
 app.use('/api/v1/auth', authRouter)

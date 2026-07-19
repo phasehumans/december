@@ -49,7 +49,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
     const activeTabSlug = activeTabMatch ? activeTabMatch[1] : undefined
     const activeTab = getProfileTabFromSlug(activeTabSlug)
 
-    // Fallback for hash backward compatibility
+    // fallback for hash backward compatibility
     React.useEffect(() => {
         if (typeof window !== 'undefined' && window.location.hash === '#billing') {
             window.history.replaceState(null, '', window.location.pathname)
@@ -123,7 +123,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
     return (
         <div className="flex w-full h-full bg-[#100E12] overflow-hidden p-1.5 md:p-[8px]">
             <div className="flex flex-col md:flex-row w-full h-full bg-[#141414] rounded-lg border border-[#242323] overflow-hidden">
-                {/* Settings Sidebar */}
+                {/* settings sidebar */}
                 <div className="w-full md:w-[220px] shrink-0 border-b md:border-b-0 md:border-r border-[#242323] flex flex-col pt-3 pb-1 md:py-4">
                     <div className="px-3 md:px-4 mb-2 md:mb-6">
                         <button
@@ -333,7 +333,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                     </div>
                 </div>
 
-                {/* Main Content */}
+                {/* main content */}
                 <div className="flex-1 overflow-y-auto [&::-webkit-scrollbar]:w-[12px] [&::-webkit-scrollbar-track]:bg-[#141414] [&::-webkit-scrollbar-thumb]:bg-[#383736] [&::-webkit-scrollbar-thumb]:bg-clip-padding [&::-webkit-scrollbar-thumb]:border-[4px] [&::-webkit-scrollbar-thumb]:border-solid [&::-webkit-scrollbar-thumb]:border-transparent [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-[#4A4948]">
                     <div className="w-full flex justify-center px-4 md:px-16 py-6 md:py-12 relative z-10">
                         <div className="flex flex-col items-end gap-2 absolute top-12 right-4 md:right-16">
