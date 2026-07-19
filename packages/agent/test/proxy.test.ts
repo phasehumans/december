@@ -1,6 +1,8 @@
 import { describe, test, expect, mock } from 'bun:test'
-import { EventStreamingProxy } from '../src/proxy'
+
 import { Agent } from '../src/agent'
+import { EventStreamingProxy } from '../src/proxy'
+
 import type { LLMProvider, ProviderStreamChunk } from '@december/providers'
 
 class MockLLM implements LLMProvider {

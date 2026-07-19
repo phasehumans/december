@@ -1,6 +1,7 @@
-import { describe, expect, test, mock } from 'bun:test'
-import { BrowserTool } from '../src/browser'
 import { ToolExecuteContext } from '@december/shared'
+import { describe, expect, test, mock } from 'bun:test'
+
+import { BrowserTool } from '../src/browser'
 
 describe('BrowserTool', () => {
     test('should fetch and format text successfully', async () => {

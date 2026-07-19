@@ -1,11 +1,11 @@
 import fs from 'node:fs/promises'
-import path from 'node:path'
 import os from 'node:os'
+import path from 'node:path'
 
+import { AgentMessage } from '@december/shared'
 import { expect, test, describe, beforeEach, afterEach, spyOn, mock } from 'bun:test'
 
 import { FileSessionRepository } from '../src/file-session-repository'
-import { AgentMessage } from '@december/shared'
 
 describe('FileSessionRepository', () => {
     let mockReadFile: any

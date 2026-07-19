@@ -1,5 +1,18 @@
 ## [unreleased]
 
+### Bug Fixes
+
+- _(handoff)_ Fix handoff and sign url upload to s3
+- _(cli)_ Remove stub hooks and fix headless login
+- _(cli)_ Fix cli tests:
+- _(cli)_ Fix handoff and headless login (#212)
+
+### Testing
+
+- _(cli)_ Add test for cli configs and sessions
+
+## [0.2.16] - 2026-07-18
+
 ### Features
 
 - Implement browser DI, add missing CLI tools, and lowercase comments
@@ -8,6 +21,10 @@
 ### Testing
 
 - _(agent/provider)_ Add test to agent and provider
+
+### Miscellaneous Tasks
+
+- _(release)_ V0.2.16
 
 ## [0.2.15] - 2026-07-17
 

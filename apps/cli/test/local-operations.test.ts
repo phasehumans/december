@@ -1,6 +1,6 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
-import os from 'node:os'
+
 import {
     expect,
     test,
@@ -12,6 +12,7 @@ import {
     afterAll,
     mock,
 } from 'bun:test'
+
 import { localOperations } from '../src/local-operations'
 import { taskManager } from '../src/task-manager'
 

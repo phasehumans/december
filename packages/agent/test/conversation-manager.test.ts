@@ -1,7 +1,8 @@
 import { describe, test, expect } from 'bun:test'
+
 import { ConversationManager } from '../src/conversation-manager'
+
 import type { LLMProvider, ProviderStreamChunk } from '@december/providers'
-import type { Message } from '@december/shared'
 
 class MockLLM implements LLMProvider {
     public id = 'mock'

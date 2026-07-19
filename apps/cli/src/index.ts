@@ -1,9 +1,8 @@
 #!/usr/bin/env node
 import { execSync } from 'child_process'
 import readline from 'readline'
-import { AgentHarness } from '@december/agent'
 
-import { FileSessionRepository } from './file-session-repository'
+import { AgentHarness } from '@december/agent'
 
 function AppWrapper(props: any) {
     const session = useAgentSession(props)
@@ -52,6 +51,7 @@ import pkg from '../package.json' with { type: 'json' }
 
 import { loginViaBrowser, loginViaDeviceCode } from './auth'
 import { getProviderConfig, loadConfig, getAuthStatus } from './config'
+import { FileSessionRepository } from './file-session-repository'
 import { useAgentSession } from './hooks/use-agent-session'
 import { localOperations } from './local-operations'
 

@@ -1,5 +1,6 @@
-import { compactContextIfNeeded } from './utils/compaction'
 import { v4 as uuidv4 } from 'uuid'
+
+import { compactContextIfNeeded } from './utils/compaction'
 
 import type { LLMProvider } from '@december/providers'
 import type { AgentMessage } from '@december/shared'

@@ -1,4 +1,5 @@
 import { describe, expect, test, mock, afterEach, beforeEach } from 'bun:test'
+
 import { openaiProvider } from '../src/providers/openai'
 
 let capturedOptions: any = null

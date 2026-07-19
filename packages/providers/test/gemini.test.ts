@@ -1,4 +1,5 @@
 import { describe, expect, test, mock, beforeEach } from 'bun:test'
+
 import { geminiProvider } from '../src/providers/gemini'
 
 let capturedOptions: any = null

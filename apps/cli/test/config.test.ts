@@ -1,5 +1,4 @@
 import fs from 'node:fs/promises'
-import os from 'node:os'
 import path from 'node:path'
 
 import { expect, test, describe, beforeEach, afterEach, spyOn, mock } from 'bun:test'

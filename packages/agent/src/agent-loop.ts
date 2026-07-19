@@ -1,7 +1,8 @@
+import util from 'util'
+
 import { safeParseJson } from '@december/shared'
 import pRetry, { AbortError } from 'p-retry'
 import { v4 as uuidv4 } from 'uuid'
-import util from 'util'
 
 import { Agent } from './agent'
 
