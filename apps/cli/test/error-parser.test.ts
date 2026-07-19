@@ -35,6 +35,32 @@ describe('error-parser', () => {
         expect(parseErrorMessage(malformed)).toBe('Malformed JSON error')
     })
 
+    test('regex extraction handles exceptions', () => {
+        // Line 21-22: exception in JSON.parse of regex match
+        const malformedRegexMatch = '{"message": "broken\\"escape"}'
+        expect(parseErrorMessage(malformedRegexMatch)).toBe('broken"escape')
+    })
+
+    test('recursively parses json error fields', () => {
+        // Line 36-37: deeply nested json inside error/message fields
+        expect(parseErrorMessage('{"message": "{\\"error\\": {\\"message\\": \\"deep\\"}}"}')).toBe(
+            '{"error": {"message": "deep"}}'
+        )
+
+        expect(parseErrorMessage('{"error": "{\\"message\\": \\"deep error\\"}"}')).toBe(
+            'deep error'
+        )
+    })
+
+    test('extracts from json block', () => {
+        // Line 51-57: fallback json block extraction
+        const blockStr = 'prefix {"error": {"message": "block error"}} suffix'
+        expect(parseErrorMessage(blockStr)).toBe('block error')
+
+        const blockStr2 = 'prefix {"message": "block message"} suffix'
+        expect(parseErrorMessage(blockStr2)).toBe('block message')
+    })
+
     test('falls back to util.inspect for complex objects without message', () => {
         const obj = { foo: 'bar', baz: 42 }
         const parsed = parseErrorMessage(obj)
@@ -49,5 +75,24 @@ describe('error-parser', () => {
     test('handles null or undefined gracefully', () => {
         expect(parseErrorMessage(null)).toBe('null')
         expect(parseErrorMessage(undefined)).toBe('undefined')
+    })
+
+    test('stringifies non-string error messages', () => {
+        // Line 7: JSON.stringify(errMsg)
+        const customErr = {
+            message: { something: 'weird' },
+        }
+        expect(parseErrorMessage(customErr)).toContain('{"something":"weird"}')
+    })
+
+    test('handles top-level catch gracefully', () => {
+        // Line 9: return 'Unknown error occurred.'
+        const badObj = Object.create(null)
+        Object.defineProperty(badObj, 'message', {
+            get() {
+                throw new Error('Cannot read')
+            },
+        })
+        expect(parseErrorMessage(badObj)).toBe('Unknown error occurred.')
     })
 })
