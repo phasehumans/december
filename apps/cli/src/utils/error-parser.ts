@@ -1,3 +1,4 @@
+import util from 'util'
 export function parseErrorMessage(err: any): string {
     let errMsg = ''
     try {
@@ -64,7 +65,7 @@ export function parseErrorMessage(err: any): string {
 
     if (errMsg === '[object Object]' && err && typeof err === 'object') {
         try {
-            return require('util').inspect(err)
+            return util.inspect(err)
         } catch {}
     }
 

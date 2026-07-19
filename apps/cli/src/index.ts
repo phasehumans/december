@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { execSync } from 'child_process'
+import readline from 'readline'
 import { AgentHarness } from '@december/agent'
 
 import { FileSessionRepository } from './file-session-repository'
@@ -110,7 +112,8 @@ async function main() {
                 llm = openaiProvider('https://api.zai.ai/v1', providerConfig.apiKey)
                 break
             default:
-                const proxyUrl = `http://localhost:${process.env.DECEMBER_SERVER_PORT || 3000}/api/v1`
+                const serverUrl = process.env.DECEMBER_SERVER_URL || 'https://api.trydecember.com'
+                const proxyUrl = `${serverUrl}/api/v1/cli`
                 llm = openaiProvider(proxyUrl, providerConfig.apiKey)
                 break
         }
@@ -202,13 +205,14 @@ Guidelines:
         }
 
         try {
-            const { execSync } = require('child_process')
-            const fs = require('fs')
-
             console.log('Zipping workspace state...')
             const archivePath = '.december-handoff.tar.gz'
 
-            const excludes = ['--exclude=node_modules', '--exclude=.git']
+            const excludes = [
+                '--exclude=node_modules',
+                '--exclude=.git',
+                `--exclude=${archivePath}`,
+            ]
             try {
                 if (fs.existsSync('.gitignore')) {
                     const lines = fs.readFileSync('.gitignore', 'utf8').split('\n')
@@ -229,12 +233,17 @@ Guidelines:
             } catch (e) {}
 
             const excludeArgs = excludes.join(' ')
-            execSync(`tar -czf ${archivePath} ${excludeArgs} .`, {
-                stdio: 'inherit',
-            })
+            try {
+                execSync(`tar -czf ${archivePath} ${excludeArgs} .`, {
+                    stdio: 'inherit',
+                })
+            } catch (e: any) {
+                if (e.status !== 1) throw e
+            }
 
             console.log('Requesting pre-signed URL from server...')
-            const proxyUrl = process.env.DECEMBER_SERVER_URL || 'http://localhost:3000/api/v1'
+            const serverUrl = process.env.DECEMBER_SERVER_URL || 'https://api.trydecember.com'
+            const proxyUrl = `${serverUrl}/api/v1`
             const urlRes = await fetch(`${proxyUrl}/cli/handoff/upload-url`, {
                 headers: { Authorization: `Bearer ${config.decemberToken}` },
             })
@@ -305,7 +314,6 @@ Guidelines:
         console.log(`\nExecuting Headless Task: "${prompt}"\n`)
         const { runAgentLoop } = await import('@december/agent')
 
-        const readline = require('readline')
         const rl = readline.createInterface({
             input: process.stdin,
             output: process.stdout,
@@ -405,9 +413,9 @@ Guidelines:
                 cliVersion: pkg.version,
                 userEmail,
                 sessionRepository,
-                onLogin: loginViaBrowser,
+                onLogin: () => loginViaBrowser(),
                 onLoginHeadless: (onCode: (code: string, uri: string) => void) =>
-                    loginViaDeviceCode('http://localhost:4000', onCode),
+                    loginViaDeviceCode(undefined, onCode),
             })
         ),
         { exitOnCtrlC: false }

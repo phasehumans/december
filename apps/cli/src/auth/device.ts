@@ -1,5 +1,5 @@
 export async function loginViaDeviceCode(
-    baseUrl: string = 'http://localhost:4000',
+    baseUrl: string = process.env.DECEMBER_SERVER_URL || 'https://api.trydecember.com',
     onCodeGenerated: (userCode: string, verificationUri: string) => void
 ): Promise<{ token: string; email: string | null }> {
     return new Promise(async (resolve, reject) => {

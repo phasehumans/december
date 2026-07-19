@@ -1,6 +1,7 @@
 import { safeParseJson } from '@december/shared'
 import pRetry, { AbortError } from 'p-retry'
 import { v4 as uuidv4 } from 'uuid'
+import util from 'util'
 
 import { Agent } from './agent'
 
@@ -76,7 +77,7 @@ function formatError(e: any): string {
     } catch {}
 
     try {
-        return require('util').inspect(rawData, { depth: 4 })
+        return util.inspect(rawData, { depth: 4 })
     } catch {}
 
     return String(e)
