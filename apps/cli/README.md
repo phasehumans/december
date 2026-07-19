@@ -1,33 +1,25 @@
 # December
 
-December is a coding agent that works right in your terminal. It understands your code, writes new code, and runs commands to help you finish your work faster.
+December is an AI coding assistant that lives in your terminal. It understands your codebase and helps you build faster by writing code, fixing bugs, and running commands. Use it directly in your terminal or alongside your favorite IDE.
 
-![December](https://github.com/user-attachments/assets/32b6e696-c98a-44af-803a-f32cfd28c8f0)
+**Visit us at [trydecember.com](https://trydecember.com)**
 
-- **Writes code for you:** Ask it to build a feature or fix a bug, and it will write the code directly.
-- **Reads your whole project:** It scans your files and folders so it always knows what you are working on.
-- **Runs commands:** It can safely search files, run tests, and execute commands in your terminal.
-- **Use your own AI:** Connect your own API keys for OpenAI, Anthropic, Gemini, or OpenRouter, or log in via December to use the December wallet.
+<img src="https://github.com/user-attachments/assets/25abfe47-e9cc-47de-a8d9-69ee0cc34658" alt="December" width="100%" />
 
-### Quick Start
+- **Writes code & runs commands:** Ask it to build features, fix bugs, or run tests. It does the work for you.
+- **Cloud Handoff:** Type `/handoff` to move your terminal session to the web and resume it on December Cloud.
+- **Bring your own AI:** Use API keys for OpenAI, Anthropic, Gemini, and 12+ others, or log in via December to use December credits.
 
-You can install December using npm or bun:
+### Get Started
 
-**Using npm:**
+1. Install December:
 
 ```bash
 npm install -g @trydecember/cli
 ```
 
-**Using bun:**
+2. Navigate to your project directory and run `december`.
 
-```bash
-bun install -g @trydecember/cli
-```
+### Feedback & Bugs
 
-Run `december` in your project folder to start:
-
-```bash
-cd your-project-folder
-december
-```
+Found a bug or have a feature request? [Let us know on GitHub](https://github.com/phasehumans/december/issues).
