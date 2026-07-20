@@ -195,23 +195,19 @@ export const COMMANDS: Command[] = [
 
                 const agentsFile = path.join(decDir, 'AGENTS.md')
 
-                const rulesDir = path.join(decDir, 'rules')
-                const rulesReadme = path.join(rulesDir, 'README.md')
-                const skillsDir = path.join(decDir, 'skills')
-                const skillsReadme = path.join(skillsDir, 'README.md')
+                const rulesFile = path.join(decDir, 'rules.md')
+                const mcpFile = path.join(decDir, 'mcp.json')
 
                 fs.writeFileSync(agentsFile, '')
 
-                fs.mkdirSync(rulesDir)
                 fs.writeFileSync(
-                    rulesReadme,
-                    '# Rules\n\nDrop Markdown files here (e.g., `database.md` or `styling.md`) with specific instructions. December will automatically read these modular rules when working on related files.\n'
+                    rulesFile,
+                    '# Rules\n\nAdd project-specific rules here (e.g., database schema guidelines, or styling rules). December will automatically read these rules when working on your project.\n'
                 )
 
-                fs.mkdirSync(skillsDir)
                 fs.writeFileSync(
-                    skillsReadme,
-                    '# Skills\n\nAdd executable scripts or custom tool definitions here. December will be able to run these skills as custom tools to perform specific actions in your workspace.\n'
+                    mcpFile,
+                    '{\n  "mcpServers": {\n    // Add your Model Context Protocol (MCP) servers here\n    // "example-server": {\n    //   "command": "node",\n    //   "args": ["path/to/server.js"]\n    // }\n  }\n}\n'
                 )
 
                 ctx.toast.show({

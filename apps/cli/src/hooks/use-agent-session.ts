@@ -546,7 +546,11 @@ export function useAgentSession({
             }
 
             if (text.trim() === '/usage') {
-                setAuthMode('usage')
+                import('open')
+                    .then((open) => {
+                        open.default('https://trydecember.com/settings/analytics/plan')
+                    })
+                    .catch(console.error)
                 return
             }
 

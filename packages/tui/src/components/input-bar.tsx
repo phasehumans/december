@@ -118,16 +118,10 @@ export function InputBar({
             setValue('')
             handleContentChange('')
 
-            // autocomplete these commands instead of submitting
-            if (command.value === '/plan' || command.value === '/grill-me') {
-                const next = command.value + ' '
-                setValue(next)
-                handleContentChange(next)
-                return
-            }
-
             // forward auth commands to chat component
             if (
+                command.value === '/plan' ||
+                command.value === '/grill-me' ||
                 command.value === '/login' ||
                 command.value === '/logout' ||
                 command.value === '/exit' ||

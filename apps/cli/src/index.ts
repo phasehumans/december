@@ -45,6 +45,7 @@ import dotenv from 'dotenv'
 import { render } from 'ink'
 import React from 'react'
 
+process.env.DOTENV_CONFIG_QUIET = 'true'
 dotenv.config()
 
 import pkg from '../package.json' with { type: 'json' }

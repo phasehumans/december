@@ -7,6 +7,9 @@
     "description": "Turn ideas into reality.",
     "author": "Chaitanya Sonawane",
     "license": "Apache-2.0",
+    "keywords": [
+        "december"
+    ],
     "engines": {
         "node": ">=18.0.0"
     },

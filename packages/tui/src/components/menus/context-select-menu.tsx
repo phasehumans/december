@@ -73,52 +73,61 @@ export function ContextSelectMenu(props: any) {
     }
 
     return (
-        <Box flexDirection="row" paddingX={1} gap={4}>
-            <Box flexDirection="column">{gridRows}</Box>
+        <Box flexDirection="column" paddingX={1}>
+            <Box marginBottom={1}>
+                <Text bold color="white">
+                    Context
+                </Text>
+            </Box>
+            <Box flexDirection="row" gap={4}>
+                <Box flexDirection="column">{gridRows}</Box>
 
-            <Box flexDirection="column">
-                <Box gap={1}>
-                    <Text color="#AAAAAA">
-                        {currentModelName} · {formatK(totalTokens)}/{formatK(maxTokens)} tokens (
-                        {pct(totalTokens)}%)
-                    </Text>
-                </Box>
-                <Box marginTop={1}>
-                    <Text color="white">Token usage by category</Text>
-                </Box>
                 <Box flexDirection="column">
                     <Box gap={1}>
-                        <Text color="#89B4F8">●</Text>
                         <Text color="#AAAAAA">
-                            User messages: {formatK(userTokens)} tokens ({pct(userTokens)}%)
+                            {currentModelName} · {formatK(totalTokens)}/{formatK(maxTokens)} tokens
+                            ({pct(totalTokens)}%)
                         </Text>
                     </Box>
-                    <Box gap={1}>
-                        <Text color="#6EE7B7">●</Text>
-                        <Text color="#AAAAAA">
-                            Agent responses: {formatK(agentTokens)} tokens ({pct(agentTokens)}%)
-                        </Text>
+                    <Box marginTop={1}>
+                        <Text color="white">Token usage by category</Text>
                     </Box>
-                    <Box gap={1}>
-                        <Text color="#FCD34D">●</Text>
-                        <Text color="#AAAAAA">
-                            Tool calls: {formatK(toolTokens)} tokens ({pct(toolTokens)}%)
-                        </Text>
-                    </Box>
-                    <Box gap={1}>
-                        <Text color="#AAAAAA">●</Text>
-                        <Text color="#AAAAAA">
-                            System prompt: {formatK(sysTokens)} tokens ({pct(sysTokens)}%)
-                        </Text>
-                    </Box>
-                    <Box gap={1}>
-                        <Text color="#444444">□</Text>
-                        <Text color="#AAAAAA">
-                            Free space: {formatK(freeTokens)} ({pct(freeTokens)}%)
-                        </Text>
+                    <Box flexDirection="column">
+                        <Box gap={1}>
+                            <Text color="#89B4F8">●</Text>
+                            <Text color="#AAAAAA">
+                                User messages: {formatK(userTokens)} tokens ({pct(userTokens)}%)
+                            </Text>
+                        </Box>
+                        <Box gap={1}>
+                            <Text color="#6EE7B7">●</Text>
+                            <Text color="#AAAAAA">
+                                Agent responses: {formatK(agentTokens)} tokens ({pct(agentTokens)}%)
+                            </Text>
+                        </Box>
+                        <Box gap={1}>
+                            <Text color="#FCD34D">●</Text>
+                            <Text color="#AAAAAA">
+                                Tool calls: {formatK(toolTokens)} tokens ({pct(toolTokens)}%)
+                            </Text>
+                        </Box>
+                        <Box gap={1}>
+                            <Text color="#AAAAAA">●</Text>
+                            <Text color="#AAAAAA">
+                                System prompt: {formatK(sysTokens)} tokens ({pct(sysTokens)}%)
+                            </Text>
+                        </Box>
+                        <Box gap={1}>
+                            <Text color="#444444">□</Text>
+                            <Text color="#AAAAAA">
+                                Free space: {formatK(freeTokens)} ({pct(freeTokens)}%)
+                            </Text>
+                        </Box>
                     </Box>
                 </Box>
-                <Box marginTop={2} gap={1}>
+            </Box>
+            <Box paddingTop={1}>
+                <Box gap={1}>
                     <Text color="#89B4F8">esc</Text>
                     <Text color="#AAAAAA">Cancel</Text>
                 </Box>

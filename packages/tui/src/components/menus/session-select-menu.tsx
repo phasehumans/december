@@ -149,7 +149,8 @@ export function SessionSelectMenu(props: any) {
                     )
                 }
 
-                const title = session.preview || session.id
+                const isCustomName = !session.id.startsWith('session-')
+                const title = isCustomName ? session.id : session.preview || session.id
                 const timeStr = timeAgo(session.updatedAt).padStart(10)
 
                 return (

@@ -13,7 +13,6 @@ import { SessionSelectMenu } from './session-select-menu'
 import { SettingsMainMenu } from './settings-main-menu'
 import { TasksModeMenu } from './tasks-mode-menu'
 import { ToolPermissionMenu } from './tool-permission-menu'
-import { UsageMenu } from './usage-menu'
 
 export function AuthMenus(props: any) {
     switch (props.authMode) {
@@ -53,8 +52,6 @@ export function AuthMenus(props: any) {
                 />
             )
 
-        case 'usage':
-            return <UsageMenu {...props} />
         default:
             return null
     }

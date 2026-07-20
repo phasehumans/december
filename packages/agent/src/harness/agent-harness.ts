@@ -97,6 +97,12 @@ Guidelines:
                     }
                 }
             }
+
+            const rootRulesPath = path.join(this.config.workspaceDir, '.december', 'rules.md')
+            if (fs.existsSync(rootRulesPath)) {
+                const content = fs.readFileSync(rootRulesPath, 'utf8')
+                rules.push({ path: rootRulesPath, content })
+            }
         } catch (e) {
             // ignore errors reading rules
         }
