@@ -8,7 +8,6 @@ export function useSettings() {
     const [settingsToolPermission, setSettingsToolPermission] = useState<
         'always-proceed' | 'always-ask'
     >('always-proceed')
-    const [settingsTelemetry, setSettingsTelemetry] = useState(true)
     const [settingsAutoUpdate, setSettingsAutoUpdate] = useState(true)
     const [settingsSelectedIndex, setSettingsSelectedIndex] = useState(0)
     const [settingsDefaultModel, setSettingsDefaultModel] = useState('')
@@ -25,8 +24,6 @@ export function useSettings() {
         setSettingsShowTips,
         settingsToolPermission,
         setSettingsToolPermission,
-        settingsTelemetry,
-        setSettingsTelemetry,
         settingsAutoUpdate,
         setSettingsAutoUpdate,
         settingsSelectedIndex,

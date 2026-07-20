@@ -10,10 +10,6 @@ export function SettingsMainMenu(props: any) {
         settingsShowTasks,
         settingsShowTips,
         settingsToolPermission,
-        settingsCompactMode,
-        settingsSoundEffects,
-        settingsAutoScroll,
-        settingsStreamSpeed,
         settingsAutoUpdate,
         settingsThinkingLevel,
         settingsSteeringMode,
@@ -42,22 +38,6 @@ export function SettingsMainMenu(props: any) {
         {
             label: `Tool Permission          [${settingsToolPermission}]`,
             value: 'toolPermission',
-        },
-        {
-            label: `Compact Mode             [${settingsCompactMode ? 'on' : 'off'}]`,
-            value: 'compactMode',
-        },
-        {
-            label: `Sound Effects            [${settingsSoundEffects ? 'on' : 'off'}]`,
-            value: 'soundEffects',
-        },
-        {
-            label: `Auto Scroll              [${settingsAutoScroll ? 'on' : 'off'}]`,
-            value: 'autoScroll',
-        },
-        {
-            label: `Stream Speed             [${settingsStreamSpeed}]`,
-            value: 'streamSpeed',
         },
         {
             label: `Auto Update              [${settingsAutoUpdate ? 'on' : 'off'}]`,

@@ -2,6 +2,12 @@
 
 ### Bug Fixes
 
+- _(usage)_ Add usage redirect and .december workspace
+
+## [0.2.17] - 2026-07-19
+
+### Bug Fixes
+
 - _(handoff)_ Fix handoff and sign url upload to s3
 - _(cli)_ Remove stub hooks and fix headless login
 - _(cli)_ Fix cli tests:
@@ -10,6 +16,10 @@
 ### Testing
 
 - _(cli)_ Add test for cli configs and sessions
+
+### Miscellaneous Tasks
+
+- _(release)_ V0.2.17
 
 ## [0.2.16] - 2026-07-18
 

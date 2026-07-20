@@ -2,7 +2,7 @@ import { Agent } from '@december/agent'
 import { MessageList, InputBar, TaskHUD, GlobalShortcuts } from '@december/tui'
 import { AuthMenus, AskQuestionMenu } from '@december/tui'
 import { Box, Text } from 'ink'
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 
 export function ChatApp({
     agent,
@@ -26,6 +26,14 @@ export function ChatApp({
     session: any
 }) {
     const [inputHistory, setInputHistory] = useState<string[]>([])
+    const [exitConfirm, setExitConfirm] = useState(false)
+
+    useEffect(() => {
+        if (exitConfirm) {
+            const timer = setTimeout(() => setExitConfirm(false), 3000)
+            return () => clearTimeout(timer)
+        }
+    }, [exitConfirm])
 
     const {
         staticKey,
@@ -111,7 +119,11 @@ export function ChatApp({
                     if (session.isStreaming) {
                         agent.abort()
                     } else {
-                        process.exit(0)
+                        if (exitConfirm) {
+                            process.exit(0)
+                        } else {
+                            setExitConfirm(true)
+                        }
                     }
                 }}
                 onCopy={() => {
@@ -156,6 +168,7 @@ export function ChatApp({
                 planMode={planMode}
                 grillMode={grillMode}
                 customInputMode={false}
+                showExitConfirm={exitConfirm}
             />
         </Box>
     )

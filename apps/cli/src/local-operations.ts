@@ -1,4 +1,4 @@
-import { exec } from 'node:child_process'
+import { exec, spawn } from 'node:child_process'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import { promisify } from 'node:util'
@@ -15,7 +15,54 @@ const localBashOps = createLocalBashOperations()
 export const localOperations: PlatformAdapter = {
     bash: {
         exec: async (command, cwd, options) => {
-            return localBashOps.exec(command, cwd, options)
+            return new Promise((resolve, reject) => {
+                const child = spawn(command, {
+                    cwd,
+                    detached: process.platform !== 'win32',
+                    env: options.env ?? process.env,
+                    shell: true,
+                })
+
+                const task = taskManager.addTask(command, child)
+                let output = ''
+                let resolved = false
+
+                const handleData = (data: Buffer) => {
+                    const chunk = data.toString()
+                    output += chunk
+                    taskManager.appendOutput(task.id, chunk)
+                    if (!resolved && options.onData) {
+                        options.onData(chunk)
+                    }
+                }
+
+                child.stdout?.on('data', handleData)
+                child.stderr?.on('data', handleData)
+
+                let timeoutHandle: NodeJS.Timeout | undefined
+                if (options.timeout) {
+                    timeoutHandle = setTimeout(() => {
+                        if (child.pid) taskManager.killTask(task.id)
+                    }, options.timeout * 1000)
+                }
+
+                const bgTimeout = setTimeout(() => {
+                    if (!resolved) {
+                        resolved = true
+                        resolve({ exitCode: null, output, taskId: task.id })
+                    }
+                }, 3000)
+
+                child.on('close', (code) => {
+                    clearTimeout(bgTimeout)
+                    if (timeoutHandle) clearTimeout(timeoutHandle)
+                    taskManager.markCompleted(task.id, code)
+                    if (!resolved) {
+                        resolved = true
+                        resolve({ exitCode: code, output })
+                    }
+                })
+            })
         },
         getTaskStatus: async (taskId) => {
             const task = taskManager.getTask(taskId)

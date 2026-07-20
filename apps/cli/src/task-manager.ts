@@ -98,3 +98,14 @@ if (!globalSymbols.__taskManager) {
 }
 
 export const taskManager = globalSymbols.__taskManager as TaskManager
+
+if (!globalSymbols.__taskManagerCleanupAdded) {
+    globalSymbols.__taskManagerCleanupAdded = true
+    process.on('exit', () => {
+        for (const task of taskManager.getTasks()) {
+            if (task.status === 'running') {
+                taskManager.killTask(task.id)
+            }
+        }
+    })
+}

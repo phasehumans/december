@@ -29,6 +29,7 @@ type Props = {
     onCopy?: () => void
     contextTokens?: number
     history?: string[]
+    showExitConfirm?: boolean
 }
 
 export function InputBar({
@@ -47,6 +48,7 @@ export function InputBar({
     onInterrupt,
     onCopy,
     contextTokens,
+    showExitConfirm = false,
 }: Props) {
     const [value, setValue] = useState('')
     const toast = useToast()
@@ -238,8 +240,13 @@ export function InputBar({
                                     ? ` (via ${authMethod === 'december' ? 'December Cloud' : 'BYOK'})`
                                     : ''}
                             </Text>
-                            {contextTokens !== undefined && contextTokens > 0 && (
-                                <Text color="#AAAAAA">· {contextTokens} tokens</Text>
+                            {showExitConfirm ? (
+                                <Text color="gray">· Press Ctrl+C again to exit</Text>
+                            ) : (
+                                contextTokens !== undefined &&
+                                contextTokens > 0 && (
+                                    <Text color="#AAAAAA">· {contextTokens} tokens</Text>
+                                )
                             )}
                         </Box>
                         {toast.currentToast && (
