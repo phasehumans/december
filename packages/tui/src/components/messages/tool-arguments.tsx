@@ -86,8 +86,34 @@ export function ToolArgumentsDisplay({ toolName, inputObj }: { toolName: string;
                                 borderTop={false}
                                 borderRight={false}
                                 borderBottom={false}
+                                flexDirection="column"
                             >
-                                <Text color="#cbd5e1">{(val as string).trim()}</Text>
+                                {(() => {
+                                    const lines = (val as string).trim().split(/\r?\n/)
+                                    if (lines.length > 5) {
+                                        return (
+                                            <>
+                                                {lines.slice(0, 5).map((l, i) => (
+                                                    <Text
+                                                        key={i}
+                                                        color="#cbd5e1"
+                                                        wrap="truncate-end"
+                                                    >
+                                                        {l}
+                                                    </Text>
+                                                ))}
+                                                <Text color="#64748b" dimColor>
+                                                    ... {lines.length - 5} more lines
+                                                </Text>
+                                            </>
+                                        )
+                                    }
+                                    return lines.map((l, i) => (
+                                        <Text key={i} color="#cbd5e1" wrap="truncate-end">
+                                            {l}
+                                        </Text>
+                                    ))
+                                })()}
                             </Box>
                         ) : (
                             <Text color="white">{JSON.stringify(val)}</Text>

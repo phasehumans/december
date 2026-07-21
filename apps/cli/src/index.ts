@@ -414,7 +414,7 @@ Guidelines:
                 cliVersion: pkg.version,
                 userEmail,
                 sessionRepository,
-                onLogin: () => loginViaBrowser(),
+                onLogin: (onUrlGenerated) => loginViaBrowser(undefined, onUrlGenerated),
                 onLoginHeadless: (onCode: (code: string, uri: string) => void) =>
                     loginViaDeviceCode(undefined, onCode),
             })

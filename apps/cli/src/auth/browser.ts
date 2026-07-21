@@ -1,11 +1,12 @@
 import http from 'node:http'
 
-import open from 'open'
+import { openUrl } from '../utils/open'
 
 export async function loginViaBrowser(
     baseUrl: string = process.env.DECEMBER_WEB_URL
         ? `${process.env.DECEMBER_WEB_URL}/cli/login`
-        : 'https://trydecember.com/cli/login'
+        : 'https://trydecember.com/cli/login',
+    onUrlGenerated?: (url: string) => void
 ): Promise<{ token: string; email: string | null }> {
     return new Promise((resolve, reject) => {
         const server = http.createServer((req, res) => {
@@ -113,8 +114,9 @@ export async function loginViaBrowser(
                 const port = address.port
                 const redirectUri = `http://127.0.0.1:${port}/callback`
                 const loginUrl = `${baseUrl}?redirect_uri=${encodeURIComponent(redirectUri)}`
+                if (onUrlGenerated) onUrlGenerated(loginUrl)
 
-                open(loginUrl).catch((err) => {
+                openUrl(loginUrl).catch((err) => {
                     server.close()
                     reject(err)
                 })

@@ -127,7 +127,7 @@ export function ChatApp({
                     }
                 }}
                 onCopy={() => {
-                    import('clipboardy')
+                    import('./utils/clipboard')
                         .then((cb) => {
                             const allMsgs = [...staticMessages, ...activeMessages]
                             const lastAssistant = [...allMsgs]
@@ -137,7 +137,7 @@ export function ChatApp({
                                 const text =
                                     lastAssistant.blocks?.map((b) => b.content || '').join('\n') ||
                                     ''
-                                cb.default.writeSync(text)
+                                cb.writeToClipboard(text)
                             }
                         })
                         .catch(console.error)

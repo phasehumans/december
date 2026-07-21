@@ -39,6 +39,13 @@ export async function processAgentStream({
                             break
                         case 'AgentError': {
                             const errMsg = parseErrorMessage({ message: event.error })
+                            blocks.push({
+                                type: 'error',
+                                error: errMsg,
+                            })
+                            break
+                        }
+                        case 'AgentInterrupt': {
                             const lastBlock = blocks[blocks.length - 1]
                             if (
                                 lastBlock &&
@@ -47,13 +54,9 @@ export async function processAgentStream({
                                     lastBlock.content === 'Thinking...' ||
                                     lastBlock.content.startsWith('Rate limit hit'))
                             ) {
-                                lastBlock.content = `\n\n**Agent Error:** ${errMsg}\n`
-                            } else {
-                                blocks.push({
-                                    type: 'text',
-                                    content: `\n\n**Agent Error:** ${errMsg}\n`,
-                                })
+                                lastBlock.content = ''
                             }
+                            blocks.push({ type: 'interrupt' })
                             break
                         }
                         case 'AgentStatus': {

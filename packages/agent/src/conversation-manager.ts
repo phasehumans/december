@@ -33,7 +33,8 @@ export class ConversationManager {
     async compactIfNeeded(
         llm: LLMProvider,
         maxTokens?: number,
-        modelOptions?: Record<string, any>
+        modelOptions?: Record<string, any>,
+        signal?: AbortSignal
     ): Promise<{ compacted: boolean; summary?: string }> {
         const originalLength = this._messages.length
 
@@ -42,7 +43,8 @@ export class ConversationManager {
             this._messages as any,
             llm,
             maxTokens,
-            modelOptions
+            modelOptions,
+            signal
         )) as AgentMessage[]
 
         if (newMessages.length < originalLength) {

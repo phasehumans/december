@@ -10,7 +10,7 @@ import type { Message, MessageBlock } from '@december/tui'
 
 export function useAuthHandlers(
     agent: any,
-    onLogin?: () => Promise<{ token: string; email: string | null }>,
+    onLogin?: (onUrl?: (url: string) => void) => Promise<{ token: string; email: string | null }>,
     onLoginHeadless?: (
         onCode: (code: string, uri: string) => void
     ) => Promise<{ token: string; email: string | null }>
@@ -53,7 +53,20 @@ export function useAuthHandlers(
                 if (!onLogin) {
                     throw new Error('Login functionality is not provided by the host environment.')
                 }
-                const { token, email } = await onLogin()
+                const { token, email } = await onLogin((url: string) => {
+                    setActiveMessages([
+                        {
+                            id: getNextMsgId(),
+                            role: 'assistant',
+                            blocks: [
+                                {
+                                    type: 'text',
+                                    content: `Opening browser to log in...\n\nIf it doesn't open automatically, please click here:\n[${url}](${url})`,
+                                },
+                            ],
+                        },
+                    ])
+                })
                 const config = await loadConfig()
                 config.decemberToken = token
                 if (email) {
@@ -443,7 +456,13 @@ export function useAuthHandlers(
                 } else if (msg.role === 'assistant') {
                     const blocks: MessageBlock[] = []
 
-                    if (msg.content) {
+                    if (msg.errorMessage) {
+                        const { parseErrorMessage } = await import('../utils/error-parser')
+                        blocks.push({
+                            type: 'error',
+                            error: parseErrorMessage({ message: msg.errorMessage }),
+                        })
+                    } else if (msg.content) {
                         blocks.push({ type: 'text', content: msg.content })
                     }
 

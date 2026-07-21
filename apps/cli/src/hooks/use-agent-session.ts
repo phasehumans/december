@@ -546,9 +546,23 @@ export function useAgentSession({
             }
 
             if (text.trim() === '/usage') {
-                import('open')
-                    .then((open) => {
-                        open.default('https://trydecember.com/settings/analytics/plan')
+                const url = 'https://trydecember.com/settings/analytics/plan'
+                setActiveMessages((prev) => [
+                    ...prev,
+                    {
+                        id: getNextMsgId(),
+                        role: 'assistant',
+                        blocks: [
+                            {
+                                type: 'text',
+                                content: `Opening usage dashboard...\n\nIf it doesn't open automatically, please click here:\n[${url}](${url})`,
+                            },
+                        ],
+                    },
+                ])
+                import('../utils/open')
+                    .then((openUtils) => {
+                        openUtils.openUrl(url)
                     })
                     .catch(console.error)
                 return
@@ -631,6 +645,12 @@ Explain which files need to be created, modified, or deleted, and what the chang
             planMode,
         ]
     )
+
+    const handleAbort = useCallback(() => {
+        if (isStreaming && agent) {
+            agent.abort()
+        }
+    }, [isStreaming, agent])
 
     const {
         handleSettingsMainSelect,
@@ -774,5 +794,6 @@ Explain which files need to be created, modified, or deleted, and what the chang
         pendingQuestions,
         setPendingQuestions,
         getProviderModels,
+        handleAbort,
     }
 }
