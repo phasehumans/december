@@ -137,4 +137,10 @@ describe('Anthropic Provider', () => {
             { name: 'calc', description: 'calculate', input_schema: {} },
         ])
     })
+    test('AnthropicProvider class wrapper > instantiates and forwards stream', () => {
+        const { AnthropicProvider } = require('../src/providers/anthropic')
+        const provider = new AnthropicProvider('http://local', 'key')
+        expect(provider.id).toBe('anthropic')
+        expect(provider.stream).toBeInstanceOf(Function)
+    })
 })
