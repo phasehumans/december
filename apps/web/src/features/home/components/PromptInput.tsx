@@ -4,7 +4,9 @@ import { usePromptInputController } from '@/features/home/hooks/usePromptInputCo
 import { Icons } from '@/shared/components/ui/Icons'
 import { PromptFooter } from '@/shared/components/ui/PromptFooter'
 
-const PromptInput: React.FC<PromptInputProps & { onFocus?: () => void }> = ({
+const PromptInput: React.FC<
+    PromptInputProps & { onFocus?: () => void; mode?: 'agent' | 'search' }
+> = ({
     onSubmit,
     isLoading,
     placeholder,
@@ -15,6 +17,7 @@ const PromptInput: React.FC<PromptInputProps & { onFocus?: () => void }> = ({
     isAuthenticated,
     onOpenAuth,
     onFocus,
+    mode,
 }) => {
     const {
         input,
@@ -60,7 +63,7 @@ const PromptInput: React.FC<PromptInputProps & { onFocus?: () => void }> = ({
       `}
             >
                 <div
-                    className={`flex flex-wrap items-start w-full relative rounded-t-[16px] overflow-visible ${minimized ? 'py-3 pl-5 pr-12 min-h-[48px]' : 'pt-[12px] pl-5 pr-12 pb-1 min-h-[72px] text-[15px]'}`}
+                    className={`flex flex-wrap items-start w-full relative rounded-t-[16px] overflow-visible ${minimized ? 'py-3 pl-5 pr-12 min-h-[48px]' : 'pt-[12px] pl-5 pr-12 pb-1 min-h-[72px] text-[14.5px]'}`}
                 >
                     {selectedRepos.map((repo, idx) => (
                         <div
@@ -90,7 +93,9 @@ const PromptInput: React.FC<PromptInputProps & { onFocus?: () => void }> = ({
                                     ? 'Ask a follow-up...'
                                     : selectedRepos.length > 0
                                       ? ''
-                                      : 'Describe your idea...')
+                                      : mode === 'search'
+                                        ? 'Ask about your code...'
+                                        : 'Describe your idea...')
                             }
                             className={`
                     w-full bg-transparent text-[#D6D5D4] placeholder-[#949494] caret-white
@@ -226,6 +231,7 @@ const PromptInput: React.FC<PromptInputProps & { onFocus?: () => void }> = ({
                         handleInputChange((input || '') + separator + '@' + trigger)
                         textareaRef.current?.focus()
                     }}
+                    mode={mode}
                 />
             </div>
         </div>

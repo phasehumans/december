@@ -6,6 +6,7 @@ import { HomeHeader } from './HomeHeader'
 import { OnboardingModal } from './OnboardingModal'
 import PromptInput from './PromptInput'
 
+import { ProfileFeedbackModal } from '@/features/profile/components/ProfileFeedbackModal'
 import type { HomeHeroProps } from '@/features/home/types'
 
 import { useAppStore } from '@/app/store'
@@ -53,6 +54,22 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
     })
 
     const [showOnboarding, setShowOnboarding] = useState(false)
+    const [showFeedbackModal, setShowFeedbackModal] = useState(false)
+
+    const dismissCardMutation = useMutation({
+        mutationFn: profileAPI.dismissOnboardingCard,
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: ['profile'] })
+        },
+    })
+
+    const handleDismissCard = (card: 'welcome' | 'github' | 'feedback') => {
+        dismissCardMutation.mutate(card)
+    }
+
+    const handleConnectGithub = () => {
+        window.location.href = 'https://github.com/apps/trydecember'
+    }
 
     useEffect(() => {
         let timer: any = null
@@ -82,6 +99,17 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
         if (canvasEl) observer.observe(canvasEl)
         return () => observer.disconnect()
     }, [isAuthenticated])
+
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'm') {
+                e.preventDefault()
+                setChatMode((prev) => (prev === 'agent' ? 'search' : 'agent'))
+            }
+        }
+        window.addEventListener('keydown', handleKeyDown)
+        return () => window.removeEventListener('keydown', handleKeyDown)
+    }, [])
 
     const toggleImportForm = (form: 'github') => {
         if (!isAuthenticated) {
@@ -165,7 +193,7 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
 
                             <button
                                 onClick={() => setChatMode('agent')}
-                                className={`relative z-10 flex-1 flex justify-center items-center py-[4px] rounded-full text-[11px] transition-colors duration-300 ${
+                                className={`relative z-10 flex-1 flex justify-center items-center py-[5px] rounded-full text-[11px] transition-colors duration-300 ${
                                     chatMode === 'agent'
                                         ? 'text-[#111111] font-semibold'
                                         : 'text-[#B4B4B4] hover:text-[#E8E8E8] font-medium'
@@ -175,7 +203,7 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
                             </button>
                             <button
                                 onClick={() => setChatMode('search' as any)}
-                                className={`relative z-10 flex-1 flex justify-center items-center py-[4px] rounded-full text-[11px] transition-colors duration-300 ${
+                                className={`relative z-10 flex-1 flex justify-center items-center py-[5px] rounded-full text-[11px] transition-colors duration-300 ${
                                     chatMode === 'search'
                                         ? 'text-[#111111] font-semibold'
                                         : 'text-[#B4B4B4] hover:text-[#E8E8E8] font-medium'
@@ -197,7 +225,122 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
                             setIsLogoAnimating(true)
                             setTimeout(() => setIsLogoAnimating(false), 500)
                         }}
+                        mode={chatMode as any}
                     />
+
+                    {/* Get Started Section */}
+                    {isAuthenticated &&
+                        profile &&
+                        (!profile.welcomeCardDone ||
+                            !profile.githubCardDone ||
+                            !profile.feedbackCardDone) && (
+                            <div className="mt-8 w-full hidden md:flex flex-col gap-3.5 select-none animate-in fade-in duration-300">
+                                <div className="flex flex-col gap-0.5 text-left px-1.5">
+                                    <h3 className="text-[13px] md:text-[14px] font-sans font-semibold text-[#D6D5D4] tracking-tight">
+                                        Get Started
+                                    </h3>
+                                    <p className="text-[11px] md:text-[11.5px] font-sans text-[#8F8E8D] leading-tight">
+                                        Start your journey with December by completing your
+                                        onboarding
+                                    </p>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 w-full">
+                                    {/* Card 1: Welcome */}
+                                    {!profile.welcomeCardDone && (
+                                        <div className="relative flex flex-col justify-between p-4 rounded-[15px] bg-[#1F1F1F] border border-[#313131] min-h-[148px] text-left transition-all duration-300 hover:border-white/10">
+                                            <button
+                                                onClick={() => handleDismissCard('welcome')}
+                                                className="absolute top-3 right-3 text-[#8F8E8D] hover:text-white transition-colors cursor-pointer"
+                                            >
+                                                <Icons.X className="w-3.5 h-3.5" />
+                                            </button>
+                                            <div className="flex flex-col gap-2.5">
+                                                <span className="text-[19px] leading-none">👋</span>
+                                                <div className="flex flex-col gap-1">
+                                                    <h4 className="text-[13px] font-sans font-semibold text-[#E8E8E8]">
+                                                        Welcome {profile.name}!
+                                                    </h4>
+                                                    <p className="text-[11px] font-sans text-[#8F8E8D] leading-normal font-medium">
+                                                        Explore the platform by discovering how its
+                                                        capabilities will be valuable to your team
+                                                        and codebase.
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <a
+                                                href="/docs"
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="mt-3.5 w-full py-1.5 rounded-[8px] bg-[#2A2928] hover:bg-[#3E3D3C] border border-[#3E3D3C]/50 hover:border-[#4E4D4C]/70 text-[#E8E8E8] text-[12px] font-sans font-semibold text-center transition-all cursor-pointer"
+                                            >
+                                                Read Docs
+                                            </a>
+                                        </div>
+                                    )}
+
+                                    {/* Card 2: Connect GitHub */}
+                                    {!profile.githubCardDone && (
+                                        <div className="relative flex flex-col justify-between p-4 rounded-[15px] bg-[#1F1F1F] border border-[#313131] min-h-[148px] text-left transition-all duration-300 hover:border-white/10">
+                                            <button
+                                                onClick={() => handleDismissCard('github')}
+                                                className="absolute top-3 right-3 text-[#8F8E8D] hover:text-white transition-colors cursor-pointer"
+                                            >
+                                                <Icons.X className="w-3.5 h-3.5" />
+                                            </button>
+                                            <div className="flex flex-col gap-2.5">
+                                                <Icons.Github className="w-5 h-5 text-white" />
+                                                <div className="flex flex-col gap-1">
+                                                    <h4 className="text-[13px] font-sans font-semibold text-[#E8E8E8]">
+                                                        Connect GitHub
+                                                    </h4>
+                                                    <p className="text-[11px] font-sans text-[#8F8E8D] leading-normal font-medium">
+                                                        Connect your repositories so that December
+                                                        can open Pull Requests for issues that it
+                                                        finds.
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <button
+                                                onClick={handleConnectGithub}
+                                                className="mt-3.5 w-full py-1.5 rounded-[8px] bg-[#2A2928] hover:bg-[#3E3D3C] border border-[#3E3D3C]/50 hover:border-[#4E4D4C]/70 text-[#E8E8E8] text-[12px] font-sans font-semibold text-center transition-all cursor-pointer"
+                                            >
+                                                Install integration
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    {/* Card 3: Feedback */}
+                                    {!profile.feedbackCardDone && (
+                                        <div className="relative flex flex-col justify-between p-4 rounded-[15px] bg-[#1F1F1F] border border-[#313131] min-h-[148px] text-left transition-all duration-300 hover:border-white/10">
+                                            <button
+                                                onClick={() => handleDismissCard('feedback')}
+                                                className="absolute top-3 right-3 text-[#8F8E8D] hover:text-white transition-colors cursor-pointer"
+                                            >
+                                                <Icons.X className="w-3.5 h-3.5" />
+                                            </button>
+                                            <div className="flex flex-col gap-2.5">
+                                                <Icons.Heart className="w-5 h-5 text-white" />
+                                                <div className="flex flex-col gap-1">
+                                                    <h4 className="text-[13px] font-sans font-semibold text-[#E8E8E8]">
+                                                        Give feedback
+                                                    </h4>
+                                                    <p className="text-[11px] font-sans text-[#8F8E8D] leading-normal font-medium">
+                                                        Help us improve December by sharing your
+                                                        thoughts and feature requests.
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <button
+                                                onClick={() => setShowFeedbackModal(true)}
+                                                className="mt-3.5 w-full py-1.5 rounded-[8px] bg-[#2A2928] hover:bg-[#3E3D3C] border border-[#3E3D3C]/50 hover:border-[#4E4D4C]/70 text-[#E8E8E8] text-[12px] font-sans font-semibold text-center transition-all cursor-pointer"
+                                            >
+                                                Share feedback
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
                 </div>
             </div>
 
@@ -211,6 +354,11 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
             />
 
             <ProUpgradeModal isOpen={showUpgradeModal} onClose={() => setShowUpgradeModal(false)} />
+
+            <ProfileFeedbackModal
+                isOpen={showFeedbackModal}
+                onClose={() => setShowFeedbackModal(false)}
+            />
         </main>
     )
 }

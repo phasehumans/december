@@ -1,4 +1,4 @@
-import { History } from 'lucide-react'
+import { History, FolderPlus } from 'lucide-react'
 import React from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate, useLocation } from 'react-router-dom'
@@ -53,6 +53,10 @@ const Sidebar: React.FC<
         null
     )
     const [sortBy, setSortBy] = React.useState<'created' | 'updated'>('updated')
+    const [filterSchedules, setFilterSchedules] = React.useState(true)
+    const [filterArchived, setFilterArchived] = React.useState(false)
+    const [filterAutomations, setFilterAutomations] = React.useState(false)
+    const [sessionType, setSessionType] = React.useState<'all' | 'agent' | 'search'>('all')
     const recentMenuRef = React.useRef<HTMLDivElement | null>(null)
     const recentMenuTriggerRef = React.useRef<HTMLButtonElement | null>(null)
     const [isLogoAnimating, setIsLogoAnimating] = React.useState(false)
@@ -98,7 +102,10 @@ const Sidebar: React.FC<
     }, [])
 
     const isHomeActive = path === '/'
-    const isProjectsActive = path.startsWith('/projects') || path.startsWith('/all-projects')
+    const isProjectsActive =
+        path.startsWith('/projects') ||
+        path.startsWith('/all-projects') ||
+        path.startsWith('/sessions')
     const isReviewActive = path.startsWith('/review')
     const isTemplatesActive = path.startsWith('/templates')
     const isDocsActive = path.startsWith('/docs')
@@ -370,52 +377,113 @@ const Sidebar: React.FC<
                                     createPortal(
                                         <div
                                             ref={recentMenuRef}
-                                            className="fixed z-[200] w-[160px] rounded-2xl border border-[#2E2D2C] bg-[#1E1E1E] shadow-2xl p-1.5 flex flex-col gap-0.5 animate-in fade-in zoom-in-95 duration-100 font-sans text-left"
+                                            className="fixed z-[200] w-[180px] rounded-xl border border-[#2E2D2C] bg-[#1E1E1E] shadow-2xl p-1 flex flex-col gap-0 animate-in fade-in zoom-in-95 duration-100 font-sans text-left"
                                             style={{
                                                 top: recentMenuPos.top,
                                                 left: recentMenuPos.left,
                                             }}
                                         >
-                                            <div className="px-3 py-1 text-[12px] font-medium text-[#8F8E8D]">
+                                            <div className="px-2.5 py-1 text-[11.5px] font-medium text-[#8F8E8D]">
                                                 Sort by
                                             </div>
                                             <button
                                                 onClick={() => {
                                                     setSortBy('created')
-                                                    setIsRecentMenuOpen(false)
                                                 }}
-                                                className="flex items-center justify-between w-full px-3 py-1.5 rounded-xl hover:bg-[#252525] text-[#CBCACA] hover:text-white transition-colors text-left text-[12px] cursor-pointer outline-none group"
+                                                className="flex items-center justify-between w-full px-2.5 py-1.5 rounded-lg hover:bg-[#2A2A2A] text-[#CBCACA] hover:text-white transition-colors text-left text-[12px] cursor-pointer outline-none group"
                                             >
                                                 <span>Created time</span>
                                                 {sortBy === 'created' && (
-                                                    <span className="text-white text-[14px]">
-                                                        ✓
-                                                    </span>
+                                                    <Icons.Check className="w-3.5 h-3.5 text-white" />
                                                 )}
                                             </button>
                                             <button
                                                 onClick={() => {
                                                     setSortBy('updated')
-                                                    setIsRecentMenuOpen(false)
                                                 }}
-                                                className="flex items-center justify-between w-full px-3 py-1.5 rounded-xl hover:bg-[#252525] text-[#CBCACA] hover:text-white transition-colors text-left text-[12px] cursor-pointer outline-none group"
+                                                className="flex items-center justify-between w-full px-2.5 py-1.5 rounded-lg hover:bg-[#2A2A2A] text-[#CBCACA] hover:text-white transition-colors text-left text-[12px] cursor-pointer outline-none group"
                                             >
                                                 <span>Last updated</span>
                                                 {sortBy === 'updated' && (
-                                                    <span className="text-white text-[14px]">
-                                                        ✓
-                                                    </span>
+                                                    <Icons.Check className="w-3.5 h-3.5 text-white" />
                                                 )}
                                             </button>
+
                                             <div className="h-[1px] bg-[#2B2A29] mx-1 my-1" />
+
+                                            <div className="px-2.5 py-1 text-[11.5px] font-medium text-[#8F8E8D]">
+                                                Filter
+                                            </div>
+                                            <button
+                                                onClick={() => setFilterSchedules(!filterSchedules)}
+                                                className="flex items-center justify-between w-full px-2.5 py-1.5 rounded-lg hover:bg-[#2A2A2A] text-[#CBCACA] hover:text-white transition-colors text-left text-[12px] cursor-pointer outline-none group"
+                                            >
+                                                <span>Schedules</span>
+                                                <div
+                                                    className={`w-7 h-[14px] rounded-full flex items-center px-[2px] transition-colors ${filterSchedules ? 'bg-[#87B2F4]' : 'bg-[#333333]'}`}
+                                                >
+                                                    <div
+                                                        className={`w-[10px] h-[10px] rounded-full bg-white transition-transform ${filterSchedules ? 'translate-x-[14px]' : 'translate-x-0'}`}
+                                                    />
+                                                </div>
+                                            </button>
+                                            <button
+                                                onClick={() => setFilterArchived(!filterArchived)}
+                                                className="flex items-center justify-between w-full px-2.5 py-1.5 rounded-lg hover:bg-[#2A2A2A] text-[#CBCACA] hover:text-white transition-colors text-left text-[12px] cursor-pointer outline-none group"
+                                            >
+                                                <span>Archived</span>
+                                                <div
+                                                    className={`w-7 h-[14px] rounded-full flex items-center px-[2px] transition-colors ${filterArchived ? 'bg-[#87B2F4]' : 'bg-[#333333]'}`}
+                                                >
+                                                    <div
+                                                        className={`w-[10px] h-[10px] rounded-full bg-white transition-transform ${filterArchived ? 'translate-x-[14px]' : 'translate-x-0'}`}
+                                                    />
+                                                </div>
+                                            </button>
+
+                                            <div className="h-[1px] bg-[#2B2A29] mx-1 my-1" />
+
+                                            <div className="px-2.5 py-1 text-[11.5px] font-medium text-[#8F8E8D]">
+                                                Session type
+                                            </div>
+                                            <button
+                                                onClick={() => setSessionType('all')}
+                                                className="flex items-center justify-between w-full px-2.5 py-1.5 rounded-lg hover:bg-[#2A2A2A] text-[#CBCACA] hover:text-white transition-colors text-left text-[12px] cursor-pointer outline-none group"
+                                            >
+                                                <span>All</span>
+                                                {sessionType === 'all' && (
+                                                    <Icons.Check className="w-3.5 h-3.5 text-white" />
+                                                )}
+                                            </button>
+                                            <button
+                                                onClick={() => setSessionType('agent')}
+                                                className="flex items-center justify-between w-full px-2.5 py-1.5 rounded-lg hover:bg-[#2A2A2A] text-[#CBCACA] hover:text-white transition-colors text-left text-[12px] cursor-pointer outline-none group"
+                                            >
+                                                <span>Agent</span>
+                                                {sessionType === 'agent' && (
+                                                    <Icons.Check className="w-3.5 h-3.5 text-white" />
+                                                )}
+                                            </button>
+                                            <button
+                                                onClick={() => setSessionType('search')}
+                                                className="flex items-center justify-between w-full px-2.5 py-1.5 rounded-lg hover:bg-[#2A2A2A] text-[#CBCACA] hover:text-white transition-colors text-left text-[12px] cursor-pointer outline-none group"
+                                            >
+                                                <span>Search</span>
+                                                {sessionType === 'search' && (
+                                                    <Icons.Check className="w-3.5 h-3.5 text-white" />
+                                                )}
+                                            </button>
+
+                                            <div className="h-[1px] bg-[#2B2A29] mx-1 my-1" />
+
                                             <button
                                                 onClick={() => {
                                                     setIsRecentMenuOpen(false)
                                                     onSessions?.()
                                                 }}
-                                                className="flex items-center gap-3 w-full px-3 py-1.5 rounded-xl hover:bg-[#252525] text-[#CBCACA] hover:text-white transition-colors text-left text-[12px] cursor-pointer outline-none group"
+                                                className="flex items-center justify-between w-full px-2.5 py-1.5 rounded-lg hover:bg-[#2A2A2A] text-[#CBCACA] hover:text-white transition-colors text-left text-[12px] cursor-pointer outline-none group"
                                             >
-                                                <span>View all projects</span>
+                                                <span>View all sessions</span>
                                             </button>
                                         </div>,
                                         document.body

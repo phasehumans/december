@@ -53,9 +53,9 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClos
                         Introducing December
                     </h2>
                     <p className="text-[12.5px] text-[#8F8E8D] leading-relaxed font-normal">
-                        December is an intelligent and design-centric development workspace. Write
-                        instructions to create stunning user interfaces, customize them visually on
-                        the interactive Canvas, and watch your descriptions come to life.
+                        December is a full-stack, agentic AI coding assistant. Give it complex tasks
+                        to build, let the autonomous agent handle the execution in a secure cloud
+                        sandbox, and collaborate seamlessly on the interactive Canvas.
                     </p>
                 </div>
 
@@ -63,7 +63,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClos
                 <div className="flex items-center justify-end mt-auto">
                     <button
                         onClick={onConfirm}
-                        className="text-[12px] font-semibold bg-[#2B2B2B] text-white hover:bg-white/10 transition-all px-5 py-2.5 rounded-full"
+                        className="text-[12px] font-semibold bg-[#2B2B2B] text-white transition-all duration-200 active:scale-[0.98] px-5 py-2 rounded-full"
                     >
                         Try it out
                     </button>

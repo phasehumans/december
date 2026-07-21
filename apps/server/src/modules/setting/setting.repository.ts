@@ -156,6 +156,59 @@ async function updateCompleteOnboarding(id: string) {
     })
 }
 
+async function updateWelcomeCardDone(id: string) {
+    return prisma.user.update({
+        where: { id },
+        data: { welcomeCardDone: true },
+        select: {
+            id: true,
+            welcomeCardDone: true,
+        },
+    })
+}
+
+async function updateGithubCardDone(id: string) {
+    return prisma.user.update({
+        where: { id },
+        data: { githubCardDone: true },
+        select: {
+            id: true,
+            githubCardDone: true,
+        },
+    })
+}
+
+async function updateFeedbackCardDone(id: string) {
+    return prisma.user.update({
+        where: { id },
+        data: { feedbackCardDone: true },
+        select: {
+            id: true,
+            feedbackCardDone: true,
+        },
+    })
+}
+
+async function createFeedback(userId: string, rating: string | null, feedback: string) {
+    return prisma.feedback.create({
+        data: {
+            userId,
+            rating,
+            feedback,
+        },
+    })
+}
+
+async function findUserByEmail(email: string) {
+    return prisma.user.findUnique({
+        where: { email },
+        select: {
+            id: true,
+            name: true,
+        },
+    })
+}
+
 export const settingRepository = {
     findUserByIdForInfo,
     findUserByIdForProfile,
@@ -174,4 +227,9 @@ export const settingRepository = {
     updateGenerationSound,
 
     updateCompleteOnboarding,
+    updateWelcomeCardDone,
+    updateGithubCardDone,
+    updateFeedbackCardDone,
+    createFeedback,
+    findUserByEmail,
 }
