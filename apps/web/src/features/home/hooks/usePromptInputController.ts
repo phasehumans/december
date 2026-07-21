@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { Code, Puzzle, MessageSquare, BookOpen, Key } from 'lucide-react'
+import { Code2, Puzzle, MessageSquare, BookOpen, KeyRound, Folder } from 'lucide-react'
 import { useState, useRef, useEffect, useCallback } from 'react'
 
 import { profileAPI } from '@/features/profile/api/profile'
@@ -16,9 +16,16 @@ export const MENTION_PROVIDERS = [
     {
         id: 'files',
         trigger: 'files:',
-        icon: Code,
+        icon: Code2,
         title: 'Codebase files',
         description: 'All indexed files',
+    },
+    {
+        id: 'sessions',
+        trigger: 'sessions:',
+        icon: Folder,
+        title: 'Sessions',
+        description: 'Your previous sessions',
     },
     {
         id: 'skills',
@@ -28,25 +35,18 @@ export const MENTION_PROVIDERS = [
         description: 'Available skills from repos',
     },
     {
-        id: 'sessions',
-        trigger: 'sessions:',
-        icon: MessageSquare,
-        title: 'December sessions',
-        description: 'Your previous sessions',
-    },
-    {
-        id: 'playbooks',
-        trigger: 'playbooks:',
-        icon: BookOpen,
-        title: 'Playbooks',
-        description: 'All team and community playbooks',
-    },
-    {
         id: 'secrets',
         trigger: 'secrets:',
-        icon: Key,
+        icon: KeyRound,
         title: 'Secrets',
         description: 'Your stored secrets',
+    },
+    {
+        id: 'send_secrets',
+        trigger: 'send-secrets:',
+        icon: KeyRound, // Will rotate this in UI if needed
+        title: 'Send secrets',
+        description: 'Send a secret to a user',
     },
 ]
 

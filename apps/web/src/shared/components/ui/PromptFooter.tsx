@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { Paperclip, Key, Code, Puzzle, MessageSquare, BookOpen } from 'lucide-react'
+import { Paperclip, KeyRound, Code2, Puzzle, MessageSquare, BookOpen, Folder } from 'lucide-react'
 import React, { useRef, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
@@ -285,8 +285,13 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
         },
         {
             label: 'Codebase files',
-            icon: <Code className="w-4 h-4 text-[#8F8E8D]" />,
+            icon: <Code2 className="w-4 h-4 text-[#8F8E8D]" />,
             action: () => onOptionSelect?.('files:'),
+        },
+        {
+            label: 'Sessions',
+            icon: <Folder className="w-4 h-4 text-[#8F8E8D]" />,
+            action: () => onOptionSelect?.('sessions:'),
         },
         {
             label: 'Skills',
@@ -294,19 +299,19 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
             action: () => onOptionSelect?.('skills:'),
         },
         {
-            label: 'December sessions',
-            icon: <MessageSquare className="w-4 h-4 text-[#8F8E8D]" />,
-            action: () => onOptionSelect?.('sessions:'),
-        },
-        {
-            label: 'Playbooks',
-            icon: <BookOpen className="w-4 h-4 text-[#8F8E8D]" />,
-            action: () => onOptionSelect?.('playbooks:'),
-        },
-        {
             label: 'Secrets',
-            icon: <Key className="w-4 h-4 text-[#8F8E8D]" />,
+            icon: <KeyRound className="w-4 h-4 text-[#8F8E8D]" />,
             action: () => onOptionSelect?.('secrets:'),
+        },
+        {
+            label: 'Send secrets',
+            icon: (
+                <KeyRound
+                    className="w-4 h-4 text-[#8F8E8D]"
+                    style={{ transform: 'scaleY(-1) rotate(-135deg)' }}
+                />
+            ),
+            action: () => onOptionSelect?.('send-secrets:'),
         },
     ]
 

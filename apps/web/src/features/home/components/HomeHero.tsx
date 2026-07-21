@@ -268,10 +268,9 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
                                                 </div>
                                             </div>
                                             <a
-                                                href="https://docs.december.dev"
+                                                href="/docs"
                                                 target="_blank"
                                                 rel="noopener noreferrer"
-                                                onClick={() => handleDismissCard('welcome')}
                                                 className="mt-3.5 w-full py-1.5 rounded-[8px] bg-[#2A2928] hover:bg-[#3E3D3C] border border-[#3E3D3C]/50 hover:border-[#4E4D4C]/70 text-[#E8E8E8] text-[12px] font-sans font-semibold text-center transition-all cursor-pointer"
                                             >
                                                 Read Docs
@@ -359,7 +358,6 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
             <ProfileFeedbackModal
                 isOpen={showFeedbackModal}
                 onClose={() => setShowFeedbackModal(false)}
-                onSubmit={handleFeedbackSubmit}
             />
         </main>
     )
