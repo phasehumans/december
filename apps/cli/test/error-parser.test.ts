@@ -44,7 +44,7 @@ describe('error-parser', () => {
     test('recursively parses json error fields', () => {
         // Line 36-37: deeply nested json inside error/message fields
         expect(parseErrorMessage('{"message": "{\\"error\\": {\\"message\\": \\"deep\\"}}"}')).toBe(
-            '{"error": {"message": "deep"}}'
+            'deep'
         )
 
         expect(parseErrorMessage('{"error": "{\\"message\\": \\"deep error\\"}"}')).toBe(

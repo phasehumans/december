@@ -30,7 +30,7 @@ describe('formatters', () => {
 
         test('formats list_dir', () => {
             expect(getToolSummary('list_dir', JSON.stringify({ dirPath: 'src/' }))).toBe(
-                'List(src/)'
+                'ListDir(src/)'
             )
         })
 
