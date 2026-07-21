@@ -1,8 +1,24 @@
 ## [unreleased]
 
+### Features
+
+- Implement uiux improvements for chat and missing dependencies
+- Ui/ux improvements for chat and missing dependencies (#216)
+
+### Testing
+
+- Extensive test coverage for all cli domains
+- Extensive test coverage for tools and providers
+
+## [0.2.18] - 2026-07-20
+
 ### Bug Fixes
 
 - _(usage)_ Add usage redirect and .december workspace
+
+### Miscellaneous Tasks
+
+- _(release)_ V0.2.18
 
 ## [0.2.17] - 2026-07-19
 
