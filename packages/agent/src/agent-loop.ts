@@ -88,13 +88,14 @@ export async function* runAgentLoop(
     agent: Agent,
     userInput?: string
 ): AsyncGenerator<AgentEvent, void, unknown> {
+    const eventQueue = new AsyncQueue<AgentEvent>()
+    const abortController = new AbortController()
+    agent.activeAbortController = abortController
+
     if (userInput) {
         agent.addMessage({ role: 'user', content: userInput })
         await agent.saveContext()
     }
-    const eventQueue = new AsyncQueue<AgentEvent>()
-    const abortController = new AbortController()
-    agent.activeAbortController = abortController
     ;(async () => {
         try {
             eventQueue.push({ type: 'AgentStart' })
@@ -209,7 +210,7 @@ async function streamAssistantResponse(
     let toolCalls: ToolCall[] = []
 
     try {
-        await pRetry(
+        const retryPromise = pRetry(
             async () => {
                 assistantMessage = ''
                 toolCalls = []
@@ -218,7 +219,8 @@ async function streamAssistantResponse(
                 const compactionResult = await agent.conversation.compactIfNeeded(
                     agent.llm,
                     undefined,
-                    agent.modelOptions
+                    agent.modelOptions,
+                    signal
                 )
 
                 if (compactionResult.compacted) {
@@ -283,12 +285,14 @@ async function streamAssistantResponse(
                     }
                 }
                 toolCalls = Array.from(activeToolCalls.values())
+                return { assistantMessage, toolCalls }
             },
             {
                 retries: 5,
                 factor: 2,
                 minTimeout: 2000,
                 maxTimeout: 30000,
+                signal,
                 onFailedAttempt: (error: any) => {
                     if (
                         error.status === 429 ||
@@ -309,16 +313,32 @@ async function streamAssistantResponse(
             }
         )
 
+        const abortPromise = new Promise<{ assistantMessage: string; toolCalls: ToolCall[] }>(
+            (_, reject) => {
+                if (signal.aborted) {
+                    reject(new AbortError(new Error('Aborted')))
+                } else {
+                    signal.addEventListener('abort', () => {
+                        reject(new AbortError(new Error('Aborted')))
+                    })
+                }
+            }
+        )
+
+        const result = await Promise.race([retryPromise, abortPromise])
+        assistantMessage = result.assistantMessage
+        toolCalls = result.toolCalls
+
         eventQueue.push({ type: 'AgentStatus', message: '' }) // clear status on success
         return { assistantMessage, toolCalls }
     } catch (error: any) {
         let errorMsg = formatError(error)
 
         if (signal.aborted || (error.name === 'AbortError' && errorMsg === 'Aborted')) {
-            eventQueue.push({ type: 'StreamChunk', content: `\n\n*[Generation Interrupted]*\n` })
+            eventQueue.push({ type: 'AgentInterrupt' })
             agent.addMessage({
                 role: 'assistant',
-                content: assistantMessage + `\n\n*[Generation Interrupted]*`,
+                content: assistantMessage + `\n\nInterrupted · What should December do instead?`,
                 isUI: true,
             })
             await agent.saveContext()
@@ -335,7 +355,7 @@ async function streamAssistantResponse(
                 errorMsg
         }
 
-        eventQueue.push({ type: 'StreamChunk', content: `\n\n**API Error:** ${errorMsg}\n` })
+        eventQueue.push({ type: 'AgentError', error: errorMsg })
 
         agent.addMessage({
             role: 'assistant',

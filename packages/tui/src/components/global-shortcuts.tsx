@@ -83,6 +83,11 @@ export function GlobalShortcuts(session: any) {
             return
         }
 
+        if (session.isStreaming && key.escape) {
+            session.handleAbort()
+            return
+        }
+
         if (key.ctrl && input === 'l') {
             setAuthMode('login')
         } else if (key.ctrl && input === 'h') {

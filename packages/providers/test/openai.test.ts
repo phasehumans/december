@@ -124,4 +124,10 @@ describe('OpenAI Provider', () => {
             },
         ])
     })
+    test('OpenAIProvider class wrapper > instantiates and forwards stream', () => {
+        const { OpenAIProvider } = require('../src/providers/openai')
+        const provider = new OpenAIProvider('http://local', 'key')
+        expect(provider.id).toBe('openai')
+        expect(provider.stream).toBeInstanceOf(Function)
+    })
 })

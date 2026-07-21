@@ -3,7 +3,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 
-import clipboard from 'clipboardy'
+import { writeToClipboard } from '../../utils/clipboard'
 
 import type { Command } from './types'
 
@@ -29,7 +29,7 @@ export const COMMANDS: Command[] = [
                             ? plannerMessages[plannerMessages.length - 1]
                             : null
                     if (lastMsg && lastMsg.content) {
-                        clipboard.writeSync(lastMsg.content)
+                        writeToClipboard(lastMsg.content)
                         ctx.toast.show({
                             variant: 'success',
                             message: 'Copied last planner response to clipboard!',

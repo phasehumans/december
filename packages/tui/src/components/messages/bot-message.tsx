@@ -2,6 +2,7 @@ import { Box, Text, useFocus, useInput } from 'ink'
 import React, { useState } from 'react'
 
 import { Markdown } from '../markdown'
+import { SmoothMarkdown } from './smooth-markdown'
 import { Pill } from '../pill'
 import { Spinner } from '../spinner'
 
@@ -12,6 +13,8 @@ export type MessageBlock =
     | { type: 'text'; content: string }
     | { type: 'thinking'; content: string }
     | { type: 'compaction'; summary: string }
+    | { type: 'error'; error: string }
+    | { type: 'interrupt' }
     | {
           type: 'command'
           toolCallId?: string
@@ -114,17 +117,17 @@ export function BotMessage({ blocks, usage }: Props) {
                             )
                         }
 
-                        // split by <thought> tags
+                        // split by <thought> tags (case insensitive, allow attributes)
                         const parts = block.content.split(
-                            /(<thought>[\s\S]*?<\/thought>|<thought>[\s\S]*)/
+                            /(<thought(?:>| [^>]*>)[\s\S]*?<\/thought>|<thought(?:>| [^>]*>)[\s\S]*)/i
                         )
                         return (
                             <Box key={idx} flexDirection="column">
                                 {parts.map((part, pidx) => {
-                                    if (part.startsWith('<thought>')) {
+                                    if (/^<thought(?:>| [^>]*>)/i.test(part)) {
                                         const thoughtContent = part
-                                            .replace(/^<thought>/, '')
-                                            .replace(/<\/thought>$/, '')
+                                            .replace(/^<thought(?:>| [^>]*>)/i, '')
+                                            .replace(/<\/thought>$/i, '')
                                             .trim()
                                         return (
                                             <CollapsibleThought
@@ -136,10 +139,24 @@ export function BotMessage({ blocks, usage }: Props) {
                                     if (part.trim() === '') return null
                                     return (
                                         <Box key={pidx}>
-                                            <Markdown>{part.trim()}</Markdown>
+                                            <SmoothMarkdown text={part.trim()} isRunning={true} />
                                         </Box>
                                     )
                                 })}
+                            </Box>
+                        )
+                    }
+                    case 'error': {
+                        return (
+                            <Box key={idx} flexDirection="column" paddingLeft={1} marginY={1}>
+                                <Text color="#f87171">Agent Error: {block.error}</Text>
+                            </Box>
+                        )
+                    }
+                    case 'interrupt': {
+                        return (
+                            <Box key={idx} flexDirection="row" paddingY={1}>
+                                <Text>Interrupted · What should December do instead?</Text>
                             </Box>
                         )
                     }
@@ -182,20 +199,12 @@ export function BotMessage({ blocks, usage }: Props) {
                         }
 
                         if (!isRunning) {
-                            if (block.toolName === 'read_file') {
+                            if (block.toolName === 'read_file' || block.toolName === 'view_file') {
                                 const lines = block.output ? block.output.split(/\r?\n/).length : 0
                                 return (
                                     <Box key={idx} flexDirection="column">
                                         <Box gap={1} alignItems="center">
-                                            <Pill
-                                                label="READ"
-                                                backgroundColor="#303030"
-                                                color="#cbd5e1"
-                                            />
-                                            <Text color="white">
-                                                {parsedInput.path || parsedInput.filePath || ''}
-                                            </Text>
-                                            {isSuccess && <Text color="cyan">({lines} lines)</Text>}
+                                            <StyledCommand command={block.command} />
                                         </Box>
                                     </Box>
                                 )
@@ -229,12 +238,7 @@ export function BotMessage({ blocks, usage }: Props) {
                                 return (
                                     <Box key={idx} flexDirection="column">
                                         <Box gap={1} alignItems="center">
-                                            <StyledCommand
-                                                command={`${isWrite ? 'Create' : 'Edit'}(${path})`}
-                                            />
-                                            {isSuccess && isWrite && (
-                                                <Text color="cyan">({lines.length} lines)</Text>
-                                            )}
+                                            <StyledCommand command={block.command} />
                                         </Box>
                                         {isSuccess && lines.length > 0 && !isWrite && (
                                             <Box flexDirection="column" paddingLeft={0}>
@@ -316,10 +320,6 @@ export function BotMessage({ blocks, usage }: Props) {
                                     <Box alignItems="center" gap={1}>
                                         <StyledCommand command={block.command} />
                                     </Box>
-                                    <ToolArgumentsDisplay
-                                        toolName={block.toolName || ''}
-                                        inputObj={parsedInput}
-                                    />
                                 </Box>
                             )
                         }
@@ -328,20 +328,53 @@ export function BotMessage({ blocks, usage }: Props) {
                         let statusLabel = 'Working...'
                         if (block.toolName === 'read_file' || block.toolName === 'view_file')
                             statusLabel = 'Reading...'
-                        if (block.toolName === 'write_file' || block.toolName === 'write_to_file')
+                        else if (
+                            block.toolName === 'write_file' ||
+                            block.toolName === 'write_to_file'
+                        )
                             statusLabel = 'Writing...'
-                        if (block.toolName === 'run_command') statusLabel = 'Executing...'
-                        if (block.toolName === 'search_web') statusLabel = 'Searching...'
+                        else if (block.toolName === 'run_command' || block.toolName === 'bash')
+                            statusLabel = 'Executing...'
+                        else if (block.toolName === 'search_web') statusLabel = 'Searching web...'
+                        else if (block.toolName === 'list_dir') statusLabel = 'Listing directory...'
+                        else if (
+                            block.toolName === 'find_files' ||
+                            block.toolName === 'grep_search'
+                        )
+                            statusLabel = 'Searching codebase...'
+                        else if (
+                            block.toolName === 'edit_file' ||
+                            block.toolName === 'edit_diff' ||
+                            block.toolName === 'replace_file_content' ||
+                            block.toolName === 'multi_replace_file_content'
+                        )
+                            statusLabel = 'Modifying...'
+                        else if (
+                            block.toolName === 'subagent' ||
+                            block.toolName === 'invoke_subagent'
+                        )
+                            statusLabel = 'Invoking subagent...'
+                        else if (block.toolName === 'ask_question')
+                            statusLabel = 'Asking question...'
+                        else if (block.toolName === 'manage_task') statusLabel = 'Managing tasks...'
+                        else if (
+                            block.toolName === 'list_permissions' ||
+                            block.toolName === 'ask_permission'
+                        )
+                            statusLabel = 'Checking permissions...'
+                        else if (block.toolName === 'generate_image')
+                            statusLabel = 'Generating image...'
+                        else if (block.toolName === 'send_message')
+                            statusLabel = 'Sending message...'
+                        else if (block.toolName === 'schedule') statusLabel = 'Scheduling timer...'
 
                         return (
                             <Box key={idx} flexDirection="column">
                                 <Box gap={1} alignItems="center">
+                                    <Spinner />
+                                    <Text color="cyan">{statusLabel}</Text>
                                     <StyledCommand command={block.command} truncate={false} />
                                 </Box>
-                                <ToolArgumentsDisplay
-                                    toolName={block.toolName || ''}
-                                    inputObj={parsedInput}
-                                />
                                 {block.output && (
                                     <Box
                                         flexDirection="column"
@@ -351,13 +384,19 @@ export function BotMessage({ blocks, usage }: Props) {
                                         paddingY={0.5}
                                         backgroundColor="#1e293b"
                                     >
-                                        {block.output.split(/\r?\n/).map((line, lidx) => (
-                                            <ParsedOutputLine
-                                                key={lidx}
-                                                line={line}
-                                                isError={block.status === 'error'}
-                                            />
-                                        ))}
+                                        {block.output
+                                            .trim()
+                                            .split(/\r?\n/)
+                                            .slice(-2)
+                                            .map((line, lidx) => (
+                                                <Text
+                                                    key={lidx}
+                                                    color="#94a3b8"
+                                                    wrap="truncate-end"
+                                                >
+                                                    │ {line}
+                                                </Text>
+                                            ))}
                                     </Box>
                                 )}
                             </Box>
@@ -423,14 +462,6 @@ export function BotMessage({ blocks, usage }: Props) {
                         return null
                 }
             })}
-
-            {usage && (
-                <Box alignSelf="flex-end" paddingRight={1} paddingTop={1}>
-                    <Text color="#94a3b8">
-                        {usage.promptTokens + usage.completionTokens} tokens
-                    </Text>
-                </Box>
-            )}
         </Box>
     )
 }

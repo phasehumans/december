@@ -17,7 +17,8 @@ export async function compactContextIfNeeded(
     messages: Message[],
     llm: LLMProvider,
     maxTokens?: number,
-    modelOptions?: Record<string, any>
+    modelOptions?: Record<string, any>,
+    signal?: AbortSignal
 ): Promise<Message[]> {
     let limit = maxTokens
     if (!limit) {
@@ -156,8 +157,9 @@ Keep each section concise. You MUST preserve exact file paths, function names, a
     ]
     let summary = ''
 
-    const stream = llm.stream(compactionMessages as any, [], undefined, modelOptions)
+    const stream = llm.stream(compactionMessages as any, [], undefined, modelOptions, signal)
     for await (const chunk of stream) {
+        if (signal?.aborted) throw new Error('Aborted')
         if (chunk.type === 'text') {
             summary += chunk.text
         }

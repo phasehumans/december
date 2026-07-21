@@ -111,4 +111,10 @@ describe('Gemini Provider', () => {
         expect(capturedOptions.config.tools).toBeDefined()
         expect(capturedOptions.config.tools[0].functionDeclarations[0].name).toBe('calc')
     })
+    test('GeminiProvider class wrapper > instantiates and forwards stream', () => {
+        const { GeminiProvider } = require('../src/providers/gemini')
+        const provider = new GeminiProvider('key')
+        expect(provider.id).toBe('gemini')
+        expect(provider.stream).toBeInstanceOf(Function)
+    })
 })

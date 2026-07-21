@@ -133,6 +133,10 @@ export interface FileModifiedEvent {
     diff?: string
 }
 
+export interface AgentInterruptEvent {
+    type: 'AgentInterrupt'
+}
+
 export type AgentEvent =
     | AgentStartEvent
     | TurnStartEvent
@@ -144,6 +148,7 @@ export type AgentEvent =
     | TurnEndEvent
     | AgentEndEvent
     | AgentErrorEvent
+    | AgentInterruptEvent
     | AgentStatusEvent
     | AgentUsageEvent
     | ContextCompactedEvent

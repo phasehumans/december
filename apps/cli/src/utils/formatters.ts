@@ -3,22 +3,33 @@ export function getToolSummary(name: string, inputStr: string): string {
         const args = JSON.parse(inputStr || '{}')
         switch (name) {
             case 'read_file':
-                return `Read(${args.filePath || args.path || ''})`.trim()
+            case 'view_file':
+                return `Read(${args.AbsolutePath || args.filePath || args.path || ''})`.trim()
             case 'write_file':
-                return `Create(${args.filePath || args.path || ''})`.trim()
+            case 'write_to_file':
+                return `Create(${args.TargetFile || args.filePath || args.path || ''})`.trim()
             case 'edit_file':
             case 'edit_diff':
-                return `Edit(${args.filePath || args.path || ''})`.trim()
+            case 'replace_file_content':
+            case 'multi_replace_file_content':
+                return `Edit(${args.TargetFile || args.filePath || args.path || ''})`.trim()
             case 'list_dir':
-                return `List(${args.dirPath || args.path || ''})`.trim()
+                return `ListDir(${args.DirectoryPath || args.dirPath || args.path || ''})`.trim()
             case 'bash':
-                return `Bash(${args.command || ''})`.trim()
+            case 'run_command':
+                return `Bash(${args.CommandLine || args.command || ''})`.trim()
             case 'find_files':
-                return `Search(${args.pattern || args.query || ''})`.trim()
             case 'grep_search':
-                return `Search(${args.pattern || args.query || ''})`.trim()
+                return `Search(${args.Query || args.pattern || args.query || ''})`.trim()
             case 'subagent':
+            case 'invoke_subagent':
                 return `Subagent()`
+            case 'search_web':
+                return `WebSearch(${args.query || ''})`.trim()
+            case 'ask_question':
+                return `AskQuestion()`
+            case 'manage_task':
+                return `ManageTask(${args.Action || ''})`.trim()
             default:
                 return `${name}()`
         }

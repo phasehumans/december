@@ -16,11 +16,16 @@ export function parseErrorMessage(err: any): string {
         // 1. try regex extraction first, since it's the most robust against broken json
         const msgMatch = str.match(/"message"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"/)
         if (msgMatch) {
+            let extractedMatch = msgMatch[1]
             try {
-                return JSON.parse(`"${msgMatch[1]}"`)
-            } catch (e) {
-                return msgMatch[1]
+                extractedMatch = JSON.parse(`"${msgMatch[1]}"`)
+            } catch (e) {}
+
+            if (typeof extractedMatch === 'string' && extractedMatch.trim().startsWith('{')) {
+                const nested = extractMessage(extractedMatch)
+                if (nested) return nested
             }
+            return extractedMatch
         }
 
         // 2. try json parse
@@ -34,6 +39,13 @@ export function parseErrorMessage(err: any): string {
                 }
                 if (typeof parsed.message === 'string' && parsed.message.trim().startsWith('{')) {
                     const extracted = extractMessage(parsed.message)
+                    if (extracted) return extracted
+                }
+                if (
+                    typeof parsed.error?.message === 'string' &&
+                    parsed.error.message.trim().startsWith('{')
+                ) {
+                    const extracted = extractMessage(parsed.error.message)
                     if (extracted) return extracted
                 }
 
