@@ -106,15 +106,31 @@ export const SidebarFooter: React.FC<
                     id="try-cli-btn"
                     onClick={() => setShowCliCard(!showCliCard)}
                     className={cn(
-                        'upgrade-plan-btn flex items-center justify-center gap-1 rounded-full bg-transparent hover:bg-white/5 transition-all text-[#CBCACA] hover:text-white font-medium outline-none mx-auto cursor-pointer',
+                        'upgrade-plan-btn flex items-center justify-center gap-1 rounded-full bg-transparent hover:bg-white/5 transition-colors duration-300 text-[#CBCACA] hover:text-white font-medium outline-none mx-auto cursor-pointer overflow-hidden whitespace-nowrap',
                         isCollapsed ? 'w-[32px] h-[32px] px-0' : 'px-2.5 py-[3px] w-fit text-[11px]'
                     )}
                     style={{
                         border: isCollapsed ? 'none' : '1px solid #383735',
                     }}
                 >
-                    <span className={cn(isCollapsed ? 'text-[18px]' : 'text-[12px]')}>✱</span>
-                    {!isCollapsed && <span>Try December CLI</span>}
+                    <span
+                        className={cn(
+                            isCollapsed ? 'text-[18px]' : 'text-[12px]',
+                            'transition-all duration-300'
+                        )}
+                    >
+                        ✱
+                    </span>
+                    <span
+                        className={cn(
+                            'transition-all duration-300 ease-in-out overflow-hidden whitespace-nowrap',
+                            isCollapsed
+                                ? 'max-w-0 opacity-0 ml-0'
+                                : 'max-w-[120px] opacity-100 ml-1'
+                        )}
+                    >
+                        Try December CLI
+                    </span>
                 </button>
 
                 {showCliCard && (

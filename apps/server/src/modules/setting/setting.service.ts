@@ -32,6 +32,9 @@ export const settingSelect = {
     creditBalance: true,
     isDeleted: true,
     hasCompletedOnboarding: true,
+    welcomeCardDone: true,
+    githubCardDone: true,
+    feedbackCardDone: true,
 }
 
 import type {
@@ -44,7 +47,10 @@ import type {
     ChatSuggestions,
     UpdateGenerationSoundPayload,
     CompleteOnboarding,
+    DismissOnboardingCard,
+    SubmitFeedback,
 } from './setting.types'
+import { sendNotificationToUser } from '../notification/notification.service'
 
 const getMe = async (data: GetMe) => {
     const { userId } = data
@@ -254,6 +260,43 @@ const completeOnboarding = async (data: CompleteOnboarding) => {
     return updatedUser
 }
 
+const dismissOnboardingCard = async (data: DismissOnboardingCard) => {
+    const { userId, card } = data
+    const existingUser = await settingRepository.findUserByIdForExistCheck(userId)
+
+    if (!existingUser) {
+        throw new AppError('user not found', 404)
+    }
+
+    let updatedUser
+    if (card === 'welcome') {
+        updatedUser = await settingRepository.updateWelcomeCardDone(userId)
+    } else if (card === 'github') {
+        updatedUser = await settingRepository.updateGithubCardDone(userId)
+    } else if (card === 'feedback') {
+        updatedUser = await settingRepository.updateFeedbackCardDone(userId)
+    }
+
+    return updatedUser
+}
+
+const submitFeedback = async (data: SubmitFeedback) => {
+    const { userId, rating, feedback } = data
+    const existingUser = await settingRepository.findUserByIdForExistCheck(userId)
+
+    if (!existingUser) {
+        throw new AppError('user not found', 404)
+    }
+
+    // Save feedback to DB
+    await settingRepository.createFeedback(userId, rating, feedback)
+
+    // Mark feedback card as done
+    const updatedUser = await settingRepository.updateFeedbackCardDone(userId)
+
+    return updatedUser
+}
+
 export const settingService = {
     getMe,
     getProfile,
@@ -264,4 +307,6 @@ export const settingService = {
     chatSuggestions,
     generationSound,
     completeOnboarding,
+    dismissOnboardingCard,
+    submitFeedback,
 }

@@ -44,3 +44,14 @@ export type UpdateGenerationSoundPayload = {
 export type CompleteOnboarding = {
     userId: string
 }
+
+export type DismissOnboardingCard = {
+    userId: string
+    card: 'welcome' | 'github' | 'feedback'
+}
+
+export type SubmitFeedback = {
+    userId: string
+    rating: 'sad' | 'neutral' | 'happy' | null
+    feedback: string
+}

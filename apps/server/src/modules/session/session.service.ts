@@ -254,7 +254,12 @@ export async function addCollaborator(data: AddCollaborator) {
         throw new AppError('Maximum limit of 3 collaborators reached', 400)
     }
 
-    return sessionRepository.addCollaborator(sessionId, targetUser.id, targetUser.email)
+    const result = await sessionRepository.addCollaborator(
+        sessionId,
+        targetUser.id,
+        targetUser.email
+    )
+    return result
 }
 
 export async function removeCollaborator(data: RemoveCollaborator) {

@@ -46,6 +46,9 @@ model User {
   supabaseUserId         String?
   creditBalance          Int             @default(0)
   hasCompletedOnboarding Boolean         @default(false)
+  welcomeCardDone        Boolean         @default(false)
+  githubCardDone         Boolean         @default(false)
+  feedbackCardDone       Boolean         @default(false)
 
   notifications      Notification[]
   projects           Project[]
@@ -59,6 +62,7 @@ model User {
   redeemClaims       RedeemCodeClaim[]
   githubInstallations GithubAppInstallation[]
   secrets            Secret[]
+  feedbacks          Feedback[]
 }
 
 model Notification {
@@ -437,5 +441,18 @@ model Secret {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, name])
+  @@index([userId])
+}
+
+model Feedback {
+  id        String   @id @default(uuid())
+  userId    String
+  rating    String?
+  feedback  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId])
 }

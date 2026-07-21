@@ -9,6 +9,8 @@ import {
     updateNameSchema,
     updateNotificationSchema,
     updateUsernameSchema,
+    dismissOnboardingCardSchema,
+    submitFeedbackSchema,
 } from './setting.schema'
 import { settingService } from './setting.service'
 
@@ -140,6 +142,34 @@ const completeOnboarding = asyncHandler(async (req: Request, res: Response) => {
     return sendSuccess(res, 'onboarding completed successfully', result)
 })
 
+const dismissOnboardingCard = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
+
+    if (!userId) {
+        throw new AppError('unauthorized', 401)
+    }
+
+    const parseData = dismissOnboardingCardSchema.parse(req.body)
+    const { card } = parseData
+
+    const result = await settingService.dismissOnboardingCard({ userId, card })
+    return sendSuccess(res, 'onboarding card dismissed successfully', result)
+})
+
+const submitFeedback = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
+
+    if (!userId) {
+        throw new AppError('unauthorized', 401)
+    }
+
+    const parseData = submitFeedbackSchema.parse(req.body)
+    const { rating, feedback } = parseData
+
+    const result = await settingService.submitFeedback({ userId, rating, feedback })
+    return sendSuccess(res, 'feedback submitted successfully', result)
+})
+
 export const settingController = {
     getMe,
     getProfile,
@@ -150,4 +180,6 @@ export const settingController = {
     chatSuggestions,
     generationSound,
     completeOnboarding,
+    dismissOnboardingCard,
+    submitFeedback,
 }

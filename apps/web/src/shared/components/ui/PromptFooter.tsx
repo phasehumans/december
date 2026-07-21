@@ -21,6 +21,7 @@ interface PromptFooterProps {
     isAuthenticated?: boolean
     onOpenAuth?: () => void
     onOptionSelect?: (trigger: string) => void
+    mode?: 'agent' | 'search'
 }
 
 const MODELS = [
@@ -79,6 +80,7 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
     isAuthenticated,
     onOpenAuth,
     onOptionSelect,
+    mode = 'agent',
 }) => {
     const navigate = useNavigate()
     const [isModelSelectorOpen, setIsModelSelectorOpen] = useState(false)
@@ -125,14 +127,15 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
             return
         }
         const handleKeyDown = (e: KeyboardEvent) => {
+            const menuCount = mode === 'search' ? 3 : 7
             if (e.key === 'ArrowDown') {
                 e.preventDefault()
                 e.stopPropagation()
-                setSelectedPlusIndex((prev) => (prev + 1) % 7)
+                setSelectedPlusIndex((prev) => (prev + 1) % menuCount)
             } else if (e.key === 'ArrowUp') {
                 e.preventDefault()
                 e.stopPropagation()
-                setSelectedPlusIndex((prev) => (prev - 1 + 7) % 7)
+                setSelectedPlusIndex((prev) => (prev - 1 + menuCount) % menuCount)
             } else if (e.key === 'Enter') {
                 e.preventDefault()
                 e.stopPropagation()
@@ -141,36 +144,52 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
                     onOpenAuth?.()
                     return
                 }
-                const actions = [
-                    () => {
-                        setIsPlusMenuOpen(false)
-                        onUpload()
-                    },
-                    () => {
-                        setIsPlusMenuOpen(false)
-                        onOptionSelect?.('repos:')
-                    },
-                    () => {
-                        setIsPlusMenuOpen(false)
-                        onOptionSelect?.('files:')
-                    },
-                    () => {
-                        setIsPlusMenuOpen(false)
-                        onOptionSelect?.('skills:')
-                    },
-                    () => {
-                        setIsPlusMenuOpen(false)
-                        onOptionSelect?.('sessions:')
-                    },
-                    () => {
-                        setIsPlusMenuOpen(false)
-                        onOptionSelect?.('playbooks:')
-                    },
-                    () => {
-                        setIsPlusMenuOpen(false)
-                        onOptionSelect?.('secrets:')
-                    },
-                ]
+                const actions =
+                    mode === 'search'
+                        ? [
+                              () => {
+                                  setIsPlusMenuOpen(false)
+                                  onUpload()
+                              },
+                              () => {
+                                  setIsPlusMenuOpen(false)
+                                  onOptionSelect?.('repos:')
+                              },
+                              () => {
+                                  setIsPlusMenuOpen(false)
+                                  onOptionSelect?.('files:')
+                              },
+                          ]
+                        : [
+                              () => {
+                                  setIsPlusMenuOpen(false)
+                                  onUpload()
+                              },
+                              () => {
+                                  setIsPlusMenuOpen(false)
+                                  onOptionSelect?.('repos:')
+                              },
+                              () => {
+                                  setIsPlusMenuOpen(false)
+                                  onOptionSelect?.('files:')
+                              },
+                              () => {
+                                  setIsPlusMenuOpen(false)
+                                  onOptionSelect?.('skills:')
+                              },
+                              () => {
+                                  setIsPlusMenuOpen(false)
+                                  onOptionSelect?.('sessions:')
+                              },
+                              () => {
+                                  setIsPlusMenuOpen(false)
+                                  onOptionSelect?.('playbooks:')
+                              },
+                              () => {
+                                  setIsPlusMenuOpen(false)
+                                  onOptionSelect?.('secrets:')
+                              },
+                          ]
                 actions[selectedPlusIndex]?.()
             } else if (e.key === 'Escape') {
                 setIsPlusMenuOpen(false)
@@ -178,7 +197,7 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
         }
         document.addEventListener('keydown', handleKeyDown, true)
         return () => document.removeEventListener('keydown', handleKeyDown, true)
-    }, [isPlusMenuOpen, selectedPlusIndex, onUpload, onOptionSelect])
+    }, [isPlusMenuOpen, selectedPlusIndex, onUpload, onOptionSelect, mode])
 
     const isPro = true
 
@@ -253,7 +272,7 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
         }
     }
 
-    const plusMenuItems = [
+    const allPlusMenuItems = [
         {
             label: 'Upload attachment',
             icon: <Paperclip className="w-4 h-4 text-[#8F8E8D]" />,
@@ -290,6 +309,13 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
             action: () => onOptionSelect?.('secrets:'),
         },
     ]
+
+    const plusMenuItems =
+        mode === 'search'
+            ? allPlusMenuItems.filter((item) =>
+                  ['Upload attachment', 'Repositories', 'Codebase files'].includes(item.label)
+              )
+            : allPlusMenuItems
 
     return (
         <div className="flex items-center justify-between px-3 pb-3 mt-0 pl-3 relative">
@@ -385,70 +411,76 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
                     </div>
                 </div>
 
-                <div
-                    className="relative group/btn"
-                    onMouseEnter={handleCanvasMouseEnter}
-                    onMouseLeave={handleCanvasMouseLeave}
-                >
-                    <button
-                        onClick={(e) => {
-                            if (!isAuthenticated && onOpenAuth) {
-                                onOpenAuth()
-                                return
-                            }
-                            if (window.innerWidth < 768) {
-                                e.preventDefault()
-                                setShowCanvasCard(!showCanvasCard)
-                                return
-                            }
-                            window.open('/canvas', '_blank')
-                        }}
-                        className="flex items-center gap-1.5 text-[#8E8E8E] hover:text-white hover:bg-[#27272A] px-2 py-0.5 rounded-full transition-all duration-200 outline-none cursor-pointer bg-transparent border border-dashed border-white/20 hover:border-white/40"
+                {mode !== 'search' && (
+                    <div
+                        className="relative group/btn"
+                        onMouseEnter={handleCanvasMouseEnter}
+                        onMouseLeave={handleCanvasMouseLeave}
                     >
-                        <span className="text-[13px] font-medium">Canvas</span>
-                    </button>
-                    {showCanvasCard && (
-                        <div className="absolute bottom-[calc(100%+8px)] left-0 z-50 flex flex-col bg-[#1E1E1E] border border-[#2A2928] rounded-2xl shadow-2xl overflow-hidden w-[260px] animate-in fade-in zoom-in-95 duration-200 cursor-default">
-                            <div className="w-full h-[140px] bg-[#1E1E1E] relative overflow-hidden flex items-center justify-center p-1.5 pb-0 pointer-events-none">
-                                <div className="w-full h-full relative overflow-hidden rounded-xl border border-[#2A2928]">
-                                    <img
-                                        src={sidebarPng}
-                                        alt="Context Canvas"
-                                        className="w-full h-full object-cover object-center scale-[1.35] absolute inset-0 opacity-80"
-                                    />
+                        <button
+                            onClick={(e) => {
+                                if (!isAuthenticated && onOpenAuth) {
+                                    onOpenAuth()
+                                    return
+                                }
+                                if (window.innerWidth < 768) {
+                                    e.preventDefault()
+                                    setShowCanvasCard(!showCanvasCard)
+                                    return
+                                }
+                                window.open('/canvas', '_blank')
+                            }}
+                            className="flex items-center gap-1.5 text-[#8E8E8E] hover:text-white hover:bg-[#27272A] px-2 py-0.5 rounded-full transition-all duration-200 outline-none cursor-pointer bg-transparent border border-dashed border-white/20 hover:border-white/40"
+                        >
+                            <span className="text-[12px] font-medium">Canvas</span>
+                        </button>
+                        {showCanvasCard && (
+                            <div className="absolute bottom-[calc(100%+8px)] left-0 z-50 flex flex-col bg-[#1E1E1E] border border-[#2A2928] rounded-2xl shadow-2xl overflow-hidden w-[260px] animate-in fade-in zoom-in-95 duration-200 cursor-default">
+                                <div className="w-full h-[140px] bg-[#1E1E1E] relative overflow-hidden flex items-center justify-center p-1.5 pb-0 pointer-events-none">
+                                    <div className="w-full h-full relative overflow-hidden rounded-xl border border-[#2A2928]">
+                                        <img
+                                            src={sidebarPng}
+                                            alt="Context Canvas"
+                                            className="w-full h-full object-cover object-center scale-[1.35] absolute inset-0 opacity-80"
+                                        />
+                                    </div>
                                 </div>
-                            </div>
-                            <div className="flex flex-col px-2 pt-2.5 pb-2.5 bg-[#1E1E1E] gap-3">
-                                <div className="flex flex-col px-1 w-full text-left">
-                                    <div className="flex items-center gap-1.5 mt-0.5">
-                                        <span className="text-[13px] font-semibold text-[#E8E8E8]">
-                                            Introducing Context Canvas
-                                        </span>
-                                        <span className="px-1.5 py-[1.5px] rounded-full bg-transparent border border-[#3A3938] text-[#A3A3A3] text-[8px] font-bold tracking-widest uppercase leading-none">
-                                            Beta
+                                <div className="flex flex-col px-2 pt-2.5 pb-2.5 bg-[#1E1E1E] gap-3">
+                                    <div className="flex flex-col px-1 w-full text-left">
+                                        <div className="flex items-center gap-1.5 mt-0.5">
+                                            <span className="text-[13px] font-semibold text-[#E8E8E8]">
+                                                Introducing Context Canvas
+                                            </span>
+                                            <span className="px-1.5 py-[1.5px] rounded-full bg-transparent border border-[#3A3938] text-[#A3A3A3] text-[8px] font-bold tracking-widest uppercase leading-none">
+                                                Beta
+                                            </span>
+                                        </div>
+                                        <span className="text-[12px] text-[#8F8E8D] mt-1 leading-relaxed">
+                                            A powerful visual workspace to organize your code,
+                                            architecture, and context alongside your conversation.
                                         </span>
                                     </div>
-                                    <span className="text-[12px] text-[#8F8E8D] mt-1 leading-relaxed">
-                                        A powerful visual workspace to organize your code,
-                                        architecture, and context alongside your conversation.
-                                    </span>
-                                </div>
-                                <div className="flex justify-end mx-1 mt-1">
-                                    <button
-                                        className="px-2.5 py-1 bg-[#2B2A29] hover:bg-[#343331] text-[#E8E8E8] text-[11px] font-medium rounded-md transition-colors border border-white/10"
-                                        onClick={(e) => {
-                                            e.preventDefault()
-                                            e.stopPropagation()
-                                            window.open('/canvas', '_blank')
-                                        }}
-                                    >
-                                        Try now
-                                    </button>
+                                    <div className="flex justify-end mx-1 mt-1">
+                                        <button
+                                            className="px-2.5 py-1 bg-[#2B2A29] hover:bg-[#343331] text-[#E8E8E8] text-[11px] font-medium rounded-md transition-colors border border-white/10"
+                                            onClick={(e) => {
+                                                e.preventDefault()
+                                                e.stopPropagation()
+                                                if (!isAuthenticated && onOpenAuth) {
+                                                    onOpenAuth()
+                                                    return
+                                                }
+                                                window.open('/canvas', '_blank')
+                                            }}
+                                        >
+                                            Try now
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    )}
-                </div>
+                        )}
+                    </div>
+                )}
             </div>
 
             <div className="flex items-center gap-1.5">
@@ -475,7 +507,7 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
                                 : 'text-[#D6D5D4] bg-[#252525] hover:bg-[#2C2C2E] hover:text-[#E8E8E8]'
                         )}
                     >
-                        <span className="text-[13px] font-medium">{selectedModelData.name}</span>
+                        <span className="text-[12px] font-medium">{selectedModelData.name}</span>
                         <Icons.ChevronDown
                             className={cn(
                                 'w-[11px] h-[11px] transition-transform',

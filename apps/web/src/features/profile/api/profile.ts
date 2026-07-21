@@ -32,6 +32,9 @@ export type Profile = {
     creditBalance?: number
     hasCompletedOnboarding?: boolean
     hasPassword?: boolean
+    welcomeCardDone?: boolean
+    githubCardDone?: boolean
+    feedbackCardDone?: boolean
 }
 
 type BackendProfile = Profile
@@ -341,6 +344,20 @@ const completeOnboarding = () => {
     })
 }
 
+const dismissOnboardingCard = (card: 'welcome' | 'github' | 'feedback') => {
+    return apiRequest<BackendProfile>('/setting/onboarding/dismiss', {
+        method: 'POST',
+        body: JSON.stringify({ card }),
+    })
+}
+
+const submitFeedback = (data: { rating: 'sad' | 'neutral' | 'happy' | null; feedback: string }) => {
+    return apiRequest<{ message: string }>('/setting/feedback', {
+        method: 'POST',
+        body: JSON.stringify(data),
+    })
+}
+
 const createGithubRepo = (
     projectId: string,
     data: { name: string; private: boolean; description?: string }
@@ -383,6 +400,8 @@ export const profileAPI = {
     getSupabaseConnectUrl,
     getNotionConnectUrl,
     completeOnboarding,
+    dismissOnboardingCard,
+    submitFeedback,
     createGithubRepo,
     syncGithubRepo,
 }

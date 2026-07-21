@@ -182,10 +182,18 @@ export const usePromptInputController = ({
 
     useEffect(() => {
         if (textareaRef.current) {
-            textareaRef.current.style.height = 'auto'
+            const container = document.getElementById('main-scroll-container')
+            const scrollPos = container?.scrollTop
+
+            textareaRef.current.style.height = '0px'
             const scrollHeight = textareaRef.current.scrollHeight
-            textareaRef.current.style.height = `${Math.min(scrollHeight, 200)}px`
-            textareaRef.current.style.overflowY = scrollHeight >= 200 ? 'auto' : 'hidden'
+
+            textareaRef.current.style.height = `${Math.min(scrollHeight, 400)}px`
+            textareaRef.current.style.overflowY = scrollHeight >= 400 ? 'auto' : 'hidden'
+
+            if (container && scrollPos !== undefined) {
+                container.scrollTop = scrollPos
+            }
 
             if (input?.endsWith('@repos:') && document.activeElement !== textareaRef.current) {
                 textareaRef.current.focus()
