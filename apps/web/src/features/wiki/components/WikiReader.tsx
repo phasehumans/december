@@ -4,6 +4,8 @@ import React, { useState, useEffect } from 'react'
 import { apiFetch } from '@/shared/api/client'
 import { Icons } from '@/shared/components/ui/Icons'
 
+import { WikiChat } from './WikiChat'
+
 export interface WikiPage {
     id: string
     wikiId: string
@@ -379,6 +381,12 @@ export const WikiReader: React.FC<WikiReaderProps> = ({
                     )}
                 </div>
             </div>
+
+            {/* Embedded WikiChat Agent Interface */}
+            <WikiChat
+                wikiId={wiki?.id}
+                repoFullName={wiki?.repoFullName || `${repoOwner}/${repoName}`}
+            />
 
             {/* Create Page Modal */}
             {isAddModalOpen && (
