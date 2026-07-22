@@ -231,16 +231,32 @@ const startPreview = async (data: StartPreview) => {
     cancelPendingDeletion(sessionId)
     const { session } = await loadSession(data)
 
-    const activeSessions = await prisma.session.count({
+    const runningSessions = await prisma.session.findMany({
         where: {
             userId,
             id: { not: sessionId },
-            vmStatus: { in: ['PROVISIONING', 'RUNNING'] }
-        }
+            vmStatus: { in: ['PROVISIONING', 'RUNNING'] },
+        },
+        select: { id: true, title: true },
     })
-    
-    if (activeSessions > 0) {
-        throw new Error('An active session is already running')
+
+    if (runningSessions.length > 0) {
+        if ((data as any).stopActive) {
+            for (const activeSess of runningSessions) {
+                await prisma.session.update({
+                    where: { id: activeSess.id },
+                    data: { vmStatus: 'STOPPED' },
+                })
+                await publishEvent(`session_events:${activeSess.id}`, { type: 'SIGKILL', data: {} })
+            }
+        } else {
+            const activeTitle = runningSessions[0].title || 'Another Session'
+            const activeId = runningSessions[0].id
+            const err: any = new Error(`An active session "${activeTitle}" is currently running.`)
+            err.statusCode = 409
+            err.activeSession = { id: activeId, title: activeTitle }
+            throw err
+        }
     }
 
     // validate session structure

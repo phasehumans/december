@@ -11,6 +11,9 @@ export type SessionFilters = {
     tags?: string[]
     sortBy?: 'updatedAt' | 'createdAt'
     sortOrder?: 'asc' | 'desc'
+    search?: string
+    page?: number
+    limit?: number
 }
 
 export type CreateSession = {

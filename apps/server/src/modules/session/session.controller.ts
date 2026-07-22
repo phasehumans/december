@@ -37,9 +37,15 @@ export const getSessions = asyncHandler(async (req: Request, res: Response) => {
     }
     if (parsedQuery.sortBy) filters.sortBy = parsedQuery.sortBy
     if (parsedQuery.sortOrder) filters.sortOrder = parsedQuery.sortOrder
+    if (parsedQuery.search) filters.search = parsedQuery.search
+    if (parsedQuery.page) filters.page = parsedQuery.page
+    if (parsedQuery.limit) filters.limit = parsedQuery.limit
 
-    const sessions = await sessionService.getUserSessions(userId, filters)
-    return sendSuccess(res, 'sessions fetched successfully', { sessions })
+    const result = await sessionService.getUserSessions(userId, filters)
+    return sendSuccess(res, 'sessions fetched successfully', {
+        sessions: result.sessions,
+        pagination: result.pagination,
+    })
 })
 
 export const createSession = asyncHandler(async (req: Request, res: Response) => {

@@ -13,7 +13,6 @@ interface SessionListRowProps {
     onToggleStarFromMenu: (session: any, event: React.MouseEvent) => void
     onToggleArchiveFromMenu: (session: any, event: React.MouseEvent) => void
     onOpenRename: (session: any, event: React.MouseEvent) => void
-    onOpenDuplicate: (session: any, event: React.MouseEvent) => void
     onOpenShare: (session: any, event: React.MouseEvent) => void
     onOpenDelete: (session: any, event: React.MouseEvent) => void
     onOpenSettings: (session: any, event: React.MouseEvent) => void
@@ -32,7 +31,6 @@ export const SessionListRow: React.FC<SessionListRowProps> = ({
     onToggleStarFromMenu,
     onToggleArchiveFromMenu,
     onOpenRename,
-    onOpenDuplicate,
     onOpenShare,
     onOpenDelete,
     onOpenSettings,

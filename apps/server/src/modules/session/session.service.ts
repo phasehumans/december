@@ -73,8 +73,8 @@ export async function getUserSessions(
     userId: string,
     filters?: import('./session.types').SessionFilters
 ) {
-    const sessions = await sessionRepository.findManySessions(userId, filters)
-    return sessions.map((session) => ({
+    const result = await sessionRepository.findManySessions(userId, filters)
+    const sessions = result.sessions.map((session) => ({
         id: session.id,
         title:
             session.title ||
@@ -90,6 +90,11 @@ export async function getUserSessions(
         projectName: session.project?.name,
         lastMessage: session.messages[0] ? session.messages[0].content : null,
     }))
+
+    return {
+        sessions,
+        pagination: result.pagination,
+    }
 }
 
 export async function createSession(data: CreateSession) {
@@ -183,7 +188,62 @@ export async function updateSessionTags(data: UpdateSessionTags) {
 }
 
 export async function getSessionInsights(data: GetSessionInsights) {
-    return { insights: [] }
+    const { userId, sessionId } = data
+    const session = await sessionRepository.findSessionById(sessionId, userId)
+    if (!session) {
+        throw new AppError('Session not found', 404)
+    }
+
+    const files = await loadSessionFiles(sessionId)
+    const fileCount = Object.keys(files).length
+
+    const totalMessages = session.messages.length
+    const userMessages = session.messages.filter((m) => m.role === 'USER').length
+    const assistantMessages = session.messages.filter((m) => m.role === 'ASSISTANT').length
+
+    let totalChars = 0
+    for (const msg of session.messages) {
+        totalChars += msg.content ? msg.content.length : 0
+    }
+    const estimatedTokens = Math.ceil(totalChars / 4)
+
+    const createdTime = new Date(session.createdAt).getTime()
+    const updatedTime = new Date(session.updatedAt).getTime()
+    const durationMinutes = Math.max(1, Math.round((updatedTime - createdTime) / (1000 * 60)))
+
+    const insightsList = [
+        {
+            type: 'METRIC',
+            title: 'Message Activity',
+            message: `Total ${totalMessages} messages (${userMessages} user prompts, ${assistantMessages} assistant responses).`,
+        },
+        {
+            type: 'METRIC',
+            title: 'Workspace Files',
+            message: `Generated and tracked ${fileCount} workspace files in session storage.`,
+        },
+        {
+            type: 'TELEMETRY',
+            title: 'Estimated Consumption',
+            message: `Approximately ${estimatedTokens.toLocaleString()} tokens exchanged across ${durationMinutes} mins active duration.`,
+        },
+    ]
+
+    return {
+        telemetry: {
+            totalMessages,
+            userMessages,
+            assistantMessages,
+            fileCount,
+            estimatedTokens,
+            durationMinutes,
+            vmStatus: session.vmStatus,
+            type: session.type,
+            createdAt: session.createdAt,
+            updatedAt: session.updatedAt,
+        },
+        insights: insightsList,
+    }
 }
 
 export async function deleteSession(data: DeleteSession) {

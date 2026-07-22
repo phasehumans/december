@@ -121,12 +121,6 @@ export const ProjectGridCard: React.FC<ProjectListRowProps> = ({
                                     <Icons.Edit className="h-4 w-4 text-[#7B7A79]" /> Rename
                                 </button>
                                 <button
-                                    onClick={(e) => onOpenDuplicate(project, e)}
-                                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-[14px] text-[#D6D5C9] transition-colors hover:bg-[#262626]"
-                                >
-                                    <Icons.Copy className="h-4 w-4 text-[#7B7A79]" /> Duplicate
-                                </button>
-                                <button
                                     onClick={(e) => onToggleStarFromMenu(project, e)}
                                     className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-[14px] text-[#D6D5C9] transition-colors hover:bg-[#262626]"
                                 >

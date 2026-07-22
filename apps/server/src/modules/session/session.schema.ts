@@ -11,6 +11,12 @@ export const getSessionsSchema = z.object({
     tags: z.string().optional(),
     sortBy: z.enum(['updatedAt', 'createdAt']).optional(),
     sortOrder: z.enum(['asc', 'desc']).optional(),
+    search: z.string().optional(),
+    page: z.preprocess((val) => (val ? Number(val) : undefined), z.number().min(1).optional()),
+    limit: z.preprocess(
+        (val) => (val ? Number(val) : undefined),
+        z.number().min(1).max(100).optional()
+    ),
 })
 
 export const createSessionSchema = z.object({

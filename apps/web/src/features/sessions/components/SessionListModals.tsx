@@ -1,7 +1,6 @@
 import React from 'react'
 
 import { SessionDeleteModal } from './SessionDeleteModal'
-import { SessionDuplicateModal } from './SessionDuplicateModal'
 import { SessionInsightsModal } from './SessionInsightsModal'
 import { SessionOpenConfirmModal } from './SessionOpenConfirmModal'
 import { SessionRenameModal } from './SessionRenameModal'
@@ -10,7 +9,6 @@ import { SessionTagsModal } from './SessionTagsModal'
 
 import type {
     DeleteModalState,
-    DuplicateModalState,
     RenameModalState,
     ShareModalState,
     Project,
@@ -18,22 +16,18 @@ import type {
 
 interface SessionListModalsProps {
     renameModal: RenameModalState
-    duplicateModal: DuplicateModalState
     shareModal: ShareModalState
     deleteModal: DeleteModalState
     openConfirmModal: { isOpen: boolean; project: Project | null }
     tagsModal: { isOpen: boolean; project: any | null }
     insightsModal: { isOpen: boolean; project: any | null }
     isRenamePending: boolean
-    isDuplicatePending: boolean
     isSharePending: boolean
     isDeletePending: boolean
     isTagsPending: boolean
     onCloseRename: () => void
     onRenameChange: (nextValue: string) => void
     onRenameSubmit: (event: React.FormEvent) => void
-    onCloseDuplicate: () => void
-    onDuplicateConfirm: (name: string) => void
     onCloseShare: () => void
     onShareConfirm: (category?: string) => void
     onCloseDelete: () => void
@@ -47,22 +41,18 @@ interface SessionListModalsProps {
 
 export const SessionListModals: React.FC<SessionListModalsProps> = ({
     renameModal,
-    duplicateModal,
     shareModal,
     deleteModal,
     openConfirmModal,
     tagsModal,
     insightsModal,
     isRenamePending,
-    isDuplicatePending,
     isSharePending,
     isDeletePending,
     isTagsPending,
     onCloseRename,
     onRenameChange,
     onRenameSubmit,
-    onCloseDuplicate,
-    onDuplicateConfirm,
     onCloseShare,
     onShareConfirm,
     onCloseDelete,
@@ -82,14 +72,6 @@ export const SessionListModals: React.FC<SessionListModalsProps> = ({
                 onClose={onCloseRename}
                 onChange={onRenameChange}
                 onSubmit={onRenameSubmit}
-            />
-
-            <SessionDuplicateModal
-                isOpen={duplicateModal.isOpen}
-                projectTitle={duplicateModal.project?.title}
-                isPending={isDuplicatePending}
-                onClose={onCloseDuplicate}
-                onConfirm={onDuplicateConfirm}
             />
 
             <SessionShareModal
