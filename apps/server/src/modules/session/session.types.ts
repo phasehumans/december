@@ -16,6 +16,11 @@ export type SessionFilters = {
     limit?: number
 }
 
+export type GetUserSessions = {
+    userId: string
+    filters?: SessionFilters
+}
+
 export type CreateSession = {
     userId: string
     title?: string

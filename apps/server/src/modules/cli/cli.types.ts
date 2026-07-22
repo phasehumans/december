@@ -1,0 +1,26 @@
+export type VerifyWalletBalance = {
+    userId: string
+}
+
+export type GenerateHandoffUrl = {
+    userId: string
+}
+
+export type ProxyChatCompletions = {
+    userId: string
+    body: any
+    res: any
+}
+
+export type CompleteHandoff = {
+    userId: string
+    title?: string
+    messages?: any[]
+    objectKey?: string
+}
+
+export type CliHandoffPayload = {
+    title?: string
+    messages?: any[]
+    objectKey?: string
+}

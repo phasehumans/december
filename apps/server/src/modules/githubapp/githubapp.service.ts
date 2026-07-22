@@ -1,28 +1,29 @@
 import crypto from 'crypto'
 
-import { prisma } from '@december/database'
+import { githubAppRepository } from './githubapp.repository'
+import type { ProcessInstallation, ProcessUninstallation, VerifySignature } from './githubapp.types'
 
-export async function processInstallation(installationId: string, userId: string) {
-    return prisma.githubAppInstallation.upsert({
-        where: { installationId },
-        update: { userId },
-        create: {
-            installationId,
-            userId,
-        },
-    })
+const processInstallation = async (data: ProcessInstallation) => {
+    const { installationId, userId } = data
+    return githubAppRepository.upsertInstallation(installationId, userId)
 }
 
-export async function processUninstallation(installationId: string) {
-    return prisma.githubAppInstallation.delete({
-        where: { installationId },
-    })
+const processUninstallation = async (data: ProcessUninstallation) => {
+    const { installationId } = data
+    return githubAppRepository.deleteInstallation(installationId)
 }
 
-export function verifySignature(payload: string, signature: string) {
+const verifySignature = (data: VerifySignature) => {
+    const { payload, signature } = data
     const secret = process.env.GITHUB_APP_WEBHOOK_SECRET || 'secret'
     const hmac = crypto.createHmac('sha256', secret)
     hmac.update(payload)
     const expected = `sha256=${hmac.digest('hex')}`
     return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))
+}
+
+export const githubAppService = {
+    processInstallation,
+    processUninstallation,
+    verifySignature,
 }

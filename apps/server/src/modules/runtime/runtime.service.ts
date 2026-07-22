@@ -1,3 +1,4 @@
+import { publishEvent } from '@december/shared'
 import {
     getLatestPreviewManifestRef,
     publishStoredPreviewManifest,
@@ -32,7 +33,7 @@ const runtimeSharedSecret = process.env.RUNTIME_SHARED_SECRET
 
 const pendingDeletions = new Map<string, NodeJS.Timeout>()
 
-export function cancelPendingDeletion(sessionId: string) {
+function cancelPendingDeletion(sessionId: string) {
     const timer = pendingDeletions.get(sessionId)
     if (timer) {
         clearTimeout(timer)
@@ -41,7 +42,7 @@ export function cancelPendingDeletion(sessionId: string) {
     }
 }
 
-export function scheduleDeletion(sessionId: string, delayMs: number) {
+function scheduleDeletion(sessionId: string, delayMs: number) {
     cancelPendingDeletion(sessionId)
     const timer = setTimeout(async () => {
         try {
@@ -250,8 +251,9 @@ const startPreview = async (data: StartPreview) => {
                 await publishEvent(`session_events:${activeSess.id}`, { type: 'SIGKILL', data: {} })
             }
         } else {
-            const activeTitle = runningSessions[0].title || 'Another Session'
-            const activeId = runningSessions[0].id
+            const firstSession = runningSessions[0]
+            const activeTitle = firstSession?.title || 'Another Session'
+            const activeId = firstSession?.id
             const err: any = new Error(`An active session "${activeTitle}" is currently running.`)
             err.statusCode = 409
             err.activeSession = { id: activeId, title: activeTitle }
@@ -386,6 +388,8 @@ const checkSandboxCompilation = async (data: CheckSandboxCompilation): Promise<C
 }
 
 export const runtimeService = {
+    cancelPendingDeletion,
+    scheduleDeletion,
     startPreview,
     notifyManifestPublished,
     getPreviewStatus,

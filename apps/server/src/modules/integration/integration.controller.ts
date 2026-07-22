@@ -1,3 +1,4 @@
+import { env } from '../../env'
 import { asyncHandler } from '../../shared/asyncHandler'
 
 import { connectVercelQuerySchema, connectOAuthQuerySchema } from './integration.schema'
@@ -23,7 +24,7 @@ const connectVercel = asyncHandler(async (req: Request, res: Response) => {
         configurationId,
     })
 
-    return res.redirect(`http://localhost:3000${redirectPath}`)
+    return res.redirect(`${env.WEB_URL}${redirectPath}`)
 })
 
 const connectSupabase = asyncHandler(async (req: Request, res: Response) => {
@@ -34,7 +35,7 @@ const connectSupabase = asyncHandler(async (req: Request, res: Response) => {
         code,
     })
 
-    return res.redirect('http://localhost:3000/profile/integrations')
+    return res.redirect(`${env.WEB_URL}/profile/integrations`)
 })
 
 const connectNotion = asyncHandler(async (req: Request, res: Response) => {
@@ -45,14 +46,14 @@ const connectNotion = asyncHandler(async (req: Request, res: Response) => {
         code,
     })
 
-    return res.redirect('http://localhost:3000/profile/integrations')
+    return res.redirect(`${env.WEB_URL}/profile/integrations`)
 })
 
 const connectGithub = asyncHandler(async (req: Request, res: Response) => {
     const { code, state } = connectOAuthQuerySchema.parse(req.query)
 
     if (state === 'auth') {
-        return res.redirect(`http://localhost:3000/github/callback?code=${code}`)
+        return res.redirect(`${env.WEB_URL}/github/callback?code=${code}`)
     }
 
     let userId = state
@@ -63,39 +64,8 @@ const connectGithub = asyncHandler(async (req: Request, res: Response) => {
         redirectPath = parts.slice(1).join(':')
     }
 
-    type GithubTokenResponse = {
-        access_token: string
-        token_type: string
-        scope: string
-    }
-
-    const tokenResponse = await fetch('https://github.com/login/oauth/access_token', {
-        method: 'POST',
-        headers: {
-            Accept: 'application/json',
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            client_id: process.env.GITHUB_CLIENT_ID,
-            client_secret: process.env.GITHUB_CLIENT_SECRET,
-            code,
-        }),
-    })
-
-    const tokenData = (await tokenResponse.json()) as GithubTokenResponse
-    const accessToken = tokenData.access_token
-
-    const userRes = await fetch('https://api.github.com/user', {
-        headers: {
-            Authorization: `Bearer ${accessToken}`,
-        },
-    })
-
-    const githubUser: any = await userRes.json()
-    const username = githubUser.login
-
-    await integrationsService.connectGithub({ userId, accessToken, username })
-    return res.redirect(`http://localhost:3000${redirectPath}`)
+    await integrationsService.handleGitHubOAuth({ code, userId })
+    return res.redirect(`${env.WEB_URL}${redirectPath}`)
 })
 
 export const integrationsController = {

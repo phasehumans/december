@@ -2,41 +2,20 @@ import { Router } from 'express'
 
 import { authMiddleware } from '../../middleware/auth.middleware'
 
-import { CreateReviewSchema } from './review.schema'
-import * as reviewService from './review.service'
+import { reviewController } from './review.controller'
 
-const router = Router()
+const reviewRouter = Router()
 
-router.use(authMiddleware)
+reviewRouter.use(authMiddleware)
 
-router.get('/:sessionId', async (req, res, next) => {
-    try {
-        const userId = req.user!.userId
-        const { sessionId } = req.params
-        const reviews = await reviewService.getReviewsForSession(userId, sessionId)
-        res.json({ reviews })
-    } catch (err: any) {
-        if (err.message === 'Unauthorized or session not found') {
-            res.status(403).json({ error: err.message })
-        } else {
-            next(err)
-        }
-    }
-})
+// 1. Preferences routes
+reviewRouter.get('/preferences', reviewController.getPreferences)
+reviewRouter.put('/preferences', reviewController.updatePreferences)
 
-router.post('/', async (req, res, next) => {
-    try {
-        const data = CreateReviewSchema.parse(req.body)
-        const userId = req.user!.userId
-        const review = await reviewService.createReview(userId, data)
-        res.status(201).json({ review })
-    } catch (err: any) {
-        if (err.message === 'Unauthorized or session not found') {
-            res.status(403).json({ error: err.message })
-        } else {
-            next(err)
-        }
-    }
-})
+// 2. PR Review routes
+reviewRouter.post('/', reviewController.createReview)
+reviewRouter.get('/', reviewController.getReviews)
+reviewRouter.get('/:id', reviewController.getReviewById)
+reviewRouter.delete('/:id', reviewController.deleteReview)
 
-export default router
+export default reviewRouter

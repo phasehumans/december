@@ -4,9 +4,30 @@ import { serve } from 'bun'
 
 import index from './index.html'
 
+const proxyBackendApi = (req: Request) => {
+    const url = new URL(req.url)
+    const targetUrl = `http://localhost:4000${url.pathname}${url.search}`
+    const headers = new Headers(req.headers)
+    headers.set('host', 'localhost:4000')
+
+    const options: RequestInit & { duplex?: string } = {
+        method: req.method,
+        headers,
+    }
+
+    if (req.method !== 'GET' && req.method !== 'HEAD') {
+        options.body = req.body
+        options.duplex = 'half'
+    }
+
+    return fetch(targetUrl, options)
+}
+
 const server = serve({
     routes: {
-        // serve index.html for all unmatched routes.
+        '/api/v1/*': proxyBackendApi,
+        '/api/wiki/*': proxyBackendApi,
+        '/api/wiki': proxyBackendApi,
         '/*': index,
     },
 
@@ -14,7 +35,7 @@ const server = serve({
         const url = new URL(req.url)
         const pathname = url.pathname
 
-        // 1. serve api routes
+        // 1. serve test api routes
         if (pathname === '/api/hello') {
             if (req.method === 'GET') {
                 return Response.json({
@@ -41,14 +62,10 @@ const server = serve({
         const publicFilePath = path.join(import.meta.dir, '../public', pathname)
         const file = Bun.file(publicFilePath)
         const exists = await file.exists()
-        console.log(
-            `[Static File Check] URL: ${pathname} | Resolved Path: ${publicFilePath} | Exists: ${exists}`
-        )
         if (exists) {
             return new Response(file)
         }
 
-        // 3. fallback: return undefined to let bun match routes
         return undefined as any
     },
 

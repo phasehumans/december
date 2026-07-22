@@ -10,6 +10,30 @@ export type EnsureManifestRef = {
     sessionId: string
 }
 
+export type ProvisionSession = {
+    sessionId: string
+    userId: string
+}
+
+export type HeartbeatSession = {
+    sessionId: string
+    userId: string
+}
+
+export type StopSession = {
+    sessionId: string
+    userId: string
+}
+
+export type GetSessionStatus = {
+    sessionId: string
+    userId: string
+}
+
+export type CancelPendingDeletion = {
+    sessionId: string
+}
+
 export type RuntimePreviewError = {
     class:
         | 'temporary_partial_generation'

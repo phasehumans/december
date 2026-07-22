@@ -51,7 +51,7 @@ export function initSocket(httpServer: any) {
         if (!token && socket.request.headers.cookie) {
             const cookies = socket.request.headers.cookie.split(';').reduce((acc: any, cookie) => {
                 const [key, value] = cookie.trim().split('=')
-                acc[key] = value
+                if (key) acc[key] = value
                 return acc
             }, {})
             token = cookies['accessToken']
