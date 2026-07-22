@@ -54,7 +54,12 @@ export async function getUserGitHubRepos(userId: string): Promise<GitHubReposRes
     }
 }
 
-export async function generateWiki(userId: string, repoOwner: string, repoName: string) {
+export async function generateWiki(
+    userId: string,
+    repoOwner: string,
+    repoName: string,
+    _repoUrl?: string
+) {
     const repoFullName = `${repoOwner}/${repoName}`
     let wiki = await wikiRepo.upsertRepositoryWiki(userId, repoOwner, repoName, 'GENERATING')
 

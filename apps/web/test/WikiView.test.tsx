@@ -93,4 +93,66 @@ describe('WikiView Component', () => {
         expect(screen.queryByText('december-core')).toBeNull()
         expect(screen.getByText('docs-site')).toBeDefined()
     })
+
+    test('renders status badge and calls onOpenWiki when View Wiki button is clicked', () => {
+        const queryClient = createTestQueryClient()
+        const onOpenWikiMock = mock()
+        const mockRepos = [
+            {
+                id: 'repo-2',
+                name: 'docs-site',
+                fullName: 'user/docs-site',
+                owner: 'user',
+                isPrivate: true,
+                description: 'Documentation site',
+                status: 'COMPLETED' as const,
+                wikiId: 'wiki-123',
+            },
+        ]
+
+        render(
+            <QueryClientProvider client={queryClient}>
+                <WikiView
+                    initialData={{
+                        githubConnected: true,
+                        repos: mockRepos,
+                    }}
+                    onOpenWiki={onOpenWikiMock}
+                />
+            </QueryClientProvider>
+        )
+
+        const viewButton = screen.getByRole('button', { name: /View Wiki/i })
+        expect(viewButton).toBeDefined()
+        fireEvent.click(viewButton)
+        expect(onOpenWikiMock).toHaveBeenCalledWith('wiki-123')
+    })
+
+    test('renders spinner badge when status is GENERATING', () => {
+        const queryClient = createTestQueryClient()
+        const mockRepos = [
+            {
+                id: 'repo-3',
+                name: 'generating-repo',
+                fullName: 'user/generating-repo',
+                owner: 'user',
+                isPrivate: false,
+                description: 'Generating repo',
+                status: 'GENERATING' as const,
+            },
+        ]
+
+        render(
+            <QueryClientProvider client={queryClient}>
+                <WikiView
+                    initialData={{
+                        githubConnected: true,
+                        repos: mockRepos,
+                    }}
+                />
+            </QueryClientProvider>
+        )
+
+        expect(screen.getByText('Generating...')).toBeDefined()
+    })
 })

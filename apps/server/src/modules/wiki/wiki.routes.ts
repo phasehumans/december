@@ -26,7 +26,12 @@ router.post('/generate', async (req, res, next) => {
     try {
         const data = GenerateWikiSchema.parse(req.body)
         const userId = req.user!.userId
-        const wiki = await wikiService.generateWiki(userId, data.repoOwner, data.repoName)
+        const wiki = await wikiService.generateWiki(
+            userId,
+            data.repoOwner,
+            data.repoName,
+            data.repoUrl
+        )
         res.status(200).json({ wiki })
     } catch (err: any) {
         if (err.name === 'ZodError') {

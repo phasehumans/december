@@ -3,6 +3,7 @@ import { z } from 'zod'
 export const GenerateWikiSchema = z.object({
     repoOwner: z.string().min(1),
     repoName: z.string().min(1),
+    repoUrl: z.string().optional(),
 })
 
 export const CreatePageSchema = z.object({
