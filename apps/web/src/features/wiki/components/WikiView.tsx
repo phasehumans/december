@@ -4,6 +4,8 @@ import React, { useState, useMemo } from 'react'
 import { apiFetch } from '@/shared/api/client'
 import { Icons } from '@/shared/components/ui/Icons'
 
+import { WikiReader } from './WikiReader'
+
 export interface UserGitHubRepo {
     id: string
     name: string
@@ -29,6 +31,7 @@ export interface WikiViewProps {
 export const WikiView: React.FC<WikiViewProps> = ({ onConnectGitHub, onOpenWiki, initialData }) => {
     const queryClient = useQueryClient()
     const [searchQuery, setSearchQuery] = useState('')
+    const [selectedRepo, setSelectedRepo] = useState<{ owner: string; name: string } | null>(null)
 
     const { data, isLoading } = useQuery<GitHubReposResponse>({
         queryKey: ['wiki', 'github-repos'],
@@ -71,6 +74,16 @@ export const WikiView: React.FC<WikiViewProps> = ({ onConnectGitHub, onOpenWiki,
                 (repo.description && repo.description.toLowerCase().includes(q))
         )
     }, [data?.repos, searchQuery])
+
+    if (selectedRepo) {
+        return (
+            <WikiReader
+                repoOwner={selectedRepo.owner}
+                repoName={selectedRepo.name}
+                onBack={() => setSelectedRepo(null)}
+            />
+        )
+    }
 
     if (isLoading && !data) {
         return (
@@ -176,7 +189,15 @@ export const WikiView: React.FC<WikiViewProps> = ({ onConnectGitHub, onOpenWiki,
                                     </span>
                                     {repo.status === 'COMPLETED' ? (
                                         <button
-                                            onClick={() => repo.wikiId && onOpenWiki?.(repo.wikiId)}
+                                            onClick={() => {
+                                                if (repo.wikiId && onOpenWiki) {
+                                                    onOpenWiki(repo.wikiId)
+                                                }
+                                                setSelectedRepo({
+                                                    owner: repo.owner,
+                                                    name: repo.name,
+                                                })
+                                            }}
                                             className="px-3 py-1.5 rounded-lg bg-[#252525] hover:bg-[#303030] border border-[#383838] text-xs font-medium text-emerald-400 hover:text-emerald-300 transition-colors flex items-center gap-1.5 cursor-pointer"
                                         >
                                             <Icons.Check className="w-3.5 h-3.5" />
