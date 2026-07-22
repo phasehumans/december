@@ -38,7 +38,7 @@ export const MobileSidebar: React.FC<
     const isHomeActive = path === '/'
     const isProjectsActive = path.startsWith('/projects')
     const isReviewActive = path.startsWith('/review')
-    const isTemplatesActive = path.startsWith('/templates')
+    const isWikiActive = path.startsWith('/wiki') || path.startsWith('/templates')
     const isDocsActive = path.startsWith('/docs')
     const isSettingsActive = path.startsWith('/settings') || path.startsWith('/profile')
 
@@ -57,7 +57,7 @@ export const MobileSidebar: React.FC<
     } else if (!isHomeActive) {
         if (isProjectsActive) activeIndex = 2
         else if (isReviewActive) activeIndex = 3
-        else if (isTemplatesActive) activeIndex = 4
+        else if (isWikiActive) activeIndex = 4
         else if (isSettingsActive) activeIndex = 5
     } else {
         activeIndex = 0

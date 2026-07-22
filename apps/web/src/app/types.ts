@@ -64,7 +64,7 @@ const simpleViewToPath: Record<string, string> = {
     'all-projects': '/projects',
     sessions: '/sessions',
     review: '/review',
-    templates: '/templates',
+    templates: '/wiki',
     docs: '/docs',
     canvas: '/canvas',
     wiki: '/wiki',
@@ -90,6 +90,10 @@ export const getPathForView = (
 }
 
 export const getViewForPath = (pathname: string): ViewState => {
+    if (pathname === '/templates' || pathname.startsWith('/templates/')) {
+        return 'wiki'
+    }
+
     // exact simple matches
     const simple = simplePathToView[pathname]
     if (simple) return simple

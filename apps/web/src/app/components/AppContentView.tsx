@@ -12,7 +12,7 @@ import { HomeHero } from '@/features/home/components/HomeHero'
 import { OutputScreen } from '@/features/preview/components/OutputScreen'
 import { ProfileSettings } from '@/features/profile/components/ProfileSettings'
 import { SessionList } from '@/features/sessions/components/SessionList'
-import { TemplatesView } from '@/features/templates/components/TemplatesView'
+import { WikiView } from '@/features/wiki/components/WikiView'
 
 interface AppContentViewProps {
     view: ViewState
@@ -115,9 +115,9 @@ export const AppContentView: React.FC<AppContentViewProps> = ({
                 </AnimatedPage>
             )}
 
-            {view === 'templates' && (
-                <AnimatedPage pageKey="templates">
-                    <TemplatesView onOpenProject={onOpenProject} />
+            {(view === 'templates' || view === 'wiki') && (
+                <AnimatedPage pageKey="wiki">
+                    <WikiView />
                 </AnimatedPage>
             )}
 
