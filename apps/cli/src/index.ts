@@ -112,11 +112,12 @@ async function main() {
             case 'zai':
                 llm = openaiProvider('https://api.zai.ai/v1', providerConfig.apiKey)
                 break
-            default:
+            default: {
                 const serverUrl = process.env.DECEMBER_SERVER_URL || 'https://api.trydecember.com'
                 const proxyUrl = `${serverUrl}/api/v1/cli`
                 llm = openaiProvider(proxyUrl, providerConfig.apiKey)
                 break
+            }
         }
     } else {
         llm = openaiProvider(undefined, 'dummy-key')
@@ -231,7 +232,9 @@ Guidelines:
                             excludes.push(`--exclude=${t.endsWith('/') ? t.slice(0, -1) : t}`)
                     }
                 }
-            } catch (e) {}
+            } catch {
+                // Ignore unreadable ignore files during handoff archive creation
+            }
 
             const excludeArgs = excludes.join(' ')
             try {

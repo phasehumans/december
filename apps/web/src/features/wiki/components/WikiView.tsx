@@ -1,10 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import React, { useState, useMemo } from 'react'
 
+import { WikiReader } from './WikiReader'
+
 import { apiFetch } from '@/shared/api/client'
 import { Icons } from '@/shared/components/ui/Icons'
-
-import { WikiReader } from './WikiReader'
 
 export interface UserGitHubRepo {
     id: string

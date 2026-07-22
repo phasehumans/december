@@ -2,8 +2,10 @@ import fs from 'fs'
 
 import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
+import * as archiverModule from 'archiver'
 
-const archiver = require('archiver')
+const archiver: any = archiverModule
+
 import './env'
 
 const s3 = new S3Client({
@@ -19,7 +21,7 @@ const s3 = new S3Client({
 export async function compressWorkspace(workspaceDir: string, zipPath: string): Promise<void> {
     return new Promise((resolve, reject) => {
         const output = fs.createWriteStream(zipPath)
-        const archive = archiver.create('tar', { gzip: true })
+        const archive = archiver('tar', { gzip: true })
 
         output.on('close', () => resolve())
         archive.on('error', (err: any) => reject(err))

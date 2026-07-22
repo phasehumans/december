@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+
 import { Markdown } from '../markdown'
 
 export function SmoothMarkdown({ text, isRunning }: { text: string; isRunning?: boolean }) {

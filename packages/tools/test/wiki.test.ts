@@ -1,6 +1,7 @@
-import { describe, it, expect } from 'vitest'
-import { readWikiTool, updateWikiTool } from '../src/wiki'
 import { ToolExecuteContext } from '@december/shared'
+import { describe, it, expect } from 'vitest'
+
+import { readWikiTool, updateWikiTool } from '../src/wiki'
 
 const mockContext: ToolExecuteContext = {
     agent: {} as any,

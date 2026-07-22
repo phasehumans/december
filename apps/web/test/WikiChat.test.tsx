@@ -4,9 +4,10 @@ if (!globalThis.document) {
     GlobalRegistrator.register()
 }
 
-import React from 'react'
-import { expect, test, describe, afterEach } from 'bun:test'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { expect, test, describe, afterEach } from 'bun:test'
+import React from 'react'
+
 import { WikiChat } from '../src/features/wiki/components/WikiChat'
 
 const { render, screen, fireEvent, cleanup } = await import('@testing-library/react')

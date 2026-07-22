@@ -1,4 +1,4 @@
-import { History, FolderPlus } from 'lucide-react'
+import { History } from 'lucide-react'
 import React from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate, useLocation } from 'react-router-dom'

@@ -369,11 +369,15 @@ export function useAuthHandlers(
                             if (doubleParsed.error?.message) {
                                 cleanMessage = doubleParsed.error.message
                             }
-                        } catch {}
+                        } catch {
+                            // Keep original cleanMessage if double parse fails
+                        }
                     } else if (parsed.message) {
                         cleanMessage = parsed.message
                     }
-                } catch {}
+                } catch {
+                    // Keep original raw message if JSON parse fails
+                }
 
                 setActiveMessages([
                     {

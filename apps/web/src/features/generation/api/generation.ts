@@ -241,7 +241,9 @@ const runOverSocket = async (
                 if (typeof parsedData === 'string') {
                     try {
                         parsedData = JSON.parse(parsedData)
-                    } catch (e) {}
+                    } catch {
+                        // Keep as raw string if JSON parsing fails
+                    }
                 }
 
                 const streamEvent = { type: event.type, data: parsedData } as GenerationStreamEvent

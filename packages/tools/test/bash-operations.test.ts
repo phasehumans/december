@@ -1,4 +1,7 @@
+import * as cp from 'node:child_process'
+
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+
 import {
     trackDetachedChildPid,
     untrackDetachedChildPid,
@@ -6,7 +9,6 @@ import {
     killProcessTree,
     createLocalBashOperations,
 } from '../src/bash-operations'
-import * as cp from 'node:child_process'
 
 vi.mock('node:child_process', () => ({
     spawn: vi.fn(),

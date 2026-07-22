@@ -1,6 +1,7 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { instantiateProvider } from '../src/utils/provider-factory'
 import * as providers from '@december/providers'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+
+import { instantiateProvider } from '../src/utils/provider-factory'
 
 vi.mock('@december/providers', () => ({
     openaiProvider: vi.fn(),

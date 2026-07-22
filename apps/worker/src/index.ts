@@ -2,6 +2,10 @@ import './env'
 import { prisma } from '@december/database'
 import { Worker, Job } from 'bullmq'
 import Redis from 'ioredis'
+import jwt from 'jsonwebtoken'
+
+import { processGrpcStream } from './listener'
+import { createVM, startAgentSession } from './runtime'
 
 const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379'
 
@@ -24,7 +28,6 @@ const worker = new Worker(
             })
 
             // generate short-lived jwt
-            const jwt = require('jsonwebtoken')
             const token = jwt.sign(
                 { userId, sessionId },
                 process.env.AGENT_TOKEN_SECRET || 'secret',
@@ -32,8 +35,6 @@ const worker = new Worker(
             )
 
             // start the firecracker vm!
-            const { createVM, startAgentSession } = require('./runtime')
-            const { processGrpcStream } = require('./listener')
 
             console.log(`Booting Firecracker VM for session ${sessionId}...`)
             await createVM(sessionId, job.data.workspaceZipUrl)

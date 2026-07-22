@@ -40,3 +40,10 @@ Reference gold standard modules: `auth`, `notification`, `session`.
     ```bash
     bun --cwd packages/database db:migrate:test
     ```
+
+## Code Quality & Linting Standards
+
+- **No Empty Catch Blocks**: Never leave catch blocks empty (`catch (e) {}`). Always include a descriptive comment explaining why the error is ignored (e.g. `// Intentionally swallowed: fallback handled`), or log/handle the error.
+- **No `require()` Imports**: Never use CommonJS `require()`. Always use top-level ES module `import` statements (`import ... from '...'`).
+- **Scoped Switch Cases**: Always enclose `case` blocks in curly braces `{ ... }` when declaring `const` or `let` variables inside a `switch` statement.
+- **Complete React Hook Dependencies**: Ensure all `useEffect`, `useCallback`, and `useMemo` hooks have complete dependency arrays or explicitly documented refs.

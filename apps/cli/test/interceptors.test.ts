@@ -1,6 +1,7 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { setupAgentInterceptors } from '../src/store/interceptors'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+
 import * as configModule from '../src/config'
+import { setupAgentInterceptors } from '../src/store/interceptors'
 
 vi.mock('../src/config', () => ({
     loadConfig: vi.fn(),

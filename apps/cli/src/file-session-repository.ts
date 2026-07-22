@@ -35,9 +35,13 @@ export class FileSessionRepository implements SessionRepository {
                     try {
                         const msg = JSON.parse(l) as AgentMessage
                         if (msg.id) existing[msg.id] = msg
-                    } catch {}
+                    } catch {
+                        // Ignore corrupted JSON line in session history
+                    }
                 }
-            } catch (e) {}
+            } catch {
+                // Ignore missing session history file
+            }
         }
 
         let appendContent = ''
@@ -133,7 +137,9 @@ export class FileSessionRepository implements SessionRepository {
                                 preview = msg.content?.substring(0, 80) || ''
                                 break
                             }
-                        } catch {}
+                        } catch {
+                            // Ignore non-JSON line during preview generation
+                        }
                     }
 
                     sessions.push({
@@ -142,7 +148,9 @@ export class FileSessionRepository implements SessionRepository {
                         messageCount: lines.length,
                         preview,
                     })
-                } catch {}
+                } catch {
+                    // Ignore unreadable session file
+                }
             }
 
             // sort by most recently updated first

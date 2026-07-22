@@ -87,7 +87,9 @@ export const COMMANDS: Command[] = [
                     if (fs.existsSync(configPath)) {
                         config = JSON.parse(fs.readFileSync(configPath, 'utf8'))
                     }
-                } catch (e) {}
+                } catch {
+                    // Ignore unreadable config file
+                }
 
                 if (!config.decemberToken) {
                     ctx.toast.show({
@@ -122,7 +124,9 @@ export const COMMANDS: Command[] = [
                                 excludes.push(`--exclude=${t.endsWith('/') ? t.slice(0, -1) : t}`)
                         }
                     }
-                } catch (e) {}
+                } catch {
+                    // Ignore unreadable ignore files
+                }
 
                 const excludeArgs = excludes.join(' ')
                 try {

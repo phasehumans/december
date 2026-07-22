@@ -1,13 +1,10 @@
 import { Box, Text, useFocus, useInput } from 'ink'
 import React, { useState } from 'react'
 
-import { Markdown } from '../markdown'
-import { SmoothMarkdown } from './smooth-markdown'
 import { Pill } from '../pill'
 import { Spinner } from '../spinner'
 
-import { ParsedOutputLine } from './parsed-output-line'
-import { ToolArgumentsDisplay } from './tool-arguments'
+import { SmoothMarkdown } from './smooth-markdown'
 
 export type MessageBlock =
     | { type: 'text'; content: string }

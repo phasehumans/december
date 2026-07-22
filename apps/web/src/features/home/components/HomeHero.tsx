@@ -7,13 +7,13 @@ import { HomeHeader } from './HomeHeader'
 import { OnboardingModal } from './OnboardingModal'
 import PromptInput from './PromptInput'
 
-import { ProfileFeedbackModal } from '@/features/profile/components/ProfileFeedbackModal'
 import type { HomeHeroProps } from '@/features/home/types'
 
 import { useAppStore } from '@/app/store'
 import { ProUpgradeModal } from '@/features/billing/components/ProUpgradeModal'
 import { type CanvasRef } from '@/features/canvas/components/Canvas'
 import { profileAPI } from '@/features/profile/api/profile'
+import { ProfileFeedbackModal } from '@/features/profile/components/ProfileFeedbackModal'
 import { Icons } from '@/shared/components/ui/Icons'
 
 export const HomeHero: React.FC<HomeHeroProps> = ({

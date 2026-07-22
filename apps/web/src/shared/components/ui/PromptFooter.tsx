@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { Paperclip, KeyRound, Code2, Puzzle, MessageSquare, BookOpen, Folder } from 'lucide-react'
+import { Paperclip, KeyRound, Code2, Puzzle, Folder } from 'lucide-react'
 import React, { useRef, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 

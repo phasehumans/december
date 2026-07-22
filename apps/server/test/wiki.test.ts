@@ -1,7 +1,8 @@
-import { describe, it, expect, beforeAll, afterAll } from 'bun:test'
-import request from 'supertest'
-import jwt from 'jsonwebtoken'
 import { prisma } from '@december/database'
+import { describe, it, expect, beforeAll, afterAll } from 'bun:test'
+import jwt from 'jsonwebtoken'
+import request from 'supertest'
+
 import app from '../src/app'
 import { env } from '../src/env'
 
@@ -9,8 +10,8 @@ describe('Wiki API Endpoints (/api/v1/wiki)', () => {
     let testUserId: string
     let testAuthSessionId: string
     let authToken: string
-    let testRepoOwner = 'testowner'
-    let testRepoName = 'testrepo'
+    const testRepoOwner = 'testowner'
+    const testRepoName = 'testrepo'
     let testWikiId: string
     let createdPageId: string
 

@@ -30,7 +30,7 @@ export const SessionList: React.FC<{
         return {
             search: searchQuery.trim() || undefined,
             type: typeFilter !== 'any' ? typeFilter : undefined,
-            sortBy: 'updatedAt' as 'updatedAt',
+            sortBy: 'updatedAt' as const,
             sortOrder: sortOption === 'newest' ? 'desc' : 'asc',
             isArchived:
                 advancedFilters?.archived === 'only'

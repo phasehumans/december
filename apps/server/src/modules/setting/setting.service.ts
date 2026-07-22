@@ -50,7 +50,6 @@ import type {
     DismissOnboardingCard,
     SubmitFeedback,
 } from './setting.types'
-import { sendNotificationToUser } from '../notification/notification.service'
 
 const getMe = async (data: GetMe) => {
     const { userId } = data

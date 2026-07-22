@@ -1,6 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { MCPTool, configureMCP } from '../src/mcp'
 import { ToolExecuteContext } from '@december/shared'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+
+import { MCPTool, configureMCP } from '../src/mcp'
 
 const mockContext: ToolExecuteContext = {
     agent: {} as any,

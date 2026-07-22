@@ -1,6 +1,6 @@
 import { describe, expect, test, mock, beforeEach } from 'bun:test'
 
-import { anthropicProvider } from '../src/providers/anthropic'
+import { anthropicProvider, AnthropicProvider } from '../src/providers/anthropic'
 
 let capturedOptions: any = null
 
@@ -138,7 +138,6 @@ describe('Anthropic Provider', () => {
         ])
     })
     test('AnthropicProvider class wrapper > instantiates and forwards stream', () => {
-        const { AnthropicProvider } = require('../src/providers/anthropic')
         const provider = new AnthropicProvider('http://local', 'key')
         expect(provider.id).toBe('anthropic')
         expect(provider.stream).toBeInstanceOf(Function)

@@ -231,13 +231,14 @@ export const useChatController = (
                                         abortActiveGeneration: false,
                                     })
                                     return
-                                case 'error':
+                                case 'error': {
                                     const activeFile =
                                         useAppStore.getState().activeGeneratedFilePath
                                     if (activeFile) {
                                         markGeneratedFileError(activeFile)
                                     }
                                     return
+                                }
                             }
                         },
                     })

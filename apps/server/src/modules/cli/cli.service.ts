@@ -8,6 +8,7 @@ import { AppError } from '../../shared/appError'
 import { usageService } from '../usage/usage.service'
 
 import { cliRepository } from './cli.repository'
+
 import type {
     VerifyWalletBalance,
     GenerateHandoffUrl,

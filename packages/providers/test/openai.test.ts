@@ -1,6 +1,6 @@
 import { describe, expect, test, mock, afterEach, beforeEach } from 'bun:test'
 
-import { openaiProvider } from '../src/providers/openai'
+import { openaiProvider, OpenAIProvider } from '../src/providers/openai'
 
 let capturedOptions: any = null
 
@@ -125,7 +125,6 @@ describe('OpenAI Provider', () => {
         ])
     })
     test('OpenAIProvider class wrapper > instantiates and forwards stream', () => {
-        const { OpenAIProvider } = require('../src/providers/openai')
         const provider = new OpenAIProvider('http://local', 'key')
         expect(provider.id).toBe('openai')
         expect(provider.stream).toBeInstanceOf(Function)

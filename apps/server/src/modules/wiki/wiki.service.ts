@@ -1,7 +1,10 @@
 import { prisma } from '@december/database'
+
 import { AppError } from '../../shared/appError'
+
 import { wikiRepository as wikiRepo } from './wiki.repository'
 import { slugify } from './wiki.utils'
+
 import type {
     GitHubReposResponse,
     GetUserGitHubRepos,

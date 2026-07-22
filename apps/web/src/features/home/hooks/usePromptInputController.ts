@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { Code2, Puzzle, MessageSquare, BookOpen, KeyRound, Folder } from 'lucide-react'
+import { Code2, Puzzle, KeyRound, Folder } from 'lucide-react'
 import { useState, useRef, useEffect, useCallback } from 'react'
 
 import { profileAPI } from '@/features/profile/api/profile'

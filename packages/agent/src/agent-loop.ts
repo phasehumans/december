@@ -75,11 +75,15 @@ function formatError(e: any): string {
     try {
         const json = JSON.stringify(rawData, null, 2)
         if (json !== '{}' && json !== '""') return json
-    } catch {}
+    } catch {
+        // Fall back to util.inspect
+    }
 
     try {
         return util.inspect(rawData, { depth: 4 })
-    } catch {}
+    } catch {
+        // Fall back to String conversion
+    }
 
     return String(e)
 }
@@ -166,7 +170,6 @@ async function runInnerLoop(agent: Agent, eventQueue: AsyncQueue<AgentEvent>, si
         )
 
         if (error || signal.aborted) {
-            isDone = true
             break
         }
 

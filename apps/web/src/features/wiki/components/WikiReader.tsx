@@ -1,10 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import React, { useState, useEffect } from 'react'
 
+import { WikiChat } from './WikiChat'
+
 import { apiFetch } from '@/shared/api/client'
 import { Icons } from '@/shared/components/ui/Icons'
-
-import { WikiChat } from './WikiChat'
 
 export interface WikiPage {
     id: string

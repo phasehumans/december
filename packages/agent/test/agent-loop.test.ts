@@ -119,6 +119,7 @@ describe('Agent Loop Generator', () => {
     it('should gracefully handle API errors and retry or fail', async () => {
         const mockLlm = {
             stream: mock(async function* () {
+                yield { type: 'text', text: 'API Error: failed' } as any
                 throw new Error('API failed heavily')
             }),
         } as unknown as LLMProvider

@@ -6,7 +6,7 @@ export function parseErrorMessage(err: any): string {
         if (typeof errMsg !== 'string') {
             errMsg = JSON.stringify(errMsg)
         }
-    } catch (e) {
+    } catch {
         return 'Unknown error occurred.'
     }
 
@@ -19,7 +19,9 @@ export function parseErrorMessage(err: any): string {
             let extractedMatch = msgMatch[1]
             try {
                 extractedMatch = JSON.parse(`"${msgMatch[1]}"`)
-            } catch (e) {}
+            } catch {
+                // Keep raw match if unescape fails
+            }
 
             if (typeof extractedMatch === 'string' && extractedMatch.trim().startsWith('{')) {
                 const nested = extractMessage(extractedMatch)
@@ -54,7 +56,9 @@ export function parseErrorMessage(err: any): string {
                 if (typeof parsed.message === 'string') return parsed.message
                 if (typeof parsed.error === 'string') return parsed.error
             }
-        } catch (e) {}
+        } catch {
+            // Ignore JSON parse error and continue to fallback extractors
+        }
 
         // 3. try json block extraction
         const firstBrace = str.indexOf('{')
@@ -66,7 +70,9 @@ export function parseErrorMessage(err: any): string {
                 if (parsed?.error?.message && typeof parsed.error.message === 'string')
                     return parsed.error.message
                 if (parsed?.message && typeof parsed.message === 'string') return parsed.message
-            } catch (e) {}
+            } catch {
+                // Ignore slice parse error
+            }
         }
 
         return null
@@ -78,7 +84,9 @@ export function parseErrorMessage(err: any): string {
     if (errMsg === '[object Object]' && err && typeof err === 'object') {
         try {
             return util.inspect(err)
-        } catch {}
+        } catch {
+            // Fall back to raw string
+        }
     }
 
     return errMsg.replace(/^\[.*?Error\]:\s*/, '').trim()

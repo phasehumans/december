@@ -68,7 +68,7 @@ export function useSettingsHandlers() {
                 setSettingsAutoUpdate(!settingsAutoUpdate)
                 updated = true
                 break
-            case 'thinkingLevel':
+            case 'thinkingLevel': {
                 const thinkingLevels: ('off' | 'minimal' | 'low' | 'medium' | 'high')[] = [
                     'off',
                     'minimal',
@@ -84,17 +84,20 @@ export function useSettingsHandlers() {
                 setSettingsThinkingLevel(nextThinkingLevel)
                 updated = true
                 break
-            case 'steeringMode':
+            }
+            case 'steeringMode': {
                 config.steeringMode = settingsSteeringMode === 'all' ? 'one-at-a-time' : 'all'
                 setSettingsSteeringMode(config.steeringMode)
                 updated = true
                 break
-            case 'followUpMode':
+            }
+            case 'followUpMode': {
                 config.followUpMode = settingsFollowUpMode === 'all' ? 'one-at-a-time' : 'all'
                 setSettingsFollowUpMode(config.followUpMode)
                 updated = true
                 break
-            case 'authPriority':
+            }
+            case 'authPriority': {
                 const newPriority = settingsAuthPriority === 'december' ? 'byok' : 'december'
                 config.authPriority = newPriority
                 setSettingsAuthPriority(newPriority)
@@ -119,6 +122,7 @@ export function useSettingsHandlers() {
                     )
                 }
                 break
+            }
             case 'back':
                 setAuthMode('none')
                 break

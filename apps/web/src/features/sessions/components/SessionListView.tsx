@@ -1,7 +1,8 @@
 import React from 'react'
-import { SessionListRow } from './SessionListRow'
 
 import { type SessionFilterState } from './SessionFilterDropdown'
+import { SessionListRow } from './SessionListRow'
+
 import type { SortOption, TypeFilter } from './SessionList'
 
 import { ErrorAlert } from '@/shared/components/ui/ErrorAlert'

@@ -139,14 +139,21 @@ export default tseslint.config(
             'unused-imports/no-unused-imports': 'warn',
 
             /**
-             * TypeScript
+             * TypeScript & General Rules Overrides
              */
             '@typescript-eslint/no-explicit-any': 'off',
             '@typescript-eslint/no-unused-vars': 'off',
-
-            /**
-             * General
-             */
+            '@typescript-eslint/no-require-imports': 'error',
+            '@typescript-eslint/ban-ts-comment': 'warn',
+            '@typescript-eslint/prefer-as-const': 'warn',
+            'no-empty': 'error',
+            'no-case-declarations': 'error',
+            'no-useless-assignment': 'warn',
+            'no-useless-escape': 'warn',
+            'prefer-const': 'warn',
+            'require-yield': 'error',
+            'no-async-promise-executor': 'warn',
+            'preserve-caught-error': 'warn',
             'no-console': 'off',
         },
     },

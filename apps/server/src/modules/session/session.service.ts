@@ -76,7 +76,7 @@ const getUserSessions = async (data: GetUserSessions) => {
     const result = await sessionRepository.findManySessions(userId, filters)
     const sessions = result.sessions.map((session: any) => {
         let prNumber: number | null = session.prNumber || null
-        let prUrl: string | null = session.reviews?.[0]?.prUrl || null
+        const prUrl: string | null = session.reviews?.[0]?.prUrl || null
         if (!prNumber && prUrl) {
             const match = prUrl.match(/pull\/(\d+)/)
             if (match && match[1]) prNumber = parseInt(match[1], 10)
