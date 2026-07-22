@@ -14,6 +14,25 @@ Uses canonical triage label vocabulary (`needs-triage`, `needs-info`, `ready-for
 
 Single-context layout (`CONTEXT.md` + `docs/adr/` at repo root). See `docs/agents/domain.md`.
 
+## Server Module Architecture & Service Standards
+
+Reference gold standard modules: `auth`, `notification`, `session`.
+
+- **File Responsibility Separation**:
+    - `<module>.routes.ts`: Defines Express routes delegating to controller functions (`export default <module>Router`).
+    - `<module>.controller.ts`: Handles HTTP requests using `asyncHandler`, parses validation schemas via Zod (`.parse()`), and returns `sendSuccess(res, message, data, status)` or throws `AppError(message, status)`. Exports `<module>Controller` object.
+    - `<module>.service.ts`: Business logic functions. Exports `<module>Service` object.
+    - `<module>.repository.ts`: Database / Prisma queries. Exports `<module>Repository` object.
+    - `<module>.schema.ts`: Zod request validation schemas.
+    - `<module>.types.ts`: Centralized TypeScript interfaces and types.
+    - `<module>.utils.ts`: Module helper functions.
+
+- **Service Layer Rules**:
+    - **Arrow Functions**: All service functions must be declared as private `const functionName = async (data: TypeName) => { ... }` arrow functions.
+    - **Single Parameter & Destructuring**: Service functions accept a single typed `data` object parameter and destructure its fields on the **first line** inside the function body (`const { prop1, prop2 } = data`).
+    - **Type Centralization**: Service parameter types and interfaces must be defined in `<module>.types.ts` and imported into `<module>.service.ts`.
+    - **Singleton Export**: Individual service functions must not be exported directly. Export exclusively via a single object at the end of the file (`export const <module>Service = { ... }`).
+
 ## Testing & Environment
 
 - **Test Environment & DB Setup**: Tests run against `.env.test`.
