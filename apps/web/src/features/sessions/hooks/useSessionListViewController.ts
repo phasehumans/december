@@ -3,7 +3,7 @@ import React from 'react'
 export const useSessionListViewController = (projectCount: number) => {
     const [activeDropdown, setActiveDropdown] = React.useState<string | null>(null)
     const [dropdownDirection, setDropdownDirection] = React.useState<'down' | 'up'>('down')
-    const [visibleCount, setVisibleCount] = React.useState(10)
+    const [visibleCount, setVisibleCount] = React.useState(20)
     const [viewMode, setViewMode] = React.useState<'list' | 'grid'>('list')
     const dropdownRef = React.useRef<HTMLDivElement>(null)
 
@@ -32,11 +32,11 @@ export const useSessionListViewController = (projectCount: number) => {
     }, [])
 
     React.useEffect(() => {
-        setVisibleCount(10)
+        setVisibleCount(20)
     }, [projectCount])
 
     const loadMore = () => {
-        setVisibleCount((prev) => Math.min(prev + 10, projectCount))
+        setVisibleCount((prev) => Math.min(prev + 20, projectCount))
     }
 
     return {

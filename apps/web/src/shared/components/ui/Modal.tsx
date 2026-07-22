@@ -28,7 +28,10 @@ export const Modal: React.FC<ModalProps> = ({
         const premiumMaxWidth = maxWidth === 'max-w-[480px]' ? 'max-w-[400px]' : maxWidth
         return createPortal(
             <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 pointer-events-auto">
-                <div className="absolute inset-0 bg-black/75 backdrop-blur-sm" onClick={onClose} />
+                <div
+                    className="absolute inset-0 bg-black/50 backdrop-blur-[1px]"
+                    onClick={onClose}
+                />
                 <div
                     className={`relative w-full ${premiumMaxWidth} bg-[#1E1E1E] border border-[#272727] rounded-[20px] shadow-2xl overflow-visible animate-in fade-in zoom-in-95 duration-200`}
                 >
@@ -63,7 +66,7 @@ export const Modal: React.FC<ModalProps> = ({
 
     return createPortal(
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 pointer-events-auto">
-            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+            <div className="absolute inset-0 bg-black/50 backdrop-blur-[1px]" onClick={onClose} />
             <div
                 className={`relative w-full ${maxWidth} bg-[#1E1E1E] border border-[#272727] rounded-xl shadow-2xl overflow-visible animate-in fade-in zoom-in-95 duration-200`}
             >

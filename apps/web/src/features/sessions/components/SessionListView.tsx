@@ -1,8 +1,7 @@
 import React from 'react'
-
-import { SessionFilterDropdown, type SessionFilterState } from './SessionFilterDropdown'
 import { SessionListRow } from './SessionListRow'
 
+import { type SessionFilterState } from './SessionFilterDropdown'
 import type { SortOption, TypeFilter } from './SessionList'
 
 import { ErrorAlert } from '@/shared/components/ui/ErrorAlert'
@@ -25,7 +24,6 @@ interface SessionListViewProps {
     onToggleStarFromMenu: (project: any, event: React.MouseEvent) => void
     onToggleArchiveFromMenu: (project: any, event: React.MouseEvent) => void
     onOpenRename: (project: any, event: React.MouseEvent) => void
-    onOpenDuplicate: (project: any, event: React.MouseEvent) => void
     onOpenShare: (project: any, event: React.MouseEvent) => void
     onOpenDelete: (project: any, event: React.MouseEvent) => void
     onOpenSettings: (project: any, event: React.MouseEvent) => void
@@ -187,7 +185,7 @@ export const SessionListView: React.FC<SessionListViewProps> = ({
 }) => {
     const [activeDropdown, setActiveDropdown] = React.useState<string | null>(null)
     const [dropdownDirection, setDropdownDirection] = React.useState<'down' | 'up'>('down')
-    const [visibleCount, setVisibleCount] = React.useState(10)
+    const [visibleCount, setVisibleCount] = React.useState(20)
     const sortDropdownRef = React.useRef<HTMLDivElement>(null)
 
     const toggleDropdown = (type: string, event: React.MouseEvent<HTMLButtonElement>) => {
@@ -218,7 +216,7 @@ export const SessionListView: React.FC<SessionListViewProps> = ({
     }, [])
 
     React.useEffect(() => {
-        setVisibleCount(10)
+        setVisibleCount(20)
     }, [sessions.length])
 
     const displayedError = actionError ?? errorMessage
@@ -251,25 +249,18 @@ export const SessionListView: React.FC<SessionListViewProps> = ({
                         placeholder="Search sessions..."
                         value={searchQuery}
                         onChange={(e) => onSearchChange(e.target.value)}
-                        className="w-full rounded-lg border border-[#383736] bg-[#141414] py-1.5 pl-9 pr-4 text-[13px] text-[#D6D5C9] transition-colors placeholder:text-[#7B7A79] hover:bg-[#191919] focus:border-[#7B7A79] focus:bg-[#191919] focus:outline-none"
+                        className="w-full rounded-lg border border-[#282828] bg-[#202020] py-1.5 pl-9 pr-4 text-[13px] text-[#949494] transition-colors placeholder:text-[#949494] hover:bg-[#282828] focus:border-[#7B7A79] focus:bg-[#202020] focus:outline-none"
                     />
                 </div>
 
                 <div className="flex-1" />
 
                 <div className="hidden md:flex items-center gap-2">
-                    {/* filter dropdown */}
-                    <SessionFilterDropdown
-                        filters={advancedFilters}
-                        onFiltersChange={onAdvancedFiltersChange}
-                        availableTags={availableTags}
-                    />
-
                     {/* sort dropdown */}
                     <div className="relative" ref={sortDropdownRef}>
                         <button
                             onClick={(e) => toggleDropdown('sort', e)}
-                            className="flex items-center gap-2 rounded-full border border-[#383736] bg-[#141414] px-4 py-1.5 text-[13px] text-[#D6D5C9] transition-colors hover:bg-[#191919]"
+                            className="flex items-center gap-2 rounded-lg border border-[#282828] bg-[#202020] px-4 py-1.5 text-[13px] text-[#949494] transition-colors hover:bg-[#282828]"
                         >
                             Sort: {SORT_LABELS[sortOption]}{' '}
                             <Icons.ChevronDown className="h-3.5 w-3.5 text-[#7B7A79]" />
@@ -330,7 +321,6 @@ export const SessionListView: React.FC<SessionListViewProps> = ({
                                     onToggleStarFromMenu={onToggleStarFromMenu}
                                     onToggleArchiveFromMenu={onToggleArchiveFromMenu}
                                     onOpenRename={onOpenRename}
-                                    onOpenDuplicate={onOpenDuplicate}
                                     onOpenShare={onOpenShare}
                                     onOpenDelete={onOpenDelete}
                                     onOpenSettings={onOpenSettings}
@@ -345,9 +335,9 @@ export const SessionListView: React.FC<SessionListViewProps> = ({
                         <div className="flex justify-center pt-2 mb-8">
                             <button
                                 onClick={() =>
-                                    setVisibleCount((prev) => Math.min(prev + 10, sessions.length))
+                                    setVisibleCount((prev) => Math.min(prev + 20, sessions.length))
                                 }
-                                className="px-4 py-1.5 rounded-md border border-[#383736] text-[13px] text-[#D6D5C9] hover:bg-[#191919] transition-colors"
+                                className="px-5 py-2 rounded-lg border border-[#383736] bg-[#141414] text-[13px] font-medium text-[#D6D5C9] hover:bg-[#242323] hover:text-white transition-all active:scale-95"
                             >
                                 Load more
                             </button>

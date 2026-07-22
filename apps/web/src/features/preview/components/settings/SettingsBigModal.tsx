@@ -9,7 +9,6 @@ import { ShareTab } from './ShareTab'
 
 import { useSettingsModalController } from '@/features/preview/hooks/useSettingsModalController'
 import { SessionDeleteModal } from '@/features/sessions/components/SessionDeleteModal'
-import { SessionDuplicateModal } from '@/features/sessions/components/SessionDuplicateModal'
 import { SessionShareModal } from '@/features/sessions/components/SessionShareModal'
 
 const VercelIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
@@ -297,14 +296,6 @@ export const SettingsBigModal: React.FC<SettingsModalProps> = ({
                 isPending={false}
                 onClose={() => setIsShareModalOpen(false)}
                 onConfirm={handleShareConfirm}
-            />
-
-            <SessionDuplicateModal
-                isOpen={isDuplicateModalOpen}
-                projectTitle={projName}
-                isPending={isDuplicating}
-                onClose={() => setIsDuplicateModalOpen(false)}
-                onConfirm={handleDuplicateConfirm}
             />
 
             <SessionDeleteModal

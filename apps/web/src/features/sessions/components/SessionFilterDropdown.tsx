@@ -406,13 +406,12 @@ export const SessionFilterDropdown: React.FC<SessionFilterDropdownProps> = ({
                     setIsOpen(!isOpen)
                     if (isOpen) setHoveredCategory(null)
                 }}
-                className={`flex items-center gap-2 rounded-full border px-4 py-1.5 text-[13px] transition-colors ${
+                className={`flex items-center gap-2 rounded-lg border px-4 py-1.5 text-[13px] transition-colors ${
                     isOpen || activeCount > 0
-                        ? 'border-[#4A4948] bg-[#191919] text-[#D6D5C9]'
-                        : 'border-[#383736] bg-[#141414] text-[#D6D5C9] hover:bg-[#191919]'
+                        ? 'border-[#4A4948] bg-[#202020] text-[#949494]'
+                        : 'border-[#282828] bg-[#202020] text-[#949494] hover:bg-[#282828]'
                 }`}
             >
-                <Icons.SlidersVertical className="h-3.5 w-3.5 text-[#7B7A79]" />
                 Filter
                 {activeCount > 0 && (
                     <span className="flex h-4 min-w-[16px] items-center justify-center rounded-full bg-blue-500 px-1 text-[10px] font-medium text-white">

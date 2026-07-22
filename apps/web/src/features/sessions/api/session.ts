@@ -15,6 +15,7 @@ export type BackendSession = {
     prNumber?: number | null
     prState?: 'open' | 'closed' | 'merged' | 'draft' | null
     createdBy?: string | null
+    createdByName?: string | null
 }
 
 export type SessionFilters = {
@@ -24,10 +25,23 @@ export type SessionFilters = {
     tags?: string[]
     sortBy?: 'updatedAt' | 'createdAt'
     sortOrder?: 'asc' | 'desc'
+    search?: string
+    page?: number
+    limit?: number
+}
+
+export type PaginatedSessionsResponse = {
+    sessions: BackendSession[]
+    pagination?: {
+        total: number
+        page: number
+        limit: number
+        totalPages: number
+    }
 }
 
 export const sessionAPI = {
-    getSessions: async (filters?: SessionFilters): Promise<BackendSession[]> => {
+    getSessions: async (filters?: SessionFilters): Promise<PaginatedSessionsResponse> => {
         const queryParams = new URLSearchParams()
         if (filters?.type) queryParams.append('type', filters.type)
         if (filters?.isArchived !== undefined)
@@ -38,12 +52,18 @@ export const sessionAPI = {
             queryParams.append('tags', filters.tags.join(','))
         if (filters?.sortBy) queryParams.append('sortBy', filters.sortBy)
         if (filters?.sortOrder) queryParams.append('sortOrder', filters.sortOrder)
+        if (filters?.search) queryParams.append('search', filters.search)
+        if (filters?.page) queryParams.append('page', filters.page.toString())
+        if (filters?.limit) queryParams.append('limit', filters.limit.toString())
 
         const queryString = queryParams.toString()
         const url = `/session${queryString ? `?${queryString}` : ''}`
 
-        const data = await apiRequest<{ sessions: BackendSession[] }>(url)
-        return data.sessions
+        const data = await apiRequest<{ sessions: BackendSession[]; pagination?: any }>(url)
+        return {
+            sessions: data.sessions || [],
+            pagination: data.pagination,
+        }
     },
 
     getSession: async (id: string): Promise<BackendSession> => {

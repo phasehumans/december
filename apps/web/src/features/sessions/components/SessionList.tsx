@@ -20,13 +20,31 @@ export const SessionList: React.FC<{
     selectedModel?: string
     setSelectedModel?: (val: string) => void
 }> = ({ onNewProject, onOpenProject }) => {
-    const { data: sessions = [], isLoading, isFetching, error } = useSessions()
-    const errorMessage = error instanceof Error ? error.message : null
     const [menuOpenId, setMenuOpenId] = useState<string | null>(null)
     const [searchQuery, setSearchQuery] = useState('')
     const [sortOption, setSortOption] = useState<SortOption>('newest')
     const [typeFilter, setTypeFilter] = useState<TypeFilter>('any')
     const [advancedFilters, setAdvancedFilters] = useState<SessionFilterState>(DEFAULT_FILTERS)
+
+    const queryFilters = useMemo(() => {
+        return {
+            search: searchQuery.trim() || undefined,
+            type: typeFilter !== 'any' ? typeFilter : undefined,
+            sortBy: 'updatedAt' as 'updatedAt',
+            sortOrder: sortOption === 'newest' ? 'desc' : 'asc',
+            isArchived:
+                advancedFilters?.archived === 'only'
+                    ? true
+                    : advancedFilters?.archived === 'exclude'
+                      ? false
+                      : undefined,
+            tags: advancedFilters?.tags?.length ? advancedFilters.tags : undefined,
+        }
+    }, [searchQuery, typeFilter, sortOption, advancedFilters])
+
+    const { data, isLoading, isFetching, error } = useSessions(queryFilters)
+    const sessions = data?.sessions || []
+    const errorMessage = error instanceof Error ? error.message : null
     const [renameModal, setRenameModal] = useState<RenameModalState>({
         isOpen: false,
         project: null,
@@ -242,8 +260,7 @@ export const SessionList: React.FC<{
         }
     }
 
-    // dummy states for unused modals from old projectlistmodals that we haven't stripped yet
-    const duplicateModal = { isOpen: false, project: null }
+    // dummy state for share modal
     const shareModal = { isOpen: false, project: null }
 
     return (
@@ -265,7 +282,6 @@ export const SessionList: React.FC<{
                     onToggleStarFromMenu={toggleStarFromMenu}
                     onToggleArchiveFromMenu={toggleArchiveFromMenu}
                     onOpenRename={openRenameModal}
-                    onOpenDuplicate={() => {}}
                     onOpenShare={() => {}}
                     onOpenDelete={openDeleteModal}
                     onOpenSettings={openSettingsModal}
@@ -286,14 +302,12 @@ export const SessionList: React.FC<{
 
             <SessionListModals
                 renameModal={renameModal}
-                duplicateModal={duplicateModal}
                 shareModal={shareModal}
                 deleteModal={deleteModal}
                 openConfirmModal={openConfirmModal}
                 tagsModal={tagsModal}
                 insightsModal={insightsModal}
                 isRenamePending={renameMutation.isPending}
-                isDuplicatePending={false}
                 isSharePending={false}
                 isDeletePending={deleteMutation.isPending}
                 isTagsPending={updateTagsMutation.isPending}
@@ -302,8 +316,6 @@ export const SessionList: React.FC<{
                     setRenameModal((prev) => ({ ...prev, value: nextValue }))
                 }
                 onRenameSubmit={handleRename}
-                onCloseDuplicate={() => {}}
-                onDuplicateConfirm={() => {}}
                 onCloseShare={() => {}}
                 onShareConfirm={() => {}}
                 onCloseDelete={() => setDeleteModal((prev) => ({ ...prev, isOpen: false }))}

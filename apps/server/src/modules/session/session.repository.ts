@@ -16,6 +16,22 @@ export async function findManySessions(
         where.tags = { hasEvery: filters.tags }
     }
 
+    if (filters?.search && filters.search.trim().length > 0) {
+        const searchTerms = filters.search.trim()
+        where.AND = [
+            {
+                OR: [
+                    { title: { contains: searchTerms, mode: 'insensitive' } },
+                    {
+                        messages: {
+                            some: { content: { contains: searchTerms, mode: 'insensitive' } },
+                        },
+                    },
+                ],
+            },
+        ]
+    }
+
     const orderBy: Prisma.SessionOrderByWithRelationInput = {}
     if (filters?.sortBy) {
         orderBy[filters.sortBy] = filters.sortOrder || 'desc'
@@ -23,22 +39,52 @@ export async function findManySessions(
         orderBy.updatedAt = 'desc'
     }
 
-    return prisma.session.findMany({
-        where,
-        orderBy,
-        include: {
-            project: {
-                select: {
-                    id: true,
-                    name: true,
+    const page = filters?.page || 1
+    const limit = filters?.limit || 50
+    const skip = (page - 1) * limit
+
+    const [total, sessions] = await Promise.all([
+        prisma.session.count({ where }),
+        prisma.session.findMany({
+            where,
+            orderBy,
+            skip,
+            take: limit,
+            include: {
+                user: {
+                    select: {
+                        username: true,
+                        name: true,
+                        email: true,
+                    },
+                },
+                project: {
+                    select: {
+                        id: true,
+                        name: true,
+                    },
+                },
+                messages: {
+                    orderBy: { sequence: 'desc' },
+                    take: 1,
+                },
+                reviews: {
+                    orderBy: { createdAt: 'desc' },
+                    take: 1,
                 },
             },
-            messages: {
-                orderBy: { sequence: 'desc' },
-                take: 1,
-            },
+        }),
+    ])
+
+    return {
+        sessions,
+        pagination: {
+            total,
+            page,
+            limit,
+            totalPages: Math.ceil(total / limit),
         },
-    })
+    }
 }
 
 export async function createSession(data: Prisma.SessionUncheckedCreateInput) {
@@ -72,7 +118,6 @@ export async function findSessionById(sessionId: string, userId: string) {
                             username: true,
                             email: true,
                             name: true,
-                            avatarUrl: true,
                         },
                     },
                 },
@@ -131,7 +176,6 @@ export async function findCollaboratorsBySessionId(sessionId: string) {
                     username: true,
                     email: true,
                     name: true,
-                    avatarUrl: true,
                 },
             },
         },
@@ -189,7 +233,6 @@ export async function addCollaborator(sessionId: string, userId: string, email: 
                     username: true,
                     email: true,
                     name: true,
-                    avatarUrl: true,
                 },
             },
         },

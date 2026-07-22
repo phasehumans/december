@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { MessageSquare } from 'lucide-react'
 import React, { useRef, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
@@ -319,7 +320,7 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
                                                 <Icons.X className="w-3.5 h-3.5" />
                                             </button>
                                             <div className="flex flex-col gap-2.5">
-                                                <Icons.Heart className="w-5 h-5 text-white" />
+                                                <MessageSquare className="w-5 h-5 text-white" />
                                                 <div className="flex flex-col gap-1">
                                                     <h4 className="text-[13px] font-sans font-semibold text-[#E8E8E8]">
                                                         Give feedback

@@ -11,6 +11,12 @@ export const getSessionsSchema = z.object({
     tags: z.string().optional(),
     sortBy: z.enum(['updatedAt', 'createdAt']).optional(),
     sortOrder: z.enum(['asc', 'desc']).optional(),
+    search: z.string().optional(),
+    page: z.preprocess((val) => (val ? Number(val) : undefined), z.number().min(1).optional()),
+    limit: z.preprocess(
+        (val) => (val ? Number(val) : undefined),
+        z.number().min(1).max(100).optional()
+    ),
 })
 
 export const createSessionSchema = z.object({
@@ -43,7 +49,7 @@ export const updateSessionTagsParamsSchema = z.object({
     id: z.string().uuid('Invalid session ID'),
 })
 export const updateSessionTagsBodySchema = z.object({
-    tags: z.array(z.string().max(30)),
+    tags: z.array(z.string().max(30)).max(1, 'Only one tag is allowed per session'),
 })
 
 export const getSessionInsightsParamsSchema = z.object({
