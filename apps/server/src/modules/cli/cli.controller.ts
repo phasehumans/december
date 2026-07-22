@@ -15,12 +15,12 @@ const chatCompletions = asyncHandler(async (req: Request, res: Response) => {
 
     const body = req.body
 
-    const hasBalance = await cliService.verifyWalletBalance(userId)
+    const hasBalance = await cliService.verifyWalletBalance({ userId })
     if (!hasBalance) {
         throw new AppError('Insufficient credits in December Wallet.', 402)
     }
 
-    await cliService.proxyChatCompletions(userId, body, res)
+    await cliService.proxyChatCompletions({ userId, body, res })
 })
 
 const getHandoffUploadUrl = asyncHandler(async (req: Request, res: Response) => {
@@ -29,7 +29,7 @@ const getHandoffUploadUrl = asyncHandler(async (req: Request, res: Response) => 
         throw new AppError('Unauthorized', 401)
     }
 
-    const data = await cliService.generateHandoffUrl(userId)
+    const data = await cliService.generateHandoffUrl({ userId })
     return sendSuccess(res, 'handoff upload url generated', data)
 })
 
@@ -40,12 +40,12 @@ const completeHandoff = asyncHandler(async (req: Request, res: Response) => {
     }
 
     const parsed = CompleteHandoffSchema.parse(req.body)
-    const session = await cliService.completeHandoff(
+    const session = await cliService.completeHandoff({
         userId,
-        parsed.title || '',
-        parsed.messages || [],
-        parsed.objectKey
-    )
+        title: parsed.title,
+        messages: parsed.messages,
+        objectKey: parsed.objectKey,
+    })
     return sendSuccess(res, 'handoff completed successfully', session, 201)
 })
 

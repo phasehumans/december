@@ -16,7 +16,9 @@ import { hydrateCanvasDocument } from '../canvas/canvas.utils'
 import * as sessionRepository from './session.repository'
 
 import type {
+    GetUserSessions,
     CreateSession,
+    GetSession,
     RenameSession,
     ArchiveSession,
     UnarchiveSession,
@@ -28,7 +30,7 @@ import type {
     RemoveCollaborator,
 } from './session.types'
 
-export const loadSessionFiles = async (sessionId: string) => {
+const loadSessionFiles = async (sessionId: string) => {
     const prefix = sessionWorkspacePrefix(sessionId)
     const objects = await listPrefix(prefix)
     const files: Record<string, string> = {}
@@ -69,10 +71,8 @@ export const loadSessionFiles = async (sessionId: string) => {
     return files
 }
 
-export async function getUserSessions(
-    userId: string,
-    filters?: import('./session.types').SessionFilters
-) {
+const getUserSessions = async (data: GetUserSessions) => {
+    const { userId, filters } = data
     const result = await sessionRepository.findManySessions(userId, filters)
     const sessions = result.sessions.map((session: any) => {
         let prNumber: number | null = session.prNumber || null
@@ -138,7 +138,7 @@ export async function getUserSessions(
     }
 }
 
-export async function createSession(data: CreateSession) {
+const createSession = async (data: CreateSession) => {
     const { userId, title, projectId, type, prompt } = data
 
     const activeSessions = await prisma.session.count({
@@ -174,7 +174,8 @@ export async function createSession(data: CreateSession) {
     return session
 }
 
-export async function getSession(sessionId: string, userId: string) {
+const getSession = async (data: GetSession) => {
+    const { userId, sessionId } = data
     const session = await sessionRepository.findSessionById(sessionId, userId)
     if (!session) throw new AppError('Session not found', 404)
 
@@ -208,12 +209,12 @@ export async function getSession(sessionId: string, userId: string) {
     }
 }
 
-export async function renameSession(data: RenameSession) {
+const renameSession = async (data: RenameSession) => {
     const { userId, sessionId, title } = data
     return sessionRepository.updateSession(sessionId, userId, { title })
 }
 
-export async function archiveSession(data: ArchiveSession) {
+const archiveSession = async (data: ArchiveSession) => {
     const { userId, sessionId } = data
     const existing = await sessionRepository.findSessionById(sessionId, userId)
     if (!existing) throw new AppError('Session not found', 404)
@@ -223,7 +224,7 @@ export async function archiveSession(data: ArchiveSession) {
     })
 }
 
-export async function unarchiveSession(data: UnarchiveSession) {
+const unarchiveSession = async (data: UnarchiveSession) => {
     const { userId, sessionId } = data
     const existing = await sessionRepository.findSessionById(sessionId, userId)
     if (!existing) throw new AppError('Session not found', 404)
@@ -233,13 +234,13 @@ export async function unarchiveSession(data: UnarchiveSession) {
     })
 }
 
-export async function updateSessionTags(data: UpdateSessionTags) {
+const updateSessionTags = async (data: UpdateSessionTags) => {
     const { userId, sessionId, tags } = data
     const singleTag = tags ? tags.slice(0, 1) : []
     return sessionRepository.updateSession(sessionId, userId, { tags: singleTag })
 }
 
-export async function getSessionInsights(data: GetSessionInsights) {
+const getSessionInsights = async (data: GetSessionInsights) => {
     const { userId, sessionId } = data
     const session = await sessionRepository.findSessionById(sessionId, userId)
     if (!session) {
@@ -298,7 +299,7 @@ export async function getSessionInsights(data: GetSessionInsights) {
     }
 }
 
-export async function deleteSession(data: DeleteSession) {
+const deleteSession = async (data: DeleteSession) => {
     const { userId, sessionId } = data
 
     const owner = await sessionRepository.findSessionOwner(sessionId)
@@ -327,7 +328,7 @@ export async function deleteSession(data: DeleteSession) {
     return { message: 'session deleted successfully' }
 }
 
-export async function getCollaborators(data: GetCollaborators) {
+const getCollaborators = async (data: GetCollaborators) => {
     const { userId, sessionId } = data
     const session = await sessionRepository.findSessionById(sessionId, userId)
     if (!session) {
@@ -336,7 +337,7 @@ export async function getCollaborators(data: GetCollaborators) {
     return sessionRepository.findCollaboratorsBySessionId(sessionId)
 }
 
-export async function addCollaborator(data: AddCollaborator) {
+const addCollaborator = async (data: AddCollaborator) => {
     const { userId, sessionId, email } = data
 
     const owner = await sessionRepository.findSessionOwner(sessionId)
@@ -374,7 +375,7 @@ export async function addCollaborator(data: AddCollaborator) {
     return result
 }
 
-export async function removeCollaborator(data: RemoveCollaborator) {
+const removeCollaborator = async (data: RemoveCollaborator) => {
     const { userId, sessionId, email } = data
 
     const owner = await sessionRepository.findSessionOwner(sessionId)
@@ -389,4 +390,20 @@ export async function removeCollaborator(data: RemoveCollaborator) {
 
     await sessionRepository.removeCollaborator(sessionId, email)
     return { message: 'Collaborator removed successfully' }
+}
+
+export const sessionService = {
+    loadSessionFiles,
+    getUserSessions,
+    createSession,
+    getSession,
+    renameSession,
+    archiveSession,
+    unarchiveSession,
+    updateSessionTags,
+    getSessionInsights,
+    deleteSession,
+    getCollaborators,
+    addCollaborator,
+    removeCollaborator,
 }

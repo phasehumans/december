@@ -18,7 +18,7 @@ const handleWebhook = asyncHandler(async (req: Request, res: Response) => {
     }
 
     const rawBody = req.body.toString('utf8')
-    if (!githubAppService.verifySignature(rawBody, signature)) {
+    if (!githubAppService.verifySignature({ payload: rawBody, signature })) {
         throw new AppError('Invalid signature', 401)
     }
 
@@ -28,10 +28,10 @@ const handleWebhook = asyncHandler(async (req: Request, res: Response) => {
     if (event === 'installation' && payload.action === 'created') {
         const installationId = payload.installation.id.toString()
         const userId = 'system'
-        await githubAppService.processInstallation(installationId, userId)
+        await githubAppService.processInstallation({ installationId, userId })
     } else if (event === 'installation' && payload.action === 'deleted') {
         const installationId = payload.installation.id.toString()
-        await githubAppService.processUninstallation(installationId)
+        await githubAppService.processUninstallation({ installationId })
     }
 
     return sendSuccess(res, 'webhook processed successfully', null)

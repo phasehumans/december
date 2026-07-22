@@ -33,7 +33,7 @@ const runtimeSharedSecret = process.env.RUNTIME_SHARED_SECRET
 
 const pendingDeletions = new Map<string, NodeJS.Timeout>()
 
-export function cancelPendingDeletion(sessionId: string) {
+function cancelPendingDeletion(sessionId: string) {
     const timer = pendingDeletions.get(sessionId)
     if (timer) {
         clearTimeout(timer)
@@ -42,7 +42,7 @@ export function cancelPendingDeletion(sessionId: string) {
     }
 }
 
-export function scheduleDeletion(sessionId: string, delayMs: number) {
+function scheduleDeletion(sessionId: string, delayMs: number) {
     cancelPendingDeletion(sessionId)
     const timer = setTimeout(async () => {
         try {
@@ -388,6 +388,8 @@ const checkSandboxCompilation = async (data: CheckSandboxCompilation): Promise<C
 }
 
 export const runtimeService = {
+    cancelPendingDeletion,
+    scheduleDeletion,
     startPreview,
     notifyManifestPublished,
     getPreviewStatus,

@@ -3,12 +3,16 @@ import { AppError } from '../../shared/appError'
 import { triggerAsyncReview } from './review.engine'
 import { reviewRepository } from './review.repository'
 import type {
-    CreatePullRequestReviewDto,
-    GetReviewsQueryDto,
-    UpdateReviewPreferencesDto,
-} from './review.schema'
+    CreatePullRequestReview,
+    GetUserReviews,
+    GetReviewById,
+    DeleteReview,
+    GetUserPreferences,
+    UpdateUserPreferences,
+} from './review.types'
 
-export async function createPullRequestReview(userId: string, data: CreatePullRequestReviewDto) {
+const createPullRequestReview = async (dataInput: CreatePullRequestReview) => {
+    const { userId, data } = dataInput
     const { prUrl, sessionId, preferences } = data
 
     // Extract repo & PR number from URL
@@ -52,7 +56,8 @@ export async function createPullRequestReview(userId: string, data: CreatePullRe
     return review
 }
 
-export async function getUserReviews(userId: string, query: GetReviewsQueryDto) {
+const getUserReviews = async (data: GetUserReviews) => {
+    const { userId, query } = data
     const filters = {
         repository: query.repository,
         status: query.status,
@@ -70,19 +75,22 @@ export async function getUserReviews(userId: string, query: GetReviewsQueryDto) 
     return reviewRepository.findReviewsByUserId(userId, filters)
 }
 
-export async function getReviewById(userId: string, reviewId: string) {
+const getReviewById = async (data: GetReviewById) => {
+    const { userId, reviewId } = data
     const review = await reviewRepository.findReviewById(reviewId, userId)
     if (!review) throw new AppError('Review not found', 404)
     return review
 }
 
-export async function deleteReview(userId: string, reviewId: string) {
+const deleteReview = async (data: DeleteReview) => {
+    const { userId, reviewId } = data
     const deleted = await reviewRepository.deleteReview(reviewId, userId)
     if (!deleted) throw new AppError('Review not found', 404)
     return { success: true }
 }
 
-export async function getUserPreferences(userId: string) {
+const getUserPreferences = async (data: GetUserPreferences) => {
+    const { userId } = data
     const prefs = await reviewRepository.findPreferencesByUserId(userId)
     if (!prefs) {
         return reviewRepository.upsertPreferences(userId, {})
@@ -90,7 +98,8 @@ export async function getUserPreferences(userId: string) {
     return prefs
 }
 
-export async function updateUserPreferences(userId: string, data: UpdateReviewPreferencesDto) {
+const updateUserPreferences = async (dataInput: UpdateUserPreferences) => {
+    const { userId, data } = dataInput
     return reviewRepository.upsertPreferences(userId, data)
 }
 

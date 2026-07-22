@@ -1,5 +1,6 @@
 import { PutObjectCommand } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
+import { prisma } from '@december/database'
 
 import { s3 } from '../../config/s3'
 import { env } from '../../env'
@@ -7,17 +8,20 @@ import { AppError } from '../../shared/appError'
 import { usageService } from '../usage/usage.service'
 
 import { cliRepository } from './cli.repository'
+import type {
+    VerifyWalletBalance,
+    GenerateHandoffUrl,
+    ProxyChatCompletions,
+    CompleteHandoff,
+} from './cli.types'
 
-import type { Response } from 'express'
-
-export const verifyWalletBalance = async (userId: string) => {
+const verifyWalletBalance = async (data: VerifyWalletBalance) => {
+    const { userId } = data
     return usageService.hasMinimumBalance({ userId })
 }
 
-import { prisma } from '@december/database'
-
-export const generateHandoffUrl = async (userId: string) => {
-    // check for handoff conflicts (phase 3.4)
+const generateHandoffUrl = async (data: GenerateHandoffUrl) => {
+    const { userId } = data
     const activeSession = await prisma.session.findFirst({
         where: {
             userId,
@@ -47,8 +51,8 @@ export const generateHandoffUrl = async (userId: string) => {
     }
 }
 
-export const proxyChatCompletions = async (userId: string, body: any, res: Response) => {
-    // force stream and include usage
+const proxyChatCompletions = async (data: ProxyChatCompletions) => {
+    const { userId, body, res } = data
     body.stream = true
     if (!body.stream_options) {
         body.stream_options = { include_usage: true }
@@ -99,7 +103,6 @@ export const proxyChatCompletions = async (userId: string, body: any, res: Respo
             const chunk = decoder.decode(value, { stream: true })
             res.write(chunk)
 
-            // extract usage from sse
             const lines = chunk.split('\n')
             for (const line of lines) {
                 if (line.startsWith('data: ') && line !== 'data: [DONE]') {
@@ -117,7 +120,6 @@ export const proxyChatCompletions = async (userId: string, body: any, res: Respo
     } finally {
         res.end()
 
-        // record usage asynchronously after stream ends
         if (usage) {
             usageService
                 .recordUsageEvent({
@@ -133,15 +135,8 @@ export const proxyChatCompletions = async (userId: string, body: any, res: Respo
     }
 }
 
-export const completeHandoff = async (
-    userId: string,
-    title: string,
-    messages: any[],
-    objectKey?: string
-) => {
-    // if we wanted to link objectkey, we'd alter the db or store it in projectmemory.
-    // for now, we will store it inside messages as a system note or create a projectimport.
-    // let's just create a session.
+const completeHandoff = async (data: CompleteHandoff) => {
+    const { userId, title, messages } = data
     const session = await cliRepository.createSession({
         userId,
         title: title || 'Handoff Session',

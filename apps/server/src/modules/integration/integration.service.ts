@@ -10,6 +10,7 @@ import type {
     ConnectSupabase,
     ConnectNotion,
     ConnectGithub,
+    HandleGitHubOAuth,
 } from './integration.types'
 
 const connectVercel = async (data: ConnectVercel) => {
@@ -204,7 +205,8 @@ const connectGithub = async (data: ConnectGithub) => {
     }
 }
 
-const handleGitHubOAuth = async (code: string, userId: string) => {
+const handleGitHubOAuth = async (data: HandleGitHubOAuth) => {
+    const { code, userId } = data
     type GithubTokenResponse = {
         access_token: string
         token_type: string

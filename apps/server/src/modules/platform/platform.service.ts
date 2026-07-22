@@ -10,9 +10,17 @@ import { platformRepository } from './platform.repository'
 import { buildProjectZip } from './platform.utils'
 import { vercelService } from './vercel.service'
 
-import type { ListGithubRepos, GithubRepo, CreateRepo, UpdateRepo } from './platform.types'
+import type {
+    ListGithubRepos,
+    GithubRepo,
+    CreateRepo,
+    UpdateRepo,
+    DownloadSession,
+    DeployVercelDirect,
+    DeployVercelProject,
+} from './platform.types'
 
-const downloadSession = async (data: { sessionId: string; userId: string }) => {
+const downloadSession = async (data: DownloadSession) => {
     const { sessionId, userId } = data
     const session = await platformRepository.findSessionByIdAndUser({ sessionId, userId })
     if (!session) {
@@ -471,12 +479,7 @@ const syncEnvironmentVariables = async (data: {
     return { message: 'Environment variables synced successfully' }
 }
 
-const deployVercelDirect = async (data: {
-    userId: string
-    sessionId: string
-    vercelProjectId: string
-    vercelProjectName: string
-}) => {
+const deployVercelDirect = async (data: DeployVercelDirect) => {
     const { userId, sessionId, vercelProjectId, vercelProjectName } = data
 
     const session = await platformRepository.findSessionByIdAndUser({ sessionId, userId })
@@ -539,7 +542,7 @@ const deployVercelDirect = async (data: {
     return deployment
 }
 
-const deployVercelProject = async (data: { userId: string; sessionId: string }) => {
+const deployVercelProject = async (data: DeployVercelProject) => {
     const { userId, sessionId } = data
     const session = await platformRepository.findSessionByIdAndUser({ sessionId, userId })
 

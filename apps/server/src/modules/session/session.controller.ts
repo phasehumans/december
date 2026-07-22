@@ -18,7 +18,7 @@ import {
     addCollaboratorBodySchema,
     removeCollaboratorParamsSchema,
 } from './session.schema'
-import * as sessionService from './session.service'
+import { sessionService } from './session.service'
 
 import type { Request, Response } from 'express'
 
@@ -41,7 +41,7 @@ export const getSessions = asyncHandler(async (req: Request, res: Response) => {
     if (parsedQuery.page) filters.page = parsedQuery.page
     if (parsedQuery.limit) filters.limit = parsedQuery.limit
 
-    const result = await sessionService.getUserSessions(userId, filters)
+    const result = await sessionService.getUserSessions({ userId, filters })
     return sendSuccess(res, 'sessions fetched successfully', {
         sessions: result.sessions,
         pagination: result.pagination,
@@ -67,7 +67,7 @@ export const getSessionById = asyncHandler(async (req: Request, res: Response) =
     const userId = req.user!.userId
     const { id } = getSessionByIdSchema.parse(req.params)
 
-    const result = await sessionService.getSession(id, userId)
+    const result = await sessionService.getSession({ userId, sessionId: id })
     return sendSuccess(res, 'session fetched successfully', result)
 })
 

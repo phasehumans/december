@@ -20,3 +20,8 @@ export type ConnectGithub = {
     accessToken: string
     username: string
 }
+
+export type HandleGitHubOAuth = {
+    code: string
+    userId: string
+}

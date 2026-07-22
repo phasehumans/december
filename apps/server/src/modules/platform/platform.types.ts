@@ -5,6 +5,23 @@ export type DeploySession = {
     userId: string
 }
 
+export type DownloadSession = {
+    sessionId: string
+    userId: string
+}
+
+export type DeployVercelDirect = {
+    userId: string
+    sessionId: string
+    vercelProjectId: string
+    vercelProjectName: string
+}
+
+export type DeployVercelProject = {
+    userId: string
+    sessionId: string
+}
+
 export type CreateVercelProject = {
     userId: string
     name: string

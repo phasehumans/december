@@ -18,3 +18,43 @@ export interface GitHubReposResponse {
     githubConnected: boolean
     repos: UserGitHubRepo[]
 }
+
+export type GetUserGitHubRepos = {
+    userId: string
+}
+
+export type GenerateWiki = {
+    userId: string
+    repoOwner: string
+    repoName: string
+    repoUrl?: string
+}
+
+export type GetWikiByRepo = {
+    userId: string
+    repoOwner: string
+    repoName: string
+}
+
+export type CreateWikiPage = {
+    userId: string
+    dto: CreatePageDto
+}
+
+export type UpdateWikiPage = {
+    userId: string
+    pageId: string
+    dto: UpdatePageDto
+}
+
+export type DeleteWikiPage = {
+    userId: string
+    pageId: string
+}
+
+export type ChatWithWiki = {
+    userId: string
+    prompt: string
+    repoFullName?: string
+    wikiId?: string
+}

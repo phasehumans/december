@@ -64,7 +64,7 @@ const connectGithub = asyncHandler(async (req: Request, res: Response) => {
         redirectPath = parts.slice(1).join(':')
     }
 
-    await integrationsService.handleGitHubOAuth(code, userId)
+    await integrationsService.handleGitHubOAuth({ code, userId })
     return res.redirect(`${env.WEB_URL}${redirectPath}`)
 })
 

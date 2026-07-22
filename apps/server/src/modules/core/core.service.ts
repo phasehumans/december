@@ -1,8 +1,9 @@
 import { enqueueJob } from '@december/shared'
 
-import type { HandlePromptDto } from './core.schema'
+import type { ProcessPromptJob } from './core.types'
 
-export async function processPromptJob(userId: string, data: HandlePromptDto) {
+const processPromptJob = async (dataInput: ProcessPromptJob) => {
+    const { userId, data } = dataInput
     return enqueueJob('prompt_job', {
         prompt: data.prompt,
         projectId: data.projectId,

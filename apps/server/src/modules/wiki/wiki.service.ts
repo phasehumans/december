@@ -2,9 +2,19 @@ import { prisma } from '@december/database'
 import { AppError } from '../../shared/appError'
 import { wikiRepository as wikiRepo } from './wiki.repository'
 import { slugify } from './wiki.utils'
-import type { CreatePageDto, UpdatePageDto, GitHubReposResponse } from './wiki.types'
+import type {
+    GitHubReposResponse,
+    GetUserGitHubRepos,
+    GenerateWiki,
+    GetWikiByRepo,
+    CreateWikiPage,
+    UpdateWikiPage,
+    DeleteWikiPage,
+    ChatWithWiki,
+} from './wiki.types'
 
-export async function getUserGitHubRepos(userId: string): Promise<GitHubReposResponse> {
+const getUserGitHubRepos = async (data: GetUserGitHubRepos): Promise<GitHubReposResponse> => {
+    const { userId } = data
     const user = await prisma.user.findUnique({
         where: { id: userId },
         select: { githubConnected: true, githubToken: true, githubUsername: true },
@@ -54,12 +64,8 @@ export async function getUserGitHubRepos(userId: string): Promise<GitHubReposRes
     }
 }
 
-export async function generateWiki(
-    userId: string,
-    repoOwner: string,
-    repoName: string,
-    _repoUrl?: string
-) {
+const generateWiki = async (data: GenerateWiki) => {
+    const { userId, repoOwner, repoName } = data
     const repoFullName = `${repoOwner}/${repoName}`
     let wiki = await wikiRepo.upsertRepositoryWiki(userId, repoOwner, repoName, 'GENERATING')
 
@@ -101,7 +107,8 @@ export async function generateWiki(
     return wikiRepo.findWikiById(userId, wiki.id)
 }
 
-export async function getWikiByRepo(userId: string, repoOwner: string, repoName: string) {
+const getWikiByRepo = async (data: GetWikiByRepo) => {
+    const { userId, repoOwner, repoName } = data
     const repoFullName = `${repoOwner}/${repoName}`
     const wiki = await wikiRepo.findWikiByRepo(userId, repoFullName)
     if (!wiki) {
@@ -110,7 +117,8 @@ export async function getWikiByRepo(userId: string, repoOwner: string, repoName:
     return wiki
 }
 
-export async function createWikiPage(userId: string, dto: CreatePageDto) {
+const createWikiPage = async (data: CreateWikiPage) => {
+    const { userId, dto } = data
     const wiki = await wikiRepo.findWikiById(userId, dto.wikiId)
     if (!wiki) {
         throw new AppError('Unauthorized or wiki not found', 403)
@@ -131,7 +139,8 @@ export async function createWikiPage(userId: string, dto: CreatePageDto) {
     })
 }
 
-export async function updateWikiPage(userId: string, pageId: string, dto: UpdatePageDto) {
+const updateWikiPage = async (data: UpdateWikiPage) => {
+    const { userId, pageId, dto } = data
     const page = await wikiRepo.findPageById(pageId)
     if (!page || page.wiki.userId !== userId) {
         throw new AppError('Unauthorized or page not found', 404)
@@ -156,7 +165,8 @@ export async function updateWikiPage(userId: string, pageId: string, dto: Update
     return wikiRepo.updateWikiPage(pageId, updates)
 }
 
-export async function deleteWikiPage(userId: string, pageId: string) {
+const deleteWikiPage = async (data: DeleteWikiPage) => {
+    const { userId, pageId } = data
     const page = await wikiRepo.findPageById(pageId)
     if (!page || page.wiki.userId !== userId) {
         throw new AppError('Unauthorized or page not found', 404)
@@ -165,12 +175,8 @@ export async function deleteWikiPage(userId: string, pageId: string) {
     return wikiRepo.deleteWikiPage(pageId)
 }
 
-export async function chatWithWiki(
-    userId: string,
-    prompt: string,
-    repoFullName?: string,
-    wikiId?: string
-) {
+const chatWithWiki = async (data: ChatWithWiki) => {
+    const { userId, prompt, repoFullName, wikiId } = data
     let wiki = null
     if (wikiId) {
         wiki = await wikiRepo.findWikiById(userId, wikiId)
