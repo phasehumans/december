@@ -23,3 +23,11 @@ export const syncGithubRepoSchema = z.object({
         .min(1, 'commit message must be at least 1 character')
         .optional(),
 })
+
+export const sessionIdParamSchema = z.object({
+    sessionId: z.string().min(1, 'session id is required'),
+})
+
+export const deploymentIdParamSchema = z.object({
+    deploymentId: z.string().min(1, 'deployment id is required'),
+})

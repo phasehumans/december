@@ -1,22 +1,13 @@
 import crypto from 'crypto'
 
-import { prisma } from '@december/database'
+import { githubAppRepository } from './githubapp.repository'
 
 export async function processInstallation(installationId: string, userId: string) {
-    return prisma.githubAppInstallation.upsert({
-        where: { installationId },
-        update: { userId },
-        create: {
-            installationId,
-            userId,
-        },
-    })
+    return githubAppRepository.upsertInstallation(installationId, userId)
 }
 
 export async function processUninstallation(installationId: string) {
-    return prisma.githubAppInstallation.delete({
-        where: { installationId },
-    })
+    return githubAppRepository.deleteInstallation(installationId)
 }
 
 export function verifySignature(payload: string, signature: string) {
@@ -25,4 +16,10 @@ export function verifySignature(payload: string, signature: string) {
     hmac.update(payload)
     const expected = `sha256=${hmac.digest('hex')}`
     return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))
+}
+
+export const githubAppService = {
+    processInstallation,
+    processUninstallation,
+    verifySignature,
 }

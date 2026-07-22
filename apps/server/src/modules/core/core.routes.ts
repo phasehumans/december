@@ -2,11 +2,11 @@ import { Router } from 'express'
 
 import { authMiddleware } from '../../middleware/auth.middleware'
 
-import { handlePrompt } from './core.controller'
+import { coreController } from './core.controller'
 
 const coreRouter = Router()
 
 coreRouter.use(authMiddleware)
-coreRouter.post('/prompt', handlePrompt)
+coreRouter.post('/prompt', coreController.handlePrompt)
 
 export default coreRouter

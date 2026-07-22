@@ -539,6 +539,83 @@ const deployVercelDirect = async (data: {
     return deployment
 }
 
+const deployVercelProject = async (data: { userId: string; sessionId: string }) => {
+    const { userId, sessionId } = data
+    const session = await platformRepository.findSessionByIdAndUser({ sessionId, userId })
+
+    if (!session || session.userId !== userId) {
+        throw new AppError('session not found', 404)
+    }
+
+    let vercelProjectId = session.vercelProjectId
+    let vercelProjectName = session.vercelProjectName
+
+    const isGithubLinked = !!(session.githubRepoOwner && session.githubRepoName)
+
+    if (!vercelProjectId) {
+        const sanitizedName = (session.title || 'session')
+            .toLowerCase()
+            .replace(/[^a-z0-9-]/g, '-')
+            .replace(/-+/g, '-')
+            .replace(/^-|-$/g, '')
+
+        const vercelProject = await vercelService.createProject({
+            userId,
+            name: sanitizedName,
+            repoOwner: session.githubRepoOwner || undefined,
+            repoName: session.githubRepoName || undefined,
+        })
+        vercelProjectId = vercelProject.id
+        vercelProjectName = vercelProject.name
+
+        await platformRepository.updateSessionVercelLink({
+            sessionId,
+            vercelProjectId: vercelProject.id,
+            vercelProjectName: vercelProject.name,
+        })
+    }
+
+    if (isGithubLinked) {
+        const { commitSha } = await updateRepo({
+            userId,
+            sessionId,
+            commitMessage: 'Auto-deploy triggered from December settings',
+        })
+
+        const deployment = await vercelService.getDeploymentByCommit({
+            userId,
+            vercelProjectId: vercelProjectId!,
+            commitSha,
+        })
+
+        await platformRepository.updateSessionVercelDeployment({
+            sessionId,
+            url: deployment.url,
+        })
+
+        return {
+            message: 'auto-deployment triggered on vercel successfully',
+            deploymentId: deployment.id,
+            url: deployment.url,
+            readyState: deployment.readyState,
+        }
+    } else {
+        const deployment = await deployVercelDirect({
+            userId,
+            sessionId,
+            vercelProjectId: vercelProjectId!,
+            vercelProjectName: vercelProjectName!,
+        })
+
+        return {
+            message: 'direct deployment triggered on vercel successfully',
+            deploymentId: deployment.id,
+            url: deployment.url,
+            readyState: deployment.readyState,
+        }
+    }
+}
+
 export const platformService = {
     downloadSession,
     getUserGithubRepos,
@@ -548,4 +625,5 @@ export const platformService = {
     unlinkVercelProject,
     syncEnvironmentVariables,
     deployVercelDirect,
+    deployVercelProject,
 }

@@ -1,5 +1,6 @@
 import { prisma } from '@december/database'
-import * as wikiRepo from './wiki.repository'
+import { AppError } from '../../shared/appError'
+import { wikiRepository as wikiRepo } from './wiki.repository'
 import { slugify } from './wiki.utils'
 import type { CreatePageDto, UpdatePageDto, GitHubReposResponse } from './wiki.types'
 
@@ -19,7 +20,6 @@ export async function getUserGitHubRepos(userId: string): Promise<GitHubReposRes
     const existingWikis = await wikiRepo.findWikisByUser(userId)
     const wikiMap = new Map(existingWikis.map((w) => [w.repoFullName, w]))
 
-    // Base mock repository list for connected accounts if no live GitHub token fetch
     const baseRepos = [
         {
             id: 'repo-1',
@@ -105,7 +105,7 @@ export async function getWikiByRepo(userId: string, repoOwner: string, repoName:
     const repoFullName = `${repoOwner}/${repoName}`
     const wiki = await wikiRepo.findWikiByRepo(userId, repoFullName)
     if (!wiki) {
-        throw new Error('Wiki not found')
+        throw new AppError('Wiki not found', 404)
     }
     return wiki
 }
@@ -113,13 +113,13 @@ export async function getWikiByRepo(userId: string, repoOwner: string, repoName:
 export async function createWikiPage(userId: string, dto: CreatePageDto) {
     const wiki = await wikiRepo.findWikiById(userId, dto.wikiId)
     if (!wiki) {
-        throw new Error('Unauthorized or wiki not found')
+        throw new AppError('Unauthorized or wiki not found', 403)
     }
 
     const slug = dto.slug || slugify(dto.title)
     const existing = await wikiRepo.findPageBySlug(dto.wikiId, slug)
     if (existing) {
-        throw new Error('Page slug already exists in this wiki')
+        throw new AppError('Page slug already exists in this wiki', 409)
     }
 
     return wikiRepo.createWikiPage({
@@ -134,7 +134,7 @@ export async function createWikiPage(userId: string, dto: CreatePageDto) {
 export async function updateWikiPage(userId: string, pageId: string, dto: UpdatePageDto) {
     const page = await wikiRepo.findPageById(pageId)
     if (!page || page.wiki.userId !== userId) {
-        throw new Error('Unauthorized or page not found')
+        throw new AppError('Unauthorized or page not found', 404)
     }
 
     const updates: Partial<{ title: string; slug: string; content: string; order: number }> = {}
@@ -147,7 +147,7 @@ export async function updateWikiPage(userId: string, pageId: string, dto: Update
         if (newSlug !== page.slug) {
             const existing = await wikiRepo.findPageBySlug(page.wikiId, newSlug)
             if (existing && existing.id !== pageId) {
-                throw new Error('Page slug already exists in this wiki')
+                throw new AppError('Page slug already exists in this wiki', 409)
             }
             updates.slug = newSlug
         }
@@ -159,7 +159,7 @@ export async function updateWikiPage(userId: string, pageId: string, dto: Update
 export async function deleteWikiPage(userId: string, pageId: string) {
     const page = await wikiRepo.findPageById(pageId)
     if (!page || page.wiki.userId !== userId) {
-        throw new Error('Unauthorized or page not found')
+        throw new AppError('Unauthorized or page not found', 404)
     }
 
     return wikiRepo.deleteWikiPage(pageId)
@@ -186,4 +186,14 @@ export async function chatWithWiki(
     return {
         answer: `Based on the repository documentation for **${wikiTitle}**:\n\n${pagesSummary}\n\nIn response to your query "${prompt}": The repository is set up with standard modules and documentation structure.`,
     }
+}
+
+export const wikiService = {
+    getUserGitHubRepos,
+    generateWiki,
+    getWikiByRepo,
+    createWikiPage,
+    updateWikiPage,
+    deleteWikiPage,
+    chatWithWiki,
 }

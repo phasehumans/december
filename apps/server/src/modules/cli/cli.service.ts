@@ -137,7 +137,7 @@ export const completeHandoff = async (
     userId: string,
     title: string,
     messages: any[],
-    objectKey: string
+    objectKey?: string
 ) => {
     // if we wanted to link objectkey, we'd alter the db or store it in projectmemory.
     // for now, we will store it inside messages as a system note or create a projectimport.

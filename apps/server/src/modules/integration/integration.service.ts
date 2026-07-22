@@ -102,7 +102,7 @@ const connectSupabase = async (data: ConnectSupabase) => {
         supabaseAccessToken: tokenData.access_token,
         supabaseRefreshToken: tokenData.refresh_token,
         supabaseTokenExpiresAt: expiresAt,
-        supabaseTokenScope: tokenData.scope ?? null,
+        supabaseTokenScope: tokenData.scope || null,
     })
 
     try {
@@ -137,12 +137,10 @@ const connectNotion = async (data: ConnectNotion) => {
         },
         {
             headers: {
+                Authorization: `Basic ${Buffer.from(
+                    `${process.env.NOTION_CLIENT_ID}:${process.env.NOTION_CLIENT_SECRET}`
+                ).toString('base64')}`,
                 'Content-Type': 'application/json',
-            },
-
-            auth: {
-                username: process.env.NOTION_CLIENT_ID!,
-                password: process.env.NOTION_CLIENT_SECRET!,
             },
         }
     )
@@ -206,9 +204,45 @@ const connectGithub = async (data: ConnectGithub) => {
     }
 }
 
+const handleGitHubOAuth = async (code: string, userId: string) => {
+    type GithubTokenResponse = {
+        access_token: string
+        token_type: string
+        scope: string
+    }
+
+    const tokenResponse = await fetch('https://github.com/login/oauth/access_token', {
+        method: 'POST',
+        headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            client_id: process.env.GITHUB_CLIENT_ID,
+            client_secret: process.env.GITHUB_CLIENT_SECRET,
+            code,
+        }),
+    })
+
+    const tokenData = (await tokenResponse.json()) as GithubTokenResponse
+    const accessToken = tokenData.access_token
+
+    const userRes = await fetch('https://api.github.com/user', {
+        headers: {
+            Authorization: `Bearer ${accessToken}`,
+        },
+    })
+
+    const githubUser: any = await userRes.json()
+    const username = githubUser.login
+
+    return connectGithub({ userId, accessToken, username })
+}
+
 export const integrationsService = {
     connectVercel,
     connectSupabase,
     connectNotion,
     connectGithub,
+    handleGitHubOAuth,
 }

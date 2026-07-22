@@ -1,24 +1,24 @@
-import { enqueueJob } from '@december/shared'
-
+import { AppError } from '../../shared/appError'
 import { asyncHandler } from '../../shared/asyncHandler'
+import { sendSuccess } from '../../shared/response'
+
+import { HandlePromptSchema } from './core.schema'
+import { coreService } from './core.service'
 
 import type { Request, Response } from 'express'
 
-export const handlePrompt = asyncHandler(async (req: Request, res: Response) => {
-    const { prompt, projectId, sessionId } = req.body
-    const userId = req.user?.userId as string | undefined
-
+const handlePrompt = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.userId
     if (!userId) {
-        return res.status(401).json({ success: false, message: 'unauthorized' })
+        throw new AppError('unauthorized', 401)
     }
 
-    // push job to redis
-    await enqueueJob('prompt_job', {
-        prompt,
-        projectId,
-        sessionId,
-        userId,
-    })
+    const data = HandlePromptSchema.parse(req.body)
+    await coreService.processPromptJob(userId, data)
 
-    res.json({ success: true, message: 'Job enqueued' })
+    return sendSuccess(res, 'job enqueued', null)
 })
+
+export const coreController = {
+    handlePrompt,
+}

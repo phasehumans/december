@@ -79,7 +79,7 @@ export async function getUserSessions(
         let prUrl: string | null = session.reviews?.[0]?.prUrl || null
         if (!prNumber && prUrl) {
             const match = prUrl.match(/pull\/(\d+)/)
-            if (match) prNumber = parseInt(match[1], 10)
+            if (match && match[1]) prNumber = parseInt(match[1], 10)
         }
 
         const prTitle =

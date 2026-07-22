@@ -99,15 +99,27 @@ export async function upsertPreferences(
         create: {
             userId,
             autoReviewAgentPrs: data.autoReviewAgentPrs ?? true,
-            defaultStrictness: data.defaultStrictness || 'STANDARD',
-            focusAreas: data.focusAreas || ['SECURITY', 'PERFORMANCE', 'CLEAN_CODE'],
+            defaultStrictness: data.defaultStrictness ?? 'STANDARD',
+            focusAreas: data.focusAreas ?? ['SECURITY', 'PERFORMANCE', 'CLEAN_CODE'],
         },
         update: {
-            ...(typeof data.autoReviewAgentPrs === 'boolean'
+            ...(data.autoReviewAgentPrs !== undefined
                 ? { autoReviewAgentPrs: data.autoReviewAgentPrs }
                 : {}),
-            ...(data.defaultStrictness ? { defaultStrictness: data.defaultStrictness } : {}),
-            ...(data.focusAreas ? { focusAreas: data.focusAreas } : {}),
+            ...(data.defaultStrictness !== undefined
+                ? { defaultStrictness: data.defaultStrictness }
+                : {}),
+            ...(data.focusAreas !== undefined ? { focusAreas: data.focusAreas } : {}),
         },
     })
+}
+
+export const reviewRepository = {
+    createReview,
+    findReviewsByUserId,
+    findReviewById,
+    updateReview,
+    deleteReview,
+    findPreferencesByUserId,
+    upsertPreferences,
 }

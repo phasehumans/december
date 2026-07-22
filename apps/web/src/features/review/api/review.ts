@@ -68,33 +68,33 @@ export const reviewAPI = {
         if (filters?.limit) params.append('limit', String(filters.limit))
 
         const queryString = params.toString()
-        const url = `/api/v1/reviews${queryString ? `?${queryString}` : ''}`
+        const url = `/reviews${queryString ? `?${queryString}` : ''}`
         return apiRequest<{ reviews: PullRequestReview[]; pagination: any }>(url)
     },
 
     getReviewById: async (id: string) => {
-        return apiRequest<PullRequestReview>(`/api/v1/reviews/${id}`)
+        return apiRequest<PullRequestReview>(`/reviews/${id}`)
     },
 
     submitReview: async (prUrl: string, sessionId?: string) => {
-        return apiRequest<PullRequestReview>('/api/v1/reviews', {
+        return apiRequest<PullRequestReview>('/reviews', {
             method: 'POST',
             body: JSON.stringify({ prUrl, sessionId }),
         })
     },
 
     deleteReview: async (id: string) => {
-        return apiRequest<{ success: boolean }>(`/api/v1/reviews/${id}`, {
+        return apiRequest<{ success: boolean }>(`/reviews/${id}`, {
             method: 'DELETE',
         })
     },
 
     getPreferences: async () => {
-        return apiRequest<ReviewPreference>('/api/v1/reviews/preferences')
+        return apiRequest<ReviewPreference>('/reviews/preferences')
     },
 
     updatePreferences: async (data: Partial<ReviewPreference>) => {
-        return apiRequest<ReviewPreference>('/api/v1/reviews/preferences', {
+        return apiRequest<ReviewPreference>('/reviews/preferences', {
             method: 'PUT',
             body: JSON.stringify(data),
         })

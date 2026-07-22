@@ -1,3 +1,4 @@
+import { publishEvent } from '@december/shared'
 import {
     getLatestPreviewManifestRef,
     publishStoredPreviewManifest,
@@ -250,8 +251,9 @@ const startPreview = async (data: StartPreview) => {
                 await publishEvent(`session_events:${activeSess.id}`, { type: 'SIGKILL', data: {} })
             }
         } else {
-            const activeTitle = runningSessions[0].title || 'Another Session'
-            const activeId = runningSessions[0].id
+            const firstSession = runningSessions[0]
+            const activeTitle = firstSession?.title || 'Another Session'
+            const activeId = firstSession?.id
             const err: any = new Error(`An active session "${activeTitle}" is currently running.`)
             err.statusCode = 409
             err.activeSession = { id: activeId, title: activeTitle }

@@ -1,44 +1,47 @@
-import { Router } from 'express'
-
-import { authMiddleware } from '../../middleware/auth.middleware'
+import { AppError } from '../../shared/appError'
+import { asyncHandler } from '../../shared/asyncHandler'
+import { sendSuccess } from '../../shared/response'
 
 import { CreateSecretSchema } from './secrets.schema'
-import * as secretsService from './secrets.service'
+import { secretsService } from './secrets.service'
 
-const router = Router()
+import type { Request, Response } from 'express'
 
-router.use(authMiddleware)
+const getSecrets = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.userId
+    if (!userId) throw new AppError('unauthorized', 401)
 
-router.get('/', async (req, res, next) => {
-    try {
-        const userId = req.user!.userId
-        const secrets = await secretsService.getSecrets(userId)
-        res.json({ secrets })
-    } catch (err) {
-        next(err)
-    }
+    const secrets = await secretsService.getSecrets(userId)
+    return sendSuccess(res, 'secrets fetched successfully', { secrets })
 })
 
-router.post('/', async (req, res, next) => {
-    try {
-        const data = CreateSecretSchema.parse(req.body)
-        const userId = req.user!.userId
-        const secret = await secretsService.createSecret(userId, data.name, data.value)
-        res.status(201).json({ secret: { id: secret.id, name: secret.name } })
-    } catch (err) {
-        next(err)
-    }
+const createSecret = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.userId
+    if (!userId) throw new AppError('unauthorized', 401)
+
+    const data = CreateSecretSchema.parse(req.body)
+    const secret = await secretsService.createSecret(userId, data.name, data.value)
+    return sendSuccess(
+        res,
+        'secret created successfully',
+        { secret: { id: secret.id, name: secret.name } },
+        201
+    )
 })
 
-router.delete('/:name', async (req, res, next) => {
-    try {
-        const userId = req.user!.userId
-        const { name } = req.params
-        await secretsService.deleteSecret(userId, name)
-        res.status(204).end()
-    } catch (err) {
-        next(err)
-    }
+const deleteSecret = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.userId
+    if (!userId) throw new AppError('unauthorized', 401)
+
+    const name = req.params.name as string
+    if (!name) throw new AppError('secret name is required', 400)
+
+    await secretsService.deleteSecret(userId, name)
+    return sendSuccess(res, 'secret deleted successfully', null)
 })
 
-export { router as secretsRouter }
+export const secretsController = {
+    getSecrets,
+    createSecret,
+    deleteSecret,
+}

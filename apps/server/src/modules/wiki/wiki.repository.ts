@@ -137,3 +137,16 @@ export async function deleteWikiPage(pageId: string) {
         where: { id: pageId },
     })
 }
+
+export const wikiRepository = {
+    findWikiByRepo,
+    findWikiById,
+    findWikisByUser,
+    upsertRepositoryWiki,
+    updateWikiStatus,
+    findPageById,
+    findPageBySlug,
+    createWikiPage,
+    updateWikiPage,
+    deleteWikiPage,
+}

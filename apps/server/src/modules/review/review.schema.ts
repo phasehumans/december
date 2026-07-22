@@ -3,7 +3,7 @@ import { z } from 'zod'
 export const createPullRequestReviewSchema = z.object({
     prUrl: z.string().url('Must be a valid PR URL'),
     sessionId: z.string().uuid().optional(),
-    preferences: z.record(z.any()).optional(),
+    preferences: z.record(z.string(), z.any()).optional(),
 })
 
 export const getReviewsQuerySchema = z.object({

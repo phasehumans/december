@@ -14,21 +14,21 @@ const VIEWPORT = {
 const SECTION_HEIGHT = 900
 const TEMP_ROOT = path.resolve(os.tmpdir(), 'december-web-clips')
 
-let activeDirectory = null
+let activeDirectory: string | null = null
 
-const normalizePath = (value) =>
+const normalizePath = (value: string) =>
     path
         .resolve(value)
         .replace(/[\\/]+$/, '')
         .toLowerCase()
 
-const isSafeTempPath = (value) => {
+const isSafeTempPath = (value: string) => {
     const target = normalizePath(value)
     const root = normalizePath(TEMP_ROOT)
     return target === root || target.startsWith(`${root}${path.sep}`)
 }
 
-const cleanupDirectory = async (directory) => {
+const cleanupDirectory = async (directory: string | null) => {
     if (!directory || !isSafeTempPath(directory)) {
         return
     }
@@ -36,24 +36,25 @@ const cleanupDirectory = async (directory) => {
     await rm(directory, { recursive: true, force: true }).catch(() => undefined)
 }
 
-const getPageHeight = async (page) => {
+const getPageHeight = async (page: any) => {
     return await page.evaluate(() => {
-        const doc = document.documentElement
-        const body = document.body
+        const doc = (globalThis as any).document
+        const body = doc?.body
+        const win = globalThis as any
 
         return Math.max(
-            doc?.scrollHeight ?? 0,
+            doc?.documentElement?.scrollHeight ?? 0,
             body?.scrollHeight ?? 0,
-            doc?.offsetHeight ?? 0,
+            doc?.documentElement?.offsetHeight ?? 0,
             body?.offsetHeight ?? 0,
-            doc?.clientHeight ?? 0,
+            doc?.documentElement?.clientHeight ?? 0,
             body?.clientHeight ?? 0,
-            window.innerHeight
+            win.innerHeight || 0
         )
     })
 }
 
-async function clipper(url) {
+export async function clipper(url: string) {
     const id = crypto.randomUUID()
     const dir = path.join(TEMP_ROOT, id)
     activeDirectory = dir
@@ -78,7 +79,6 @@ async function clipper(url) {
 
         const pageHeight = Math.max(Math.ceil(await getPageHeight(page)), VIEWPORT.height)
 
-        // Capture ONE deterministic full-page screenshot
         await page.screenshot({
             path: fullScreenshotPath,
             fullPage: true,
@@ -86,14 +86,13 @@ async function clipper(url) {
             animations: 'disabled',
         })
 
-        // Read actual image metadata instead of trusting computed page height blindly
         const fullImage = sharp(fullScreenshotPath)
         const metadata = await fullImage.metadata()
 
         const actualWidth = metadata.width ?? VIEWPORT.width
         const actualHeight = metadata.height ?? pageHeight
 
-        const sections = []
+        const sections: { path: string; width: number; height: number }[] = []
 
         for (let top = 0, index = 1; top < actualHeight; top += SECTION_HEIGHT, index += 1) {
             const height = Math.min(SECTION_HEIGHT, actualHeight - top)
@@ -128,20 +127,18 @@ async function clipper(url) {
     }
 }
 
-const url = process.argv[2]
-
-if (!url) {
-    console.error('Missing URL argument for clipper worker')
-    process.exit(1)
+if (process.argv[1]?.endsWith('clipper.ts') || process.argv[1]?.endsWith('clipper.js')) {
+    const urlArg = process.argv[2]
+    if (urlArg) {
+        clipper(urlArg)
+            .then((result) => {
+                activeDirectory = null
+                console.log(JSON.stringify(result))
+            })
+            .catch(async (err) => {
+                await cleanupDirectory(activeDirectory)
+                console.error(err instanceof Error ? err.stack || err.message : String(err))
+                process.exit(1)
+            })
+    }
 }
-
-clipper(url)
-    .then((result) => {
-        activeDirectory = null
-        console.log(JSON.stringify(result))
-    })
-    .catch(async (err) => {
-        await cleanupDirectory(activeDirectory)
-        console.error(err instanceof Error ? err.stack || err.message : String(err))
-        process.exit(1)
-    })

@@ -1,7 +1,7 @@
 import { AppError } from '../../shared/appError'
 
 import { triggerAsyncReview } from './review.engine'
-import * as reviewRepository from './review.repository'
+import { reviewRepository } from './review.repository'
 import type {
     CreatePullRequestReviewDto,
     GetReviewsQueryDto,
@@ -15,8 +15,9 @@ export async function createPullRequestReview(userId: string, data: CreatePullRe
     const match = prUrl.match(
         /(?:github\.com|gitlab\.com)\/([^/]+\/[^/]+)\/(?:pull|merge_requests)\/(\d+)/i
     )
-    const repository = match ? match[1] : 'december-ai/app'
-    const prNumber = match ? parseInt(match[2], 10) : Math.floor(Math.random() * 800) + 100
+    const repository = match && match[1] ? match[1] : 'december-ai/app'
+    const prNumberStr = match && match[2] ? match[2] : ''
+    const prNumber = prNumberStr ? parseInt(prNumberStr, 10) : Math.floor(Math.random() * 800) + 100
     const provider = prUrl.includes('gitlab.com') ? 'GITLAB' : 'GITHUB'
 
     // Get user preferences
@@ -40,7 +41,7 @@ export async function createPullRequestReview(userId: string, data: CreatePullRe
         author,
         status: 'PENDING',
         isAutoReview: false,
-        preferences: effectivePreferences,
+        preferences: effectivePreferences as any,
     })
 
     // Trigger async processing
@@ -91,4 +92,13 @@ export async function getUserPreferences(userId: string) {
 
 export async function updateUserPreferences(userId: string, data: UpdateReviewPreferencesDto) {
     return reviewRepository.upsertPreferences(userId, data)
+}
+
+export const reviewService = {
+    createPullRequestReview,
+    getUserReviews,
+    getReviewById,
+    deleteReview,
+    getUserPreferences,
+    updateUserPreferences,
 }
