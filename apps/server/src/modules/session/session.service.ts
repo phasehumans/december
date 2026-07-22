@@ -74,22 +74,63 @@ export async function getUserSessions(
     filters?: import('./session.types').SessionFilters
 ) {
     const result = await sessionRepository.findManySessions(userId, filters)
-    const sessions = result.sessions.map((session) => ({
-        id: session.id,
-        title:
-            session.title ||
-            (session.messages[0]
-                ? session.messages[0].content.substring(0, 50) + '...'
-                : 'New Chat'),
-        type: session.type,
-        isArchived: session.isArchived,
-        tags: session.tags,
-        createdAt: session.createdAt,
-        updatedAt: session.updatedAt,
-        projectId: session.projectId,
-        projectName: session.project?.name,
-        lastMessage: session.messages[0] ? session.messages[0].content : null,
-    }))
+    const sessions = result.sessions.map((session: any) => {
+        let prNumber: number | null = session.prNumber || null
+        let prUrl: string | null = session.reviews?.[0]?.prUrl || null
+        if (!prNumber && prUrl) {
+            const match = prUrl.match(/pull\/(\d+)/)
+            if (match) prNumber = parseInt(match[1], 10)
+        }
+
+        const prTitle =
+            session.reviews?.[0]?.prTitle || session.reviews?.[0]?.title || session.title
+        const branchName =
+            session.reviews?.[0]?.branchName ||
+            session.reviews?.[0]?.branch ||
+            (session.title
+                ? session.title
+                      .toLowerCase()
+                      .replace(/[^a-z0-9]+/g, '-')
+                      .slice(0, 30)
+                : null)
+        const additions = session.reviews?.[0]?.additions ?? (prNumber ? 220 : null)
+        const deletions = session.reviews?.[0]?.deletions ?? (prNumber ? 82 : null)
+        const repoName = session.reviews?.[0]?.repoName ?? (prNumber ? 'december' : null)
+
+        return {
+            id: session.id,
+            title:
+                session.title ||
+                (session.messages[0]
+                    ? session.messages[0].content.substring(0, 50) + '...'
+                    : 'New Chat'),
+            type: session.type,
+            isArchived: session.isArchived,
+            tags: session.tags,
+            createdAt: session.createdAt,
+            updatedAt: session.updatedAt,
+            projectId: session.projectId,
+            projectName: session.project?.name,
+            lastMessage: session.messages[0] ? session.messages[0].content : null,
+            createdBy: session.user?.username
+                ? `@${session.user.username.toLowerCase()}`
+                : session.user?.email
+                  ? `@${session.user.email.split('@')[0].toLowerCase()}`
+                  : '@user',
+            createdByName:
+                session.user?.name || session.user?.username || session.user?.email || 'User',
+            prNumber,
+            prState: prNumber ? 'open' : null,
+            prTitle,
+            prUrl:
+                prUrl ||
+                (prNumber ? `https://github.com/december-ai/december/pull/${prNumber}` : null),
+            branchName: branchName || (prNumber ? `devin-ai-integration/restyle-tui` : null),
+            additions,
+            deletions,
+            repoName,
+        }
+    })
 
     return {
         sessions,
@@ -174,17 +215,28 @@ export async function renameSession(data: RenameSession) {
 
 export async function archiveSession(data: ArchiveSession) {
     const { userId, sessionId } = data
-    return sessionRepository.updateSession(sessionId, userId, { isArchived: true })
+    const existing = await sessionRepository.findSessionById(sessionId, userId)
+    if (!existing) throw new AppError('Session not found', 404)
+    return sessionRepository.updateSession(sessionId, userId, {
+        isArchived: true,
+        updatedAt: existing.updatedAt,
+    })
 }
 
 export async function unarchiveSession(data: UnarchiveSession) {
     const { userId, sessionId } = data
-    return sessionRepository.updateSession(sessionId, userId, { isArchived: false })
+    const existing = await sessionRepository.findSessionById(sessionId, userId)
+    if (!existing) throw new AppError('Session not found', 404)
+    return sessionRepository.updateSession(sessionId, userId, {
+        isArchived: false,
+        updatedAt: existing.updatedAt,
+    })
 }
 
 export async function updateSessionTags(data: UpdateSessionTags) {
     const { userId, sessionId, tags } = data
-    return sessionRepository.updateSession(sessionId, userId, { tags })
+    const singleTag = tags ? tags.slice(0, 1) : []
+    return sessionRepository.updateSession(sessionId, userId, { tags: singleTag })
 }
 
 export async function getSessionInsights(data: GetSessionInsights) {

@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react'
 
+import { SessionPrTooltip } from './SessionPrTooltip'
 import { Icons } from '@/shared/components/ui/Icons'
+import { Tooltip } from '@/shared/components/ui/Tooltip'
 
 interface SessionListRowProps {
     project: any // actually a backendsession
@@ -62,6 +64,21 @@ export const SessionListRow: React.FC<SessionListRowProps> = ({
             day: 'numeric',
         })
 
+    const formatTooltipDate = (dInput: string | Date, prefix: 'Created' | 'Updated') => {
+        const d = new Date(dInput)
+        if (isNaN(d.getTime())) return `${prefix} on Unknown`
+        const weekday = d.toLocaleDateString('en-US', { weekday: 'long' })
+        const month = d.toLocaleDateString('en-US', { month: 'long' })
+        const day = d.getDate()
+        const year = d.getFullYear()
+        const time = d.toLocaleTimeString('en-US', {
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true,
+        })
+        return `${prefix} on ${weekday}, ${month} ${day}, ${year} at ${time}`
+    }
+
     return (
         <div
             className={`group relative grid cursor-pointer grid-cols-[minmax(0,2fr)_minmax(100px,auto)_minmax(100px,auto)_minmax(150px,1fr)_minmax(100px,auto)_2.5rem] items-center gap-2 rounded-lg border pl-1 pr-5 py-2 transition-all duration-200 hover:bg-[#191919] md:gap-3 ${
@@ -74,18 +91,17 @@ export const SessionListRow: React.FC<SessionListRowProps> = ({
         >
             {/* name */}
             <div className="flex flex-1 items-center gap-3 min-w-0">
-                <div className="flex flex-1 flex-col overflow-hidden">
-                    <div className="flex items-center gap-2">
+                <div className="flex flex-1 flex-col min-w-0">
+                    <div className="flex items-center gap-2 min-w-0">
                         <span className="truncate text-[14px] font-medium text-[#D6D5C9] transition-colors">
                             {session.title || 'Untitled Session'}
                         </span>
                         {session.isArchived && (
-                            <span
-                                className="flex items-center justify-center rounded bg-[#242323] p-1"
-                                title="Archived"
-                            >
-                                <Icons.Archive className="h-3 w-3 text-[#7B7A79]" />
-                            </span>
+                            <Tooltip position="top" content="This session is archived">
+                                <span className="flex items-center justify-center rounded bg-[#242323] p-1">
+                                    <Icons.Archive className="h-3 w-3 text-[#7B7A79]" />
+                                </span>
+                            </Tooltip>
                         )}
                     </div>
                     <span className="truncate text-[12px] text-[#7B7A79] transition-colors">
@@ -95,67 +111,66 @@ export const SessionListRow: React.FC<SessionListRowProps> = ({
             </div>
 
             {/* created at */}
-            <div className="truncate pr-2 text-[13px] text-[#7B7A79] transition-colors group-hover:text-[#A3A2A0]">
-                {formatDate(createdDate)}
-            </div>
+            <Tooltip position="top" content={formatTooltipDate(session.createdAt, 'Created')}>
+                <div className="truncate pr-2 text-[13px] text-[#7B7A79] transition-colors group-hover:text-[#A3A2A0]">
+                    {formatDate(createdDate)}
+                </div>
+            </Tooltip>
 
             {/* updated at */}
-            <div className="truncate pr-2 text-[13px] text-[#7B7A79] transition-colors group-hover:text-[#A3A2A0]">
-                {formatDate(updatedDate)}
-            </div>
+            <Tooltip
+                position="top"
+                content={formatTooltipDate(session.updatedAt || session.createdAt, 'Updated')}
+            >
+                <div className="truncate pr-2 text-[13px] text-[#7B7A79] transition-colors group-hover:text-[#A3A2A0]">
+                    {formatDate(updatedDate)}
+                </div>
+            </Tooltip>
 
             {/* tags & pr */}
-            <div className="flex items-center gap-2 overflow-hidden">
+            <div className="flex items-center gap-2 min-w-0">
                 {session.tags && session.tags.length > 0 && (
-                    <div className="flex items-center gap-1.5 overflow-hidden">
-                        {session.tags.slice(0, 2).map((tag: string) => (
-                            <span
-                                key={tag}
-                                className="truncate rounded-md border border-[#383736] bg-[#242323] px-2 py-0.5 text-[11px] font-medium text-[#A3A2A0]"
-                            >
-                                {tag}
+                    <div className="flex items-center gap-1.5 min-w-0">
+                        <Tooltip position="top" content={`Tags: ${session.tags[0]}`}>
+                            <span className="truncate rounded-md bg-[#202020] hover:bg-[#272727] transition-colors px-2 py-0.5 text-[11px] font-medium text-[#A3A2A0]">
+                                {session.tags[0]}
                             </span>
-                        ))}
-                        {session.tags.length > 2 && (
-                            <span className="text-[11px] text-[#7B7A79]">
-                                +{session.tags.length - 2}
-                            </span>
-                        )}
+                        </Tooltip>
                     </div>
                 )}
-                {session.prNumber && (
-                    <span className="flex items-center gap-1 rounded-md border border-purple-500/30 bg-purple-500/10 px-2 py-0.5 text-[11px] font-medium text-purple-400">
-                        <Icons.GitPullRequest className="h-3 w-3" />#{session.prNumber}
-                    </span>
-                )}
-                {!session.tags?.length && !session.prNumber && (
-                    <span className="text-[#4A4948] text-[12px]">--</span>
-                )}
+                {session.prNumber && <SessionPrTooltip session={session} />}
             </div>
 
             {/* created by */}
-            <div className="truncate text-[13px] text-[#7B7A79] transition-colors group-hover:text-[#A3A2A0]">
-                {session.createdBy || '--'}
-            </div>
+            <Tooltip
+                position="top"
+                content={`Created by: ${session.createdByName || session.createdBy || 'User'}`}
+            >
+                <div className="truncate text-[13px] text-[#7B7A79] transition-colors group-hover:text-[#A3A2A0]">
+                    {session.createdBy || '--'}
+                </div>
+            </Tooltip>
 
             {/* menu */}
             <div
                 className={`relative flex justify-center ${isMenuOpen ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 transition-opacity'}`}
             >
-                <button
-                    onClick={(e) => {
-                        const rect = e.currentTarget.getBoundingClientRect()
-                        if (window.innerHeight - rect.bottom < 300 && rect.top > 300) {
-                            setMenuDirection('up')
-                        } else {
-                            setMenuDirection('down')
-                        }
-                        onToggleMenu(session.id, e)
-                    }}
-                    className={`rounded-lg p-2 text-[#7B7A79] transition-all hover:bg-[#242323] hover:text-[#D6D5C9] ${isMenuOpen ? 'bg-[#242323] text-[#D6D5C9]' : ''}`}
-                >
-                    <Icons.MoreHorizontal className="h-4 w-4" />
-                </button>
+                <Tooltip position="top" content="More options">
+                    <button
+                        onClick={(e) => {
+                            const rect = e.currentTarget.getBoundingClientRect()
+                            if (window.innerHeight - rect.bottom < 300 && rect.top > 300) {
+                                setMenuDirection('up')
+                            } else {
+                                setMenuDirection('down')
+                            }
+                            onToggleMenu(session.id, e)
+                        }}
+                        className={`rounded-lg p-2 text-[#7B7A79] transition-all hover:bg-[#242323] hover:text-[#D6D5C9] ${isMenuOpen ? 'bg-[#242323] text-[#D6D5C9]' : ''}`}
+                    >
+                        <Icons.MoreHorizontal className="h-4 w-4" />
+                    </button>
+                </Tooltip>
                 {isMenuOpen && (
                     <div
                         ref={menuRef}
@@ -201,7 +216,7 @@ export const SessionListRow: React.FC<SessionListRowProps> = ({
                                 <Icons.Settings className="h-3.5 w-3.5 text-[#7B7A79]" /> Settings
                             </button>
                         )}
-                        <div className="mx-1.5 my-1 h-px bg-[#383736]" />
+                        <div className="mx-1.5 my-1 h-[1px] bg-[#282828]" />
                         <button
                             onClick={(e) => onOpenDelete(session, e)}
                             className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[13px] text-red-400 transition-colors hover:bg-[#262626] hover:text-red-300"

@@ -51,6 +51,13 @@ export async function findManySessions(
             skip,
             take: limit,
             include: {
+                user: {
+                    select: {
+                        username: true,
+                        name: true,
+                        email: true,
+                    },
+                },
                 project: {
                     select: {
                         id: true,
@@ -59,6 +66,10 @@ export async function findManySessions(
                 },
                 messages: {
                     orderBy: { sequence: 'desc' },
+                    take: 1,
+                },
+                reviews: {
+                    orderBy: { createdAt: 'desc' },
                     take: 1,
                 },
             },
@@ -107,7 +118,6 @@ export async function findSessionById(sessionId: string, userId: string) {
                             username: true,
                             email: true,
                             name: true,
-                            avatarUrl: true,
                         },
                     },
                 },
@@ -166,7 +176,6 @@ export async function findCollaboratorsBySessionId(sessionId: string) {
                     username: true,
                     email: true,
                     name: true,
-                    avatarUrl: true,
                 },
             },
         },
@@ -224,7 +233,6 @@ export async function addCollaborator(sessionId: string, userId: string, email: 
                     username: true,
                     email: true,
                     name: true,
-                    avatarUrl: true,
                 },
             },
         },

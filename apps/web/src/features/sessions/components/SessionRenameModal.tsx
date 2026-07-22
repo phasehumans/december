@@ -34,10 +34,16 @@ export const SessionRenameModal: React.FC<SessionRenameModalProps> = ({
             variant="premium"
         >
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-                <div>
+                <p className="text-[13px] text-[#8F8E8D] leading-relaxed">
+                    Enter a new title for{' '}
+                    <span className="font-semibold text-white">"{value || 'this session'}"</span> to
+                    update how it appears across your workspace.
+                </p>
+
+                <div className="flex flex-col gap-1.5">
                     <label
                         htmlFor="project-rename-input"
-                        className="text-[11px] font-semibold text-[#8F8E8D] uppercase tracking-wider mb-1.5 block"
+                        className="text-[11px] font-semibold text-[#8F8E8D] uppercase tracking-wider block"
                     >
                         Project name
                     </label>
@@ -47,7 +53,7 @@ export const SessionRenameModal: React.FC<SessionRenameModalProps> = ({
                         autoFocus
                         value={value}
                         onChange={(e) => onChange(e.target.value)}
-                        className="w-full bg-white/[0.03] border border-[#2B2A27] rounded-lg px-3.5 py-2.5 text-white text-[13px] focus:outline-none transition-[border-color,box-shadow] duration-200"
+                        className="w-full bg-[#202020] border border-[#282828] rounded-lg px-3.5 py-2.5 text-white text-[13px] focus:border-[#4A4948] focus:outline-none transition-colors"
                         placeholder="Enter project name..."
                         disabled={isDisabled}
                     />

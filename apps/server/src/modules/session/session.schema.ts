@@ -49,7 +49,7 @@ export const updateSessionTagsParamsSchema = z.object({
     id: z.string().uuid('Invalid session ID'),
 })
 export const updateSessionTagsBodySchema = z.object({
-    tags: z.array(z.string().max(30)),
+    tags: z.array(z.string().max(30)).max(1, 'Only one tag is allowed per session'),
 })
 
 export const getSessionInsightsParamsSchema = z.object({

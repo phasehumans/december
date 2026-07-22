@@ -18,36 +18,23 @@ export const SessionTagsModal: React.FC<SessionTagsModalProps> = ({
     onClose,
     onSave,
 }) => {
-    const [tag, setTag] = useState<string>('')
-    const [inputVal, setInputVal] = useState<string>('')
+    const [tagInput, setTagInput] = useState<string>('')
 
     useEffect(() => {
-        if (session) {
-            const initialTag = session.tags?.[0] || ''
-            setTag(initialTag)
-            setInputVal(initialTag)
-        } else {
-            setTag('')
-            setInputVal('')
+        if (isOpen && session) {
+            setTagInput(session.tags?.[0] || '')
         }
     }, [session, isOpen])
 
     const handleSave = (e: React.FormEvent) => {
         e.preventDefault()
         if (isPending) return
-        const finalTags = tag.trim() ? [tag.trim()] : []
-        onSave(finalTags)
+        const trimmed = tagInput.trim()
+        onSave(trimmed ? [trimmed] : [])
     }
 
-    const handleAddTag = () => {
-        if (inputVal.trim()) {
-            setTag(inputVal.trim())
-        }
-    }
-
-    const handleRemoveTag = () => {
-        setTag('')
-        setInputVal('')
+    const handleClear = () => {
+        setTagInput('')
     }
 
     return (
@@ -55,54 +42,49 @@ export const SessionTagsModal: React.FC<SessionTagsModalProps> = ({
             isOpen={isOpen}
             onClose={onClose}
             title="Manage Session Tag"
-            description="Add or edit the tag for this session. A session can have at most one tag."
+            description="Add, edit, or remove the tag for this session."
             variant="premium"
         >
             <form onSubmit={handleSave} className="flex flex-col gap-4">
-                <div className="flex flex-col gap-2">
-                    <label
-                        htmlFor="session-tag-input"
-                        className="text-[11px] font-semibold text-[#8F8E8D] uppercase tracking-wider block"
-                    >
-                        Session Tag
-                    </label>
+                <p className="text-[13px] text-[#8F8E8D] leading-relaxed">
+                    Assign a custom tag to{' '}
+                    <span className="font-semibold text-white">
+                        "{session?.title || 'this session'}"
+                    </span>{' '}
+                    for quick identification and categorization.
+                </p>
 
-                    {tag ? (
-                        <div className="flex items-center justify-between bg-white/[0.02] border border-[#2B2A27] rounded-xl p-3.5 animate-in fade-in duration-200">
-                            <span className="inline-flex items-center rounded-md border border-[#383736] bg-[#242323] px-2.5 py-1 text-[13px] font-medium text-[#D6D5C9]">
-                                {tag}
-                            </span>
+                <div className="flex flex-col gap-2">
+                    <div className="flex items-center justify-between">
+                        <label
+                            htmlFor="session-tag-input"
+                            className="text-[11px] font-semibold text-[#8F8E8D] uppercase tracking-wider block"
+                        >
+                            Session Tag
+                        </label>
+                        {tagInput.trim() ? (
                             <button
                                 type="button"
-                                onClick={handleRemoveTag}
-                                className="flex items-center gap-1.5 text-[12px] text-red-400/90 hover:text-red-300 transition-colors focus:outline-none"
+                                onClick={handleClear}
+                                className="text-[12px] text-red-400/90 hover:text-red-300 transition-colors focus:outline-none flex items-center gap-1"
                             >
-                                <Icons.X className="w-3.5 h-3.5" />
-                                Remove tag
+                                <Icons.X className="w-3 h-3" />
+                                Clear tag
                             </button>
-                        </div>
-                    ) : (
-                        <div className="flex gap-2">
-                            <input
-                                id="session-tag-input"
-                                type="text"
-                                value={inputVal}
-                                onChange={(e) => setInputVal(e.target.value.slice(0, 30))}
-                                className="flex-1 bg-white/[0.03] border border-[#2B2A27] rounded-lg px-3.5 py-2.5 text-white text-[13px] focus:outline-none transition-[border-color,box-shadow] duration-200"
-                                placeholder="Enter tag name (e.g. react, design)..."
-                                disabled={isPending}
-                                autoFocus
-                            />
-                            <button
-                                type="button"
-                                onClick={handleAddTag}
-                                disabled={!inputVal.trim() || isPending}
-                                className="bg-[#242323] text-[#D6D5C9] border border-[#383736] hover:bg-[#2F2E2D] disabled:opacity-40 disabled:pointer-events-none active:scale-95 transition-all text-[13px] font-medium px-4 py-2.5 rounded-lg focus:outline-none"
-                            >
-                                Add
-                            </button>
-                        </div>
-                    )}
+                        ) : null}
+                    </div>
+
+                    <div className="relative flex items-center">
+                        <input
+                            id="session-tag-input"
+                            type="text"
+                            value={tagInput}
+                            onChange={(e) => setTagInput(e.target.value.slice(0, 30))}
+                            className="w-full bg-[#202020] border border-[#282828] rounded-lg px-3.5 py-2.5 text-white text-[13px] focus:border-[#4A4948] focus:outline-none transition-colors"
+                            placeholder="Enter tag name (e.g. React, CLI, AI)..."
+                            disabled={isPending}
+                        />
+                    </div>
                 </div>
 
                 <div className="mt-2 flex items-center justify-end gap-2.5">
@@ -110,14 +92,14 @@ export const SessionTagsModal: React.FC<SessionTagsModalProps> = ({
                         type="button"
                         onClick={onClose}
                         disabled={isPending}
-                        className="bg-transparent text-white hover:bg-white/5 active:scale-95 transition-[transform,background-color,border-color,color] duration-200 text-[13px] font-medium px-4 py-2 rounded-lg focus:outline-none disabled:opacity-50"
+                        className="bg-transparent text-white hover:bg-white/5 active:scale-95 transition-all text-[13px] font-medium px-4 py-2 rounded-lg focus:outline-none disabled:opacity-50"
                     >
                         Cancel
                     </button>
                     <button
                         type="submit"
                         disabled={isPending}
-                        className="bg-white text-black hover:bg-neutral-200 active:scale-95 transition-[transform,background-color,border-color,color] duration-200 text-[13px] font-medium px-5 py-2 rounded-lg focus:outline-none disabled:opacity-40 flex items-center justify-center min-w-[85px]"
+                        className="bg-white text-black hover:bg-neutral-200 active:scale-95 transition-all text-[13px] font-medium px-5 py-2 rounded-lg focus:outline-none disabled:opacity-40 flex items-center justify-center min-w-[85px]"
                     >
                         {isPending ? (
                             <div className="flex items-center gap-1.5 justify-center">

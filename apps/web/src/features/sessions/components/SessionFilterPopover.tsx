@@ -48,13 +48,12 @@ export const SessionFilterPopover: React.FC<FilterPopoverProps> = ({
         <div className="relative" ref={popoverRef}>
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className={`flex items-center gap-2 rounded-full border px-4 py-1.5 text-[13px] transition-colors ${
+                className={`flex items-center gap-2 rounded-lg border px-4 py-1.5 text-[13px] transition-colors ${
                     hasActiveFilters
-                        ? 'border-[#4A4948] bg-[#1E1D1C] text-[#E8E7E5]'
-                        : 'border-[#383736] bg-[#141414] text-[#D6D5C9] hover:bg-[#191919]'
+                        ? 'border-[#4A4948] bg-[#202020] text-[#949494]'
+                        : 'border-[#282828] bg-[#202020] text-[#949494] hover:bg-[#282828]'
                 }`}
             >
-                <Icons.Plus className="h-4 w-4" />
                 Add filters
                 {hasActiveFilters && (
                     <div className="ml-1 flex h-4 w-4 items-center justify-center rounded-full bg-[#383736] text-[10px] text-white">

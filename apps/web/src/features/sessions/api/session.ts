@@ -15,6 +15,7 @@ export type BackendSession = {
     prNumber?: number | null
     prState?: 'open' | 'closed' | 'merged' | 'draft' | null
     createdBy?: string | null
+    createdByName?: string | null
 }
 
 export type SessionFilters = {
