@@ -1,0 +1,18 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "workspaces": {
+    ".": {
+      "entry": ["scripts/*.ts", "eslint.config.js"]
+    },
+    "apps/*": {
+      "entry": ["src/index.{ts,tsx}", "src/main.{ts,tsx}"]
+    },
+    "packages/*": {
+      "entry": ["src/index.ts"]
+    }
+  },
+  "ignoreDependencies": [
+    "@types/*",
+    "@playwright/test"
+  ]
+}

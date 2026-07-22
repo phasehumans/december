@@ -6,6 +6,7 @@ import react from 'eslint-plugin-react'
 import reactHooks from 'eslint-plugin-react-hooks'
 import importPlugin from 'eslint-plugin-import'
 import unusedImports from 'eslint-plugin-unused-imports'
+import boundaries from 'eslint-plugin-boundaries'
 import globals from 'globals'
 import prettier from 'eslint-config-prettier'
 
@@ -65,15 +66,37 @@ export default tseslint.config(
             'react-hooks': reactHooks,
             import: importPlugin,
             'unused-imports': unusedImports,
+            boundaries,
         },
 
         settings: {
             react: {
                 version: 'detect',
             },
+            'boundaries/elements': [
+                { type: 'app', pattern: 'apps/*' },
+                { type: 'package', pattern: 'packages/*' },
+            ],
         },
 
         rules: {
+            /**
+             * Package Boundaries
+             */
+            'boundaries/element-types': [
+                'warn',
+                {
+                    default: 'allow',
+                    rules: [
+                        {
+                            from: 'package',
+                            disallow: ['app'],
+                            message: 'Packages must not import from apps.',
+                        },
+                    ],
+                },
+            ],
+
             /**
              * React
              */

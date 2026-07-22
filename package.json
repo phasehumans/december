@@ -13,6 +13,8 @@
         "format:check": "prettier --check .",
         "lint": "eslint .",
         "lint:fix": "eslint . --fix",
+        "lint:knip": "knip",
+        "lint:spelling": "cspell --no-must-find-files \"**/*.{md,ts,tsx,json}\"",
         "build": "turbo run build",
         "typecheck": "turbo run typecheck",
         "dev": "turbo run dev --filter=!@trydecember/cli --filter=!@december/tui",
@@ -46,22 +48,28 @@
         "@commitlint/config-conventional": "^21.0.1",
         "@eslint/js": "^10.0.1",
         "@playwright/test": "^1.58.2",
+        "@t3-oss/env-core": "^0.11.1",
         "@types/bun": "latest",
         "@types/react": "^19.2.14",
         "@types/react-dom": "^19.2.3",
+        "cspell": "^8.17.5",
         "dotenv": "^17.4.1",
         "eslint": "9",
         "eslint-config-prettier": "^10.1.8",
+        "eslint-plugin-boundaries": "^5.0.1",
         "eslint-plugin-import": "^2.32.0",
         "eslint-plugin-react": "^7.37.5",
         "eslint-plugin-react-hooks": "^7.1.1",
         "eslint-plugin-unused-imports": "^4.4.1",
         "globals": "^17.6.0",
         "husky": "^9.1.7",
+        "knip": "^5.45.0",
         "lint-staged": "^16.4.0",
+        "msw": "^2.7.3",
         "prettier": "^3.8.4",
         "turbo": "2.9.18",
-        "typescript-eslint": "^8.59.3"
+        "typescript-eslint": "^8.59.3",
+        "zod": "^3.24.2"
     },
     "overrides": {
         "ioredis": "5.11.1"
@@ -70,7 +78,11 @@
         "typescript": "^6.0.3"
     },
     "lint-staged": {
-        "*.{js,jsx,ts,tsx,json,md,css,html,yml,yaml}": [
+        "*.{js,jsx,ts,tsx}": [
+            "eslint --fix",
+            "prettier --write"
+        ],
+        "*.{json,md,css,html,yml,yaml}": [
             "prettier --write"
         ]
     },
