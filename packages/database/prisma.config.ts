@@ -3,11 +3,11 @@
 import path from 'path'
 
 import dotenv from 'dotenv'
+import { defineConfig } from 'prisma/config'
 
 dotenv.config({
     path: path.resolve(process.cwd(), '../../.env'),
 })
-import { defineConfig } from 'prisma/config'
 
 export default defineConfig({
     schema: 'prisma/schema.prisma',

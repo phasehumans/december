@@ -4,7 +4,7 @@
     "tasks": {
         "db:generate": {
             "inputs": ["prisma/schema.prisma"],
-            "outputs": ["packages/database/src/generated/client/**"]
+            "outputs": ["src/generated/**"]
         },
         "db:migrate": {
             "cache": false
@@ -46,5 +46,3 @@
         }
     }
 }
-
-// add build cmd

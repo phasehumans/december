@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 import { execSync } from 'child_process'
+import fs from 'fs'
+import path from 'path'
 import readline from 'readline'
 
 import { AgentHarness } from '@december/agent'
@@ -8,8 +10,6 @@ function AppWrapper(props: any) {
     const session = useAgentSession(props)
     return React.createElement(App, { ...props, session })
 }
-import fs from 'fs'
-import path from 'path'
 
 import {
     openaiProvider,

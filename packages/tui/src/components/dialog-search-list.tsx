@@ -1,4 +1,8 @@
-import { Box, Text } from 'ink'
+import { Box, Text, useInput } from 'ink'
+import TextInput from 'ink-text-input'
+import { useState, useCallback } from 'react'
+
+import { useKeyboardLayer } from '../providers/keyboard-layer'
 
 import type { ReactNode } from 'react'
 
@@ -12,12 +16,6 @@ type DialogSearchListProps<T> = {
     placeholder?: string
     emptyText?: string
 }
-
-import { useInput } from 'ink'
-import TextInput from 'ink-text-input'
-import { useState, useCallback } from 'react'
-
-import { useKeyboardLayer } from '../providers/keyboard-layer'
 
 const MAX_VISIBLE_ITEMS = 6
 

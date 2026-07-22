@@ -10,6 +10,7 @@ import billingRouter from './modules/billing/billing.routes'
 import canvasRouter from './modules/canvas/canvas.routes'
 import cliRouter from './modules/cli/cli.routes'
 import coreRouter from './modules/core/core.routes'
+import githubAppRouter from './modules/githubapp/githubapp.routes'
 import integrationsRouter from './modules/integration/integration.routes'
 import notificationRouter from './modules/notification/notification.routes'
 import importRouter from './modules/platform/import/import.routes'
@@ -63,7 +64,6 @@ app.use('/api/wiki', wikiRouter)
 app.use('/api/v1/schedule', scheduleRouter)
 app.use('/api/v1/session', sessionRouter)
 app.use('/api/v1/secrets', secretsRouter)
-import githubAppRouter from './modules/githubapp/githubapp.routes'
 app.use('/api/v1/githubapp', githubAppRouter)
 
 app.use('/api/v1/core', coreRouter)

@@ -32,6 +32,9 @@ jobs:
             - name: Install Dependencies
               run: bun install --frozen-lockfile
 
+            - name: Generate Prisma Client
+              run: bun db:generate
+
             - name: Lint Codebase
               run: bun run lint
 
