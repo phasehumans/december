@@ -92,6 +92,17 @@ const chatWithWiki = asyncHandler(async (req: Request, res: Response) => {
     return sendSuccess(res, 'wiki chat response generated', result)
 })
 
+const togglePin = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.userId
+    if (!userId) throw new AppError('unauthorized', 401)
+
+    const { repoOwner, repoName, isPinned } = req.body
+    if (!repoOwner || !repoName) throw new AppError('repoOwner and repoName are required', 400)
+
+    const wiki = await wikiService.togglePinRepo({ userId, repoOwner, repoName, isPinned })
+    return sendSuccess(res, 'repo pin status updated successfully', { wiki })
+})
+
 export const wikiController = {
     getGitHubRepos,
     generateWiki,
@@ -100,4 +111,5 @@ export const wikiController = {
     updatePage,
     deletePage,
     chatWithWiki,
+    togglePin,
 }

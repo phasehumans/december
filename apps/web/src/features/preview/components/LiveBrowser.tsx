@@ -1,6 +1,6 @@
+// @ts-expect-error - novnc types might not perfectly cover core/rfb or require root import
 import RFB from '@novnc/novnc/core/rfb'
 import React, { useEffect, useRef, useState } from 'react'
-// @ts-expect-error - novnc types might not perfectly cover core/rfb or require root import
 
 interface LiveBrowserProps {
     vncUrl?: string // websocket url for vnc

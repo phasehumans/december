@@ -81,6 +81,44 @@ export async function updateWikiStatus(wikiId: string, status: WikiStatus) {
     })
 }
 
+export async function toggleWikiPin(
+    userId: string,
+    repoOwner: string,
+    repoName: string,
+    isPinned?: boolean
+) {
+    const repoFullName = `${repoOwner}/${repoName}`
+    const existing = await prisma.repositoryWiki.findFirst({
+        where: {
+            userId,
+            repoFullName: { equals: repoFullName, mode: 'insensitive' },
+        },
+    })
+
+    const targetFullName = existing ? existing.repoFullName : repoFullName
+    const newPinned = isPinned !== undefined ? isPinned : !existing?.isPinned
+
+    return prisma.repositoryWiki.upsert({
+        where: {
+            userId_repoFullName: {
+                userId,
+                repoFullName: targetFullName,
+            },
+        },
+        create: {
+            userId,
+            repoFullName: targetFullName,
+            repoOwner,
+            repoName,
+            status: 'IDLE',
+            isPinned: newPinned,
+        },
+        update: {
+            isPinned: newPinned,
+        },
+    })
+}
+
 export async function findPageById(pageId: string) {
     return prisma.wikiPage.findUnique({
         where: { id: pageId },
@@ -144,6 +182,7 @@ export const wikiRepository = {
     findWikisByUser,
     upsertRepositoryWiki,
     updateWikiStatus,
+    toggleWikiPin,
     findPageById,
     findPageBySlug,
     createWikiPage,

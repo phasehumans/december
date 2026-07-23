@@ -23,7 +23,9 @@ const getUserGitHubRepos = async (data: GetUserGitHubRepos): Promise<GitHubRepos
         select: { githubConnected: true, githubToken: true, githubUsername: true },
     })
 
-    if (!user || !user.githubConnected) {
+    const isConnected = Boolean(user?.githubConnected || user?.githubToken || user?.githubUsername)
+
+    if (!user || !isConnected) {
         return {
             githubConnected: false,
             repos: [],
@@ -31,32 +33,63 @@ const getUserGitHubRepos = async (data: GetUserGitHubRepos): Promise<GitHubRepos
     }
 
     const existingWikis = await wikiRepo.findWikisByUser(userId)
-    const wikiMap = new Map(existingWikis.map((w) => [w.repoFullName, w]))
+    const wikiMap = new Map(existingWikis.map((w) => [w.repoFullName.toLowerCase(), w]))
 
-    const baseRepos = [
-        {
-            id: 'repo-1',
-            name: 'december-core',
-            fullName: `${user.githubUsername || 'user'}/december-core`,
-            owner: user.githubUsername || 'user',
-            isPrivate: false,
-            description: 'Core engine and application platform',
-        },
-        {
-            id: 'repo-2',
-            name: 'docs-site',
-            fullName: `${user.githubUsername || 'user'}/docs-site`,
-            owner: user.githubUsername || 'user',
-            isPrivate: true,
-            description: 'Documentation website for projects',
-        },
-    ]
+    let fetchedRepos: any[] = []
 
-    const repos = baseRepos.map((repo) => {
-        const wiki = wikiMap.get(repo.fullName)
+    try {
+        if (user.githubToken) {
+            const res = await fetch('https://api.github.com/user/repos?sort=updated&per_page=100', {
+                headers: {
+                    Authorization: `token ${user.githubToken}`,
+                    'User-Agent': 'December-App',
+                    Accept: 'application/vnd.github.v3+json',
+                },
+            })
+            if (res.ok) {
+                const list = await res.json()
+                if (Array.isArray(list)) {
+                    fetchedRepos = list
+                }
+            }
+        }
+
+        if (fetchedRepos.length === 0 && user.githubUsername) {
+            const res = await fetch(
+                `https://api.github.com/users/${user.githubUsername}/repos?sort=updated&per_page=100`,
+                {
+                    headers: {
+                        'User-Agent': 'December-App',
+                        Accept: 'application/vnd.github.v3+json',
+                    },
+                }
+            )
+            if (res.ok) {
+                const list = await res.json()
+                if (Array.isArray(list)) {
+                    fetchedRepos = list
+                }
+            }
+        }
+    } catch (err) {
+        console.error('Failed to fetch user GitHub repos from API:', err)
+    }
+
+    const repos = fetchedRepos.map((repo: any) => {
+        const fullName =
+            repo.full_name || `${repo.owner?.login || user.githubUsername}/${repo.name}`
+        const wiki = wikiMap.get(fullName.toLowerCase())
         return {
-            ...repo,
+            id: String(repo.id || repo.name),
+            name: repo.name,
+            fullName,
+            owner: repo.owner?.login || user.githubUsername || 'user',
+            isPrivate: Boolean(repo.private),
+            description: repo.description || null,
+            defaultBranch: repo.default_branch || 'main',
+            updatedAt: repo.updated_at || repo.pushed_at || new Date().toISOString(),
             status: wiki ? wiki.status : ('IDLE' as const),
+            isPinned: Boolean(wiki?.isPinned),
             wikiId: wiki?.id,
         }
     })
@@ -197,6 +230,16 @@ const chatWithWiki = async (data: ChatWithWiki) => {
     }
 }
 
+const togglePinRepo = async (data: {
+    userId: string
+    repoOwner: string
+    repoName: string
+    isPinned?: boolean
+}) => {
+    const { userId, repoOwner, repoName, isPinned } = data
+    return wikiRepo.toggleWikiPin(userId, repoOwner, repoName, isPinned)
+}
+
 export const wikiService = {
     getUserGitHubRepos,
     generateWiki,
@@ -205,4 +248,5 @@ export const wikiService = {
     updateWikiPage,
     deleteWikiPage,
     chatWithWiki,
+    togglePinRepo,
 }

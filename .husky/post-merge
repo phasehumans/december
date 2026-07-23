@@ -1,0 +1,3 @@
+#!/bin/sh
+echo "Remote changes merged. Running bun install..."
+bun install

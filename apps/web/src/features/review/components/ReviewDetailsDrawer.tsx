@@ -34,7 +34,7 @@ export const ReviewDetailsDrawer: React.FC<ReviewDetailsDrawerProps> = ({
         <div className="fixed inset-0 z-[9999] flex justify-end pointer-events-auto">
             {/* Backdrop */}
             <div
-                className="absolute inset-0 bg-black/50 backdrop-blur-[1px] animate-in fade-in duration-200"
+                className="absolute inset-0 bg-black/40 animate-in fade-in duration-200"
                 onClick={onClose}
             />
 
@@ -50,9 +50,9 @@ export const ReviewDetailsDrawer: React.FC<ReviewDetailsDrawerProps> = ({
                             <span className="text-[12px] font-medium text-[#7B7A79] truncate">
                                 {review.repository}
                             </span>
-                            {review.isAutoReview && (
+                            {review.sessionId && (
                                 <span className="px-2 py-0.5 rounded-md bg-blue-500/10 border border-blue-500/20 text-[11px] font-medium text-blue-400">
-                                    Agent Auto-Review
+                                    Connected Session
                                 </span>
                             )}
                         </div>

@@ -1426,4 +1426,22 @@ export const Icons = {
             <polyline points="13.5 6 11 8.5 13.5 11"></polyline>
         </svg>
     ),
+    Skills: (props: any) => (
+        <svg
+            {...props}
+            width={props.width || '18'}
+            height={props.height || '18'}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.75"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            <rect x="3" y="9" width="12" height="12" rx="3" />
+            <line x1="9" y1="9" x2="9" y2="21" />
+            <line x1="3" y1="15" x2="15" y2="15" />
+            <rect x="15" y="3" width="6" height="6" rx="1.5" />
+        </svg>
+    ),
 }
