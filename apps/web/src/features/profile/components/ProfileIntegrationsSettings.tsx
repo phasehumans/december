@@ -1,17 +1,7 @@
-import React from 'react'
+import { Check } from 'lucide-react'
+import React, { useState } from 'react'
 
-type IntegrationId =
-    | 'github'
-    | 'vercel'
-    | 'supabase'
-    | 'notion'
-    | 'figma'
-    | 'railway'
-    | 'render'
-    | 'mongodb'
-    | 'razorpay'
-    | 'framer'
-    | 'spline'
+type IntegrationId = 'github' | 'vercel' | 'supabase' | 'notion' | 'figma'
 
 interface ProfileIntegrationsSettingsProps {
     isGithubConnected: boolean
@@ -24,7 +14,7 @@ interface ProfileIntegrationsSettingsProps {
     onConnectNotion: () => void
 }
 
-// simple svg icons for services not in lucide-react
+// Icons
 const GithubIcon = () => (
     <svg viewBox="0 0 24 24" fill="white" className="w-5 h-5">
         <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
@@ -74,154 +64,212 @@ const FigmaIcon = () => (
     </svg>
 )
 
-const RailwayIcon = () => (
-    <svg viewBox="0 0 512 512" fill="currentColor" className="w-5 h-5 text-white">
-        <path d="M375.7 64h-239.4c-22.6 0-41.2 18.2-41.7 40.8-.8 33.7-.8 268.6 0 302.3.6 22.7 19.1 40.9 41.7 40.9h239.4c22.6 0 41.2-18.2 41.7-40.8.8-33.7.8-268.6 0-302.3-.5-22.7-19-40.9-41.7-40.9zm-192.1 63.9h144.9v56.5H183.6v-56.5zm0 110.1h144.9v56.5H183.6v-56.5zm0 110h144.9v56.5H183.6v-56.5z" />
-    </svg>
-)
-
-const RenderIcon = () => (
-    <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 text-[#46E3B7]">
-        <path d="M12 1L21 6V18L12 23L3 18V6L12 1ZM12 4.1L6.1 7.4V14.1L12 17.4L17.9 14.1V7.4L12 4.1Z" />
-    </svg>
-)
-
-const MongodbIcon = () => (
-    <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 text-[#47A248]">
-        <path d="M17.14 8.24c.05-1.1-.38-2.31-1.32-3.64C14.7 3.01 13.04 1 12 1s-2.7 2.01-3.82 3.6c-.94 1.33-1.37 2.54-1.32 3.64.09 1.7.97 4.1 3.52 7.02l.74.83v2.81s-.01 1.05.88 1.1c.9 0 .88-1.1.88-1.1v-2.81l.74-.83c2.55-2.92 3.43-5.32 3.52-7.02z" />
-    </svg>
-)
-
-const RazorpayIcon = () => (
-    <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 text-[#0274EB]">
-        <path d="M2.047 18.064h4.482l3.414-12.128h-4.482L2.047 18.064zm15.422-5.462c1.787 0 2.923-1.077 3.257-2.981.282-1.635-.455-3.04-2.123-3.04h-7.142l-3.328 11.483h4.44l1.328-4.582h3.568zm-2.097-2.611c-.083.564-.595.961-1.229.961h-2.203l.551-1.921h2.158c.456 0 .807.396.723.96z" />
-    </svg>
-)
-
-const FramerIcon = () => (
-    <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 text-white">
-        <path d="M4 2h16v8h-8l8 8H12v6l-8-8h8l-8-8V2z" />
-    </svg>
-)
-
-const SplineIcon = () => (
-    <svg
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        className="w-5 h-5 text-[#FF3366]"
-    >
-        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
-    </svg>
-)
-
-const languageColors: Record<string, string> = {
-    TypeScript: '#3178c6',
-    JavaScript: '#f1e05a',
-    Python: '#3572A5',
-    Rust: '#dea584',
-    Go: '#00ADD8',
-    Java: '#b07219',
-    Ruby: '#701516',
-    PHP: '#4F5D95',
-    'C#': '#178600',
-    'C++': '#f34b7d',
-    C: '#555555',
-    Swift: '#F05138',
-    Kotlin: '#A97BFF',
-    Dart: '#00B4AB',
-    HTML: '#e34c26',
-    CSS: '#563d7c',
-    Shell: '#89e051',
-    Lua: '#000080',
-    Vue: '#41b883',
-    Svelte: '#ff3e00',
-    MDX: '#fcb32c',
+interface McpServerItem {
+    id: string
+    name: string
+    description: string
+    installed: boolean
+    iconBg: string
+    iconContent: React.ReactNode
+    category: string
 }
 
-const integrations = [
+const RECOMMENDED_MCP_SERVERS: McpServerItem[] = [
     {
-        id: 'github' as const,
-        name: 'GitHub',
-        description: 'Connect your GitHub account to import repositories and track code changes.',
-        Icon: GithubIcon,
-        iconColor: '#D6D5C9',
-    },
-    {
-        id: 'vercel' as const,
-        name: 'Vercel',
-        description: 'Deploy and manage your projects directly from december.',
-        Icon: VercelIcon,
-        iconColor: '#D6D5C9',
-    },
-    {
-        id: 'supabase' as const,
-        name: 'Supabase',
-        description: 'Connect your Supabase project to manage database schemas and tables.',
-        Icon: SupabaseIcon,
-        iconColor: '#D6D5C9',
-    },
-    {
-        id: 'notion' as const,
-        name: 'Notion',
-        description: 'Pull in pages and databases from Notion as project context.',
-        Icon: NotionIcon,
-        iconColor: '#D6D5C9',
-    },
-    {
-        id: 'figma' as const,
+        id: 'figma-mcp',
         name: 'Figma',
-        description: 'Import styles, components, and design tokens directly from your Figma files.',
-        Icon: FigmaIcon,
-        iconColor: '#D6D5C9',
-    },
-    {
-        id: 'railway' as const,
-        name: 'Railway',
-        description: 'Deploy backend services, databases, and microservices instantly on Railway.',
-        Icon: RailwayIcon,
-        iconColor: '#D6D5C9',
-    },
-    {
-        id: 'render' as const,
-        name: 'Render',
         description:
-            'Host your cloud infrastructure, static sites, and cron jobs seamlessly with Render.',
-        Icon: RenderIcon,
-        iconColor: '#D6D5C9',
+            'Complete Figma API integration: get files/nodes/images, manage comments and design components.',
+        installed: false,
+        iconBg: 'bg-[#1E1B2E]',
+        iconContent: <FigmaIcon />,
+        category: 'Design',
     },
     {
-        id: 'mongodb' as const,
-        name: 'MongoDB',
+        id: 'atlassian-mcp',
+        name: 'Atlassian',
         description:
-            'Connect your MongoDB Atlas clusters to inspect and manage your cloud databases.',
-        Icon: MongodbIcon,
-        iconColor: '#D6D5C9',
+            'Official Atlassian integration for Jira and Confluence - access enterprise knowledge base.',
+        installed: false,
+        iconBg: 'bg-[#0052CC]',
+        iconContent: (
+            <svg viewBox="0 0 24 24" fill="white" className="w-4 h-4">
+                <path d="M11.53 2c0 2.4-1.97 4.35-4.38 4.35H3.5A1.5 1.5 0 0 0 2 7.85v3.65c0 .83.67 1.5 1.5 1.5h3.65c2.41 0 4.38-1.95 4.38-4.35V2zm.94 13.35c0-2.4 1.97-4.35 4.38-4.35h3.65a1.5 1.5 0 0 1 1.5 1.5v3.65a1.5 1.5 0 0 1-1.5 1.5h-3.65c-2.41 0-4.38-1.95-4.38-4.35v-1.65z" />
+            </svg>
+        ),
+        category: 'Productivity',
     },
     {
-        id: 'razorpay' as const,
-        name: 'Razorpay',
+        id: 'linear-mcp',
+        name: 'Linear',
         description:
-            'Integrate payment gateways, subscriptions, and webhooks effortlessly with Razorpay.',
-        Icon: RazorpayIcon,
-        iconColor: '#D6D5C9',
+            'List, create, update, and query Linear objects—issues, projects, initiatives, cycles, and teams.',
+        installed: false,
+        iconBg: 'bg-[#5E6AD2]',
+        iconContent: (
+            <svg viewBox="0 0 24 24" fill="white" className="w-4 h-4">
+                <circle cx="12" cy="12" r="10" />
+            </svg>
+        ),
+        category: 'Productivity',
     },
     {
-        id: 'framer' as const,
-        name: 'Framer',
+        id: 'notion-mcp',
+        name: 'Notion',
         description:
-            'Export motion animations, interactive prototypes, and production-ready components.',
-        Icon: FramerIcon,
-        iconColor: '#D6D5C9',
+            'Retrieve and manage Notion pages, databases, and comments; search across workspace pages.',
+        installed: false,
+        iconBg: 'bg-[#242323]',
+        iconContent: <NotionIcon />,
+        category: 'Productivity',
     },
     {
-        id: 'spline' as const,
-        name: 'Spline',
+        id: 'sentry-mcp',
+        name: 'Sentry',
         description:
-            'Embed interactive 3D scenes, immersive animations, and real-time 3D web assets.',
-        Icon: SplineIcon,
-        iconColor: '#D6D5C9',
+            'Retrieve detailed Sentry issue data and full stack traces. Also search and filter issues and releases.',
+        installed: false,
+        iconBg: 'bg-[#362D59]',
+        iconContent: (
+            <svg viewBox="0 0 24 24" fill="#E1567C" className="w-4 h-4">
+                <path d="M12 2L1 21h22L12 2zm0 4l7.5 13h-15L12 6z" />
+            </svg>
+        ),
+        category: 'Monitoring',
+    },
+    {
+        id: 'context7-mcp',
+        name: 'Context7',
+        description: 'Access up-to-date documentation for 1000+ npm packages and frameworks.',
+        installed: false,
+        iconBg: 'bg-[#242323]',
+        iconContent: <span className="text-[11px] font-bold text-[#D6D5C9]">CO</span>,
+        category: 'Documentation',
+    },
+    {
+        id: 'playwright-mcp',
+        name: 'Playwright',
+        description:
+            'Automate browser interactions and inspect pages: navigate URLs, handle dialogs, and take screenshots.',
+        installed: false,
+        iconBg: 'bg-[#45BA4B]',
+        iconContent: (
+            <svg viewBox="0 0 24 24" fill="white" className="w-4 h-4">
+                <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm1 14.5h-2v-2h2zm0-4h-2v-6h2z" />
+            </svg>
+        ),
+        category: 'Testing',
+    },
+    {
+        id: 'deepwiki-mcp',
+        name: 'DeepWiki',
+        description:
+            'Access comprehensive documentation for GitHub repositories with AI-powered search.',
+        installed: false,
+        iconBg: 'bg-[#00B4D8]',
+        iconContent: (
+            <svg viewBox="0 0 24 24" fill="white" className="w-4 h-4">
+                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+            </svg>
+        ),
+        category: 'Documentation',
+    },
+]
+
+const ALL_MCP_SERVERS: McpServerItem[] = [
+    {
+        id: 'redshift-mcp',
+        name: 'Amazon Redshift (IAM Auth)',
+        description: 'Amazon Redshift integration for data warehouse operations and analytics.',
+        installed: false,
+        iconBg: 'bg-[#FF9900]',
+        iconContent: <span className="text-[9px] font-bold text-black">aws</span>,
+        category: 'Database',
+    },
+    {
+        id: 'amplitude-mcp',
+        name: 'Amplitude',
+        description:
+            'Analyze product data, experiments, and user behavior in Amplitude: query and inspect analytics.',
+        installed: false,
+        iconBg: 'bg-[#1E429F]',
+        iconContent: <span className="text-[11px] font-bold text-white">A</span>,
+        category: 'Analytics',
+    },
+    {
+        id: 'apollo-graphos-mcp',
+        name: 'Apollo GraphOS',
+        description: 'Apollo GraphOS integration to search Apollo docs, specs, and best practices.',
+        installed: false,
+        iconBg: 'bg-[#311C87]',
+        iconContent: <span className="text-[10px] font-bold text-white">AG</span>,
+        category: 'GraphQL',
+    },
+    {
+        id: 'apollo-io-mcp',
+        name: 'Apollo.io',
+        description:
+            'Apollo.io integration to search prospects, enrich contacts, and manage sales workflows.',
+        installed: false,
+        iconBg: 'bg-[#111827]',
+        iconContent: <span className="text-[10px] font-bold text-white">AI</span>,
+        category: 'CRM',
+    },
+    {
+        id: 'asana-mcp',
+        name: 'Asana',
+        description:
+            'Official Asana integration for task management, project tracking, and team collaboration.',
+        installed: false,
+        iconBg: 'bg-[#F06A6A]',
+        iconContent: <span className="text-[11px] font-bold text-white">•••</span>,
+        category: 'Productivity',
+    },
+    {
+        id: 'attio-mcp',
+        name: 'Attio',
+        description:
+            'Attio CRM integration for managing contacts, companies, deals, tasks, notes, and custom objects.',
+        installed: false,
+        iconBg: 'bg-[#242323]',
+        iconContent: <span className="text-[10px] font-bold text-[#D6D5C9]">AT</span>,
+        category: 'CRM',
+    },
+    {
+        id: 'aura-mcp',
+        name: 'Aura',
+        description: 'Aura integration for company intelligence and workforce analytics.',
+        installed: false,
+        iconBg: 'bg-[#242323]',
+        iconContent: <span className="text-[10px] font-bold text-[#D6D5C9]">AU</span>,
+        category: 'Analytics',
+    },
+    {
+        id: 'aws-marketplace-mcp',
+        name: 'AWS Marketplace',
+        description: 'AWS Marketplace integration to discover, evaluate, and buy cloud solutions.',
+        installed: false,
+        iconBg: 'bg-[#FF9900]',
+        iconContent: <span className="text-[9px] font-bold text-black">AM</span>,
+        category: 'Cloud',
+    },
+    {
+        id: 'axiom-apikey-mcp',
+        name: 'Axiom (API key)',
+        description: 'Query logs, traces, and events in Axiom using API key authentication.',
+        installed: false,
+        iconBg: 'bg-[#111827]',
+        iconContent: <span className="text-[10px] font-bold text-white">A(</span>,
+        category: 'Monitoring',
+    },
+    {
+        id: 'axiom-oauth-mcp',
+        name: 'Axiom (OAuth)',
+        description: 'Query logs, traces, and events in Axiom using OAuth authentication.',
+        installed: false,
+        iconBg: 'bg-[#111827]',
+        iconContent: <span className="text-[10px] font-bold text-white">A(</span>,
+        category: 'Monitoring',
     },
 ]
 
@@ -235,71 +283,293 @@ export const ProfileIntegrationsSettings: React.FC<ProfileIntegrationsSettingsPr
     onConnectSupabase,
     onConnectNotion,
 }) => {
-    const getIntegrationState = (id: IntegrationId) => {
-        if (id === 'github') {
-            return { isConnected: isGithubConnected, onConnect: onConnectGithub }
-        }
+    const [isAddModalOpen, setIsAddModalOpen] = useState(false)
+    const [customMcpName, setCustomMcpName] = useState('')
+    const [customMcpCommand, setCustomMcpCommand] = useState('')
+    const [installedServers, setInstalledServers] = useState<Record<string, boolean>>({})
 
-        if (id === 'vercel') {
-            return { isConnected: isVercelConnected, onConnect: onConnectVercel }
-        }
+    const integrationsList = [
+        {
+            id: 'github' as const,
+            name: 'GitHub',
+            description:
+                'Connect your GitHub account to import repositories and track code changes.',
+            Icon: GithubIcon,
+            iconColor: '#D6D5C9',
+            isConnected: isGithubConnected,
+            onConnect: onConnectGithub,
+        },
+        {
+            id: 'vercel' as const,
+            name: 'Vercel',
+            description: 'Deploy and manage your projects directly from december.',
+            Icon: VercelIcon,
+            iconColor: '#D6D5C9',
+            isConnected: isVercelConnected,
+            onConnect: onConnectVercel,
+        },
+        {
+            id: 'supabase' as const,
+            name: 'Supabase',
+            description: 'Connect your Supabase project to manage database schemas and tables.',
+            Icon: SupabaseIcon,
+            iconColor: '#D6D5C9',
+            isConnected: isSupabaseConnected,
+            onConnect: onConnectSupabase,
+        },
+        {
+            id: 'notion' as const,
+            name: 'Notion',
+            description: 'Pull in pages and databases from Notion as project context.',
+            Icon: NotionIcon,
+            iconColor: '#D6D5C9',
+            isConnected: isNotionConnected,
+            onConnect: onConnectNotion,
+        },
+        {
+            id: 'figma' as const,
+            name: 'Figma',
+            description:
+                'Import styles, components, and design tokens directly from your Figma files.',
+            Icon: FigmaIcon,
+            iconColor: '#D6D5C9',
+            isConnected: false,
+            onConnect: undefined,
+        },
+    ]
 
-        if (id === 'supabase') {
-            return { isConnected: isSupabaseConnected, onConnect: onConnectSupabase }
-        }
+    const toggleInstallMcp = (id: string) => {
+        setInstalledServers((prev) => ({ ...prev, [id]: !prev[id] }))
+    }
 
-        if (id === 'notion') {
-            return { isConnected: isNotionConnected, onConnect: onConnectNotion }
-        }
-
-        return { isConnected: false, onConnect: undefined }
+    const handleAddCustomMcp = (e: React.FormEvent) => {
+        e.preventDefault()
+        if (!customMcpName.trim()) return
+        setIsAddModalOpen(false)
+        setCustomMcpName('')
+        setCustomMcpCommand('')
     }
 
     return (
         <div className="flex flex-col w-full max-w-[800px] text-[#D6D5C9]">
-            {/* integrations */}
-            <div className="flex flex-col mb-10">
+            {/* Original Integrations Section UI */}
+            <div className="flex flex-col mb-12">
                 <h1 className="text-[16px] font-medium mb-4">Integrations</h1>
                 <div className="flex flex-col gap-5 border-t border-[#242323] pt-6">
-                    {integrations.map(({ id, name, description, Icon, iconColor }) => {
-                        const { isConnected, onConnect } = getIntegrationState(id)
-                        const isUnavailable = !onConnect
-                        return (
-                            <div key={id} className="flex items-center justify-between">
-                                <div className="flex items-center gap-4">
-                                    <div
-                                        className="w-10 h-10 rounded-lg bg-[#191919] border border-[#383736] flex items-center justify-center shrink-0"
-                                        style={{ color: iconColor }}
+                    {integrationsList.map(
+                        ({ id, name, description, Icon, iconColor, isConnected, onConnect }) => {
+                            const isUnavailable = !onConnect
+                            return (
+                                <div key={id} className="flex items-center justify-between">
+                                    <div className="flex items-center gap-4">
+                                        <div
+                                            className="w-10 h-10 rounded-lg bg-[#191919] border border-[#383736] flex items-center justify-center shrink-0"
+                                            style={{ color: iconColor }}
+                                        >
+                                            <Icon />
+                                        </div>
+                                        <div className="flex flex-col gap-0.5">
+                                            <span className="text-[14px] font-medium text-[#D6D5C9]">
+                                                {name}
+                                            </span>
+                                            <span className="text-[13px] text-[#7B7A79] max-w-[380px]">
+                                                {description}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={onConnect}
+                                        disabled={isConnected || isUnavailable}
+                                        className={`px-4 py-1.5 rounded-lg border text-[13px] font-medium transition-all shrink-0 ${
+                                            isConnected
+                                                ? 'border-[#383736] bg-[#191919] text-[#6A6968] cursor-default'
+                                                : isUnavailable
+                                                  ? 'border-[#2B2A29] text-[#4A4948] cursor-not-allowed'
+                                                  : 'border-[#383736] text-[#D6D5C9] hover:bg-[#191919]'
+                                        }`}
                                     >
-                                        <Icon />
-                                    </div>
-                                    <div className="flex flex-col gap-0.5">
-                                        <span className="text-[14px] font-medium text-[#D6D5C9]">
-                                            {name}
-                                        </span>
-                                        <span className="text-[13px] text-[#7B7A79] max-w-[380px]">
-                                            {description}
-                                        </span>
-                                    </div>
-                                </div>
-                                <button
-                                    onClick={onConnect}
-                                    disabled={isConnected || isUnavailable}
-                                    className={`px-4 py-1.5 rounded-lg border text-[13px] font-medium transition-all shrink-0 ${
-                                        isConnected
-                                            ? 'border-[#383736] bg-[#191919] text-[#6A6968] cursor-default'
+                                        {isConnected
+                                            ? 'Connected'
                                             : isUnavailable
-                                              ? 'border-[#2B2A29] text-[#4A4948] cursor-not-allowed'
-                                              : 'border-[#383736] text-[#D6D5C9] hover:bg-[#191919]'
-                                    }`}
-                                >
-                                    {isConnected ? 'Connected' : isUnavailable ? 'Soon' : 'Connect'}
-                                </button>
-                            </div>
-                        )
-                    })}
+                                              ? 'Soon'
+                                              : 'Connect'}
+                                    </button>
+                                </div>
+                            )
+                        }
+                    )}
                 </div>
             </div>
+
+            {/* MCP Servers Section */}
+            <div className="flex flex-col mb-10">
+                <h1 className="text-[16px] font-medium mb-4">MCP Servers</h1>
+                <div className="flex flex-col border-t border-[#242323] pt-6">
+                    {/* Recommended Subsection */}
+                    <div className="flex flex-col mb-8">
+                        <span className="text-[13px] font-medium text-[#8F8E8D] mb-3">
+                            Recommended
+                        </span>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {RECOMMENDED_MCP_SERVERS.map((server) => {
+                                const isInstalled = Boolean(installedServers[server.id])
+                                return (
+                                    <div
+                                        key={server.id}
+                                        className="p-4 bg-[#191919] border border-[#242323] rounded-xl flex flex-col gap-2.5 hover:border-[#313131] transition-colors group cursor-pointer"
+                                        onClick={() => toggleInstallMcp(server.id)}
+                                    >
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-2 min-w-0">
+                                                <div
+                                                    className={`w-6 h-6 rounded-md ${server.iconBg} flex items-center justify-center shrink-0`}
+                                                >
+                                                    {server.iconContent}
+                                                </div>
+                                                <span className="text-[14px] font-medium text-[#D6D5C9] truncate">
+                                                    {server.name}
+                                                </span>
+                                                <span
+                                                    className="w-3.5 h-3.5 rounded-full bg-[#87B2F4] flex items-center justify-center text-[#100E12] shrink-0"
+                                                    title="Verified Server"
+                                                >
+                                                    <Check className="w-2.5 h-2.5 stroke-[3]" />
+                                                </span>
+                                            </div>
+                                            <span
+                                                className={`px-2 py-0.5 rounded text-[11px] font-medium border shrink-0 transition-colors ${
+                                                    isInstalled
+                                                        ? 'bg-[#87B2F4]/10 text-[#87B2F4] border-[#87B2F4]/30'
+                                                        : 'bg-[#242323] text-[#7B7A79] border-[#313131] group-hover:text-[#D6D5C9]'
+                                                }`}
+                                            >
+                                                {isInstalled ? 'Installed' : 'Not installed'}
+                                            </span>
+                                        </div>
+                                        <p className="text-[13px] text-[#7B7A79] leading-relaxed line-clamp-2">
+                                            {server.description}
+                                        </p>
+                                    </div>
+                                )
+                            })}
+                        </div>
+                    </div>
+
+                    {/* All Servers Subsection */}
+                    <div className="flex flex-col">
+                        <span className="text-[13px] font-medium text-[#8F8E8D] mb-3">
+                            All servers
+                        </span>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {ALL_MCP_SERVERS.map((server) => {
+                                const isInstalled = Boolean(installedServers[server.id])
+                                return (
+                                    <div
+                                        key={server.id}
+                                        className="p-4 bg-[#191919] border border-[#242323] rounded-xl flex flex-col gap-2.5 hover:border-[#313131] transition-colors group cursor-pointer"
+                                        onClick={() => toggleInstallMcp(server.id)}
+                                    >
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-2 min-w-0">
+                                                <div
+                                                    className={`w-6 h-6 rounded-md ${server.iconBg} flex items-center justify-center shrink-0`}
+                                                >
+                                                    {server.iconContent}
+                                                </div>
+                                                <span className="text-[14px] font-medium text-[#D6D5C9] truncate">
+                                                    {server.name}
+                                                </span>
+                                                <span
+                                                    className="w-3.5 h-3.5 rounded-full bg-[#87B2F4] flex items-center justify-center text-[#100E12] shrink-0"
+                                                    title="Verified Server"
+                                                >
+                                                    <Check className="w-2.5 h-2.5 stroke-[3]" />
+                                                </span>
+                                            </div>
+                                            <span
+                                                className={`px-2 py-0.5 rounded text-[11px] font-medium border shrink-0 transition-colors ${
+                                                    isInstalled
+                                                        ? 'bg-[#87B2F4]/10 text-[#87B2F4] border-[#87B2F4]/30'
+                                                        : 'bg-[#242323] text-[#7B7A79] border-[#313131] group-hover:text-[#D6D5C9]'
+                                                }`}
+                                            >
+                                                {isInstalled ? 'Installed' : 'Not installed'}
+                                            </span>
+                                        </div>
+                                        <p className="text-[13px] text-[#7B7A79] leading-relaxed line-clamp-2">
+                                            {server.description}
+                                        </p>
+                                    </div>
+                                )
+                            })}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Custom MCP Modal */}
+            {isAddModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+                    <div className="bg-[#191919] border border-[#242323] rounded-2xl w-full max-w-md p-6 flex flex-col gap-5 shadow-2xl">
+                        <div className="flex flex-col gap-1">
+                            <h3 className="text-[16px] font-medium text-white">
+                                Add a custom MCP Server
+                            </h3>
+                            <p className="text-[13px] text-[#7B7A79]">
+                                Connect your own Model Context Protocol (MCP) server via STDIO or
+                                SSE.
+                            </p>
+                        </div>
+
+                        <form onSubmit={handleAddCustomMcp} className="flex flex-col gap-4">
+                            <div className="flex flex-col gap-1.5">
+                                <label className="text-[13px] font-medium text-[#D6D5C9]">
+                                    Server Name
+                                </label>
+                                <input
+                                    type="text"
+                                    placeholder="e.g. My Internal Postgres MCP"
+                                    value={customMcpName}
+                                    onChange={(e) => setCustomMcpName(e.target.value)}
+                                    className="bg-[#100E12] border border-[#383736] rounded-xl px-3.5 py-2 text-[13px] text-[#D6D5C9] placeholder-[#7B7A79] focus:outline-none focus:border-[#87B2F4]"
+                                    required
+                                />
+                            </div>
+
+                            <div className="flex flex-col gap-1.5">
+                                <label className="text-[13px] font-medium text-[#D6D5C9]">
+                                    Command / Endpoint URL
+                                </label>
+                                <input
+                                    type="text"
+                                    placeholder="e.g. npx -y @modelcontextprotocol/server-postgres"
+                                    value={customMcpCommand}
+                                    onChange={(e) => setCustomMcpCommand(e.target.value)}
+                                    className="bg-[#100E12] border border-[#383736] rounded-xl px-3.5 py-2 text-[13px] font-mono text-[#D6D5C9] placeholder-[#7B7A79] focus:outline-none focus:border-[#87B2F4]"
+                                    required
+                                />
+                            </div>
+
+                            <div className="flex items-center justify-end gap-3 mt-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsAddModalOpen(false)}
+                                    className="px-4 py-2 rounded-xl text-[13px] font-medium text-[#7B7A79] hover:text-[#D6D5C9] hover:bg-[#242323] transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="px-4 py-2 rounded-xl text-[13px] font-medium bg-[#87B2F4] text-[#100E12] hover:bg-[#A3C7FF] transition-colors flex items-center gap-1.5"
+                                >
+                                    <Check className="w-3.5 h-3.5" />
+                                    Install Server
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }

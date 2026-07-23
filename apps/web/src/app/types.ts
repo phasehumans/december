@@ -15,33 +15,41 @@ export type ProfileTab =
     | 'Account'
     | 'Preferences'
     | 'Integrations'
+    | 'Connections'
     | 'MCP Server'
     | 'Repositories'
+    | 'Skills'
     | 'Billing'
     | 'Analytics'
+    | 'Usage'
     | 'API Keys'
     | 'Review'
     | 'Wiki'
     | 'Schedules'
     | 'December CLI'
-    | 'Knowledge'
     | 'Secrets'
+    | 'Terms'
+    | 'Privacy'
 
 const profileTabToSlug: Record<string, string> = {
     Account: 'account',
     Preferences: 'preferences',
     Integrations: 'integrations',
+    Connections: 'integrations',
     'MCP Server': 'mcp-server',
     Repositories: 'repositories',
+    Skills: 'skills',
     Billing: 'billing',
     Analytics: 'analytics',
+    Usage: 'analytics',
     'API Keys': 'api-keys',
     Review: 'review',
     Wiki: 'wiki',
     Schedules: 'schedules',
     'December CLI': 'december-cli',
-    Knowledge: 'knowledge',
     Secrets: 'secrets',
+    Terms: 'terms',
+    Privacy: 'privacy',
 }
 
 const slugToProfileTab: Record<string, ProfileTab> = Object.fromEntries(

@@ -1,20 +1,15 @@
 import {
     ChevronLeft,
     UserCircle,
-    SlidersHorizontal,
+    Sliders,
     CreditCard,
-    Activity,
     FileClock,
     ArrowUpRight,
-    Plug,
-    FolderGit2,
-    Server,
-    GitPullRequest,
+    Link2,
     BookOpen,
-    Clock,
-    Terminal,
-    Brain,
-    Key,
+    KeyRound,
+    FileText,
+    Puzzle,
 } from 'lucide-react'
 import React from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
@@ -29,11 +24,18 @@ import { ProfileGeneralSettings } from './ProfileGeneralSettings'
 import { ProfileIntegrationsSettings } from './ProfileIntegrationsSettings'
 import { ProfileNameModal } from './ProfileNameModal'
 import { ProfilePasswordModal } from './ProfilePasswordModal'
+import { ProfilePrivacySettings } from './ProfilePrivacySettings'
 import { ProfileRepositoriesSettings } from './ProfileRepositoriesSettings'
+import { ProfileReviewSettings } from './ProfileReviewSettings'
+import { ProfileSchedulesSettings } from './ProfileSchedulesSettings'
+import { ProfileSecretsSettings } from './ProfileSecretsSettings'
 import { ProfileSettingsContent } from './ProfileSettingsContent'
 import { ProfileSettingsSkeleton } from './ProfileSettingsSkeleton'
 import { ProfileSignOutAllSessionsModal } from './ProfileSignOutAllSessionsModal'
+import { ProfileSkillsSettings } from './ProfileSkillsSettings'
+import { ProfileTermsSettings } from './ProfileTermsSettings'
 import { ProfileUsageSettings } from './ProfileUsageSettings'
+import { ProfileWikiSettings } from './ProfileWikiSettings'
 
 import type { ProfileSettingsProps } from '@/features/profile/types'
 
@@ -142,7 +144,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
 
                         <button
                             onClick={() => navigate(`/settings/${getSlugForProfileTab('Account')}`)}
-                            className={`flex items-center gap-2 md:gap-3 px-3 py-1.5 rounded-xl text-[13px] font-medium transition-colors whitespace-nowrap shrink-0 ${
+                            className={`flex items-center gap-2 md:gap-3 px-3 py-1.5 rounded-[10px] text-[13px] font-medium transition-colors whitespace-nowrap shrink-0 ${
                                 activeTab === 'Account'
                                     ? 'bg-[#242323] text-[#D6D5C9]'
                                     : 'text-[#D6D5C9] hover:bg-[#191919]'
@@ -155,69 +157,78 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                             onClick={() =>
                                 navigate(`/settings/${getSlugForProfileTab('Preferences')}`)
                             }
-                            className={`flex items-center gap-2 md:gap-3 px-3 py-1.5 rounded-xl text-[13px] font-medium transition-colors whitespace-nowrap shrink-0 ${
+                            className={`flex items-center gap-2 md:gap-3 px-3 py-1.5 rounded-[10px] text-[13px] font-medium transition-colors whitespace-nowrap shrink-0 ${
                                 activeTab === 'Preferences'
                                     ? 'bg-[#242323] text-[#D6D5C9]'
                                     : 'text-[#D6D5C9] hover:bg-[#191919]'
                             }`}
                         >
-                            <SlidersHorizontal className="w-[18px] h-[18px]" strokeWidth={1.5} />
+                            <Sliders className="w-[16px] h-[16px] mx-[1px]" strokeWidth={1.75} />
                             Preferences
                         </button>
                         <button
                             onClick={() =>
-                                navigate(`/settings/${getSlugForProfileTab('Integrations')}`)
+                                navigate(`/settings/${getSlugForProfileTab('Connections')}`)
                             }
-                            className={`flex items-center gap-2 md:gap-3 px-3 py-1.5 rounded-xl text-[13px] font-medium transition-colors whitespace-nowrap shrink-0 ${
-                                activeTab === 'Integrations'
+                            className={`flex items-center gap-2 md:gap-3 px-3 py-1.5 rounded-[10px] text-[13px] font-medium transition-colors whitespace-nowrap shrink-0 ${
+                                activeTab === 'Connections' || activeTab === 'Integrations'
                                     ? 'bg-[#242323] text-[#D6D5C9]'
                                     : 'text-[#D6D5C9] hover:bg-[#191919]'
                             }`}
                         >
-                            <Plug className="w-[18px] h-[18px] rotate-45" strokeWidth={1.5} />
-                            Integrations
-                        </button>
-                        <button
-                            onClick={() =>
-                                navigate(`/settings/${getSlugForProfileTab('MCP Server')}`)
-                            }
-                            className={`flex items-center gap-2 md:gap-3 px-3 py-1.5 rounded-xl text-[13px] font-medium transition-colors whitespace-nowrap shrink-0 ${
-                                activeTab === 'MCP Server'
-                                    ? 'bg-[#242323] text-[#D6D5C9]'
-                                    : 'text-[#D6D5C9] hover:bg-[#191919]'
-                            }`}
-                        >
-                            <Server className="w-[18px] h-[18px]" strokeWidth={1.5} />
-                            MCP Server
+                            <Link2 className="w-[18px] h-[18px]" strokeWidth={1.5} />
+                            Connections
                         </button>
                         <button
                             onClick={() =>
                                 navigate(`/settings/${getSlugForProfileTab('Repositories')}`)
                             }
-                            className={`flex items-center gap-2 md:gap-3 px-3 py-1.5 rounded-xl text-[13px] font-medium transition-colors whitespace-nowrap shrink-0 ${
+                            className={`flex items-center gap-2 md:gap-3 px-3 py-1.5 rounded-[10px] text-[13px] font-medium transition-colors whitespace-nowrap shrink-0 ${
                                 activeTab === 'Repositories'
                                     ? 'bg-[#242323] text-[#D6D5C9]'
                                     : 'text-[#D6D5C9] hover:bg-[#191919]'
                             }`}
                         >
-                            <FolderGit2 className="w-[18px] h-[18px]" strokeWidth={1.5} />
+                            <Icons.Github className="w-[18px] h-[18px]" />
                             Repositories
+                        </button>
+                        <button
+                            onClick={() => navigate(`/settings/${getSlugForProfileTab('Skills')}`)}
+                            className={`flex items-center gap-2 md:gap-3 px-3 py-1.5 rounded-[10px] text-[13px] font-medium transition-colors whitespace-nowrap shrink-0 ${
+                                activeTab === 'Skills'
+                                    ? 'bg-[#242323] text-[#D6D5C9]'
+                                    : 'text-[#D6D5C9] hover:bg-[#191919]'
+                            }`}
+                        >
+                            <Puzzle className="w-[16px] h-[16px] mx-[1px]" strokeWidth={1.75} />
+                            Skills
+                        </button>
+                        <button
+                            onClick={() => navigate(`/settings/${getSlugForProfileTab('Secrets')}`)}
+                            className={`flex items-center gap-2 md:gap-3 px-3 py-1.5 rounded-[10px] text-[13px] font-medium transition-colors whitespace-nowrap shrink-0 ${
+                                activeTab === 'Secrets'
+                                    ? 'bg-[#242323] text-[#D6D5C9]'
+                                    : 'text-[#D6D5C9] hover:bg-[#191919]'
+                            }`}
+                        >
+                            <KeyRound className="w-[18px] h-[18px]" strokeWidth={1.5} />
+                            Secrets
                         </button>
 
                         <button
                             onClick={() => navigate(`/settings/${getSlugForProfileTab('Review')}`)}
-                            className={`flex items-center gap-2 md:gap-3 px-3 py-1.5 rounded-xl text-[13px] font-medium transition-colors whitespace-nowrap shrink-0 ${
+                            className={`flex items-center gap-2 md:gap-3 px-3 py-1.5 rounded-[10px] text-[13px] font-medium transition-colors whitespace-nowrap shrink-0 ${
                                 activeTab === 'Review'
                                     ? 'bg-[#242323] text-[#D6D5C9]'
                                     : 'text-[#D6D5C9] hover:bg-[#191919]'
                             }`}
                         >
-                            <GitPullRequest className="w-[18px] h-[18px]" strokeWidth={1.5} />
+                            <Icons.GitPullRequest className="w-[18px] h-[18px]" />
                             Review
                         </button>
                         <button
                             onClick={() => navigate(`/settings/${getSlugForProfileTab('Wiki')}`)}
-                            className={`flex items-center gap-2 md:gap-3 px-3 py-1.5 rounded-xl text-[13px] font-medium transition-colors whitespace-nowrap shrink-0 ${
+                            className={`flex items-center gap-2 md:gap-3 px-3 py-1.5 rounded-[10px] text-[13px] font-medium transition-colors whitespace-nowrap shrink-0 ${
                                 activeTab === 'Wiki'
                                     ? 'bg-[#242323] text-[#D6D5C9]'
                                     : 'text-[#D6D5C9] hover:bg-[#191919]'
@@ -230,55 +241,32 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                             onClick={() =>
                                 navigate(`/settings/${getSlugForProfileTab('Schedules')}`)
                             }
-                            className={`flex items-center gap-2 md:gap-3 px-3 py-1.5 rounded-xl text-[13px] font-medium transition-colors whitespace-nowrap shrink-0 ${
+                            className={`flex items-center gap-2 md:gap-3 px-3 py-1.5 rounded-[10px] text-[13px] font-medium transition-colors whitespace-nowrap shrink-0 ${
                                 activeTab === 'Schedules'
                                     ? 'bg-[#242323] text-[#D6D5C9]'
                                     : 'text-[#D6D5C9] hover:bg-[#191919]'
                             }`}
                         >
-                            <Clock className="w-[18px] h-[18px]" strokeWidth={1.5} />
+                            <svg
+                                width="18"
+                                height="18"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="1.75"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                className="w-[18px] h-[18px]"
+                            >
+                                <path d="M12 3a9 9 0 1 0 9 9" />
+                                <path d="M15.5 4.2a9 9 0 0 1 4.3 4.3" strokeDasharray="1.5 2.5" />
+                                <polyline points="12 7 12 12 15 12" />
+                            </svg>
                             Schedules
                         </button>
                         <button
-                            onClick={() =>
-                                navigate(`/settings/${getSlugForProfileTab('December CLI')}`)
-                            }
-                            className={`flex items-center gap-2 md:gap-3 px-3 py-1.5 rounded-xl text-[13px] font-medium transition-colors whitespace-nowrap shrink-0 ${
-                                activeTab === 'December CLI'
-                                    ? 'bg-[#242323] text-[#D6D5C9]'
-                                    : 'text-[#D6D5C9] hover:bg-[#191919]'
-                            }`}
-                        >
-                            <Terminal className="w-[18px] h-[18px]" strokeWidth={1.5} />
-                            December CLI
-                        </button>
-                        <button
-                            onClick={() =>
-                                navigate(`/settings/${getSlugForProfileTab('Knowledge')}`)
-                            }
-                            className={`flex items-center gap-2 md:gap-3 px-3 py-1.5 rounded-xl text-[13px] font-medium transition-colors whitespace-nowrap shrink-0 ${
-                                activeTab === 'Knowledge'
-                                    ? 'bg-[#242323] text-[#D6D5C9]'
-                                    : 'text-[#D6D5C9] hover:bg-[#191919]'
-                            }`}
-                        >
-                            <Brain className="w-[18px] h-[18px]" strokeWidth={1.5} />
-                            Knowledge
-                        </button>
-                        <button
-                            onClick={() => navigate(`/settings/${getSlugForProfileTab('Secrets')}`)}
-                            className={`flex items-center gap-2 md:gap-3 px-3 py-1.5 rounded-xl text-[13px] font-medium transition-colors whitespace-nowrap shrink-0 ${
-                                activeTab === 'Secrets'
-                                    ? 'bg-[#242323] text-[#D6D5C9]'
-                                    : 'text-[#D6D5C9] hover:bg-[#191919]'
-                            }`}
-                        >
-                            <Key className="w-[18px] h-[18px]" strokeWidth={1.5} />
-                            Secrets
-                        </button>
-                        <button
                             onClick={() => navigate(`/settings/${getSlugForProfileTab('Billing')}`)}
-                            className={`flex items-center gap-2 md:gap-3 px-3 py-1.5 rounded-xl text-[13px] font-medium transition-colors whitespace-nowrap shrink-0 ${
+                            className={`flex items-center gap-2 md:gap-3 px-3 py-1.5 rounded-[10px] text-[13px] font-medium transition-colors whitespace-nowrap shrink-0 ${
                                 activeTab === 'Billing'
                                     ? 'bg-[#242323] text-[#D6D5C9]'
                                     : 'text-[#D6D5C9] hover:bg-[#191919]'
@@ -288,38 +276,53 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                             Billing
                         </button>
                         <button
-                            onClick={() =>
-                                navigate(`/settings/${getSlugForProfileTab('Analytics')}`)
-                            }
-                            className={`flex items-center gap-2 md:gap-3 px-3 py-1.5 rounded-xl text-[13px] font-medium transition-colors whitespace-nowrap shrink-0 ${
-                                activeTab === 'Analytics'
+                            onClick={() => navigate(`/settings/${getSlugForProfileTab('Usage')}`)}
+                            className={`flex items-center gap-2 md:gap-3 px-3 py-1.5 rounded-[10px] text-[13px] font-medium transition-colors whitespace-nowrap shrink-0 ${
+                                activeTab === 'Usage' || activeTab === 'Analytics'
                                     ? 'bg-[#242323] text-[#D6D5C9]'
                                     : 'text-[#D6D5C9] hover:bg-[#191919]'
                             }`}
                         >
-                            <Activity className="w-[18px] h-[18px]" strokeWidth={1.5} />
-                            Analytics
+                            <svg
+                                width="18"
+                                height="18"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2.2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                className="w-[18px] h-[18px]"
+                            >
+                                <line x1="4" y1="20" x2="4" y2="14" />
+                                <line x1="9" y1="20" x2="9" y2="6" />
+                                <line x1="14" y1="20" x2="14" y2="12" />
+                                <line x1="19" y1="20" x2="19" y2="8" />
+                            </svg>
+                            Usage
                         </button>
 
                         <div className="hidden md:block px-3 py-2 text-[12px] font-medium text-[#7B7A79] mt-4 mb-1">
                             Resources
                         </div>
                         <button
-                            onClick={onDocs}
-                            className="hidden md:flex items-center justify-between px-3 py-1.5 rounded-xl text-[#D6D5C9] hover:bg-[#191919] text-[13px] font-medium transition-colors group whitespace-nowrap shrink-0"
+                            onClick={() => navigate(`/settings/${getSlugForProfileTab('Privacy')}`)}
+                            className={`flex items-center justify-between px-3 py-1.5 rounded-[10px] text-[13px] font-medium transition-colors whitespace-nowrap shrink-0 ${
+                                activeTab === 'Privacy'
+                                    ? 'bg-[#242323] text-[#D6D5C9]'
+                                    : 'text-[#D6D5C9] hover:bg-[#191919]'
+                            }`}
                         >
                             <div className="flex items-center gap-3">
-                                <Icons.DocsBook className="w-[18px] h-[18px]" strokeWidth={1.5} />
-                                Documentation
+                                <FileText className="w-[18px] h-[18px]" strokeWidth={1.5} />
+                                Privacy Policy
                             </div>
-                            <ArrowUpRight
-                                className="w-[14px] h-[14px] text-[#D6D5C9]"
-                                strokeWidth={1.5}
-                            />
                         </button>
-                        <button
-                            onClick={onDocs}
-                            className="hidden md:flex items-center justify-between px-3 py-1.5 rounded-xl text-[#D6D5C9] hover:bg-[#191919] text-[13px] font-medium transition-colors group whitespace-nowrap shrink-0"
+                        <a
+                            href="https://github.com/phasehumans/december/blob/main/CHANGELOG.md"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="hidden md:flex items-center justify-between px-3 py-1.5 rounded-[10px] text-[#D6D5C9] hover:bg-[#191919] text-[13px] font-medium transition-colors group whitespace-nowrap shrink-0"
                         >
                             <div className="flex items-center gap-3">
                                 <FileClock className="w-[18px] h-[18px]" strokeWidth={1.5} />
@@ -329,7 +332,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                                 className="w-[14px] h-[14px] text-[#D6D5C9]"
                                 strokeWidth={1.5}
                             />
-                        </button>
+                        </a>
                     </div>
                 </div>
 
@@ -380,11 +383,11 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                             />
                         ) : activeTab === 'Billing' ? (
                             <ProfileBillingSettings profile={profile} />
-                        ) : activeTab === 'Analytics' ? (
+                        ) : activeTab === 'Usage' || activeTab === 'Analytics' ? (
                             <ProfileUsageSettings />
                         ) : activeTab === 'API Keys' ? (
                             <ProfileApiKeysSettings />
-                        ) : activeTab === 'Integrations' ? (
+                        ) : activeTab === 'Integrations' || activeTab === 'Connections' ? (
                             <ProfileIntegrationsSettings
                                 isGithubConnected={isGithubConnected}
                                 isVercelConnected={isVercelConnected}
@@ -400,6 +403,20 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                                 isGithubConnected={isGithubConnected}
                                 onConnectGithub={connectGithub}
                             />
+                        ) : activeTab === 'Skills' ? (
+                            <ProfileSkillsSettings />
+                        ) : activeTab === 'Secrets' ? (
+                            <ProfileSecretsSettings />
+                        ) : activeTab === 'Review' ? (
+                            <ProfileReviewSettings />
+                        ) : activeTab === 'Wiki' ? (
+                            <ProfileWikiSettings />
+                        ) : activeTab === 'Schedules' ? (
+                            <ProfileSchedulesSettings />
+                        ) : activeTab === 'Terms' ? (
+                            <ProfileTermsSettings />
+                        ) : activeTab === 'Privacy' ? (
+                            <ProfilePrivacySettings />
                         ) : (
                             <div className="flex flex-col gap-6">
                                 <h1 className="text-[20px] font-medium text-[#D6D5C9]">

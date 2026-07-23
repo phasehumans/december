@@ -262,13 +262,11 @@ export const WikiView: React.FC<WikiViewProps> = ({ onConnectGitHub, onOpenWiki,
                     </div>
 
                     {/* Right: Refresh Button & Add Repository Button */}
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 relative z-20">
                         <Tooltip content="Refresh repositories" position="top">
                             <button
                                 onClick={() => refetch()}
-                                className={`p-2 rounded-lg border border-[#282828] bg-[#202020] hover:bg-[#282828] text-[#949494] hover:text-white transition-colors cursor-pointer ${
-                                    isRefetching ? 'animate-spin text-[#87B2F4]' : ''
-                                }`}
+                                className="p-2 rounded-lg border border-[#282828] bg-[#202020] hover:bg-[#282828] text-[#949494] hover:text-white transition-colors cursor-pointer"
                             >
                                 <svg
                                     width="15"
@@ -277,6 +275,7 @@ export const WikiView: React.FC<WikiViewProps> = ({ onConnectGitHub, onOpenWiki,
                                     fill="none"
                                     stroke="currentColor"
                                     strokeWidth="2"
+                                    className={isRefetching ? 'animate-spin text-[#87B2F4]' : ''}
                                 >
                                     <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2" />
                                 </svg>
