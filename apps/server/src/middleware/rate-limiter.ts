@@ -45,20 +45,28 @@ export const createRateLimiter = (options: RateLimiterOptions = {}) => {
             if (authHeader && typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
                 try {
                     const token = authHeader.substring(7)
-                    const decoded = jwt.decode(token) as { userId?: string } | null
+                    const decoded = jwt.verify(token, env.ACCESS_TOKEN_SECRET) as {
+                        userId?: string
+                    } | null
                     if (decoded?.userId) {
                         return `user:${decoded.userId}`
                     }
                 } catch {
-                    // Ignore decode errors and fall back
+                    // Invalid/expired signature - fall through to API key / IP keying
                 }
             }
             const apiKey = req.headers['x-api-key']
             if (apiKey && typeof apiKey === 'string') {
                 return `token:${apiKey}`
             }
-            const clientIp = req.headers['x-forwarded-for'] || req.ip || req.socket.remoteAddress
-            return `ip:${String(clientIp || 'unknown')}`
+            const rawHeader = req.headers['x-forwarded-for']
+            const forwardedIp = Array.isArray(rawHeader)
+                ? rawHeader[0]
+                : typeof rawHeader === 'string'
+                  ? rawHeader.split(',')[0]?.trim()
+                  : undefined
+            const clientIp = forwardedIp || req.ip || req.socket.remoteAddress || 'unknown'
+            return `ip:${clientIp}`
         },
         handler: (req, res) => {
             const resetTime = (req as any).rateLimit?.resetTime

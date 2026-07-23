@@ -5,11 +5,11 @@ import pinoHttp from 'pino-http'
 
 import { env } from '../env'
 
-const isDev = env.ENV === 'DEV' || env.NODE_ENV === 'development' || env.NODE_ENV === 'test'
+const isDev = env.ENV === 'DEV' || env.NODE_ENV === 'development'
 
 export const logger = pino({
     level: isDev ? 'debug' : 'info',
-    ...(env.ENV === 'DEV' || env.NODE_ENV === 'development'
+    ...(isDev
         ? {
               transport: {
                   target: 'pino-pretty',
