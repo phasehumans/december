@@ -1,5 +1,6 @@
 import rateLimit from 'express-rate-limit'
 import Redis from 'ioredis'
+import jwt from 'jsonwebtoken'
 import RedisStore from 'rate-limit-redis'
 
 import { env } from '../env'
@@ -40,15 +41,31 @@ export const createRateLimiter = (options: RateLimiterOptions = {}) => {
             if ((req as any).user?.userId) {
                 return `user:${(req as any).user.userId}`
             }
-            const apiKey = req.headers['x-api-key'] || req.headers['authorization']
+            const authHeader = req.headers.authorization
+            if (authHeader && typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
+                try {
+                    const token = authHeader.substring(7)
+                    const decoded = jwt.decode(token) as { userId?: string } | null
+                    if (decoded?.userId) {
+                        return `user:${decoded.userId}`
+                    }
+                } catch {
+                    // Ignore decode errors and fall back
+                }
+            }
+            const apiKey = req.headers['x-api-key']
             if (apiKey && typeof apiKey === 'string') {
                 return `token:${apiKey}`
             }
             const clientIp = req.headers['x-forwarded-for'] || req.ip || req.socket.remoteAddress
             return `ip:${String(clientIp || 'unknown')}`
         },
-        handler: (_req, res) => {
-            const retryAfterSec = Math.ceil(windowMs / 1000)
+        handler: (req, res) => {
+            const resetTime = (req as any).rateLimit?.resetTime
+            const retryAfterSec =
+                resetTime instanceof Date
+                    ? Math.max(1, Math.ceil((resetTime.getTime() - Date.now()) / 1000))
+                    : Math.ceil(windowMs / 1000)
             res.status(429).json({
                 success: false,
                 message,
