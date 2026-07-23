@@ -1,10 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react'
 
 import { reviewAPI, type PullRequestReview } from '../../review/api/review'
-import { ReviewDetailsDrawer } from '../../review/components/ReviewDetailsDrawer'
+import { ReviewDetailView } from '../../review/components/ReviewDetailView'
 import { ReviewPreferencesDrawer } from '../../review/components/ReviewPreferencesDrawer'
+import { useSessions } from '../hooks/useSessions'
 
 import { Icons } from '@/shared/components/ui/Icons'
+import { Skeleton } from '@/shared/components/ui/Skeleton'
+import { Tooltip } from '@/shared/components/ui/Tooltip'
 
 export const ReviewPage: React.FC = () => {
     const [prUrl, setPrUrl] = useState('')
@@ -13,11 +16,38 @@ export const ReviewPage: React.FC = () => {
 
     const [reviews, setReviews] = useState<PullRequestReview[]>([])
     const [isLoading, setIsLoading] = useState(true)
-    const [tabFilter, setTabFilter] = useState<'ALL' | 'AGENT' | 'EXTERNAL'>('ALL')
-
     const [selectedReview, setSelectedReview] = useState<PullRequestReview | null>(null)
-    const [isDetailsOpen, setIsDetailsOpen] = useState(false)
     const [isPreferencesOpen, setIsPreferencesOpen] = useState(false)
+
+    const [searchQuery, setSearchQuery] = useState('')
+    const [sortOption, setSortOption] = useState<'newest' | 'oldest'>('newest')
+    const [isSortOpen, setIsSortOpen] = useState(false)
+    const [visibleCount, setVisibleCount] = useState(20)
+    const sortDropdownRef = React.useRef<HTMLDivElement>(null)
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (
+                sortDropdownRef.current &&
+                !sortDropdownRef.current.contains(event.target as Node)
+            ) {
+                setIsSortOpen(false)
+            }
+        }
+        document.addEventListener('mousedown', handleClickOutside)
+        return () => document.removeEventListener('mousedown', handleClickOutside)
+    }, [])
+
+    const { data: sessionsData } = useSessions()
+    const sessions = sessionsData?.sessions || []
+
+    const getSessionTitle = (sessionId: string) => {
+        const session = sessions.find((s) => s.id === sessionId)
+        const title = session?.title || session?.projectName || 'Untitled Session'
+        const maxLen = 30
+        const displayTitle = title.length > maxLen ? `${title.slice(0, maxLen).trim()}...` : title
+        return `Session: ${displayTitle}`
+    }
 
     const fetchReviews = useCallback(async () => {
         try {
@@ -61,7 +91,6 @@ export const ReviewPage: React.FC = () => {
             if (newReview) {
                 const item = (newReview as any).data || newReview
                 setSelectedReview(item)
-                setIsDetailsOpen(true)
             }
         } catch (err: any) {
             setSubmitError(err.message || 'Failed to submit PR for review')
@@ -70,215 +99,346 @@ export const ReviewPage: React.FC = () => {
         }
     }
 
-    const filteredReviews = reviews.filter((r) => {
-        if (tabFilter === 'AGENT') return r.isAutoReview
-        if (tabFilter === 'EXTERNAL') return !r.isAutoReview
-        return true
-    })
+    const filteredReviews = reviews
+        .filter((review) => {
+            if (!searchQuery.trim()) return true
+            const q = searchQuery.toLowerCase().trim()
+            return (
+                (review.title && review.title.toLowerCase().includes(q)) ||
+                (review.repository && review.repository.toLowerCase().includes(q)) ||
+                (review.prNumber && review.prNumber.toString().includes(q)) ||
+                (review.sessionId && review.sessionId.toLowerCase().includes(q))
+            )
+        })
+        .sort((a, b) => {
+            const timeA = new Date(a.createdAt).getTime()
+            const timeB = new Date(b.createdAt).getTime()
+            return sortOption === 'newest' ? timeB - timeA : timeA - timeB
+        })
+
+    useEffect(() => {
+        setVisibleCount(20)
+    }, [filteredReviews.length])
+
+    const formatDate = (dInput: string | Date) => {
+        const d = new Date(dInput)
+        if (isNaN(d.getTime())) return '--'
+        return d.toLocaleDateString(undefined, {
+            month: 'short',
+            day: 'numeric',
+        })
+    }
+
+    const formatTooltipDate = (dInput: string | Date, prefix: 'Created' | 'Updated') => {
+        const d = new Date(dInput)
+        if (isNaN(d.getTime())) return `${prefix} on Unknown`
+        const weekday = d.toLocaleDateString('en-US', { weekday: 'long' })
+        const month = d.toLocaleDateString('en-US', { month: 'long' })
+        const day = d.getDate()
+        const year = d.getFullYear()
+        const time = d.toLocaleTimeString('en-US', {
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true,
+        })
+        return `${prefix} on ${weekday}, ${month} ${day}, ${year} at ${time}`
+    }
+
+    // In-place Full Review Detail View
+    if (selectedReview) {
+        const rawSessionTitle =
+            selectedReview?.sessionId && Array.isArray(sessions)
+                ? sessions.find((s) => s && s.id === selectedReview.sessionId)?.title ||
+                  sessions.find((s) => s && s.id === selectedReview.sessionId)?.projectName
+                : undefined
+
+        return (
+            <div className="relative h-full w-full flex-1 overflow-y-auto bg-background px-8 pb-8 pt-20 font-sans no-scrollbar md:p-16">
+                <div className="relative z-10 mx-auto max-w-6xl">
+                    <ReviewDetailView
+                        review={selectedReview}
+                        onBack={() => setSelectedReview(null)}
+                        sessionTitle={rawSessionTitle}
+                        onOpenPreferences={() => setIsPreferencesOpen(true)}
+                    />
+                </div>
+            </div>
+        )
+    }
 
     return (
-        <div className="relative h-full w-full flex-1 overflow-y-auto bg-[#141414] px-4 pb-8 pt-16 font-sans no-scrollbar md:p-16">
-            <div className="relative z-10 mx-auto max-w-6xl flex flex-col gap-8">
+        <div className="relative h-full w-full flex-1 overflow-y-auto bg-background px-8 pb-8 pt-20 font-sans no-scrollbar md:p-16">
+            <div className="relative z-10 mx-auto max-w-6xl">
                 {/* Top Header */}
-                <div className="flex items-start justify-between gap-4">
-                    <div className="flex flex-col">
-                        <h1 className="text-[24px] font-medium text-[#D6D5C9] mb-1">PR Reviews</h1>
-                        <p className="text-[13px] text-[#7B7A79]">
-                            Review GitHub or GitLab pull requests with automated AI code quality
-                            summaries, security checks, and diff analysis.
-                        </p>
-                    </div>
-
-                    <button
-                        onClick={() => setIsPreferencesOpen(true)}
-                        className="flex items-center gap-2 rounded-lg border border-[#282828] bg-[#202020] px-4 py-2 text-[13px] font-medium text-[#949494] transition-colors hover:bg-[#282828] hover:text-white"
-                    >
-                        <Icons.Settings className="h-4 w-4" />
-                        <span>Preferences</span>
-                    </button>
+                <div className="mb-6 flex flex-col">
+                    <h1 className="text-[24px] font-medium text-[#D6D5C9] mb-1">Review</h1>
+                    <p className="text-[13px] text-[#7B7A79]">
+                        Review GitHub pull requests with automated AI code quality summaries,
+                        security checks, and diff analysis.
+                    </p>
                 </div>
 
-                {/* Main PR Submission Hero Box */}
-                <div className="w-full rounded-2xl border border-[#282828] bg-[#1E1E1E] p-6 md:p-8 flex flex-col gap-4 shadow-xl">
-                    <h2 className="text-[16px] font-semibold text-white">
-                        Review any Pull Request
-                    </h2>
-                    <p className="text-[13px] text-[#8F8E8D] leading-relaxed">
-                        Paste a public or private pull request URL from GitHub or GitLab to generate
-                        an AI review report.
-                    </p>
-
+                {/* Main PR Submission Input Section */}
+                <div className="mb-8 flex flex-col gap-2.5">
                     <form
                         onSubmit={handleSubmit}
-                        className="relative w-full flex items-center gap-3"
+                        className="relative w-full max-w-xl flex items-center gap-3"
                     >
                         <div className="relative flex-1">
-                            <Icons.GitPullRequest className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#7B7A79]" />
+                            <Icons.GitPullRequest className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#7B7A79]" />
                             <input
                                 type="text"
                                 value={prUrl}
                                 onChange={(e) => setPrUrl(e.target.value)}
                                 placeholder="https://github.com/owner/repo/pull/123"
-                                className="w-full bg-[#202020] border border-[#282828] hover:border-[#383736] focus:border-[#4A4948] rounded-xl pl-10 pr-4 py-3 text-[13.5px] text-white placeholder:text-[#555453] transition-colors focus:outline-none"
+                                className="w-full rounded-lg border border-[#2D2D2D] bg-transparent py-2 pl-9 pr-4 text-[13px] text-[#D6D5C9] transition-colors placeholder:text-[#6E6E6E] hover:border-[#3D3D3D] focus:border-[#5A5A5A] focus:outline-none"
                                 disabled={isSubmitting}
                             />
                         </div>
                         <button
                             type="submit"
                             disabled={!prUrl.trim() || isSubmitting}
-                            className="bg-white text-black hover:bg-neutral-200 active:scale-95 transition-all text-[13px] font-medium px-6 py-3 rounded-xl focus:outline-none disabled:opacity-40 disabled:pointer-events-none flex items-center gap-2 shrink-0 min-w-[120px] justify-center"
+                            className="rounded-lg border border-[#383736] bg-[#242323] hover:bg-[#2C2B2B] hover:text-white text-[#D6D5C9] text-[13px] font-medium px-4 py-2 transition-colors disabled:opacity-40 disabled:pointer-events-none flex items-center shrink-0 justify-center min-w-[100px]"
                         >
                             {isSubmitting ? (
-                                <>
-                                    <span className="w-3.5 h-3.5 border-2 border-black border-t-transparent rounded-full animate-spin" />
+                                <div className="flex items-center gap-2">
+                                    <span className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
                                     <span>Analyzing...</span>
-                                </>
+                                </div>
                             ) : (
-                                <>
-                                    <span>Submit PR</span>
-                                    <Icons.ExternalLink className="w-3.5 h-3.5" />
-                                </>
+                                <span>Submit PR</span>
                             )}
                         </button>
                     </form>
 
                     {submitError && (
-                        <div className="text-[12px] text-red-400 bg-red-950/30 border border-red-900/30 px-3 py-2 rounded-lg">
+                        <div className="text-[12px] text-red-400 bg-red-950/30 border border-red-900/30 px-3 py-2 rounded-lg mt-1">
                             {submitError}
                         </div>
                     )}
                 </div>
 
-                {/* Filter Tabs & Recent Reviews Section */}
-                <div className="flex flex-col gap-4">
-                    <div className="flex items-center justify-between">
-                        <h3 className="text-[16px] font-semibold text-[#D6D5C9]">
-                            Recent Pull Request Reviews
-                        </h3>
+                {/* Subheading: Recent Reviews */}
+                <div className="mb-3">
+                    <h2 className="text-[18px] font-semibold text-[#D6D5C9]">Recent Reviews</h2>
+                </div>
 
-                        {/* Filter Tabs */}
-                        <div className="flex items-center gap-1 bg-[#202020] border border-[#282828] p-1 rounded-lg">
-                            {(['ALL', 'AGENT', 'EXTERNAL'] as const).map((tab) => (
-                                <button
-                                    key={tab}
-                                    onClick={() => setTabFilter(tab)}
-                                    className={`px-3 py-1.5 rounded-md text-[12px] font-medium transition-colors ${
-                                        tabFilter === tab
-                                            ? 'bg-[#282828] text-white'
-                                            : 'text-[#949494] hover:text-white'
-                                    }`}
-                                >
-                                    {tab === 'ALL'
-                                        ? 'All Reviews'
-                                        : tab === 'AGENT'
-                                          ? 'December Agent PRs'
-                                          : 'External PRs'}
-                                </button>
-                            ))}
-                        </div>
+                {/* Search Bar & Sort Dropdown Row */}
+                <div className="relative z-10 mb-4 flex w-full items-center justify-between gap-4">
+                    <div className="relative w-full max-w-[320px]">
+                        <Icons.Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#7B7A79]" />
+                        <input
+                            type="text"
+                            placeholder="Search reviews..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full rounded-lg border border-[#282828] bg-[#202020] py-1.5 pl-9 pr-4 text-[13px] text-[#949494] transition-colors placeholder:text-[#949494] hover:bg-[#282828] focus:border-[#7B7A79] focus:bg-[#202020] focus:outline-none"
+                        />
                     </div>
 
-                    {/* Review List Table */}
-                    {isLoading ? (
-                        <div className="p-12 text-center text-[#7B7A79] text-[13px] bg-[#1E1E1E] rounded-xl border border-[#282828]">
-                            Loading PR reviews...
+                    <div className="relative" ref={sortDropdownRef}>
+                        <button
+                            onClick={() => setIsSortOpen(!isSortOpen)}
+                            className="flex items-center gap-2 rounded-lg border border-[#282828] bg-[#202020] px-4 py-1.5 text-[13px] text-[#949494] transition-colors hover:bg-[#282828] cursor-pointer"
+                        >
+                            Sort: {sortOption === 'newest' ? 'Newest' : 'Oldest'}
+                            <Icons.ChevronDown className="h-3.5 w-3.5 text-[#7B7A79]" />
+                        </button>
+                        {isSortOpen && (
+                            <div className="absolute right-0 top-full mt-2 z-50 w-48 rounded-xl border border-[#383736] bg-[#1E1E1E] py-2 shadow-xl">
+                                <div className="mb-1 border-b border-[#383736] px-3 pb-2 text-[12px] font-medium text-[#7B7A79]">
+                                    Sort by
+                                </div>
+                                <button
+                                    onClick={() => {
+                                        setSortOption('newest')
+                                        setIsSortOpen(false)
+                                    }}
+                                    className="flex w-full items-center justify-between px-3 py-1.5 text-[13px] text-[#D6D5C9] hover:bg-[#242323] cursor-pointer"
+                                >
+                                    Newest first
+                                    {sortOption === 'newest' && <Icons.Check className="h-4 w-4" />}
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setSortOption('oldest')
+                                        setIsSortOpen(false)
+                                    }}
+                                    className="flex w-full items-center justify-between px-3 py-1.5 text-[13px] text-[#D6D5C9] hover:bg-[#242323] cursor-pointer"
+                                >
+                                    Oldest first
+                                    {sortOption === 'oldest' && <Icons.Check className="h-4 w-4" />}
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Review List View */}
+                {isLoading ? (
+                    <div className="min-h-[300px] flex flex-col gap-1 pb-4">
+                        {Array.from({ length: 6 }).map((_, index) => (
+                            <div
+                                key={`review-skeleton-${index}`}
+                                className="grid grid-cols-[minmax(0,2fr)_minmax(120px,1fr)_minmax(110px,auto)_minmax(85px,auto)_minmax(90px,auto)_minmax(100px,auto)] items-center gap-2 rounded-lg border border-transparent bg-[#191919]/5 pl-1 pr-5 py-2 md:gap-3"
+                            >
+                                <div className="flex flex-col gap-1.5 w-full pr-4 min-w-0 justify-center">
+                                    <Skeleton className="h-4 w-[85%] bg-white/[0.06]" />
+                                    <Skeleton className="h-3 w-[60%] bg-white/[0.04]" />
+                                </div>
+                                <Skeleton className="h-3.5 w-24 bg-white/[0.04]" />
+                                <Skeleton className="h-4 w-16 rounded-md bg-white/[0.04]" />
+                                <Skeleton className="h-4 w-12 rounded-md bg-white/[0.04]" />
+                                <Skeleton className="h-3.5 w-16 bg-white/[0.04]" />
+                                <Skeleton className="h-4 w-20 rounded-md bg-white/[0.04]" />
+                            </div>
+                        ))}
+                    </div>
+                ) : filteredReviews.length === 0 ? (
+                    <div className="flex min-h-[360px] flex-col items-center justify-center px-6 py-16 text-center">
+                        <div className="relative mb-6 h-28 w-32">
+                            <svg
+                                viewBox="0 0 128 112"
+                                fill="none"
+                                className="h-full w-full text-[#8A8987]"
+                                aria-hidden="true"
+                            >
+                                <path
+                                    d="M28 42.5 64 22l36 20.5v43L64 106 28 85.5v-43Z"
+                                    stroke="currentColor"
+                                    strokeWidth="2.4"
+                                    strokeLinejoin="round"
+                                />
+                                <path
+                                    d="M28 42.5 64 63l36-20.5M64 63v43"
+                                    stroke="currentColor"
+                                    strokeWidth="2.4"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                />
+                            </svg>
                         </div>
-                    ) : filteredReviews.length === 0 ? (
-                        <div className="p-12 text-center text-[#7B7A79] text-[13px] bg-[#1E1E1E] rounded-xl border border-[#282828]">
-                            No pull request reviews found. Submit a PR URL above to generate your
-                            first review report!
-                        </div>
-                    ) : (
-                        <div className="flex flex-col gap-2">
-                            {filteredReviews.map((review) => {
+                        <h2 className="text-[17px] font-medium text-[#D6D5C9]">No reviews found</h2>
+                        <p className="mt-2 max-w-sm text-[13px] leading-6 text-[#7B7A79]">
+                            Submit a PR URL above to generate your first review report.
+                        </p>
+                    </div>
+                ) : (
+                    <div className="flex flex-col gap-1 pb-4">
+                        <div className="flex flex-col gap-1">
+                            {filteredReviews.slice(0, visibleCount).map((review) => {
                                 const isPending =
                                     review.status === 'PENDING' || review.status === 'IN_PROGRESS'
                                 return (
                                     <div
                                         key={review.id}
-                                        onClick={() => {
-                                            setSelectedReview(review)
-                                            setIsDetailsOpen(true)
-                                        }}
-                                        className="group grid grid-cols-[minmax(0,2fr)_minmax(120px,1fr)_minmax(100px,auto)_minmax(120px,auto)_2.5rem] items-center gap-4 p-4 rounded-xl border border-[#282828] bg-[#1E1E1E] hover:bg-[#242323] cursor-pointer transition-colors"
+                                        onClick={() => setSelectedReview(review)}
+                                        className="group relative grid cursor-pointer grid-cols-[minmax(0,2fr)_minmax(120px,1fr)_minmax(110px,auto)_minmax(85px,auto)_minmax(90px,auto)_minmax(100px,auto)] items-center gap-2 rounded-lg border border-transparent pl-1 pr-5 py-2 transition-all duration-200 hover:bg-[#191919] md:gap-3"
                                     >
-                                        {/* PR Title & Repo */}
-                                        <div className="flex flex-col gap-1 min-w-0">
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-[14px] font-medium text-white group-hover:text-blue-400 transition-colors truncate">
-                                                    {review.title}
-                                                </span>
-                                                {review.isAutoReview && (
-                                                    <span className="px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 text-[10px] font-medium border border-blue-500/20 shrink-0">
-                                                        Agent
-                                                    </span>
-                                                )}
-                                            </div>
-                                            <span className="text-[12px] font-mono text-[#7B7A79] truncate">
-                                                {review.repository} #{review.prNumber}
+                                        {/* PR Title & Summary Description */}
+                                        <div className="flex flex-col min-w-0 justify-center">
+                                            <span className="truncate text-[14px] font-medium text-[#D6D5C9] transition-colors">
+                                                {review.title || 'Untitled Review'}
+                                            </span>
+                                            <span className="truncate text-[12px] text-[#7B7A79] transition-colors">
+                                                {review.summary ||
+                                                    'No summary available for this review.'}
                                             </span>
                                         </div>
 
-                                        {/* Author */}
-                                        <div className="text-[13px] text-[#949494] truncate">
-                                            {review.author}
+                                        {/* Repository Name */}
+                                        <div className="truncate text-[13px] text-[#7B7A79] transition-colors group-hover:text-[#A3A2A0] font-mono">
+                                            {review.repository || '--'}
                                         </div>
+
+                                        {/* Session ID */}
+                                        <div className="flex items-center gap-1.5 min-w-0">
+                                            {review.sessionId ? (
+                                                <Tooltip
+                                                    position="top"
+                                                    content={getSessionTitle(review.sessionId)}
+                                                >
+                                                    <span className="truncate rounded-md bg-[#202020] hover:bg-[#272727] transition-colors px-2 py-0.5 text-[11px] font-medium text-[#A3A2A0] select-none cursor-pointer">
+                                                        #{review.sessionId.slice(0, 8)}
+                                                    </span>
+                                                </Tooltip>
+                                            ) : null}
+                                        </div>
+
+                                        {/* PR Number Badge (Sessions style) */}
+                                        <div className="flex items-center">
+                                            <span className="flex items-center gap-1 rounded-md bg-[#202020] hover:bg-[#272727] transition-colors px-2 py-0.5 text-[11px] font-medium text-purple-400 select-none">
+                                                <Icons.GitPullRequest className="h-3 w-3" />#
+                                                {review.prNumber}
+                                            </span>
+                                        </div>
+
+                                        {/* Date */}
+                                        <Tooltip
+                                            position="top"
+                                            content={formatTooltipDate(review.createdAt, 'Created')}
+                                        >
+                                            <div className="truncate text-[13px] text-[#7B7A79] transition-colors group-hover:text-[#A3A2A0]">
+                                                {formatDate(review.createdAt)}
+                                            </div>
+                                        </Tooltip>
 
                                         {/* Status Badge */}
-                                        <div>
-                                            {isPending ? (
-                                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-amber-500/10 border border-amber-500/20 text-[11px] font-medium text-amber-400">
-                                                    <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
-                                                    {review.status === 'PENDING'
-                                                        ? 'Queued'
-                                                        : 'Analyzing...'}
-                                                </span>
-                                            ) : review.status === 'COMPLETED' ? (
-                                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-[11px] font-medium text-emerald-400">
-                                                    <Icons.Check className="w-3 h-3" />
-                                                    Completed
-                                                </span>
-                                            ) : (
-                                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-red-500/10 border border-red-500/20 text-[11px] font-medium text-red-400">
-                                                    Failed
-                                                </span>
-                                            )}
-                                        </div>
-
-                                        {/* Score Pill */}
-                                        <div className="flex items-center justify-end">
-                                            {review.score > 0 ? (
-                                                <span className="px-3 py-1 rounded-lg bg-[#202020] border border-[#282828] text-[12px] font-bold text-white">
-                                                    {review.score} / 100
-                                                </span>
-                                            ) : (
-                                                <span className="text-[12px] text-[#7B7A79]">
-                                                    --
-                                                </span>
-                                            )}
-                                        </div>
-
-                                        {/* External link action */}
-                                        <div className="flex justify-end text-[#7B7A79] group-hover:text-white transition-colors">
-                                            <Icons.ExternalLink className="w-4 h-4" />
+                                        <div className="flex items-center gap-2 min-w-0">
+                                            <Tooltip
+                                                position="top"
+                                                content={
+                                                    review.status === 'COMPLETED'
+                                                        ? 'Status: Review analysis complete'
+                                                        : review.status === 'IN_PROGRESS'
+                                                          ? 'Status: Analyzing pull request...'
+                                                          : review.status === 'PENDING'
+                                                            ? 'Status: Queued for analysis'
+                                                            : 'Status: Review failed'
+                                                }
+                                            >
+                                                <div className="inline-flex">
+                                                    {isPending ? (
+                                                        <span className="truncate rounded-md bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 text-[11px] font-medium text-amber-400">
+                                                            {review.status === 'PENDING'
+                                                                ? 'Queued'
+                                                                : 'Analyzing...'}
+                                                        </span>
+                                                    ) : review.status === 'COMPLETED' ? (
+                                                        <span className="truncate rounded-md bg-[#202020] px-2 py-0.5 text-[11px] font-medium text-[#A3A2A0]">
+                                                            Completed
+                                                        </span>
+                                                    ) : (
+                                                        <span className="truncate rounded-md bg-red-500/10 border border-red-500/20 px-2 py-0.5 text-[11px] font-medium text-red-400">
+                                                            Failed
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </Tooltip>
                                         </div>
                                     </div>
                                 )
                             })}
                         </div>
-                    )}
-                </div>
-            </div>
 
-            {/* Drawers */}
-            <ReviewDetailsDrawer
-                isOpen={isDetailsOpen}
-                review={selectedReview}
-                onClose={() => {
-                    setIsDetailsOpen(false)
-                    setSelectedReview(null)
-                }}
-            />
+                        {/* Load More Button */}
+                        {visibleCount < filteredReviews.length && (
+                            <div className="flex justify-center pt-4 mb-8">
+                                <button
+                                    onClick={() =>
+                                        setVisibleCount((prev) =>
+                                            Math.min(prev + 20, filteredReviews.length)
+                                        )
+                                    }
+                                    className="px-5 py-2 rounded-lg border border-[#383736] bg-[#141414] text-[13px] font-medium text-[#D6D5C9] hover:bg-[#242323] hover:text-white transition-all active:scale-95 cursor-pointer"
+                                >
+                                    Load more
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                )}
+            </div>
 
             <ReviewPreferencesDrawer
                 isOpen={isPreferencesOpen}

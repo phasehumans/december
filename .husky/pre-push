@@ -1,0 +1,3 @@
+#!/bin/sh
+echo "Running local pre-push typecheck verification..."
+bun run typecheck

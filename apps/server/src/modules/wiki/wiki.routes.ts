@@ -10,6 +10,7 @@ wikiRouter.use(authMiddleware)
 
 wikiRouter.get('/github-repos', wikiController.getGitHubRepos)
 wikiRouter.post('/generate', wikiController.generateWiki)
+wikiRouter.post('/pin', wikiController.togglePin)
 wikiRouter.get('/repos/:owner/:repo', wikiController.getWikiByRepo)
 wikiRouter.post('/pages', wikiController.createPage)
 wikiRouter.put('/pages/:id', wikiController.updatePage)

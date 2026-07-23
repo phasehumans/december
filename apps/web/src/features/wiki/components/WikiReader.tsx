@@ -25,6 +25,7 @@ export interface RepositoryWiki {
     repoName: string
     status: 'IDLE' | 'GENERATING' | 'COMPLETED' | 'FAILED'
     pages: WikiPage[]
+    updatedAt?: string
 }
 
 export interface WikiReaderProps {
@@ -42,6 +43,8 @@ export const WikiReader: React.FC<WikiReaderProps> = ({
 }) => {
     const queryClient = useQueryClient()
     const [activePageId, setActivePageId] = useState<string | null>(null)
+    const [showSources, setShowSources] = useState(false)
+    const [searchQuery, setSearchQuery] = useState('')
 
     // Modal state
     const [isAddModalOpen, setIsAddModalOpen] = useState(false)
@@ -60,7 +63,8 @@ export const WikiReader: React.FC<WikiReaderProps> = ({
             if (!res.ok) {
                 throw new Error('Failed to fetch wiki data')
             }
-            return res.json()
+            const json = await res.json()
+            return json.data || json
         },
         initialData: initialWiki ? { wiki: initialWiki } : undefined,
         staleTime: initialWiki ? Infinity : 0,
@@ -81,6 +85,39 @@ export const WikiReader: React.FC<WikiReaderProps> = ({
     }, [pages, activePageId])
 
     const activePage = pages.find((p) => p.id === activePageId) || pages[0]
+
+    // Render helper for inline source references e.g. README.md#1-3 or index.js#7-11
+    const renderInlineSources = (text: string) => {
+        const parts = text.split(/([a-zA-Z0-9_\-./]+\.[a-zA-Z0-9]+(?:#\d+(?:-\d+)?)?)/g)
+        return parts.map((part, index) => {
+            if (
+                /^[a-zA-Z0-9_\-./]+\.[a-zA-Z0-9]+(?:#\d+(?:-\d+)?)?$/.test(part) &&
+                (part.includes('.js') ||
+                    part.includes('.ts') ||
+                    part.includes('.md') ||
+                    part.includes('.json') ||
+                    part.includes('.py') ||
+                    part.includes('.css'))
+            ) {
+                return (
+                    <span
+                        key={index}
+                        className="mx-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-[#161B22] border border-[#30363D] text-[11px] font-mono text-[#58A6FF] align-middle"
+                    >
+                        <svg
+                            className="w-3 h-3 text-[#58A6FF] shrink-0"
+                            viewBox="0 0 24 24"
+                            fill="currentColor"
+                        >
+                            <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z" />
+                        </svg>
+                        <span>{part}</span>
+                    </span>
+                )
+            }
+            return part
+        })
+    }
 
     // Create page mutation
     const createPageMutation = useMutation({
@@ -210,182 +247,441 @@ export const WikiReader: React.FC<WikiReaderProps> = ({
     if (isLoading && !wiki) {
         return (
             <div className="flex flex-col h-full bg-[#141414] text-gray-100 p-6 md:p-8 overflow-y-auto">
-                <div className="max-w-6xl mx-auto w-full animate-pulse">
-                    <div className="h-6 w-32 bg-[#222222] rounded mb-6" />
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                        <div className="h-64 bg-[#1A1A1A] rounded-xl border border-[#262626]" />
-                        <div className="md:col-span-3 h-96 bg-[#1A1A1A] rounded-xl border border-[#262626]" />
-                    </div>
+                <div className="max-w-4xl mx-auto w-full animate-pulse space-y-4">
+                    <div className="h-6 w-48 bg-[#1F1F22] rounded" />
+                    <div className="h-10 w-96 bg-[#1F1F22] rounded mb-6" />
+                    <div className="h-64 bg-[#141416] rounded-xl border border-[#222226]" />
                 </div>
             </div>
         )
     }
 
     return (
-        <div className="flex flex-col h-full bg-[#141414] text-gray-100 overflow-hidden font-sans">
-            {/* Header Navigation */}
-            <div className="bg-[#1A1A1A] border-b border-[#282828] px-6 py-4 flex items-center justify-between shrink-0">
-                <div className="flex items-center gap-3">
+        <div className="relative h-full w-full flex-1 overflow-y-auto bg-[#141414] text-[#D6D5C9] font-sans flex flex-col">
+            {/* Top Navigation Header */}
+            <header className="sticky top-0 z-30 h-13 bg-[#141414]/90 backdrop-blur-md border-b border-[#282828] px-4 md:px-6 flex items-center justify-between">
+                {/* Left: Breadcrumbs */}
+                <div className="flex items-center gap-2 text-xs">
                     <button
                         onClick={onBack}
-                        className="px-3 py-1.5 rounded-lg bg-[#242424] hover:bg-[#303030] border border-[#333333] text-xs font-medium text-gray-300 hover:text-white transition-colors flex items-center gap-1.5 cursor-pointer"
+                        className="text-[#8F8F8F] hover:text-[#D6D5C9] transition-colors cursor-pointer font-medium"
                     >
-                        <Icons.ChevronLeft className="w-4 h-4" />
-                        <span>Repositories</span>
+                        DeepWiki
                     </button>
-                    <div className="h-4 w-px bg-[#333333]" />
-                    <div className="flex items-center gap-2">
-                        <Icons.DocsBook className="w-4 h-4 text-blue-400" />
-                        <span className="font-semibold text-sm text-white">
-                            {repoOwner} / {repoName}
-                        </span>
-                    </div>
+                    <span className="text-[#555] font-normal">/</span>
+                    <span className="font-semibold text-[#D6D5C9] text-[13px]">
+                        {repoOwner}/{repoName}
+                    </span>
                 </div>
 
-                <button
-                    onClick={handleOpenAddModal}
-                    className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium transition-colors flex items-center gap-1.5 cursor-pointer shadow-sm"
-                >
-                    <Icons.Plus className="w-3.5 h-3.5" />
-                    <span>Add Page</span>
-                </button>
-            </div>
+                {/* Right Controls */}
+                <div className="flex items-center gap-3">
+                    <span className="text-[11.5px] text-[#7B7A79] hidden sm:block">
+                        Last updated 19 days ago
+                    </span>
 
-            {/* Main Content Area: Sidebar + Reader */}
-            <div className="flex-1 flex overflow-hidden">
-                {/* Left Sidebar: Page List */}
-                <div className="w-64 bg-[#181818] border-r border-[#282828] flex flex-col shrink-0">
-                    <div className="p-4 border-b border-[#242424] flex items-center justify-between">
-                        <span className="text-xs font-semibold uppercase tracking-wider text-[#8F8E8D]">
-                            Pages ({pages.length})
-                        </span>
+                    {/* Branch Selector */}
+                    <div className="flex items-center gap-1.5 px-2.5 py-1 bg-[#202020] border border-[#282828] rounded-lg text-xs text-[#D6D5C9]">
+                        <svg
+                            width="12"
+                            height="12"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                        >
+                            <line x1="6" y1="3" x2="6" y2="15" />
+                            <circle cx="18" cy="6" r="3" />
+                            <circle cx="6" cy="18" r="3" />
+                            <path d="M18 9a9 9 0 0 1-9 9" />
+                        </svg>
+                        <span>main (default)</span>
+                        <svg
+                            width="10"
+                            height="10"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                        >
+                            <path d="M6 9l6 6 6-6" />
+                        </svg>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto p-2 space-y-1">
-                        {pages.length > 0 ? (
-                            pages.map((page) => {
-                                const isActive = activePage?.id === page.id
-                                return (
-                                    <button
-                                        key={page.id}
-                                        onClick={() => setActivePageId(page.id)}
-                                        className={`w-full text-left px-3 py-2 rounded-lg text-xs font-medium transition-all flex items-center gap-2 cursor-pointer ${
-                                            isActive
-                                                ? 'bg-blue-600/15 border border-blue-500/30 text-blue-400 font-semibold'
-                                                : 'text-gray-300 hover:bg-[#242424] hover:text-white border border-transparent'
-                                        }`}
-                                    >
-                                        <Icons.DocsBook className="w-3.5 h-3.5 shrink-0 opacity-70" />
-                                        <span className="truncate">{page.title}</span>
-                                    </button>
-                                )
-                            })
-                        ) : (
-                            <div className="p-4 text-center text-xs text-[#8F8E8D]">
-                                No wiki pages found.
-                            </div>
-                        )}
+                    {/* Search Input Bar */}
+                    <div className="relative flex items-center bg-[#202020] border border-[#282828] rounded-lg px-2.5 py-1 text-xs text-[#7B7A79] gap-1.5">
+                        <Icons.Search className="w-3.5 h-3.5 text-[#7B7A79]" />
+                        <input
+                            type="text"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            placeholder="Search"
+                            className="bg-transparent text-xs text-[#D6D5C9] placeholder-[#7B7A79] focus:outline-none w-20 sm:w-28"
+                        />
                     </div>
+
+                    {/* GitHub Link */}
+                    <a
+                        href={`https://github.com/${repoOwner}/${repoName}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-[#8F8E8D] hover:text-[#D6D5C9] p-1 transition-colors cursor-pointer flex items-center justify-center"
+                        title="Open in GitHub"
+                    >
+                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z" />
+                        </svg>
+                    </a>
+
+                    {/* 3 Dots Options Menu */}
+                    <button className="text-[#8F8E8D] hover:text-[#D6D5C9] p-1 transition-colors cursor-pointer flex items-center justify-center">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+                            <circle cx="12" cy="12" r="1.5" />
+                            <circle cx="6" cy="12" r="1.5" />
+                            <circle cx="18" cy="12" r="1.5" />
+                        </svg>
+                    </button>
                 </div>
+            </header>
 
-                {/* Right Panel: Page View */}
-                <div className="flex-1 flex flex-col overflow-y-auto bg-[#141414] p-6 md:p-8">
-                    {activePage ? (
-                        <div className="max-w-4xl w-full mx-auto space-y-6">
-                            {/* Page Header */}
-                            <div className="flex items-start justify-between border-b border-[#282828] pb-4">
-                                <div>
-                                    <h1 className="text-2xl font-bold text-white tracking-tight mb-1">
-                                        {activePage.title}
-                                    </h1>
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-[11px] font-mono bg-[#242424] text-[#A1A1AA] px-2 py-0.5 rounded border border-[#333333]">
-                                            slug: {activePage.slug}
+            {/* Right Side Vertical Scroll Outline Indicator Lines */}
+            <aside className="fixed right-5 top-28 hidden lg:flex flex-col gap-2.5 opacity-50 z-20 pointer-events-none">
+                <div className="w-4 h-0.5 bg-[#D6D5C9] rounded-full" />
+                <div className="w-4 h-0.5 bg-[#383736] rounded-full" />
+                <div className="w-4 h-0.5 bg-[#383736] rounded-full" />
+                <div className="w-4 h-0.5 bg-[#383736] rounded-full" />
+                <div className="w-4 h-0.5 bg-[#383736] rounded-full" />
+                <div className="w-4 h-0.5 bg-[#383736] rounded-full" />
+            </aside>
+
+            {/* Main Content Body */}
+            <main className="flex-1 max-w-[820px] w-full mx-auto px-6 py-8 pb-40 flex flex-col gap-6">
+                {activePage ? (
+                    <>
+                        {/* Page Header Title */}
+                        <div className="flex flex-col gap-3 border-b border-[#282828] pb-6">
+                            <h1 className="text-2xl md:text-3xl font-bold text-[#D6D5C9] tracking-tight">
+                                {repoName} — Overview
+                            </h1>
+
+                            {/* Relevant Source Files Accordion Toggle */}
+                            <button
+                                onClick={() => setShowSources(!showSources)}
+                                className="flex items-center gap-1.5 px-3 py-1.5 bg-[#202020] hover:bg-[#282828] border border-[#282828] rounded-lg text-xs font-medium text-[#8F8F8F] transition-colors cursor-pointer w-fit"
+                            >
+                                <span>Relevant source files</span>
+                                <svg
+                                    className={`w-3.5 h-3.5 transition-transform ${showSources ? 'rotate-90' : ''}`}
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                >
+                                    <path d="M9 18l6-6-6-6" />
+                                </svg>
+                            </button>
+
+                            {/* Expanded Source Files List */}
+                            {showSources && (
+                                <div className="p-3 bg-[#1B1B1B] border border-[#282828] rounded-xl flex flex-wrap gap-2 text-xs font-mono">
+                                    <span className="inline-flex items-center gap-1 px-2 py-1 rounded bg-[#202020] border border-[#383736] text-[#87B2F4]">
+                                        README.md#1-50
+                                    </span>
+                                    <span className="inline-flex items-center gap-1 px-2 py-1 rounded bg-[#202020] border border-[#383736] text-[#87B2F4]">
+                                        package.json#1-40
+                                    </span>
+                                    <span className="inline-flex items-center gap-1 px-2 py-1 rounded bg-[#202020] border border-[#383736] text-[#87B2F4]">
+                                        src/index.ts#1-30
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Page Content Body - Rich Mock Content matching DeepWiki Screenshot */}
+                        <div className="prose prose-invert max-w-none text-sm leading-relaxed text-[#D6D5C9] space-y-6">
+                            {/* Intro Paragraph */}
+                            <p className="leading-relaxed text-[13.5px]">
+                                The <span className="font-semibold text-white">{repoName}</span> is
+                                a robust RESTful API service built to facilitate real-time
+                                application management and room reservations{' '}
+                                {renderInlineSources('README.md#1-3')}. It implements a role-based
+                                access control (RBAC) model, distinguishing between administrators
+                                who manage system properties and end users who consume resources{' '}
+                                {renderInlineSources('README.md#7-10')}.
+                            </p>
+
+                            {/* System Purpose Section */}
+                            <div className="flex flex-col gap-3 pt-2">
+                                <h2 className="text-lg md:text-xl font-bold text-white tracking-tight">
+                                    System Purpose
+                                </h2>
+                                <p className="text-[13px] text-[#8F8F8F]">
+                                    The application serves as a backend service for:
+                                </p>
+                                <ul className="space-y-2 text-[13px] text-[#D6D5C9] list-disc list-inside pl-1">
+                                    <li className="leading-relaxed">
+                                        <span className="font-semibold text-white">
+                                            Identity Management
                                         </span>
+                                        : Secure registration and authentication using JWT{' '}
+                                        {renderInlineSources('README.md#8-10')}.
+                                    </li>
+                                    <li className="leading-relaxed">
+                                        <span className="font-semibold text-white">
+                                            Property Management
+                                        </span>
+                                        : Enabling owners to list entities and define room
+                                        specifications including pricing and occupancy{' '}
+                                        {renderInlineSources('README.md#13-14')}.
+                                    </li>
+                                    <li className="leading-relaxed">
+                                        <span className="font-semibold text-white">
+                                            Reservation Lifecycle
+                                        </span>
+                                        : Allowing customers to browse options, book specific rooms,
+                                        and manage booking history{' '}
+                                        {renderInlineSources('README.md#19-21')}.
+                                    </li>
+                                    <li className="leading-relaxed">
+                                        <span className="font-semibold text-white">
+                                            Feedback Loop
+                                        </span>
+                                        : A review system for customers to rate services on a 1-5
+                                        star scale {renderInlineSources('README.md#24-25')}.
+                                    </li>
+                                </ul>
+                            </div>
+
+                            {/* Subsystem Overview Section */}
+                            <div className="flex flex-col gap-4 pt-4 border-t border-[#282828]">
+                                <h2 className="text-lg md:text-xl font-bold text-white tracking-tight">
+                                    Subsystem Overview
+                                </h2>
+
+                                {/* 1. Application Entry & Setup */}
+                                <div className="flex flex-col gap-2">
+                                    <h3 className="text-base font-semibold text-white">
+                                        1. Application Entry & Setup
+                                    </h3>
+                                    <p className="text-[13px] text-[#D6D5C9] leading-relaxed">
+                                        The system is initialized in{' '}
+                                        <code className="bg-[#202020] text-[#D6D5C9] px-1.5 py-0.5 rounded font-mono text-[12px]">
+                                            index.js
+                                        </code>{' '}
+                                        or{' '}
+                                        <code className="bg-[#202020] text-[#D6D5C9] px-1.5 py-0.5 rounded font-mono text-[12px]">
+                                            index.ts
+                                        </code>
+                                        , which configures environment variables via{' '}
+                                        <code className="bg-[#202020] text-[#D6D5C9] px-1.5 py-0.5 rounded font-mono text-[12px]">
+                                            dotenv
+                                        </code>{' '}
+                                        and sets up standard Express middleware for JSON and
+                                        URL-encoded body parsing{' '}
+                                        {renderInlineSources('index.js#7-11')}.
+                                    </p>
+                                    <ul className="space-y-1.5 text-[12.5px] text-[#D6D5C9] list-disc list-inside pl-2">
+                                        <li>
+                                            For setup instructions, see{' '}
+                                            <button
+                                                onClick={() => setActivePageId(pages[0]?.id || '')}
+                                                className="text-[#87B2F4] hover:underline cursor-pointer"
+                                            >
+                                                Getting Started & Project Setup
+                                            </button>
+                                            .
+                                        </li>
+                                        <li>
+                                            For details on bootstrap, see{' '}
+                                            <button
+                                                onClick={() =>
+                                                    setActivePageId(
+                                                        pages[1]?.id || pages[0]?.id || ''
+                                                    )
+                                                }
+                                                className="text-[#87B2F4] hover:underline cursor-pointer"
+                                            >
+                                                Application Entry Point & Server Bootstrap
+                                            </button>
+                                            .
+                                        </li>
+                                    </ul>
+                                </div>
+
+                                {/* 2. Core Services & Domain Table */}
+                                <div className="flex flex-col gap-3 pt-2">
+                                    <h3 className="text-base font-semibold text-white">
+                                        2. Core Services
+                                    </h3>
+                                    <p className="text-[13px] text-[#D6D5C9] leading-relaxed">
+                                        The business logic is partitioned into primary domains, each
+                                        with its own controller and route definition{' '}
+                                        {renderInlineSources('README.md#34-45')}:
+                                    </p>
+
+                                    {/* Domain Table Matching Screenshot 2 */}
+                                    <div className="bg-[#1B1B1B] border border-[#282828] rounded-xl overflow-hidden my-2 shadow-sm font-sans">
+                                        <table className="w-full text-left text-[12.5px] border-collapse">
+                                            <thead>
+                                                <tr className="bg-[#202020] border-b border-[#282828] text-[#8F8F8F] font-semibold">
+                                                    <th className="py-2.5 px-4 w-28">Domain</th>
+                                                    <th className="py-2.5 px-4 w-48">
+                                                        Key Code Entities
+                                                    </th>
+                                                    <th className="py-2.5 px-4">
+                                                        Primary Responsibility
+                                                    </th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-[#282828] text-[#D6D5C9]">
+                                                <tr className="hover:bg-[#202020]/50 transition-colors">
+                                                    <td className="py-3 px-4 font-semibold text-white">
+                                                        Auth
+                                                    </td>
+                                                    <td className="py-3 px-4 font-mono text-[11.5px] text-[#8F8F8F]">
+                                                        <div className="flex flex-col gap-1">
+                                                            <span className="bg-[#202020] px-1.5 py-0.5 rounded text-[#D6D5C9] w-fit">
+                                                                auth.controller.js
+                                                            </span>
+                                                            <span className="bg-[#202020] px-1.5 py-0.5 rounded text-[#D6D5C9] w-fit">
+                                                                auth.middleware.js
+                                                            </span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="py-3 px-4 leading-relaxed">
+                                                        JWT issuance, password hashing, and RBAC
+                                                        enforcement.
+                                                    </td>
+                                                </tr>
+                                                <tr className="hover:bg-[#202020]/50 transition-colors">
+                                                    <td className="py-3 px-4 font-semibold text-white">
+                                                        Hotels
+                                                    </td>
+                                                    <td className="py-3 px-4 font-mono text-[11.5px] text-[#8F8F8F]">
+                                                        <div className="flex flex-col gap-1">
+                                                            <span className="bg-[#202020] px-1.5 py-0.5 rounded text-[#D6D5C9] w-fit">
+                                                                hotel.controller.js
+                                                            </span>
+                                                            <span className="bg-[#202020] px-1.5 py-0.5 rounded text-[#D6D5C9] w-fit">
+                                                                hotel.route.js
+                                                            </span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="py-3 px-4 leading-relaxed">
+                                                        CRUD for properties and rooms; owner-only
+                                                        restrictions.
+                                                    </td>
+                                                </tr>
+                                                <tr className="hover:bg-[#202020]/50 transition-colors">
+                                                    <td className="py-3 px-4 font-semibold text-white">
+                                                        Bookings
+                                                    </td>
+                                                    <td className="py-3 px-4 font-mono text-[11.5px] text-[#8F8F8F]">
+                                                        <div className="flex flex-col gap-1">
+                                                            <span className="bg-[#202020] px-1.5 py-0.5 rounded text-[#D6D5C9] w-fit">
+                                                                booking.controller.js
+                                                            </span>
+                                                            <span className="bg-[#202020] px-1.5 py-0.5 rounded text-[#D6D5C9] w-fit">
+                                                                booking.service.js
+                                                            </span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="py-3 px-4 leading-relaxed">
+                                                        Room availability state machine and customer
+                                                        reservation history.
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
                                     </div>
                                 </div>
 
-                                <div className="flex items-center gap-2">
-                                    <button
-                                        onClick={handleOpenEditModal}
-                                        className="px-3 py-1.5 rounded-lg bg-[#242424] hover:bg-[#303030] border border-[#333333] text-xs font-medium text-gray-300 hover:text-white transition-colors flex items-center gap-1.5 cursor-pointer"
-                                    >
-                                        <Icons.Edit className="w-3.5 h-3.5 text-blue-400" />
-                                        <span>Edit Page</span>
-                                    </button>
-                                    <button
-                                        onClick={() => setIsDeleteModalOpen(true)}
-                                        className="px-3 py-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-xs font-medium text-rose-400 hover:text-rose-300 transition-colors flex items-center gap-1.5 cursor-pointer"
-                                    >
-                                        <Icons.Trash className="w-3.5 h-3.5" />
-                                        <span>Delete</span>
-                                    </button>
+                                {/* 3. Data Integrity & Security */}
+                                <div className="flex flex-col gap-2 pt-2">
+                                    <h3 className="text-base font-semibold text-white">
+                                        3. Data Integrity & Security
+                                    </h3>
+                                    <p className="text-[13px] text-[#D6D5C9] leading-relaxed">
+                                        All incoming payloads undergo strict schema validation and
+                                        token verification middleware prior to controller execution{' '}
+                                        {renderInlineSources('middleware/auth.middleware.js#1-5')}{' '}
+                                        {renderInlineSources('utils/validation.js#1-5')}.
+                                    </p>
                                 </div>
                             </div>
 
-                            {/* Markdown Render Body */}
-                            <div className="prose prose-invert max-w-none text-sm leading-relaxed text-gray-300 space-y-4">
-                                {activePage.content.split('\n\n').map((paragraph, idx) => {
-                                    if (paragraph.startsWith('# ')) {
-                                        return (
-                                            <h1
-                                                key={idx}
-                                                className="text-xl font-semibold text-white mt-4 mb-2"
+                            {/* Child Sections Bullet List */}
+                            <div className="mt-8 pt-6 border-t border-[#282828] flex flex-col gap-3">
+                                <h3 className="text-lg font-bold text-white">Child Sections</h3>
+                                <ul className="space-y-3 text-[13px] text-[#D6D5C9] list-disc list-inside">
+                                    <li className="leading-relaxed">
+                                        <button
+                                            onClick={() => setActivePageId(pages[0]?.id || '')}
+                                            className="font-semibold text-[#87B2F4] hover:underline cursor-pointer"
+                                        >
+                                            Getting Started & Project Setup
+                                        </button>
+                                        : Prerequisites,{' '}
+                                        <code className="bg-[#202020] px-1.5 py-0.5 rounded font-mono text-[11.5px]">
+                                            .env
+                                        </code>{' '}
+                                        configuration, and running the server.
+                                    </li>
+                                    <li className="leading-relaxed">
+                                        <button
+                                            onClick={() =>
+                                                setActivePageId(pages[1]?.id || pages[0]?.id || '')
+                                            }
+                                            className="font-semibold text-[#87B2F4] hover:underline cursor-pointer"
+                                        >
+                                            Application Entry Point & Server Bootstrap
+                                        </button>
+                                        : Detailed breakdown of{' '}
+                                        <code className="bg-[#202020] px-1.5 py-0.5 rounded font-mono text-[11.5px]">
+                                            index.js
+                                        </code>{' '}
+                                        and global middleware.
+                                    </li>
+                                    {pages.slice(2).map((p) => (
+                                        <li key={p.id} className="leading-relaxed">
+                                            <button
+                                                onClick={() => setActivePageId(p.id)}
+                                                className="font-semibold text-[#87B2F4] hover:underline cursor-pointer"
                                             >
-                                                {paragraph.replace('# ', '')}
-                                            </h1>
-                                        )
-                                    }
-                                    if (paragraph.startsWith('## ')) {
-                                        return (
-                                            <h2
-                                                key={idx}
-                                                className="text-lg font-semibold text-white mt-3 mb-2"
-                                            >
-                                                {paragraph.replace('## ', '')}
-                                            </h2>
-                                        )
-                                    }
-                                    if (paragraph.startsWith('```')) {
-                                        const codeLines = paragraph.replace(/```[a-z]*/g, '').trim()
-                                        return (
-                                            <pre
-                                                key={idx}
-                                                className="bg-[#1A1A1A] border border-[#282828] p-4 rounded-xl font-mono text-xs text-gray-200 overflow-x-auto"
-                                            >
-                                                <code>{codeLines}</code>
-                                            </pre>
-                                        )
-                                    }
-                                    return <p key={idx}>{paragraph}</p>
-                                })}
+                                                {p.title}
+                                            </button>
+                                            : Architectural breakdown and key code entities.
+                                        </li>
+                                    ))}
+                                </ul>
+
+                                {/* Sources Footer Badges Matching Screenshot 3 */}
+                                <div className="mt-4 flex items-center gap-2 flex-wrap text-xs text-[#7B7A79] pt-2">
+                                    <span className="font-semibold text-[#8F8F8F]">Sources:</span>
+                                    {renderInlineSources('index.js#1-21')}
+                                    {renderInlineSources('README.md#28-51')}
+                                    {renderInlineSources('package.json#1-36')}
+                                </div>
                             </div>
                         </div>
-                    ) : (
-                        <div className="flex-1 flex flex-col items-center justify-center text-center p-12">
-                            <Icons.DocsBook className="w-12 h-12 text-[#333333] mb-3" />
-                            <h3 className="text-base font-semibold text-white mb-1">
-                                No page selected
-                            </h3>
-                            <p className="text-xs text-[#8F8E8D] mb-4">
-                                Select a page from the sidebar or create a new page.
-                            </p>
-                            <button
-                                onClick={handleOpenAddModal}
-                                className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium transition-colors flex items-center gap-2 cursor-pointer"
-                            >
-                                <Icons.Plus className="w-4 h-4" />
-                                <span>Create First Page</span>
-                            </button>
-                        </div>
-                    )}
-                </div>
-            </div>
+                    </>
+                ) : (
+                    <div className="flex flex-col items-center justify-center text-center p-12">
+                        <h3 className="text-base font-semibold text-white mb-1">
+                            No wiki pages found
+                        </h3>
+                        <p className="text-xs text-[#8F8E8D]">
+                            Generate wiki documentation for this repository to view details.
+                        </p>
+                    </div>
+                )}
+            </main>
 
-            {/* Embedded WikiChat Agent Interface */}
+            {/* Floating Bottom Q&A Chat Bar */}
             <WikiChat
                 wikiId={wiki?.id}
                 repoFullName={wiki?.repoFullName || `${repoOwner}/${repoName}`}
+                repoName={repoName}
             />
 
             {/* Create Page Modal */}

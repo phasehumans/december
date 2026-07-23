@@ -194,6 +194,7 @@ model RepositoryWiki {
   repoOwner    String
   repoName     String
   status       WikiStatus @default(IDLE)
+  isPinned     Boolean    @default(false)
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
 
