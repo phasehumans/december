@@ -75,6 +75,7 @@ export const sessionAPI = {
         title?: string
         projectId?: string
         type?: 'WEB' | 'CLI' | 'SEARCH'
+        prompt?: string
     }): Promise<BackendSession> => {
         const res = await apiRequest<{ session: BackendSession }>('/session', {
             method: 'POST',

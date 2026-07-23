@@ -3,7 +3,7 @@ import * as os from 'os'
 
 export function openUrl(
     url: string,
-    execFn = cp.exec,
+    execFn: (command: string, callback?: (error: any) => void) => void = cp.exec,
     osPlatform = () => os.platform(),
     osRelease = () => os.release()
 ): Promise<void> {
