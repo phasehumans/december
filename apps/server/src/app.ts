@@ -2,9 +2,15 @@ import cookieParser from 'cookie-parser'
 import cors from 'cors'
 import express from 'express'
 
+import { httpLogger } from './config/logger'
 import { env } from './env'
 import { errorHandler } from './middleware/error.middleware'
-import { apiRateLimiter } from './middleware/rate-limiter'
+import {
+    authRateLimiter,
+    cliRateLimiter,
+    globalRateLimiter,
+    runtimeRateLimiter,
+} from './middleware/rate-limiter'
 import authRouter from './modules/auth/auth.routes'
 import billingRouter from './modules/billing/billing.routes'
 import canvasRouter from './modules/canvas/canvas.routes'
@@ -27,6 +33,9 @@ import wikiRouter from './modules/wiki/wiki.routes'
 
 const app = express()
 
+// Attach HTTP structured logger
+app.use(httpLogger)
+
 app.use(
     express.json({
         limit: '25mb',
@@ -41,21 +50,23 @@ app.use(
     })
 )
 
-// apply rate limiter to socket.io upgrade endpoints
-app.use('/socket.io', apiRateLimiter)
+// Apply global baseline rate limiter to all API endpoints
+app.use('/api', globalRateLimiter)
+app.use('/socket.io', globalRateLimiter)
 
-app.use('/api/v1/auth', authRouter)
+// Apply strict module rate limiting tiers to sensitive endpoints
+app.use('/api/v1/auth', authRateLimiter, authRouter)
 app.use('/api/v1/setting', settingRouter)
 
 app.use('/api/v1/canvas', canvasRouter)
-app.use('/api/v1/runtime', runtimeRouter)
+app.use('/api/v1/runtime', runtimeRateLimiter, runtimeRouter)
 app.use('/api/v1/upload', importRouter)
 app.use('/api/v1/usage', usageRouter)
 app.use('/api/v1/integrations', integrationsRouter)
 app.use('/api/v1/notification', notificationRouter)
 app.use('/api/v1/billing', billingRouter)
 app.use('/api/v1/platform', platformRouter)
-app.use('/api/v1/cli', cliRouter)
+app.use('/api/v1/cli', cliRateLimiter, cliRouter)
 app.use('/api/v1/review', reviewRouter)
 app.use('/api/v1/reviews', reviewRouter)
 app.use('/api/v1/skills', skillsRouter)

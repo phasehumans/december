@@ -1,5 +1,6 @@
 import { ZodError } from 'zod'
 
+import { logger } from '../config/logger'
 import { env } from '../env'
 import { AppError } from '../shared/appError'
 
@@ -22,7 +23,10 @@ export const errorHandler = (err: any, req: Request, res: Response, _next: NextF
     }
 
     if (env.ENV !== 'TEST') {
-        console.error('Unhandled Server Error:', err)
+        logger.error(
+            { err, reqId: req.id, url: req.url, method: req.method },
+            'Unhandled Server Error'
+        )
     }
 
     const isDev = env.ENV === 'DEV'

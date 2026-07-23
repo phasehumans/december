@@ -67,6 +67,7 @@ const envSchema = z.object({
         .string()
         .min(64)
         .default('0000000000000000000000000000000000000000000000000000000000000000'),
+    REDIS_URL: z.string().optional(),
 })
 
 const parsedEnv = envSchema.safeParse(process.env)

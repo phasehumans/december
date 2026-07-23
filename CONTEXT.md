@@ -11,3 +11,11 @@ A single markdown documentation page belonging to a `RepositoryWiki`. Contains a
 ## WikiChat
 
 A interactive chat interface embedded within a `RepositoryWiki` viewer. Allows users to submit prompts and ask an AI agent questions specifically grounded in the repository's codebase and wiki documentation.
+
+## RateLimiter
+
+A tiered rate limiting system enforcing API access quotas globally across API routes and per-module tiers. Keys client identities by `userId`, API Token, or IP address, supports in-memory and Redis storage backends, and emits standard `RateLimit-*` headers and 429 error responses.
+
+## StructuredLogger
+
+A Pino-based logging subsystem providing structured JSON logs, request ID correlation (`x-request-id`), and module-scoped child loggers (`logger.child({ module })`).
