@@ -15,6 +15,7 @@ import {
     generateAccessToken,
     generateRefreshToken,
     verifyRefreshToken,
+    hashRefreshToken,
 } from './auth.utils'
 
 import type {
@@ -143,7 +144,7 @@ const verifyOtp = async (data: VerifyOtp) => {
         sessionId,
     })
 
-    const refreshTokenHash = await bcrypt.hash(refreshToken, env.BCRYPT_SALT_ROUNDS)
+    const refreshTokenHash = hashRefreshToken(refreshToken)
 
     await authRepository.createSession({
         id: sessionId,
@@ -216,7 +217,7 @@ const login = async (data: Login) => {
         sessionId,
     })
 
-    const refreshTokenHash = await bcrypt.hash(refreshToken, env.BCRYPT_SALT_ROUNDS)
+    const refreshTokenHash = hashRefreshToken(refreshToken)
 
     await authRepository.createSession({
         id: sessionId,
@@ -371,7 +372,7 @@ const google = async (data: Google) => {
         sessionId,
     })
 
-    const refreshTokenHash = await bcrypt.hash(refreshToken, env.BCRYPT_SALT_ROUNDS)
+    const refreshTokenHash = hashRefreshToken(refreshToken)
 
     await authRepository.createSession({
         id: sessionId,
@@ -445,7 +446,7 @@ const github = async (data: Github) => {
         sessionId,
     })
 
-    const refreshTokenHash = await bcrypt.hash(refreshToken, env.BCRYPT_SALT_ROUNDS)
+    const refreshTokenHash = hashRefreshToken(refreshToken)
 
     await authRepository.createSession({
         id: sessionId,
@@ -496,7 +497,7 @@ const refreshSession = async (data: RefreshSession) => {
         throw new AppError('session expired', 401)
     }
 
-    const isRefreshTokenValid = await bcrypt.compare(refreshToken, session.refreshTokenHash)
+    const isRefreshTokenValid = hashRefreshToken(refreshToken) === session.refreshTokenHash
 
     if (!isRefreshTokenValid) {
         await authRepository.deleteSessionsBySessionId(session.id)
@@ -525,7 +526,7 @@ const refreshSession = async (data: RefreshSession) => {
         sessionId: session.id,
     })
 
-    const newRefreshTokenHash = await bcrypt.hash(newRefreshToken, env.BCRYPT_SALT_ROUNDS)
+    const newRefreshTokenHash = hashRefreshToken(newRefreshToken)
 
     await authRepository.updateSession(session.id, {
         refreshTokenHash: newRefreshTokenHash,
@@ -640,7 +641,7 @@ const pollDeviceToken = async (data: PollDeviceToken) => {
 
         const sessionId = crypto.randomUUID()
         const refreshToken = generateRefreshToken({ userId: user.id, sessionId })
-        const refreshTokenHash = await bcrypt.hash(refreshToken, env.BCRYPT_SALT_ROUNDS)
+        const refreshTokenHash = hashRefreshToken(refreshToken)
 
         await authRepository.createSession({
             id: sessionId,

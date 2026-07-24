@@ -43,7 +43,7 @@ const verifyOtp = asyncHandler(async (req: Request, res: Response) => {
     const result = await authService.verifyOtp({ email, otp, userAgent, ipAddress })
     authCookie.setAuthCookies(res, result.accessToken, result.refreshToken)
 
-    return sendSuccess(res, 'email verified successfully')
+    return sendSuccess(res, 'email verified successfully', result)
 })
 
 const login = asyncHandler(async (req: Request, res: Response) => {
@@ -58,7 +58,7 @@ const login = asyncHandler(async (req: Request, res: Response) => {
     const result = await authService.login({ ...parseData, userAgent, ipAddress })
     authCookie.setAuthCookies(res, result.accessToken, result.refreshToken)
 
-    return sendSuccess(res, 'login successful')
+    return sendSuccess(res, 'login successful', result)
 })
 
 const requestPasswordReset = asyncHandler(async (req: Request, res: Response) => {
@@ -233,14 +233,15 @@ const github = asyncHandler(async (req: Request, res: Response) => {
 
 const refreshSession = async (req: Request, res: Response, next: NextFunction) => {
     try {
+        const refreshToken = req.body?.refreshToken || req.cookies?.refreshToken
         const result = await authService.refreshSession({
-            refreshToken: req.cookies?.refreshToken,
+            refreshToken,
         })
 
         authCookie.setAccessTokenCookie(res, result.accessToken)
         authCookie.setRefreshTokenCookie(res, result.refreshToken)
 
-        return sendSuccess(res, 'session refreshed successfully')
+        return sendSuccess(res, 'session refreshed successfully', result)
     } catch (error) {
         authCookie.clearAuthCookies(res)
 
