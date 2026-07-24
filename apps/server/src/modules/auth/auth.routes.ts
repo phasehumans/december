@@ -1,21 +1,21 @@
 import { Router } from 'express'
 
 import { authMiddleware } from '../../middleware/auth.middleware'
-import { deviceCodeLimiter } from '../../middleware/rate-limiter'
+import { authRateLimiter, deviceCodeLimiter } from '../../middleware/rate-limiter'
 
 import { authController } from './auth.controller'
 
 const authRouter = Router()
 
-authRouter.post('/signup', authController.signup)
-authRouter.post('/verify', authController.verifyOtp)
-authRouter.post('/login', authController.login)
-authRouter.post('/forgot-password/request', authController.requestPasswordReset)
-authRouter.post('/forgot-password/verify', authController.verifyPasswordResetOtp)
-authRouter.post('/forgot-password/reset', authController.resetPassword)
-authRouter.post('/google', authController.google)
-authRouter.post('/github', authController.github)
-authRouter.post('/refresh', authController.refreshSession)
+authRouter.post('/signup', authRateLimiter, authController.signup)
+authRouter.post('/verify', authRateLimiter, authController.verifyOtp)
+authRouter.post('/login', authRateLimiter, authController.login)
+authRouter.post('/forgot-password/request', authRateLimiter, authController.requestPasswordReset)
+authRouter.post('/forgot-password/verify', authRateLimiter, authController.verifyPasswordResetOtp)
+authRouter.post('/forgot-password/reset', authRateLimiter, authController.resetPassword)
+authRouter.post('/google', authRateLimiter, authController.google)
+authRouter.post('/github', authRateLimiter, authController.github)
+authRouter.post('/refresh', authRateLimiter, authController.refreshSession)
 authRouter.post('/signout', authMiddleware, authController.signout)
 authRouter.post('/signout/all', authMiddleware, authController.signoutAll)
 authRouter.delete('/account', authMiddleware, authController.deleteAccount)

@@ -167,4 +167,20 @@ describe('Auth Module Hardening & SHA-256 Token Hashing', () => {
         expect(resProtected.status).toBe(401)
         expect(resProtected.body.message).toBe('Session revoked')
     })
+
+    it('POST /api/v1/auth/login - returns 429 when rate limit threshold is exceeded', async () => {
+        const attempts = []
+        for (let i = 0; i < 16; i++) {
+            attempts.push(
+                request(app)
+                    .post('/api/v1/auth/login')
+                    .send({ email: 'ratelimit@example.com', password: 'Password123!' })
+            )
+        }
+        const responses = await Promise.all(attempts)
+        const rateLimitedRes = responses.find((r) => r.status === 429)
+
+        expect(rateLimitedRes).toBeDefined()
+        expect(rateLimitedRes?.body.error.code).toBe('RATE_LIMIT_EXCEEDED')
+    })
 })
