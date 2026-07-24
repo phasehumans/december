@@ -22,7 +22,7 @@ import {
 } from './auth.schema'
 import { authService } from './auth.service'
 
-import type { Request, Response, NextFunction } from 'express'
+import type { Request, Response } from 'express'
 
 const signup = asyncHandler(async (req: Request, res: Response) => {
     const parseData = signupSchema.parse(req.body)
@@ -231,7 +231,7 @@ const github = asyncHandler(async (req: Request, res: Response) => {
     return sendSuccess(res, 'login successful')
 })
 
-const refreshSession = async (req: Request, res: Response, next: NextFunction) => {
+const refreshSession = asyncHandler(async (req: Request, res: Response) => {
     try {
         const refreshToken = req.body?.refreshToken || req.cookies?.refreshToken
         const result = await authService.refreshSession({
@@ -246,12 +246,12 @@ const refreshSession = async (req: Request, res: Response, next: NextFunction) =
         authCookie.clearAuthCookies(res)
 
         if (error instanceof AppError) {
-            return next(error)
+            throw error
         }
 
-        return next(new AppError('failed to refresh session', 401))
+        throw new AppError('failed to refresh session', 401)
     }
-}
+})
 
 const signout = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user?.userId

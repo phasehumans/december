@@ -35,6 +35,7 @@ import type {
     GetCliToken,
     PollDeviceToken,
     VerifyUserCode,
+    PurgeSessions,
 } from './auth.types'
 
 const signup = async (data: Signup) => {
@@ -714,7 +715,8 @@ const verifyUserCode = async (data: VerifyUserCode) => {
     })
 }
 
-const purgeExpiredAndRevokedSessions = async () => {
+const purgeExpiredAndRevokedSessions = async (data: PurgeSessions = {}) => {
+    void data
     return authRepository.purgeExpiredAndRevokedSessions()
 }
 

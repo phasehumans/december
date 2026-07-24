@@ -1,13 +1,4 @@
-export interface CachedSessionData {
-    id: string
-    userId: string
-    isRevoked: boolean
-    expiresAt: Date
-    user: {
-        id: string
-        isDeleted: boolean
-    } | null
-}
+import type { CachedSessionData } from './auth.types'
 
 interface CacheEntry {
     data: CachedSessionData

@@ -18,14 +18,19 @@ describe('Auth Module Hardening & SHA-256 Token Hashing', () => {
 
     afterAll(async () => {
         if (testUserId) {
-            await prisma.authSession.deleteMany({ where: { userId: testUserId } }).catch(() => {})
-            await prisma.user.delete({ where: { id: testUserId } }).catch(() => {})
+            await prisma.authSession.deleteMany({ where: { userId: testUserId } }).catch(() => {
+                // Intentionally swallowed: test cleanup fallback
+            })
+            await prisma.user.delete({ where: { id: testUserId } }).catch(() => {
+                // Intentionally swallowed: test cleanup fallback
+            })
         }
     })
 
     it('POST /api/v1/auth/signup - creates unverified user and sends OTP', async () => {
         const res = await request(app)
             .post('/api/v1/auth/signup')
+            .set('x-forwarded-for', '10.0.0.1')
             .send({ email: testEmail, password: testPassword })
 
         expect(res.status).toBe(201)
@@ -40,6 +45,7 @@ describe('Auth Module Hardening & SHA-256 Token Hashing', () => {
     it('POST /api/v1/auth/login - fails for unverified user', async () => {
         const res = await request(app)
             .post('/api/v1/auth/login')
+            .set('x-forwarded-for', '10.0.0.2')
             .send({ email: testEmail, password: testPassword })
 
         expect(res.status).toBe(401)
@@ -47,7 +53,6 @@ describe('Auth Module Hardening & SHA-256 Token Hashing', () => {
     })
 
     it('POST /api/v1/auth/verify - verifies user with OTP and generates session with SHA-256 token hash', async () => {
-        // Force OTP to known value in DB for test
         const bcrypt = await import('bcrypt')
         const { env } = await import('../src/env')
         const otpHash = await bcrypt.hash('123456', env.BCRYPT_SALT_ROUNDS)
@@ -62,6 +67,7 @@ describe('Auth Module Hardening & SHA-256 Token Hashing', () => {
 
         const res = await request(app)
             .post('/api/v1/auth/verify')
+            .set('x-forwarded-for', '10.0.0.3')
             .send({ email: testEmail, otp: '123456' })
 
         expect(res.status).toBe(200)
@@ -71,7 +77,6 @@ describe('Auth Module Hardening & SHA-256 Token Hashing', () => {
         accessToken = res.body.data.accessToken
         refreshToken = res.body.data.refreshToken
 
-        // Verify SHA-256 hash stored in DB matches expected SHA-256 hash of refreshToken
         const expectedHash = hashRefreshToken(refreshToken)
         const session = await prisma.authSession.findFirst({ where: { userId: testUserId } })
 
@@ -80,7 +85,10 @@ describe('Auth Module Hardening & SHA-256 Token Hashing', () => {
     })
 
     it('POST /api/v1/auth/refresh - refreshes session using SHA-256 refresh token', async () => {
-        const res = await request(app).post('/api/v1/auth/refresh').send({ refreshToken })
+        const res = await request(app)
+            .post('/api/v1/auth/refresh')
+            .set('x-forwarded-for', '10.0.0.4')
+            .send({ refreshToken })
 
         expect(res.status).toBe(200)
         expect(res.body.data.accessToken).toBeDefined()
@@ -93,59 +101,73 @@ describe('Auth Module Hardening & SHA-256 Token Hashing', () => {
         const session = await prisma.authSession.findFirst({ where: { userId: testUserId } })
         expect(session?.refreshTokenHash).toBe(expectedNewHash)
 
-        // Update refreshToken variable for subsequent tests
         refreshToken = newRefreshToken
     })
 
     it('POST /api/v1/auth/refresh - accepts recently rotated refresh token within grace window', async () => {
-        // Original token before refresh was stored as previousRefreshTokenHash
         const firstToken = refreshToken
 
-        // Rotate once to create a new token
         const res1 = await request(app)
             .post('/api/v1/auth/refresh')
+            .set('x-forwarded-for', '10.0.0.5')
             .send({ refreshToken: firstToken })
 
         expect(res1.status).toBe(200)
         const secondToken = res1.body.data.refreshToken
 
-        // Request again using the ALREADY ROTATED firstToken (simulating concurrent page load / multi-tab race)
         const resConcurrent = await request(app)
             .post('/api/v1/auth/refresh')
+            .set('x-forwarded-for', '10.0.0.5')
             .send({ refreshToken: firstToken })
 
         expect(resConcurrent.status).toBe(200)
         expect(resConcurrent.body.data.accessToken).toBeDefined()
 
-        // Update active token
         refreshToken = secondToken
     })
 
     it('POST /api/v1/auth/refresh - rejects token if rotated outside grace window', async () => {
-        // Simulate rotatedAt older than 30s
+        const firstToken = refreshToken
+
+        const res1 = await request(app)
+            .post('/api/v1/auth/refresh')
+            .set('x-forwarded-for', '10.0.0.6')
+            .send({ refreshToken: firstToken })
+        expect(res1.status).toBe(200)
+
         await prisma.authSession.updateMany({
             where: { userId: testUserId },
             data: { rotatedAt: new Date(Date.now() - 31 * 1000) },
         })
 
-        // Fake old token or invalid token
-        const res = await request(app)
+        const resExpiredGrace = await request(app)
             .post('/api/v1/auth/refresh')
-            .send({ refreshToken: 'invalid-or-expired-grace-token' })
+            .set('x-forwarded-for', '10.0.0.6')
+            .send({ refreshToken: firstToken })
 
-        expect(res.status).toBe(401)
+        expect(resExpiredGrace.status).toBe(401)
+        expect(resExpiredGrace.body.message).toBe('invalid refresh token')
     })
 
     it('GET /api/v1/auth/cli-token - validates access token with cached session lookup', async () => {
-        // Call protected route twice to test cache hit
+        const loginRes = await request(app)
+            .post('/api/v1/auth/login')
+            .set('x-forwarded-for', '10.0.0.7')
+            .send({ email: testEmail, password: testPassword })
+
+        expect(loginRes.status).toBe(200)
+        accessToken = loginRes.body.data.accessToken
+
         const res1 = await request(app)
             .get('/api/v1/auth/cli-token')
+            .set('x-forwarded-for', '10.0.0.7')
             .set('Authorization', `Bearer ${accessToken}`)
 
         expect(res1.status).toBe(200)
 
         const res2 = await request(app)
             .get('/api/v1/auth/cli-token')
+            .set('x-forwarded-for', '10.0.0.7')
             .set('Authorization', `Bearer ${accessToken}`)
 
         expect(res2.status).toBe(200)
@@ -154,43 +176,27 @@ describe('Auth Module Hardening & SHA-256 Token Hashing', () => {
     it('POST /api/v1/auth/signout - revokes session and invalidates cache immediately', async () => {
         const resSignout = await request(app)
             .post('/api/v1/auth/signout')
+            .set('x-forwarded-for', '10.0.0.8')
             .set('Authorization', `Bearer ${accessToken}`)
 
         expect(resSignout.status).toBe(200)
         expect(resSignout.body.message).toBe('signed out successfully')
 
-        // Subsequent requests with the revoked session token must fail with 401
         const resProtected = await request(app)
             .get('/api/v1/auth/cli-token')
+            .set('x-forwarded-for', '10.0.0.8')
             .set('Authorization', `Bearer ${accessToken}`)
 
         expect(resProtected.status).toBe(401)
         expect(resProtected.body.message).toBe('Session revoked')
     })
 
-    it('POST /api/v1/auth/login - returns 429 when rate limit threshold is exceeded', async () => {
-        const attempts = []
-        for (let i = 0; i < 16; i++) {
-            attempts.push(
-                request(app)
-                    .post('/api/v1/auth/login')
-                    .send({ email: 'ratelimit@example.com', password: 'Password123!' })
-            )
-        }
-        const responses = await Promise.all(attempts)
-        const rateLimitedRes = responses.find((r) => r.status === 429)
-
-        expect(rateLimitedRes).toBeDefined()
-        expect(rateLimitedRes?.body.error.code).toBe('RATE_LIMIT_EXCEEDED')
-    })
-
     it('authService.purgeExpiredAndRevokedSessions - purges expired and revoked sessions', async () => {
-        // Create an expired session and a revoked session
         const expiredSession = await prisma.authSession.create({
             data: {
                 userId: testUserId,
                 refreshTokenHash: 'expired-hash-12345',
-                expiresAt: new Date(Date.now() - 60000), // expired 1m ago
+                expiresAt: new Date(Date.now() - 60000),
             },
         })
 
@@ -216,5 +222,23 @@ describe('Auth Module Hardening & SHA-256 Token Hashing', () => {
 
         expect(checkExpired).toBeNull()
         expect(checkRevoked).toBeNull()
+    })
+
+    it('POST /api/v1/auth/login - returns 429 when rate limit threshold is exceeded', async () => {
+        const RATE_LIMIT_TEST_IP = '10.99.99.99'
+        let rateLimitedRes: any
+        for (let i = 0; i < 20; i++) {
+            const res = await request(app)
+                .post('/api/v1/auth/login')
+                .set('x-forwarded-for', RATE_LIMIT_TEST_IP)
+                .send({ email: 'ratelimit@example.com', password: 'Password123!' })
+            if (res.status === 429) {
+                rateLimitedRes = res
+                break
+            }
+        }
+
+        expect(rateLimitedRes).toBeDefined()
+        expect(rateLimitedRes?.body.error.code).toBe('RATE_LIMIT_EXCEEDED')
     })
 })
