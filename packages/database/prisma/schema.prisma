@@ -87,8 +87,10 @@ model Notification {
 model AuthSession {
   id               String    @id @default(uuid())
   userId           String
-  refreshTokenHash String    @unique
-  userAgent        String?
+  refreshTokenHash         String    @unique
+  previousRefreshTokenHash String?
+  rotatedAt                DateTime?
+  userAgent                String?
   ipAddress        String?
   expiresAt        DateTime
   createdAt        DateTime  @default(now())

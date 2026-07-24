@@ -96,4 +96,43 @@ describe('Auth Module Hardening & SHA-256 Token Hashing', () => {
         // Update refreshToken variable for subsequent tests
         refreshToken = newRefreshToken
     })
+
+    it('POST /api/v1/auth/refresh - accepts recently rotated refresh token within grace window', async () => {
+        // Original token before refresh was stored as previousRefreshTokenHash
+        const firstToken = refreshToken
+
+        // Rotate once to create a new token
+        const res1 = await request(app)
+            .post('/api/v1/auth/refresh')
+            .send({ refreshToken: firstToken })
+
+        expect(res1.status).toBe(200)
+        const secondToken = res1.body.data.refreshToken
+
+        // Request again using the ALREADY ROTATED firstToken (simulating concurrent page load / multi-tab race)
+        const resConcurrent = await request(app)
+            .post('/api/v1/auth/refresh')
+            .send({ refreshToken: firstToken })
+
+        expect(resConcurrent.status).toBe(200)
+        expect(resConcurrent.body.data.accessToken).toBeDefined()
+
+        // Update active token
+        refreshToken = secondToken
+    })
+
+    it('POST /api/v1/auth/refresh - rejects token if rotated outside grace window', async () => {
+        // Simulate rotatedAt older than 30s
+        await prisma.authSession.updateMany({
+            where: { userId: testUserId },
+            data: { rotatedAt: new Date(Date.now() - 31 * 1000) },
+        })
+
+        // Fake old token or invalid token
+        const res = await request(app)
+            .post('/api/v1/auth/refresh')
+            .send({ refreshToken: 'invalid-or-expired-grace-token' })
+
+        expect(res.status).toBe(401)
+    })
 })

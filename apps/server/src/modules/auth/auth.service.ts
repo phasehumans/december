@@ -464,6 +464,8 @@ const github = async (data: Github) => {
     }
 }
 
+const REFRESH_GRACE_PERIOD_MS = 30 * 1000
+
 const refreshSession = async (data: RefreshSession) => {
     const { refreshToken } = data
 
@@ -487,6 +489,10 @@ const refreshSession = async (data: RefreshSession) => {
         throw new AppError('session not found', 401)
     }
 
+    if (session.isRevoked) {
+        throw new AppError('session revoked', 401)
+    }
+
     if (session.userId !== userId) {
         await authRepository.deleteSessionsBySessionId(session.id)
         throw new AppError('invalid session', 401)
@@ -497,9 +503,15 @@ const refreshSession = async (data: RefreshSession) => {
         throw new AppError('session expired', 401)
     }
 
-    const isRefreshTokenValid = hashRefreshToken(refreshToken) === session.refreshTokenHash
+    const incomingHash = hashRefreshToken(refreshToken)
+    const isCurrentToken = session.refreshTokenHash === incomingHash
 
-    if (!isRefreshTokenValid) {
+    const isPreviousTokenWithinGrace =
+        session.previousRefreshTokenHash === incomingHash &&
+        session.rotatedAt &&
+        Date.now() - session.rotatedAt.getTime() <= REFRESH_GRACE_PERIOD_MS
+
+    if (!isCurrentToken && !isPreviousTokenWithinGrace) {
         await authRepository.deleteSessionsBySessionId(session.id)
         throw new AppError('invalid refresh token', 401)
     }
@@ -521,6 +533,13 @@ const refreshSession = async (data: RefreshSession) => {
         sessionId: session.id,
     })
 
+    if (isPreviousTokenWithinGrace) {
+        return {
+            accessToken,
+            refreshToken,
+        }
+    }
+
     const newRefreshToken = generateRefreshToken({
         userId: user.id,
         sessionId: session.id,
@@ -529,6 +548,8 @@ const refreshSession = async (data: RefreshSession) => {
     const newRefreshTokenHash = hashRefreshToken(newRefreshToken)
 
     await authRepository.updateSession(session.id, {
+        previousRefreshTokenHash: incomingHash,
+        rotatedAt: new Date(),
         refreshTokenHash: newRefreshTokenHash,
         expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
     })
