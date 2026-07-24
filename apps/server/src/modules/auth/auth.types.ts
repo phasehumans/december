@@ -85,3 +85,16 @@ export type VerifyUserCode = {
     userCode: string
     userId: string
 }
+
+export type CachedSessionData = {
+    id: string
+    userId: string
+    isRevoked: boolean
+    expiresAt: Date
+    user: {
+        id: string
+        isDeleted: boolean
+    } | null
+}
+
+export type PurgeSessions = Record<string, never>

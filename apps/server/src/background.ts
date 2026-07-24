@@ -2,6 +2,7 @@ import { prisma } from '@december/database'
 import { Worker, Queue } from 'bullmq'
 import Redis from 'ioredis'
 
+import { authService } from './modules/auth/auth.service'
 import { deletePrefix } from './shared/project-storage'
 
 const redisConnection = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
@@ -33,6 +34,9 @@ const sweepWorker = new Worker(
     async (job) => {
         if (job.name === 'daily_sweep') {
             console.log(`[Background] Running daily garbage collection sweep`)
+            await authService.purgeExpiredAndRevokedSessions().catch((err) => {
+                console.error('[Background] Failed to purge expired sessions:', err)
+            })
             // cleanup sessions older than 30 days or orphaned db records
             await prisma.session.deleteMany({
                 where: {
@@ -45,5 +49,7 @@ const sweepWorker = new Worker(
     },
     { connection: redisConnection as any }
 )
+
+authService.startSessionCleanupScheduler()
 
 console.log('[Background] Background workers initialized.')

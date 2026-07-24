@@ -7,6 +7,7 @@ import { AppError } from '../../shared/appError'
 import { getUsername } from '../../shared/username'
 import { sendNotificationToUser } from '../notification/notification.service'
 
+import { sessionCache } from './auth.cache'
 import { authRepository } from './auth.repository'
 import {
     sendOTP,
@@ -15,6 +16,7 @@ import {
     generateAccessToken,
     generateRefreshToken,
     verifyRefreshToken,
+    hashRefreshToken,
 } from './auth.utils'
 
 import type {
@@ -33,6 +35,7 @@ import type {
     GetCliToken,
     PollDeviceToken,
     VerifyUserCode,
+    PurgeSessions,
 } from './auth.types'
 
 const signup = async (data: Signup) => {
@@ -143,7 +146,7 @@ const verifyOtp = async (data: VerifyOtp) => {
         sessionId,
     })
 
-    const refreshTokenHash = await bcrypt.hash(refreshToken, env.BCRYPT_SALT_ROUNDS)
+    const refreshTokenHash = hashRefreshToken(refreshToken)
 
     await authRepository.createSession({
         id: sessionId,
@@ -216,7 +219,7 @@ const login = async (data: Login) => {
         sessionId,
     })
 
-    const refreshTokenHash = await bcrypt.hash(refreshToken, env.BCRYPT_SALT_ROUNDS)
+    const refreshTokenHash = hashRefreshToken(refreshToken)
 
     await authRepository.createSession({
         id: sessionId,
@@ -312,6 +315,7 @@ const resetPassword = async (data: ResetPassword) => {
     const password = await bcrypt.hash(newPassword, env.BCRYPT_SALT_ROUNDS)
 
     await authRepository.resetPasswordAndRevokeSessions(user.id, password)
+    sessionCache.invalidateUser(user.id)
 }
 
 const google = async (data: Google) => {
@@ -371,7 +375,7 @@ const google = async (data: Google) => {
         sessionId,
     })
 
-    const refreshTokenHash = await bcrypt.hash(refreshToken, env.BCRYPT_SALT_ROUNDS)
+    const refreshTokenHash = hashRefreshToken(refreshToken)
 
     await authRepository.createSession({
         id: sessionId,
@@ -445,7 +449,7 @@ const github = async (data: Github) => {
         sessionId,
     })
 
-    const refreshTokenHash = await bcrypt.hash(refreshToken, env.BCRYPT_SALT_ROUNDS)
+    const refreshTokenHash = hashRefreshToken(refreshToken)
 
     await authRepository.createSession({
         id: sessionId,
@@ -462,6 +466,8 @@ const github = async (data: Github) => {
         user,
     }
 }
+
+const REFRESH_GRACE_PERIOD_MS = 30 * 1000
 
 const refreshSession = async (data: RefreshSession) => {
     const { refreshToken } = data
@@ -486,6 +492,10 @@ const refreshSession = async (data: RefreshSession) => {
         throw new AppError('session not found', 401)
     }
 
+    if (session.isRevoked) {
+        throw new AppError('session revoked', 401)
+    }
+
     if (session.userId !== userId) {
         await authRepository.deleteSessionsBySessionId(session.id)
         throw new AppError('invalid session', 401)
@@ -496,9 +506,15 @@ const refreshSession = async (data: RefreshSession) => {
         throw new AppError('session expired', 401)
     }
 
-    const isRefreshTokenValid = await bcrypt.compare(refreshToken, session.refreshTokenHash)
+    const incomingHash = hashRefreshToken(refreshToken)
+    const isCurrentToken = session.refreshTokenHash === incomingHash
 
-    if (!isRefreshTokenValid) {
+    const isPreviousTokenWithinGrace =
+        session.previousRefreshTokenHash === incomingHash &&
+        session.rotatedAt &&
+        Date.now() - session.rotatedAt.getTime() <= REFRESH_GRACE_PERIOD_MS
+
+    if (!isCurrentToken && !isPreviousTokenWithinGrace) {
         await authRepository.deleteSessionsBySessionId(session.id)
         throw new AppError('invalid refresh token', 401)
     }
@@ -520,14 +536,23 @@ const refreshSession = async (data: RefreshSession) => {
         sessionId: session.id,
     })
 
+    if (isPreviousTokenWithinGrace) {
+        return {
+            accessToken,
+            refreshToken,
+        }
+    }
+
     const newRefreshToken = generateRefreshToken({
         userId: user.id,
         sessionId: session.id,
     })
 
-    const newRefreshTokenHash = await bcrypt.hash(newRefreshToken, env.BCRYPT_SALT_ROUNDS)
+    const newRefreshTokenHash = hashRefreshToken(newRefreshToken)
 
     await authRepository.updateSession(session.id, {
+        previousRefreshTokenHash: incomingHash,
+        rotatedAt: new Date(),
         refreshTokenHash: newRefreshTokenHash,
         expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
     })
@@ -548,12 +573,14 @@ const signout = async (data: Signout) => {
     }
 
     await authRepository.revokeSession(sessionId)
+    sessionCache.invalidate(sessionId)
 }
 
 const signoutAll = async (data: SignoutAll) => {
     const { userId } = data
 
     await authRepository.revokeAllSessions(userId)
+    sessionCache.invalidateUser(userId)
 }
 
 const deleteAccount = async (data: DeleteAccount) => {
@@ -570,6 +597,7 @@ const deleteAccount = async (data: DeleteAccount) => {
     }
 
     await authRepository.deleteAccount(userId)
+    sessionCache.invalidateUser(userId)
 }
 
 const getCliToken = async (data: GetCliToken) => {
@@ -640,7 +668,7 @@ const pollDeviceToken = async (data: PollDeviceToken) => {
 
         const sessionId = crypto.randomUUID()
         const refreshToken = generateRefreshToken({ userId: user.id, sessionId })
-        const refreshTokenHash = await bcrypt.hash(refreshToken, env.BCRYPT_SALT_ROUNDS)
+        const refreshTokenHash = hashRefreshToken(refreshToken)
 
         await authRepository.createSession({
             id: sessionId,
@@ -687,6 +715,25 @@ const verifyUserCode = async (data: VerifyUserCode) => {
     })
 }
 
+const purgeExpiredAndRevokedSessions = async (data: PurgeSessions = {}) => {
+    void data
+    return authRepository.purgeExpiredAndRevokedSessions()
+}
+
+const startSessionCleanupScheduler = (intervalMs = 60 * 60 * 1000) => {
+    const timer = setInterval(async () => {
+        try {
+            await purgeExpiredAndRevokedSessions()
+        } catch (error) {
+            console.error('Session cleanup scheduler failed:', error)
+        }
+    }, intervalMs)
+    if (timer.unref) {
+        timer.unref()
+    }
+    return timer
+}
+
 export const authService = {
     signup,
     verifyOtp,
@@ -704,4 +751,6 @@ export const authService = {
     generateDeviceCode,
     pollDeviceToken,
     verifyUserCode,
+    purgeExpiredAndRevokedSessions,
+    startSessionCleanupScheduler,
 }

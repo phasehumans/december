@@ -22,7 +22,7 @@ import {
 } from './auth.schema'
 import { authService } from './auth.service'
 
-import type { Request, Response, NextFunction } from 'express'
+import type { Request, Response } from 'express'
 
 const signup = asyncHandler(async (req: Request, res: Response) => {
     const parseData = signupSchema.parse(req.body)
@@ -43,7 +43,7 @@ const verifyOtp = asyncHandler(async (req: Request, res: Response) => {
     const result = await authService.verifyOtp({ email, otp, userAgent, ipAddress })
     authCookie.setAuthCookies(res, result.accessToken, result.refreshToken)
 
-    return sendSuccess(res, 'email verified successfully')
+    return sendSuccess(res, 'email verified successfully', result)
 })
 
 const login = asyncHandler(async (req: Request, res: Response) => {
@@ -58,7 +58,7 @@ const login = asyncHandler(async (req: Request, res: Response) => {
     const result = await authService.login({ ...parseData, userAgent, ipAddress })
     authCookie.setAuthCookies(res, result.accessToken, result.refreshToken)
 
-    return sendSuccess(res, 'login successful')
+    return sendSuccess(res, 'login successful', result)
 })
 
 const requestPasswordReset = asyncHandler(async (req: Request, res: Response) => {
@@ -231,26 +231,27 @@ const github = asyncHandler(async (req: Request, res: Response) => {
     return sendSuccess(res, 'login successful')
 })
 
-const refreshSession = async (req: Request, res: Response, next: NextFunction) => {
+const refreshSession = asyncHandler(async (req: Request, res: Response) => {
     try {
+        const refreshToken = req.body?.refreshToken || req.cookies?.refreshToken
         const result = await authService.refreshSession({
-            refreshToken: req.cookies?.refreshToken,
+            refreshToken,
         })
 
         authCookie.setAccessTokenCookie(res, result.accessToken)
         authCookie.setRefreshTokenCookie(res, result.refreshToken)
 
-        return sendSuccess(res, 'session refreshed successfully')
+        return sendSuccess(res, 'session refreshed successfully', result)
     } catch (error) {
         authCookie.clearAuthCookies(res)
 
         if (error instanceof AppError) {
-            return next(error)
+            throw error
         }
 
-        return next(new AppError('failed to refresh session', 401))
+        throw new AppError('failed to refresh session', 401)
     }
-}
+})
 
 const signout = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user?.userId
@@ -293,7 +294,13 @@ const deleteAccount = asyncHandler(async (req: Request, res: Response) => {
 })
 
 const getCliToken = asyncHandler(async (req: Request, res: Response) => {
-    const token = req.cookies?.accessToken
+    const authHeader = req.headers.authorization
+    const headerToken =
+        authHeader && typeof authHeader === 'string' && authHeader.startsWith('Bearer ')
+            ? authHeader.substring(7)
+            : undefined
+    const token = req.cookies?.accessToken || headerToken
+
     if (!token || !req.user?.userId) {
         throw new AppError('No active session found', 401)
     }
