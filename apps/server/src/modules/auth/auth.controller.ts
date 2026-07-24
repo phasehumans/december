@@ -294,7 +294,13 @@ const deleteAccount = asyncHandler(async (req: Request, res: Response) => {
 })
 
 const getCliToken = asyncHandler(async (req: Request, res: Response) => {
-    const token = req.cookies?.accessToken
+    const authHeader = req.headers.authorization
+    const headerToken =
+        authHeader && typeof authHeader === 'string' && authHeader.startsWith('Bearer ')
+            ? authHeader.substring(7)
+            : undefined
+    const token = req.cookies?.accessToken || headerToken
+
     if (!token || !req.user?.userId) {
         throw new AppError('No active session found', 401)
     }

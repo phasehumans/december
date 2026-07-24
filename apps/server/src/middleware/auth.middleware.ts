@@ -2,6 +2,7 @@ import { prisma } from '@december/database'
 import jwt from 'jsonwebtoken'
 
 import { env } from '../env'
+import { sessionCache } from '../modules/auth/auth.cache'
 
 import type { TokenPayload } from '../modules/auth/auth.types'
 import type { Request, Response, NextFunction } from 'express'
@@ -41,23 +42,31 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
             })
         }
 
-        const session = await prisma.authSession.findUnique({
-            where: {
-                id: decoded.sessionId,
-            },
-            select: {
-                id: true,
-                userId: true,
-                isRevoked: true,
-                expiresAt: true,
-                user: {
-                    select: {
-                        id: true,
-                        isDeleted: true,
+        let session = sessionCache.get(decoded.sessionId)
+
+        if (!session) {
+            session = await prisma.authSession.findUnique({
+                where: {
+                    id: decoded.sessionId,
+                },
+                select: {
+                    id: true,
+                    userId: true,
+                    isRevoked: true,
+                    expiresAt: true,
+                    user: {
+                        select: {
+                            id: true,
+                            isDeleted: true,
+                        },
                     },
                 },
-            },
-        })
+            })
+
+            if (session) {
+                sessionCache.set(decoded.sessionId, session)
+            }
+        }
 
         if (!session) {
             return res.status(401).json({

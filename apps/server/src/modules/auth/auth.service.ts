@@ -7,6 +7,7 @@ import { AppError } from '../../shared/appError'
 import { getUsername } from '../../shared/username'
 import { sendNotificationToUser } from '../notification/notification.service'
 
+import { sessionCache } from './auth.cache'
 import { authRepository } from './auth.repository'
 import {
     sendOTP,
@@ -313,6 +314,7 @@ const resetPassword = async (data: ResetPassword) => {
     const password = await bcrypt.hash(newPassword, env.BCRYPT_SALT_ROUNDS)
 
     await authRepository.resetPasswordAndRevokeSessions(user.id, password)
+    sessionCache.invalidateUser(user.id)
 }
 
 const google = async (data: Google) => {
@@ -570,12 +572,14 @@ const signout = async (data: Signout) => {
     }
 
     await authRepository.revokeSession(sessionId)
+    sessionCache.invalidate(sessionId)
 }
 
 const signoutAll = async (data: SignoutAll) => {
     const { userId } = data
 
     await authRepository.revokeAllSessions(userId)
+    sessionCache.invalidateUser(userId)
 }
 
 const deleteAccount = async (data: DeleteAccount) => {
@@ -592,6 +596,7 @@ const deleteAccount = async (data: DeleteAccount) => {
     }
 
     await authRepository.deleteAccount(userId)
+    sessionCache.invalidateUser(userId)
 }
 
 const getCliToken = async (data: GetCliToken) => {

@@ -135,4 +135,36 @@ describe('Auth Module Hardening & SHA-256 Token Hashing', () => {
 
         expect(res.status).toBe(401)
     })
+
+    it('GET /api/v1/auth/cli-token - validates access token with cached session lookup', async () => {
+        // Call protected route twice to test cache hit
+        const res1 = await request(app)
+            .get('/api/v1/auth/cli-token')
+            .set('Authorization', `Bearer ${accessToken}`)
+
+        expect(res1.status).toBe(200)
+
+        const res2 = await request(app)
+            .get('/api/v1/auth/cli-token')
+            .set('Authorization', `Bearer ${accessToken}`)
+
+        expect(res2.status).toBe(200)
+    })
+
+    it('POST /api/v1/auth/signout - revokes session and invalidates cache immediately', async () => {
+        const resSignout = await request(app)
+            .post('/api/v1/auth/signout')
+            .set('Authorization', `Bearer ${accessToken}`)
+
+        expect(resSignout.status).toBe(200)
+        expect(resSignout.body.message).toBe('signed out successfully')
+
+        // Subsequent requests with the revoked session token must fail with 401
+        const resProtected = await request(app)
+            .get('/api/v1/auth/cli-token')
+            .set('Authorization', `Bearer ${accessToken}`)
+
+        expect(resProtected.status).toBe(401)
+        expect(resProtected.body.message).toBe('Session revoked')
+    })
 })
