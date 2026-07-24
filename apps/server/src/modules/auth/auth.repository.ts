@@ -175,6 +175,14 @@ async function deleteDeviceCode(id: string) {
     })
 }
 
+async function purgeExpiredAndRevokedSessions() {
+    return prisma.authSession.deleteMany({
+        where: {
+            OR: [{ expiresAt: { lt: new Date() } }, { isRevoked: true }],
+        },
+    })
+}
+
 export const authRepository = {
     findUserByEmail,
     findUserById,
@@ -194,4 +202,5 @@ export const authRepository = {
     findDeviceCodeByUserCode,
     updateDeviceCode,
     deleteDeviceCode,
+    purgeExpiredAndRevokedSessions,
 }

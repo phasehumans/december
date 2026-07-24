@@ -714,6 +714,24 @@ const verifyUserCode = async (data: VerifyUserCode) => {
     })
 }
 
+const purgeExpiredAndRevokedSessions = async () => {
+    return authRepository.purgeExpiredAndRevokedSessions()
+}
+
+const startSessionCleanupScheduler = (intervalMs = 60 * 60 * 1000) => {
+    const timer = setInterval(async () => {
+        try {
+            await purgeExpiredAndRevokedSessions()
+        } catch (error) {
+            console.error('Session cleanup scheduler failed:', error)
+        }
+    }, intervalMs)
+    if (timer.unref) {
+        timer.unref()
+    }
+    return timer
+}
+
 export const authService = {
     signup,
     verifyOtp,
@@ -731,4 +749,6 @@ export const authService = {
     generateDeviceCode,
     pollDeviceToken,
     verifyUserCode,
+    purgeExpiredAndRevokedSessions,
+    startSessionCleanupScheduler,
 }

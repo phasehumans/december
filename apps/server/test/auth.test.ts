@@ -183,4 +183,38 @@ describe('Auth Module Hardening & SHA-256 Token Hashing', () => {
         expect(rateLimitedRes).toBeDefined()
         expect(rateLimitedRes?.body.error.code).toBe('RATE_LIMIT_EXCEEDED')
     })
+
+    it('authService.purgeExpiredAndRevokedSessions - purges expired and revoked sessions', async () => {
+        // Create an expired session and a revoked session
+        const expiredSession = await prisma.authSession.create({
+            data: {
+                userId: testUserId,
+                refreshTokenHash: 'expired-hash-12345',
+                expiresAt: new Date(Date.now() - 60000), // expired 1m ago
+            },
+        })
+
+        const revokedSession = await prisma.authSession.create({
+            data: {
+                userId: testUserId,
+                refreshTokenHash: 'revoked-hash-12345',
+                expiresAt: new Date(Date.now() + 86400000),
+                isRevoked: true,
+                revokedAt: new Date(),
+            },
+        })
+
+        const { authService } = await import('../src/modules/auth/auth.service')
+        await authService.purgeExpiredAndRevokedSessions()
+
+        const checkExpired = await prisma.authSession.findUnique({
+            where: { id: expiredSession.id },
+        })
+        const checkRevoked = await prisma.authSession.findUnique({
+            where: { id: revokedSession.id },
+        })
+
+        expect(checkExpired).toBeNull()
+        expect(checkRevoked).toBeNull()
+    })
 })
