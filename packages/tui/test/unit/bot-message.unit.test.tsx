@@ -12,12 +12,11 @@ describe('BotMessage Component (Unit)', () => {
         expect(lastFrame()).toContain('Assistant response text')
     })
 
-    it('renders thought blocks persistently and does not obey expandCommands', () => {
+    it('renders completed thought blocks collapsed by default and respects expandCommands', () => {
         const thoughtContent =
             'Line 1: Planning search\nLine 2: Locating files\nLine 3: Reading contents\nLine 4: Done'
         const { lastFrame, rerender } = render(
             <BotMessage
-                expandCommands={false}
                 blocks={[
                     { type: 'thinking', content: thoughtContent },
                     { type: 'text', content: 'Final answer' },
@@ -25,14 +24,12 @@ describe('BotMessage Component (Unit)', () => {
             />
         )
         let frame = lastFrame() || ''
-        expect(frame).not.toContain('Thoughts')
-        expect(frame).not.toContain('tokens')
-        expect(frame).not.toContain('ctrl+o to expand')
-        expect(frame).toContain('Line 1: Planning search')
-        expect(frame).toContain('Line 4: Done')
-        expect(frame).toContain('Final answer')
+        expect(frame).toContain('Thoughts')
+        expect(frame).toContain('20 tokens')
+        expect(frame).toContain('ctrl+o to expand')
+        expect(frame).not.toContain('Line 1: Planning search')
 
-        // Re-render with expandCommands=true to confirm thoughts do not change
+        // Re-render with expandCommands=true
         rerender(
             <BotMessage
                 expandCommands={true}
@@ -44,15 +41,13 @@ describe('BotMessage Component (Unit)', () => {
         )
 
         frame = lastFrame() || ''
-        expect(frame).not.toContain('Thoughts')
-        expect(frame).not.toContain('tokens')
-        expect(frame).not.toContain('ctrl+o to collapse')
+        expect(frame).toContain('Thoughts')
+        expect(frame).toContain('20 tokens')
+        expect(frame).toContain('ctrl+o to collapse')
         expect(frame).toContain('Line 1: Planning search')
-        expect(frame).toContain('Line 4: Done')
-        expect(frame).toContain('Final answer')
     })
 
-    it('renders active streaming thought blocks cleanly', () => {
+    it('renders active streaming thought blocks cleanly with side border', () => {
         const thoughtContent =
             'Line 1: Planning search\nLine 2: Locating files\nLine 3: Reading contents\nLine 4: Still thinking'
         const { lastFrame } = render(
@@ -63,27 +58,6 @@ describe('BotMessage Component (Unit)', () => {
         const frame = lastFrame() || ''
         expect(frame).toContain('Line 4: Still thinking')
         expect(frame).not.toContain('Thought process')
-    })
-
-    it('renders inline <thought> tags persistently without collapsible headers or obeying expandCommands', () => {
-        const { lastFrame } = render(
-            <BotMessage
-                expandCommands={false}
-                blocks={[
-                    {
-                        type: 'text',
-                        content:
-                            '<thought>Thinking through the algorithm</thought>Here is the completed implementation.',
-                    },
-                ]}
-            />
-        )
-        const frame = lastFrame() || ''
-        expect(frame).not.toContain('Thoughts')
-        expect(frame).not.toContain('tokens')
-        expect(frame).not.toContain('ctrl+o')
-        expect(frame).toContain('Thinking through the algorithm')
-        expect(frame).toContain('Here is the completed implementation.')
     })
 
     it('renders HTTP 429 rate limit error messages correctly without badges', () => {
@@ -272,7 +246,7 @@ describe('BotMessage Component (Unit)', () => {
         const { lastFrame } = render(<BotMessage blocks={blocks} expandCommands={false} />)
         const frame = lastFrame() || ''
         const rawLines = frame.split('\n')
-        const thoughtIdx = rawLines.findIndex((l) => l.includes('Planning next steps'))
+        const thoughtIdx = rawLines.findIndex((l) => l.includes('Thoughts'))
         const cmdIdx = rawLines.findIndex((l) => l.includes('ListDir'))
         // 0 blank lines: cmdIdx is directly thoughtIdx + 1
         expect(cmdIdx).toBe(thoughtIdx + 1)
@@ -292,9 +266,9 @@ describe('BotMessage Component (Unit)', () => {
         const { lastFrame } = render(<BotMessage blocks={blocks} expandCommands={false} />)
         const frame = lastFrame() || ''
         const rawLines = frame.split('\n')
-        const thoughtIdx = rawLines.findIndex((l) => l.includes('Planning next steps'))
+        const thoughtIdx = rawLines.findIndex((l) => l.includes('Thoughts'))
         const textIdx = rawLines.findIndex((l) => l.includes('Here is the answer'))
-        // Exactly 1 blank line between thoughts and text response
+        // Exactly 1 blank line between thoughts summary and text response
         expect(textIdx).toBe(thoughtIdx + 2)
         expect(rawLines[thoughtIdx + 1]?.trim()).toBe('')
     })
