@@ -25,6 +25,7 @@ export * from './components/menus/tasks-mode-menu'
 export * from './components/menus/plan-approve-menu'
 export * from './components/menus/grill-question-menu'
 export * from './components/menus/settings-main-menu'
+export * from './components/menus/skills-guide-menu'
 export * from './components/menus/tool-permission-menu'
 export * from './components/menus/ollama-setup-menu'
 

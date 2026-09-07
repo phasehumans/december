@@ -29,3 +29,4 @@ export type AuthMode =
     | 'usage'
     | 'ollama_setup'
     | 'mcp_manager'
+    | 'skills_guide'

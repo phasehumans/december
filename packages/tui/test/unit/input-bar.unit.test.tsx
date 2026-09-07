@@ -145,4 +145,22 @@ describe('InputBar Component (Unit)', () => {
         const frame = lastFrame()
         expect(frame).toContain('gemini-3.8-flash (Subscription)')
     })
+
+    it('forwards /skills to onSubmit when selected from command menu on return', async () => {
+        const handleSubmit = mock(() => {})
+        const { stdin } = render(
+            <RootLayout>
+                <InputBar onSubmit={handleSubmit} />
+            </RootLayout>
+        )
+
+        stdin.write('/sk')
+        await new Promise((resolve) => setTimeout(resolve, 30))
+
+        // Press Enter to select /skills from command menu
+        stdin.write('\r')
+        await new Promise((resolve) => setTimeout(resolve, 30))
+
+        expect(handleSubmit).toHaveBeenCalledWith('/skills')
+    })
 })

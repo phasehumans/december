@@ -12,6 +12,7 @@ import { OllamaSetupMenu } from './ollama-setup-menu'
 import { PlanApproveMenu } from './plan-approve-menu'
 import { SessionSelectMenu } from './session-select-menu'
 import { SettingsMainMenu } from './settings-main-menu'
+import { SkillsGuideMenu } from './skills-guide-menu'
 import { SubscriptionSelectMenu } from './subscription-select-menu'
 import { TasksModeMenu } from './tasks-mode-menu'
 import { ToolPermissionMenu } from './tool-permission-menu'
@@ -55,6 +56,8 @@ export function AuthMenus(props: any) {
             return <GrillQuestionMenu {...props} />
         case 'settings_main':
             return <SettingsMainMenu {...props} />
+        case 'skills_guide':
+            return <SkillsGuideMenu setAuthMode={props.setAuthMode} />
         case 'tool_permission':
             return (
                 <ToolPermissionMenu
