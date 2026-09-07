@@ -60,6 +60,35 @@ describe('MessageList Component (Unit)', () => {
         expect(frame).toContain('API rate limit exceeded')
     })
 
+    it('renders structured error messages with cause and hint without symbols', () => {
+        const staticMessages = [
+            {
+                id: 'e2',
+                role: 'error' as const,
+                text: 'Failed to start Claude OAuth callback server',
+                cause: 'listen EADDRINUSE: address already in use :::53692',
+                hint: 'Another process is already using this port.',
+            },
+        ]
+
+        const { lastFrame } = renderWithProviders(
+            <MessageList
+                staticKey={0}
+                staticMessages={staticMessages}
+                activeMessages={[]}
+                isAuthenticated={true}
+            />
+        )
+
+        const frame = lastFrame() || ''
+        expect(frame).toContain('Error: Failed to start Claude OAuth callback server')
+        expect(frame).toContain('Cause: listen EADDRINUSE: address already in use :::53692')
+        expect(frame).toContain('Hint:  Another process is already using this port.')
+        expect(frame).not.toContain('✖')
+        expect(frame).not.toContain('↳')
+        expect(frame).not.toContain('ℹ')
+    })
+
     it('renders header banner on session resume and passes expandCommands to past messages', () => {
         const staticMessages = [
             { id: 'header', role: 'header' as const },

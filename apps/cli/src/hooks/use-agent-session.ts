@@ -14,7 +14,7 @@ import { useCliStore } from '../store'
 import { setupAgentInterceptors } from '../store/interceptors'
 import { taskManager } from '../task-manager'
 import { startDirectCommand } from '../utils/direct-shell'
-import { parseErrorMessage } from '../utils/error-parser'
+import { parseErrorMessage, parseError } from '../utils/error-parser'
 import { extractJsonArray } from '../utils/json-parser'
 import { getProviderModels } from '../utils/models'
 import { fetchOpenRouterModels } from '../utils/openrouter-models'
@@ -381,10 +381,13 @@ export function useAgentSession({
                     setStaticMessages((prev) => [...prev, noticeMsg])
                 } else {
                     setActiveMessages([])
+                    const parsed = parseError(err)
                     const errorMsg: Message = {
                         id: getNextMsgId(),
                         role: 'error',
-                        text: cleanError,
+                        text: parsed.message,
+                        cause: parsed.cause,
+                        hint: parsed.hint,
                     }
                     setStaticMessages((prev) => [...prev, errorMsg])
                 }
@@ -467,10 +470,16 @@ export function useAgentSession({
                 await processAgentStream({ stream, setActiveMessages, assistantMsgId })
                 planSuccess = true
             } catch (err: any) {
-                const cleanError = parseErrorMessage(err)
+                const parsed = parseError(err)
                 setActiveMessages((prev) => [
                     ...prev,
-                    { id: getNextMsgId(), role: 'error', text: cleanError },
+                    {
+                        id: getNextMsgId(),
+                        role: 'error',
+                        text: parsed.message,
+                        cause: parsed.cause,
+                        hint: parsed.hint,
+                    },
                 ])
             } finally {
                 setIsStreaming(false)
@@ -1238,10 +1247,16 @@ ${decStatus}
                     await processAgentStream({ stream, setActiveMessages, assistantMsgId })
                     planSuccess = true
                 } catch (err: any) {
-                    const cleanError = parseErrorMessage(err)
+                    const parsed = parseError(err)
                     setActiveMessages((prev) => [
                         ...prev,
-                        { id: getNextMsgId(), role: 'error', text: cleanError },
+                        {
+                            id: getNextMsgId(),
+                            role: 'error',
+                            text: parsed.message,
+                            cause: parsed.cause,
+                            hint: parsed.hint,
+                        },
                     ])
                 } finally {
                     setIsStreaming(false)
@@ -1641,9 +1656,16 @@ ${decStatus}
                     })
                     await processAgentStream({ stream, setActiveMessages, assistantMsgId })
                 } catch (err: any) {
+                    const parsed = parseError(err)
                     setActiveMessages((prev) => [
                         ...prev,
-                        { id: getNextMsgId(), role: 'error', text: err.message },
+                        {
+                            id: getNextMsgId(),
+                            role: 'error',
+                            text: parsed.message,
+                            cause: parsed.cause,
+                            hint: parsed.hint,
+                        },
                     ])
                 } finally {
                     setIsStreaming(false)

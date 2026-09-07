@@ -4,13 +4,14 @@ import React from 'react'
 import { THEME } from '../../theme'
 import { Spinner } from '../spinner'
 
+import { parseTuiError } from './error-message'
 import { SmoothMarkdown } from './smooth-markdown'
 
 export type MessageBlock =
     | { type: 'text'; content: string; color?: string }
     | { type: 'thinking'; content: string; isStreaming?: boolean }
     | { type: 'compaction'; summary: string }
-    | { type: 'error'; error: string }
+    | { type: 'error'; error: string; cause?: string; hint?: string }
     | { type: 'interrupt' }
     | {
           type: 'command'
@@ -295,10 +296,29 @@ export const BotMessage = React.memo(function BotMessage({ blocks, usage, expand
                         )
                     }
                     case 'error': {
+                        const parsed = parseTuiError(block.error, block.cause, block.hint)
                         return (
                             <Box key={idx} flexDirection="column">
                                 {needsTopMargin && <Text> </Text>}
-                                <Text color={THEME.colors.error}>{block.error}</Text>
+                                <Text color={THEME.colors.error} bold>
+                                    Error: {parsed.message}
+                                </Text>
+                                {parsed.cause && parsed.cause !== '' && (
+                                    <Box paddingLeft={2}>
+                                        <Text>
+                                            <Text color={THEME.colors.muted}>{'Cause: '}</Text>
+                                            <Text color={THEME.colors.text}>{parsed.cause}</Text>
+                                        </Text>
+                                    </Box>
+                                )}
+                                {parsed.hint && parsed.hint !== '' && (
+                                    <Box paddingLeft={2}>
+                                        <Text>
+                                            <Text color={THEME.colors.warning}>{'Hint:  '}</Text>
+                                            <Text color={THEME.colors.muted}>{parsed.hint}</Text>
+                                        </Text>
+                                    </Box>
+                                )}
                             </Box>
                         )
                     }

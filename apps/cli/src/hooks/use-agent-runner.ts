@@ -1,4 +1,4 @@
-import { parseErrorMessage } from '../utils/error-parser'
+import { parseError } from '../utils/error-parser'
 import { getToolSummary } from '../utils/formatters'
 
 import type { Message } from '@december/tui'
@@ -72,10 +72,12 @@ export async function processAgentStream({
                             ) {
                                 blocks.pop()
                             }
-                            const errMsg = parseErrorMessage({ message: event.error })
+                            const parsed = parseError({ message: event.error })
                             blocks.push({
                                 type: 'error',
-                                error: errMsg,
+                                error: parsed.message,
+                                cause: parsed.cause,
+                                hint: parsed.hint,
                             })
                             break
                         }

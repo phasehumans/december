@@ -1,6 +1,6 @@
 import { expect, test, describe } from 'bun:test'
 
-import { parseErrorMessage } from '../src/utils/error-parser'
+import { parseErrorMessage, parseError } from '../src/utils/error-parser'
 
 describe('error-parser', () => {
     test('extracts simple error string', () => {
@@ -140,11 +140,92 @@ describe('error-parser', () => {
         expect(parsed).not.toContain('December Wallet')
     })
 
+    test('attaches Meta credit notice when 402 or credit limit is exhausted on Meta', () => {
+        const raw402Err = '402 Insufficient credits. Meta model muse-spark-1.3'
+        const parsed = parseErrorMessage(raw402Err)
+        expect(parsed).toContain('https://dev.meta.ai/')
+        expect(parsed).toContain('Insufficient credits in your Meta account')
+        expect(parsed).not.toContain('December Wallet')
+    })
+
     test('attaches authentication notice when 401 or session expired error occurs', () => {
         const raw401Err = '401 status code (no body)'
         const parsed = parseErrorMessage(raw401Err)
         expect(parsed).toContain('Authentication failed or session expired')
         expect(parsed).toContain('/login')
         expect(parsed).toContain('Bring Your Own Key (BYOK)')
+    })
+
+    describe('parseError (Structured Extraction)', () => {
+        test('extracts custom message and underlying cause from Error with cause', () => {
+            const causeErr = new Error('listen EADDRINUSE: address already in use :::53692')
+            const customErr = new Error('Failed to start Claude OAuth callback server', {
+                cause: causeErr,
+            })
+            const parsed = parseError(customErr)
+            expect(parsed.message).toBe('Failed to start Claude OAuth callback server')
+            expect(parsed.cause).toContain('EADDRINUSE')
+            expect(parsed.hint).toContain('port')
+            expect(JSON.stringify(parsed)).not.toContain('✖')
+            expect(JSON.stringify(parsed)).not.toContain('↳')
+            expect(JSON.stringify(parsed)).not.toContain('ℹ')
+        })
+
+        test('extracts cause from originalError property', () => {
+            const customErr = {
+                message: 'Failed to run tool',
+                originalError: new Error('Permission denied: /var/log/app.log'),
+            }
+            const parsed = parseError(customErr)
+            expect(parsed.message).toBe('Failed to run tool')
+            expect(parsed.cause).toContain('Permission denied')
+            expect(parsed.hint).toContain('permissions')
+        })
+
+        test('extracts structured details from rate limit errors', () => {
+            const rawQuotaErr =
+                'You exceeded your current quota. * Quota exceeded for metric: generativelanguage.googleapis.com, limit: 20, 429'
+            const parsed = parseError(rawQuotaErr)
+            expect(parsed.message).toBe('Rate limit or quota exhausted from LLM provider.')
+            expect(parsed.cause).toContain('generativelanguage.googleapis.com')
+            expect(parsed.hint).toContain('https://trydecember.com/pricing')
+        })
+
+        test('extracts structured details from OpenRouter 402 credits errors', () => {
+            const raw402Err =
+                '402 This request requires more credits, or fewer max_tokens. You requested up to 65536 tokens, but can only afford 10666. To increase, visit https://openrouter.ai/settings/credits'
+            const parsed = parseError(raw402Err)
+            expect(parsed.message).toBe('OpenRouter credits exhausted or insufficient.')
+            expect(parsed.cause).toContain('can only afford 10666')
+            expect(parsed.hint).toBe('Please add credits at https://openrouter.ai/settings/credits')
+        })
+
+        test('extracts structured details from 401 authentication errors', () => {
+            const raw401Err = '401 Unauthorized: Invalid API key'
+            const parsed = parseError(raw401Err)
+            expect(parsed.message).toBe('Authentication failed or session expired.')
+            expect(parsed.cause).toContain('Invalid API key')
+            expect(parsed.hint).toContain('/login')
+        })
+
+        test('extracts structured details from 503 overloaded errors', () => {
+            const overloadedErr = 'HTTP 503 Service Unavailable: Gemini model overloaded'
+            const parsed = parseError(overloadedErr)
+            expect(parsed.message).toBe(
+                'Model is currently experiencing high demand or capacity limits from the provider.'
+            )
+            expect(parsed.cause).toContain('503 Service Unavailable')
+            expect(parsed.hint).toContain('temporary')
+        })
+
+        test('extracts network ECONNREFUSED into cause and hint', () => {
+            const netErr = new Error('fetch failed', {
+                cause: new Error('connect ECONNREFUSED 127.0.0.1:4000'),
+            })
+            const parsed = parseError(netErr)
+            expect(parsed.message).toBe('fetch failed')
+            expect(parsed.cause).toContain('ECONNREFUSED')
+            expect(parsed.hint).toContain('server')
+        })
     })
 })

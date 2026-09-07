@@ -117,6 +117,30 @@ describe('BotMessage Component (Unit)', () => {
         expect(frame).not.toContain('HIGH DEMAND')
     })
 
+    it('renders structured error with cause and hint without symbols', () => {
+        const { lastFrame } = render(
+            <BotMessage
+                blocks={[
+                    {
+                        type: 'error',
+                        error: 'Model provider rejected request',
+                        cause: 'OpenRouter 402 Payment Required: Insufficient credits',
+                        hint: 'Please add credits at https://openrouter.ai/settings/credits',
+                    },
+                ]}
+            />
+        )
+        const frame = lastFrame() || ''
+        expect(frame).toContain('Error: Model provider rejected request')
+        expect(frame).toContain('Cause: OpenRouter 402 Payment Required: Insufficient credits')
+        expect(frame).toContain(
+            'Hint:  Please add credits at https://openrouter.ai/settings/credits'
+        )
+        expect(frame).not.toContain('✖')
+        expect(frame).not.toContain('↳')
+        expect(frame).not.toContain('ℹ')
+    })
+
     it('renders git diff outputs collapsed by default and respects expandCommands', () => {
         const diffOutput = '--- a/file.ts\n+++ b/file.ts\n@@ -1,2 +1,2 @@\n-old code\n+new code'
         const { lastFrame, rerender } = render(

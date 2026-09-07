@@ -2,6 +2,8 @@ export type Message = {
     id: number | string
     role: 'user' | 'assistant' | 'error' | 'header'
     text?: string
+    cause?: string
+    hint?: string
     displayText?: string
     blocks?: any[]
     usage?: { promptTokens: number; completionTokens: number }

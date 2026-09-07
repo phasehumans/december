@@ -1,6 +1,7 @@
 import { loadConfig, saveConfig, getProviderConfig } from '../config'
 import { MESSAGES } from '../constants/messages'
 import { useCliStore } from '../store'
+import { parseError } from '../utils/error-parser'
 import { getToolSummary } from '../utils/formatters'
 import { getProviderModels } from '../utils/models'
 import { instantiateProvider } from '../utils/provider-factory'
@@ -140,7 +141,8 @@ export function useAuthHandlers(
                     },
                 ])
             } catch (err: any) {
-                let cleanMsg = err?.message || String(err)
+                const parsed = parseError(err)
+                let cleanMsg = parsed.message
                 if (
                     cleanMsg.includes('fetch failed') ||
                     cleanMsg.includes('ECONNREFUSED') ||
@@ -153,7 +155,17 @@ export function useAuthHandlers(
                 const errorText = `Login failed: ${cleanMsg}`
                 setAuthError(errorText)
                 setStaticMessages((prev) => [...prev, ...useCliStore.getState().activeMessages])
-                setActiveMessages([{ id: getNextMsgId(), role: 'error', text: errorText }])
+                setActiveMessages([
+                    {
+                        id: getNextMsgId(),
+                        role: 'error',
+                        text: errorText,
+                        cause: parsed.cause,
+                        hint:
+                            parsed.hint ||
+                            'Check your network connection or verify the authentication endpoint.',
+                    },
+                ])
             } finally {
                 setIsStreaming(false)
             }
@@ -372,10 +384,19 @@ export function useAuthHandlers(
 
                     addToast(formatSubscriptionToast(bundle, targetModel), 'success')
                 } catch (err: any) {
-                    const errorText = `Subscription verification failed: ${err?.message || String(err)}`
+                    const parsed = parseError(err)
+                    const errorText = `Subscription verification failed: ${parsed.message}`
                     setAuthError(errorText)
                     setStaticMessages((prev) => [...prev, ...useCliStore.getState().activeMessages])
-                    setActiveMessages([{ id: getNextMsgId(), role: 'error', text: errorText }])
+                    setActiveMessages([
+                        {
+                            id: getNextMsgId(),
+                            role: 'error',
+                            text: errorText,
+                            cause: parsed.cause,
+                            hint: parsed.hint,
+                        },
+                    ])
                 } finally {
                     setIsStreaming(false)
                 }
@@ -804,10 +825,13 @@ export function useAuthHandlers(
                     }
 
                     if (msg.errorMessage) {
-                        const { parseErrorMessage } = await import('../utils/error-parser')
+                        const { parseError } = await import('../utils/error-parser')
+                        const parsed = parseError({ message: msg.errorMessage })
                         blocks.push({
                             type: 'error',
-                            error: parseErrorMessage({ message: msg.errorMessage }),
+                            error: parsed.message,
+                            cause: parsed.cause,
+                            hint: parsed.hint,
                         })
                     } else if (msg.content) {
                         blocks.push({ type: 'text', content: msg.content })
