@@ -286,4 +286,32 @@ describe('BotMessage Component (Unit)', () => {
         )
         expect(frame2()).toContain('Generating questions...')
     })
+
+    it('renders skills_guide block with commands and sources without boxes or borders', () => {
+        const { lastFrame } = render(
+            <BotMessage
+                blocks={[
+                    {
+                        type: 'skills_guide',
+                    },
+                ]}
+            />
+        )
+        const frame = lastFrame() || ''
+        expect(frame).toContain('COMMANDS')
+        expect(frame).toContain('SOURCES')
+        expect(frame).toContain('december skill add <source>')
+        expect(frame).toContain('december skill add --local <source>')
+        expect(frame).toContain('december skill create <name>')
+        expect(frame).toContain('december skill list')
+        expect(frame).toContain('december skill remove <name>')
+        expect(frame).toContain('mattpocock/skills')
+        expect(frame).toContain('vercel-labs/skills')
+        expect(frame).toContain('anthropics/skills')
+        expect(frame).toContain('phasehumans/december')
+        expect(frame).toContain('agentskills.org')
+        expect(frame).toContain('/skill:<name>')
+        // Ensure no box or border characters
+        expect(frame).not.toMatch(/[┌┐└┘╭╮╯╰╔╗╚╝│─]/)
+    })
 })

@@ -357,6 +357,14 @@ export const COMMANDS: Command[] = [
         },
     },
     {
+        name: 'skills',
+        description: 'Guide to adding and using skills',
+        value: '/skills',
+        action: (ctx) => {
+            // forwarded to chat screen
+        },
+    },
+    {
         name: 'tasks',
         description: 'View background tasks',
         value: '/tasks',

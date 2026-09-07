@@ -23,6 +23,15 @@ describe('/update command action', () => {
     })
 })
 
+describe('/skills command action', () => {
+    test('should define skills command forwarded to chat screen', () => {
+        const skillsCmd = COMMANDS.find((c) => c.name === 'skills')
+        expect(skillsCmd).toBeDefined()
+        expect(skillsCmd?.value).toBe('/skills')
+        expect(skillsCmd?.description).toBe('Guide to adding and using skills')
+    })
+})
+
 describe('/clear & /new commands', () => {
     test('clearContext and resetChat are called on /clear', async () => {
         const clearCmd = COMMANDS.find((c) => c.name === 'clear')

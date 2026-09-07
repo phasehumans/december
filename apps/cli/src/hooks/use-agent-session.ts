@@ -1502,6 +1502,23 @@ ${decStatus}
                 return
             }
 
+            if (text.trim() === '/skills' || text.trim() === '/skill') {
+                const userMsg: Message = { id: getNextMsgId(), role: 'user', text: text.trim() }
+                const guideMsg: Message = {
+                    id: getNextMsgId(),
+                    role: 'assistant',
+                    blocks: [{ type: 'skills_guide' }],
+                }
+                setStaticMessages((prev) => [
+                    ...prev,
+                    ...useCliStore.getState().activeMessages,
+                    userMsg,
+                    guideMsg,
+                ])
+                setActiveMessages([])
+                return
+            }
+
             const rawUserPrompt = text.trim()
             if (!rawUserPrompt) return
 
@@ -1567,6 +1584,8 @@ ${decStatus}
                         'plan',
                         'resume',
                         'settings',
+                        'skill',
+                        'skills',
                         'tasks',
                         'update',
                         'usage',

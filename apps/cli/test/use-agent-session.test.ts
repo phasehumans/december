@@ -143,4 +143,40 @@ describe('useCliStore activeMessages handling', () => {
         expect(matchWithArgs).toBeTruthy()
         expect(matchWithArgs?.[1]).toBe('/tdd auth-service')
     })
+
+    it('handles /skills and /skill by appending user prompt and skills_guide assistant block', () => {
+        const store = useCliStore.getState()
+        const initialCount = store.staticMessages.length
+
+        // Simulate /skills dispatch logic from use-agent-session
+        const handleSkillsCmd = (cmd: string) => {
+            if (cmd.trim() === '/skills' || cmd.trim() === '/skill') {
+                const userMsg = { id: 'u1', role: 'user' as const, text: cmd.trim() }
+                const guideMsg = {
+                    id: 'a1',
+                    role: 'assistant' as const,
+                    blocks: [{ type: 'skills_guide' as const }],
+                }
+                store.setStaticMessages((prev) => [
+                    ...prev,
+                    ...useCliStore.getState().activeMessages,
+                    userMsg,
+                    guideMsg,
+                ])
+                store.setActiveMessages([])
+            }
+        }
+
+        handleSkillsCmd('/skills')
+        let msgs = useCliStore.getState().staticMessages
+        expect(msgs.length).toBe(initialCount + 2)
+        expect(msgs[msgs.length - 2].text).toBe('/skills')
+        expect(msgs[msgs.length - 1].blocks?.[0]?.type).toBe('skills_guide')
+
+        handleSkillsCmd('/skill')
+        msgs = useCliStore.getState().staticMessages
+        expect(msgs.length).toBe(initialCount + 4)
+        expect(msgs[msgs.length - 2].text).toBe('/skill')
+        expect(msgs[msgs.length - 1].blocks?.[0]?.type).toBe('skills_guide')
+    })
 })
