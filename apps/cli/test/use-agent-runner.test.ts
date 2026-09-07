@@ -99,4 +99,35 @@ describe('processAgentStream Frame-Budget Throttler', () => {
         expect(assistantMsg.blocks[0].content).toBe('Here is the response')
         expect(assistantMsg.blocks[0].color).toBeUndefined()
     })
+
+    it('streams ThinkingChunk into thinking block and removes placeholder Thinking... status', async () => {
+        let activeMessages: any[] = [{ id: 'assistant-1', role: 'assistant', blocks: [] }]
+
+        const setActiveMessages = (updater: any) => {
+            activeMessages = typeof updater === 'function' ? updater(activeMessages) : updater
+        }
+
+        const events = [
+            { type: 'TurnStart' },
+            { type: 'ThinkingChunk', content: 'Step 1: Inspect files. ' },
+            { type: 'ThinkingChunk', content: 'Step 2: Edit code.' },
+            { type: 'StreamChunk', content: 'Done!' },
+        ]
+
+        const stream = createAsyncStream(events, 0)
+        await processAgentStream({
+            stream,
+            setActiveMessages,
+            assistantMsgId: 'assistant-1',
+        })
+
+        const assistantMsg = activeMessages.find((m) => m.id === 'assistant-1')
+        expect(assistantMsg).toBeDefined()
+        expect(assistantMsg.blocks).toHaveLength(2)
+        expect(assistantMsg.blocks[0].type).toBe('thinking')
+        expect(assistantMsg.blocks[0].content).toBe('Step 1: Inspect files. Step 2: Edit code.')
+        expect(assistantMsg.blocks[1].type).toBe('text')
+        expect(assistantMsg.blocks[1].content).toBe('Done!')
+        expect(assistantMsg.blocks.some((b: any) => b.content === 'Thinking...')).toBe(false)
+    })
 })

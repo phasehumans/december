@@ -130,7 +130,21 @@ export async function processAgentStream({
                             break
                         }
                         case 'ThinkingChunk': {
-                            // Intentionally suppressed from chat display to optimize UI rendering performance
+                            const chunk = event.content || ''
+                            if (!chunk) break
+                            const lastBlock = blocks[blocks.length - 1]
+                            if (lastBlock && lastBlock.type === 'thinking') {
+                                lastBlock.content += chunk
+                            } else {
+                                if (
+                                    lastBlock &&
+                                    lastBlock.type === 'text' &&
+                                    isStatusMessage(lastBlock.content)
+                                ) {
+                                    blocks.pop()
+                                }
+                                blocks.push({ type: 'thinking', content: chunk })
+                            }
                             break
                         }
                         case 'ToolCallStart': {

@@ -17,6 +17,8 @@ describe('ShortcutsMenu Component (Unit)', () => {
         expect(frame).toContain('ctrl+h')
         expect(frame).toContain('ctrl+l')
         expect(frame).toContain('ctrl+o')
+        expect(frame).toContain('Toggle expand commands')
+        expect(frame).not.toContain('thoughts')
         expect(frame).toContain('ctrl+t')
         expect(frame).toContain('alt+enter')
     })

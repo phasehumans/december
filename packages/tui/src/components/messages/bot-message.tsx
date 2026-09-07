@@ -36,39 +36,11 @@ type Props = {
     expandCommands?: boolean
 }
 
-function CollapsibleThought({
-    content,
-    isStreaming,
-    forceExpanded,
-}: {
-    content: string
-    isStreaming?: boolean
-    forceExpanded?: boolean
-}) {
-    const expanded = forceExpanded ?? false
-
-    const words = content.trim() ? content.trim().split(/\s+/).length : 0
-    const tokenCount = Math.max(1, Math.round(words * 1.33))
-
-    if (isStreaming) {
-        return (
-            <Box flexDirection="column" marginY={0}>
-                <Text color={THEME.colors.muted}>{content}</Text>
-            </Box>
-        )
-    }
-
+function ThoughtView({ content }: { content: string }) {
+    if (!content || content.trim() === '') return null
     return (
         <Box flexDirection="column" marginY={0}>
-            <Text color={THEME.colors.muted} italic>
-                Thoughts ({tokenCount} tokens
-                {expanded ? ' · ctrl+o to collapse' : ' · ctrl+o to expand'})
-            </Text>
-            {expanded && (
-                <Box paddingLeft={1} paddingTop={0.5}>
-                    <Text color={THEME.colors.muted}>{content}</Text>
-                </Box>
-            )}
+            <Text color={THEME.colors.muted}>{content}</Text>
         </Box>
     )
 }
@@ -254,14 +226,7 @@ export const BotMessage = React.memo(function BotMessage({ blocks, usage, expand
                                             .replace(/^<thought(?:>| [^>]*>)/i, '')
                                             .replace(/<\/thought>$/i, '')
                                             .trim()
-                                        return (
-                                            <CollapsibleThought
-                                                key={pidx}
-                                                content={thoughtContent}
-                                                isStreaming={isStreaming}
-                                                forceExpanded={expandCommands}
-                                            />
-                                        )
+                                        return <ThoughtView key={pidx} content={thoughtContent} />
                                     }
                                     if (part.trim() === '') return null
                                     const hasLeadingNewline =
@@ -295,15 +260,7 @@ export const BotMessage = React.memo(function BotMessage({ blocks, usage, expand
                         )
                     }
                     case 'thinking': {
-                        const isStreaming = block.isStreaming ?? idx === blocks.length - 1
-                        return (
-                            <CollapsibleThought
-                                key={idx}
-                                content={block.content}
-                                isStreaming={isStreaming}
-                                forceExpanded={expandCommands}
-                            />
-                        )
+                        return <ThoughtView key={idx} content={block.content} />
                     }
                     case 'compaction': {
                         return (
