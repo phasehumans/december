@@ -46,6 +46,18 @@ export const OFFICIAL_MODEL_RATES: Record<string, ModelRate> = {
     'deepseek-v3': { name: 'deepseek-v3', inputRate: 0.14, outputRate: 0.28 },
     'deepseek-reasoner': { name: 'deepseek-reasoner', inputRate: 0.55, outputRate: 2.19 },
     'deepseek-r1': { name: 'deepseek-r1', inputRate: 0.55, outputRate: 2.19 },
+
+    // MiniMax
+    'minimax-m3': { name: 'minimax-m3', inputRate: 0.3, outputRate: 1.2 },
+    'minimax-m2.7': { name: 'minimax-m2.7', inputRate: 0.3, outputRate: 1.2 },
+    'minimax-m2.7-highspeed': { name: 'minimax-m2.7-highspeed', inputRate: 0.6, outputRate: 2.4 },
+    'minimax-m2.5': { name: 'minimax-m2.5', inputRate: 0.3, outputRate: 1.2 },
+    'minimax-m2.5-highspeed': { name: 'minimax-m2.5-highspeed', inputRate: 0.6, outputRate: 2.4 },
+    'minimax-m2.1': { name: 'minimax-m2.1', inputRate: 0.3, outputRate: 1.2 },
+    'minimax-m2.1-highspeed': { name: 'minimax-m2.1-highspeed', inputRate: 0.6, outputRate: 2.4 },
+    'minimax-m2': { name: 'minimax-m2', inputRate: 0.3, outputRate: 1.2 },
+    'minimax-text-01': { name: 'minimax-text-01', inputRate: 0.15, outputRate: 1.2 },
+    'minimax-vl-01': { name: 'minimax-vl-01', inputRate: 0.15, outputRate: 1.2 },
 }
 
 const CACHE_TTL_MS = 12 * 60 * 60 * 1000 // 12 hours

@@ -9,6 +9,7 @@ describe('ByokKeyMenu Component (Unit)', () => {
         expect(formatProviderName('openai')).toBe('OpenAI')
         expect(formatProviderName('anthropic')).toBe('Anthropic')
         expect(formatProviderName('arcee')).toBe('Arcee AI')
+        expect(formatProviderName('meta')).toBe('Meta')
         expect(formatProviderName('claude')).toBe('Anthropic')
         expect(formatProviderName('codex')).toBe('OpenAI')
         expect(formatProviderName('google')).toBe('Google')

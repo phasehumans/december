@@ -38,6 +38,8 @@ export interface ProviderConfig {
         | 'ollama'
         | 'agentrouter'
         | 'arcee'
+        | 'meta'
+        | 'minimax'
         | 'december_proxy'
         | string
     apiKey: string

@@ -33,6 +33,8 @@ export const SENSITIVE_LLM_ENV_KEYS: readonly string[] = [
     'ZAI_API_KEY',
     'AGENTROUTER_API_KEY',
     'ARCEE_API_KEY',
+    'META_API_KEY',
+    'MODEL_API_KEY',
     'COPILOT_TOKEN',
     'GITHUB_COPILOT_TOKEN',
     'GITHUB_TOKEN',

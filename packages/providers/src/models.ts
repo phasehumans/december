@@ -60,9 +60,16 @@ export const MODEL_CONTEXT_WINDOWS: Record<string, number> = {
     'glm-5.1': 1000000,
     'glm-5': 1000000,
     'glm-5-turbo': 1000000,
-    'MiniMax-M3': 512000,
-    'MiniMax-M2.7': 200000,
-    'MiniMax-M2.5': 200000,
+    'MiniMax-M3': 1000000,
+    'MiniMax-M2.7': 204800,
+    'MiniMax-M2.7-highspeed': 204800,
+    'MiniMax-M2.5': 204800,
+    'MiniMax-M2.5-highspeed': 204800,
+    'MiniMax-M2.1': 204800,
+    'MiniMax-M2.1-highspeed': 204800,
+    'MiniMax-M2': 204800,
+    'MiniMax-Text-01': 1000000,
+    'MiniMax-VL-01': 1000000,
     'qwen3.8-max': 1000000,
     'qwen3.8-flash-next': 262144,
     'qwen3.7-max': 1000000,
@@ -85,6 +92,11 @@ export const MODEL_CONTEXT_WINDOWS: Record<string, number> = {
     'deepseek/deepseek-v4-pro': 512000,
     'zai-org/glm-5.2': 262144,
     'moonshotai/kimi-k3': 1000000,
+    'muse-spark-1.3': 1048576,
+    'muse-spark-1.3-contributor': 1048576,
+    'muse-spark-1.2': 1048576,
+    'muse-spark-1.2-contributor': 1048576,
+    'muse-spark-1.1': 1048576,
 }
 
 export function getModelContextWindow(value: string): number {
@@ -122,6 +134,7 @@ export function getModelContextWindow(value: string): number {
         lower.includes('inkling')
     )
         return 262144
+    if (lower.includes('muse-spark') || lower.includes('muse')) return 1048576
     if (lower.includes('gpt-5.6') || lower.includes('gpt-5.5')) return 1050000
     if (lower.includes('gpt-5.4')) return 400000
     if (lower.includes('gpt-5')) return 200000
@@ -130,8 +143,13 @@ export function getModelContextWindow(value: string): number {
     if (lower.includes('glm-5')) return 1000000
     if (lower.includes('qwen3.8-max') || lower.includes('qwen3.7-max') || lower.includes('kimi'))
         return 1000000
-    if (lower.includes('minimax-m3')) return 512000
-    if (lower.includes('minimax-m2')) return 200000
+    if (
+        lower.includes('minimax-m3') ||
+        lower.includes('minimax-text-01') ||
+        lower.includes('minimax-vl-01')
+    )
+        return 1000000
+    if (lower.includes('minimax')) return 204800
     if (lower.includes('gpt-4.5')) return 128000
     if (lower.includes('gpt-4')) return 128000
     if (lower.includes('gpt-3.5')) return 16385

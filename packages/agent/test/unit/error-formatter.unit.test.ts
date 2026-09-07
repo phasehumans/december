@@ -120,6 +120,39 @@ describe('Agent Error Formatter & Edge Cases (Unit)', () => {
         expect(errorEvent.error).not.toContain('https://trydecember.com/settings/billing')
     })
 
+    it('formats Meta BYOK insufficient credits error with Meta platform link and not December Wallet', async () => {
+        const mockMetaLlm: LLMProvider = {
+            id: 'meta',
+            stream: async function* () {
+                yield { type: 'text', text: '' }
+                const err: any = new Error('Insufficient credits.')
+                err.status = 402
+                throw err
+            },
+        }
+
+        const agent = new Agent({
+            llm: mockMetaLlm,
+            tools: [],
+            operations: {} as any,
+            modelOptions: { model: 'muse-spark-1.3' },
+        })
+
+        const events: any[] = []
+        for await (const event of runAgentLoop(agent, 'hi')) {
+            events.push(event)
+        }
+
+        const errorEvent = events.find((e) => e.type === 'AgentError')
+        expect(errorEvent).toBeDefined()
+        expect(errorEvent.error).toContain(
+            'Insufficient credits in your Meta account. Please add credits or top up your balance at https://dev.meta.ai/'
+        )
+        expect(errorEvent.error).toContain('Insufficient credits.')
+        expect(errorEvent.error).not.toContain('December Wallet')
+        expect(errorEvent.error).not.toContain('https://trydecember.com/settings/billing')
+    })
+
     it('formats OpenRouter BYOK insufficient credits error with OpenRouter settings link', async () => {
         const mockOpenRouterLlm: LLMProvider = {
             id: 'openrouter',

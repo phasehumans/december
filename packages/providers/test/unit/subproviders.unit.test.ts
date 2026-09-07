@@ -11,6 +11,7 @@ import { GroqProvider } from '../../src/providers/groq'
 import { HuggingFaceProvider } from '../../src/providers/huggingface'
 import { HyperbolicProvider } from '../../src/providers/hyperbolic'
 import { KimiProvider } from '../../src/providers/kimi'
+import { MetaProvider } from '../../src/providers/meta'
 import { MiniMaxProvider } from '../../src/providers/minimax'
 import { MistralProvider } from '../../src/providers/mistral'
 import { MoonshotProvider } from '../../src/providers/moonshot'
@@ -126,5 +127,10 @@ describe('OpenAI-compatible Subproviders (Unit)', () => {
     test('instantiates ArceeProvider with correct ID', () => {
         const provider = new ArceeProvider('dummy-key')
         expect(provider.id).toBe('arcee')
+    })
+
+    test('instantiates MetaProvider with correct ID', () => {
+        const provider = new MetaProvider('dummy-key')
+        expect(provider.id).toBe('meta')
     })
 })

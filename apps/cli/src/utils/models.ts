@@ -385,10 +385,17 @@ export const getCuratedProviderModels = (provider: string) => {
         case 'antigravity':
             return getCuratedProviderModels('gemini')
         case 'minimax':
+        case 'minimaxai':
+        case 'minimax-ai':
             return [
                 { label: 'MiniMax M3', value: 'MiniMax-M3' },
                 { label: 'MiniMax M2.7', value: 'MiniMax-M2.7' },
+                { label: 'MiniMax M2.7 Highspeed', value: 'MiniMax-M2.7-highspeed' },
                 { label: 'MiniMax M2.5', value: 'MiniMax-M2.5' },
+                { label: 'MiniMax M2.5 Highspeed', value: 'MiniMax-M2.5-highspeed' },
+                { label: 'MiniMax M2.1', value: 'MiniMax-M2.1' },
+                { label: 'MiniMax M2.1 Highspeed', value: 'MiniMax-M2.1-highspeed' },
+                { label: 'MiniMax M2', value: 'MiniMax-M2' },
                 { label: 'MiniMax Text 01', value: 'MiniMax-Text-01' },
                 { label: 'MiniMax VL 01', value: 'MiniMax-VL-01' },
             ]
@@ -409,6 +416,16 @@ export const getCuratedProviderModels = (provider: string) => {
                 { label: 'GLM 5.2', value: 'zai-org/glm-5.2' },
                 { label: 'Kimi K3', value: 'moonshotai/kimi-k3' },
                 { label: 'Inkling Small', value: 'thinkingmachines/inkling-small' },
+            ]
+        case 'meta':
+        case 'metaai':
+        case 'meta-ai':
+            return [
+                { label: 'Muse Spark 1.3', value: 'muse-spark-1.3' },
+                { label: 'Muse Spark 1.3 Contributor', value: 'muse-spark-1.3-contributor' },
+                { label: 'Muse Spark 1.2', value: 'muse-spark-1.2' },
+                { label: 'Muse Spark 1.2 Contributor', value: 'muse-spark-1.2-contributor' },
+                { label: 'Muse Spark 1.1', value: 'muse-spark-1.1' },
             ]
         case 'dashscope':
         case 'qwen':
@@ -751,7 +768,9 @@ export async function fetchLiveProviderModels(
                     endpoint = 'https://dashscope.aliyuncs.com/compatible-mode/v1/models'
                     break
                 case 'minimax':
-                    endpoint = 'https://api.minimax.chat/v1/models'
+                case 'minimaxai':
+                case 'minimax-ai':
+                    endpoint = 'https://api.minimax.io/v1/models'
                     break
                 case 'cerebras':
                     endpoint = 'https://api.cerebras.ai/v1/models'
@@ -786,6 +805,11 @@ export async function fetchLiveProviderModels(
                 case 'arceeai':
                 case 'arcee-ai':
                     endpoint = 'https://api.arcee.ai/api/v1/models'
+                    break
+                case 'meta':
+                case 'metaai':
+                case 'meta-ai':
+                    endpoint = 'https://api.meta.ai/v1/models'
                     break
                 case 'december':
                 case 'december_proxy': {
@@ -933,6 +957,7 @@ export const getModelLabel = (value: string) => {
         'llamacpp',
         'ollama',
         'arcee',
+        'meta',
         'december_proxy',
     ]
     for (const p of allProviders) {
@@ -949,6 +974,7 @@ export const isValidModelForProvider = (provider: string, model?: string): boole
     if (normalized === 'openrouter' && (model.includes('/') || model.includes(':'))) return true
     if (normalized === 'agentrouter' && (model.includes('/') || model.includes(':'))) return true
     if (normalized === 'arcee' && (model.includes('/') || model.includes(':'))) return true
+    if (normalized === 'meta' && (model.includes('/') || model.includes(':'))) return true
     if (normalized === 'ollama') return isToolCompatibleOllamaModel(model)
 
     const models = getProviderModels(normalized)

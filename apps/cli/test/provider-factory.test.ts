@@ -213,6 +213,37 @@ describe('instantiateProvider', () => {
         )
     })
 
+    it('instantiates meta provider via openai compat', () => {
+        instantiateProvider('meta', 'key-123')
+        expect(providers.openaiProvider).toHaveBeenCalledWith('https://api.meta.ai/v1', 'key-123')
+
+        instantiateProvider('metaai', 'key-123')
+        expect(providers.openaiProvider).toHaveBeenCalledWith('https://api.meta.ai/v1', 'key-123')
+
+        instantiateProvider('meta-ai', 'key-123')
+        expect(providers.openaiProvider).toHaveBeenCalledWith('https://api.meta.ai/v1', 'key-123')
+    })
+
+    it('instantiates minimax provider via openai compat', () => {
+        instantiateProvider('minimax', 'key-123')
+        expect(providers.openaiProvider).toHaveBeenCalledWith(
+            'https://api.minimax.io/v1',
+            'key-123'
+        )
+
+        instantiateProvider('minimaxai', 'key-123')
+        expect(providers.openaiProvider).toHaveBeenCalledWith(
+            'https://api.minimax.io/v1',
+            'key-123'
+        )
+
+        instantiateProvider('minimax-ai', 'key-123')
+        expect(providers.openaiProvider).toHaveBeenCalledWith(
+            'https://api.minimax.io/v1',
+            'key-123'
+        )
+    })
+
     it('instantiates ollama provider with default localhost endpoint', () => {
         const p = instantiateProvider('ollama', '')
         expect(p).toBe('mock-ollama')

@@ -161,11 +161,17 @@ export function instantiateProvider(
                 'agentrouter'
             )
         case 'minimax':
-            return withProviderId(openaiProvider('https://api.minimax.chat/v1', apiKey), 'minimax')
+        case 'minimaxai':
+        case 'minimax-ai':
+            return withProviderId(openaiProvider('https://api.minimax.io/v1', apiKey), 'minimax')
         case 'arcee':
         case 'arceeai':
         case 'arcee-ai':
             return withProviderId(openaiProvider('https://api.arcee.ai/api/v1', apiKey), 'arcee')
+        case 'meta':
+        case 'metaai':
+        case 'meta-ai':
+            return withProviderId(openaiProvider('https://api.meta.ai/v1', apiKey), 'meta')
         case 'dashscope':
         case 'qwen':
             return withProviderId(

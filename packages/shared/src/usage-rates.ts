@@ -51,6 +51,33 @@ export const OFFICIAL_MODEL_RATES: Record<string, ModelRate> = {
     'deepseek-reasoner': { name: 'deepseek-reasoner', inputRate: 0.55, outputRate: 2.19 },
     'deepseek-r1': { name: 'deepseek-r1', inputRate: 0.55, outputRate: 2.19 },
 
+    // Meta (Muse Spark)
+    'muse-spark-1.3': { name: 'muse-spark-1.3', inputRate: 1.25, outputRate: 4.25 },
+    'muse-spark-1.3-contributor': {
+        name: 'muse-spark-1.3-contributor',
+        inputRate: 0.1,
+        outputRate: 0.2,
+    },
+    'muse-spark-1.2': { name: 'muse-spark-1.2', inputRate: 1.25, outputRate: 4.25 },
+    'muse-spark-1.2-contributor': {
+        name: 'muse-spark-1.2-contributor',
+        inputRate: 0.1,
+        outputRate: 0.2,
+    },
+    'muse-spark-1.1': { name: 'muse-spark-1.1', inputRate: 1.25, outputRate: 4.25 },
+
+    // MiniMax
+    'minimax-m3': { name: 'minimax-m3', inputRate: 0.3, outputRate: 1.2 },
+    'minimax-m2.7': { name: 'minimax-m2.7', inputRate: 0.3, outputRate: 1.2 },
+    'minimax-m2.7-highspeed': { name: 'minimax-m2.7-highspeed', inputRate: 0.6, outputRate: 2.4 },
+    'minimax-m2.5': { name: 'minimax-m2.5', inputRate: 0.3, outputRate: 1.2 },
+    'minimax-m2.5-highspeed': { name: 'minimax-m2.5-highspeed', inputRate: 0.6, outputRate: 2.4 },
+    'minimax-m2.1': { name: 'minimax-m2.1', inputRate: 0.3, outputRate: 1.2 },
+    'minimax-m2.1-highspeed': { name: 'minimax-m2.1-highspeed', inputRate: 0.6, outputRate: 2.4 },
+    'minimax-m2': { name: 'minimax-m2', inputRate: 0.3, outputRate: 1.2 },
+    'minimax-text-01': { name: 'minimax-text-01', inputRate: 0.15, outputRate: 1.2 },
+    'minimax-vl-01': { name: 'minimax-vl-01', inputRate: 0.15, outputRate: 1.2 },
+
     // Ollama / Local
     ollama: { name: 'ollama', inputRate: 0.0, outputRate: 0.0 },
 }
@@ -158,6 +185,12 @@ export const PROVIDER_BILLING_LINKS: Record<string, string> = {
     arcee: 'https://platform.arcee.ai/api/api-keys',
     arceeai: 'https://platform.arcee.ai/api/api-keys',
     'arcee-ai': 'https://platform.arcee.ai/api/api-keys',
+    meta: 'https://dev.meta.ai/',
+    metaai: 'https://dev.meta.ai/',
+    'meta-ai': 'https://dev.meta.ai/',
+    minimax: 'https://platform.minimax.io/console/access',
+    minimaxai: 'https://platform.minimax.io/console/access',
+    'minimax-ai': 'https://platform.minimax.io/console/access',
     ollama: 'http://localhost:11434',
 }
 
@@ -190,6 +223,12 @@ export const PROVIDER_DISPLAY_NAMES: Record<string, string> = {
     arcee: 'Arcee AI',
     arceeai: 'Arcee AI',
     'arcee-ai': 'Arcee AI',
+    meta: 'Meta',
+    metaai: 'Meta',
+    'meta-ai': 'Meta',
+    minimax: 'MiniMax',
+    minimaxai: 'MiniMax',
+    'minimax-ai': 'MiniMax',
     ollama: 'Ollama (Local)',
 }
 
@@ -210,6 +249,10 @@ export function formatInsufficientCreditsNotice(
             modelLower.includes('arcee')
         ) {
             normalized = 'arcee'
+        } else if (modelLower.includes('muse')) {
+            normalized = 'meta'
+        } else if (modelLower.includes('minimax')) {
+            normalized = 'minimax'
         } else if (modelLower.includes('deepseek')) {
             normalized = 'deepseek'
         } else if (modelLower.includes('kimi') || modelLower.includes('moonshot')) {
@@ -234,6 +277,14 @@ export function formatInsufficientCreditsNotice(
 
     if (normalized === 'arcee' || normalized === 'arceeai' || normalized === 'arcee-ai') {
         return 'Insufficient credits in your Arcee AI account. Please add credits or top up your balance at https://platform.arcee.ai/api/api-keys'
+    }
+
+    if (normalized === 'meta' || normalized === 'metaai' || normalized === 'meta-ai') {
+        return 'Insufficient credits in your Meta account. Please add credits or top up your balance at https://dev.meta.ai/'
+    }
+
+    if (normalized === 'minimax' || normalized === 'minimaxai' || normalized === 'minimax-ai') {
+        return 'Insufficient credits in your MiniMax account. Please add credits or top up your balance at https://platform.minimax.io/console/access'
     }
 
     const displayName = PROVIDER_DISPLAY_NAMES[normalized] || normalized.toUpperCase()

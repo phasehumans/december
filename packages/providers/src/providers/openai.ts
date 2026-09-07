@@ -17,14 +17,15 @@ export function supportsReasoningEffort(model?: string, baseURL?: string): boole
         return false
     }
 
-    // Mistral, Groq, Llama, Qwen, Devstral models
+    // Mistral, Groq, Llama, Qwen, Devstral, MiniMax models
     if (
         name.includes('codestral') ||
         name.includes('mistral') ||
         name.includes('devstral') ||
         name.includes('ministral') ||
         name.includes('llama') ||
-        name.includes('qwen')
+        name.includes('qwen') ||
+        name.includes('minimax')
     ) {
         return false
     }
@@ -40,7 +41,9 @@ export function supportsReasoningEffort(model?: string, baseURL?: string): boole
             baseURL.includes('hyperbolic.xyz') ||
             baseURL.includes('cerebras.ai') ||
             baseURL.includes('sambanova.ai') ||
-            baseURL.includes('arcee.ai'))
+            baseURL.includes('arcee.ai') ||
+            baseURL.includes('meta.ai') ||
+            baseURL.includes('minimax'))
     ) {
         return false
     }

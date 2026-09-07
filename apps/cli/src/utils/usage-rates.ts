@@ -71,6 +71,33 @@ export const OFFICIAL_MODEL_RATES: Record<string, ModelRate> = {
         outputRate: 1.2,
     },
 
+    // Meta AI & Hosted Models
+    'muse-spark-1.3': { name: 'muse-spark-1.3', inputRate: 1.25, outputRate: 4.25 },
+    'muse-spark-1.3-contributor': {
+        name: 'muse-spark-1.3-contributor',
+        inputRate: 0.1,
+        outputRate: 0.2,
+    },
+    'muse-spark-1.2': { name: 'muse-spark-1.2', inputRate: 1.25, outputRate: 4.25 },
+    'muse-spark-1.2-contributor': {
+        name: 'muse-spark-1.2-contributor',
+        inputRate: 0.1,
+        outputRate: 0.2,
+    },
+    'muse-spark-1.1': { name: 'muse-spark-1.1', inputRate: 1.25, outputRate: 4.25 },
+
+    // MiniMax
+    'minimax-m3': { name: 'minimax-m3', inputRate: 0.3, outputRate: 1.2 },
+    'minimax-m2.7': { name: 'minimax-m2.7', inputRate: 0.3, outputRate: 1.2 },
+    'minimax-m2.7-highspeed': { name: 'minimax-m2.7-highspeed', inputRate: 0.6, outputRate: 2.4 },
+    'minimax-m2.5': { name: 'minimax-m2.5', inputRate: 0.3, outputRate: 1.2 },
+    'minimax-m2.5-highspeed': { name: 'minimax-m2.5-highspeed', inputRate: 0.6, outputRate: 2.4 },
+    'minimax-m2.1': { name: 'minimax-m2.1', inputRate: 0.3, outputRate: 1.2 },
+    'minimax-m2.1-highspeed': { name: 'minimax-m2.1-highspeed', inputRate: 0.6, outputRate: 2.4 },
+    'minimax-m2': { name: 'minimax-m2', inputRate: 0.3, outputRate: 1.2 },
+    'minimax-text-01': { name: 'minimax-text-01', inputRate: 0.15, outputRate: 1.2 },
+    'minimax-vl-01': { name: 'minimax-vl-01', inputRate: 0.15, outputRate: 1.2 },
+
     // Ollama (Local)
     ollama: { name: 'ollama', inputRate: 0.0, outputRate: 0.0 },
 }
@@ -101,6 +128,10 @@ export const PROVIDER_BILLING_LINKS: Record<string, string> = {
     huggingface: 'https://huggingface.co/settings/billing',
     agentrouter: 'https://agentrouter.org/console/token',
     arcee: 'https://platform.arcee.ai/api/api-keys',
+    meta: 'https://dev.meta.ai/',
+    minimax: 'https://platform.minimax.io/console/access',
+    minimaxai: 'https://platform.minimax.io/console/access',
+    'minimax-ai': 'https://platform.minimax.io/console/access',
     ollama: 'http://localhost:11434',
 }
 
@@ -130,12 +161,18 @@ export const PROVIDER_DISPLAY_NAMES: Record<string, string> = {
     huggingface: 'Hugging Face',
     agentrouter: 'AgentRouter',
     arcee: 'Arcee AI',
+    meta: 'Meta',
+    minimax: 'MiniMax',
+    minimaxai: 'MiniMax',
+    'minimax-ai': 'MiniMax',
     ollama: 'Ollama (Local)',
 }
 
 export function inferProviderFromModel(modelName: string): string {
     const lower = (modelName || '').toLowerCase()
     if (lower.startsWith('trinity') || lower.startsWith('arcee')) return 'arcee'
+    if (lower.startsWith('muse') || lower.startsWith('meta/')) return 'meta'
+    if (lower.startsWith('minimax') || lower.startsWith('minimaxai/')) return 'minimax'
     if (lower.startsWith('claude') || lower.startsWith('anthropic/')) return 'anthropic'
     if (
         lower.startsWith('gpt') ||

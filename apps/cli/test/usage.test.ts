@@ -39,12 +39,34 @@ describe('CLI In-Terminal Usage & Rates (Unit)', () => {
         expect(rate.outputRate).toBe(0.8)
     })
 
+    it('resolves official rates for meta models', () => {
+        const rate = resolveModelRate('muse-spark-1.3')
+        expect(rate.inputRate).toBe(1.25)
+        expect(rate.outputRate).toBe(4.25)
+
+        const contributorRate = resolveModelRate('muse-spark-1.3-contributor')
+        expect(contributorRate.inputRate).toBe(0.1)
+        expect(contributorRate.outputRate).toBe(0.2)
+    })
+
+    it('resolves official rates for minimax models', () => {
+        const m3Rate = resolveModelRate('MiniMax-M3')
+        expect(m3Rate.inputRate).toBe(0.3)
+        expect(m3Rate.outputRate).toBe(1.2)
+
+        const m27HighspeedRate = resolveModelRate('MiniMax-M2.7-highspeed')
+        expect(m27HighspeedRate.inputRate).toBe(0.6)
+        expect(m27HighspeedRate.outputRate).toBe(2.4)
+    })
+
     it('infers providers accurately from model names', () => {
         expect(inferProviderFromModel('claude-3-7-sonnet-latest')).toBe('anthropic')
         expect(inferProviderFromModel('gpt-4o')).toBe('openai')
         expect(inferProviderFromModel('gemini-3.6-flash')).toBe('google')
         expect(inferProviderFromModel('deepseek-chat')).toBe('deepseek')
         expect(inferProviderFromModel('trinity-large-thinking')).toBe('arcee')
+        expect(inferProviderFromModel('muse-spark-1.3')).toBe('meta')
+        expect(inferProviderFromModel('MiniMax-M3')).toBe('minimax')
         expect(inferProviderFromModel('llama3.3:latest')).toBe('ollama')
     })
 

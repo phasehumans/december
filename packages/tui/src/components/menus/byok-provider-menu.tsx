@@ -23,6 +23,7 @@ export const PROVIDER_MENU_ITEMS = [
     { label: 'Kimi', value: 'kimi' },
     { label: 'LM Studio', value: 'lmstudio' },
     { label: 'llama.cpp', value: 'llamacpp' },
+    { label: 'Meta', value: 'meta' },
     { label: 'MiniMax', value: 'minimax' },
     { label: 'Mistral AI', value: 'mistral' },
     { label: 'NVIDIA NIM', value: 'nvidia' },

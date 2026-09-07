@@ -66,6 +66,19 @@ describe('models utils', () => {
             expect(models.length).toBe(17)
         })
 
+        it('returns minimax models when provider is minimax', () => {
+            const models = getProviderModels('minimax')
+            expect(models).toEqual(
+                expect.arrayContaining([
+                    expect.objectContaining({ value: 'MiniMax-M3' }),
+                    expect.objectContaining({ value: 'MiniMax-M2.7' }),
+                    expect.objectContaining({ value: 'MiniMax-M2.7-highspeed' }),
+                    expect.objectContaining({ value: 'MiniMax-M2.5' }),
+                ])
+            )
+            expect(models.length).toBe(10)
+        })
+
         it('returns openrouter models with free and paid models when provider is openrouter', () => {
             const models = getProviderModels('openrouter')
             expect(models).toEqual(
