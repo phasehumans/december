@@ -12,7 +12,7 @@ describe('BotMessage Component (Unit)', () => {
         expect(lastFrame()).toContain('Assistant response text')
     })
 
-    it('renders completed thought blocks collapsed by default and respects expandCommands', () => {
+    it('renders thought blocks persistently inline without accordion or collapse state', () => {
         const thoughtContent =
             'Line 1: Planning search\nLine 2: Locating files\nLine 3: Reading contents\nLine 4: Done'
         const { lastFrame, rerender } = render(
@@ -24,12 +24,14 @@ describe('BotMessage Component (Unit)', () => {
             />
         )
         let frame = lastFrame() || ''
-        expect(frame).toContain('Thoughts')
-        expect(frame).toContain('20 tokens')
-        expect(frame).toContain('ctrl+o to expand')
-        expect(frame).not.toContain('Line 1: Planning search')
+        expect(frame).toContain('Line 1: Planning search')
+        expect(frame).toContain('Line 4: Done')
+        expect(frame).toContain('Final answer')
+        expect(frame).not.toContain('Thoughts (')
+        expect(frame).not.toContain('ctrl+o to expand')
+        expect(frame).not.toContain('ctrl+o to collapse')
 
-        // Re-render with expandCommands=true
+        // Re-render with expandCommands=true remains consistently visible
         rerender(
             <BotMessage
                 expandCommands={true}
@@ -41,10 +43,35 @@ describe('BotMessage Component (Unit)', () => {
         )
 
         frame = lastFrame() || ''
-        expect(frame).toContain('Thoughts')
-        expect(frame).toContain('20 tokens')
-        expect(frame).toContain('ctrl+o to collapse')
         expect(frame).toContain('Line 1: Planning search')
+        expect(frame).toContain('Line 4: Done')
+        expect(frame).toContain('Final answer')
+        expect(frame).not.toContain('Thoughts (')
+        expect(frame).not.toContain('ctrl+o to expand')
+        expect(frame).not.toContain('ctrl+o to collapse')
+    })
+
+    it('parses both <thought> and <think> tags in text blocks and renders them inline', () => {
+        const { lastFrame } = render(
+            <BotMessage
+                blocks={[
+                    {
+                        type: 'text',
+                        content:
+                            '<thought>Thinking deep on problem</thought>First response part\n<think>Reasoning with DeepSeek R1</think>Final response part',
+                    },
+                ]}
+            />
+        )
+        const frame = lastFrame() || ''
+        expect(frame).toContain('Thinking deep on problem')
+        expect(frame).toContain('Reasoning with DeepSeek R1')
+        expect(frame).toContain('First response part')
+        expect(frame).toContain('Final response part')
+        expect(frame).not.toContain('<thought>')
+        expect(frame).not.toContain('</thought>')
+        expect(frame).not.toContain('<think>')
+        expect(frame).not.toContain('</think>')
     })
 
     it('renders active streaming thought blocks cleanly with side border', () => {
@@ -91,7 +118,7 @@ describe('BotMessage Component (Unit)', () => {
         expect(frame).not.toContain('HIGH DEMAND')
     })
 
-    it('renders structured error with cause and hint without symbols', () => {
+    it('renders structured error with cause and hint without Error: or Cause: labels and without symbols', () => {
         const { lastFrame } = render(
             <BotMessage
                 blocks={[
@@ -105,11 +132,11 @@ describe('BotMessage Component (Unit)', () => {
             />
         )
         const frame = lastFrame() || ''
-        expect(frame).toContain('Error: Model provider rejected request')
-        expect(frame).toContain('Cause: OpenRouter 402 Payment Required: Insufficient credits')
-        expect(frame).toContain(
-            'Hint:  Please add credits at https://openrouter.ai/settings/credits'
-        )
+        expect(frame).toContain('Model provider rejected request')
+        expect(frame).not.toContain('Error:')
+        expect(frame).not.toContain('Cause:')
+        expect(frame).toContain('Please add credits at https://openrouter.ai/settings/credits')
+        expect(frame).not.toContain('Hint:')
         expect(frame).not.toContain('✖')
         expect(frame).not.toContain('↳')
         expect(frame).not.toContain('ℹ')
@@ -246,7 +273,7 @@ describe('BotMessage Component (Unit)', () => {
         const { lastFrame } = render(<BotMessage blocks={blocks} expandCommands={false} />)
         const frame = lastFrame() || ''
         const rawLines = frame.split('\n')
-        const thoughtIdx = rawLines.findIndex((l) => l.includes('Thoughts'))
+        const thoughtIdx = rawLines.findIndex((l) => l.includes('Planning next steps'))
         const cmdIdx = rawLines.findIndex((l) => l.includes('ListDir'))
         // 0 blank lines: cmdIdx is directly thoughtIdx + 1
         expect(cmdIdx).toBe(thoughtIdx + 1)
@@ -266,7 +293,7 @@ describe('BotMessage Component (Unit)', () => {
         const { lastFrame } = render(<BotMessage blocks={blocks} expandCommands={false} />)
         const frame = lastFrame() || ''
         const rawLines = frame.split('\n')
-        const thoughtIdx = rawLines.findIndex((l) => l.includes('Thoughts'))
+        const thoughtIdx = rawLines.findIndex((l) => l.includes('Planning next steps'))
         const textIdx = rawLines.findIndex((l) => l.includes('Here is the answer'))
         // Exactly 1 blank line between thoughts summary and text response
         expect(textIdx).toBe(thoughtIdx + 2)
@@ -296,19 +323,22 @@ describe('BotMessage Component (Unit)', () => {
             />
         )
         const frame = lastFrame() || ''
-        expect(frame).toContain('COMMANDS')
-        expect(frame).toContain('SOURCES')
-        expect(frame).toContain('december skill add <source>')
-        expect(frame).toContain('december skill add --local <source>')
-        expect(frame).toContain('december skill create <name>')
+        expect(frame).not.toContain('COMMANDS')
+        expect(frame).not.toContain('SOURCES')
+        expect(frame).toContain('Chat')
+        expect(frame).toContain('CLI')
+        expect(frame).toContain('/skill:<name>')
+        expect(frame).toContain('Invoke a skill in chat')
         expect(frame).toContain('december skill list')
+        expect(frame).toContain('december skill add <source>')
+        expect(frame).toContain('december skill info <name>')
+        expect(frame).toContain('december skill create <name>')
         expect(frame).toContain('december skill remove <name>')
-        expect(frame).toContain('mattpocock/skills')
+        expect(frame).toContain('Scopes:')
+        expect(frame).toContain('Explore:')
+        expect(frame).toContain('agentskills.org')
         expect(frame).toContain('vercel-labs/skills')
         expect(frame).toContain('anthropics/skills')
-        expect(frame).toContain('phasehumans/december')
-        expect(frame).toContain('agentskills.org')
-        expect(frame).toContain('/skill:<name>')
         // Ensure no box or border characters
         expect(frame).not.toMatch(/[┌┐└┘╭╮╯╰╔╗╚╝│─]/)
     })

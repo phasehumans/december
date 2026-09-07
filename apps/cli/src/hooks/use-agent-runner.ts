@@ -1,4 +1,4 @@
-import { parseError } from '../utils/error-parser'
+import { parseError, ErrorParseContext } from '../utils/error-parser'
 import { getToolSummary } from '../utils/formatters'
 
 import type { Message } from '@december/tui'
@@ -12,10 +12,12 @@ export async function processAgentStream({
     stream,
     setActiveMessages,
     assistantMsgId,
+    context,
 }: {
     stream: any
     setActiveMessages: any
     assistantMsgId: string | number
+    context?: ErrorParseContext
 }) {
     let pendingEvents: any[] = []
     let flushTimeout: NodeJS.Timeout | null = null
@@ -72,7 +74,7 @@ export async function processAgentStream({
                             ) {
                                 blocks.pop()
                             }
-                            const parsed = parseError({ message: event.error })
+                            const parsed = parseError({ message: event.error }, context)
                             blocks.push({
                                 type: 'error',
                                 error: parsed.message,
@@ -132,7 +134,21 @@ export async function processAgentStream({
                             break
                         }
                         case 'ThinkingChunk': {
-                            // Intentionally suppressed from chat display to optimize UI rendering performance
+                            const chunk = event.content || ''
+                            if (!chunk) break
+                            const lastBlock = blocks[blocks.length - 1]
+                            if (lastBlock && lastBlock.type === 'thinking') {
+                                lastBlock.content += chunk
+                            } else {
+                                if (
+                                    lastBlock &&
+                                    lastBlock.type === 'text' &&
+                                    isStatusMessage(lastBlock.content)
+                                ) {
+                                    blocks.pop()
+                                }
+                                blocks.push({ type: 'thinking', content: chunk })
+                            }
                             break
                         }
                         case 'ToolCallStart': {

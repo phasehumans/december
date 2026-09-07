@@ -156,6 +156,42 @@ describe('error-parser', () => {
         expect(parsed).toContain('Bring Your Own Key (BYOK)')
     })
 
+    test('attaches MiniMax balance notice when 1008 or insufficient balance is encountered', () => {
+        const rawErr = 'insufficient balance (1008)'
+        const parsed = parseErrorMessage(rawErr)
+        expect(parsed).toContain('https://platform.minimax.io/')
+        expect(parsed).toContain('Insufficient balance in your MiniMax account')
+        expect(parsed).toContain('insufficient balance (1008)')
+    })
+
+    test('attaches DeepSeek balance notice when balance is exhausted on DeepSeek', () => {
+        const rawErr = '402 Insufficient Balance from https://api.deepseek.com'
+        const parsed = parseErrorMessage(rawErr)
+        expect(parsed).toContain('https://platform.deepseek.com/top_up')
+        expect(parsed).toContain('Insufficient balance in your DeepSeek account')
+    })
+
+    test('attaches SiliconFlow balance notice when code 20009 is encountered', () => {
+        const rawErr = '{"code": 20009, "message": "balance insufficient"}'
+        const parsed = parseErrorMessage(rawErr)
+        expect(parsed).toContain('https://cloud.siliconflow.cn/')
+        expect(parsed).toContain('Insufficient balance in your SiliconFlow account')
+    })
+
+    test('attaches universal fallback notice when an unknown provider returns 402 or balance error', () => {
+        const rawErr = '402 Payment Required: account balance is empty'
+        const parsed = parseErrorMessage(rawErr)
+        expect(parsed).toContain('Insufficient balance or credits with your LLM provider')
+        expect(parsed).toContain('/model')
+    })
+
+    test('uses context provider to identify provider when error message lacks provider name', () => {
+        const rawErr = 'insufficient balance'
+        const parsed = parseErrorMessage(rawErr, { provider: 'minimax', model: 'MiniMax-M3' })
+        expect(parsed).toContain('https://platform.minimax.io/')
+        expect(parsed).toContain('Insufficient balance in your MiniMax account')
+    })
+
     describe('parseError (Structured Extraction)', () => {
         test('extracts custom message and underlying cause from Error with cause', () => {
             const causeErr = new Error('listen EADDRINUSE: address already in use :::53692')
@@ -198,6 +234,29 @@ describe('error-parser', () => {
             expect(parsed.message).toBe('OpenRouter credits exhausted or insufficient.')
             expect(parsed.cause).toContain('can only afford 10666')
             expect(parsed.hint).toBe('Please add credits at https://openrouter.ai/settings/credits')
+        })
+
+        test('extracts structured details from MiniMax 1008 insufficient balance error', () => {
+            const raw1008Err = 'insufficient balance (1008)'
+            const parsed = parseError(raw1008Err)
+            expect(parsed.message).toBe('Insufficient balance in your MiniMax account.')
+            expect(parsed.cause).toContain('1008')
+            expect(parsed.hint).toContain('https://platform.minimax.io/')
+        })
+
+        test('extracts structured details from universal fallback balance error', () => {
+            const rawErr = '402 Payment Required: custom provider out of credits'
+            const parsed = parseError(rawErr)
+            expect(parsed.message).toBe('Insufficient balance or credits with your LLM provider.')
+            expect(parsed.cause).toContain('custom provider out of credits')
+            expect(parsed.hint).toContain('/model')
+        })
+
+        test('extracts structured details using context provider', () => {
+            const rawErr = 'balance insufficient'
+            const parsed = parseError(rawErr, { provider: 'deepseek' })
+            expect(parsed.message).toBe('Insufficient balance in your DeepSeek account.')
+            expect(parsed.hint).toContain('https://platform.deepseek.com/top_up')
         })
 
         test('extracts structured details from 401 authentication errors', () => {

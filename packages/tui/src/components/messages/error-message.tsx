@@ -10,15 +10,19 @@ export type FormattedTuiError = {
 }
 
 export function parseTuiError(message: string, cause?: string, hint?: string): FormattedTuiError {
+    const cleanCause = (c?: string) => c?.replace(/^Cause:\s*/i, '').trim()
+    const cleanMessage = (m: string) => m.replace(/^Error:\s*/i, '').trim()
+    const cleanHint = (h?: string) => h?.replace(/^Hint:\s*/i, '').trim()
+
     if (cause || hint) {
         return {
-            message: message.replace(/^Error:\s*/i, '').trim(),
-            cause: cause?.trim(),
-            hint: hint?.trim(),
+            message: cleanMessage(message),
+            cause: cleanCause(cause),
+            hint: cleanHint(hint),
         }
     }
 
-    const clean = message.replace(/^Error:\s*/i, '').trim()
+    const clean = cleanMessage(message)
 
     // If message is multi-line, separate notice from cause/hint
     if (clean.includes('\n')) {
@@ -27,7 +31,7 @@ export function parseTuiError(message: string, cause?: string, hint?: string): F
             .map((l) => l.trim())
             .filter(Boolean)
         const firstLine = lines[0] || ''
-        const rest = lines.slice(1).join('\n')
+        const rest = cleanCause(lines.slice(1).join('\n'))
 
         if (firstLine.includes('Rate limit or quota exhausted')) {
             const hintMatch = firstLine.match(/Please upgrade.*$/i)
@@ -85,6 +89,20 @@ export function parseTuiError(message: string, cause?: string, hint?: string): F
             }
         }
 
+        const genericHintMatch = firstLine.match(
+            /Please (?:add credits|top up|check|upgrade|run|switch).*$/i
+        )
+        if (genericHintMatch) {
+            const summary = firstLine
+                .replace(/Please (?:add credits|top up|check|upgrade|run|switch).*$/i, '')
+                .trim()
+            return {
+                message: summary || firstLine,
+                cause: rest,
+                hint: genericHintMatch[0],
+            }
+        }
+
         return {
             message: firstLine,
             cause: rest,
@@ -117,23 +135,10 @@ export function ErrorMessage({
         <Box paddingX={paddingX} paddingY={0} flexDirection="column">
             {hasTopMargin && <Text> </Text>}
             <Text color={THEME.colors.error} bold>
-                Error: {parsed.message}
+                {parsed.message}
             </Text>
-            {parsed.cause && parsed.cause !== '' && (
-                <Box paddingLeft={2}>
-                    <Text>
-                        <Text color={THEME.colors.muted}>{'Cause: '}</Text>
-                        <Text color={THEME.colors.text}>{parsed.cause}</Text>
-                    </Text>
-                </Box>
-            )}
             {parsed.hint && parsed.hint !== '' && (
-                <Box paddingLeft={2}>
-                    <Text>
-                        <Text color={THEME.colors.warning}>{'Hint:  '}</Text>
-                        <Text color={THEME.colors.muted}>{parsed.hint}</Text>
-                    </Text>
-                </Box>
+                <Text color={THEME.colors.muted}>{parsed.hint}</Text>
             )}
         </Box>
     )

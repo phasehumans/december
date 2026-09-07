@@ -2,6 +2,7 @@ import { Box, Text } from 'ink'
 import React from 'react'
 
 import { THEME } from '../../theme'
+import { SkillsGuide } from '../menus/skills-guide-menu'
 import { Spinner } from '../spinner'
 
 import { parseTuiError } from './error-message'
@@ -38,90 +39,13 @@ type Props = {
     expandCommands?: boolean
 }
 
-function SkillsGuide() {
+function ThoughtView({ content }: { content: string }) {
+    if (!content || content.trim() === '') return null
     return (
-        <Box flexDirection="column" marginY={0.5}>
-            <Box flexDirection="row" gap={3}>
-                <Box flexDirection="column" width={38}>
-                    <Text color={THEME.colors.brand} bold>
-                        COMMANDS
-                    </Text>
-                    <Text color={THEME.colors.text}>december skill add &lt;source&gt;</Text>
-                    <Text color={THEME.colors.text}>december skill add --local &lt;source&gt;</Text>
-                    <Text color={THEME.colors.text}>december skill create &lt;name&gt;</Text>
-                    <Text color={THEME.colors.text}>december skill list</Text>
-                    <Text color={THEME.colors.text}>december skill remove &lt;name&gt;</Text>
-                </Box>
-                <Box flexDirection="column">
-                    <Text color={THEME.colors.brand} bold>
-                        SOURCES
-                    </Text>
-                    <Text>
-                        <Text color={THEME.colors.text}>mattpocock/skills</Text>{' '}
-                        <Text color={THEME.colors.muted}>engineering, tdd</Text>
-                    </Text>
-                    <Text>
-                        <Text color={THEME.colors.text}>vercel-labs/skills</Text>{' '}
-                        <Text color={THEME.colors.muted}>web, next.js, ui</Text>
-                    </Text>
-                    <Text>
-                        <Text color={THEME.colors.text}>anthropics/skills</Text>{' '}
-                        <Text color={THEME.colors.muted}>claude tools, prompts</Text>
-                    </Text>
-                    <Text>
-                        <Text color={THEME.colors.text}>phasehumans/december</Text>{' '}
-                        <Text color={THEME.colors.muted}>official skills</Text>
-                    </Text>
-                    <Text>
-                        <Text color={THEME.colors.text}>agentskills.org</Text>{' '}
-                        <Text color={THEME.colors.muted}>open skill registry</Text>
-                    </Text>
-                </Box>
-            </Box>
-            <Box marginTop={0.5}>
-                <Text color={THEME.colors.dim}>
-                    Chat: <Text color={THEME.colors.muted}>/skill:&lt;name&gt;</Text> (e.g.
-                    /skill:tdd) Scopes: <Text color={THEME.colors.muted}>global</Text> (~/.config)
-                    or <Text color={THEME.colors.muted}>--local</Text> (.december)
-                </Text>
-            </Box>
-        </Box>
-    )
-}
-
-function CollapsibleThought({
-    content,
-    isStreaming,
-    forceExpanded,
-}: {
-    content: string
-    isStreaming?: boolean
-    forceExpanded?: boolean
-}) {
-    const expanded = forceExpanded ?? false
-
-    const words = content.trim() ? content.trim().split(/\s+/).length : 0
-    const tokenCount = Math.max(1, Math.round(words * 1.33))
-
-    if (isStreaming) {
-        return (
-            <Box flexDirection="column" marginY={0}>
-                <Text color={THEME.colors.muted}>{content}</Text>
-            </Box>
-        )
-    }
-
-    return (
-        <Box flexDirection="column" marginY={0}>
+        <Box flexDirection="column" paddingLeft={1} marginY={0}>
             <Text color={THEME.colors.muted} italic>
-                Thoughts ({tokenCount} tokens
-                {expanded ? ' · ctrl+o to collapse' : ' · ctrl+o to expand'})
+                {content.trim()}
             </Text>
-            {expanded && (
-                <Box paddingLeft={1} paddingTop={0.5}>
-                    <Text color={THEME.colors.muted}>{content}</Text>
-                </Box>
-            )}
         </Box>
     )
 }
@@ -289,32 +213,20 @@ export const BotMessage = React.memo(function BotMessage({ blocks, usage, expand
                             )
                         }
 
-                        // split by <thought> tags (case insensitive, allow attributes)
+                        // split by <thought> and <think> tags (case insensitive, allow attributes)
                         const parts = block.content.split(
-                            /(<thought(?:>| [^>]*>)[\s\S]*?<\/thought>|<thought(?:>| [^>]*>)[\s\S]*)/i
+                            /(<(?:thought|think)(?:>| [^>]*>)[\s\S]*?<\/(?:thought|think)>|<(?:thought|think)(?:>| [^>]*>)[\s\S]*)/i
                         )
                         return (
                             <Box key={idx} flexDirection="column">
                                 {needsTopMargin && <Text> </Text>}
                                 {parts.map((part, pidx) => {
-                                    if (/^<thought(?:>| [^>]*>)/i.test(part)) {
-                                        const isClosed = /<\/thought>$/i.test(part)
-                                        const isStreaming =
-                                            !isClosed &&
-                                            idx === blocks.length - 1 &&
-                                            pidx === parts.length - 1
+                                    if (/^<(?:thought|think)(?:>| [^>]*>)/i.test(part)) {
                                         const thoughtContent = part
-                                            .replace(/^<thought(?:>| [^>]*>)/i, '')
-                                            .replace(/<\/thought>$/i, '')
+                                            .replace(/^<(?:thought|think)(?:>| [^>]*>)/i, '')
+                                            .replace(/<\/(?:thought|think)>$/i, '')
                                             .trim()
-                                        return (
-                                            <CollapsibleThought
-                                                key={pidx}
-                                                content={thoughtContent}
-                                                isStreaming={isStreaming}
-                                                forceExpanded={expandCommands}
-                                            />
-                                        )
+                                        return <ThoughtView key={pidx} content={thoughtContent} />
                                     }
                                     if (part.trim() === '') return null
                                     const hasLeadingNewline =
@@ -336,23 +248,10 @@ export const BotMessage = React.memo(function BotMessage({ blocks, usage, expand
                             <Box key={idx} flexDirection="column">
                                 {needsTopMargin && <Text> </Text>}
                                 <Text color={THEME.colors.error} bold>
-                                    Error: {parsed.message}
+                                    {parsed.message}
                                 </Text>
-                                {parsed.cause && parsed.cause !== '' && (
-                                    <Box paddingLeft={2}>
-                                        <Text>
-                                            <Text color={THEME.colors.muted}>{'Cause: '}</Text>
-                                            <Text color={THEME.colors.text}>{parsed.cause}</Text>
-                                        </Text>
-                                    </Box>
-                                )}
                                 {parsed.hint && parsed.hint !== '' && (
-                                    <Box paddingLeft={2}>
-                                        <Text>
-                                            <Text color={THEME.colors.warning}>{'Hint:  '}</Text>
-                                            <Text color={THEME.colors.muted}>{parsed.hint}</Text>
-                                        </Text>
-                                    </Box>
+                                    <Text color={THEME.colors.muted}>{parsed.hint}</Text>
                                 )}
                             </Box>
                         )
@@ -367,15 +266,7 @@ export const BotMessage = React.memo(function BotMessage({ blocks, usage, expand
                         )
                     }
                     case 'thinking': {
-                        const isStreaming = block.isStreaming ?? idx === blocks.length - 1
-                        return (
-                            <CollapsibleThought
-                                key={idx}
-                                content={block.content}
-                                isStreaming={isStreaming}
-                                forceExpanded={expandCommands}
-                            />
-                        )
+                        return <ThoughtView key={idx} content={block.content} />
                     }
                     case 'compaction': {
                         return (

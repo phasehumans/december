@@ -81,9 +81,11 @@ describe('MessageList Component (Unit)', () => {
         )
 
         const frame = lastFrame() || ''
-        expect(frame).toContain('Error: Failed to start Claude OAuth callback server')
-        expect(frame).toContain('Cause: listen EADDRINUSE: address already in use :::53692')
-        expect(frame).toContain('Hint:  Another process is already using this port.')
+        expect(frame).toContain('Failed to start Claude OAuth callback server')
+        expect(frame).not.toContain('Error:')
+        expect(frame).not.toContain('Cause:')
+        expect(frame).toContain('Another process is already using this port.')
+        expect(frame).not.toContain('Hint:')
         expect(frame).not.toContain('✖')
         expect(frame).not.toContain('↳')
         expect(frame).not.toContain('ℹ')

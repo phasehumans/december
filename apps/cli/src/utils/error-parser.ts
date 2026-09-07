@@ -1,5 +1,323 @@
 import util from 'util'
-export function parseErrorMessage(err: any): string {
+
+export interface ErrorParseContext {
+    provider?: string
+    model?: string
+}
+
+export interface ProviderCreditRule {
+    id: string
+    name: string
+    match: (combined: string) => boolean
+    notice: string
+    message: string
+    hint: string
+}
+
+export function isCreditOrBalanceError(combined: string): boolean {
+    return (
+        combined.includes('insufficient balance') ||
+        combined.includes('insufficient credits') ||
+        combined.includes('insufficient_balance') ||
+        combined.includes('insufficient_credits') ||
+        combined.includes('insufficient_quota') ||
+        combined.includes('balance is insufficient') ||
+        combined.includes('balance insufficient') ||
+        combined.includes('balance exhausted') ||
+        combined.includes('out of credits') ||
+        combined.includes('credit balance is too low') ||
+        combined.includes('credits exhausted') ||
+        combined.includes('requires more credits') ||
+        combined.includes('can only afford') ||
+        combined.includes('payment required') ||
+        combined.includes('quota exceeded') ||
+        combined.includes('quota_exhausted') ||
+        combined.includes('402') ||
+        combined.includes('1008') ||
+        combined.includes('20009') ||
+        ((combined.includes('credits') || combined.includes('balance')) &&
+            (combined.includes('insufficient') ||
+                combined.includes('exhausted') ||
+                combined.includes('empty') ||
+                combined.includes('zero') ||
+                combined.includes('low') ||
+                combined.includes('top up') ||
+                combined.includes('recharge') ||
+                combined.includes('afford') ||
+                combined.includes('add credits')))
+    )
+}
+
+export const PROVIDER_CREDIT_RULES: ProviderCreditRule[] = [
+    {
+        id: 'minimax',
+        name: 'MiniMax',
+        match: (str) =>
+            str.includes('1008') ||
+            ((str.includes('minimax') || str.includes('api.minimax.io')) &&
+                isCreditOrBalanceError(str)),
+        notice: 'Insufficient balance in your MiniMax account. Please top up your balance at https://platform.minimax.io/\n',
+        message: 'Insufficient balance in your MiniMax account.',
+        hint: 'Please top up your balance at https://platform.minimax.io/ or switch models using /model.',
+    },
+    {
+        id: 'openrouter',
+        name: 'OpenRouter',
+        match: (str) =>
+            (str.includes('openrouter') ||
+                str.includes('requires more credits') ||
+                str.includes('can only afford')) &&
+            (str.includes('credits') || str.includes('afford') || str.includes('402')),
+        notice: 'OpenRouter credits exhausted or insufficient. Please add credits at https://openrouter.ai/settings/credits\n',
+        message: 'OpenRouter credits exhausted or insufficient.',
+        hint: 'Please add credits at https://openrouter.ai/settings/credits',
+    },
+    {
+        id: 'arcee',
+        name: 'Arcee AI',
+        match: (str) =>
+            (str.includes('arcee') || str.includes('trinity')) &&
+            (str.includes('credits') || str.includes('402') || isCreditOrBalanceError(str)),
+        notice: 'Insufficient credits in your Arcee AI account. Please add credits or top up your balance at https://platform.arcee.ai/api/api-keys\n',
+        message: 'Insufficient credits in your Arcee AI account.',
+        hint: 'Please add credits or top up your balance at https://platform.arcee.ai/api/api-keys',
+    },
+    {
+        id: 'meta',
+        name: 'Meta',
+        match: (str) =>
+            (str.includes('meta') || str.includes('muse-spark') || str.includes('dev.meta.ai')) &&
+            (str.includes('credits') || str.includes('402') || isCreditOrBalanceError(str)),
+        notice: 'Insufficient credits in your Meta account. Please add credits or top up your balance at https://dev.meta.ai/\n',
+        message: 'Insufficient credits in your Meta account.',
+        hint: 'Please add credits or top up your balance at https://dev.meta.ai/',
+    },
+    {
+        id: 'deepseek',
+        name: 'DeepSeek',
+        match: (str) =>
+            (str.includes('deepseek') || str.includes('api.deepseek.com')) &&
+            isCreditOrBalanceError(str),
+        notice: 'Insufficient balance in your DeepSeek account. Please top up your balance at https://platform.deepseek.com/top_up\n',
+        message: 'Insufficient balance in your DeepSeek account.',
+        hint: 'Please top up your balance at https://platform.deepseek.com/top_up or switch models using /model.',
+    },
+    {
+        id: 'siliconflow',
+        name: 'SiliconFlow',
+        match: (str) =>
+            str.includes('20009') ||
+            ((str.includes('siliconflow') ||
+                str.includes('siliconcloud') ||
+                str.includes('siliconflow.cn')) &&
+                isCreditOrBalanceError(str)),
+        notice: 'Insufficient balance in your SiliconFlow account. Please top up your balance at https://cloud.siliconflow.cn/\n',
+        message: 'Insufficient balance in your SiliconFlow account.',
+        hint: 'Please top up your balance at https://cloud.siliconflow.cn/ or switch models using /model.',
+    },
+    {
+        id: 'moonshot',
+        name: 'Moonshot AI',
+        match: (str) =>
+            (str.includes('moonshot') ||
+                str.includes('kimi') ||
+                str.includes('api.moonshot.cn') ||
+                str.includes('api.kimi.com')) &&
+            isCreditOrBalanceError(str),
+        notice: 'Insufficient balance in your Moonshot AI account. Please top up your balance at https://platform.moonshot.cn/\n',
+        message: 'Insufficient balance in your Moonshot AI account.',
+        hint: 'Please top up your balance at https://platform.moonshot.cn/ or switch models using /model.',
+    },
+    {
+        id: 'together',
+        name: 'Together AI',
+        match: (str) =>
+            (str.includes('together') ||
+                str.includes('together.xyz') ||
+                str.includes('together.ai')) &&
+            isCreditOrBalanceError(str),
+        notice: 'Insufficient credits in your Together AI account. Please add credits at https://api.together.ai/settings/billing\n',
+        message: 'Insufficient credits in your Together AI account.',
+        hint: 'Please add credits at https://api.together.ai/settings/billing or switch models using /model.',
+    },
+    {
+        id: 'fireworks',
+        name: 'Fireworks AI',
+        match: (str) =>
+            (str.includes('fireworks') || str.includes('fireworks.ai')) &&
+            isCreditOrBalanceError(str),
+        notice: 'Insufficient credits in your Fireworks AI account. Please add credits at https://fireworks.ai/account/billing\n',
+        message: 'Insufficient credits in your Fireworks AI account.',
+        hint: 'Please add credits at https://fireworks.ai/account/billing or switch models using /model.',
+    },
+    {
+        id: 'groq',
+        name: 'Groq',
+        match: (str) =>
+            (str.includes('groq') || str.includes('api.groq.com')) && isCreditOrBalanceError(str),
+        notice: 'Rate limit or quota exhausted in your Groq account. Please check your usage and limits at https://console.groq.com/settings/limits\n',
+        message: 'Rate limit or quota exhausted in your Groq account.',
+        hint: 'Please check your usage and limits at https://console.groq.com/settings/limits or switch models using /model.',
+    },
+    {
+        id: 'mistral',
+        name: 'Mistral AI',
+        match: (str) =>
+            (str.includes('mistral') || str.includes('api.mistral.ai')) &&
+            isCreditOrBalanceError(str),
+        notice: 'Insufficient credits or quota in your Mistral account. Please check your billing at https://console.mistral.ai/billing/\n',
+        message: 'Insufficient credits or quota in your Mistral account.',
+        hint: 'Please check your billing at https://console.mistral.ai/billing/ or switch models using /model.',
+    },
+    {
+        id: 'cerebras',
+        name: 'Cerebras',
+        match: (str) =>
+            (str.includes('cerebras') || str.includes('api.cerebras.ai')) &&
+            isCreditOrBalanceError(str),
+        notice: 'Rate limit or quota exhausted in your Cerebras account. Please check your account at https://cloud.cerebras.ai/\n',
+        message: 'Rate limit or quota exhausted in your Cerebras account.',
+        hint: 'Please check your account at https://cloud.cerebras.ai/ or switch models using /model.',
+    },
+    {
+        id: 'sambanova',
+        name: 'SambaNova',
+        match: (str) =>
+            (str.includes('sambanova') || str.includes('api.sambanova.ai')) &&
+            isCreditOrBalanceError(str),
+        notice: 'Rate limit or quota exhausted in your SambaNova account. Please check your account at https://cloud.sambanova.ai/\n',
+        message: 'Rate limit or quota exhausted in your SambaNova account.',
+        hint: 'Please check your account at https://cloud.sambanova.ai/ or switch models using /model.',
+    },
+    {
+        id: 'hyperbolic',
+        name: 'Hyperbolic',
+        match: (str) =>
+            (str.includes('hyperbolic') || str.includes('hyperbolic.xyz')) &&
+            isCreditOrBalanceError(str),
+        notice: 'Insufficient credits in your Hyperbolic account. Please add compute credits at https://app.hyperbolic.xyz/settings\n',
+        message: 'Insufficient credits in your Hyperbolic account.',
+        hint: 'Please add compute credits at https://app.hyperbolic.xyz/settings or switch models using /model.',
+    },
+    {
+        id: 'perplexity',
+        name: 'Perplexity',
+        match: (str) =>
+            (str.includes('perplexity') || str.includes('api.perplexity.ai')) &&
+            isCreditOrBalanceError(str),
+        notice: 'Insufficient credits or quota in your Perplexity account. Please check your billing at https://www.perplexity.ai/settings/api\n',
+        message: 'Insufficient credits or quota in your Perplexity account.',
+        hint: 'Please check your billing at https://www.perplexity.ai/settings/api or switch models using /model.',
+    },
+    {
+        id: 'cohere',
+        name: 'Cohere',
+        match: (str) =>
+            (str.includes('cohere') || str.includes('api.cohere.com')) &&
+            isCreditOrBalanceError(str),
+        notice: 'Rate limit or quota exhausted in your Cohere account. Please check your billing at https://dashboard.cohere.com/billing\n',
+        message: 'Rate limit or quota exhausted in your Cohere account.',
+        hint: 'Please check your billing at https://dashboard.cohere.com/billing or switch models using /model.',
+    },
+    {
+        id: 'xai',
+        name: 'xAI',
+        match: (str) =>
+            (str.includes('xai') || str.includes('api.x.ai')) && isCreditOrBalanceError(str),
+        notice: 'Insufficient credits in your xAI account. Please check your billing at https://console.x.ai/\n',
+        message: 'Insufficient credits in your xAI account.',
+        hint: 'Please check your billing at https://console.x.ai/ or switch models using /model.',
+    },
+    {
+        id: 'zai',
+        name: 'Zhipu AI',
+        match: (str) =>
+            (str.includes('zai') || str.includes('zhipu') || str.includes('bigmodel.cn')) &&
+            isCreditOrBalanceError(str),
+        notice: 'Insufficient balance in your Zhipu AI account. Please top up your balance at https://open.bigmodel.cn/\n',
+        message: 'Insufficient balance in your Zhipu AI account.',
+        hint: 'Please top up your balance at https://open.bigmodel.cn/ or switch models using /model.',
+    },
+    {
+        id: 'dashscope',
+        name: 'Alibaba Cloud DashScope',
+        match: (str) =>
+            (str.includes('dashscope') ||
+                str.includes('qwen') ||
+                str.includes('aliyuncs.com') ||
+                str.includes('allocationexceeded') ||
+                str.includes('arrearage')) &&
+            (isCreditOrBalanceError(str) ||
+                str.includes('allocation') ||
+                str.includes('arrearage')),
+        notice: 'Insufficient balance or quota in your Alibaba Cloud DashScope account. Please check your balance at https://dashscope.console.aliyun.com/\n',
+        message: 'Insufficient balance or quota in your Alibaba Cloud DashScope account.',
+        hint: 'Please check your balance at https://dashscope.console.aliyun.com/ or switch models using /model.',
+    },
+    {
+        id: 'anthropic',
+        name: 'Anthropic',
+        match: (str) =>
+            (str.includes('anthropic') || str.includes('claude')) &&
+            (isCreditOrBalanceError(str) || str.includes('credit balance is too low')),
+        notice: 'Insufficient credits in your Anthropic account. Please add credits at https://console.anthropic.com/settings/billing\n',
+        message: 'Insufficient credits in your Anthropic account.',
+        hint: 'Please add credits at https://console.anthropic.com/settings/billing or switch models using /model.',
+    },
+    {
+        id: 'openai',
+        name: 'OpenAI',
+        match: (str) =>
+            str.includes('openai') &&
+            (str.includes('insufficient_quota') ||
+                str.includes('exceeded your current quota') ||
+                isCreditOrBalanceError(str)),
+        notice: 'OpenAI quota exhausted or insufficient balance. Please check your billing and credits at https://platform.openai.com/account/billing\n',
+        message: 'OpenAI quota exhausted or insufficient balance.',
+        hint: 'Please check your billing and credits at https://platform.openai.com/account/billing or switch models using /model.',
+    },
+    {
+        id: 'huggingface',
+        name: 'Hugging Face',
+        match: (str) =>
+            (str.includes('huggingface') || str.includes('router.huggingface.co')) &&
+            isCreditOrBalanceError(str),
+        notice: 'Insufficient credits or quota in your Hugging Face account. Please check your billing at https://huggingface.co/settings/billing\n',
+        message: 'Insufficient credits or quota in your Hugging Face account.',
+        hint: 'Please check your billing at https://huggingface.co/settings/billing or switch models using /model.',
+    },
+    {
+        id: 'agentrouter',
+        name: 'AgentRouter',
+        match: (str) => str.includes('agentrouter') && isCreditOrBalanceError(str),
+        notice: 'Insufficient credits in your AgentRouter account. Please add credits at https://agentrouter.org/\n',
+        message: 'Insufficient credits in your AgentRouter account.',
+        hint: 'Please add credits at https://agentrouter.org/ or switch models using /model.',
+    },
+]
+
+export const UNIVERSAL_CREDIT_FALLBACK: ProviderCreditRule = {
+    id: 'universal_fallback',
+    name: 'LLM Provider',
+    match: (str) => isCreditOrBalanceError(str),
+    notice: 'Insufficient balance or credits with your LLM provider. Please check your account balance and top up credits with your provider, or switch models using /model\n',
+    message: 'Insufficient balance or credits with your LLM provider.',
+    hint: 'Please check your account balance and top up credits with your provider, or switch models using /model.',
+}
+
+export function findMatchingCreditRule(combined: string): ProviderCreditRule | null {
+    for (const rule of PROVIDER_CREDIT_RULES) {
+        if (rule.match(combined)) {
+            return rule
+        }
+    }
+    if (UNIVERSAL_CREDIT_FALLBACK.match(combined)) {
+        return UNIVERSAL_CREDIT_FALLBACK
+    }
+    return null
+}
+
+export function parseErrorMessage(err: any, context?: ErrorParseContext): string {
     let errMsg: string
     try {
         errMsg = err?.message || String(err)
@@ -111,7 +429,13 @@ export function parseErrorMessage(err: any): string {
     const rateLimitNotice =
         'Rate limit or quota exhausted from LLM provider. Please upgrade your API key tier with your provider (OpenAI, Anthropic, Gemini) or switch to December Cloud Subscription at https://trydecember.com/pricing\n'
 
-    const lowerStr = (errMsg + ' ' + (finalResult || '')).toLowerCase()
+    const contextStr = `${context?.provider || ''} ${context?.model || ''}`.toLowerCase().trim()
+    const lowerStr = (
+        errMsg +
+        ' ' +
+        (finalResult || '') +
+        (contextStr ? ' ' + contextStr : '')
+    ).toLowerCase()
     const isRateLimit =
         lowerStr.includes('429') ||
         lowerStr.includes('quota') ||
@@ -129,45 +453,16 @@ export function parseErrorMessage(err: any): string {
         lowerStr.includes('trydecember.com') ||
         lowerStr.includes('december cloud')
 
-    const isOpenRouterCredits =
-        !isDecemberCredits &&
-        (lowerStr.includes('openrouter') ||
-            lowerStr.includes('requires more credits') ||
-            lowerStr.includes('can only afford'))
-
-    if (
-        isOpenRouterCredits &&
-        (lowerStr.includes('credits') || lowerStr.includes('afford') || lowerStr.includes('402')) &&
-        !finalResult.includes('OpenRouter credits exhausted or insufficient') &&
-        !finalResult.includes('https://openrouter.ai/settings/credits')
-    ) {
-        const openRouterCreditsNotice =
-            'OpenRouter credits exhausted or insufficient. Please add credits at https://openrouter.ai/settings/credits\n'
-        return openRouterCreditsNotice + finalResult
-    }
-
-    const isArceeCredits =
-        !isDecemberCredits &&
-        (lowerStr.includes('arcee') || lowerStr.includes('trinity')) &&
-        (lowerStr.includes('credits') || lowerStr.includes('402'))
-
-    if (isArceeCredits && !finalResult.includes('Insufficient credits in your Arcee AI account')) {
-        const arceeCreditsNotice =
-            'Insufficient credits in your Arcee AI account. Please add credits or top up your balance at https://platform.arcee.ai/api/api-keys\n'
-        return arceeCreditsNotice + finalResult
-    }
-
-    const isMetaCredits =
-        !isDecemberCredits &&
-        (lowerStr.includes('meta') ||
-            lowerStr.includes('muse-spark') ||
-            lowerStr.includes('dev.meta.ai')) &&
-        (lowerStr.includes('credits') || lowerStr.includes('402'))
-
-    if (isMetaCredits && !finalResult.includes('Insufficient credits in your Meta account')) {
-        const metaCreditsNotice =
-            'Insufficient credits in your Meta account. Please add credits or top up your balance at https://dev.meta.ai/\n'
-        return metaCreditsNotice + finalResult
+    if (!isDecemberCredits) {
+        const creditRule = findMatchingCreditRule(lowerStr)
+        if (creditRule) {
+            const hasNoticeAlready =
+                finalResult.includes(creditRule.message) ||
+                (creditRule.hint && finalResult.includes(creditRule.hint))
+            if (!hasNoticeAlready) {
+                return creditRule.notice + finalResult
+            }
+        }
     }
 
     const isChannelError =
@@ -209,7 +504,7 @@ export interface ParsedErrorDetails {
     hint?: string
 }
 
-export function parseError(err: any): ParsedErrorDetails {
+export function parseError(err: any, context?: ErrorParseContext): ParsedErrorDetails {
     if (!err) {
         return { message: 'Unknown error occurred.' }
     }
@@ -237,8 +532,10 @@ export function parseError(err: any): ParsedErrorDetails {
                 : JSON.stringify(err.response.data)
     }
 
-    const fullMessage = parseErrorMessage(err)
-    const combined = `${fullMessage} ${explicitCause || ''}`.toLowerCase()
+    const contextStr = `${context?.provider || ''} ${context?.model || ''}`.toLowerCase().trim()
+    const fullMessage = parseErrorMessage(err, context)
+    const combined =
+        `${fullMessage} ${explicitCause || ''} ${contextStr ? ' ' + contextStr : ''}`.toLowerCase()
 
     // 1. Rate limit
     const isRateLimit =
@@ -263,72 +560,26 @@ export function parseError(err: any): ParsedErrorDetails {
         }
     }
 
-    // 2. OpenRouter credits
+    // 2. Provider credits & Universal balance fallback
     const isDecemberCredits =
         combined.includes('december wallet') ||
         combined.includes('trydecember.com') ||
         combined.includes('december cloud')
 
-    const isOpenRouterCredits =
-        !isDecemberCredits &&
-        (combined.includes('openrouter') ||
-            combined.includes('requires more credits') ||
-            combined.includes('can only afford')) &&
-        (combined.includes('credits') || combined.includes('afford') || combined.includes('402'))
-
-    if (isOpenRouterCredits) {
-        const parts = fullMessage.split('\n')
-        const cause =
-            explicitCause || (parts.length > 1 ? parts.slice(1).join('\n').trim() : fullMessage)
-        return {
-            message: 'OpenRouter credits exhausted or insufficient.',
-            cause:
-                cause && !cause.startsWith('OpenRouter credits exhausted')
-                    ? cause
-                    : explicitCause || parts[0],
-            hint: 'Please add credits at https://openrouter.ai/settings/credits',
-        }
-    }
-
-    // 3. Arcee credits
-    const isArceeCredits =
-        !isDecemberCredits &&
-        (combined.includes('arcee') || combined.includes('trinity')) &&
-        (combined.includes('credits') || combined.includes('402'))
-
-    if (isArceeCredits) {
-        const parts = fullMessage.split('\n')
-        const cause =
-            explicitCause || (parts.length > 1 ? parts.slice(1).join('\n').trim() : fullMessage)
-        return {
-            message: 'Insufficient credits in your Arcee AI account.',
-            cause:
-                cause && !cause.startsWith('Insufficient credits in your Arcee')
-                    ? cause
-                    : explicitCause || parts[0],
-            hint: 'Please add credits or top up your balance at https://platform.arcee.ai/api/api-keys',
-        }
-    }
-
-    // 4. Meta credits
-    const isMetaCredits =
-        !isDecemberCredits &&
-        (combined.includes('meta') ||
-            combined.includes('muse-spark') ||
-            combined.includes('dev.meta.ai')) &&
-        (combined.includes('credits') || combined.includes('402'))
-
-    if (isMetaCredits) {
-        const parts = fullMessage.split('\n')
-        const cause =
-            explicitCause || (parts.length > 1 ? parts.slice(1).join('\n').trim() : fullMessage)
-        return {
-            message: 'Insufficient credits in your Meta account.',
-            cause:
-                cause && !cause.startsWith('Insufficient credits in your Meta')
-                    ? cause
-                    : explicitCause || parts[0],
-            hint: 'Please add credits or top up your balance at https://dev.meta.ai/',
+    if (!isDecemberCredits) {
+        const creditRule = findMatchingCreditRule(combined)
+        if (creditRule) {
+            const parts = fullMessage.split('\n')
+            const cause =
+                explicitCause || (parts.length > 1 ? parts.slice(1).join('\n').trim() : fullMessage)
+            return {
+                message: creditRule.message,
+                cause:
+                    cause && !cause.startsWith(creditRule.message)
+                        ? cause
+                        : explicitCause || parts[0],
+                hint: creditRule.hint,
+            }
         }
     }
 

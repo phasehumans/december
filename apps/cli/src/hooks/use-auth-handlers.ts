@@ -799,6 +799,10 @@ export function useAuthHandlers(
                 } else if (msg.role === 'assistant') {
                     const blocks: MessageBlock[] = []
 
+                    if (msg.thinking) {
+                        blocks.push({ type: 'thinking', content: msg.thinking })
+                    }
+
                     if (msg.toolCalls && msg.toolCalls.length > 0) {
                         for (const tc of msg.toolCalls) {
                             const toolMsg = agent.messages.find(

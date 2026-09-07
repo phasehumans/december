@@ -381,7 +381,13 @@ export function useAgentSession({
                     setStaticMessages((prev) => [...prev, noticeMsg])
                 } else {
                     setActiveMessages([])
-                    const parsed = parseError(err)
+                    const errorContext = {
+                        provider:
+                            agent?.modelOptions?.provider ||
+                            useCliStore.getState().selectedProvider,
+                        model: agent?.modelOptions?.model || useCliStore.getState().activeModel,
+                    }
+                    const parsed = parseError(err, errorContext)
                     const errorMsg: Message = {
                         id: getNextMsgId(),
                         role: 'error',
@@ -465,12 +471,21 @@ export function useAgentSession({
                 { id: assistantMsgId, role: 'assistant', blocks: [] },
             ])
             let planSuccess = false
+            const errorContext = {
+                provider: agent?.modelOptions?.provider || useCliStore.getState().selectedProvider,
+                model: agent?.modelOptions?.model || useCliStore.getState().activeModel,
+            }
             try {
                 const stream = runAgentLoop(agent, planPrompt)
-                await processAgentStream({ stream, setActiveMessages, assistantMsgId })
+                await processAgentStream({
+                    stream,
+                    setActiveMessages,
+                    assistantMsgId,
+                    context: errorContext,
+                })
                 planSuccess = true
             } catch (err: any) {
-                const parsed = parseError(err)
+                const parsed = parseError(err, errorContext)
                 setActiveMessages((prev) => [
                     ...prev,
                     {
@@ -936,6 +951,7 @@ ${decStatus}
                 if (agent) {
                     await agent.newContext()
                 }
+                console.clear()
                 setStaticMessages([{ id: 'header-' + Date.now(), role: 'header' }])
                 setStaticKey((k: number) => k + 1)
                 setActiveMessages([])
@@ -948,6 +964,7 @@ ${decStatus}
                 if (agent) {
                     await agent.clearContext()
                 }
+                console.clear()
                 setStaticMessages([{ id: 'header-' + Date.now(), role: 'header' }])
                 setStaticKey((k: number) => k + 1)
                 setActiveMessages([])
@@ -1242,12 +1259,22 @@ ${decStatus}
                     { id: assistantMsgId, role: 'assistant', blocks: [] },
                 ])
                 let planSuccess = false
+                const errorContext = {
+                    provider:
+                        agent?.modelOptions?.provider || useCliStore.getState().selectedProvider,
+                    model: agent?.modelOptions?.model || useCliStore.getState().activeModel,
+                }
                 try {
                     const stream = runAgentLoop(agent, planPrompt)
-                    await processAgentStream({ stream, setActiveMessages, assistantMsgId })
+                    await processAgentStream({
+                        stream,
+                        setActiveMessages,
+                        assistantMsgId,
+                        context: errorContext,
+                    })
                     planSuccess = true
                 } catch (err: any) {
-                    const parsed = parseError(err)
+                    const parsed = parseError(err, errorContext)
                     setActiveMessages((prev) => [
                         ...prev,
                         {
@@ -1637,14 +1664,24 @@ ${decStatus}
                 ])
                 setActiveMessages([{ id: assistantMsgId, role: 'assistant', blocks: [] }])
 
+                const errorContext = {
+                    provider:
+                        agent?.modelOptions?.provider || useCliStore.getState().selectedProvider,
+                    model: agent?.modelOptions?.model || useCliStore.getState().activeModel,
+                }
                 try {
                     const stream = runAgentLoop(agent, {
                         content: executionPrompt,
                         displayText,
                     })
-                    await processAgentStream({ stream, setActiveMessages, assistantMsgId })
+                    await processAgentStream({
+                        stream,
+                        setActiveMessages,
+                        assistantMsgId,
+                        context: errorContext,
+                    })
                 } catch (err: any) {
-                    const parsed = parseError(err)
+                    const parsed = parseError(err, errorContext)
                     setActiveMessages((prev) => [
                         ...prev,
                         {
@@ -1701,6 +1738,11 @@ ${decStatus}
             setCurrentPlannedPrompt,
             authMethod,
             selectedProvider,
+            setActiveModel,
+            setAuthMethod,
+            setHasBothAuth,
+            setIsAuthenticated,
+            setSettingsAuthPriority,
         ]
     )
 
