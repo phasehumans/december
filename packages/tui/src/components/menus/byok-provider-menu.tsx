@@ -1,5 +1,6 @@
 import { Box, Text, useInput } from 'ink'
-import React, { useState } from 'react'
+import TextInput from 'ink-text-input'
+import React, { useState, useMemo, useRef } from 'react'
 
 import { THEME } from '../../theme'
 
@@ -53,10 +54,44 @@ export function ByokProviderMenu(props: ByokProviderMenuProps) {
     } = props
     const [selectedIndex, setSelectedIndex] = useState(0)
     const [windowStart, setWindowStart] = useState(0)
+    const [isSearching, setIsSearching] = useState(false)
+    const [searchQuery, setSearchQuery] = useState('')
 
     const onSelect = handleByokSelect || handleProviderSelect
 
+    const isSearchingRef = useRef(isSearching)
+    isSearchingRef.current = isSearching
+
+    const filteredItems = useMemo(() => {
+        if (!searchQuery.trim()) return items
+        const q = searchQuery.toLowerCase()
+        return items.filter((item) => {
+            const labelMatch = (item.label || '').toLowerCase().includes(q)
+            const valueMatch = (item.value || '').toLowerCase().includes(q)
+            return labelMatch || valueMatch
+        })
+    }, [items, searchQuery])
+
     useInput((input, key) => {
+        // 1. Search Mode
+        if (isSearchingRef.current) {
+            if (key.escape) {
+                setIsSearching(false)
+                return
+            }
+            if (key.downArrow || key.return) {
+                setIsSearching(false)
+                return
+            }
+            return
+        }
+
+        // 2. Normal / Navigation Mode
+        if (input === '/' || input === 's') {
+            setIsSearching(true)
+            return
+        }
+
         if (key.upArrow || input === 'k') {
             if (selectedIndex > 0) {
                 const next = selectedIndex - 1
@@ -69,7 +104,7 @@ export function ByokProviderMenu(props: ByokProviderMenuProps) {
         }
 
         if (key.downArrow || input === 'j') {
-            if (selectedIndex < items.length - 1) {
+            if (selectedIndex < filteredItems.length - 1) {
                 const next = selectedIndex + 1
                 setSelectedIndex(next)
                 if (next >= windowStart + WINDOW_SIZE) {
@@ -80,13 +115,19 @@ export function ByokProviderMenu(props: ByokProviderMenuProps) {
         }
 
         if (key.return) {
-            if (onSelect && items[selectedIndex]) {
-                onSelect(items[selectedIndex])
+            if (onSelect && filteredItems[selectedIndex]) {
+                onSelect(filteredItems[selectedIndex])
             }
             return
         }
 
         if (key.escape) {
+            if (searchQuery) {
+                setSearchQuery('')
+                setSelectedIndex(0)
+                setWindowStart(0)
+                return
+            }
             if (setAuthMode) {
                 setAuthMode('menu')
             }
@@ -94,15 +135,56 @@ export function ByokProviderMenu(props: ByokProviderMenuProps) {
         }
     })
 
-    const windowEnd = Math.min(windowStart + WINDOW_SIZE, items.length)
-    const visibleItems = items.slice(windowStart, windowEnd)
+    const windowEnd = Math.min(windowStart + WINDOW_SIZE, filteredItems.length)
+    const visibleItems = filteredItems.slice(windowStart, windowEnd)
     const itemsAbove = windowStart
-    const itemsBelow = items.length - windowEnd
+    const itemsBelow = filteredItems.length - windowEnd
+
+    const footerItems = isSearching
+        ? [
+              { key: 'enter / ↓', label: 'Focus List' },
+              { key: 'esc', label: 'Exit Search' },
+          ]
+        : [
+              { key: '↑/↓', label: 'Navigate' },
+              { key: 'enter', label: 'Select' },
+              { key: '/', label: 'Search' },
+              { key: 'esc', label: 'Back' },
+          ]
 
     return (
         <Box flexDirection="column" paddingX={THEME.padding.paddingX}>
-            <Box marginBottom={1}>
+            <Box marginBottom={1} flexDirection="column" gap={1}>
                 <Text color={THEME.colors.text}>Select API Provider (BYOK):</Text>
+                <Box flexDirection="row" gap={1}>
+                    <Text color={isSearching ? THEME.colors.brand : THEME.colors.muted}>
+                        Search:
+                    </Text>
+                    {isSearching ? (
+                        <TextInput
+                            value={searchQuery}
+                            onChange={(val) => {
+                                setSearchQuery(val)
+                                setSelectedIndex(0)
+                                setWindowStart(0)
+                            }}
+                            onSubmit={() => setIsSearching(false)}
+                            placeholder="Filter providers..."
+                            focus={true}
+                        />
+                    ) : (
+                        <Text color={searchQuery ? THEME.colors.text : THEME.colors.muted}>
+                            {searchQuery ? (
+                                <Text>
+                                    {searchQuery}{' '}
+                                    <Text color={THEME.colors.muted}>[/ to filter]</Text>
+                                </Text>
+                            ) : (
+                                '[/ to filter]'
+                            )}
+                        </Text>
+                    )}
+                </Box>
             </Box>
 
             {/* ↑ n more */}
@@ -137,13 +219,13 @@ export function ByokProviderMenu(props: ByokProviderMenuProps) {
                 </Box>
             )}
 
-            <MenuFooter
-                items={[
-                    { key: '↑/↓', label: 'Navigate' },
-                    { key: 'enter', label: 'Select' },
-                    { key: 'esc', label: 'Back' },
-                ]}
-            />
+            {filteredItems.length === 0 && (
+                <Box paddingLeft={2}>
+                    <Text color={THEME.colors.muted}>No providers found.</Text>
+                </Box>
+            )}
+
+            <MenuFooter items={footerItems} />
         </Box>
     )
 }
