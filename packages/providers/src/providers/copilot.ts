@@ -36,11 +36,12 @@ export interface CopilotProviderOptions {
     pluginVersion?: string
     integrationId?: string
     customClient?: any
+    getToken?: () => Promise<string | undefined>
 }
 
 export function copilotProvider(token?: string, options?: CopilotProviderOptions): LLMProvider {
     const endpoint = options?.endpoint || COPILOT_DEFAULT_ENDPOINT
-    const bearerToken =
+    let currentToken =
         token || process.env.COPILOT_TOKEN || process.env.GITHUB_COPILOT_TOKEN || 'dummy-key'
 
     const copilotHeaders: Record<string, string> = {
@@ -52,7 +53,7 @@ export function copilotProvider(token?: string, options?: CopilotProviderOptions
         ...(options?.headers || {}),
     }
 
-    const underlying = openaiProvider(endpoint, bearerToken, copilotHeaders, options?.customClient)
+    let underlying = openaiProvider(endpoint, currentToken, copilotHeaders, options?.customClient)
 
     return {
         id: 'copilot',
@@ -63,6 +64,23 @@ export function copilotProvider(token?: string, options?: CopilotProviderOptions
             modelOptions?: Record<string, any>,
             signal?: AbortSignal
         ): AsyncGenerator<ProviderStreamChunk, void, unknown> {
+            if (options?.getToken) {
+                try {
+                    const freshToken = await options.getToken()
+                    if (freshToken && freshToken !== currentToken) {
+                        currentToken = freshToken
+                        underlying = openaiProvider(
+                            endpoint,
+                            currentToken,
+                            copilotHeaders,
+                            options?.customClient
+                        )
+                    }
+                } catch {
+                    // Intentionally swallowed: fallback to currentToken if dynamic refresh fails
+                }
+            }
+
             const mappedOptions = {
                 ...modelOptions,
                 model: resolveCopilotModel(modelOptions?.model),

@@ -114,4 +114,36 @@ describe('Copilot Provider (Unit)', () => {
             completionTokens: 15,
         })
     })
+
+    it('dynamically refreshes token via getToken hook before stream invocation', async () => {
+        let getTokenCalled = 0
+        const mockClient: any = {
+            chat: {
+                completions: {
+                    create: async () => {
+                        return (async function* () {
+                            yield { choices: [{ delta: { content: 'Token refreshed OK' } }] }
+                        })()
+                    },
+                },
+            },
+        }
+
+        const provider = copilotProvider('initial-token', {
+            customClient: mockClient,
+            getToken: async () => {
+                getTokenCalled++
+                return 'refreshed-token-123'
+            },
+        })
+
+        const stream = provider.stream([{ role: 'user', content: 'hello' }])
+        const chunks = []
+        for await (const chunk of stream) {
+            chunks.push(chunk)
+        }
+
+        expect(getTokenCalled).toBe(1)
+        expect(chunks).toContainEqual({ type: 'text', text: 'Token refreshed OK' })
+    })
 })

@@ -64,7 +64,6 @@ export const OFFICIAL_MODEL_RATES: Record<string, ModelRate> = {
         outputRate: 3.96,
     },
     'zai-org/glm-5.2': { name: 'zai-org/glm-5.2', inputRate: 1.4, outputRate: 4.4 },
-    'moonshotai/kimi-k3': { name: 'moonshotai/kimi-k3', inputRate: 3.0, outputRate: 15.0 },
     'thinkingmachines/inkling-small': {
         name: 'thinkingmachines/inkling-small',
         inputRate: 0.5,
@@ -98,6 +97,39 @@ export const OFFICIAL_MODEL_RATES: Record<string, ModelRate> = {
     'minimax-text-01': { name: 'minimax-text-01', inputRate: 0.15, outputRate: 1.2 },
     'minimax-vl-01': { name: 'minimax-vl-01', inputRate: 0.15, outputRate: 1.2 },
 
+    // Moonshot AI / Kimi
+    'kimi-k3': { name: 'kimi-k3', inputRate: 3.0, outputRate: 15.0 },
+    'moonshotai/kimi-k3': { name: 'moonshotai/kimi-k3', inputRate: 3.0, outputRate: 15.0 },
+    'kimi-k2.7-code': { name: 'kimi-k2.7-code', inputRate: 0.95, outputRate: 4.0 },
+    'kimi-k2.7-code-highspeed': {
+        name: 'kimi-k2.7-code-highspeed',
+        inputRate: 1.9,
+        outputRate: 8.0,
+    },
+    'kimi-k2.6': { name: 'kimi-k2.6', inputRate: 0.95, outputRate: 4.0 },
+    'kimi-k2.5': { name: 'kimi-k2.5', inputRate: 0.95, outputRate: 4.0 },
+
+    // Mistral AI
+    'mistral-large-latest': { name: 'mistral-large-latest', inputRate: 0.5, outputRate: 1.5 },
+    'mistral-large-2512': { name: 'mistral-large-2512', inputRate: 0.5, outputRate: 1.5 },
+    'mistral-medium-latest': { name: 'mistral-medium-latest', inputRate: 1.5, outputRate: 7.5 },
+    'mistral-medium-2604': { name: 'mistral-medium-2604', inputRate: 1.5, outputRate: 7.5 },
+    'mistral-small-latest': { name: 'mistral-small-latest', inputRate: 0.15, outputRate: 0.6 },
+    'mistral-small-2603': { name: 'mistral-small-2603', inputRate: 0.15, outputRate: 0.6 },
+    'codestral-latest': { name: 'codestral-latest', inputRate: 0.3, outputRate: 0.9 },
+    'codestral-2501': { name: 'codestral-2501', inputRate: 0.3, outputRate: 0.9 },
+    'devstral-2512': { name: 'devstral-2512', inputRate: 0.4, outputRate: 2.0 },
+    'devstral-latest': { name: 'devstral-latest', inputRate: 0.4, outputRate: 2.0 },
+    'magistral-medium-latest': {
+        name: 'magistral-medium-latest',
+        inputRate: 2.0,
+        outputRate: 5.0,
+    },
+    'magistral-small': { name: 'magistral-small', inputRate: 0.5, outputRate: 1.5 },
+    'ministral-8b-latest': { name: 'ministral-8b-latest', inputRate: 0.1, outputRate: 0.1 },
+    'ministral-3b-latest': { name: 'ministral-3b-latest', inputRate: 0.04, outputRate: 0.04 },
+    'mistral-nemo': { name: 'mistral-nemo', inputRate: 0.15, outputRate: 0.15 },
+
     // Ollama (Local)
     ollama: { name: 'ollama', inputRate: 0.0, outputRate: 0.0 },
 }
@@ -112,8 +144,13 @@ export const PROVIDER_BILLING_LINKS: Record<string, string> = {
     deepseek: 'https://platform.deepseek.com/usage',
     groq: 'https://console.groq.com/usage',
     mistral: 'https://console.mistral.ai/billing/',
-    moonshot: 'https://platform.moonshot.cn/console/recharge',
-    kimi: 'https://platform.moonshot.cn/console/recharge',
+    mistralai: 'https://console.mistral.ai/billing/',
+    'mistral-ai': 'https://console.mistral.ai/billing/',
+    moonshot: 'https://platform.moonshot.ai/console/api-keys',
+    moonshotai: 'https://platform.moonshot.ai/console/api-keys',
+    'moonshot-ai': 'https://platform.moonshot.ai/console/api-keys',
+    moonshoot: 'https://platform.moonshot.ai/console/api-keys',
+    kimi: 'https://platform.moonshot.ai/console/api-keys',
     xai: 'https://console.x.ai/',
     zai: 'https://open.bigmodel.cn/usercenter/apikeys',
     nvidia: 'https://build.nvidia.com/',
@@ -145,7 +182,12 @@ export const PROVIDER_DISPLAY_NAMES: Record<string, string> = {
     deepseek: 'DeepSeek Platform',
     groq: 'Groq Cloud',
     mistral: 'Mistral AI',
+    mistralai: 'Mistral AI',
+    'mistral-ai': 'Mistral AI',
     moonshot: 'Moonshot AI (Kimi)',
+    moonshotai: 'Moonshot AI (Kimi)',
+    'moonshot-ai': 'Moonshot AI (Kimi)',
+    moonshoot: 'Moonshot AI (Kimi)',
     kimi: 'Moonshot AI (Kimi)',
     xai: 'xAI Console',
     zai: 'Zhipu AI (GLM)',
@@ -192,7 +234,8 @@ export function inferProviderFromModel(modelName: string): string {
         lower.startsWith('codestral') ||
         lower.startsWith('pixtral') ||
         lower.startsWith('ministral') ||
-        lower.startsWith('devstral')
+        lower.startsWith('devstral') ||
+        lower.startsWith('magistral')
     )
         return 'mistral'
     if (lower.startsWith('moonshot') || lower.startsWith('kimi')) return 'moonshot'

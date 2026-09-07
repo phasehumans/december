@@ -17,15 +17,18 @@ export function supportsReasoningEffort(model?: string, baseURL?: string): boole
         return false
     }
 
-    // Mistral, Groq, Llama, Qwen, Devstral, MiniMax models
+    // Mistral, Groq, Llama, Qwen, Devstral, MiniMax, Kimi K2.x models
     if (
         name.includes('codestral') ||
         name.includes('mistral') ||
         name.includes('devstral') ||
         name.includes('ministral') ||
+        name.includes('magistral') ||
         name.includes('llama') ||
         name.includes('qwen') ||
-        name.includes('minimax')
+        name.includes('minimax') ||
+        name.includes('kimi-k2') ||
+        name.includes('kimi-for-coding')
     ) {
         return false
     }
@@ -48,6 +51,14 @@ export function supportsReasoningEffort(model?: string, baseURL?: string): boole
         return false
     }
 
+    return true
+}
+
+export function supportsStreamOptions(baseURL?: string): boolean {
+    if (!baseURL) return true
+    if (baseURL.includes('githubcopilot.com')) {
+        return false
+    }
     return true
 }
 
@@ -202,7 +213,9 @@ export function openaiProvider(
                 stream: true,
                 temperature: modelOptions?.temperature,
                 max_tokens: modelOptions?.max_tokens,
-                stream_options: { include_usage: true },
+            }
+            if (supportsStreamOptions(baseURL)) {
+                createParams.stream_options = { include_usage: true }
             }
             if (shouldSendReasoningEffort) {
                 createParams.reasoning_effort = reasoningEffort
@@ -214,6 +227,16 @@ export function openaiProvider(
             } catch (err: any) {
                 const errMsg = (err?.message || String(err)).toLowerCase()
                 if (
+                    createParams.stream_options &&
+                    (errMsg.includes('stream_options') ||
+                        errMsg.includes('stream options') ||
+                        errMsg.includes('streamoptions') ||
+                        errMsg.includes('extra fields not permitted') ||
+                        errMsg.includes('unknown parameter'))
+                ) {
+                    delete createParams.stream_options
+                    stream = await client.chat.completions.create({ ...createParams }, { signal })
+                } else if (
                     createParams.reasoning_effort &&
                     (errMsg.includes('reasoning_effort') ||
                         errMsg.includes('reasoning effort') ||

@@ -177,6 +177,8 @@ export const getCuratedProviderModels = (provider: string) => {
         case 'kimi':
         case 'moonshot':
         case 'moonshoot':
+        case 'moonshotai':
+        case 'moonshot-ai':
             return [
                 { label: 'Kimi K3', value: 'kimi-k3' },
                 { label: 'Kimi K2.7 Code', value: 'kimi-k2.7-code' },
@@ -185,17 +187,20 @@ export const getCuratedProviderModels = (provider: string) => {
                 { label: 'Kimi K2.5', value: 'kimi-k2.5' },
             ]
         case 'mistral':
+        case 'mistralai':
+        case 'mistral-ai':
             return [
+                { label: 'Magistral Medium', value: 'magistral-medium-latest' },
+                { label: 'Magistral Small', value: 'magistral-small' },
+                { label: 'Devstral 2', value: 'devstral-2512' },
                 { label: 'Mistral Large', value: 'mistral-large-latest' },
                 { label: 'Mistral Medium', value: 'mistral-medium-latest' },
                 { label: 'Mistral Small', value: 'mistral-small-latest' },
                 { label: 'Codestral', value: 'codestral-latest' },
                 { label: 'Devstral', value: 'devstral-latest' },
-                { label: 'Devstral 2', value: 'devstral-2512' },
-                { label: 'Magistral Small', value: 'magistral-small' },
-                { label: 'Ministral 14B', value: 'ministral-14b-latest' },
                 { label: 'Ministral 8B', value: 'ministral-8b-latest' },
                 { label: 'Ministral 3B', value: 'ministral-3b-latest' },
+                { label: 'Mistral Nemo', value: 'mistral-nemo' },
                 { label: 'Pixtral Large', value: 'pixtral-large-latest' },
             ]
         case 'xai':
@@ -743,6 +748,8 @@ export async function fetchLiveProviderModels(
                     endpoint = 'https://api.groq.com/openai/v1/models'
                     break
                 case 'mistral':
+                case 'mistralai':
+                case 'mistral-ai':
                     endpoint = 'https://api.mistral.ai/v1/models'
                     break
                 case 'xai':
@@ -788,6 +795,8 @@ export async function fetchLiveProviderModels(
                 case 'kimi':
                 case 'moonshot':
                 case 'moonshoot':
+                case 'moonshotai':
+                case 'moonshot-ai':
                     endpoint = 'https://api.moonshot.ai/v1/models'
                     break
                 case 'agentrouter':
@@ -935,6 +944,7 @@ export const getModelLabel = (value: string) => {
         'groq',
         'huggingface',
         'kimi',
+        'moonshot',
         'mistral',
         'xai',
         'zai',

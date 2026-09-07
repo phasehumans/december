@@ -26,6 +26,7 @@ export const PROVIDER_MENU_ITEMS = [
     { label: 'Meta', value: 'meta' },
     { label: 'MiniMax', value: 'minimax' },
     { label: 'Mistral AI', value: 'mistral' },
+    { label: 'Moonshot AI', value: 'moonshot' },
     { label: 'NVIDIA NIM', value: 'nvidia' },
     { label: 'Ollama', value: 'ollama' },
     { label: 'OpenAI', value: 'openai' },

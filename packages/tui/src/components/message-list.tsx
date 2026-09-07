@@ -1,4 +1,4 @@
-import { Box } from 'ink'
+import { Box, Static } from 'ink'
 import React from 'react'
 
 import { Header } from './header'
@@ -72,15 +72,28 @@ export const MessageList = React.memo(function MessageList({
     userEmail?: string
     expandCommands?: boolean
 }) {
-    const allMessages = [...staticMessages, ...activeMessages]
-
     return (
         <Box flexDirection="column">
-            {allMessages.map((msg, index) =>
+            {staticMessages.length > 0 && (
+                <Static key={`${staticKey}-${expandCommands}`} items={staticMessages}>
+                    {(msg, index) =>
+                        renderSingleMessage(
+                            msg,
+                            index,
+                            staticMessages,
+                            cliVersion,
+                            latestVersion,
+                            userEmail,
+                            expandCommands
+                        )
+                    }
+                </Static>
+            )}
+            {activeMessages.map((msg, index) =>
                 renderSingleMessage(
                     msg,
-                    index,
-                    allMessages,
+                    staticMessages.length + index,
+                    [...staticMessages, ...activeMessages],
                     cliVersion,
                     latestVersion,
                     userEmail,

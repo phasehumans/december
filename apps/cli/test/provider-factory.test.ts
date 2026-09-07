@@ -95,6 +95,34 @@ describe('instantiateProvider', () => {
             'https://api.moonshot.ai/v1',
             'key-123'
         )
+        instantiateProvider('moonshotai', 'key-123')
+        expect(providers.openaiProvider).toHaveBeenCalledWith(
+            'https://api.moonshot.ai/v1',
+            'key-123'
+        )
+        instantiateProvider('moonshot-ai', 'key-123')
+        expect(providers.openaiProvider).toHaveBeenCalledWith(
+            'https://api.moonshot.ai/v1',
+            'key-123'
+        )
+    })
+
+    it('instantiates mistral provider via openai compat', () => {
+        instantiateProvider('mistral', 'key-123')
+        expect(providers.openaiProvider).toHaveBeenCalledWith(
+            'https://api.mistral.ai/v1',
+            'key-123'
+        )
+        instantiateProvider('mistralai', 'key-123')
+        expect(providers.openaiProvider).toHaveBeenCalledWith(
+            'https://api.mistral.ai/v1',
+            'key-123'
+        )
+        instantiateProvider('mistral-ai', 'key-123')
+        expect(providers.openaiProvider).toHaveBeenCalledWith(
+            'https://api.mistral.ai/v1',
+            'key-123'
+        )
     })
 
     it('instantiates zai provider via openai compat', () => {

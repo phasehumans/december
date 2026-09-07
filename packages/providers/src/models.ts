@@ -92,6 +92,25 @@ export const MODEL_CONTEXT_WINDOWS: Record<string, number> = {
     'deepseek/deepseek-v4-pro': 512000,
     'zai-org/glm-5.2': 262144,
     'moonshotai/kimi-k3': 1000000,
+    'kimi-k3': 1048576,
+    'kimi-k2.7-code': 262144,
+    'kimi-k2.7-code-highspeed': 262144,
+    'kimi-k2.6': 262144,
+    'kimi-k2.5': 262144,
+    'codestral-latest': 256000,
+    'codestral-2501': 256000,
+    'devstral-2512': 262144,
+    'devstral-latest': 262144,
+    'mistral-large-latest': 262144,
+    'mistral-large-2512': 262144,
+    'mistral-medium-latest': 262144,
+    'mistral-medium-2604': 262144,
+    'mistral-small-latest': 256000,
+    'mistral-small-2603': 256000,
+    'magistral-medium-latest': 128000,
+    'magistral-small': 128000,
+    'ministral-8b-latest': 128000,
+    'ministral-3b-latest': 128000,
     'muse-spark-1.3': 1048576,
     'muse-spark-1.3-contributor': 1048576,
     'muse-spark-1.2': 1048576,
@@ -124,14 +143,15 @@ export function getModelContextWindow(value: string): number {
         lower.includes('codestral') ||
         lower.includes('mistral-large') ||
         lower.includes('devstral') ||
-        lower.includes('ministral') ||
         lower.includes('mistral-medium') ||
         lower.includes('mistral-small') ||
         lower.includes('command-a') ||
         lower.includes('qwen3.8-flash-next') ||
         lower.includes('qwen3-coder') ||
         lower.includes('trinity') ||
-        lower.includes('inkling')
+        lower.includes('inkling') ||
+        lower.includes('kimi-k2') ||
+        lower.includes('kimi-for-coding')
     )
         return 262144
     if (lower.includes('muse-spark') || lower.includes('muse')) return 1048576
@@ -161,6 +181,8 @@ export function getModelContextWindow(value: string): number {
         lower.includes('llama3.3') ||
         lower.includes('llama3.1') ||
         lower.includes('mistral-nemo') ||
+        lower.includes('magistral') ||
+        lower.includes('ministral') ||
         lower.includes('gpt-oss') ||
         lower.includes('sonar')
     ) {

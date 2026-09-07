@@ -9,6 +9,8 @@ import {
     codexResponsesProvider,
 } from '@december/providers'
 
+import { resolveSubscriptionToken } from '../auth/subscriptions/subscription-manager'
+
 import type { SubscriptionTokenBundle } from '../auth/subscriptions/types'
 
 export interface InstantiateProviderOptions {
@@ -33,9 +35,28 @@ export function instantiateProvider(
         case 'github_copilot':
         case 'github': {
             const endpoint = options?.baseURL || options?.subscription?.endpoint
+            const subscription = options?.subscription
+            const getToken = subscription
+                ? async () => {
+                      try {
+                          const refreshed = await resolveSubscriptionToken('copilot', subscription)
+                          if (refreshed?.accessToken) {
+                              subscription.accessToken = refreshed.accessToken
+                              subscription.expiresAt = refreshed.expiresAt
+                              subscription.endpoint = refreshed.endpoint
+                              return refreshed.accessToken
+                          }
+                      } catch {
+                          // Intentionally swallowed: fallback to current token if dynamic refresh fails
+                      }
+                      return subscription.accessToken
+                  }
+                : undefined
+
             return copilotProvider(apiKey, {
                 endpoint,
                 headers: options?.headers,
+                getToken,
             })
         }
         case 'codex':
@@ -105,8 +126,12 @@ export function instantiateProvider(
             return withProviderId(anthropicProvider('https://api.kimi.com/coding', apiKey), 'kimi')
         case 'moonshot':
         case 'moonshoot':
+        case 'moonshotai':
+        case 'moonshot-ai':
             return withProviderId(openaiProvider('https://api.moonshot.ai/v1', apiKey), 'moonshot')
         case 'mistral':
+        case 'mistralai':
+        case 'mistral-ai':
             return withProviderId(openaiProvider('https://api.mistral.ai/v1', apiKey), 'mistral')
         case 'xai':
             return withProviderId(openaiProvider('https://api.x.ai/v1', apiKey), 'xai')

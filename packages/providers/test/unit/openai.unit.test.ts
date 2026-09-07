@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'bun:test'
 
-import { openaiProvider, OpenAIProvider, supportsReasoningEffort } from '../../src/providers/openai'
+import {
+    openaiProvider,
+    OpenAIProvider,
+    supportsReasoningEffort,
+    supportsStreamOptions,
+} from '../../src/providers/openai'
 
 describe('OpenAI Provider Adapter (Unit)', () => {
     it('instantiates OpenAIProvider class wrapper correctly', () => {
@@ -222,6 +227,10 @@ describe('OpenAI Provider Adapter (Unit)', () => {
     it('supportsReasoningEffort disables reasoning_effort for Mistral, Groq, and GPT-4o models', () => {
         expect(supportsReasoningEffort('codestral-latest')).toBe(false)
         expect(supportsReasoningEffort('mistral-large-latest')).toBe(false)
+        expect(supportsReasoningEffort('magistral-medium-latest')).toBe(false)
+        expect(supportsReasoningEffort('kimi-k2.7-code')).toBe(false)
+        expect(supportsReasoningEffort('kimi-k2.6')).toBe(false)
+        expect(supportsReasoningEffort('kimi-k3')).toBe(true)
         expect(supportsReasoningEffort('gpt-4o')).toBe(false)
         expect(supportsReasoningEffort('gpt-4o-mini')).toBe(false)
         expect(supportsReasoningEffort('o3-mini')).toBe(true)
@@ -274,5 +283,76 @@ describe('OpenAI Provider Adapter (Unit)', () => {
         expect(capturedPayloads[0].reasoning_effort).toBe('low')
         expect(capturedPayloads[1].reasoning_effort).toBeUndefined()
         expect(chunks).toEqual([{ type: 'text', text: 'Recovered response' }])
+    })
+
+    it('supportsStreamOptions disables stream_options for githubcopilot.com endpoints', () => {
+        expect(supportsStreamOptions('https://api.individual.githubcopilot.com')).toBe(false)
+        expect(supportsStreamOptions('https://api.githubcopilot.com')).toBe(false)
+        expect(supportsStreamOptions('https://api.openai.com/v1')).toBe(true)
+        expect(supportsStreamOptions(undefined)).toBe(true)
+    })
+
+    it('omits stream_options when baseURL is a Copilot endpoint', async () => {
+        let capturedPayload: any = null
+        const mockClient: any = {
+            chat: {
+                completions: {
+                    create: async (payload: any) => {
+                        capturedPayload = payload
+                        return (async function* () {
+                            yield { choices: [{ delta: { content: 'Copilot OK' } }] }
+                        })()
+                    },
+                },
+            },
+        }
+
+        const provider = openaiProvider(
+            'https://api.individual.githubcopilot.com',
+            'test-token',
+            undefined,
+            mockClient
+        )
+        const stream = provider.stream([{ role: 'user', content: 'test' }])
+        for await (const _ of stream) {
+            // consume
+        }
+
+        expect(capturedPayload).not.toBeNull()
+        expect(capturedPayload.stream_options).toBeUndefined()
+    })
+
+    it('automatically catches stream_options rejection and retries without stream_options', async () => {
+        let attempts = 0
+        const capturedPayloads: any[] = []
+
+        const mockClient: any = {
+            chat: {
+                completions: {
+                    create: async (payload: any) => {
+                        attempts++
+                        capturedPayloads.push(payload)
+                        if (attempts === 1 && payload.stream_options) {
+                            throw new Error("400 unknown parameter 'stream_options'")
+                        }
+                        return (async function* () {
+                            yield { choices: [{ delta: { content: 'Success after retry' } }] }
+                        })()
+                    },
+                },
+            },
+        }
+
+        const provider = openaiProvider(undefined, 'test-key', undefined, mockClient)
+        const stream = provider.stream([{ role: 'user', content: 'test' }])
+        const chunks: any[] = []
+        for await (const chunk of stream) {
+            chunks.push(chunk)
+        }
+
+        expect(attempts).toBe(2)
+        expect(capturedPayloads[0].stream_options).toBeDefined()
+        expect(capturedPayloads[1].stream_options).toBeUndefined()
+        expect(chunks).toEqual([{ type: 'text', text: 'Success after retry' }])
     })
 })

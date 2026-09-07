@@ -212,4 +212,42 @@ describe('Subscription Verification & Provider Selection (Unit & Integration)', 
         expect(config.subscriptions?.copilot).toBeDefined()
         expect(config.activeProvider).toBe('copilot')
     })
+
+    it('throws descriptive error during copilot login if account lacks active subscription', async () => {
+        globalThis.fetch = vi.fn().mockImplementation(async (url: any) => {
+            if (String(url).includes('login/device/code')) {
+                return new Response(
+                    JSON.stringify({
+                        device_code: 'dev-1234',
+                        user_code: 'COPILOT-CODE',
+                        verification_uri: 'https://github.com/login/device',
+                        expires_in: 900,
+                        interval: 1,
+                    }),
+                    { status: 200, headers: { 'content-type': 'application/json' } }
+                )
+            }
+            if (String(url).includes('login/oauth/access_token')) {
+                return new Response(
+                    JSON.stringify({
+                        access_token: 'gho_new_token',
+                    }),
+                    { status: 200, headers: { 'content-type': 'application/json' } }
+                )
+            }
+            if (String(url).includes('copilot_internal/v2/token')) {
+                return new Response(
+                    JSON.stringify({
+                        message: 'Not authorized, Copilot subscription required',
+                    }),
+                    { status: 403, headers: { 'content-type': 'application/json' } }
+                )
+            }
+            throw new Error(`Unexpected URL: ${url}`)
+        }) as any
+
+        expect(loginSubscription('copilot')).rejects.toThrow(
+            'GitHub Copilot subscription verification failed'
+        )
+    })
 })

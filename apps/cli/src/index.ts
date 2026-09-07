@@ -408,7 +408,7 @@ async function main() {
                     ),
             })
         ),
-        { exitOnCtrlC: false }
+        { exitOnCtrlC: false, incrementalRendering: true }
     )
 }
 

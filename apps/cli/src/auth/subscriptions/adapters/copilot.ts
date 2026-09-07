@@ -17,6 +17,7 @@ export async function exchangeGitHubTokenForCopilot(
             Authorization: `token ${githubOAuthToken}`,
             'Editor-Version': 'vscode/1.95.0',
             'Editor-Plugin-Version': 'copilot/1.240.0',
+            'Copilot-Integration-Id': 'vscode-chat',
             'User-Agent': 'GithubCopilot/1.240.0',
             Accept: 'application/json',
         },
@@ -64,12 +65,18 @@ export const copilotAdapter: SubscriptionAdapter = {
 
         // 2. Check standard local credential files
         const home = process.env.HOME || os.homedir()
+        const appData = process.env.APPDATA || path.join(home, 'AppData', 'Roaming')
+        const localAppData = process.env.LOCALAPPDATA || path.join(home, 'AppData', 'Local')
         const candidatePaths = [
             path.join(home, '.config', 'github-copilot', 'hosts.json'),
             path.join(home, '.config', 'github-copilot', 'apps.json'),
             path.join(home, '.config', 'github-copilot', 'config.json'),
-            path.join(home, 'AppData', 'Local', 'github-copilot', 'hosts.json'),
-            path.join(home, 'AppData', 'Local', 'github-copilot', 'apps.json'),
+            path.join(appData, 'GitHub Copilot', 'hosts.json'),
+            path.join(appData, 'github-copilot', 'hosts.json'),
+            path.join(localAppData, 'github-copilot', 'hosts.json'),
+            path.join(localAppData, 'github-copilot', 'apps.json'),
+            path.join(home, 'Library', 'Application Support', 'github-copilot', 'hosts.json'),
+            path.join(home, 'Library', 'Application Support', 'github-copilot', 'apps.json'),
         ]
 
         for (const filePath of candidatePaths) {
@@ -229,18 +236,19 @@ export const copilotAdapter: SubscriptionAdapter = {
         })
 
         // Exchange for copilot session token
-        let copilotToken = ghOAuthToken
-        let endpoint = 'https://api.individual.githubcopilot.com'
-        let expiresAt = Date.now() + 1800 * 1000
-
+        let exchangeResult: { token: string; expiresAt: number; endpoint: string }
         try {
-            const exchangeResult = await exchangeGitHubTokenForCopilot(ghOAuthToken)
-            copilotToken = exchangeResult.token
-            endpoint = exchangeResult.endpoint
-            expiresAt = exchangeResult.expiresAt
-        } catch {
-            // Intentionally swallowed: use raw token if immediate exchange fails
+            exchangeResult = await exchangeGitHubTokenForCopilot(ghOAuthToken)
+        } catch (err: any) {
+            throw new Error(
+                `GitHub Copilot subscription verification failed. Please make sure your GitHub account has an active Copilot subscription and that external integrations are allowed by your organization. (${err?.message || err})`,
+                { cause: err }
+            )
         }
+
+        const copilotToken = exchangeResult.token
+        const endpoint = exchangeResult.endpoint
+        const expiresAt = exchangeResult.expiresAt
 
         // Fetch GitHub user profile (login handle and email)
         let accountName: string | undefined
