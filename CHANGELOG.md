@@ -2,6 +2,35 @@
 
 ### Features
 
+- _(tui)_ Add search filtering to byok and subscription provider menus
+- _(tui)_ Always show persistent gray thoughts and decouple from ctrl+o (#480)
+- _(tui)_ Add minimal two-column /skills guide command
+- _(tui)_ Refine structured error display with cause and hint without symbols
+- Add meta and minimax byok providers with curated models, rates, and endpoints
+- _(tui)_ Render /skills guide as non-persistent overlay menu hiding input box
+- Add moonshot ai byok provider and verify mistral with curated models, rates, and tui menus
+- Enhance provider balance error parsing, thought rendering, and tui display
+- _(cli)_ Overhaul grill-me and plan with execution handoff (#481)
+- _(tui,cli)_ Overhaul task manager menu, file mutation queue, and byok flow fixes
+
+### Bug Fixes
+
+- _(tui)_ Optimize text-area chunking, input-bar flex wrapping, and eliminate ghost gaps
+- _(tui)_ Remove ⚡ emoji from grill question finish menu option
+- _(tui)_ Fix configs and tui errors display (#489)
+
+### Testing
+
+- _(tui)_ Update skills_guide block unit test description
+
+### Revert
+
+- _(tui)_ Restore collapsible thoughts and ctrl+o toggle (#480)
+
+## [0.3.25] - 2026-09-06
+
+### Features
+
 - _(skills)_ Implement modular skills system matching agy and remove custom commands
 - _(skills)_ Prefix skills with skill: to prevent collision with core commands
 - _(providers)_ Add arcee ai byok provider support
@@ -10,6 +39,10 @@
 
 - _(tui)_ Expand command column width with margin and truncate long command names
 - _(cli)_ Enforce active binary verification and shadowing detection during update
+
+### Miscellaneous Tasks
+
+- _(release)_ V0.3.25
 
 ## [0.3.24] - 2026-09-04
 
