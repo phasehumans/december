@@ -192,6 +192,7 @@ export function ChatApp({
                 onUpdateSuccess={onUpdateSuccess}
                 queuedPrompts={session.queuedPrompts}
                 grillMode={grillMode}
+                planRefineMode={session.planRefineMode}
                 customInputMode={false}
                 showExitConfirm={exitConfirm}
             />

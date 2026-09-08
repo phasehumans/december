@@ -88,6 +88,13 @@ export function GlobalShortcuts(session: any) {
             return
         }
 
+        if (session.planRefineMode) {
+            if (key.escape && session.setPlanRefineMode) {
+                session.setPlanRefineMode(false)
+            }
+            return
+        }
+
         if (authMode === 'session_select') {
             return
         }

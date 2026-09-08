@@ -144,25 +144,59 @@ describe('useCliStore activeMessages handling', () => {
         expect(matchWithArgs?.[1]).toBe('/tdd auth-service')
     })
 
-    it('handles /skills and /skill by setting authMode to skills_guide without persisting to chat history', () => {
+    it('stores and clears currentPlanText and currentPlanQAPairs in useCliStore', () => {
         const store = useCliStore.getState()
-        const initialCount = store.staticMessages.length
+        expect(store.currentPlanText).toBeNull()
+        expect(store.currentPlanQAPairs).toEqual([])
+        expect(store.planRefineMode).toBe(false)
 
-        // Simulate /skills dispatch logic from use-agent-session
-        const handleSkillsCmd = (cmd: string) => {
-            if (cmd.trim() === '/skills' || cmd.trim() === '/skill') {
-                store.setAuthMode('skills_guide')
-            }
-        }
+        store.setCurrentPlanText('### Implementation Plan\n1. Add auth')
+        store.setCurrentPlanQAPairs([{ question: 'Which DB?', answer: 'PostgreSQL' }])
+        store.setPlanRefineMode(true)
 
-        handleSkillsCmd('/skills')
-        expect(useCliStore.getState().authMode).toBe('skills_guide')
-        // Does not append static messages to chat
-        expect(useCliStore.getState().staticMessages.length).toBe(initialCount)
+        expect(useCliStore.getState().currentPlanText).toBe('### Implementation Plan\n1. Add auth')
+        expect(useCliStore.getState().currentPlanQAPairs).toEqual([
+            { question: 'Which DB?', answer: 'PostgreSQL' },
+        ])
+        expect(useCliStore.getState().planRefineMode).toBe(true)
+
+        store.setCurrentPlanText(null)
+        store.setCurrentPlanQAPairs([])
+        store.setPlanRefineMode(false)
+        expect(useCliStore.getState().currentPlanText).toBeNull()
+        expect(useCliStore.getState().currentPlanQAPairs).toEqual([])
+        expect(useCliStore.getState().planRefineMode).toBe(false)
+    })
+
+    it('stores and updates switchItems in useCliStore and supports switch_select authMode', () => {
+        const store = useCliStore.getState()
+        expect(store.switchItems).toEqual([])
+
+        const mockItems = [
+            {
+                label: 'Claude (Subscription) • claude-3-7-sonnet (Active)',
+                value: 'subscription:claude',
+                model: 'claude-3-7-sonnet',
+                isActive: true,
+            },
+            {
+                label: 'OpenAI (API Key) • gpt-5.5',
+                value: 'provider:openai',
+                model: 'gpt-5.5',
+                isActive: false,
+            },
+        ]
+
+        store.setSwitchItems(mockItems)
+        store.setAuthMode('switch_select')
+
+        expect(useCliStore.getState().switchItems).toHaveLength(2)
+        expect(useCliStore.getState().switchItems[0].value).toBe('subscription:claude')
+        expect(useCliStore.getState().authMode).toBe('switch_select')
 
         store.setAuthMode('none')
-        handleSkillsCmd('/skill')
-        expect(useCliStore.getState().authMode).toBe('skills_guide')
-        expect(useCliStore.getState().staticMessages.length).toBe(initialCount)
+        store.setSwitchItems([])
+        expect(useCliStore.getState().switchItems).toEqual([])
+        expect(useCliStore.getState().authMode).toBe('none')
     })
 })

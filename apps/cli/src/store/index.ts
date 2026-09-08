@@ -27,6 +27,10 @@ export interface CliState {
     setAuthMode: (mode: AuthMode) => void
     logoutItems: { label: string; value: string }[]
     setLogoutItems: (items: { label: string; value: string }[]) => void
+    switchItems: { label: string; value: string; model?: string; isActive?: boolean }[]
+    setSwitchItems: (
+        items: { label: string; value: string; model?: string; isActive?: boolean }[]
+    ) => void
     selectedProvider: string
     setSelectedProvider: (provider: string) => void
     activeModel: string
@@ -51,6 +55,14 @@ export interface CliState {
     // chat feature
     currentPlannedPrompt: string | null
     setCurrentPlannedPrompt: (prompt: string | null) => void
+    currentPlanText: string | null
+    setCurrentPlanText: (planText: string | null) => void
+    currentPlanQAPairs: { question: string; answer: string }[]
+    setCurrentPlanQAPairs: (qa: { question: string; answer: string }[]) => void
+    planRefineMode: boolean
+    setPlanRefineMode: (mode: boolean) => void
+    planRefineFeedback: string
+    setPlanRefineFeedback: (feedback: string) => void
     grillMode: boolean
     setGrillMode: (mode: boolean) => void
     grillQuestions: { question: string; options: string[] }[]
@@ -167,6 +179,8 @@ export const useCliStore = create<CliState>((set) => ({
     setAuthMode: (authMode) => set({ authMode }),
     logoutItems: [],
     setLogoutItems: (logoutItems) => set({ logoutItems }),
+    switchItems: [],
+    setSwitchItems: (switchItems) => set({ switchItems }),
     selectedProvider: '',
     setSelectedProvider: (selectedProvider) => set({ selectedProvider }),
     activeModel: '',
@@ -185,6 +199,14 @@ export const useCliStore = create<CliState>((set) => ({
     // chat
     currentPlannedPrompt: null,
     setCurrentPlannedPrompt: (currentPlannedPrompt) => set({ currentPlannedPrompt }),
+    currentPlanText: null,
+    setCurrentPlanText: (currentPlanText) => set({ currentPlanText }),
+    currentPlanQAPairs: [],
+    setCurrentPlanQAPairs: (currentPlanQAPairs) => set({ currentPlanQAPairs }),
+    planRefineMode: false,
+    setPlanRefineMode: (planRefineMode) => set({ planRefineMode }),
+    planRefineFeedback: '',
+    setPlanRefineFeedback: (planRefineFeedback) => set({ planRefineFeedback }),
     grillMode: false,
     setGrillMode: (grillMode) => set({ grillMode }),
     grillQuestions: [],

@@ -2,7 +2,11 @@ import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 
-import { ensureValidModelForProvider } from './utils/models'
+import {
+    ensureValidModelForProvider,
+    getDefaultModelForProvider,
+    isValidModelForProvider,
+} from './utils/models'
 
 import type { SubscriptionTokenBundle } from './auth/subscriptions/types'
 
@@ -58,6 +62,7 @@ export interface ProviderConfig {
 export interface DecemberConfig {
     activeProvider?: string
     activeModel?: string
+    lastUsedModels?: Record<string, string>
     providers: Record<string, string>
     subscriptions?: Record<string, SubscriptionTokenBundle>
     decemberToken?: string
@@ -76,7 +81,7 @@ export interface DecemberConfig {
     pathGuard?: boolean
     scope?: string
     authPriority?: 'subscription' | 'byok' | 'december'
-    installMethod?: 'npm' | 'bun' | 'pnpm' | 'npx' | 'source'
+    installMethod?: 'npm' | 'bun' | 'pnpm' | 'npx' | 'curl' | 'source'
     versionCheckCache?: {
         latestVersion: string
         checkedAt: number
@@ -364,4 +369,347 @@ export async function getAuthStatus() {
         subscriptions,
         authPriority: config.authPriority || (hasSubscription ? 'subscription' : 'byok'),
     }
+}
+
+export interface ConfiguredProviderItem {
+    label: string
+    value: string
+    provider: string
+    type: 'subscription' | 'december' | 'byok'
+    model: string
+    isActive: boolean
+    account?: string
+}
+
+export function formatProviderName(provider: string): string {
+    const norm = (provider || '').toLowerCase().trim()
+    switch (norm) {
+        case 'openai':
+            return 'OpenAI'
+        case 'anthropic':
+            return 'Anthropic'
+        case 'gemini':
+        case 'google':
+            return 'Google Gemini'
+        case 'deepseek':
+            return 'DeepSeek'
+        case 'openrouter':
+            return 'OpenRouter'
+        case 'groq':
+            return 'Groq'
+        case 'ollama':
+            return 'Ollama'
+        case 'sambanova':
+            return 'SambaNova'
+        case 'cerebras':
+            return 'Cerebras'
+        case 'siliconflow':
+            return 'SiliconFlow'
+        case 'together':
+            return 'Together AI'
+        case 'hyperbolic':
+            return 'Hyperbolic'
+        case 'fireworks':
+            return 'Fireworks AI'
+        case 'perplexity':
+            return 'Perplexity'
+        case 'cohere':
+            return 'Cohere'
+        case 'mistral':
+            return 'Mistral'
+        case 'minimax':
+            return 'MiniMax'
+        case 'arcee':
+            return 'Arcee AI'
+        case 'meta':
+            return 'Meta AI'
+        case 'claude':
+            return 'Claude'
+        case 'copilot':
+            return 'GitHub Copilot'
+        case 'codex':
+        case 'chatgpt':
+            return 'ChatGPT'
+        case 'december':
+        case 'december_proxy':
+            return 'December'
+        default:
+            return provider.charAt(0).toUpperCase() + provider.slice(1)
+    }
+}
+
+export function getTargetModelForProvider(config: DecemberConfig, provider: string): string {
+    const remembered = config.lastUsedModels?.[provider]
+    if (remembered && isValidModelForProvider(provider, remembered)) {
+        return remembered
+    }
+    if (
+        config.activeProvider === provider &&
+        config.activeModel &&
+        isValidModelForProvider(provider, config.activeModel)
+    ) {
+        return config.activeModel
+    }
+    return getDefaultModelForProvider(provider)
+}
+
+export function getConfiguredProviders(config: DecemberConfig): ConfiguredProviderItem[] {
+    const items: ConfiguredProviderItem[] = []
+
+    const isSubscriptionActive = (subKey: string) => {
+        if (config.authPriority === 'subscription') {
+            if (config.activeProvider === subKey) return true
+            if (!config.activeProvider && Object.keys(config.subscriptions || {})[0] === subKey)
+                return true
+            if (config.activeProvider === 'anthropic' && subKey === 'claude') return true
+            if (config.activeProvider === 'openai' && subKey === 'codex') return true
+            if (config.activeProvider === 'google' && subKey === 'gemini') return true
+        }
+        if (!config.authPriority && config.activeProvider === subKey) return true
+        return false
+    }
+
+    const isDecemberActive = () => {
+        if (config.authPriority === 'december' && config.decemberToken) return true
+        if (
+            !config.authPriority &&
+            !config.activeProvider &&
+            !config.subscriptions &&
+            config.decemberToken
+        )
+            return true
+        if (config.activeProvider === 'december_proxy' || config.activeProvider === 'december')
+            return true
+        return false
+    }
+
+    const isByokActive = (byokKey: string) => {
+        if (config.authPriority === 'byok' && config.activeProvider === byokKey) return true
+        if (
+            !config.authPriority &&
+            config.activeProvider === byokKey &&
+            !config.subscriptions?.[byokKey]
+        )
+            return true
+        return false
+    }
+
+    // 1. Subscriptions
+    if (config.subscriptions) {
+        for (const [subKey, bundle] of Object.entries(config.subscriptions)) {
+            const displayName = formatProviderName(subKey)
+            const typeStr = bundle.subscriptionType ? ` [${bundle.subscriptionType}]` : ''
+            const accountStr =
+                bundle.email || bundle.accountName ? ` - ${bundle.email || bundle.accountName}` : ''
+            const model = getTargetModelForProvider(config, subKey)
+            const active = isSubscriptionActive(subKey)
+
+            items.push({
+                label: `${displayName} (Subscription)${typeStr}${accountStr}`,
+                value: `subscription:${subKey}`,
+                provider: subKey,
+                type: 'subscription',
+                model,
+                isActive: active,
+                account: bundle.email || bundle.accountName,
+            })
+        }
+    }
+
+    // 2. December Cloud Wallet
+    if (config.decemberToken) {
+        const accountStr = config.email ? ` - ${config.email}` : ''
+        const model = getTargetModelForProvider(config, 'december_proxy')
+        const active = isDecemberActive()
+
+        items.push({
+            label: `December (Cloud Wallet)${accountStr}`,
+            value: 'decemberToken',
+            provider: 'december_proxy',
+            type: 'december',
+            model,
+            isActive: active,
+            account: config.email,
+        })
+    }
+
+    // 3. BYOK Providers
+    if (config.providers) {
+        for (const [byokKey] of Object.entries(config.providers)) {
+            const displayName = formatProviderName(byokKey)
+            const model = getTargetModelForProvider(config, byokKey)
+            const active = isByokActive(byokKey)
+
+            items.push({
+                label: `${displayName} (API Key)`,
+                value: `provider:${byokKey}`,
+                provider: byokKey,
+                type: 'byok',
+                model,
+                isActive: active,
+            })
+        }
+    }
+
+    return items
+}
+
+export function resolveSwitchTarget(
+    config: DecemberConfig,
+    targetInput?: string
+):
+    | { provider: string; authPriority: 'subscription' | 'byok' | 'december'; model: string }
+    | undefined {
+    if (!targetInput) return undefined
+    const q = targetInput.trim().toLowerCase()
+    if (!q) return undefined
+
+    // Exact value matches
+    if (q === 'decembertoken') {
+        if (config.decemberToken) {
+            return {
+                provider: 'december_proxy',
+                authPriority: 'december',
+                model: getTargetModelForProvider(config, 'december_proxy'),
+            }
+        }
+        return undefined
+    }
+
+    if (q.startsWith('subscription:')) {
+        const sub = q.slice('subscription:'.length)
+        if (config.subscriptions && config.subscriptions[sub]) {
+            return {
+                provider: sub,
+                authPriority: 'subscription',
+                model: getTargetModelForProvider(config, sub),
+            }
+        }
+        return undefined
+    }
+
+    if (q.startsWith('provider:') || q.startsWith('byok:')) {
+        const p = q.replace(/^(provider|byok):/, '')
+        if (config.providers && config.providers[p]) {
+            return {
+                provider: p,
+                authPriority: 'byok',
+                model: getTargetModelForProvider(config, p),
+            }
+        }
+        return undefined
+    }
+
+    // Option A Disambiguation: Check subscriptions first
+    if (config.subscriptions) {
+        if (['claude', 'anthropic'].includes(q) && config.subscriptions['claude']) {
+            return {
+                provider: 'claude',
+                authPriority: 'subscription',
+                model: getTargetModelForProvider(config, 'claude'),
+            }
+        }
+        if (
+            ['copilot', 'github', 'github_copilot'].includes(q) &&
+            config.subscriptions['copilot']
+        ) {
+            return {
+                provider: 'copilot',
+                authPriority: 'subscription',
+                model: getTargetModelForProvider(config, 'copilot'),
+            }
+        }
+        if (['codex', 'chatgpt', 'openai'].includes(q) && config.subscriptions['codex']) {
+            return {
+                provider: 'codex',
+                authPriority: 'subscription',
+                model: getTargetModelForProvider(config, 'codex'),
+            }
+        }
+        if (['gemini', 'google', 'antigravity'].includes(q) && config.subscriptions['gemini']) {
+            return {
+                provider: 'gemini',
+                authPriority: 'subscription',
+                model: getTargetModelForProvider(config, 'gemini'),
+            }
+        }
+        if (config.subscriptions[q]) {
+            return {
+                provider: q,
+                authPriority: 'subscription',
+                model: getTargetModelForProvider(config, q),
+            }
+        }
+    }
+
+    // Next check BYOK
+    if (config.providers) {
+        if (config.providers[q]) {
+            return {
+                provider: q,
+                authPriority: 'byok',
+                model: getTargetModelForProvider(config, q),
+            }
+        }
+        if (q === 'google' && config.providers['gemini']) {
+            return {
+                provider: 'gemini',
+                authPriority: 'byok',
+                model: getTargetModelForProvider(config, 'gemini'),
+            }
+        }
+        if (q === 'gemini' && config.providers['google']) {
+            return {
+                provider: 'google',
+                authPriority: 'byok',
+                model: getTargetModelForProvider(config, 'google'),
+            }
+        }
+        if (q === 'claude' && config.providers['anthropic']) {
+            return {
+                provider: 'anthropic',
+                authPriority: 'byok',
+                model: getTargetModelForProvider(config, 'anthropic'),
+            }
+        }
+        if (q === 'chatgpt' && config.providers['openai']) {
+            return {
+                provider: 'openai',
+                authPriority: 'byok',
+                model: getTargetModelForProvider(config, 'openai'),
+            }
+        }
+    }
+
+    // Next check December Cloud Wallet
+    if (['december', 'wallet', 'cloud', 'december_proxy'].includes(q)) {
+        if (config.decemberToken) {
+            return {
+                provider: 'december_proxy',
+                authPriority: 'december',
+                model: getTargetModelForProvider(config, 'december_proxy'),
+            }
+        }
+    }
+
+    return undefined
+}
+
+export function applyProviderSwitch(
+    config: DecemberConfig,
+    target: { provider: string; authPriority: 'subscription' | 'byok' | 'december'; model?: string }
+): { config: DecemberConfig; model: string } {
+    config.authPriority = target.authPriority
+    config.activeProvider = target.provider
+
+    let finalModel = target.model
+    if (!finalModel || !isValidModelForProvider(target.provider, finalModel)) {
+        finalModel = getTargetModelForProvider(config, target.provider)
+    }
+
+    config.activeModel = finalModel
+    config.lastUsedModels = config.lastUsedModels || {}
+    config.lastUsedModels[target.provider] = finalModel
+
+    return { config, model: finalModel }
 }

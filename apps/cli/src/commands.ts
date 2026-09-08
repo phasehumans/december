@@ -3,7 +3,14 @@ import path from 'node:path'
 
 import pkg from '../package.json' with { type: 'json' }
 
-import { loadConfig, saveConfig } from './config'
+import {
+    loadConfig,
+    saveConfig,
+    getConfiguredProviders,
+    resolveSwitchTarget,
+    applyProviderSwitch,
+    formatProviderName,
+} from './config'
 
 export async function handleLogoutCommand(options?: { provider?: string }): Promise<void> {
     const config = await loadConfig()
@@ -46,6 +53,73 @@ export async function handleLogoutCommand(options?: { provider?: string }): Prom
 
     await saveConfig(config)
     console.log('Logged out successfully. Stored credentials removed.')
+}
+
+export async function handleSwitchCommand(options?: { provider?: string }): Promise<void> {
+    const BLUE = '\x1b[38;2;135;178;244m'
+    const GREEN = '\x1b[38;2;110;231;183m'
+    const YELLOW = '\x1b[38;2;253;224;71m'
+    const RED = '\x1b[38;2;252;165;165m'
+    const WHITE = '\x1b[38;2;244;244;245m'
+    const GRAY = '\x1b[38;2;161;161;170m'
+    const RESET = '\x1b[0m'
+
+    const targetProvider = options?.provider?.toLowerCase().trim()
+    const config = await loadConfig()
+
+    if (targetProvider) {
+        const target = resolveSwitchTarget(config, targetProvider)
+        if (!target) {
+            console.error(`\n${RED}Error:${RESET} Provider "${targetProvider}" is not configured.`)
+            console.error(
+                `Run ${WHITE}december login${RESET}, ${WHITE}december link <provider>${RESET}, or ${WHITE}december key <provider>${RESET} to configure it.\n`
+            )
+            process.exitCode = 1
+            return
+        }
+
+        const { config: updatedConfig, model } = applyProviderSwitch(config, target)
+        await saveConfig(updatedConfig)
+
+        const { fetchLiveProviderModels } = await import('./utils/models')
+        if (
+            target.authPriority === 'subscription' &&
+            updatedConfig.subscriptions?.[target.provider]
+        ) {
+            const bundle = updatedConfig.subscriptions[target.provider]
+            fetchLiveProviderModels(target.provider, bundle.accessToken, bundle.endpoint).catch(
+                () => {}
+            )
+        } else if (target.authPriority === 'byok' && updatedConfig.providers?.[target.provider]) {
+            fetchLiveProviderModels(
+                target.provider,
+                updatedConfig.providers[target.provider]
+            ).catch(() => {})
+        }
+
+        const displayName = formatProviderName(target.provider)
+        console.log(
+            `\n${GREEN}Successfully switched active provider to ${displayName} (${target.authPriority}) with model: ${WHITE}${model}${RESET}!\n`
+        )
+        return
+    }
+
+    const items = getConfiguredProviders(config)
+    console.log(`\n${BLUE}✱${RESET}  ${WHITE}December CLI Configured Providers${RESET}\n`)
+
+    if (items.length === 0) {
+        console.log(
+            `  ${GRAY}No configured providers found.${RESET} Run ${WHITE}december login${RESET}, ${WHITE}december link <provider>${RESET}, or ${WHITE}december key <provider>${RESET} to add one.\n`
+        )
+        return
+    }
+
+    for (const item of items) {
+        const activeTag = item.isActive ? ` ${GREEN}[Active]${RESET}` : ''
+        const modelStr = ` ${GRAY}• ${item.model}${RESET}`
+        console.log(`  • ${WHITE}${item.label}${RESET}${modelStr}${activeTag}`)
+    }
+    console.log(`\n${GRAY}Switch provider:${RESET} ${GREEN}december switch <provider>${RESET}\n`)
 }
 
 export async function handleAuthCommand(options?: { action?: string }): Promise<void> {

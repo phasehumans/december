@@ -17,8 +17,10 @@ describe('PlanApproveMenu Component (Unit)', () => {
 
         expect(output).toContain('Step 1: Refactor auth')
         expect(output).toContain('Approve')
+        expect(output).toContain('Refine')
         expect(output).toContain('Reject')
         expect(output).toContain('y')
+        expect(output).toContain('r')
         expect(output).toContain('n')
     })
 
@@ -49,6 +51,21 @@ describe('PlanApproveMenu Component (Unit)', () => {
         stdin.write('n')
         expect(handlePlanApprovalSelect).toHaveBeenCalledWith(
             expect.objectContaining({ value: 'reject' })
+        )
+    })
+
+    it('refines instantly on pressing r key', () => {
+        const handlePlanApprovalSelect = mock()
+        const { stdin } = render(
+            <PlanApproveMenu
+                handlePlanApprovalSelect={handlePlanApprovalSelect}
+                planSummary="Test plan"
+            />
+        )
+
+        stdin.write('r')
+        expect(handlePlanApprovalSelect).toHaveBeenCalledWith(
+            expect.objectContaining({ value: 'refine' })
         )
     })
 })

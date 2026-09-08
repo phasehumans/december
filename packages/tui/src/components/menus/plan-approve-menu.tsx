@@ -24,6 +24,8 @@ function PlanItemComponent({
     let color: string = THEME.colors.text
     if (value === 'approve') {
         color = THEME.colors.success
+    } else if (value === 'refine') {
+        color = THEME.colors.brand
     } else if (value === 'reject') {
         color = THEME.colors.error
     }
@@ -34,6 +36,7 @@ function PlanItemComponent({
 export function PlanApproveMenu({ handlePlanApprovalSelect, planSummary }: PlanApproveMenuProps) {
     const planItems = [
         { label: '[y] Approve & Execute', value: 'approve' },
+        { label: '[r] Refine Plan', value: 'refine' },
         { label: '[n] Reject / Cancel', value: 'reject' },
     ]
 
@@ -41,6 +44,8 @@ export function PlanApproveMenu({ handlePlanApprovalSelect, planSummary }: PlanA
         const lower = (input || '').toLowerCase()
         if (lower === 'y') {
             handlePlanApprovalSelect({ label: '[y] Approve & Execute', value: 'approve' })
+        } else if (lower === 'r') {
+            handlePlanApprovalSelect({ label: '[r] Refine Plan', value: 'refine' })
         } else if (lower === 'n' || key.escape) {
             handlePlanApprovalSelect({ label: '[n] Reject / Cancel', value: 'reject' })
         }
@@ -54,7 +59,9 @@ export function PlanApproveMenu({ handlePlanApprovalSelect, planSummary }: PlanA
                         <Text color={THEME.colors.brand}>{planSummary}</Text>
                     </Box>
                 )}
-                <Text color={THEME.colors.text}>Plan generated. Please approve or reject:</Text>
+                <Text color={THEME.colors.text}>
+                    Plan generated. Please approve, refine, or reject:
+                </Text>
             </Box>
             <SelectInput
                 items={planItems}
@@ -65,6 +72,7 @@ export function PlanApproveMenu({ handlePlanApprovalSelect, planSummary }: PlanA
             <MenuFooter
                 items={[
                     { key: 'y', label: 'Approve' },
+                    { key: 'r', label: 'Refine' },
                     { key: 'n', label: 'Reject' },
                     { key: '↑/↓', label: 'Navigate' },
                     { key: 'enter', label: 'Select' },
