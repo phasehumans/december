@@ -252,6 +252,25 @@ describe('instantiateProvider', () => {
         expect(providers.openaiProvider).toHaveBeenCalledWith('https://api.meta.ai/v1', 'key-123')
     })
 
+    it('instantiates poolside provider via openai compat', () => {
+        instantiateProvider('poolside', 'key-123')
+        expect(providers.openaiProvider).toHaveBeenCalledWith(
+            'https://inference.poolside.ai/v1',
+            'key-123'
+        )
+    })
+
+    it('instantiates sakana provider via openai compat', () => {
+        instantiateProvider('sakana', 'key-123')
+        expect(providers.openaiProvider).toHaveBeenCalledWith('https://api.sakana.ai/v1', 'key-123')
+
+        instantiateProvider('sakanaai', 'key-123')
+        expect(providers.openaiProvider).toHaveBeenCalledWith('https://api.sakana.ai/v1', 'key-123')
+
+        instantiateProvider('sakana-ai', 'key-123')
+        expect(providers.openaiProvider).toHaveBeenCalledWith('https://api.sakana.ai/v1', 'key-123')
+    })
+
     it('instantiates minimax provider via openai compat', () => {
         instantiateProvider('minimax', 'key-123')
         expect(providers.openaiProvider).toHaveBeenCalledWith(

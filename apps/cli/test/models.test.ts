@@ -79,6 +79,30 @@ describe('models utils', () => {
             expect(models.length).toBe(10)
         })
 
+        it('returns poolside models when provider is poolside', () => {
+            const models = getProviderModels('poolside')
+            expect(models).toEqual(
+                expect.arrayContaining([
+                    expect.objectContaining({ value: 'laguna-s-2.1' }),
+                    expect.objectContaining({ value: 'laguna-m.1' }),
+                    expect.objectContaining({ value: 'laguna-xs-2.1' }),
+                ])
+            )
+            expect(models.length).toBe(3)
+        })
+
+        it('returns sakana models when provider is sakana', () => {
+            const models = getProviderModels('sakana')
+            expect(models).toEqual(
+                expect.arrayContaining([
+                    expect.objectContaining({ value: 'fugu' }),
+                    expect.objectContaining({ value: 'fugu-ultra' }),
+                    expect.objectContaining({ value: 'sakana-namazu' }),
+                ])
+            )
+            expect(models.length).toBe(4)
+        })
+
         it('returns openrouter models with free and paid models when provider is openrouter', () => {
             const models = getProviderModels('openrouter')
             expect(models).toEqual(

@@ -46,7 +46,9 @@ export function supportsReasoningEffort(model?: string, baseURL?: string): boole
             baseURL.includes('sambanova.ai') ||
             baseURL.includes('arcee.ai') ||
             baseURL.includes('meta.ai') ||
-            baseURL.includes('minimax'))
+            baseURL.includes('minimax') ||
+            baseURL.includes('poolside.ai') ||
+            baseURL.includes('sakana.ai'))
     ) {
         return false
     }

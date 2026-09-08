@@ -239,6 +239,26 @@ export const PROVIDER_CREDIT_RULES: ProviderCreditRule[] = [
         hint: 'Please top up your balance at https://open.bigmodel.cn/ or switch models using /model.',
     },
     {
+        id: 'poolside',
+        name: 'Poolside',
+        match: (str) =>
+            (str.includes('poolside') || str.includes('inference.poolside.ai')) &&
+            isCreditOrBalanceError(str),
+        notice: 'Rate limit or quota exhausted in your Poolside account. Please check your account at https://platform.poolside.ai/api-keys\n',
+        message: 'Rate limit or quota exhausted in your Poolside account.',
+        hint: 'Please check your account at https://platform.poolside.ai/api-keys or switch models using /model.',
+    },
+    {
+        id: 'sakana',
+        name: 'Sakana AI',
+        match: (str) =>
+            (str.includes('sakana') || str.includes('api.sakana.ai') || str.includes('fugu')) &&
+            isCreditOrBalanceError(str),
+        notice: 'Rate limit or quota exhausted in your Sakana AI account. Please check your account at https://console.sakana.ai/api-keys\n',
+        message: 'Rate limit or quota exhausted in your Sakana AI account.',
+        hint: 'Please check your account at https://console.sakana.ai/api-keys or switch models using /model.',
+    },
+    {
         id: 'dashscope',
         name: 'Alibaba Cloud DashScope',
         match: (str) =>

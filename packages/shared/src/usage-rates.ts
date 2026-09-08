@@ -229,6 +229,8 @@ export const PROVIDER_BILLING_LINKS: Record<string, string> = {
     minimax: 'https://platform.minimax.io/console/access',
     minimaxai: 'https://platform.minimax.io/console/access',
     'minimax-ai': 'https://platform.minimax.io/console/access',
+    poolside: 'https://platform.poolside.ai/api-keys',
+    sakana: 'https://console.sakana.ai/api-keys',
     ollama: 'http://localhost:11434',
 }
 
@@ -272,6 +274,8 @@ export const PROVIDER_DISPLAY_NAMES: Record<string, string> = {
     minimax: 'MiniMax',
     minimaxai: 'MiniMax',
     'minimax-ai': 'MiniMax',
+    poolside: 'Poolside',
+    sakana: 'Sakana AI',
     ollama: 'Ollama (Local)',
 }
 
@@ -296,6 +300,14 @@ export function formatInsufficientCreditsNotice(
             normalized = 'meta'
         } else if (modelLower.includes('minimax')) {
             normalized = 'minimax'
+        } else if (modelLower.includes('laguna')) {
+            normalized = 'poolside'
+        } else if (
+            modelLower.includes('fugu') ||
+            modelLower.includes('namazu') ||
+            modelLower.includes('sakana')
+        ) {
+            normalized = 'sakana'
         } else if (modelLower.includes('deepseek')) {
             normalized = 'deepseek'
         } else if (modelLower.includes('kimi') || modelLower.includes('moonshot')) {

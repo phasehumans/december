@@ -116,6 +116,24 @@ export const MODEL_CONTEXT_WINDOWS: Record<string, number> = {
     'muse-spark-1.2': 1048576,
     'muse-spark-1.2-contributor': 1048576,
     'muse-spark-1.1': 1048576,
+    'laguna-s-2.1': 1048576,
+    'laguna-m.1': 262144,
+    'laguna-xs-2.1': 262144,
+    'poolside/laguna-s-2.1': 1048576,
+    'poolside/laguna-m.1': 262144,
+    'poolside/laguna-xs-2.1': 262144,
+    fugu: 1000000,
+    'fugu-ultra': 1000000,
+    'fugu-ultra-v1.1': 1000000,
+    'fugu-ultra-v1.0': 1000000,
+    'fugu-ultra-20260615': 1000000,
+    'fugu-cyber': 1000000,
+    'fugu-cyber-v1.0': 1000000,
+    'sakana-namazu': 262144,
+    'sakana-namazu-v1.0': 262144,
+    'sakana/fugu': 1000000,
+    'sakana/fugu-ultra': 1000000,
+    'sakana/sakana-namazu': 262144,
 }
 
 export function getModelContextWindow(value: string): number {
@@ -155,6 +173,10 @@ export function getModelContextWindow(value: string): number {
     )
         return 262144
     if (lower.includes('muse-spark') || lower.includes('muse')) return 1048576
+    if (lower.includes('laguna-s')) return 1048576
+    if (lower.includes('laguna')) return 262144
+    if (lower.includes('fugu')) return 1000000
+    if (lower.includes('namazu')) return 262144
     if (lower.includes('gpt-5.6') || lower.includes('gpt-5.5')) return 1050000
     if (lower.includes('gpt-5.4')) return 400000
     if (lower.includes('gpt-5')) return 200000

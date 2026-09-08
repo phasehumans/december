@@ -197,6 +197,15 @@ export function instantiateProvider(
         case 'metaai':
         case 'meta-ai':
             return withProviderId(openaiProvider('https://api.meta.ai/v1', apiKey), 'meta')
+        case 'poolside':
+            return withProviderId(
+                openaiProvider('https://inference.poolside.ai/v1', apiKey),
+                'poolside'
+            )
+        case 'sakana':
+        case 'sakanaai':
+        case 'sakana-ai':
+            return withProviderId(openaiProvider('https://api.sakana.ai/v1', apiKey), 'sakana')
         case 'dashscope':
         case 'qwen':
             return withProviderId(

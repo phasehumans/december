@@ -9,8 +9,8 @@ import {
 import { KeyboardLayerProvider } from '../../src/providers/keyboard-layer'
 
 describe('ByokProviderMenu Component (Unit)', () => {
-    it('has 29 total API key and local provider items without subscriptions', () => {
-        expect(PROVIDER_MENU_ITEMS.length).toBe(29)
+    it('has 31 total API key and local provider items without subscriptions', () => {
+        expect(PROVIDER_MENU_ITEMS.length).toBe(31)
         expect(PROVIDER_MENU_ITEMS[0].value).toBe('agentrouter')
         expect(PROVIDER_MENU_ITEMS[1].value).toBe('anthropic')
         expect(PROVIDER_MENU_ITEMS[2].value).toBe('arcee')
@@ -34,7 +34,7 @@ describe('ByokProviderMenu Component (Unit)', () => {
         expect(frame).toContain('Cohere')
         expect(frame).toContain('DeepSeek')
         expect(frame).toContain('Fireworks AI')
-        expect(frame).toContain('↓ 22 more')
+        expect(frame).toContain('↓ 24 more')
     })
 
     it('navigates through items with arrow keys and updates more indicators', async () => {
@@ -59,7 +59,7 @@ describe('ByokProviderMenu Component (Unit)', () => {
 
         const frameAfterScroll = lastFrame() || ''
         expect(frameAfterScroll).toContain('↑ 1 more')
-        expect(frameAfterScroll).toContain('↓ 21 more')
+        expect(frameAfterScroll).toContain('↓ 23 more')
 
         // Press Enter to select current item (Google AI Studio)
         stdin.write('\r')

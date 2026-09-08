@@ -432,6 +432,21 @@ export const getCuratedProviderModels = (provider: string) => {
                 { label: 'Muse Spark 1.2 Contributor', value: 'muse-spark-1.2-contributor' },
                 { label: 'Muse Spark 1.1', value: 'muse-spark-1.1' },
             ]
+        case 'poolside':
+            return [
+                { label: 'Laguna S 2.1', value: 'laguna-s-2.1' },
+                { label: 'Laguna M.1', value: 'laguna-m.1' },
+                { label: 'Laguna XS 2.1', value: 'laguna-xs-2.1' },
+            ]
+        case 'sakana':
+        case 'sakanaai':
+        case 'sakana-ai':
+            return [
+                { label: 'Fugu', value: 'fugu' },
+                { label: 'Fugu Ultra', value: 'fugu-ultra' },
+                { label: 'Sakana Namazu', value: 'sakana-namazu' },
+                { label: 'Fugu Cyber', value: 'fugu-cyber' },
+            ]
         case 'dashscope':
         case 'qwen':
             return [
@@ -820,6 +835,14 @@ export async function fetchLiveProviderModels(
                 case 'meta-ai':
                     endpoint = 'https://api.meta.ai/v1/models'
                     break
+                case 'poolside':
+                    endpoint = 'https://inference.poolside.ai/v1/models'
+                    break
+                case 'sakana':
+                case 'sakanaai':
+                case 'sakana-ai':
+                    endpoint = 'https://api.sakana.ai/v1/models'
+                    break
                 case 'december':
                 case 'december_proxy': {
                     const serverUrl = process.env.SERVER_URL || 'https://api.trydecember.com'
@@ -968,6 +991,8 @@ export const getModelLabel = (value: string) => {
         'ollama',
         'arcee',
         'meta',
+        'poolside',
+        'sakana',
         'december_proxy',
     ]
     for (const p of allProviders) {
@@ -985,6 +1010,13 @@ export const isValidModelForProvider = (provider: string, model?: string): boole
     if (normalized === 'agentrouter' && (model.includes('/') || model.includes(':'))) return true
     if (normalized === 'arcee' && (model.includes('/') || model.includes(':'))) return true
     if (normalized === 'meta' && (model.includes('/') || model.includes(':'))) return true
+    if (normalized === 'poolside' && (model.includes('/') || model.startsWith('laguna')))
+        return true
+    if (
+        normalized === 'sakana' &&
+        (model.includes('/') || model.startsWith('fugu') || model.startsWith('sakana'))
+    )
+        return true
     if (normalized === 'ollama') return isToolCompatibleOllamaModel(model)
 
     const models = getProviderModels(normalized)

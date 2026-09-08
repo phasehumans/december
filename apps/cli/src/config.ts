@@ -49,6 +49,10 @@ export interface ProviderConfig {
         | 'arcee'
         | 'meta'
         | 'minimax'
+        | 'poolside'
+        | 'sakana'
+        | 'sakanaai'
+        | 'sakana-ai'
         | 'december_proxy'
         | string
     apiKey: string
@@ -423,6 +427,12 @@ export function formatProviderName(provider: string): string {
             return 'Arcee AI'
         case 'meta':
             return 'Meta AI'
+        case 'poolside':
+            return 'Poolside'
+        case 'sakana':
+        case 'sakanaai':
+        case 'sakana-ai':
+            return 'Sakana AI'
         case 'claude':
             return 'Claude'
         case 'copilot':

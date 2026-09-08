@@ -17,6 +17,8 @@ import { MistralProvider } from '../../src/providers/mistral'
 import { MoonshotProvider } from '../../src/providers/moonshot'
 import { NvidiaProvider } from '../../src/providers/nvidia'
 import { PerplexityProvider } from '../../src/providers/perplexity'
+import { PoolsideProvider } from '../../src/providers/poolside'
+import { SakanaProvider } from '../../src/providers/sakana'
 import { SambaNovaProvider } from '../../src/providers/sambanova'
 import { SiliconFlowProvider } from '../../src/providers/siliconflow'
 import { TogetherProvider } from '../../src/providers/together'
@@ -132,5 +134,15 @@ describe('OpenAI-compatible Subproviders (Unit)', () => {
     test('instantiates MetaProvider with correct ID', () => {
         const provider = new MetaProvider('dummy-key')
         expect(provider.id).toBe('meta')
+    })
+
+    test('instantiates PoolsideProvider with correct ID', () => {
+        const provider = new PoolsideProvider('dummy-key')
+        expect(provider.id).toBe('poolside')
+    })
+
+    test('instantiates SakanaProvider with correct ID', () => {
+        const provider = new SakanaProvider('dummy-key')
+        expect(provider.id).toBe('sakana')
     })
 })

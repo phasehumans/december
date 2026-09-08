@@ -169,6 +169,10 @@ export const PROVIDER_BILLING_LINKS: Record<string, string> = {
     minimax: 'https://platform.minimax.io/console/access',
     minimaxai: 'https://platform.minimax.io/console/access',
     'minimax-ai': 'https://platform.minimax.io/console/access',
+    poolside: 'https://platform.poolside.ai/api-keys',
+    sakana: 'https://console.sakana.ai/api-keys',
+    'sakana-ai': 'https://console.sakana.ai/api-keys',
+    sakanaai: 'https://console.sakana.ai/api-keys',
     ollama: 'http://localhost:11434',
 }
 
@@ -207,6 +211,10 @@ export const PROVIDER_DISPLAY_NAMES: Record<string, string> = {
     minimax: 'MiniMax',
     minimaxai: 'MiniMax',
     'minimax-ai': 'MiniMax',
+    poolside: 'Poolside',
+    sakana: 'Sakana AI',
+    'sakana-ai': 'Sakana AI',
+    sakanaai: 'Sakana AI',
     ollama: 'Ollama (Local)',
 }
 
@@ -215,6 +223,9 @@ export function inferProviderFromModel(modelName: string): string {
     if (lower.startsWith('trinity') || lower.startsWith('arcee')) return 'arcee'
     if (lower.startsWith('muse') || lower.startsWith('meta/')) return 'meta'
     if (lower.startsWith('minimax') || lower.startsWith('minimaxai/')) return 'minimax'
+    if (lower.startsWith('laguna') || lower.startsWith('poolside/')) return 'poolside'
+    if (lower.startsWith('fugu') || lower.startsWith('sakana') || lower.startsWith('namazu'))
+        return 'sakana'
     if (lower.startsWith('claude') || lower.startsWith('anthropic/')) return 'anthropic'
     if (
         lower.startsWith('gpt') ||

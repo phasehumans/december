@@ -278,7 +278,9 @@ export async function handleKeyCommand(options?: {
         console.log(`  december key anthropic sk-ant-...`)
         console.log(`  december key openrouter sk-or-...`)
         console.log(`  december key deepseek sk-...`)
-        console.log(`  december key groq gsk_...\n`)
+        console.log(`  december key groq gsk_...`)
+        console.log(`  december key poolside ps_...`)
+        console.log(`  december key sakana sk_...\n`)
         return
     }
 
