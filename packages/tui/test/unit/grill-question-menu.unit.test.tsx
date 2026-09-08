@@ -42,6 +42,7 @@ describe('GrillQuestionMenu Component (Unit)', () => {
         expect(output).toContain('PostgreSQL')
         expect(output).toContain('Write-in...')
         expect(output).toContain('Finish interview & generate plan now')
+        expect(output).not.toContain('⚡')
     })
 
     it('triggers generatePlanFromGrill immediately on pressing p key', () => {

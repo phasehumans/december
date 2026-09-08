@@ -45,7 +45,7 @@ export function GrillQuestionMenu(props: any) {
                 value: opt,
             })),
             { label: `${q.options.length + 1}. Write-in...`, value: 'custom' },
-            { label: '⚡ Finish interview & generate plan now', value: '__finish_now__' },
+            { label: 'Finish interview & generate plan now', value: '__finish_now__' },
         ]
         return (
             <Box flexDirection="column" paddingX={THEME.padding.paddingX}>
