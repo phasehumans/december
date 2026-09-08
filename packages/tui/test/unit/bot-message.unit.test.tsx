@@ -312,7 +312,7 @@ describe('BotMessage Component (Unit)', () => {
         expect(frame2()).toContain('Generating questions...')
     })
 
-    it('renders skills_guide block with commands and sources without boxes or borders', () => {
+    it('renders skills_guide block without boxes or borders', () => {
         const { lastFrame } = render(
             <BotMessage
                 blocks={[
