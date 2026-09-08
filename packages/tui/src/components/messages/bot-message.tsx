@@ -2,10 +2,9 @@ import { Box, Text } from 'ink'
 import React from 'react'
 
 import { THEME } from '../../theme'
-import { SkillsGuide } from '../menus/skills-guide-menu'
 import { Spinner } from '../spinner'
 
-import { parseTuiError } from './error-message'
+import { parseTuiError, FormattedErrorText } from './error-message'
 import { SmoothMarkdown } from './smooth-markdown'
 
 export type MessageBlock =
@@ -31,7 +30,6 @@ export type MessageBlock =
       }
     | { type: 'code'; language: string; filename?: string; code: string }
     | { type: 'status'; label: string; success: boolean; hidePill?: boolean }
-    | { type: 'skills_guide' }
 
 type Props = {
     blocks: MessageBlock[]
@@ -39,12 +37,59 @@ type Props = {
     expandCommands?: boolean
 }
 
-function ThoughtView({ content }: { content: string }) {
-    if (!content || content.trim() === '') return null
+export function formatThought(raw: string): string {
+    if (!raw) return ''
+
+    const lines = raw.split(/\r?\n/)
+    const cleanedLines: string[] = []
+
+    for (const line of lines) {
+        let trimmed = line.trim()
+        if (!trimmed) continue
+
+        // 1. Strip section scaffolding labels like:
+        //    *  **Goal Understanding:** ...
+        //    *  **Goal Understanding**: ...
+        //    **Goal Understanding:** ...
+        //    ### Goal Understanding: ...
+        //    * Goal Understanding: ...
+        trimmed = trimmed
+            .replace(/^[*•\-]*\s*\*\*([^*]+)\*\*:?\s*/i, '')
+            .replace(/^#{1,4}\s*([^:\n]+):?\s*/i, '')
+            .replace(
+                /^[*•\-]*\s*(?:goal understanding|analysis|next steps|approach|plan|execution plan|thoughts?|reasoning):\s*/i,
+                ''
+            )
+
+        // If the line was ONLY a standalone header with no subsequent text on that line, skip it
+        if (!trimmed) continue
+
+        // 2. Strip leading list bullet markers and numbered list markers:
+        //    * item, - item, • item, 1. item, 1) item
+        trimmed = trimmed.replace(/^[*•\-]+\s*/, '')
+        trimmed = trimmed.replace(/^\d+[\.\)]\s*/, '')
+
+        // 3. Strip unparsed bold / italic markdown tags (**word**, *word*)
+        //    while preserving backticks (`code`) and keeping natural casing
+        trimmed = trimmed.replace(/\*\*([^*]+)\*\*/g, '$1')
+        trimmed = trimmed.replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '$1')
+
+        trimmed = trimmed.trim()
+        if (trimmed) {
+            cleanedLines.push(trimmed)
+        }
+    }
+
+    return cleanedLines.join('\n')
+}
+
+export function ThoughtView({ content }: { content: string }) {
+    const formatted = formatThought(content)
+    if (!formatted) return null
     return (
         <Box flexDirection="column" paddingLeft={1} marginY={0}>
             <Text color={THEME.colors.muted} italic>
-                {content.trim()}
+                {formatted}
             </Text>
         </Box>
     )
@@ -158,7 +203,12 @@ export const BotMessage = React.memo(function BotMessage({ blocks, usage, expand
                 for (let i = idx - 1; i >= 0; i--) {
                     const b = blocks[i]
                     if (!b) continue
-                    if (b.type === 'text' && (!b.content || b.content.trim() === '')) continue
+                    if (
+                        (b.type === 'text' || b.type === 'thinking') &&
+                        (!b.content || b.content.trim() === '')
+                    ) {
+                        continue
+                    }
                     prevBlock = b
                     break
                 }
@@ -230,8 +280,9 @@ export const BotMessage = React.memo(function BotMessage({ blocks, usage, expand
                                     }
                                     if (part.trim() === '') return null
                                     const hasLeadingNewline =
-                                        part.startsWith('\n') ||
-                                        (pidx === 0 && block.content.startsWith('\n'))
+                                        (part.startsWith('\n') ||
+                                            (pidx === 0 && block.content.startsWith('\n'))) &&
+                                        !needsTopMargin
                                     return (
                                         <Box key={pidx} flexDirection="column">
                                             {hasLeadingNewline && <Text> </Text>}
@@ -247,11 +298,15 @@ export const BotMessage = React.memo(function BotMessage({ blocks, usage, expand
                         return (
                             <Box key={idx} flexDirection="column">
                                 {needsTopMargin && <Text> </Text>}
-                                <Text color={THEME.colors.error} bold>
-                                    {parsed.message}
-                                </Text>
+                                <FormattedErrorText
+                                    text={parsed.message}
+                                    defaultColor={THEME.colors.error}
+                                />
                                 {parsed.hint && parsed.hint !== '' && (
-                                    <Text color={THEME.colors.muted}>{parsed.hint}</Text>
+                                    <FormattedErrorText
+                                        text={parsed.hint}
+                                        defaultColor={THEME.colors.muted}
+                                    />
                                 )}
                             </Box>
                         )
@@ -512,9 +567,6 @@ export const BotMessage = React.memo(function BotMessage({ blocks, usage, expand
                                 </Text>
                             </Box>
                         )
-                    }
-                    case 'skills_guide': {
-                        return <SkillsGuide key={idx} />
                     }
                     default:
                         return null

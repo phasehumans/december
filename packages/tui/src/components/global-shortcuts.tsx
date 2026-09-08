@@ -32,38 +32,6 @@ export function GlobalShortcuts(session: any) {
 
     useInput((input, key) => {
         if (authMode === 'tasks_mode') {
-            if (key.escape) {
-                if (taskViewingId) {
-                    setTaskViewingId(null)
-                    setTaskScrollOffset(0)
-                } else {
-                    setAuthMode('none')
-                }
-            } else if (taskViewingId) {
-                if (key.upArrow) setTaskScrollOffset((prev: number) => Math.max(0, prev - 1))
-                if (key.downArrow) setTaskScrollOffset((prev: number) => prev + 1)
-                if (key.leftArrow) setTaskScrollOffset((prev: number) => Math.max(0, prev - 10))
-                if (key.rightArrow) setTaskScrollOffset((prev: number) => prev + 10)
-            } else {
-                if (key.upArrow) setTaskSelectedIndex((prev: number) => Math.max(0, prev - 1))
-                if (key.downArrow)
-                    setTaskSelectedIndex((prev: number) =>
-                        Math.min(Math.max(0, (tasksData?.length || 1) - 1), prev + 1)
-                    )
-                if (key.return) {
-                    const selected = tasksData?.[taskSelectedIndex]
-                    if (selected) {
-                        setTaskViewingId(selected.id)
-                        setTaskScrollOffset(0)
-                    }
-                }
-                if (input === 'k' || input === 'K') {
-                    const selected = tasksData?.[taskSelectedIndex]
-                    if (selected && handleKillTask) {
-                        handleKillTask(selected.id)
-                    }
-                }
-            }
             return
         }
 
@@ -84,6 +52,13 @@ export function GlobalShortcuts(session: any) {
                 setCurrentGrillIndex(0)
                 setGrillAnswers([])
                 setGrillPrompt(null)
+            }
+            return
+        }
+
+        if (session.planRefineMode) {
+            if (key.escape && session.setPlanRefineMode) {
+                session.setPlanRefineMode(false)
             }
             return
         }

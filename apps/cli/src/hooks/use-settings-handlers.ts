@@ -8,6 +8,8 @@ export function useSettingsHandlers() {
         setSettingsNonWorkspace,
         settingsToolPermission,
         setSettingsToolPermission,
+        settingsPathGuard,
+        setSettingsPathGuard,
         setAuthMode,
         setSettingsDefaultModel,
         setSettingsMaxTokens,
@@ -21,6 +23,10 @@ export function useSettingsHandlers() {
         setSettingsAuthPriority,
         setAuthMethod,
         setActiveModel,
+        setSelectedProvider,
+        setSwitchItems,
+        setDynamicModels,
+        setOllamaModels,
         agent,
         addToast,
     } = useCliStore()
@@ -30,8 +36,56 @@ export function useSettingsHandlers() {
         let updated = false
 
         switch (item.value) {
+            case 'switchProvider': {
+                const { getConfiguredProviders } = await import('../config')
+                const configuredList = getConfiguredProviders(config)
+                const menuItems = configuredList.map((i) => ({
+                    label: i.label,
+                    value: i.value,
+                    model: i.model,
+                    isActive: i.isActive,
+                }))
+                setSwitchItems(menuItems)
+                setAuthMode('switch_select')
+                break
+            }
+            case 'activeModel': {
+                const { getAuthStatus } = await import('../config')
+                const status = await getAuthStatus()
+                if (!status.hasByok && !status.hasDecember && !status.hasSubscription) {
+                    addToast('Please configure a provider first', 'error')
+                    break
+                }
+                const activeProvider = config.activeProvider || ''
+                setSelectedProvider(activeProvider)
+                if (activeProvider === 'ollama') {
+                    const { fetchOllamaModels } = await import('../utils/models')
+                    const endpoint = config.providers?.['ollama'] || 'http://localhost:11434'
+                    fetchOllamaModels(endpoint).then((models) => {
+                        setOllamaModels(models)
+                    })
+                } else if (activeProvider) {
+                    const { fetchLiveProviderModels } = await import('../utils/models')
+                    const providerConfig = await getProviderConfig()
+                    if (providerConfig?.apiKey) {
+                        fetchLiveProviderModels(
+                            activeProvider,
+                            providerConfig.apiKey,
+                            providerConfig.baseURL
+                        ).then((models) => {
+                            if (models.length > 0) {
+                                setDynamicModels(models)
+                            }
+                        })
+                    }
+                }
+                setAuthMode('model_select')
+                break
+            }
             case 'pathGuard': {
-                config.pathGuard = !(config.pathGuard !== false)
+                const nextVal = !(settingsPathGuard !== false)
+                config.pathGuard = nextVal
+                setSettingsPathGuard(nextVal)
                 updated = true
                 break
             }

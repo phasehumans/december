@@ -357,9 +357,9 @@ export const COMMANDS: Command[] = [
         },
     },
     {
-        name: 'skills',
-        description: 'Guide to adding and using skills',
-        value: '/skills',
+        name: 'switch',
+        description: 'Switch active LLM provider and model',
+        value: '/switch',
         action: (ctx) => {
             // forwarded to chat screen
         },

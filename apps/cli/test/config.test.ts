@@ -11,10 +11,60 @@ describe('config', () => {
     let mockMkdir: any
     let originalEnv: NodeJS.ProcessEnv
 
+    const realReadFile = fs.readFile
+    const realWriteFile = fs.writeFile
+    const realMkdir = fs.mkdir
+
+    const isFromConfigTest = () => {
+        const stack = new Error().stack || ''
+        const lines = stack.split('\n')
+        if (lines.some((l) => l.includes('.test.ts') && !l.includes('config.test.ts'))) {
+            return false
+        }
+        return lines.some((l) => {
+            const m = l.match(/config\.test\.ts:(\d+):/)
+            return m && Number(m[1]) >= 68
+        })
+    }
+
     beforeEach(() => {
-        mockReadFile = spyOn(fs, 'readFile')
-        mockWriteFile = spyOn(fs, 'writeFile').mockResolvedValue(undefined as any)
-        mockMkdir = spyOn(fs, 'mkdir').mockResolvedValue(undefined as any)
+        const originalSpy = spyOn(fs, 'readFile')
+        mockReadFile = {
+            mockImplementation: (fn: any) => {
+                originalSpy.mockImplementation(
+                    async (filePath: any, options: any): Promise<any> => {
+                        if (!isFromConfigTest()) {
+                            return realReadFile(filePath, options)
+                        }
+                        return fn(filePath, options)
+                    }
+                )
+            },
+            mockRejectedValue: (err: any) => {
+                originalSpy.mockImplementation(
+                    async (filePath: any, options: any): Promise<any> => {
+                        if (!isFromConfigTest()) {
+                            return realReadFile(filePath, options)
+                        }
+                        throw err
+                    }
+                )
+            },
+        }
+        mockWriteFile = spyOn(fs, 'writeFile').mockImplementation(
+            async (filePath: any, data: any, options: any): Promise<any> => {
+                if (!isFromConfigTest()) {
+                    return realWriteFile(filePath, data, options)
+                }
+            }
+        )
+        mockMkdir = spyOn(fs, 'mkdir').mockImplementation(
+            async (filePath: any, options: any): Promise<any> => {
+                if (!isFromConfigTest()) {
+                    return realMkdir(filePath, options)
+                }
+            }
+        )
         originalEnv = { ...process.env }
 
         // Clear process.env for these keys

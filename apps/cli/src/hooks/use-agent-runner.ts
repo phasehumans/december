@@ -8,6 +8,31 @@ export function getNextMsgId(): string {
     return `msg-${Date.now()}-${Math.random().toString(36).slice(2, 7)}-${++msgIdCounter}`
 }
 
+const isStatusMessage = (content: string) =>
+    content === 'Thinking...' ||
+    content === 'Searching...' ||
+    content === 'Reading...' ||
+    content === 'Planning...' ||
+    content === 'Coding...' ||
+    content === 'Executing...' ||
+    content === 'Testing...' ||
+    content === 'Verifying...' ||
+    content === 'Refining...' ||
+    content === 'Finalizing...' ||
+    content === 'Working...' ||
+    content === 'Preparing...' ||
+    content === 'Compacting...' ||
+    content === 'Generating...' ||
+    content === 'Analyzing...' ||
+    content === 'Analyzing prompt...' ||
+    content === 'Generating questions...' ||
+    content === 'Understanding...' ||
+    content.startsWith('Preparing') ||
+    content.startsWith('Rate limit') ||
+    content.startsWith('High demand') ||
+    content.startsWith('LLM Provider rate limit') ||
+    content.startsWith('LLM Provider high demand')
+
 export async function processAgentStream({
     stream,
     setActiveMessages,
@@ -33,31 +58,6 @@ export async function processAgentStream({
                 if (msg.id !== assistantMsgId) return msg
                 const blocks = [...(msg.blocks || [])]
                 let finalMsg = { ...msg }
-
-                const isStatusMessage = (content: string) =>
-                    content === 'Thinking...' ||
-                    content === 'Searching...' ||
-                    content === 'Reading...' ||
-                    content === 'Planning...' ||
-                    content === 'Coding...' ||
-                    content === 'Executing...' ||
-                    content === 'Testing...' ||
-                    content === 'Verifying...' ||
-                    content === 'Refining...' ||
-                    content === 'Finalizing...' ||
-                    content === 'Working...' ||
-                    content === 'Preparing...' ||
-                    content === 'Compacting...' ||
-                    content === 'Generating...' ||
-                    content === 'Analyzing...' ||
-                    content === 'Analyzing prompt...' ||
-                    content === 'Generating questions...' ||
-                    content === 'Understanding...' ||
-                    content.startsWith('Preparing') ||
-                    content.startsWith('Rate limit') ||
-                    content.startsWith('High demand') ||
-                    content.startsWith('LLM Provider rate limit') ||
-                    content.startsWith('LLM Provider high demand')
 
                 for (const event of eventsToProcess) {
                     switch (event.type) {
@@ -120,6 +120,7 @@ export async function processAgentStream({
                             break
                         }
                         case 'StreamChunk': {
+                            if (!event.content) break
                             const lastBlock = blocks[blocks.length - 1]
                             if (lastBlock && lastBlock.type === 'text') {
                                 const wasStatus = isStatusMessage(lastBlock.content)
@@ -239,4 +240,14 @@ export async function processAgentStream({
         clearTimeout(flushTimeout)
     }
     flush()
+
+    setActiveMessages((prev: Message[]) =>
+        prev.map((msg) => {
+            if (msg.id !== assistantMsgId) return msg
+            const blocks = (msg.blocks || []).filter(
+                (b) => !(b.type === 'text' && isStatusMessage(b.content))
+            )
+            return { ...msg, blocks }
+        })
+    )
 }

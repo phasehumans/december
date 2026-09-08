@@ -129,4 +129,67 @@ describe('taskManager', () => {
         expect(result).toBe(false)
         expect(taskManager.getTask(task.id)?.status).toBe('completed')
     })
+
+    test('records exitCode and completedAt on completion', () => {
+        const mockCp = {} as ChildProcess
+        const task = taskManager.addTask('echo test', mockCp)
+
+        taskManager.markCompleted(task.id, 42)
+
+        const retrieved = taskManager.getTask(task.id)
+        expect(retrieved?.exitCode).toBe(42)
+        expect(retrieved?.completedAt).toBeInstanceOf(Date)
+    })
+
+    test('clears completed and failed tasks with clearCompleted', () => {
+        const mockCp = { pid: 9999 } as ChildProcess
+        const t1 = taskManager.addTask('running cmd', mockCp)
+        const t2 = taskManager.addTask('completed cmd', mockCp)
+        const t3 = taskManager.addTask('failed cmd', mockCp)
+
+        taskManager.markCompleted(t2.id, 0)
+        taskManager.markCompleted(t3.id, 1)
+
+        expect(taskManager.getTasks().length).toBe(3)
+        taskManager.clearCompleted()
+
+        const remaining = taskManager.getTasks()
+        expect(remaining.length).toBe(1)
+        expect(remaining[0].id).toBe(t1.id)
+        expect(remaining[0].status).toBe('running')
+    })
+
+    test('kills all running tasks with killAll', () => {
+        const mockCp = {
+            pid: 1111,
+            kill: () => true,
+        } as unknown as ChildProcess
+
+        const t1 = taskManager.addTask('cmd 1', mockCp)
+        const t2 = taskManager.addTask('cmd 2', mockCp)
+        const t3 = taskManager.addTask('cmd 3', mockCp)
+        taskManager.markCompleted(t3.id, 0)
+
+        const killedCount = taskManager.killAll()
+        expect(killedCount).toBe(2)
+        expect(taskManager.getTask(t1.id)?.status).toBe('killed')
+        expect(taskManager.getTask(t2.id)?.status).toBe('killed')
+        expect(taskManager.getTask(t3.id)?.status).toBe('completed')
+    })
+
+    test('emits events on task lifecycle', () => {
+        let changeCount = 0
+        const changeListener = () => {
+            changeCount++
+        }
+        taskManager.on('change', changeListener)
+
+        const mockCp = {} as ChildProcess
+        const task = taskManager.addTask('test event', mockCp)
+        taskManager.appendOutput(task.id, 'output chunk')
+        taskManager.markCompleted(task.id, 0)
+
+        expect(changeCount).toBe(3)
+        taskManager.off('change', changeListener)
+    })
 })

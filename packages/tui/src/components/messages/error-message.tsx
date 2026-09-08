@@ -122,6 +122,45 @@ export type ErrorMessageProps = {
     paddingX?: number
 }
 
+export function FormattedErrorText({
+    text,
+    defaultColor,
+    bold,
+}: {
+    text: string
+    defaultColor: string
+    bold?: boolean
+}) {
+    if (!text) return null
+    if (!text.includes('http://') && !text.includes('https://')) {
+        return (
+            <Text color={defaultColor} bold={bold}>
+                {text}
+            </Text>
+        )
+    }
+
+    const parts = text.split(/(https?:\/\/[^\s]+)/g)
+    return (
+        <Text color={defaultColor} bold={bold}>
+            {parts.map((part, idx) => {
+                if (/^https?:\/\//.test(part)) {
+                    const match = part.match(/^(.*?)([.,;!?)]*)$/)
+                    const url = match ? match[1] : part
+                    const trailing = match ? match[2] : ''
+                    return (
+                        <React.Fragment key={idx}>
+                            <Text color={THEME.colors.brand}>{url}</Text>
+                            {trailing}
+                        </React.Fragment>
+                    )
+                }
+                return part
+            })}
+        </Text>
+    )
+}
+
 export function ErrorMessage({
     message,
     cause,
@@ -134,11 +173,9 @@ export function ErrorMessage({
     return (
         <Box paddingX={paddingX} paddingY={0} flexDirection="column">
             {hasTopMargin && <Text> </Text>}
-            <Text color={THEME.colors.error} bold>
-                {parsed.message}
-            </Text>
+            <FormattedErrorText text={parsed.message} defaultColor={THEME.colors.error} />
             {parsed.hint && parsed.hint !== '' && (
-                <Text color={THEME.colors.muted}>{parsed.hint}</Text>
+                <FormattedErrorText text={parsed.hint} defaultColor={THEME.colors.muted} />
             )}
         </Box>
     )

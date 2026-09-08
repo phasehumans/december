@@ -27,6 +27,10 @@ export interface CliState {
     setAuthMode: (mode: AuthMode) => void
     logoutItems: { label: string; value: string }[]
     setLogoutItems: (items: { label: string; value: string }[]) => void
+    switchItems: { label: string; value: string; model?: string; isActive?: boolean }[]
+    setSwitchItems: (
+        items: { label: string; value: string; model?: string; isActive?: boolean }[]
+    ) => void
     selectedProvider: string
     setSelectedProvider: (provider: string) => void
     activeModel: string
@@ -47,10 +51,20 @@ export interface CliState {
     setOllamaStatus: (status: any) => void
     ollamaModels: { label: string; value: string }[]
     setOllamaModels: (models: { label: string; value: string }[]) => void
+    dynamicModels: { label: string; value: string }[]
+    setDynamicModels: (models: { label: string; value: string }[]) => void
 
     // chat feature
     currentPlannedPrompt: string | null
     setCurrentPlannedPrompt: (prompt: string | null) => void
+    currentPlanText: string | null
+    setCurrentPlanText: (planText: string | null) => void
+    currentPlanQAPairs: { question: string; answer: string }[]
+    setCurrentPlanQAPairs: (qa: { question: string; answer: string }[]) => void
+    planRefineMode: boolean
+    setPlanRefineMode: (mode: boolean) => void
+    planRefineFeedback: string
+    setPlanRefineFeedback: (feedback: string) => void
     grillMode: boolean
     setGrillMode: (mode: boolean) => void
     grillQuestions: { question: string; options: string[] }[]
@@ -91,6 +105,8 @@ export interface CliState {
     setSessionNewName: (name: string) => void
 
     // settings feature
+    settingsPathGuard: boolean
+    setSettingsPathGuard: (val: boolean) => void
     settingsNonWorkspace: boolean
     setSettingsNonWorkspace: (val: boolean) => void
     settingsToolPermission: 'always-ask' | 'always-proceed'
@@ -167,6 +183,8 @@ export const useCliStore = create<CliState>((set) => ({
     setAuthMode: (authMode) => set({ authMode }),
     logoutItems: [],
     setLogoutItems: (logoutItems) => set({ logoutItems }),
+    switchItems: [],
+    setSwitchItems: (switchItems) => set({ switchItems }),
     selectedProvider: '',
     setSelectedProvider: (selectedProvider) => set({ selectedProvider }),
     activeModel: '',
@@ -181,10 +199,20 @@ export const useCliStore = create<CliState>((set) => ({
     setOllamaStatus: (ollamaStatus) => set({ ollamaStatus }),
     ollamaModels: [],
     setOllamaModels: (ollamaModels) => set({ ollamaModels }),
+    dynamicModels: [],
+    setDynamicModels: (dynamicModels) => set({ dynamicModels }),
 
     // chat
     currentPlannedPrompt: null,
     setCurrentPlannedPrompt: (currentPlannedPrompt) => set({ currentPlannedPrompt }),
+    currentPlanText: null,
+    setCurrentPlanText: (currentPlanText) => set({ currentPlanText }),
+    currentPlanQAPairs: [],
+    setCurrentPlanQAPairs: (currentPlanQAPairs) => set({ currentPlanQAPairs }),
+    planRefineMode: false,
+    setPlanRefineMode: (planRefineMode) => set({ planRefineMode }),
+    planRefineFeedback: '',
+    setPlanRefineFeedback: (planRefineFeedback) => set({ planRefineFeedback }),
     grillMode: false,
     setGrillMode: (grillMode) => set({ grillMode }),
     grillQuestions: [],
@@ -237,6 +265,8 @@ export const useCliStore = create<CliState>((set) => ({
     setSessionNewName: (sessionNewName) => set({ sessionNewName }),
 
     // settings feature
+    settingsPathGuard: true,
+    setSettingsPathGuard: (settingsPathGuard) => set({ settingsPathGuard }),
     settingsNonWorkspace: false,
     setSettingsNonWorkspace: (settingsNonWorkspace) => set({ settingsNonWorkspace }),
     settingsToolPermission: 'always-proceed',

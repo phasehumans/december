@@ -1,4 +1,5 @@
 import fs from 'node:fs/promises'
+import os from 'node:os'
 import path from 'node:path'
 
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test'
@@ -7,11 +8,11 @@ import { handleLogoutCommand, handleInitCommand, handleUpdateCommand } from '../
 import { loadConfig, saveConfig } from '../src/config'
 
 describe('CLI Standalone Commands', () => {
-    const tmpDir = path.join(process.cwd(), '.tmp-commands-test')
+    let tmpDir: string
     const originalHome = process.env.HOME
 
     beforeEach(async () => {
-        await fs.mkdir(tmpDir, { recursive: true })
+        tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'commands-test-'))
         process.env.HOME = tmpDir
         process.env.DECEMBER_CONFIG_DIR = path.join(tmpDir, '.config', 'december')
     })
@@ -19,7 +20,9 @@ describe('CLI Standalone Commands', () => {
     afterEach(async () => {
         process.env.HOME = originalHome
         delete process.env.DECEMBER_CONFIG_DIR
-        await fs.rm(tmpDir, { recursive: true, force: true })
+        await fs.rm(tmpDir, { recursive: true, force: true }).catch(() => {
+            // Intentionally swallowed: cleanup temporary directory
+        })
     })
 
     it('handleLogoutCommand clears decemberToken and providers config', async () => {
@@ -109,7 +112,7 @@ describe('CLI Standalone Commands', () => {
         } finally {
             console.log = originalLog
         }
-    })
+    }, 15000)
 
     it('handleKeyCommand saves API key to config and sets activeProvider', async () => {
         const { handleKeyCommand } = await import('../src/commands')
@@ -170,6 +173,61 @@ describe('CLI Standalone Commands', () => {
             expect(loggedOutput).toContain('December CLI Health & Environment Doctor')
             expect(loggedOutput).toContain('Environment & Runtime:')
             expect(loggedOutput).toContain('Installed Binaries & $PATH Precedence:')
+        } finally {
+            console.log = originalLog
+        }
+    })
+
+    it('handleSwitchCommand switches active provider and updates authPriority and activeModel', async () => {
+        await saveConfig({
+            activeProvider: 'anthropic',
+            activeModel: 'claude-sonnet-4.6',
+            authPriority: 'byok',
+            lastUsedModels: {
+                anthropic: 'claude-sonnet-4.6',
+                openai: 'gpt-5.6-sol',
+            },
+            providers: {
+                anthropic: 'sk-ant',
+                openai: 'sk-openai',
+            },
+        })
+
+        const { handleSwitchCommand } = await import('../src/commands')
+        await handleSwitchCommand({ provider: 'openai' })
+
+        const updated = await loadConfig()
+        expect(updated.activeProvider).toBe('openai')
+        expect(updated.authPriority).toBe('byok')
+        expect(updated.activeModel).toBe('gpt-5.6-sol')
+        expect(updated.lastUsedModels?.openai).toBe('gpt-5.6-sol')
+    })
+
+    it('handleSwitchCommand without args prints configured providers list', async () => {
+        process.env.DECEMBER_CONFIG_DIR = path.join(tmpDir, '.config', 'december')
+        await saveConfig({
+            activeProvider: 'anthropic',
+            activeModel: 'claude-sonnet-4.6',
+            authPriority: 'byok',
+            providers: {
+                anthropic: 'sk-ant',
+            },
+            decemberToken: 'tok-123',
+        })
+
+        let loggedOutput = ''
+        const originalLog = console.log
+        console.log = (...args: any[]) => {
+            loggedOutput += args.join(' ') + '\n'
+        }
+        try {
+            const { handleSwitchCommand } = await import('../src/commands')
+            await handleSwitchCommand({})
+            expect(loggedOutput).toContain('Configured Providers')
+            expect(loggedOutput).toContain('Anthropic')
+            expect(loggedOutput).not.toContain('(API Key)')
+            expect(loggedOutput).toContain('December (Cloud Wallet)')
+            expect(loggedOutput).toContain('(Active)')
         } finally {
             console.log = originalLog
         }

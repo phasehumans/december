@@ -30,6 +30,7 @@ type Props = {
     onUpdateSuccess?: () => Promise<void>
     planMode?: boolean
     grillMode?: boolean
+    planRefineMode?: boolean
     customInputMode?: boolean
     onInterrupt?: () => void
     onCopy?: () => void
@@ -54,6 +55,7 @@ export const InputBar = React.memo(function InputBar({
     resetChat,
     onUpdateSuccess,
     grillMode = false,
+    planRefineMode = false,
     customInputMode = false,
     onInterrupt,
     onCopy,
@@ -268,6 +270,7 @@ export const InputBar = React.memo(function InputBar({
                 '/plan',
                 '/resume',
                 '/settings',
+                '/switch',
                 '/skills',
                 '/skill',
                 '/context',
@@ -285,6 +288,18 @@ export const InputBar = React.memo(function InputBar({
             ]
 
             if (forwardCommands.includes(command.value) || !command.action) {
+                if (command.value === '/plan') {
+                    if (
+                        currentValue.toLowerCase().startsWith('/plan ') &&
+                        currentValue.trim().length > 6
+                    ) {
+                        onSubmit(currentValue)
+                    } else {
+                        setValue('/plan ')
+                        handleContentChange('/plan ')
+                    }
+                    return
+                }
                 if (
                     currentValue.length > command.value.length &&
                     currentValue.toLowerCase().startsWith(command.value.toLowerCase())
@@ -408,21 +423,42 @@ export const InputBar = React.memo(function InputBar({
                     </Box>
 
                     {/* content: prompt */}
-                    <Box width="100%" paddingRight={4}>
-                        <Text
-                            color={disabled ? THEME.colors.muted : THEME.colors.brand}
-                        >{`${THEME.glyphs.prompt} `}</Text>
-                        {grillMode && <Text color={THEME.colors.brand}>/grill-me </Text>}
-                        <TextArea
-                            value={value}
-                            onChange={handleChange}
-                            onSubmit={handleSubmit}
-                            onHistoryUp={handleHistoryUp}
-                            onHistoryDown={handleHistoryDown}
-                            placeholder={grillMode ? '' : placeholder}
-                            focus={!disabled && !dialog.isOpen}
-                            disableHistoryNav={showCommandMenu || showFileMenu || showShortcutsMenu}
-                        />
+                    <Box width="100%" paddingRight={4} flexDirection="row">
+                        <Box flexShrink={0}>
+                            <Text
+                                color={disabled ? THEME.colors.muted : THEME.colors.brand}
+                            >{`${THEME.glyphs.prompt} `}</Text>
+                        </Box>
+                        {grillMode && (
+                            <Box flexShrink={0}>
+                                <Text color={THEME.colors.brand}>/grill-me </Text>
+                            </Box>
+                        )}
+                        {planRefineMode && (
+                            <Box flexShrink={0}>
+                                <Text color={THEME.colors.brand}>[Refine Plan] </Text>
+                            </Box>
+                        )}
+                        <Box flexGrow={1} flexShrink={1}>
+                            <TextArea
+                                value={value}
+                                onChange={handleChange}
+                                onSubmit={handleSubmit}
+                                onHistoryUp={handleHistoryUp}
+                                onHistoryDown={handleHistoryDown}
+                                placeholder={
+                                    grillMode
+                                        ? ''
+                                        : planRefineMode
+                                          ? 'Enter feedback to refine plan (or Esc to cancel)...'
+                                          : placeholder
+                                }
+                                focus={!disabled && !dialog.isOpen}
+                                disableHistoryNav={
+                                    showCommandMenu || showFileMenu || showShortcutsMenu
+                                }
+                            />
+                        </Box>
                     </Box>
 
                     {/* bottom separator */}

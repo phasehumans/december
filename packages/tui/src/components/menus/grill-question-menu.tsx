@@ -1,4 +1,4 @@
-import { Box, Text } from 'ink'
+import { Box, Text, useInput } from 'ink'
 import SelectInput from 'ink-select-input'
 import TextInput from 'ink-text-input'
 import React from 'react'
@@ -22,6 +22,21 @@ export function GrillQuestionMenu(props: any) {
         setCurrentGrillIndex,
         generatePlanFromGrill,
     } = props
+
+    useInput((input, key) => {
+        if (customInputMode) return
+
+        const lower = (input || '').toLowerCase()
+        if (lower === 'p' || lower === 's') {
+            void generatePlanFromGrill(grillAnswers)
+            return
+        }
+        if ((lower === 'b' || key.leftArrow) && currentGrillIndex > 0) {
+            setCurrentGrillIndex(currentGrillIndex - 1)
+            return
+        }
+    })
+
     const q = grillQuestions[currentGrillIndex]
     if (q) {
         const items = [
@@ -30,6 +45,7 @@ export function GrillQuestionMenu(props: any) {
                 value: opt,
             })),
             { label: `${q.options.length + 1}. Write-in...`, value: 'custom' },
+            { label: 'Finish interview & generate plan now', value: '__finish_now__' },
         ]
         return (
             <Box flexDirection="column" paddingX={THEME.padding.paddingX}>
@@ -52,6 +68,8 @@ export function GrillQuestionMenu(props: any) {
                         />
                         <MenuFooter
                             items={[
+                                { key: 'p/s', label: 'Finish & Plan' },
+                                ...(currentGrillIndex > 0 ? [{ key: 'b/←', label: 'Back' }] : []),
                                 { key: '↑/↓', label: 'Navigate' },
                                 { key: 'enter', label: 'Select' },
                                 { key: 'esc', label: 'Cancel' },

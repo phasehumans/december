@@ -4,7 +4,7 @@ import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 
-export type BinaryManager = 'bun' | 'npm' | 'pnpm' | 'yarn' | 'brew' | 'source' | 'unknown'
+export type BinaryManager = 'bun' | 'npm' | 'pnpm' | 'yarn' | 'brew' | 'curl' | 'source' | 'unknown'
 
 export interface DecemberBinaryInfo {
     path: string
@@ -66,6 +66,14 @@ export function inferManagerFromPath(filePath: string, realPath: string): Binary
         normalized.includes('/usr/bin/')
     ) {
         return 'npm'
+    }
+    if (
+        normalized.includes('/.december/bin/december') ||
+        normalized.includes('/.december/bin') ||
+        normalized.includes('/.local/bin/december') ||
+        normalized.includes('/.local/bin/')
+    ) {
+        return 'curl'
     }
     return 'unknown'
 }
@@ -169,6 +177,8 @@ export async function findAllDecemberBinaries(
 
     // 2. Collect from well-known global locations in case not in PATH
     const knownLocations = [
+        path.join(homeDir, '.december', 'bin', 'december'),
+        path.join(homeDir, '.local', 'bin', 'december'),
         path.join(homeDir, '.bun', 'bin', 'december'),
         path.join(homeDir, '.local', 'share', 'pnpm', 'december'),
         path.join(homeDir, '.yarn', 'bin', 'december'),

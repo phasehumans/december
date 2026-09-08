@@ -19,6 +19,7 @@ export type AuthMode =
     | 'byok_key'
     | 'model_select'
     | 'logout_select'
+    | 'switch_select'
     | 'session_select'
     | 'plan_approve'
     | 'grill_question'
@@ -29,4 +30,3 @@ export type AuthMode =
     | 'usage'
     | 'ollama_setup'
     | 'mcp_manager'
-    | 'skills_guide'

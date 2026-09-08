@@ -1,19 +1,16 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 import * as configModule from '../src/config'
 import { setupAgentInterceptors, globalSessionWhitelist } from '../src/store/interceptors'
-
-vi.mock('../src/config', () => ({
-    loadConfig: vi.fn(),
-    saveConfig: vi.fn(),
-}))
 
 describe('setupAgentInterceptors', () => {
     let mockAgent: any
     let mockStoreState: any
 
     beforeEach(() => {
-        vi.clearAllMocks()
+        vi.restoreAllMocks()
+        vi.spyOn(configModule, 'loadConfig').mockResolvedValue({} as any)
+        vi.spyOn(configModule, 'saveConfig').mockResolvedValue(undefined as any)
         globalSessionWhitelist.clear()
         mockAgent = {
             operations: { ui: {} },
@@ -23,6 +20,10 @@ describe('setupAgentInterceptors', () => {
             setPendingQuestions: vi.fn(),
             setPendingToolCall: vi.fn(),
         }
+    })
+
+    afterEach(() => {
+        vi.restoreAllMocks()
     })
 
     it('sets up askQuestion interceptor', async () => {

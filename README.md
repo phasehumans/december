@@ -20,7 +20,13 @@ December is an open-source coding agent that helps you build faster by writing c
 
 ## Installation
 
-Install globally using your favorite package manager:
+#### Linux & WSL (Standalone Installer)
+
+```bash
+curl -fsSL https://trydecember.com/install.sh | bash
+```
+
+#### Node.js / NPM (All Platforms)
 
 ```bash
 # npm (default)

@@ -1,4 +1,11 @@
-import { loadConfig, saveConfig, getProviderConfig } from '../config'
+import {
+    loadConfig,
+    saveConfig,
+    getProviderConfig,
+    resolveSwitchTarget,
+    applyProviderSwitch,
+    formatProviderName,
+} from '../config'
 import { MESSAGES } from '../constants/messages'
 import { useCliStore } from '../store'
 import { parseError } from '../utils/error-parser'
@@ -178,6 +185,10 @@ export function useAuthHandlers(
         if (item.value === 'loading') return
         const config = await loadConfig()
         config.activeModel = item.value
+        if (config.activeProvider) {
+            config.lastUsedModels = config.lastUsedModels || {}
+            config.lastUsedModels[config.activeProvider] = item.value
+        }
         await saveConfig(config)
         if (agent) {
             agent.modelOptions = { ...agent.modelOptions, model: item.value }
@@ -779,6 +790,58 @@ export function useAuthHandlers(
         addToast(`Removed credentials for: ${removedName}`, 'success')
     }
 
+    const handleSwitchSelect = async (value: string) => {
+        const config = await loadConfig()
+        const target = resolveSwitchTarget(config, value)
+        if (!target) {
+            setAuthMode('none')
+            addToast('Provider configuration not found', 'error')
+            return
+        }
+
+        const { config: updatedConfig, model } = applyProviderSwitch(config, target)
+        await saveConfig(updatedConfig)
+        setAuthMode('none')
+
+        const providerConfig = await getProviderConfig()
+        const { getAuthStatus } = await import('../config')
+        const authStatus = await getAuthStatus()
+
+        setIsAuthenticated(!!providerConfig)
+        setHasBothAuth(authStatus.hasByok && authStatus.hasDecember)
+        setSettingsAuthPriority(authStatus.authPriority)
+
+        if (providerConfig && agent) {
+            const llm = instantiateProvider(providerConfig.provider, providerConfig.apiKey, {
+                authMethod: providerConfig.authMethod,
+                subscription: providerConfig.subscription,
+                headers: providerConfig.headers,
+                baseURL: providerConfig.baseURL,
+            })
+            agent.setLLM(llm)
+            agent.modelOptions = { ...agent.modelOptions, model: providerConfig.model }
+            setActiveModel(providerConfig.model)
+            setSelectedProvider(providerConfig.provider)
+            setAuthMethod(providerConfig.authMethod)
+        }
+
+        if (providerConfig?.apiKey) {
+            const { fetchLiveProviderModels } = await import('../utils/models')
+            fetchLiveProviderModels(
+                providerConfig.provider,
+                providerConfig.apiKey,
+                providerConfig.baseURL
+            ).catch(() => {
+                // Intentionally swallowed: background live model fetch failure
+            })
+        }
+
+        setStaticMessages((prev) => [...prev, ...useCliStore.getState().activeMessages])
+        setActiveMessages([])
+        const displayName = formatProviderName(target.provider)
+        addToast(`Switched to ${displayName} (${target.authPriority}) • ${model}`, 'success')
+    }
+
     const handleSessionSelect = async (item: any) => {
         setAuthMode('none')
         console.clear()
@@ -929,6 +992,7 @@ export function useAuthHandlers(
         handleSubscriptionSelect,
         handleKeySubmit,
         handleLogoutSelect,
+        handleSwitchSelect,
         handleSessionSelect,
         handleOllamaRetry,
         handleOllamaCancel,

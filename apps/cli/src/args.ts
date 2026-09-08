@@ -59,14 +59,13 @@ export function parseCliArgs(args: string[]): ParsedCliArgs {
         const knownCommands = [
             'login',
             'logout',
+            'switch',
             'init',
             'update',
             'doctor',
             'auth',
             'link',
             'key',
-            'skill',
-            'skills',
         ]
         let command: string | undefined
         let prompt: string | undefined
@@ -121,12 +120,12 @@ a coding agent that lives in your terminal.
 Usage:
   december                          Launch interactive TUI session
   december "<prompt>"               Execute headless agent task
-  december skill <action>           Manage modular skills (list, create, info, add, remove)
   december auth [status|import]     Inspect active subscriptions and authentication status
   december link <provider>          Link AI subscription (copilot, claude, chatgpt, gemini)
   december key <provider> [key]     Save BYOK API key (openai, anthropic, openrouter, etc.)
   december login [provider]         Log in to December Cloud or subscription
   december logout [provider]        Remove saved authentication credentials
+  december switch [provider]        Switch active provider and restore remembered model
   december init                     Initialize local .december configuration
   december update                   Update December CLI to the latest version
   december doctor [--fix]           Inspect installations, health, and resolve PATH collisions
@@ -135,8 +134,6 @@ Options:
   -h, --help                        Show CLI help and exit
   -v, --version                     Show CLI version and exit
   -y, --yes                         Auto-approve tool permissions (non-interactive mode)
-  -g, --global                      Apply skill actions to user global configuration (~/.config/december) [default]
-  -l, --local                       Apply skill actions to current project/workspace (.agents/skills)
   --json                            Output structured JSON events
   --fix                             Automatically fix detected PATH collisions and stale links
   -m, --model <model>               Override target LLM model

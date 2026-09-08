@@ -24,11 +24,13 @@ export const UserMessage = React.memo(function UserMessage({ message }: Props) {
             marginBottom={1}
             flexDirection="row"
         >
-            <Box marginRight={1}>
+            <Box marginRight={1} flexShrink={0}>
                 <Text color={THEME.colors.brand}>{THEME.glyphs.prompt}</Text>
             </Box>
-            <Box flexShrink={1}>
-                <Text color={THEME.colors.brand}>{displayMessage}</Text>
+            <Box flexGrow={1} flexShrink={1}>
+                <Text color={THEME.colors.brand} wrap="wrap">
+                    {displayMessage}
+                </Text>
             </Box>
         </Box>
     )

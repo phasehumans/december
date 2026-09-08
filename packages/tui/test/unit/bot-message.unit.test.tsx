@@ -2,7 +2,7 @@ import { describe, expect, it } from 'bun:test'
 import { render } from 'ink-testing-library'
 import React from 'react'
 
-import { BotMessage } from '../../src/components/messages/bot-message'
+import { BotMessage, formatThought } from '../../src/components/messages/bot-message'
 
 describe('BotMessage Component (Unit)', () => {
     it('renders assistant response text blocks', () => {
@@ -300,6 +300,28 @@ describe('BotMessage Component (Unit)', () => {
         expect(rawLines[thoughtIdx + 1]?.trim()).toBe('')
     })
 
+    it('does not insert spurious blank lines when previous thinking block has empty content', () => {
+        const blocks: any[] = [
+            {
+                type: 'thinking',
+                content: '   ',
+            },
+            {
+                type: 'text',
+                content: 'Direct answer without thinking gap.',
+            },
+        ]
+        const { lastFrame } = render(<BotMessage blocks={blocks} expandCommands={false} />)
+        const frame = lastFrame() || ''
+        const rawLines = frame.split('\n')
+        const textIdx = rawLines.findIndex((l) => l.includes('Direct answer without thinking gap.'))
+        expect(textIdx).toBeGreaterThanOrEqual(0)
+        // Ensure no empty lines before the text
+        const linesBefore = rawLines.slice(0, textIdx)
+        expect(linesBefore.every((l) => l.trim() === '')).toBe(true)
+        expect(linesBefore.length).toBe(0)
+    })
+
     it('renders analyzing and generating questions status labels with spinner', () => {
         const { lastFrame: frame1 } = render(
             <BotMessage blocks={[{ type: 'text', content: 'Analyzing prompt...' }]} />
@@ -312,34 +334,55 @@ describe('BotMessage Component (Unit)', () => {
         expect(frame2()).toContain('Generating questions...')
     })
 
-    it('renders skills_guide block with commands and sources without boxes or borders', () => {
+    it('formatThought strips scaffolding labels and bullets while preserving separate lines and natural casing', () => {
+        const raw = `*  **Goal Understanding:** The user wants to refactor auth in packages/server.
+*  **Analysis:**
+   - Need to check auth.service.ts
+   - Need to preserve CamelCase and filePath
+*  **Execution Plan:**
+   1. Run grep_search to find symbols
+   2. Edit auth.service.ts`
+
+        const formatted = formatThought(raw)
+        const expected = [
+            'The user wants to refactor auth in packages/server.',
+            'Need to check auth.service.ts',
+            'Need to preserve CamelCase and filePath',
+            'Run grep_search to find symbols',
+            'Edit auth.service.ts',
+        ].join('\n')
+
+        expect(formatted).toBe(expected)
+        expect(formatted).not.toContain('Goal Understanding:')
+        expect(formatted).not.toContain('Analysis:')
+        expect(formatted).not.toContain('Execution Plan:')
+        expect(formatted).not.toContain('**')
+        expect(formatted).not.toContain('*')
+        expect(formatted).not.toContain('...')
+    })
+
+    it('renders thought block in BotMessage without bullets or scaffolding labels', () => {
+        const rawThought = `*  **Goal Understanding:** The user wants to check the database schema.
+*  **Analysis:**
+   - Looking for schema.prisma in packages/database
+   - Verifying User and Session models`
+
         const { lastFrame } = render(
             <BotMessage
                 blocks={[
-                    {
-                        type: 'skills_guide',
-                    },
+                    { type: 'thinking', content: rawThought },
+                    { type: 'text', content: 'Final response' },
                 ]}
             />
         )
+
         const frame = lastFrame() || ''
-        expect(frame).not.toContain('COMMANDS')
-        expect(frame).not.toContain('SOURCES')
-        expect(frame).toContain('Chat')
-        expect(frame).toContain('CLI')
-        expect(frame).toContain('/skill:<name>')
-        expect(frame).toContain('Invoke a skill in chat')
-        expect(frame).toContain('december skill list')
-        expect(frame).toContain('december skill add <source>')
-        expect(frame).toContain('december skill info <name>')
-        expect(frame).toContain('december skill create <name>')
-        expect(frame).toContain('december skill remove <name>')
-        expect(frame).toContain('Scopes:')
-        expect(frame).toContain('Explore:')
-        expect(frame).toContain('agentskills.org')
-        expect(frame).toContain('vercel-labs/skills')
-        expect(frame).toContain('anthropics/skills')
-        // Ensure no box or border characters
-        expect(frame).not.toMatch(/[┌┐└┘╭╮╯╰╔╗╚╝│─]/)
+        expect(frame).toContain('The user wants to check the database schema.')
+        expect(frame).toContain('Looking for schema.prisma in packages/database')
+        expect(frame).toContain('Verifying User and Session models')
+        expect(frame).toContain('Final response')
+        expect(frame).not.toContain('Goal Understanding:')
+        expect(frame).not.toContain('Analysis:')
+        expect(frame).not.toContain('**')
     })
 })

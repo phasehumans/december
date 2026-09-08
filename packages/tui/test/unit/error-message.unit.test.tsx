@@ -2,7 +2,11 @@ import { describe, expect, it } from 'bun:test'
 import { render } from 'ink-testing-library'
 import React from 'react'
 
-import { ErrorMessage, parseTuiError } from '../../src/components/messages/error-message'
+import {
+    ErrorMessage,
+    parseTuiError,
+    FormattedErrorText,
+} from '../../src/components/messages/error-message'
 
 describe('ErrorMessage Component (Unit)', () => {
     it('renders plain error message without Error: prefix in error color', () => {
@@ -124,5 +128,30 @@ describe('ErrorMessage Component (Unit)', () => {
         expect(parsed.hint).toBe(
             'Please check your account balance and top up credits with your provider, or switch models using /model'
         )
+    })
+
+    it('renders error messages and hints with URLs highlighted in brand blue color', () => {
+        const { lastFrame } = render(
+            <ErrorMessage
+                message="Insufficient credits in your Arcee AI account."
+                hint="Please add credits or top up your balance at https://platform.arcee.ai/api/api-keys"
+            />
+        )
+        const frame = lastFrame() || ''
+        expect(frame).toContain('Insufficient credits in your Arcee AI account.')
+        expect(frame).toContain('https://platform.arcee.ai/api/api-keys')
+    })
+
+    it('renders FormattedErrorText highlighting URL parts with brand blue color', () => {
+        const { lastFrame } = render(
+            <FormattedErrorText
+                text="Please visit https://platform.arcee.ai/api/api-keys for billing."
+                defaultColor="white"
+            />
+        )
+        const frame = lastFrame() || ''
+        expect(frame).toContain('https://platform.arcee.ai/api/api-keys')
+        expect(frame).toContain('Please visit')
+        expect(frame).toContain('for billing.')
     })
 })

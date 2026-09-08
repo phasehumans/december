@@ -30,26 +30,30 @@ export function TextArea({
     useEffect(() => {
         if (value !== prevValueRef.current) {
             // When value changes from outside (e.g. autocomplete, history navigation, clear)
-            if (
-                Math.abs(value.length - prevValueRef.current.length) > 1 ||
-                !value.startsWith(prevValueRef.current)
-            ) {
-                setCursorOffset(value.length)
-            } else if (cursorOffset > value.length) {
-                setCursorOffset(value.length)
-            }
+            setCursorOffset((prev) => {
+                if (
+                    Math.abs(value.length - prevValueRef.current.length) > 1 ||
+                    !value.startsWith(prevValueRef.current) ||
+                    prev > value.length
+                ) {
+                    return value.length
+                }
+                return prev
+            })
             prevValueRef.current = value
         }
-    }, [value, cursorOffset])
+    }, [value])
 
     useInput((input, key) => {
         if (!focus) return
 
+        const offset = Math.min(Math.max(0, cursorOffset), value.length)
+
         if (key.return) {
             if (key.meta) {
-                const newValue = value.slice(0, cursorOffset) + '\n' + value.slice(cursorOffset)
+                const newValue = value.slice(0, offset) + '\n' + value.slice(offset)
                 onChange(newValue)
-                setCursorOffset((prev) => prev + 1)
+                setCursorOffset(offset + 1)
             } else {
                 onSubmit(value)
             }
@@ -57,24 +61,24 @@ export function TextArea({
         }
 
         if (key.leftArrow) {
-            setCursorOffset((prev) => Math.max(0, prev - 1))
+            setCursorOffset(Math.max(0, offset - 1))
             return
         }
         if (key.rightArrow) {
-            setCursorOffset((prev) => Math.min(value.length, prev + 1))
+            setCursorOffset(Math.min(value.length, offset + 1))
             return
         }
         if (key.upArrow) {
             if (disableHistoryNav) return
-            const lines = value.slice(0, cursorOffset).split('\n')
+            const lines = value.slice(0, offset).split('\n')
             if (lines.length > 1) {
                 const currentLineLength = lines[lines.length - 1]?.length || 0
                 const prevLineLength = lines[lines.length - 2]?.length || 0
                 const newCol = Math.min(currentLineLength, prevLineLength)
-                const newOffset = cursorOffset - currentLineLength - 1 - (prevLineLength - newCol)
+                const newOffset = offset - currentLineLength - 1 - (prevLineLength - newCol)
                 setCursorOffset(Math.max(0, newOffset))
             } else {
-                if (cursorOffset === 0 && onHistoryUp) {
+                if (offset === 0 && onHistoryUp) {
                     onHistoryUp()
                 } else {
                     setCursorOffset(0)
@@ -84,17 +88,17 @@ export function TextArea({
         }
         if (key.downArrow) {
             if (disableHistoryNav) return
-            const postLines = value.slice(cursorOffset).split('\n')
+            const postLines = value.slice(offset).split('\n')
             if (postLines.length > 1) {
-                const preLines = value.slice(0, cursorOffset).split('\n')
+                const preLines = value.slice(0, offset).split('\n')
                 const currentLineLength = preLines[preLines.length - 1]?.length || 0
                 const nextLineLength = postLines[1]?.length || 0
                 const newCol = Math.min(currentLineLength, nextLineLength)
                 const postLineZeroLength = postLines[0]?.length || 0
-                const newOffset = cursorOffset + postLineZeroLength + 1 + newCol
+                const newOffset = offset + postLineZeroLength + 1 + newCol
                 setCursorOffset(Math.min(value.length, newOffset))
             } else {
-                if (cursorOffset === value.length && onHistoryDown) {
+                if (offset === value.length && onHistoryDown) {
                     onHistoryDown()
                 } else {
                     setCursorOffset(value.length)
@@ -103,10 +107,10 @@ export function TextArea({
             return
         }
         if (key.backspace || key.delete) {
-            if (cursorOffset > 0) {
-                const newValue = value.slice(0, cursorOffset - 1) + value.slice(cursorOffset)
+            if (offset > 0) {
+                const newValue = value.slice(0, offset - 1) + value.slice(offset)
                 onChange(newValue)
-                setCursorOffset((prev) => prev - 1)
+                setCursorOffset(offset - 1)
             }
             return
         }
@@ -120,12 +124,12 @@ export function TextArea({
             return
         }
         if (key.ctrl && input === 'k') {
-            const newValue = value.slice(0, cursorOffset)
+            const newValue = value.slice(0, offset)
             onChange(newValue)
             return
         }
         if (key.ctrl && input === 'u') {
-            const newValue = value.slice(cursorOffset)
+            const newValue = value.slice(offset)
             onChange(newValue)
             setCursorOffset(0)
             return
@@ -134,15 +138,15 @@ export function TextArea({
         if (key.ctrl) return
 
         if (input) {
-            const newValue = value.slice(0, cursorOffset) + input + value.slice(cursorOffset)
+            const newValue = value.slice(0, offset) + input + value.slice(offset)
             onChange(newValue)
-            setCursorOffset((prev) => prev + input.length)
+            setCursorOffset(offset + input.length)
         }
     })
 
     if (!value && placeholder) {
         return (
-            <Text color={THEME.colors.muted}>
+            <Text color={THEME.colors.muted} wrap="wrap">
                 {focus ? <Text inverse>{placeholder[0] || ' '}</Text> : null}
                 {placeholder.slice(focus ? 1 : 0)}
             </Text>
@@ -188,37 +192,110 @@ export function TextArea({
         return undefined
     }
 
-    const chars = value.split('')
+    const effectiveCursorOffset = Math.min(Math.max(0, cursorOffset), value.length)
     const elements: React.ReactNode[] = []
+    const len = value.length
 
-    for (let i = 0; i < chars.length; i++) {
-        const char = chars[i]
-        const isCursor = i === cursorOffset && focus
-        const color = getCharColor(i)
-
-        if (isCursor) {
-            elements.push(
-                <Text key={i} color={color} inverse>
-                    {char}
-                </Text>
-            )
-        } else {
-            elements.push(
-                <Text key={i} color={color}>
-                    {char}
-                </Text>
-            )
-        }
-    }
-
-    // Cursor at the very end of the line
-    if (cursorOffset >= chars.length && focus) {
+    const pushChunk = (key: string, text: string, color: string | undefined, inverse = false) => {
+        if (!text) return
         elements.push(
-            <Text key="cursor-end" inverse>
-                {' '}
+            <Text key={key} color={color} inverse={inverse}>
+                {text}
             </Text>
         )
     }
 
-    return <Text>{elements}</Text>
+    if (!focus) {
+        let currentChunk = ''
+        let currentColor: string | undefined = undefined
+        let chunkStart = 0
+
+        for (let i = 0; i < len; i++) {
+            const color = getCharColor(i)
+            if (i === 0) {
+                currentColor = color
+                currentChunk = value[i]!
+                chunkStart = 0
+            } else if (color === currentColor) {
+                currentChunk += value[i]!
+            } else {
+                pushChunk(`chunk-${chunkStart}`, currentChunk, currentColor)
+                currentChunk = value[i]!
+                currentColor = color
+                chunkStart = i
+            }
+        }
+        if (currentChunk) {
+            pushChunk(`chunk-${chunkStart}`, currentChunk, currentColor)
+        }
+        return <Text wrap="wrap">{elements}</Text>
+    }
+
+    // Process characters before cursor
+    let currentChunk = ''
+    let currentColor: string | undefined = undefined
+    let chunkStart = 0
+
+    for (let i = 0; i < effectiveCursorOffset; i++) {
+        const color = getCharColor(i)
+        if (i === 0) {
+            currentColor = color
+            currentChunk = value[i]!
+            chunkStart = 0
+        } else if (color === currentColor) {
+            currentChunk += value[i]!
+        } else {
+            pushChunk(`pre-${chunkStart}`, currentChunk, currentColor)
+            currentChunk = value[i]!
+            currentColor = color
+            chunkStart = i
+        }
+    }
+    if (currentChunk) {
+        pushChunk(`pre-${chunkStart}`, currentChunk, currentColor)
+    }
+
+    // Cursor character
+    if (effectiveCursorOffset < len) {
+        const cursorChar = value[effectiveCursorOffset]!
+        const cursorColor = getCharColor(effectiveCursorOffset)
+        if (cursorChar === '\n') {
+            pushChunk('cursor', ' ', cursorColor, true)
+            pushChunk('cursor-nl', '\n', undefined, false)
+        } else {
+            pushChunk('cursor', cursorChar, cursorColor, true)
+        }
+    }
+
+    // Process characters after cursor
+    const afterCursorStart = effectiveCursorOffset + 1
+    currentChunk = ''
+    currentColor = undefined
+    chunkStart = afterCursorStart
+
+    for (let i = afterCursorStart; i < len; i++) {
+        const color = getCharColor(i)
+        if (i === afterCursorStart) {
+            currentColor = color
+            currentChunk = value[i]!
+            chunkStart = afterCursorStart
+        } else if (color === currentColor) {
+            currentChunk += value[i]!
+        } else {
+            pushChunk(`post-${chunkStart}`, currentChunk, currentColor)
+            currentChunk = value[i]!
+            currentColor = color
+            chunkStart = i
+        }
+    }
+    if (currentChunk) {
+        pushChunk(`post-${chunkStart}`, currentChunk, currentColor)
+    }
+
+    // Cursor at the very end of the line
+    if (effectiveCursorOffset >= len) {
+        pushChunk('cursor-end', ' ', undefined, true)
+    }
+
+    return <Text wrap="wrap">{elements}</Text>
 }

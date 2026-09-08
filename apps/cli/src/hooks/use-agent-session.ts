@@ -2,14 +2,26 @@ import { Agent, runAgentLoop } from '@december/agent'
 import { SkillDiscoveryEngine, parseSkillFile, interpolateSkillPrompt } from '@december/shared'
 import { useEffect, useCallback, useState, useRef } from 'react'
 
-import { loadConfig, saveConfig } from '../config'
+import {
+    loadConfig,
+    saveConfig,
+    resolveSwitchTarget,
+    applyProviderSwitch,
+    getConfiguredProviders,
+    formatProviderName,
+} from '../config'
 import {
     AUTH_REQUIRED_NOTICE,
     HANDOFF_LOGIN_REQUIRED_NOTICE,
     HANDOFF_INSUFFICIENT_CREDITS_NOTICE,
     HANDOFF_SUCCESS_NOTICE,
 } from '../constants/messages'
-import { getGrillPrompt, getPlanPrompt } from '../constants/prompts'
+import {
+    getGrillPrompt,
+    getPlanPrompt,
+    getPlanExecutionPrompt,
+    getPlanRefinePrompt,
+} from '../constants/prompts'
 import { useCliStore } from '../store'
 import { setupAgentInterceptors } from '../store/interceptors'
 import { taskManager } from '../task-manager'
@@ -18,6 +30,7 @@ import { parseErrorMessage, parseError } from '../utils/error-parser'
 import { extractJsonArray } from '../utils/json-parser'
 import { getProviderModels } from '../utils/models'
 import { fetchOpenRouterModels } from '../utils/openrouter-models'
+import { getProjectContext } from '../utils/project-context'
 import { instantiateProvider } from '../utils/provider-factory'
 import { formatUsageCard } from '../utils/usage-rates'
 
@@ -72,6 +85,8 @@ export function useAgentSession({
         setAuthMode,
         logoutItems,
         setLogoutItems,
+        switchItems,
+        setSwitchItems,
         selectedProvider,
         setSelectedProvider,
         activeModel,
@@ -88,6 +103,14 @@ export function useAgentSession({
         setOllamaModels,
         currentPlannedPrompt,
         setCurrentPlannedPrompt,
+        currentPlanText,
+        setCurrentPlanText,
+        currentPlanQAPairs,
+        setCurrentPlanQAPairs,
+        planRefineMode,
+        setPlanRefineMode,
+        planRefineFeedback,
+        setPlanRefineFeedback,
         grillMode,
         setGrillMode,
         grillQuestions,
@@ -140,6 +163,8 @@ export function useAgentSession({
         sessionSelectedIndex,
         setSessionSelectedIndex,
 
+        settingsPathGuard,
+        setSettingsPathGuard,
         settingsNonWorkspace,
         setSettingsNonWorkspace,
         settingsToolPermission,
@@ -211,15 +236,40 @@ export function useAgentSession({
     // hooks state
 
     useEffect(() => {
+        const update = () => {
+            setTasksData([...taskManager.getTasks()])
+        }
         if (authMode === 'tasks_mode') {
-            const update = () => {
-                setTasksData([...taskManager.getTasks()])
-            }
             update()
-            const interval = setInterval(update, 500)
-            return () => clearInterval(interval)
+            taskManager.on('change', update)
+            const interval = setInterval(update, 1000)
+            return () => {
+                taskManager.off('change', update)
+                clearInterval(interval)
+            }
         }
     }, [authMode, setTasksData])
+
+    useEffect(() => {
+        const handleCompleted = (task: any) => {
+            if (authMode !== 'tasks_mode') {
+                const cleanCmd = (task.command || '').replace(/\r?\n+/g, ' ').trim()
+                const preview = cleanCmd.length > 30 ? cleanCmd.slice(0, 27) + '...' : cleanCmd
+                if (task.status === 'completed') {
+                    addToast(`Task [${task.id}] completed: ${preview}`, 'success')
+                } else if (task.status === 'failed') {
+                    addToast(
+                        `Task [${task.id}] failed (exit ${task.exitCode ?? 1}): ${preview}`,
+                        'error'
+                    )
+                }
+            }
+        }
+        taskManager.on('task:completed', handleCompleted)
+        return () => {
+            taskManager.off('task:completed', handleCompleted)
+        }
+    }, [authMode, addToast])
 
     useEffect(() => {
         if (selectedProvider === 'openrouter' || authMode === 'model_select') {
@@ -245,10 +295,14 @@ export function useAgentSession({
                         providerConfig.provider,
                         providerConfig.apiKey,
                         providerConfig.baseURL
-                    ).catch(() => {})
+                    ).catch(() => {
+                        // Intentionally swallowed: background live model fetch failure
+                    })
                 }
             })
-            .catch(() => {})
+            .catch(() => {
+                // Intentionally swallowed: config load failure
+            })
     }, [])
 
     const handleKillTask = useCallback(
@@ -258,6 +312,27 @@ export function useAgentSession({
         },
         [setTasksData]
     )
+
+    const handleClearCompletedTasks = useCallback(() => {
+        taskManager.clearCompleted()
+        setTasksData([...taskManager.getTasks()])
+    }, [setTasksData])
+
+    const handleRemoveTask = useCallback(
+        (taskId: string) => {
+            taskManager.removeTask(taskId)
+            setTasksData([...taskManager.getTasks()])
+        },
+        [setTasksData]
+    )
+
+    const handleKillAllTasks = useCallback(() => {
+        const count = taskManager.killAll()
+        setTasksData([...taskManager.getTasks()])
+        if (count > 0) {
+            addToast(`Killed ${count} background task${count === 1 ? '' : 's'}.`, 'info')
+        }
+    }, [setTasksData, addToast])
 
     const generateGrillQuestions = useCallback(
         async (userPrompt: string) => {
@@ -315,7 +390,8 @@ export function useAgentSession({
             ])
 
             try {
-                const prompt = getGrillPrompt(trimmedPrompt)
+                const projectContext = getProjectContext(agent?.workspaceDir || process.cwd())
+                const prompt = getGrillPrompt(trimmedPrompt, projectContext)
 
                 const stream = agent.llm.stream(
                     [{ role: 'user', content: prompt }],
@@ -345,18 +421,20 @@ export function useAgentSession({
                 }
 
                 const questions = extractJsonArray(accumulatedText)
-                if (!Array.isArray(questions) || questions.length === 0) {
-                    throw new Error('Invalid questions format returned from model.')
+                if (Array.isArray(questions) && questions.length > 0) {
+                    setGrillQuestions(questions)
+                    setGrillPrompt(trimmedPrompt)
+                    setGrillAnswers([])
+                    setCurrentGrillIndex(0)
+                    setAuthMode('grill_question')
+                    setCustomInputMode(false)
+                    setActiveMessages([])
+                } else {
+                    // Task is clear with zero questions or fallback: generate plan directly
+                    setActiveMessages([])
+                    setGrillPrompt(trimmedPrompt)
+                    await generatePlanFromGrill([])
                 }
-
-                setGrillQuestions(questions)
-                setGrillPrompt(trimmedPrompt)
-                setGrillAnswers([])
-                setCurrentGrillIndex(0)
-                setAuthMode('grill_question')
-                setCustomInputMode(false)
-
-                setActiveMessages([])
             } catch (err: any) {
                 const cleanError = parseErrorMessage(err)
                 const isAuthErr =
@@ -419,7 +497,14 @@ export function useAgentSession({
     const generatePlanFromGrill = useCallback(
         async (answers: string[]) => {
             setAuthMode('none')
-            const originalPrompt = grillPrompt
+            const originalPrompt = grillPrompt || useCliStore.getState().grillPrompt
+            const questions =
+                grillQuestions.length > 0 ? grillQuestions : useCliStore.getState().grillQuestions
+            const qaPairs = questions.map((q, i) => ({
+                question: q.question,
+                answer: answers[i] || '',
+            }))
+
             setGrillPrompt(null)
             setGrillQuestions([])
             setGrillAnswers([])
@@ -453,11 +538,9 @@ export function useAgentSession({
             }
 
             setCurrentPlannedPrompt(originalPrompt)
+            setCurrentPlanQAPairs(qaPairs)
 
-            const planPrompt = getPlanPrompt(
-                originalPrompt || '',
-                grillQuestions.map((q, i) => ({ question: q.question, answer: answers[i] || '' }))
-            )
+            const planPrompt = getPlanPrompt(originalPrompt || '', qaPairs)
 
             setIsStreaming(true)
             setStaticMessages((prev) => [...prev, ...useCliStore.getState().activeMessages])
@@ -498,6 +581,20 @@ export function useAgentSession({
                 ])
             } finally {
                 setIsStreaming(false)
+                const assistantMsg = useCliStore
+                    .getState()
+                    .activeMessages.find((m) => m.id === assistantMsgId)
+                const textContent =
+                    assistantMsg?.blocks
+                        ?.filter((b: any) => b.type === 'text')
+                        .map((b: any) => b.content)
+                        .join('') ||
+                    assistantMsg?.text ||
+                    ''
+                if (textContent) {
+                    setCurrentPlanText(textContent)
+                }
+
                 setStaticMessages((prev) => [...prev, ...useCliStore.getState().activeMessages])
                 setActiveMessages([])
                 if (planSuccess) {
@@ -515,9 +612,102 @@ export function useAgentSession({
             setActiveMessages,
             setAuthMode,
             setCurrentPlannedPrompt,
+            setCurrentPlanText,
+            setCurrentPlanQAPairs,
             setGrillAnswers,
             setGrillPrompt,
             setGrillQuestions,
+            setIsStreaming,
+            setStaticMessages,
+        ]
+    )
+
+    const generatePlanRefinement = useCallback(
+        async (feedback: string) => {
+            const originalPrompt =
+                currentPlannedPrompt || useCliStore.getState().currentPlannedPrompt || ''
+            const previousPlan = currentPlanText || useCliStore.getState().currentPlanText || ''
+            const qaPairs = currentPlanQAPairs || useCliStore.getState().currentPlanQAPairs || []
+
+            if (!originalPrompt || !previousPlan) return
+
+            const refinePrompt = getPlanRefinePrompt(
+                originalPrompt,
+                previousPlan,
+                feedback,
+                qaPairs
+            )
+
+            setIsStreaming(true)
+            setStaticMessages((prev) => [...prev, ...useCliStore.getState().activeMessages])
+            const assistantMsgId = getNextMsgId()
+            setActiveMessages([
+                {
+                    id: getNextMsgId(),
+                    role: 'user',
+                    text: `Refine plan: "${feedback}"`,
+                },
+                { id: assistantMsgId, role: 'assistant', blocks: [] },
+            ])
+            let planSuccess = false
+            const errorContext = {
+                provider: agent?.modelOptions?.provider || useCliStore.getState().selectedProvider,
+                model: agent?.modelOptions?.model || useCliStore.getState().activeModel,
+            }
+            try {
+                const stream = runAgentLoop(agent, refinePrompt)
+                await processAgentStream({
+                    stream,
+                    setActiveMessages,
+                    assistantMsgId,
+                    context: errorContext,
+                })
+                planSuccess = true
+            } catch (err: any) {
+                const parsed = parseError(err, errorContext)
+                setActiveMessages((prev) => [
+                    ...prev,
+                    {
+                        id: getNextMsgId(),
+                        role: 'error',
+                        text: parsed.message,
+                        cause: parsed.cause,
+                        hint: parsed.hint,
+                    },
+                ])
+            } finally {
+                setIsStreaming(false)
+                const assistantMsg = useCliStore
+                    .getState()
+                    .activeMessages.find((m) => m.id === assistantMsgId)
+                const textContent =
+                    assistantMsg?.blocks
+                        ?.filter((b: any) => b.type === 'text')
+                        .map((b: any) => b.content)
+                        .join('') ||
+                    assistantMsg?.text ||
+                    ''
+                if (textContent) {
+                    setCurrentPlanText(textContent)
+                }
+
+                setStaticMessages((prev) => [...prev, ...useCliStore.getState().activeMessages])
+                setActiveMessages([])
+                if (planSuccess) {
+                    setAuthMode('plan_approve')
+                } else {
+                    setAuthMode('none')
+                }
+            }
+        },
+        [
+            agent,
+            currentPlannedPrompt,
+            currentPlanText,
+            currentPlanQAPairs,
+            setActiveMessages,
+            setAuthMode,
+            setCurrentPlanText,
             setIsStreaming,
             setStaticMessages,
         ]
@@ -527,6 +717,10 @@ export function useAgentSession({
         async (item: any) => {
             if (item.value === 'custom') {
                 setCustomInputMode(true)
+                return
+            }
+            if (item.value === '__finish_now__') {
+                await generatePlanFromGrill(grillAnswers)
                 return
             }
 
@@ -942,6 +1136,91 @@ ${decStatus}
                 return
             }
 
+            if (text.trim().startsWith('/switch ')) {
+                const targetProvider = text.trim().slice('/switch '.length).trim().toLowerCase()
+                if (targetProvider) {
+                    const config = await loadConfig()
+                    const target = resolveSwitchTarget(config, targetProvider)
+                    if (!target) {
+                        addToast(`Provider "${targetProvider}" is not configured.`, 'error')
+                        return
+                    }
+
+                    const { config: updatedConfig, model } = applyProviderSwitch(config, target)
+                    await saveConfig(updatedConfig)
+
+                    const { getProviderConfig, getAuthStatus } = await import('../config')
+                    const providerConfig = await getProviderConfig()
+                    const authStatus = await getAuthStatus()
+
+                    setIsAuthenticated(!!providerConfig)
+                    setHasBothAuth(authStatus.hasByok && authStatus.hasDecember)
+                    setSettingsAuthPriority(authStatus.authPriority)
+
+                    if (providerConfig && agent) {
+                        const llm = instantiateProvider(
+                            providerConfig.provider,
+                            providerConfig.apiKey,
+                            {
+                                authMethod: providerConfig.authMethod,
+                                subscription: providerConfig.subscription,
+                                headers: providerConfig.headers,
+                                baseURL: providerConfig.baseURL,
+                            }
+                        )
+                        agent.setLLM(llm)
+                        agent.modelOptions = {
+                            ...agent.modelOptions,
+                            model: providerConfig.model,
+                        }
+                        setActiveModel(providerConfig.model)
+                        setSelectedProvider(providerConfig.provider)
+                        setAuthMethod(providerConfig.authMethod)
+                    }
+
+                    if (providerConfig?.apiKey) {
+                        const { fetchLiveProviderModels } = await import('../utils/models')
+                        fetchLiveProviderModels(
+                            providerConfig.provider,
+                            providerConfig.apiKey,
+                            providerConfig.baseURL
+                        ).catch(() => {
+                            // Intentionally swallowed: background live model fetch failure
+                        })
+                    }
+
+                    const displayName = formatProviderName(target.provider)
+                    addToast(
+                        `Switched active provider to ${displayName} (${target.authPriority}) • ${model}`,
+                        'success'
+                    )
+                    return
+                }
+            }
+
+            if (text.trim() === '/switch') {
+                const config = await loadConfig()
+                const configuredList = getConfiguredProviders(config)
+                if (configuredList.length === 0) {
+                    addToast(
+                        'No configured providers found. Use /login or "december key" to configure one.',
+                        'info'
+                    )
+                    return
+                }
+
+                const menuItems = configuredList.map((item) => ({
+                    label: item.label,
+                    value: item.value,
+                    model: item.model,
+                    isActive: item.isActive,
+                }))
+
+                setSwitchItems(menuItems)
+                setAuthMode('switch_select')
+                return
+            }
+
             if (text.trim() === '/login') {
                 setAuthMode('menu')
                 return
@@ -1220,7 +1499,7 @@ ${decStatus}
             if (text.trim() === '/plan' || text.trim().startsWith('/plan ')) {
                 const goal = text.trim().slice('/plan'.length).trim()
                 if (!goal) {
-                    addToast('Usage: /plan <goal description>', 'info')
+                    addToast('Usage: /plan <goal description> (e.g. /plan add dark mode)', 'info')
                     return
                 }
                 if (!isAuthenticated) {
@@ -1245,7 +1524,8 @@ ${decStatus}
                     return
                 }
                 setCurrentPlannedPrompt(goal)
-                const planPrompt = `You are an autonomous software engineer.\nThe user wants to implement: "${goal}"\n\nPlease create a detailed, step-by-step implementation plan based on these requirements.\nDo NOT execute any tools. Only describe the plan.\nStart your response with '### Implementation Plan' and list the concrete steps.\nExplain which files need to be created, modified, or deleted, and what the changes will be.`
+                setCurrentPlanQAPairs([])
+                const planPrompt = getPlanPrompt(goal, [])
 
                 setIsStreaming(true)
                 setStaticMessages((prev) => [...prev, ...useCliStore.getState().activeMessages])
@@ -1287,6 +1567,20 @@ ${decStatus}
                     ])
                 } finally {
                     setIsStreaming(false)
+                    const assistantMsg = useCliStore
+                        .getState()
+                        .activeMessages.find((m) => m.id === assistantMsgId)
+                    const textContent =
+                        assistantMsg?.blocks
+                            ?.filter((b: any) => b.type === 'text')
+                            .map((b: any) => b.content)
+                            .join('') ||
+                        assistantMsg?.text ||
+                        ''
+                    if (textContent) {
+                        setCurrentPlanText(textContent)
+                    }
+
                     setStaticMessages((prev) => [...prev, ...useCliStore.getState().activeMessages])
                     setActiveMessages([])
                     if (planSuccess) {
@@ -1343,7 +1637,7 @@ ${decStatus}
                     )
                     if (result.shellHashNotice) {
                         addToast(
-                            'Tip: If your terminal tab still executes an older path, run "hash -r" (bash) or restart your terminal.',
+                            'Tip: If your active terminal still executes an older version, run "hash -r" (bash) or "rehash" (zsh) or restart terminal.',
                             'info'
                         )
                     }
@@ -1478,6 +1772,7 @@ ${decStatus}
 
             if (text.trim() === '/settings') {
                 loadConfig().then((config) => {
+                    setSettingsPathGuard(config.pathGuard !== false)
                     setSettingsNonWorkspace(config.nonWorkspaceAccess ?? false)
                     setSettingsToolPermission(config.toolPermission ?? 'always-proceed')
                     setSettingsThinkingLevel(config.thinkingLevel ?? 'auto')
@@ -1544,9 +1839,13 @@ ${decStatus}
                 return
             }
 
-            if (text.trim() === '/skills' || text.trim() === '/skill') {
-                setAuthMode('skills_guide')
-                return
+            if (planRefineMode) {
+                setPlanRefineMode(false)
+                const feedback = text.trim()
+                if (feedback) {
+                    await generatePlanRefinement(feedback)
+                    return
+                }
             }
 
             const rawUserPrompt = text.trim()
@@ -1657,11 +1956,18 @@ ${decStatus}
                 setIsStreaming(true)
                 const assistantMsgId = getNextMsgId()
                 const newUserMsg: Message = { id: getNextMsgId(), role: 'user', text: displayText }
-                setStaticMessages((prev) => [
-                    ...prev,
-                    ...useCliStore.getState().activeMessages,
-                    newUserMsg,
-                ])
+                setStaticMessages((prev) => {
+                    const currentActive = useCliStore.getState().activeMessages.filter((m) => {
+                        if (m.role === 'assistant') {
+                            return (
+                                (m.blocks && m.blocks.length > 0) ||
+                                Boolean(m.text && m.text.trim())
+                            )
+                        }
+                        return true
+                    })
+                    return [...prev, ...currentActive, newUserMsg]
+                })
                 setActiveMessages([{ id: assistantMsgId, role: 'assistant', blocks: [] }])
 
                 const errorContext = {
@@ -1694,7 +2000,18 @@ ${decStatus}
                     ])
                 } finally {
                     setIsStreaming(false)
-                    setStaticMessages((prev) => [...prev, ...useCliStore.getState().activeMessages])
+                    setStaticMessages((prev) => {
+                        const currentActive = useCliStore.getState().activeMessages.filter((m) => {
+                            if (m.role === 'assistant') {
+                                return (
+                                    (m.blocks && m.blocks.length > 0) ||
+                                    Boolean(m.text && m.text.trim())
+                                )
+                            }
+                            return true
+                        })
+                        return [...prev, ...currentActive]
+                    })
                     setActiveMessages([])
                 }
 
@@ -1743,6 +2060,7 @@ ${decStatus}
             setHasBothAuth,
             setIsAuthenticated,
             setSettingsAuthPriority,
+            setSwitchItems,
         ]
     )
 
@@ -1772,6 +2090,7 @@ ${decStatus}
         handleSubscriptionSelect,
         handleKeySubmit,
         handleLogoutSelect,
+        handleSwitchSelect,
         handleSessionSelect,
         handleOllamaRetry,
         handleOllamaCancel,
@@ -1780,19 +2099,121 @@ ${decStatus}
 
     const handlePlanApprovalSelect = useCallback(
         async (item: any) => {
+            if (item.value === 'refine') {
+                setAuthMode('none')
+                setPlanRefineMode(true)
+                addToast('Enter feedback in the prompt bar to refine the plan', 'info')
+                return
+            }
+
             setAuthMode('none')
-            const originalPrompt = currentPlannedPrompt
+            const originalPrompt =
+                currentPlannedPrompt || useCliStore.getState().currentPlannedPrompt
+            const planText = currentPlanText || useCliStore.getState().currentPlanText || ''
+            const qaPairs = currentPlanQAPairs || useCliStore.getState().currentPlanQAPairs || []
+
             setCurrentPlannedPrompt(null)
+            setCurrentPlanText(null)
+            setCurrentPlanQAPairs([])
+            setPlanRefineMode(false)
 
             if (item.value === 'approve') {
                 if (originalPrompt) {
-                    await handleSubmit(originalPrompt)
+                    const executionDirective = getPlanExecutionPrompt(
+                        originalPrompt,
+                        planText,
+                        qaPairs
+                    )
+                    const displayText = `Approved implementation plan for: "${originalPrompt}". Executing now...`
+
+                    setIsStreaming(true)
+                    const assistantMsgId = getNextMsgId()
+                    const newUserMsg: Message = {
+                        id: getNextMsgId(),
+                        role: 'user',
+                        text: displayText,
+                    }
+                    setStaticMessages((prev) => {
+                        const currentActive = useCliStore.getState().activeMessages.filter((m) => {
+                            if (m.role === 'assistant') {
+                                return (
+                                    (m.blocks && m.blocks.length > 0) ||
+                                    Boolean(m.text && m.text.trim())
+                                )
+                            }
+                            return true
+                        })
+                        return [...prev, ...currentActive, newUserMsg]
+                    })
+                    setActiveMessages([{ id: assistantMsgId, role: 'assistant', blocks: [] }])
+
+                    const errorContext = {
+                        provider:
+                            agent?.modelOptions?.provider ||
+                            useCliStore.getState().selectedProvider,
+                        model: agent?.modelOptions?.model || useCliStore.getState().activeModel,
+                    }
+                    try {
+                        const stream = runAgentLoop(agent, {
+                            content: executionDirective,
+                            displayText,
+                        })
+                        await processAgentStream({
+                            stream,
+                            setActiveMessages,
+                            assistantMsgId,
+                            context: errorContext,
+                        })
+                    } catch (err: any) {
+                        const parsed = parseError(err, errorContext)
+                        setActiveMessages((prev) => [
+                            ...prev,
+                            {
+                                id: getNextMsgId(),
+                                role: 'error',
+                                text: parsed.message,
+                                cause: parsed.cause,
+                                hint: parsed.hint,
+                            },
+                        ])
+                    } finally {
+                        setIsStreaming(false)
+                        setStaticMessages((prev) => {
+                            const currentActive = useCliStore
+                                .getState()
+                                .activeMessages.filter((m) => {
+                                    if (m.role === 'assistant') {
+                                        return (
+                                            (m.blocks && m.blocks.length > 0) ||
+                                            Boolean(m.text && m.text.trim())
+                                        )
+                                    }
+                                    return true
+                                })
+                            return [...prev, ...currentActive]
+                        })
+                        setActiveMessages([])
+                    }
                 }
             } else {
                 addToast('Plan rejected.', 'error')
             }
         },
-        [currentPlannedPrompt, handleSubmit, addToast, setAuthMode, setCurrentPlannedPrompt]
+        [
+            agent,
+            currentPlannedPrompt,
+            currentPlanText,
+            currentPlanQAPairs,
+            addToast,
+            setAuthMode,
+            setCurrentPlannedPrompt,
+            setCurrentPlanText,
+            setCurrentPlanQAPairs,
+            setPlanRefineMode,
+            setIsStreaming,
+            setActiveMessages,
+            setStaticMessages,
+        ]
     )
 
     const handleContextSelect = () => {}
@@ -1898,6 +2319,17 @@ ${decStatus}
     return {
         currentPlannedPrompt,
         setCurrentPlannedPrompt,
+        currentPlanText,
+        setCurrentPlanText,
+        currentPlanQAPairs,
+        setCurrentPlanQAPairs,
+        planRefineMode,
+        setPlanRefineMode,
+        planRefineFeedback,
+        setPlanRefineFeedback,
+        generatePlanFromGrill,
+        generatePlanRefinement,
+        planSummary: currentPlannedPrompt ? `Plan: ${currentPlannedPrompt}` : undefined,
         grillMode,
         setGrillMode,
         tasksData,
@@ -1939,6 +2371,8 @@ ${decStatus}
         setAuthMode,
         logoutItems,
         setLogoutItems,
+        switchItems,
+        setSwitchItems,
         selectedProvider,
         setSelectedProvider,
         apiKey,
@@ -1959,6 +2393,8 @@ ${decStatus}
         setSessionRenameMode,
         sessionNewName,
         setSessionNewName,
+        settingsPathGuard,
+        setSettingsPathGuard,
         settingsNonWorkspace,
         setSettingsNonWorkspace,
         settingsToolPermission,
@@ -1984,12 +2420,16 @@ ${decStatus}
         handleSubscriptionSelect,
         handleKeySubmit,
         handleLogoutSelect,
+        handleSwitchSelect,
         handleGrillSelect,
         pendingQuestions,
         setPendingQuestions,
         getProviderModels,
         handleAbort,
         handleKillTask,
+        handleClearCompletedTasks,
+        handleRemoveTask,
+        handleKillAllTasks,
         toasts,
         addToast,
         expandCommands,

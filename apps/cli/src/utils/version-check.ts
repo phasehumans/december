@@ -2,7 +2,7 @@ import https from 'node:https'
 
 import { loadConfig, saveConfig } from '../config'
 
-export const CHECK_TTL_MS = 24 * 60 * 60 * 1000 // 24 hours in milliseconds
+export const CHECK_TTL_MS = 4 * 60 * 60 * 1000 // 4 hours in milliseconds
 
 export function isNewerVersion(current: string, latest: string): boolean {
     const cleanCurrent = current.replace(/^v/, '')
@@ -19,13 +19,20 @@ export function isNewerVersion(current: string, latest: string): boolean {
     return false
 }
 
-export async function checkForLatestVersion(currentVersion: string): Promise<string | null> {
+export interface CheckVersionOptions {
+    bypassCache?: boolean
+}
+
+export async function checkForLatestVersion(
+    currentVersion: string,
+    options?: CheckVersionOptions
+): Promise<string | null> {
     try {
         const config = await loadConfig()
         const now = Date.now()
 
-        // 1. Check local config cache first (24-hour TTL)
-        if (config.versionCheckCache) {
+        // 1. Check local config cache if bypassCache is not requested (4-hour TTL)
+        if (!options?.bypassCache && config.versionCheckCache) {
             const { latestVersion, checkedAt } = config.versionCheckCache
             if (now - checkedAt < CHECK_TTL_MS) {
                 if (latestVersion && isNewerVersion(currentVersion, latestVersion)) {
@@ -35,14 +42,16 @@ export async function checkForLatestVersion(currentVersion: string): Promise<str
             }
         }
 
-        // 2. Fetch from npm registry if cache is stale (> 24 hours) or missing
+        // 2. Fetch fresh version from registry
         const freshLatest = await fetchLatestFromNpm()
         if (freshLatest) {
             config.versionCheckCache = {
                 latestVersion: freshLatest,
                 checkedAt: now,
             }
-            await saveConfig(config).catch(() => {})
+            await saveConfig(config).catch(() => {
+                // Intentionally swallowed: config save failure should not block check
+            })
 
             if (isNewerVersion(currentVersion, freshLatest)) {
                 return freshLatest
