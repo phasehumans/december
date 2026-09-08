@@ -300,6 +300,28 @@ describe('BotMessage Component (Unit)', () => {
         expect(rawLines[thoughtIdx + 1]?.trim()).toBe('')
     })
 
+    it('does not insert spurious blank lines when previous thinking block has empty content', () => {
+        const blocks: any[] = [
+            {
+                type: 'thinking',
+                content: '   ',
+            },
+            {
+                type: 'text',
+                content: 'Direct answer without thinking gap.',
+            },
+        ]
+        const { lastFrame } = render(<BotMessage blocks={blocks} expandCommands={false} />)
+        const frame = lastFrame() || ''
+        const rawLines = frame.split('\n')
+        const textIdx = rawLines.findIndex((l) => l.includes('Direct answer without thinking gap.'))
+        expect(textIdx).toBeGreaterThanOrEqual(0)
+        // Ensure no empty lines before the text
+        const linesBefore = rawLines.slice(0, textIdx)
+        expect(linesBefore.every((l) => l.trim() === '')).toBe(true)
+        expect(linesBefore.length).toBe(0)
+    })
+
     it('renders analyzing and generating questions status labels with spinner', () => {
         const { lastFrame: frame1 } = render(
             <BotMessage blocks={[{ type: 'text', content: 'Analyzing prompt...' }]} />

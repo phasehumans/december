@@ -1657,11 +1657,18 @@ ${decStatus}
                 setIsStreaming(true)
                 const assistantMsgId = getNextMsgId()
                 const newUserMsg: Message = { id: getNextMsgId(), role: 'user', text: displayText }
-                setStaticMessages((prev) => [
-                    ...prev,
-                    ...useCliStore.getState().activeMessages,
-                    newUserMsg,
-                ])
+                setStaticMessages((prev) => {
+                    const currentActive = useCliStore.getState().activeMessages.filter((m) => {
+                        if (m.role === 'assistant') {
+                            return (
+                                (m.blocks && m.blocks.length > 0) ||
+                                Boolean(m.text && m.text.trim())
+                            )
+                        }
+                        return true
+                    })
+                    return [...prev, ...currentActive, newUserMsg]
+                })
                 setActiveMessages([{ id: assistantMsgId, role: 'assistant', blocks: [] }])
 
                 const errorContext = {
@@ -1694,7 +1701,18 @@ ${decStatus}
                     ])
                 } finally {
                     setIsStreaming(false)
-                    setStaticMessages((prev) => [...prev, ...useCliStore.getState().activeMessages])
+                    setStaticMessages((prev) => {
+                        const currentActive = useCliStore.getState().activeMessages.filter((m) => {
+                            if (m.role === 'assistant') {
+                                return (
+                                    (m.blocks && m.blocks.length > 0) ||
+                                    Boolean(m.text && m.text.trim())
+                                )
+                            }
+                            return true
+                        })
+                        return [...prev, ...currentActive]
+                    })
                     setActiveMessages([])
                 }
 

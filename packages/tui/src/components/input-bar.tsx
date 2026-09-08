@@ -408,21 +408,31 @@ export const InputBar = React.memo(function InputBar({
                     </Box>
 
                     {/* content: prompt */}
-                    <Box width="100%" paddingRight={4}>
-                        <Text
-                            color={disabled ? THEME.colors.muted : THEME.colors.brand}
-                        >{`${THEME.glyphs.prompt} `}</Text>
-                        {grillMode && <Text color={THEME.colors.brand}>/grill-me </Text>}
-                        <TextArea
-                            value={value}
-                            onChange={handleChange}
-                            onSubmit={handleSubmit}
-                            onHistoryUp={handleHistoryUp}
-                            onHistoryDown={handleHistoryDown}
-                            placeholder={grillMode ? '' : placeholder}
-                            focus={!disabled && !dialog.isOpen}
-                            disableHistoryNav={showCommandMenu || showFileMenu || showShortcutsMenu}
-                        />
+                    <Box width="100%" paddingRight={4} flexDirection="row">
+                        <Box flexShrink={0}>
+                            <Text
+                                color={disabled ? THEME.colors.muted : THEME.colors.brand}
+                            >{`${THEME.glyphs.prompt} `}</Text>
+                        </Box>
+                        {grillMode && (
+                            <Box flexShrink={0}>
+                                <Text color={THEME.colors.brand}>/grill-me </Text>
+                            </Box>
+                        )}
+                        <Box flexGrow={1} flexShrink={1}>
+                            <TextArea
+                                value={value}
+                                onChange={handleChange}
+                                onSubmit={handleSubmit}
+                                onHistoryUp={handleHistoryUp}
+                                onHistoryDown={handleHistoryDown}
+                                placeholder={grillMode ? '' : placeholder}
+                                focus={!disabled && !dialog.isOpen}
+                                disableHistoryNav={
+                                    showCommandMenu || showFileMenu || showShortcutsMenu
+                                }
+                            />
+                        </Box>
                     </Box>
 
                     {/* bottom separator */}

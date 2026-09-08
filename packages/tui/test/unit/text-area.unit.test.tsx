@@ -83,4 +83,57 @@ describe('TextArea Component (Unit)', () => {
         stdin.write('\u001B[A') // Up arrow
         expect(onHistoryUp).not.toHaveBeenCalled()
     })
+
+    it('renders long text cleanly with contiguous chunk grouping', () => {
+        const longPrompt =
+            'If your application requires frequent, low-latency, two-way interaction such as multiplayer gaming, live chat typing indicators, or collaborative whiteboards, WebSockets are the better fit.'
+        const { lastFrame } = render(
+            <TextArea value={longPrompt} onChange={() => {}} onSubmit={() => {}} focus={true} />
+        )
+        const frame = lastFrame() || ''
+        expect(frame).toContain('WebSockets are the better fit.')
+        expect(frame).toContain('multiplayer gaming')
+    })
+
+    it('renders multiline text values properly with newline handling', () => {
+        const multilinePrompt = 'Line one prompt\nLine two prompt\nLine three prompt'
+        const { lastFrame } = render(
+            <TextArea
+                value={multilinePrompt}
+                onChange={() => {}}
+                onSubmit={() => {}}
+                focus={true}
+            />
+        )
+        const frame = lastFrame() || ''
+        expect(frame).toContain('Line one prompt')
+        expect(frame).toContain('Line two prompt')
+        expect(frame).toContain('Line three prompt')
+    })
+
+    it('handles value reset to empty string without cursor out-of-bounds error', () => {
+        const { lastFrame, rerender } = render(
+            <TextArea
+                value="Initial long user prompt before submit"
+                onChange={() => {}}
+                onSubmit={() => {}}
+                placeholder="Ask December to build..."
+                focus={true}
+            />
+        )
+        expect(lastFrame()).toContain('Initial long user prompt before submit')
+
+        // Submit happens: parent resets value to ''
+        rerender(
+            <TextArea
+                value=""
+                onChange={() => {}}
+                onSubmit={() => {}}
+                placeholder="Ask December to build..."
+                focus={true}
+            />
+        )
+        const frame = lastFrame() || ''
+        expect(frame).toContain('Ask December to build...')
+    })
 })

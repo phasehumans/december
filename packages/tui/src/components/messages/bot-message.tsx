@@ -5,7 +5,7 @@ import { THEME } from '../../theme'
 import { SkillsGuide } from '../menus/skills-guide-menu'
 import { Spinner } from '../spinner'
 
-import { parseTuiError } from './error-message'
+import { parseTuiError, FormattedErrorText } from './error-message'
 import { SmoothMarkdown } from './smooth-markdown'
 
 export type MessageBlock =
@@ -158,7 +158,12 @@ export const BotMessage = React.memo(function BotMessage({ blocks, usage, expand
                 for (let i = idx - 1; i >= 0; i--) {
                     const b = blocks[i]
                     if (!b) continue
-                    if (b.type === 'text' && (!b.content || b.content.trim() === '')) continue
+                    if (
+                        (b.type === 'text' || b.type === 'thinking') &&
+                        (!b.content || b.content.trim() === '')
+                    ) {
+                        continue
+                    }
                     prevBlock = b
                     break
                 }
@@ -230,8 +235,9 @@ export const BotMessage = React.memo(function BotMessage({ blocks, usage, expand
                                     }
                                     if (part.trim() === '') return null
                                     const hasLeadingNewline =
-                                        part.startsWith('\n') ||
-                                        (pidx === 0 && block.content.startsWith('\n'))
+                                        (part.startsWith('\n') ||
+                                            (pidx === 0 && block.content.startsWith('\n'))) &&
+                                        !needsTopMargin
                                     return (
                                         <Box key={pidx} flexDirection="column">
                                             {hasLeadingNewline && <Text> </Text>}
@@ -247,11 +253,16 @@ export const BotMessage = React.memo(function BotMessage({ blocks, usage, expand
                         return (
                             <Box key={idx} flexDirection="column">
                                 {needsTopMargin && <Text> </Text>}
-                                <Text color={THEME.colors.error} bold>
-                                    {parsed.message}
-                                </Text>
+                                <FormattedErrorText
+                                    text={parsed.message}
+                                    defaultColor={THEME.colors.error}
+                                    bold
+                                />
                                 {parsed.hint && parsed.hint !== '' && (
-                                    <Text color={THEME.colors.muted}>{parsed.hint}</Text>
+                                    <FormattedErrorText
+                                        text={parsed.hint}
+                                        defaultColor={THEME.colors.muted}
+                                    />
                                 )}
                             </Box>
                         )

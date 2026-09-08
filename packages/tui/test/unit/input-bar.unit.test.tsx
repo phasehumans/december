@@ -163,4 +163,24 @@ describe('InputBar Component (Unit)', () => {
 
         expect(handleSubmit).toHaveBeenCalledWith('/skills')
     })
+
+    it('handles long text prompt input without losing prompt glyph or layout structure', async () => {
+        const handleSubmit = mock(() => {})
+        const { stdin, lastFrame } = render(
+            <RootLayout>
+                <InputBar onSubmit={handleSubmit} activeModel="gemini-3.8-flash" />
+            </RootLayout>
+        )
+
+        const longInput =
+            'Explain how websockets work in comparison to server-sent events for real-time applications'
+        stdin.write(longInput)
+        await new Promise((resolve) => setTimeout(resolve, 30))
+
+        const frame = lastFrame() || ''
+        expect(frame).toContain('❭')
+        expect(frame).toContain('Explain how websockets work')
+        expect(frame).toContain('real-time applications')
+        expect(frame).toContain('gemini-3.8-flash')
+    })
 })
