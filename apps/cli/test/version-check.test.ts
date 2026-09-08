@@ -14,7 +14,7 @@ describe('Version Check Utility (Unit)', () => {
         expect(isNewerVersion('1.0.0', '0.9.9')).toBe(false)
     })
 
-    test('CHECK_TTL_MS is configured to 24 hours', () => {
-        expect(CHECK_TTL_MS).toBe(24 * 60 * 60 * 1000)
+    test('CHECK_TTL_MS is configured to 4 hours', () => {
+        expect(CHECK_TTL_MS).toBe(4 * 60 * 60 * 1000)
     })
 })

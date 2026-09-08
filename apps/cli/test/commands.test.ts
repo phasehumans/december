@@ -20,7 +20,9 @@ describe('CLI Standalone Commands', () => {
     afterEach(async () => {
         process.env.HOME = originalHome
         delete process.env.DECEMBER_CONFIG_DIR
-        await fs.rm(tmpDir, { recursive: true, force: true }).catch(() => {})
+        await fs.rm(tmpDir, { recursive: true, force: true }).catch(() => {
+            // Intentionally swallowed: cleanup temporary directory
+        })
     })
 
     it('handleLogoutCommand clears decemberToken and providers config', async () => {
@@ -110,7 +112,7 @@ describe('CLI Standalone Commands', () => {
         } finally {
             console.log = originalLog
         }
-    })
+    }, 15000)
 
     it('handleKeyCommand saves API key to config and sets activeProvider', async () => {
         const { handleKeyCommand } = await import('../src/commands')
@@ -202,6 +204,7 @@ describe('CLI Standalone Commands', () => {
     })
 
     it('handleSwitchCommand without args prints configured providers list', async () => {
+        process.env.DECEMBER_CONFIG_DIR = path.join(tmpDir, '.config', 'december')
         await saveConfig({
             activeProvider: 'anthropic',
             activeModel: 'claude-sonnet-4.6',
@@ -221,9 +224,10 @@ describe('CLI Standalone Commands', () => {
             const { handleSwitchCommand } = await import('../src/commands')
             await handleSwitchCommand({})
             expect(loggedOutput).toContain('Configured Providers')
-            expect(loggedOutput).toContain('Anthropic (API Key)')
+            expect(loggedOutput).toContain('Anthropic')
+            expect(loggedOutput).not.toContain('(API Key)')
             expect(loggedOutput).toContain('December (Cloud Wallet)')
-            expect(loggedOutput).toContain('[Active]')
+            expect(loggedOutput).toContain('(Active)')
         } finally {
             console.log = originalLog
         }

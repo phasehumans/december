@@ -85,13 +85,12 @@ export const SidebarFooter: React.FC<
         }, 300)
     }
 
-    const CLI_INSTALL_COMMANDS: Record<'npm' | 'bun' | 'pnpm', string> = {
+    const CLI_INSTALL_COMMANDS: Record<'curl' | 'npm', string> = {
+        curl: 'curl -fsSL https://trydecember.com/install.sh | bash',
         npm: 'npm install -g @trydecember/cli',
-        bun: 'bun add -g @trydecember/cli',
-        pnpm: 'pnpm add -g @trydecember/cli',
     }
 
-    const [cliMethod, setCliMethod] = useState<'npm' | 'bun' | 'pnpm'>('npm')
+    const [cliMethod, setCliMethod] = useState<'curl' | 'npm'>('curl')
 
     const handleCopy = (e: React.MouseEvent) => {
         e.stopPropagation()
@@ -174,7 +173,7 @@ export const SidebarFooter: React.FC<
                                 </div>
 
                                 <div className="flex items-center gap-2.5 shrink-0">
-                                    {(['npm', 'bun', 'pnpm'] as const).map((method) => (
+                                    {(['curl', 'npm'] as const).map((method) => (
                                         <button
                                             key={method}
                                             type="button"

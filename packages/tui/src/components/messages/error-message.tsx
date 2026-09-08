@@ -173,7 +173,7 @@ export function ErrorMessage({
     return (
         <Box paddingX={paddingX} paddingY={0} flexDirection="column">
             {hasTopMargin && <Text> </Text>}
-            <FormattedErrorText text={parsed.message} defaultColor={THEME.colors.error} bold />
+            <FormattedErrorText text={parsed.message} defaultColor={THEME.colors.error} />
             {parsed.hint && parsed.hint !== '' && (
                 <FormattedErrorText text={parsed.hint} defaultColor={THEME.colors.muted} />
             )}

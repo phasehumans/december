@@ -1,3 +1,5 @@
+import { EventEmitter } from 'node:events'
+
 import type { ChildProcess } from 'node:child_process'
 
 export interface BackgroundTask {
@@ -8,9 +10,13 @@ export interface BackgroundTask {
     output: string
     childProcess?: ChildProcess
     createdAt: Date
+    completedAt?: Date
+    exitCode?: number | null
 }
 
-class TaskManager {
+const MAX_OUTPUT_CHARS = 2_000_000 // 2MB cap per task to prevent memory leaks
+
+export class TaskManager extends EventEmitter {
     private tasks: BackgroundTask[] = []
     private nextId = 1
 
@@ -25,6 +31,8 @@ class TaskManager {
             createdAt: new Date(),
         }
         this.tasks.push(task)
+        this.emit('task:added', task)
+        this.emit('change')
         return task
     }
 
@@ -40,6 +48,11 @@ class TaskManager {
         const task = this.getTask(id)
         if (task) {
             task.output += chunk
+            if (task.output.length > MAX_OUTPUT_CHARS) {
+                task.output = '[... older output truncated ...]\n' + task.output.slice(-1_500_000)
+            }
+            this.emit('task:output', task, chunk)
+            this.emit('change')
         }
     }
 
@@ -47,8 +60,12 @@ class TaskManager {
         const task = this.getTask(id)
         if (task && task.status === 'running') {
             task.status = exitCode === 0 ? 'completed' : 'failed'
+            task.exitCode = exitCode
+            task.completedAt = new Date()
             delete task.childProcess
             this.cleanupHistory()
+            this.emit('task:completed', task)
+            this.emit('change')
         }
     }
 
@@ -66,20 +83,42 @@ class TaskManager {
                     try {
                         task.childProcess?.kill()
                     } catch {
-                        // ignore error
+                        // Intentionally swallowed: fallback when SIGINT/kill fails
                     }
                 }
             }
             task.status = 'killed'
+            task.exitCode = 130
+            task.completedAt = new Date()
             delete task.childProcess
             this.cleanupHistory()
+            this.emit('task:killed', task)
+            this.emit('change')
             return true
         }
         return false
     }
 
+    killAll(): number {
+        let killedCount = 0
+        for (const task of [...this.tasks]) {
+            if (task.status === 'running') {
+                if (this.killTask(task.id)) {
+                    killedCount++
+                }
+            }
+        }
+        return killedCount
+    }
+
+    clearCompleted() {
+        this.tasks = this.tasks.filter((t) => t.status === 'running')
+        this.emit('change')
+    }
+
     removeTask(id: string) {
         this.tasks = this.tasks.filter((t) => t.id !== id)
+        this.emit('change')
     }
 
     private cleanupHistory() {

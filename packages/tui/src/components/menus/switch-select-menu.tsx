@@ -5,12 +5,25 @@ import React from 'react'
 import { THEME } from '../../theme'
 
 import { MenuFooter } from './menu-footer'
-import { CustomIndicator, CustomItem } from './menu-items'
+import { CustomIndicator } from './menu-items'
 
 export interface SwitchSelectMenuProps {
     handleSwitchSelect: (value: string) => void
     switchItems: { label: string; value: string; model?: string; isActive?: boolean }[]
 }
+
+export interface SwitchItemProps {
+    label: string
+    isSelected?: boolean
+    isActive?: boolean
+}
+
+export const SwitchItem = ({ label, isSelected, isActive }: SwitchItemProps) => (
+    <Box>
+        <Text color={isSelected ? THEME.colors.brand : THEME.colors.text}>{label}</Text>
+        {isActive ? <Text color={THEME.colors.success}> (Active)</Text> : null}
+    </Box>
+)
 
 export function SwitchSelectMenu(props: any) {
     const { handleSwitchSelect, switchItems } = props
@@ -23,7 +36,7 @@ export function SwitchSelectMenu(props: any) {
                 items={switchItems || []}
                 onSelect={(item) => handleSwitchSelect(item.value)}
                 indicatorComponent={CustomIndicator}
-                itemComponent={CustomItem}
+                itemComponent={SwitchItem}
             />
             <MenuFooter
                 items={[

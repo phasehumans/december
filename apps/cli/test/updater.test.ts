@@ -9,7 +9,24 @@ describe('CLI Updater & Install Method Detection (Unit)', () => {
             expect(detectInstallMethod({ configInstallMethod: 'pnpm' })).toBe('pnpm')
             expect(detectInstallMethod({ configInstallMethod: 'npm' })).toBe('npm')
             expect(detectInstallMethod({ configInstallMethod: 'npx' })).toBe('npx')
+            expect(detectInstallMethod({ configInstallMethod: 'curl' })).toBe('curl')
             expect(detectInstallMethod({ configInstallMethod: 'source' })).toBe('source')
+        })
+
+        test('detects curl standalone binary installation', () => {
+            const method = detectInstallMethod({
+                execPath: '/home/user/.local/bin/december',
+                argv1: '/home/user/.local/bin/december',
+            })
+            expect(method).toBe('curl')
+        })
+
+        test('detects curl standalone binary installation in ~/.december/bin', () => {
+            const method = detectInstallMethod({
+                execPath: '/home/user/.december/bin/december',
+                argv1: '/home/user/.december/bin/december',
+            })
+            expect(method).toBe('curl')
         })
 
         test('detects bun global installation', () => {
@@ -54,6 +71,13 @@ describe('CLI Updater & Install Method Detection (Unit)', () => {
     })
 
     describe('getUpdateCommand', () => {
+        test('returns curl update command', () => {
+            const info = getUpdateCommand('curl')
+            expect(info.command).toBe('curl -fsSL https://trydecember.com/install.sh | bash')
+            expect(info.manualCmd).toBe('curl -fsSL https://trydecember.com/install.sh | bash')
+            expect(info.description).toContain('curl')
+        })
+
         test('returns bun update command', () => {
             const info = getUpdateCommand('bun')
             expect(info.command).toBe('bun add -g @trydecember/cli@latest')
@@ -309,6 +333,41 @@ describe('CLI Updater & Install Method Detection (Unit)', () => {
             expect(result.success).toBe(true)
             expect(result.verified).toBe(true)
             expect(result.activeVersion).toBe('0.3.25')
+        })
+
+        test('prioritizes active binary manager in PATH over fallback when configInstallMethod is unset', async () => {
+            let executedCommand = ''
+            const mockExec: any = (cmd: string, _opts: any, callback: any) => {
+                executedCommand = cmd
+                callback(null, 'Updated', '')
+            }
+
+            const result = await performCliUpdate({
+                currentVersion: '0.3.20',
+                fetchLatestFn: async () => '0.3.25',
+                execFn: mockExec,
+                skipVerification: true,
+                diagnoseFn: async () => ({
+                    activeBinary: {
+                        path: '/home/user/.bun/bin/december',
+                        realPath: '/home/user/.bun/bin/december',
+                        manager: 'bun',
+                        version: '0.3.20',
+                        isSymlink: false,
+                        isActive: true,
+                        isShadowed: false,
+                    },
+                    allBinaries: [],
+                    shadowedBinaries: [],
+                    hasCollision: false,
+                    hasStaleActive: false,
+                    latestInstalledVersion: '0.3.20',
+                }),
+            })
+
+            expect(result.success).toBe(true)
+            expect(result.method).toBe('bun')
+            expect(executedCommand).toContain('bun add -g')
         })
     })
 })

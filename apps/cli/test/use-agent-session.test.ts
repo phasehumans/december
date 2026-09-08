@@ -174,13 +174,13 @@ describe('useCliStore activeMessages handling', () => {
 
         const mockItems = [
             {
-                label: 'Claude (Subscription) • claude-3-7-sonnet (Active)',
+                label: 'Claude (Subscription)',
                 value: 'subscription:claude',
                 model: 'claude-3-7-sonnet',
                 isActive: true,
             },
             {
-                label: 'OpenAI (API Key) • gpt-5.5',
+                label: 'OpenAI',
                 value: 'provider:openai',
                 model: 'gpt-5.5',
                 isActive: false,

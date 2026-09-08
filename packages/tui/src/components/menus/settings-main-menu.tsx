@@ -4,23 +4,63 @@ import React from 'react'
 
 import { THEME } from '../../theme'
 
+import { formatProviderName } from './byok-key-menu'
 import { MenuFooter } from './menu-footer'
 import { CustomIndicator, CustomItem } from './menu-items'
 
-export function SettingsMainMenu(props: any) {
+export interface SettingsMainMenuProps {
+    activeProvider?: string
+    selectedProvider?: string
+    authMethod?: string
+    activeModel?: string
+    settingsPathGuard?: boolean
+    settingsNonWorkspace?: boolean
+    settingsToolPermission?: 'always-ask' | 'always-proceed'
+    settingsThinkingLevel?: 'auto' | 'off' | 'minimal' | 'low' | 'medium' | 'high'
+    handleSettingsMainSelect: (item: { label: string; value: string }) => void
+}
+
+export function SettingsMainMenu(props: SettingsMainMenuProps | any) {
     const {
+        activeProvider,
+        selectedProvider,
+        authMethod,
+        activeModel,
         settingsNonWorkspace,
-        settingsToolPermission,
-        settingsThinkingLevel,
-        settingsSteeringMode,
-        settingsFollowUpMode,
+        settingsToolPermission = 'always-proceed',
+        settingsThinkingLevel = 'auto',
         settingsPathGuard = true,
-        settingsScope,
-        hasBothAuth,
-        settingsAuthPriority,
         handleSettingsMainSelect,
     } = props
+
+    const providerKey = selectedProvider || activeProvider || ''
+    const providerName =
+        providerKey === 'december' || providerKey === 'december_proxy'
+            ? 'December Cloud'
+            : formatProviderName(providerKey)
+    const providerLabel = providerKey
+        ? authMethod === 'subscription'
+            ? `${providerName} (Subscription)`
+            : authMethod === 'december'
+              ? 'December Cloud'
+              : `${providerName} (BYOK)`
+        : 'Not configured'
+
+    const modelLabel = activeModel || 'default'
+
     const mainItems = [
+        {
+            label: `Active Provider          [${providerLabel}]`,
+            value: 'switchProvider',
+        },
+        {
+            label: `Active Model             [${modelLabel}]`,
+            value: 'activeModel',
+        },
+        {
+            label: `Tool Permission          [${settingsToolPermission}]`,
+            value: 'toolPermission',
+        },
         {
             label: `PathGuard Protection     [${settingsPathGuard !== false ? 'on' : 'off'}]`,
             value: 'pathGuard',
@@ -30,44 +70,14 @@ export function SettingsMainMenu(props: any) {
             value: 'nonWorkspaceAccess',
         },
         {
-            label: `Tool Permission          [${settingsToolPermission}]`,
-            value: 'toolPermission',
-        },
-        {
             label: `Thinking Level           [${settingsThinkingLevel}]`,
             value: 'thinkingLevel',
-        },
-        {
-            label: `Steering Mode            [${settingsSteeringMode}]`,
-            value: 'steeringMode',
-        },
-        {
-            label: `Follow-Up Mode           [${settingsFollowUpMode}]`,
-            value: 'followUpMode',
         },
         {
             label: `MCP Servers              [Configure]`,
             value: 'mcpServers',
         },
     ]
-
-    if (settingsScope) {
-        mainItems.splice(2, 0, {
-            label: `Monorepo Scope           [${settingsScope}]`,
-            value: 'scope',
-        })
-    }
-
-    const priorityLabel =
-        settingsAuthPriority === 'subscription'
-            ? 'Subscription'
-            : settingsAuthPriority === 'december'
-              ? 'December Cloud'
-              : 'BYOK'
-    mainItems.unshift({
-        label: `Preferred Auth Method    [${priorityLabel}]`,
-        value: 'authPriority',
-    })
 
     return (
         <Box flexDirection="column" paddingX={THEME.padding.paddingX}>
@@ -83,8 +93,8 @@ export function SettingsMainMenu(props: any) {
             <MenuFooter
                 items={[
                     { key: '↑/↓', label: 'Navigate' },
-                    { key: 'enter', label: 'Toggle' },
-                    { key: 'esc', label: 'Cancel' },
+                    { key: 'enter', label: 'Select' },
+                    { key: 'esc', label: 'Back' },
                 ]}
             />
         </Box>

@@ -498,14 +498,11 @@ export function getConfiguredProviders(config: DecemberConfig): ConfiguredProvid
     if (config.subscriptions) {
         for (const [subKey, bundle] of Object.entries(config.subscriptions)) {
             const displayName = formatProviderName(subKey)
-            const typeStr = bundle.subscriptionType ? ` [${bundle.subscriptionType}]` : ''
-            const accountStr =
-                bundle.email || bundle.accountName ? ` - ${bundle.email || bundle.accountName}` : ''
             const model = getTargetModelForProvider(config, subKey)
             const active = isSubscriptionActive(subKey)
 
             items.push({
-                label: `${displayName} (Subscription)${typeStr}${accountStr}`,
+                label: `${displayName} (Subscription)`,
                 value: `subscription:${subKey}`,
                 provider: subKey,
                 type: 'subscription',
@@ -518,12 +515,11 @@ export function getConfiguredProviders(config: DecemberConfig): ConfiguredProvid
 
     // 2. December Cloud Wallet
     if (config.decemberToken) {
-        const accountStr = config.email ? ` - ${config.email}` : ''
         const model = getTargetModelForProvider(config, 'december_proxy')
         const active = isDecemberActive()
 
         items.push({
-            label: `December (Cloud Wallet)${accountStr}`,
+            label: 'December (Cloud Wallet)',
             value: 'decemberToken',
             provider: 'december_proxy',
             type: 'december',
@@ -541,7 +537,7 @@ export function getConfiguredProviders(config: DecemberConfig): ConfiguredProvid
             const active = isByokActive(byokKey)
 
             items.push({
-                label: `${displayName} (API Key)`,
+                label: displayName,
                 value: `provider:${byokKey}`,
                 provider: byokKey,
                 type: 'byok',

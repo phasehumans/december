@@ -23,15 +23,6 @@ describe('/update command action', () => {
     })
 })
 
-describe('/skills command action', () => {
-    test('should define skills command forwarded to chat screen', () => {
-        const skillsCmd = COMMANDS.find((c) => c.name === 'skills')
-        expect(skillsCmd).toBeDefined()
-        expect(skillsCmd?.value).toBe('/skills')
-        expect(skillsCmd?.description).toBe('Guide to adding and using skills')
-    })
-})
-
 describe('/clear & /new commands', () => {
     test('clearContext and resetChat are called on /clear', async () => {
         const clearCmd = COMMANDS.find((c) => c.name === 'clear')
@@ -155,5 +146,21 @@ describe('/init command action', () => {
             process.chdir(originalCwd)
             fs.rmSync(tmpDir, { recursive: true, force: true })
         }
+    })
+})
+
+describe('/switch command', () => {
+    test('should define switch command forwarded to chat screen', () => {
+        const switchCmd = COMMANDS.find((c) => c.name === 'switch')
+        expect(switchCmd).toBeDefined()
+        expect(switchCmd?.value).toBe('/switch')
+        expect(switchCmd?.description).toContain('Switch active LLM provider')
+
+        const mockContext: any = {
+            toast: { show: () => {} },
+            agent: null,
+            exit: () => {},
+        }
+        expect(() => switchCmd?.action(mockContext)).not.toThrow()
     })
 })

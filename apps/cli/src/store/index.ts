@@ -51,6 +51,8 @@ export interface CliState {
     setOllamaStatus: (status: any) => void
     ollamaModels: { label: string; value: string }[]
     setOllamaModels: (models: { label: string; value: string }[]) => void
+    dynamicModels: { label: string; value: string }[]
+    setDynamicModels: (models: { label: string; value: string }[]) => void
 
     // chat feature
     currentPlannedPrompt: string | null
@@ -103,6 +105,8 @@ export interface CliState {
     setSessionNewName: (name: string) => void
 
     // settings feature
+    settingsPathGuard: boolean
+    setSettingsPathGuard: (val: boolean) => void
     settingsNonWorkspace: boolean
     setSettingsNonWorkspace: (val: boolean) => void
     settingsToolPermission: 'always-ask' | 'always-proceed'
@@ -195,6 +199,8 @@ export const useCliStore = create<CliState>((set) => ({
     setOllamaStatus: (ollamaStatus) => set({ ollamaStatus }),
     ollamaModels: [],
     setOllamaModels: (ollamaModels) => set({ ollamaModels }),
+    dynamicModels: [],
+    setDynamicModels: (dynamicModels) => set({ dynamicModels }),
 
     // chat
     currentPlannedPrompt: null,
@@ -259,6 +265,8 @@ export const useCliStore = create<CliState>((set) => ({
     setSessionNewName: (sessionNewName) => set({ sessionNewName }),
 
     // settings feature
+    settingsPathGuard: true,
+    setSettingsPathGuard: (settingsPathGuard) => set({ settingsPathGuard }),
     settingsNonWorkspace: false,
     setSettingsNonWorkspace: (settingsNonWorkspace) => set({ settingsNonWorkspace }),
     settingsToolPermission: 'always-proceed',

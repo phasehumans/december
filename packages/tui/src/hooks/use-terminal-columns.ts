@@ -20,3 +20,23 @@ export function useTerminalColumns() {
 
     return columns
 }
+
+export function useTerminalRows() {
+    const { stdout } = useStdout()
+    const [rows, setRows] = useState(stdout?.rows ?? 24)
+
+    useEffect(() => {
+        if (!stdout || typeof stdout.on !== 'function') return
+
+        const handleResize = () => {
+            setRows(stdout.rows)
+        }
+
+        stdout.on('resize', handleResize)
+        return () => {
+            stdout.off('resize', handleResize)
+        }
+    }, [stdout])
+
+    return rows
+}

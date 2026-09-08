@@ -146,7 +146,7 @@ describe('InputBar Component (Unit)', () => {
         expect(frame).toContain('gemini-3.8-flash (Subscription)')
     })
 
-    it('forwards /skills to onSubmit when selected from command menu on return', async () => {
+    it('forwards command to onSubmit when selected from command menu on return', async () => {
         const handleSubmit = mock(() => {})
         const { stdin } = render(
             <RootLayout>
@@ -154,14 +154,14 @@ describe('InputBar Component (Unit)', () => {
             </RootLayout>
         )
 
-        stdin.write('/sk')
+        stdin.write('/tas')
         await new Promise((resolve) => setTimeout(resolve, 30))
 
-        // Press Enter to select /skills from command menu
+        // Press Enter to select /tasks from command menu
         stdin.write('\r')
         await new Promise((resolve) => setTimeout(resolve, 30))
 
-        expect(handleSubmit).toHaveBeenCalledWith('/skills')
+        expect(handleSubmit).toHaveBeenCalledWith('/tasks')
     })
 
     it('handles long text prompt input without losing prompt glyph or layout structure', async () => {

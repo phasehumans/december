@@ -14,6 +14,7 @@ export { parseCliArgs, getHelpText } from './args'
 export { purgeProjectEnvApiKeys } from './utils/env-sanitizer'
 export {
     handleLogoutCommand,
+    handleSwitchCommand,
     handleLoginCommand,
     handleLinkCommand,
     handleKeyCommand,
@@ -22,7 +23,6 @@ export {
     handleUpdateCommand,
     handleDoctorCommand,
 } from './commands'
-export { handleSkillCommand } from './commands/skill'
 export { runHeadlessTask, suppressConsole, restoreConsole } from './headless-runner'
 export type { HeadlessTaskOptions, HeadlessTaskResult } from './headless-runner'
 
@@ -108,6 +108,13 @@ async function main() {
         process.exit(0)
     }
 
+    if (parsedArgs.command === 'switch') {
+        const targetProvider = parsedArgs.positionals[1]
+        const { handleSwitchCommand } = await import('./commands')
+        await handleSwitchCommand({ provider: targetProvider })
+        process.exit(process.exitCode || 0)
+    }
+
     if (parsedArgs.command === 'login') {
         const targetProvider = parsedArgs.positionals[1]
         const { handleLoginCommand } = await import('./commands')
@@ -131,21 +138,6 @@ async function main() {
         const { handleDoctorCommand } = await import('./commands')
         await handleDoctorCommand({ fix: parsedArgs.fix })
         process.exit(0)
-    }
-
-    if (parsedArgs.command === 'skill' || parsedArgs.command === 'skills') {
-        const action = parsedArgs.positionals[1]
-        const target = parsedArgs.positionals[2]
-        const { handleSkillCommand } = await import('./commands/skill')
-        await handleSkillCommand({
-            action,
-            target,
-            isGlobal: parsedArgs.isGlobal,
-            isLocal: parsedArgs.isLocal,
-            positionals: parsedArgs.positionals.slice(1),
-            cwd: parsedArgs.cwd || process.cwd(),
-        })
-        process.exit(process.exitCode || 0)
     }
 
     // Path 4: Headless Task Execution (Load agent harness & tools, skip Ink/React/TUI)

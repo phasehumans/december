@@ -88,13 +88,17 @@ export async function handleSwitchCommand(options?: { provider?: string }): Prom
         ) {
             const bundle = updatedConfig.subscriptions[target.provider]
             fetchLiveProviderModels(target.provider, bundle.accessToken, bundle.endpoint).catch(
-                () => {}
+                () => {
+                    // Intentionally swallowed: background live model fetch failure
+                }
             )
         } else if (target.authPriority === 'byok' && updatedConfig.providers?.[target.provider]) {
             fetchLiveProviderModels(
                 target.provider,
                 updatedConfig.providers[target.provider]
-            ).catch(() => {})
+            ).catch(() => {
+                // Intentionally swallowed: background live model fetch failure
+            })
         }
 
         const displayName = formatProviderName(target.provider)
@@ -115,9 +119,8 @@ export async function handleSwitchCommand(options?: { provider?: string }): Prom
     }
 
     for (const item of items) {
-        const activeTag = item.isActive ? ` ${GREEN}[Active]${RESET}` : ''
-        const modelStr = ` ${GRAY}• ${item.model}${RESET}`
-        console.log(`  • ${WHITE}${item.label}${RESET}${modelStr}${activeTag}`)
+        const activeTag = item.isActive ? ` ${GREEN}(Active)${RESET}` : ''
+        console.log(`  • ${WHITE}${item.label}${RESET}${activeTag}`)
     }
     console.log(`\n${GRAY}Switch provider:${RESET} ${GREEN}december switch <provider>${RESET}\n`)
 }
@@ -521,7 +524,7 @@ export async function handleUpdateCommand(options?: { force?: boolean }): Promis
 
         if (result.shellHashNotice) {
             console.log(
-                `\n${YELLOW}ℹ${RESET}  ${GRAY}Note: If your current terminal still runs an older path, run: ${WHITE}hash -r${GRAY} (bash) or restart your terminal.${RESET}\n`
+                `\n${YELLOW}ℹ${RESET}  ${GRAY}Note: If your active terminal still runs an older version, run: ${WHITE}hash -r${GRAY} (bash) or ${WHITE}rehash${GRAY} (zsh) or restart your terminal.${RESET}\n`
             )
         } else {
             console.log('')

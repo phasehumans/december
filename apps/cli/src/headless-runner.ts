@@ -149,9 +149,15 @@ export async function runHeadlessTask(
         }
 
         if (
-            ['replace_file_content', 'multi_replace_file_content', 'run_command'].includes(
-                toolCall.name
-            )
+            [
+                'edit_file',
+                'edit_diff',
+                'write_file',
+                'bash',
+                'replace_file_content',
+                'multi_replace_file_content',
+                'run_command',
+            ].includes(toolCall.name)
         ) {
             const answer = await promptUser(`\nExecute ${toolCall.name}? (y/n): `)
             if (answer.toLowerCase().startsWith('y')) {

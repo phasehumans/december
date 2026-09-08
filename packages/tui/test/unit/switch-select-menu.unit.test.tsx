@@ -10,19 +10,19 @@ describe('SwitchSelectMenu Component (Unit)', () => {
         const handleSelect = mock(() => {})
         const items = [
             {
-                label: 'Claude (Subscription) • claude-3-7-sonnet (Active)',
+                label: 'Claude (Subscription)',
                 value: 'subscription:claude',
                 model: 'claude-3-7-sonnet',
                 isActive: true,
             },
             {
-                label: 'OpenAI (API Key) • gpt-4o',
+                label: 'OpenAI',
                 value: 'provider:openai',
                 model: 'gpt-4o',
                 isActive: false,
             },
             {
-                label: 'December (Cloud Wallet) • auto',
+                label: 'December (Cloud Wallet)',
                 value: 'decemberToken',
                 model: 'auto',
                 isActive: false,
@@ -39,7 +39,8 @@ describe('SwitchSelectMenu Component (Unit)', () => {
         expect(frame).toContain('Select active provider:')
         expect(frame).toContain('Claude (Subscription)')
         expect(frame).toContain('(Active)')
-        expect(frame).toContain('OpenAI (API Key)')
+        expect(frame).toContain('OpenAI')
+        expect(frame).not.toContain('(API Key)')
         expect(frame).toContain('December (Cloud Wallet)')
         expect(frame).toContain('Switch')
         expect(frame).toContain('Cancel')
@@ -53,7 +54,7 @@ describe('SwitchSelectMenu Component (Unit)', () => {
 
         const items = [
             { label: 'Claude (Subscription)', value: 'subscription:claude' },
-            { label: 'OpenAI (API Key)', value: 'provider:openai' },
+            { label: 'OpenAI', value: 'provider:openai' },
         ]
 
         const { stdin, lastFrame } = render(
@@ -68,7 +69,7 @@ describe('SwitchSelectMenu Component (Unit)', () => {
         stdin.write('\u001B[B')
         await new Promise((resolve) => setTimeout(resolve, 20))
 
-        expect(lastFrame()).toContain('❭ OpenAI (API Key)')
+        expect(lastFrame()).toContain('❭ OpenAI')
 
         // Press Enter
         stdin.write('\r')

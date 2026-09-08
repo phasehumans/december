@@ -19,6 +19,8 @@ export const PROVIDER_NAMES: Record<string, string> = {
     codex: 'OpenAI',
     cohere: 'Cohere',
     dashscope: 'Qwen (DashScope)',
+    december: 'December Cloud',
+    december_proxy: 'December Cloud',
     deepseek: 'DeepSeek',
     fireworks: 'Fireworks AI',
     google: 'Google',

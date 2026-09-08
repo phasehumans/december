@@ -163,6 +163,8 @@ export function useAgentSession({
         sessionSelectedIndex,
         setSessionSelectedIndex,
 
+        settingsPathGuard,
+        setSettingsPathGuard,
         settingsNonWorkspace,
         setSettingsNonWorkspace,
         settingsToolPermission,
@@ -234,15 +236,40 @@ export function useAgentSession({
     // hooks state
 
     useEffect(() => {
+        const update = () => {
+            setTasksData([...taskManager.getTasks()])
+        }
         if (authMode === 'tasks_mode') {
-            const update = () => {
-                setTasksData([...taskManager.getTasks()])
-            }
             update()
-            const interval = setInterval(update, 500)
-            return () => clearInterval(interval)
+            taskManager.on('change', update)
+            const interval = setInterval(update, 1000)
+            return () => {
+                taskManager.off('change', update)
+                clearInterval(interval)
+            }
         }
     }, [authMode, setTasksData])
+
+    useEffect(() => {
+        const handleCompleted = (task: any) => {
+            if (authMode !== 'tasks_mode') {
+                const cleanCmd = (task.command || '').replace(/\r?\n+/g, ' ').trim()
+                const preview = cleanCmd.length > 30 ? cleanCmd.slice(0, 27) + '...' : cleanCmd
+                if (task.status === 'completed') {
+                    addToast(`Task [${task.id}] completed: ${preview}`, 'success')
+                } else if (task.status === 'failed') {
+                    addToast(
+                        `Task [${task.id}] failed (exit ${task.exitCode ?? 1}): ${preview}`,
+                        'error'
+                    )
+                }
+            }
+        }
+        taskManager.on('task:completed', handleCompleted)
+        return () => {
+            taskManager.off('task:completed', handleCompleted)
+        }
+    }, [authMode, addToast])
 
     useEffect(() => {
         if (selectedProvider === 'openrouter' || authMode === 'model_select') {
@@ -268,10 +295,14 @@ export function useAgentSession({
                         providerConfig.provider,
                         providerConfig.apiKey,
                         providerConfig.baseURL
-                    ).catch(() => {})
+                    ).catch(() => {
+                        // Intentionally swallowed: background live model fetch failure
+                    })
                 }
             })
-            .catch(() => {})
+            .catch(() => {
+                // Intentionally swallowed: config load failure
+            })
     }, [])
 
     const handleKillTask = useCallback(
@@ -281,6 +312,27 @@ export function useAgentSession({
         },
         [setTasksData]
     )
+
+    const handleClearCompletedTasks = useCallback(() => {
+        taskManager.clearCompleted()
+        setTasksData([...taskManager.getTasks()])
+    }, [setTasksData])
+
+    const handleRemoveTask = useCallback(
+        (taskId: string) => {
+            taskManager.removeTask(taskId)
+            setTasksData([...taskManager.getTasks()])
+        },
+        [setTasksData]
+    )
+
+    const handleKillAllTasks = useCallback(() => {
+        const count = taskManager.killAll()
+        setTasksData([...taskManager.getTasks()])
+        if (count > 0) {
+            addToast(`Killed ${count} background task${count === 1 ? '' : 's'}.`, 'info')
+        }
+    }, [setTasksData, addToast])
 
     const generateGrillQuestions = useCallback(
         async (userPrompt: string) => {
@@ -1132,7 +1184,9 @@ ${decStatus}
                             providerConfig.provider,
                             providerConfig.apiKey,
                             providerConfig.baseURL
-                        ).catch(() => {})
+                        ).catch(() => {
+                            // Intentionally swallowed: background live model fetch failure
+                        })
                     }
 
                     const displayName = formatProviderName(target.provider)
@@ -1155,16 +1209,12 @@ ${decStatus}
                     return
                 }
 
-                const menuItems = configuredList.map((item) => {
-                    const activeBadge = item.isActive ? ' (Active)' : ''
-                    const modelStr = item.model ? ` • ${item.model}` : ''
-                    return {
-                        label: `${item.label}${modelStr}${activeBadge}`,
-                        value: item.value,
-                        model: item.model,
-                        isActive: item.isActive,
-                    }
-                })
+                const menuItems = configuredList.map((item) => ({
+                    label: item.label,
+                    value: item.value,
+                    model: item.model,
+                    isActive: item.isActive,
+                }))
 
                 setSwitchItems(menuItems)
                 setAuthMode('switch_select')
@@ -1587,7 +1637,7 @@ ${decStatus}
                     )
                     if (result.shellHashNotice) {
                         addToast(
-                            'Tip: If your terminal tab still executes an older path, run "hash -r" (bash) or restart your terminal.',
+                            'Tip: If your active terminal still executes an older version, run "hash -r" (bash) or "rehash" (zsh) or restart terminal.',
                             'info'
                         )
                     }
@@ -1722,6 +1772,7 @@ ${decStatus}
 
             if (text.trim() === '/settings') {
                 loadConfig().then((config) => {
+                    setSettingsPathGuard(config.pathGuard !== false)
                     setSettingsNonWorkspace(config.nonWorkspaceAccess ?? false)
                     setSettingsToolPermission(config.toolPermission ?? 'always-proceed')
                     setSettingsThinkingLevel(config.thinkingLevel ?? 'auto')
@@ -2009,6 +2060,7 @@ ${decStatus}
             setHasBothAuth,
             setIsAuthenticated,
             setSettingsAuthPriority,
+            setSwitchItems,
         ]
     )
 
@@ -2341,6 +2393,8 @@ ${decStatus}
         setSessionRenameMode,
         sessionNewName,
         setSessionNewName,
+        settingsPathGuard,
+        setSettingsPathGuard,
         settingsNonWorkspace,
         setSettingsNonWorkspace,
         settingsToolPermission,
@@ -2373,6 +2427,9 @@ ${decStatus}
         getProviderModels,
         handleAbort,
         handleKillTask,
+        handleClearCompletedTasks,
+        handleRemoveTask,
+        handleKillAllTasks,
         toasts,
         addToast,
         expandCommands,
