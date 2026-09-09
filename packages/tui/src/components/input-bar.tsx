@@ -371,13 +371,20 @@ export const InputBar = React.memo(function InputBar({
         ]
     )
 
-    const sepWidth = Math.max(10, columns - THEME.padding.paddingX * 2 - 2)
+    const paddingLeft = THEME.padding.paddingLeft ?? THEME.padding.paddingX
+    const paddingRight = THEME.padding.paddingRight ?? 4
+    const sepWidth = Math.max(10, columns - paddingLeft - paddingRight - 2)
     const sep = '─'.repeat(sepWidth)
 
     const isOverlayActive = Boolean(authUI) && !customInputMode
 
     return (
-        <Box flexDirection="column" paddingX={THEME.padding.paddingX} marginTop={1}>
+        <Box
+            flexDirection="column"
+            paddingLeft={paddingLeft}
+            paddingRight={paddingRight}
+            marginTop={1}
+        >
             {/* inline dialog — shown on right above prompt when open */}
             {dialog.isOpen && dialog.currentDialog && (
                 <Box justifyContent="flex-end">
@@ -423,7 +430,7 @@ export const InputBar = React.memo(function InputBar({
                     </Box>
 
                     {/* content: prompt */}
-                    <Box width="100%" paddingRight={4} flexDirection="row">
+                    <Box width="100%" flexDirection="row">
                         <Box flexShrink={0}>
                             <Text
                                 color={disabled ? THEME.colors.muted : THEME.colors.brand}

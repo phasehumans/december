@@ -16,6 +16,8 @@ describe('THEME Contract (Unit)', () => {
 
     it('exports standardized horizontal padding token', () => {
         expect(THEME.padding.paddingX).toBe(2)
+        expect(THEME.padding.paddingLeft).toBe(2)
+        expect(THEME.padding.paddingRight).toBe(4)
     })
 
     it('exports unified glyph definitions', () => {

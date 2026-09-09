@@ -148,7 +148,11 @@ const renderToken = (token: any, index: number): React.ReactNode => {
                 <Box key={index} flexDirection="column" paddingLeft={1}>
                     {token.items.map((item: any, i: number) => (
                         <Box key={i} flexDirection="row">
-                            <Text color={THEME.colors.dim}>{THEME.glyphs.bullet + ' '}</Text>
+                            <Text color={THEME.colors.dim}>
+                                {token.ordered
+                                    ? `${(token.start ?? 1) + i}. `
+                                    : `${THEME.glyphs.bullet} `}
+                            </Text>
                             <Box flexDirection="column" flexShrink={1}>
                                 {item.tokens.map((t: any, j: number) => renderToken(t, j))}
                             </Box>
@@ -227,12 +231,18 @@ export function getHighlightedCode(code: string, lang: string): string {
 const MAX_AST_CACHE_SIZE = 500
 const astCache = new Map<string, any[]>()
 
+export function normalizeMarkdown(source: string): string {
+    if (!source) return ''
+    return source.replace(/^([ \t]*)[•●▪‣⁃][ \t]+/gm, '$1* ')
+}
+
 export function parseMarkdownTokens(source: string): any[] {
     if (!source) return []
     const cached = astCache.get(source)
     if (cached) return cached
 
-    const tokens = marked.lexer(source).filter((t) => t.type !== 'space')
+    const normalized = normalizeMarkdown(source)
+    const tokens = marked.lexer(normalized).filter((t) => t.type !== 'space')
 
     if (astCache.size >= MAX_AST_CACHE_SIZE) {
         const firstKey = astCache.keys().next().value

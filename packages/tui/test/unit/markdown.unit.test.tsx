@@ -113,4 +113,31 @@ graph LR
         expect(highlighted2).toBe(highlighted1)
         expect(getMarkdownCacheStats().highlightCacheSize).toBe(1)
     })
+
+    it('normalizes unicode bullets into markdown list items', async () => {
+        const { normalizeMarkdown } = await import('../../src/components/markdown')
+        const raw = ' • Bullet one\n • Bullet two\n   ● Sub-bullet'
+        const normalized = normalizeMarkdown(raw)
+        expect(normalized).toContain('* Bullet one')
+        expect(normalized).toContain('* Bullet two')
+        expect(normalized).toContain('   * Sub-bullet')
+    })
+
+    it('renders unicode bullets as formatted lists with bullets', () => {
+        const raw = ' • Technical Foundations: AI integration\n • Developer Tools: CLI integration'
+        const { lastFrame } = render(<Markdown>{raw}</Markdown>)
+        const frame = lastFrame()
+        expect(frame).toContain('Technical Foundations')
+        expect(frame).toContain('Developer Tools')
+    })
+
+    it('renders ordered lists with proper number prefixes', () => {
+        const raw = '1. First step\n2. Second step'
+        const { lastFrame } = render(<Markdown>{raw}</Markdown>)
+        const frame = lastFrame()
+        expect(frame).toContain('1. ')
+        expect(frame).toContain('First step')
+        expect(frame).toContain('2. ')
+        expect(frame).toContain('Second step')
+    })
 })

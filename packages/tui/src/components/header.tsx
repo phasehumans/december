@@ -75,7 +75,8 @@ export const Header = React.memo(function Header({
     return (
         <Box
             flexDirection="column"
-            paddingX={THEME.padding.paddingX}
+            paddingLeft={THEME.padding.paddingLeft ?? THEME.padding.paddingX}
+            paddingRight={THEME.padding.paddingRight ?? 4}
             paddingTop={1}
             paddingBottom={0}
         >

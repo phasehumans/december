@@ -137,6 +137,8 @@ export type ErrorMessageProps = {
     hint?: string
     hasTopMargin?: boolean
     paddingX?: number
+    paddingLeft?: number
+    paddingRight?: number
 }
 
 export function FormattedErrorText({
@@ -183,12 +185,21 @@ export function ErrorMessage({
     cause,
     hint,
     hasTopMargin = false,
-    paddingX = THEME.padding.paddingX,
+    paddingX,
+    paddingLeft = THEME.padding.paddingLeft ?? THEME.padding.paddingX,
+    paddingRight = THEME.padding.paddingRight ?? 4,
 }: ErrorMessageProps) {
     const parsed = parseTuiError(message, cause, hint)
+    const effectiveLeft = paddingX ?? paddingLeft
+    const effectiveRight = paddingX ?? paddingRight
 
     return (
-        <Box paddingX={paddingX} paddingY={0} flexDirection="column">
+        <Box
+            paddingLeft={effectiveLeft}
+            paddingRight={effectiveRight}
+            paddingY={0}
+            flexDirection="column"
+        >
             {hasTopMargin && <Text> </Text>}
             <FormattedErrorText text={parsed.message} defaultColor={THEME.colors.error} />
             {parsed.hint && parsed.hint !== '' && (

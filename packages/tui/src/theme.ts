@@ -16,6 +16,8 @@ export const THEME = {
     },
     padding: {
         paddingX: 2,
+        paddingLeft: 2,
+        paddingRight: 4,
     },
     glyphs: {
         prompt: '❭',

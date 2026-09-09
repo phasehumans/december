@@ -18,7 +18,8 @@ export const UserMessage = React.memo(function UserMessage({ message }: Props) {
 
     return (
         <Box
-            paddingX={THEME.padding.paddingX}
+            paddingLeft={THEME.padding.paddingLeft ?? THEME.padding.paddingX}
+            paddingRight={THEME.padding.paddingRight ?? 4}
             paddingY={0}
             marginTop={1}
             marginBottom={1}

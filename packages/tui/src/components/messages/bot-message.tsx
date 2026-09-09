@@ -193,7 +193,8 @@ export const BotMessage = React.memo(function BotMessage({ blocks, usage, expand
     return (
         <Box
             flexDirection="column"
-            paddingX={THEME.padding.paddingX}
+            paddingLeft={THEME.padding.paddingLeft ?? THEME.padding.paddingX}
+            paddingRight={THEME.padding.paddingRight ?? 4}
             paddingY={0}
             gap={0}
             marginTop={0}
