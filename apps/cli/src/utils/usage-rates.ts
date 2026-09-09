@@ -130,6 +130,10 @@ export const OFFICIAL_MODEL_RATES: Record<string, ModelRate> = {
     'ministral-3b-latest': { name: 'ministral-3b-latest', inputRate: 0.04, outputRate: 0.04 },
     'mistral-nemo': { name: 'mistral-nemo', inputRate: 0.15, outputRate: 0.15 },
 
+    // Sarvam AI
+    'sarvam-105b': { name: 'sarvam-105b', inputRate: 0.75, outputRate: 3.0 },
+    'sarvam-30b': { name: 'sarvam-30b', inputRate: 0.25, outputRate: 1.0 },
+
     // Ollama (Local)
     ollama: { name: 'ollama', inputRate: 0.0, outputRate: 0.0 },
 }
@@ -173,6 +177,9 @@ export const PROVIDER_BILLING_LINKS: Record<string, string> = {
     sakana: 'https://console.sakana.ai/api-keys',
     'sakana-ai': 'https://console.sakana.ai/api-keys',
     sakanaai: 'https://console.sakana.ai/api-keys',
+    sarvam: 'https://indus.sarvam.ai/',
+    sarvamai: 'https://indus.sarvam.ai/',
+    'sarvam-ai': 'https://indus.sarvam.ai/',
     ollama: 'http://localhost:11434',
 }
 
@@ -215,6 +222,9 @@ export const PROVIDER_DISPLAY_NAMES: Record<string, string> = {
     sakana: 'Sakana AI',
     'sakana-ai': 'Sakana AI',
     sakanaai: 'Sakana AI',
+    sarvam: 'Sarvam AI',
+    sarvamai: 'Sarvam AI',
+    'sarvam-ai': 'Sarvam AI',
     ollama: 'Ollama (Local)',
 }
 

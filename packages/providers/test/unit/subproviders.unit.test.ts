@@ -20,6 +20,7 @@ import { PerplexityProvider } from '../../src/providers/perplexity'
 import { PoolsideProvider } from '../../src/providers/poolside'
 import { SakanaProvider } from '../../src/providers/sakana'
 import { SambaNovaProvider } from '../../src/providers/sambanova'
+import { SarvamProvider } from '../../src/providers/sarvam'
 import { SiliconFlowProvider } from '../../src/providers/siliconflow'
 import { TogetherProvider } from '../../src/providers/together'
 import { XAIProvider } from '../../src/providers/xai'
@@ -144,5 +145,10 @@ describe('OpenAI-compatible Subproviders (Unit)', () => {
     test('instantiates SakanaProvider with correct ID', () => {
         const provider = new SakanaProvider('dummy-key')
         expect(provider.id).toBe('sakana')
+    })
+
+    test('instantiates SarvamProvider with correct ID', () => {
+        const provider = new SarvamProvider('dummy-key')
+        expect(provider.id).toBe('sarvam')
     })
 })

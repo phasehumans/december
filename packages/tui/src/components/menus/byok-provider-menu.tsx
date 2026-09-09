@@ -36,6 +36,7 @@ export const PROVIDER_MENU_ITEMS = [
     { label: 'Qwen (DashScope)', value: 'dashscope' },
     { label: 'Sakana AI', value: 'sakana' },
     { label: 'SambaNova Cloud', value: 'sambanova' },
+    { label: 'Sarvam AI', value: 'sarvam' },
     { label: 'SiliconFlow', value: 'siliconflow' },
     { label: 'Together AI', value: 'together' },
     { label: 'xAI', value: 'xai' },

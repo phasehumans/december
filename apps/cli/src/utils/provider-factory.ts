@@ -206,6 +206,10 @@ export function instantiateProvider(
         case 'sakanaai':
         case 'sakana-ai':
             return withProviderId(openaiProvider('https://api.sakana.ai/v1', apiKey), 'sakana')
+        case 'sarvam':
+        case 'sarvamai':
+        case 'sarvam-ai':
+            return withProviderId(openaiProvider('https://api.sarvam.ai/v1', apiKey), 'sarvam')
         case 'dashscope':
         case 'qwen':
             return withProviderId(

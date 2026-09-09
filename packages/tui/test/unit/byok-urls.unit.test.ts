@@ -8,8 +8,8 @@ import {
 import { PROVIDER_MENU_ITEMS } from '../../src/components/menus/byok-provider-menu'
 
 describe('BYOK Provider URLs & Names Audit (Unit)', () => {
-    it('ensures all 31 BYOK providers have corresponding key URLs starting with https://', () => {
-        expect(PROVIDER_MENU_ITEMS.length).toBe(31)
+    it('ensures all 32 BYOK providers have corresponding key URLs starting with https://', () => {
+        expect(PROVIDER_MENU_ITEMS.length).toBe(32)
 
         for (const item of PROVIDER_MENU_ITEMS) {
             const url = PROVIDER_KEY_URLS[item.value]
@@ -19,7 +19,7 @@ describe('BYOK Provider URLs & Names Audit (Unit)', () => {
         }
     })
 
-    it('ensures all 31 BYOK providers have a display name defined in PROVIDER_NAMES', () => {
+    it('ensures all 32 BYOK providers have a display name defined in PROVIDER_NAMES', () => {
         for (const item of PROVIDER_MENU_ITEMS) {
             const name = PROVIDER_NAMES[item.value]
             expect(name).toBeDefined()
@@ -42,6 +42,7 @@ describe('BYOK Provider URLs & Names Audit (Unit)', () => {
         expect(PROVIDER_KEY_URLS['deepseek']).toBe('https://platform.deepseek.com/api_keys')
         expect(PROVIDER_KEY_URLS['groq']).toBe('https://console.groq.com/keys')
         expect(PROVIDER_KEY_URLS['sakana']).toBe('https://console.sakana.ai/api-keys')
+        expect(PROVIDER_KEY_URLS['sarvam']).toBe('https://indus.sarvam.ai/')
         expect(PROVIDER_KEY_URLS['dashscope']).toBe('https://dashscope.console.aliyun.com/apiKey')
         expect(PROVIDER_KEY_URLS['minimax']).toBe('https://platform.minimax.io/console/access')
         expect(PROVIDER_KEY_URLS['lmstudio']).toBe('https://lmstudio.ai/')

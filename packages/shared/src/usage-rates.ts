@@ -111,6 +111,10 @@ export const OFFICIAL_MODEL_RATES: Record<string, ModelRate> = {
     'ministral-3b-latest': { name: 'ministral-3b-latest', inputRate: 0.04, outputRate: 0.04 },
     'mistral-nemo': { name: 'mistral-nemo', inputRate: 0.15, outputRate: 0.15 },
 
+    // Sarvam AI
+    'sarvam-105b': { name: 'sarvam-105b', inputRate: 0.75, outputRate: 3.0 },
+    'sarvam-30b': { name: 'sarvam-30b', inputRate: 0.25, outputRate: 1.0 },
+
     // Ollama / Local
     ollama: { name: 'ollama', inputRate: 0.0, outputRate: 0.0 },
 }

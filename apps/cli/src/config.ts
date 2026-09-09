@@ -53,6 +53,9 @@ export interface ProviderConfig {
         | 'sakana'
         | 'sakanaai'
         | 'sakana-ai'
+        | 'sarvam'
+        | 'sarvamai'
+        | 'sarvam-ai'
         | 'december_proxy'
         | string
     apiKey: string
@@ -433,6 +436,10 @@ export function formatProviderName(provider: string): string {
         case 'sakanaai':
         case 'sakana-ai':
             return 'Sakana AI'
+        case 'sarvam':
+        case 'sarvamai':
+        case 'sarvam-ai':
+            return 'Sarvam AI'
         case 'claude':
             return 'Claude'
         case 'copilot':

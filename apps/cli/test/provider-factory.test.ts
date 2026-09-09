@@ -291,6 +291,17 @@ describe('instantiateProvider', () => {
         )
     })
 
+    it('instantiates sarvam provider via openai compat', () => {
+        instantiateProvider('sarvam', 'key-123')
+        expect(providers.openaiProvider).toHaveBeenCalledWith('https://api.sarvam.ai/v1', 'key-123')
+
+        instantiateProvider('sarvamai', 'key-123')
+        expect(providers.openaiProvider).toHaveBeenCalledWith('https://api.sarvam.ai/v1', 'key-123')
+
+        instantiateProvider('sarvam-ai', 'key-123')
+        expect(providers.openaiProvider).toHaveBeenCalledWith('https://api.sarvam.ai/v1', 'key-123')
+    })
+
     it('instantiates ollama provider with default localhost endpoint', () => {
         const p = instantiateProvider('ollama', '')
         expect(p).toBe('mock-ollama')

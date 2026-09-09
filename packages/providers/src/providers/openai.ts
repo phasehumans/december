@@ -48,7 +48,8 @@ export function supportsReasoningEffort(model?: string, baseURL?: string): boole
             baseURL.includes('meta.ai') ||
             baseURL.includes('minimax') ||
             baseURL.includes('poolside.ai') ||
-            baseURL.includes('sakana.ai'))
+            baseURL.includes('sakana.ai') ||
+            baseURL.includes('sarvam.ai'))
     ) {
         return false
     }

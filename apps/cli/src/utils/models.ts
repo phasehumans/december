@@ -447,6 +447,13 @@ export const getCuratedProviderModels = (provider: string) => {
                 { label: 'Sakana Namazu', value: 'sakana-namazu' },
                 { label: 'Fugu Cyber', value: 'fugu-cyber' },
             ]
+        case 'sarvam':
+        case 'sarvamai':
+        case 'sarvam-ai':
+            return [
+                { label: 'Sarvam 105B', value: 'sarvam-105b' },
+                { label: 'Sarvam 30B', value: 'sarvam-30b' },
+            ]
         case 'dashscope':
         case 'qwen':
             return [
@@ -843,6 +850,11 @@ export async function fetchLiveProviderModels(
                 case 'sakana-ai':
                     endpoint = 'https://api.sakana.ai/v1/models'
                     break
+                case 'sarvam':
+                case 'sarvamai':
+                case 'sarvam-ai':
+                    endpoint = 'https://api.sarvam.ai/v1/models'
+                    break
                 case 'december':
                 case 'december_proxy': {
                     const serverUrl = process.env.SERVER_URL || 'https://api.trydecember.com'
@@ -993,6 +1005,7 @@ export const getModelLabel = (value: string) => {
         'meta',
         'poolside',
         'sakana',
+        'sarvam',
         'december_proxy',
     ]
     for (const p of allProviders) {
