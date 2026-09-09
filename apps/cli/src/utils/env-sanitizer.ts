@@ -29,6 +29,7 @@ export const SENSITIVE_LLM_ENV_KEYS: readonly string[] = [
     'PERPLEXITY_API_KEY',
     'SAMBANOVA_API_KEY',
     'SARVAM_API_KEY',
+    'STEPFUN_API_KEY',
     'SILICONFLOW_API_KEY',
     'XAI_API_KEY',
     'ZAI_API_KEY',

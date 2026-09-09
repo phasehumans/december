@@ -454,6 +454,14 @@ export const getCuratedProviderModels = (provider: string) => {
                 { label: 'Sarvam 105B', value: 'sarvam-105b' },
                 { label: 'Sarvam 30B', value: 'sarvam-30b' },
             ]
+        case 'stepfun':
+        case 'stepfunai':
+        case 'stepfun-ai':
+            return [
+                { label: 'Step 3.7 Flash', value: 'step-3.7-flash' },
+                { label: 'Step 3.5 Flash', value: 'step-3.5-flash' },
+                { label: 'Step 1 32K', value: 'step-1-32k' },
+            ]
         case 'dashscope':
         case 'qwen':
             return [
@@ -855,6 +863,11 @@ export async function fetchLiveProviderModels(
                 case 'sarvam-ai':
                     endpoint = 'https://api.sarvam.ai/v1/models'
                     break
+                case 'stepfun':
+                case 'stepfunai':
+                case 'stepfun-ai':
+                    endpoint = 'https://api.stepfun.ai/v1/models'
+                    break
                 case 'december':
                 case 'december_proxy': {
                     const serverUrl = process.env.SERVER_URL || 'https://api.trydecember.com'
@@ -1006,6 +1019,7 @@ export const getModelLabel = (value: string) => {
         'poolside',
         'sakana',
         'sarvam',
+        'stepfun',
         'december_proxy',
     ]
     for (const p of allProviders) {

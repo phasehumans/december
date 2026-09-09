@@ -115,6 +115,11 @@ export const OFFICIAL_MODEL_RATES: Record<string, ModelRate> = {
     'sarvam-105b': { name: 'sarvam-105b', inputRate: 0.75, outputRate: 3.0 },
     'sarvam-30b': { name: 'sarvam-30b', inputRate: 0.25, outputRate: 1.0 },
 
+    // StepFun
+    'step-3.7-flash': { name: 'step-3.7-flash', inputRate: 0.1, outputRate: 0.4 },
+    'step-3.5-flash': { name: 'step-3.5-flash', inputRate: 0.1, outputRate: 0.4 },
+    'step-1-32k': { name: 'step-1-32k', inputRate: 0.2, outputRate: 0.8 },
+
     // Ollama / Local
     ollama: { name: 'ollama', inputRate: 0.0, outputRate: 0.0 },
 }

@@ -210,6 +210,10 @@ export function instantiateProvider(
         case 'sarvamai':
         case 'sarvam-ai':
             return withProviderId(openaiProvider('https://api.sarvam.ai/v1', apiKey), 'sarvam')
+        case 'stepfun':
+        case 'stepfunai':
+        case 'stepfun-ai':
+            return withProviderId(openaiProvider('https://api.stepfun.ai/v1', apiKey), 'stepfun')
         case 'dashscope':
         case 'qwen':
             return withProviderId(

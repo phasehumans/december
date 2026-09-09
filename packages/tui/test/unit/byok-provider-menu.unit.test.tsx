@@ -9,8 +9,8 @@ import {
 import { KeyboardLayerProvider } from '../../src/providers/keyboard-layer'
 
 describe('ByokProviderMenu Component (Unit)', () => {
-    it('has 32 total API key and local provider items without subscriptions', () => {
-        expect(PROVIDER_MENU_ITEMS.length).toBe(32)
+    it('has 33 total API key and local provider items without subscriptions', () => {
+        expect(PROVIDER_MENU_ITEMS.length).toBe(33)
         expect(PROVIDER_MENU_ITEMS[0].value).toBe('agentrouter')
         expect(PROVIDER_MENU_ITEMS[1].value).toBe('anthropic')
         expect(PROVIDER_MENU_ITEMS[2].value).toBe('arcee')
@@ -34,7 +34,7 @@ describe('ByokProviderMenu Component (Unit)', () => {
         expect(frame).toContain('Cohere')
         expect(frame).toContain('DeepSeek')
         expect(frame).toContain('Fireworks AI')
-        expect(frame).toContain('↓ 25 more')
+        expect(frame).toContain('↓ 26 more')
     })
 
     it('navigates through items with arrow keys and updates more indicators', async () => {
@@ -59,7 +59,7 @@ describe('ByokProviderMenu Component (Unit)', () => {
 
         const frameAfterScroll = lastFrame() || ''
         expect(frameAfterScroll).toContain('↑ 1 more')
-        expect(frameAfterScroll).toContain('↓ 24 more')
+        expect(frameAfterScroll).toContain('↓ 25 more')
 
         // Press Enter to select current item (Google AI Studio)
         stdin.write('\r')
@@ -300,6 +300,39 @@ describe('ByokProviderMenu Component (Unit)', () => {
         expect(selectedItem).toBeDefined()
         expect(selectedItem?.value).toBe('sarvam')
         expect(selectedItem?.label).toBe('Sarvam AI')
+    })
+
+    it('selects StepFun (Global) provider on enter after searching', async () => {
+        let selectedItem: any = null
+        const handleSelect = (item: any) => {
+            selectedItem = item
+        }
+
+        const { stdin } = render(
+            <KeyboardLayerProvider>
+                <ByokProviderMenu handleProviderSelect={handleSelect} />
+            </KeyboardLayerProvider>
+        )
+
+        // Type / to search
+        stdin.write('/')
+        await new Promise((r) => setTimeout(r, 50))
+
+        // Type 'stepfun'
+        stdin.write('stepfun')
+        await new Promise((r) => setTimeout(r, 50))
+
+        // Press enter to focus list
+        stdin.write('\r')
+        await new Promise((r) => setTimeout(r, 50))
+
+        // Press enter to select
+        stdin.write('\r')
+        await new Promise((r) => setTimeout(r, 50))
+
+        expect(selectedItem).toBeDefined()
+        expect(selectedItem?.value).toBe('stepfun')
+        expect(selectedItem?.label).toBe('StepFun (Global)')
     })
 
     it('renders "No providers found." when filter matches nothing', async () => {

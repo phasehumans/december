@@ -134,6 +134,11 @@ export const OFFICIAL_MODEL_RATES: Record<string, ModelRate> = {
     'sarvam-105b': { name: 'sarvam-105b', inputRate: 0.75, outputRate: 3.0 },
     'sarvam-30b': { name: 'sarvam-30b', inputRate: 0.25, outputRate: 1.0 },
 
+    // StepFun
+    'step-3.7-flash': { name: 'step-3.7-flash', inputRate: 0.14, outputRate: 0.56 },
+    'step-3.5-flash': { name: 'step-3.5-flash', inputRate: 0.1, outputRate: 0.4 },
+    'step-1-32k': { name: 'step-1-32k', inputRate: 0.56, outputRate: 2.24 },
+
     // Ollama (Local)
     ollama: { name: 'ollama', inputRate: 0.0, outputRate: 0.0 },
 }
@@ -180,6 +185,9 @@ export const PROVIDER_BILLING_LINKS: Record<string, string> = {
     sarvam: 'https://indus.sarvam.ai/',
     sarvamai: 'https://indus.sarvam.ai/',
     'sarvam-ai': 'https://indus.sarvam.ai/',
+    stepfun: 'https://platform.stepfun.ai/interface-key',
+    stepfunai: 'https://platform.stepfun.ai/interface-key',
+    'stepfun-ai': 'https://platform.stepfun.ai/interface-key',
     ollama: 'http://localhost:11434',
 }
 
@@ -225,6 +233,9 @@ export const PROVIDER_DISPLAY_NAMES: Record<string, string> = {
     sarvam: 'Sarvam AI',
     sarvamai: 'Sarvam AI',
     'sarvam-ai': 'Sarvam AI',
+    stepfun: 'StepFun (Global)',
+    stepfunai: 'StepFun (Global)',
+    'stepfun-ai': 'StepFun (Global)',
     ollama: 'Ollama (Local)',
 }
 
@@ -236,6 +247,8 @@ export function inferProviderFromModel(modelName: string): string {
     if (lower.startsWith('laguna') || lower.startsWith('poolside/')) return 'poolside'
     if (lower.startsWith('fugu') || lower.startsWith('sakana') || lower.startsWith('namazu'))
         return 'sakana'
+    if (lower.startsWith('sarvam')) return 'sarvam'
+    if (lower.startsWith('step-') || lower.startsWith('stepfun')) return 'stepfun'
     if (lower.startsWith('claude') || lower.startsWith('anthropic/')) return 'anthropic'
     if (
         lower.startsWith('gpt') ||

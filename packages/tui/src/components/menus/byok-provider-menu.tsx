@@ -38,6 +38,7 @@ export const PROVIDER_MENU_ITEMS = [
     { label: 'SambaNova Cloud', value: 'sambanova' },
     { label: 'Sarvam AI', value: 'sarvam' },
     { label: 'SiliconFlow', value: 'siliconflow' },
+    { label: 'StepFun (Global)', value: 'stepfun' },
     { label: 'Together AI', value: 'together' },
     { label: 'xAI', value: 'xai' },
     { label: 'ZAI', value: 'zai' },

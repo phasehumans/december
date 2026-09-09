@@ -56,6 +56,9 @@ export interface ProviderConfig {
         | 'sarvam'
         | 'sarvamai'
         | 'sarvam-ai'
+        | 'stepfun'
+        | 'stepfunai'
+        | 'stepfun-ai'
         | 'december_proxy'
         | string
     apiKey: string
@@ -440,6 +443,10 @@ export function formatProviderName(provider: string): string {
         case 'sarvamai':
         case 'sarvam-ai':
             return 'Sarvam AI'
+        case 'stepfun':
+        case 'stepfunai':
+        case 'stepfun-ai':
+            return 'StepFun (Global)'
         case 'claude':
             return 'Claude'
         case 'copilot':

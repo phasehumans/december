@@ -125,6 +125,26 @@ describe('instantiateProvider', () => {
         )
     })
 
+    it('instantiates stepfun provider via openai compat', () => {
+        instantiateProvider('stepfun', 'key-123')
+        expect(providers.openaiProvider).toHaveBeenCalledWith(
+            'https://api.stepfun.ai/v1',
+            'key-123'
+        )
+
+        instantiateProvider('stepfunai', 'key-123')
+        expect(providers.openaiProvider).toHaveBeenCalledWith(
+            'https://api.stepfun.ai/v1',
+            'key-123'
+        )
+
+        instantiateProvider('stepfun-ai', 'key-123')
+        expect(providers.openaiProvider).toHaveBeenCalledWith(
+            'https://api.stepfun.ai/v1',
+            'key-123'
+        )
+    })
+
     it('instantiates zai provider via openai compat', () => {
         instantiateProvider('zai', 'key-123')
         expect(providers.openaiProvider).toHaveBeenCalledWith(
