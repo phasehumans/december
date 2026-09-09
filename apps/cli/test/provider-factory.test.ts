@@ -165,6 +165,29 @@ describe('instantiateProvider', () => {
         )
     })
 
+    it('instantiates thinkingmachines provider via anthropic compat', () => {
+        instantiateProvider('thinkingmachines', 'key-123')
+        expect(providers.anthropicProvider).toHaveBeenCalledWith(
+            'https://tinker.thinkingmachines.dev/services/tinker-prod/anthropic/api',
+            'key-123',
+            { 'anthropic-beta': 'oauth-2024-11-18' }
+        )
+
+        instantiateProvider('tinker', 'key-123')
+        expect(providers.anthropicProvider).toHaveBeenCalledWith(
+            'https://tinker.thinkingmachines.dev/services/tinker-prod/anthropic/api',
+            'key-123',
+            { 'anthropic-beta': 'oauth-2024-11-18' }
+        )
+
+        instantiateProvider('inkling', 'key-123')
+        expect(providers.anthropicProvider).toHaveBeenCalledWith(
+            'https://tinker.thinkingmachines.dev/services/tinker-prod/anthropic/api',
+            'key-123',
+            { 'anthropic-beta': 'oauth-2024-11-18' }
+        )
+    })
+
     it('instantiates zai provider via openai compat', () => {
         instantiateProvider('zai', 'key-123')
         expect(providers.openaiProvider).toHaveBeenCalledWith(

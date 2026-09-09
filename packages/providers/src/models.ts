@@ -138,6 +138,9 @@ export const MODEL_CONTEXT_WINDOWS: Record<string, number> = {
     'solar-pro3': 524288,
     'solar-pro2': 524288,
     'solar-mini': 65536,
+    'thinkingmachines/Inkling': 131072,
+    'thinkingmachines/Inkling:peft:262144': 262144,
+    inkling: 131072,
 }
 
 export function getModelContextWindow(value: string): number {

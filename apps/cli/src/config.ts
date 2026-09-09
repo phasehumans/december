@@ -62,6 +62,9 @@ export interface ProviderConfig {
         | 'upstage'
         | 'upstageai'
         | 'solar'
+        | 'thinkingmachines'
+        | 'tinker'
+        | 'inkling'
         | 'december_proxy'
         | string
     apiKey: string
@@ -454,6 +457,10 @@ export function formatProviderName(provider: string): string {
         case 'upstageai':
         case 'solar':
             return 'Upstage Solar'
+        case 'thinkingmachines':
+        case 'tinker':
+        case 'inkling':
+            return 'Thinking Machines (Tinker)'
         case 'claude':
             return 'Claude'
         case 'copilot':

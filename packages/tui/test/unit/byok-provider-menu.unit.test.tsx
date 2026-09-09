@@ -9,8 +9,8 @@ import {
 import { KeyboardLayerProvider } from '../../src/providers/keyboard-layer'
 
 describe('ByokProviderMenu Component (Unit)', () => {
-    it('has 34 total API key and local provider items without subscriptions', () => {
-        expect(PROVIDER_MENU_ITEMS.length).toBe(34)
+    it('has 35 total API key and local provider items without subscriptions', () => {
+        expect(PROVIDER_MENU_ITEMS.length).toBe(35)
         expect(PROVIDER_MENU_ITEMS[0].value).toBe('agentrouter')
         expect(PROVIDER_MENU_ITEMS[1].value).toBe('anthropic')
         expect(PROVIDER_MENU_ITEMS[2].value).toBe('arcee')
@@ -34,7 +34,7 @@ describe('ByokProviderMenu Component (Unit)', () => {
         expect(frame).toContain('Cohere')
         expect(frame).toContain('DeepSeek')
         expect(frame).toContain('Fireworks AI')
-        expect(frame).toContain('↓ 27 more')
+        expect(frame).toContain('↓ 28 more')
     })
 
     it('navigates through items with arrow keys and updates more indicators', async () => {
@@ -59,7 +59,7 @@ describe('ByokProviderMenu Component (Unit)', () => {
 
         const frameAfterScroll = lastFrame() || ''
         expect(frameAfterScroll).toContain('↑ 1 more')
-        expect(frameAfterScroll).toContain('↓ 26 more')
+        expect(frameAfterScroll).toContain('↓ 27 more')
 
         // Press Enter to select current item (Google AI Studio)
         stdin.write('\r')
@@ -366,6 +366,39 @@ describe('ByokProviderMenu Component (Unit)', () => {
         expect(selectedItem).toBeDefined()
         expect(selectedItem?.value).toBe('upstage')
         expect(selectedItem?.label).toBe('Upstage Solar')
+    })
+
+    it('selects Thinking Machines (Tinker) provider on enter after searching', async () => {
+        let selectedItem: any = null
+        const handleSelect = (item: any) => {
+            selectedItem = item
+        }
+
+        const { stdin } = render(
+            <KeyboardLayerProvider>
+                <ByokProviderMenu handleProviderSelect={handleSelect} />
+            </KeyboardLayerProvider>
+        )
+
+        // Type / to search
+        stdin.write('/')
+        await new Promise((r) => setTimeout(r, 50))
+
+        // Type 'thinking'
+        stdin.write('thinking')
+        await new Promise((r) => setTimeout(r, 50))
+
+        // Press enter to focus list
+        stdin.write('\r')
+        await new Promise((r) => setTimeout(r, 50))
+
+        // Press enter to select
+        stdin.write('\r')
+        await new Promise((r) => setTimeout(r, 50))
+
+        expect(selectedItem).toBeDefined()
+        expect(selectedItem?.value).toBe('thinkingmachines')
+        expect(selectedItem?.label).toBe('Thinking Machines (Tinker)')
     })
 
     it('renders "No providers found." when filter matches nothing', async () => {

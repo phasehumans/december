@@ -126,6 +126,19 @@ export const OFFICIAL_MODEL_RATES: Record<string, ModelRate> = {
     'solar-pro2': { name: 'solar-pro2', inputRate: 0.25, outputRate: 0.25 },
     'solar-mini': { name: 'solar-mini', inputRate: 0.15, outputRate: 0.15 },
 
+    // Thinking Machines (Tinker)
+    'thinkingmachines/inkling': {
+        name: 'thinkingmachines/Inkling',
+        inputRate: 2.0,
+        outputRate: 6.0,
+    },
+    'thinkingmachines/inkling:peft:262144': {
+        name: 'thinkingmachines/Inkling:peft:262144',
+        inputRate: 2.5,
+        outputRate: 7.5,
+    },
+    inkling: { name: 'thinkingmachines/Inkling', inputRate: 2.0, outputRate: 6.0 },
+
     // Ollama / Local
     ollama: { name: 'ollama', inputRate: 0.0, outputRate: 0.0 },
 }

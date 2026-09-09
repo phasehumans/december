@@ -471,6 +471,16 @@ export const getCuratedProviderModels = (provider: string) => {
                 { label: 'Solar Pro 2', value: 'solar-pro2' },
                 { label: 'Solar Mini', value: 'solar-mini' },
             ]
+        case 'thinkingmachines':
+        case 'tinker':
+        case 'inkling':
+            return [
+                { label: 'Thinking Machines Inkling', value: 'thinkingmachines/Inkling' },
+                {
+                    label: 'Thinking Machines Inkling 256k',
+                    value: 'thinkingmachines/Inkling:peft:262144',
+                },
+            ]
         case 'dashscope':
         case 'qwen':
             return [
@@ -1035,6 +1045,7 @@ export const getModelLabel = (value: string) => {
         'sarvam',
         'stepfun',
         'upstage',
+        'thinkingmachines',
         'december_proxy',
     ]
     for (const p of allProviders) {
@@ -1057,6 +1068,13 @@ export const isValidModelForProvider = (provider: string, model?: string): boole
     if (
         normalized === 'sakana' &&
         (model.includes('/') || model.startsWith('fugu') || model.startsWith('sakana'))
+    )
+        return true
+    if (
+        (normalized === 'thinkingmachines' ||
+            normalized === 'tinker' ||
+            normalized === 'inkling') &&
+        (model.includes('/') || model.startsWith('inkling'))
     )
         return true
     if (normalized === 'ollama') return isToolCompatibleOllamaModel(model)
@@ -1091,6 +1109,17 @@ export const getDefaultModelForProvider = (provider: string): string => {
 }
 
 export const ensureValidModelForProvider = (provider: string, model?: string): string => {
+    const normalizedProvider = (provider || '').toLowerCase().trim()
+    if (
+        (normalizedProvider === 'thinkingmachines' ||
+            normalizedProvider === 'tinker' ||
+            normalizedProvider === 'inkling') &&
+        model
+    ) {
+        const lowerModel = model.toLowerCase().trim()
+        if (lowerModel === 'inkling') return 'thinkingmachines/Inkling'
+        if (lowerModel === 'inkling:peft:262144') return 'thinkingmachines/Inkling:peft:262144'
+    }
     if (model && isValidModelForProvider(provider, model)) {
         return model
     }

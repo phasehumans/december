@@ -8,8 +8,8 @@ import {
 import { PROVIDER_MENU_ITEMS } from '../../src/components/menus/byok-provider-menu'
 
 describe('BYOK Provider URLs & Names Audit (Unit)', () => {
-    it('ensures all 34 BYOK providers have corresponding key URLs starting with https://', () => {
-        expect(PROVIDER_MENU_ITEMS.length).toBe(34)
+    it('ensures all 35 BYOK providers have corresponding key URLs starting with https://', () => {
+        expect(PROVIDER_MENU_ITEMS.length).toBe(35)
 
         for (const item of PROVIDER_MENU_ITEMS) {
             const url = PROVIDER_KEY_URLS[item.value]
@@ -19,7 +19,7 @@ describe('BYOK Provider URLs & Names Audit (Unit)', () => {
         }
     })
 
-    it('ensures all 34 BYOK providers have a display name defined in PROVIDER_NAMES', () => {
+    it('ensures all 35 BYOK providers have a display name defined in PROVIDER_NAMES', () => {
         for (const item of PROVIDER_MENU_ITEMS) {
             const name = PROVIDER_NAMES[item.value]
             expect(name).toBeDefined()
@@ -45,6 +45,7 @@ describe('BYOK Provider URLs & Names Audit (Unit)', () => {
         expect(PROVIDER_KEY_URLS['sarvam']).toBe('https://indus.sarvam.ai/')
         expect(PROVIDER_KEY_URLS['stepfun']).toBe('https://platform.stepfun.ai/interface-key')
         expect(PROVIDER_KEY_URLS['upstage']).toBe('https://console.upstage.ai')
+        expect(PROVIDER_KEY_URLS['thinkingmachines']).toBe('https://tinker.thinkingmachines.ai/')
         expect(PROVIDER_KEY_URLS['dashscope']).toBe('https://dashscope.console.aliyun.com/apiKey')
         expect(PROVIDER_KEY_URLS['minimax']).toBe('https://platform.minimax.io/console/access')
         expect(PROVIDER_KEY_URLS['lmstudio']).toBe('https://lmstudio.ai/')

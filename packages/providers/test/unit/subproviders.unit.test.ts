@@ -23,6 +23,10 @@ import { SambaNovaProvider } from '../../src/providers/sambanova'
 import { SarvamProvider } from '../../src/providers/sarvam'
 import { SiliconFlowProvider } from '../../src/providers/siliconflow'
 import { StepFunProvider } from '../../src/providers/stepfun'
+import {
+    ThinkingMachinesProvider,
+    resolveThinkingMachinesModel,
+} from '../../src/providers/thinkingmachines'
 import { TogetherProvider } from '../../src/providers/together'
 import { UpstageProvider } from '../../src/providers/upstage'
 import { XAIProvider } from '../../src/providers/xai'
@@ -162,5 +166,15 @@ describe('OpenAI-compatible Subproviders (Unit)', () => {
     test('instantiates UpstageProvider with correct ID', () => {
         const provider = new UpstageProvider('dummy-key')
         expect(provider.id).toBe('upstage')
+    })
+
+    test('instantiates ThinkingMachinesProvider with correct ID and resolves model aliases', () => {
+        const provider = new ThinkingMachinesProvider('dummy-key')
+        expect(provider.id).toBe('thinkingmachines')
+        expect(resolveThinkingMachinesModel('inkling')).toBe('thinkingmachines/Inkling')
+        expect(resolveThinkingMachinesModel('inkling:peft:262144')).toBe(
+            'thinkingmachines/Inkling:peft:262144'
+        )
+        expect(resolveThinkingMachinesModel(undefined)).toBe('thinkingmachines/Inkling')
     })
 })

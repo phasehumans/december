@@ -39,6 +39,7 @@ export const PROVIDER_MENU_ITEMS = [
     { label: 'Sarvam AI', value: 'sarvam' },
     { label: 'SiliconFlow', value: 'siliconflow' },
     { label: 'StepFun (Global)', value: 'stepfun' },
+    { label: 'Thinking Machines (Tinker)', value: 'thinkingmachines' },
     { label: 'Together AI', value: 'together' },
     { label: 'Upstage Solar', value: 'upstage' },
     { label: 'xAI', value: 'xai' },

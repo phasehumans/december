@@ -221,6 +221,17 @@ export function instantiateProvider(
                 openaiProvider('https://api.upstage.ai/v1/solar', apiKey),
                 'upstage'
             )
+        case 'thinkingmachines':
+        case 'tinker':
+        case 'inkling':
+            return withProviderId(
+                anthropicProvider(
+                    'https://tinker.thinkingmachines.dev/services/tinker-prod/anthropic/api',
+                    apiKey,
+                    { 'anthropic-beta': 'oauth-2024-11-18' }
+                ),
+                'thinkingmachines'
+            )
         case 'dashscope':
         case 'qwen':
             return withProviderId(

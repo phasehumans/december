@@ -145,6 +145,19 @@ export const OFFICIAL_MODEL_RATES: Record<string, ModelRate> = {
     'solar-pro2': { name: 'solar-pro2', inputRate: 0.25, outputRate: 0.25 },
     'solar-mini': { name: 'solar-mini', inputRate: 0.15, outputRate: 0.15 },
 
+    // Thinking Machines (Tinker)
+    'thinkingmachines/inkling': {
+        name: 'thinkingmachines/Inkling',
+        inputRate: 2.0,
+        outputRate: 6.0,
+    },
+    'thinkingmachines/inkling:peft:262144': {
+        name: 'thinkingmachines/Inkling:peft:262144',
+        inputRate: 2.5,
+        outputRate: 7.5,
+    },
+    inkling: { name: 'thinkingmachines/Inkling', inputRate: 2.0, outputRate: 6.0 },
+
     // Ollama (Local)
     ollama: { name: 'ollama', inputRate: 0.0, outputRate: 0.0 },
 }
@@ -197,6 +210,9 @@ export const PROVIDER_BILLING_LINKS: Record<string, string> = {
     upstage: 'https://console.upstage.ai',
     upstageai: 'https://console.upstage.ai',
     solar: 'https://console.upstage.ai',
+    thinkingmachines: 'https://tinker.thinkingmachines.ai/',
+    tinker: 'https://tinker.thinkingmachines.ai/',
+    inkling: 'https://tinker.thinkingmachines.ai/',
     ollama: 'http://localhost:11434',
 }
 
@@ -248,6 +264,9 @@ export const PROVIDER_DISPLAY_NAMES: Record<string, string> = {
     upstage: 'Upstage Solar',
     upstageai: 'Upstage Solar',
     solar: 'Upstage Solar',
+    thinkingmachines: 'Thinking Machines (Tinker)',
+    tinker: 'Thinking Machines (Tinker)',
+    inkling: 'Thinking Machines (Tinker)',
     ollama: 'Ollama (Local)',
 }
 
@@ -262,6 +281,8 @@ export function inferProviderFromModel(modelName: string): string {
     if (lower.startsWith('sarvam')) return 'sarvam'
     if (lower.startsWith('step-') || lower.startsWith('stepfun')) return 'stepfun'
     if (lower.startsWith('solar')) return 'upstage'
+    if (lower.startsWith('thinkingmachines') || lower.startsWith('inkling'))
+        return 'thinkingmachines'
     if (lower.startsWith('claude') || lower.startsWith('anthropic/')) return 'anthropic'
     if (
         lower.startsWith('gpt') ||

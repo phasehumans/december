@@ -31,6 +31,8 @@ export const SENSITIVE_LLM_ENV_KEYS: readonly string[] = [
     'SARVAM_API_KEY',
     'STEPFUN_API_KEY',
     'UPSTAGE_API_KEY',
+    'TINKER_API_KEY',
+    'THINKINGMACHINES_API_KEY',
     'SILICONFLOW_API_KEY',
     'XAI_API_KEY',
     'ZAI_API_KEY',
