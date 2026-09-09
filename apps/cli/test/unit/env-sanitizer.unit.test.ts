@@ -68,6 +68,11 @@ INVALID LINE
             expect(isSensitiveEnvKey('GITHUB_COPILOT_TOKEN')).toBe(true)
             expect(isSensitiveEnvKey('CLAUDE_CODE_OAUTH_TOKEN')).toBe(true)
             expect(isSensitiveEnvKey('ANTIGRAVITY_TOKEN')).toBe(true)
+            expect(isSensitiveEnvKey('SARVAM_API_KEY')).toBe(true)
+            expect(isSensitiveEnvKey('STEPFUN_API_KEY')).toBe(true)
+            expect(isSensitiveEnvKey('UPSTAGE_API_KEY')).toBe(true)
+            expect(isSensitiveEnvKey('TINKER_API_KEY')).toBe(true)
+            expect(isSensitiveEnvKey('THINKINGMACHINES_API_KEY')).toBe(true)
             expect(isSensitiveEnvKey('CUSTOM_LLM_API_KEY')).toBe(true)
             expect(isSensitiveEnvKey('VENDOR_APIKEY')).toBe(true)
             expect(isSensitiveEnvKey('CLIENT_OAUTH_TOKEN')).toBe(true)
@@ -106,6 +111,10 @@ PORT=4000
 GEMINI_API_KEY=AQ.test-project-gemini-key
 OPENAI_API_KEY=sk-test-project-openai-key
 OPENROUTER_API_KEY=sk-or-v1-test-project-openrouter
+SARVAM_API_KEY=sarvam-test-key
+STEPFUN_API_KEY=stepfun-test-key
+UPSTAGE_API_KEY=upstage-test-key
+TINKER_API_KEY=tinker-test-key
 `
             fs.writeFileSync(path.join(tmpDir, '.env'), envContent)
 
@@ -115,17 +124,29 @@ OPENROUTER_API_KEY=sk-or-v1-test-project-openrouter
             process.env.GEMINI_API_KEY = 'AQ.test-project-gemini-key'
             process.env.OPENAI_API_KEY = 'sk-test-project-openai-key'
             process.env.OPENROUTER_API_KEY = 'sk-or-v1-test-project-openrouter'
+            process.env.SARVAM_API_KEY = 'sarvam-test-key'
+            process.env.STEPFUN_API_KEY = 'stepfun-test-key'
+            process.env.UPSTAGE_API_KEY = 'upstage-test-key'
+            process.env.TINKER_API_KEY = 'tinker-test-key'
 
             const purged = purgeProjectEnvApiKeys(tmpDir)
 
             expect(purged).toContain('GEMINI_API_KEY')
             expect(purged).toContain('OPENAI_API_KEY')
             expect(purged).toContain('OPENROUTER_API_KEY')
+            expect(purged).toContain('SARVAM_API_KEY')
+            expect(purged).toContain('STEPFUN_API_KEY')
+            expect(purged).toContain('UPSTAGE_API_KEY')
+            expect(purged).toContain('TINKER_API_KEY')
 
             // Verify API keys were deleted from process.env
             expect(process.env.GEMINI_API_KEY).toBeUndefined()
             expect(process.env.OPENAI_API_KEY).toBeUndefined()
             expect(process.env.OPENROUTER_API_KEY).toBeUndefined()
+            expect(process.env.SARVAM_API_KEY).toBeUndefined()
+            expect(process.env.STEPFUN_API_KEY).toBeUndefined()
+            expect(process.env.UPSTAGE_API_KEY).toBeUndefined()
+            expect(process.env.TINKER_API_KEY).toBeUndefined()
 
             // Verify non-sensitive application variables remain intact
             expect(process.env.DATABASE_URL).toBe(

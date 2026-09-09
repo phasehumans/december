@@ -176,4 +176,53 @@ describe('Provider Switch Logic (Unit)', () => {
         expect(result.config.activeModel).toBe('gpt-5.6-sol') // default model for openai
         expect(result.config.lastUsedModels?.openai).toBe('gpt-5.6-sol')
     })
+
+    it('smoothly switches between sarvam, stepfun, upstage, and thinkingmachines with model fallbacks', () => {
+        let config: DecemberConfig = {
+            activeProvider: 'sarvam',
+            activeModel: 'sarvam-105b',
+            authPriority: 'byok',
+            providers: {
+                sarvam: 'key-sarvam',
+                stepfun: 'key-stepfun',
+                upstage: 'key-upstage',
+                thinkingmachines: 'key-tinker',
+            },
+        }
+
+        // Switch to stepfun -> default model step-3.7-flash
+        let res = applyProviderSwitch(config, {
+            provider: 'stepfun',
+            authPriority: 'byok',
+        })
+        expect(res.config.activeProvider).toBe('stepfun')
+        expect(res.config.activeModel).toBe('step-3.7-flash')
+        config = res.config
+
+        // Switch to upstage -> default model solar-pro4
+        res = applyProviderSwitch(config, {
+            provider: 'upstage',
+            authPriority: 'byok',
+        })
+        expect(res.config.activeProvider).toBe('upstage')
+        expect(res.config.activeModel).toBe('solar-pro4')
+        config = res.config
+
+        // Switch to thinkingmachines -> default model thinkingmachines/Inkling
+        res = applyProviderSwitch(config, {
+            provider: 'thinkingmachines',
+            authPriority: 'byok',
+        })
+        expect(res.config.activeProvider).toBe('thinkingmachines')
+        expect(res.config.activeModel).toBe('thinkingmachines/Inkling')
+        config = res.config
+
+        // Switch back to sarvam -> preserves remembered model sarvam-105b
+        res = applyProviderSwitch(config, {
+            provider: 'sarvam',
+            authPriority: 'byok',
+        })
+        expect(res.config.activeProvider).toBe('sarvam')
+        expect(res.config.activeModel).toBe('sarvam-105b')
+    })
 })

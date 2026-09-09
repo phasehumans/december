@@ -59,6 +59,24 @@ describe('CLI In-Terminal Usage & Rates (Unit)', () => {
         expect(m27HighspeedRate.outputRate).toBe(2.4)
     })
 
+    it('resolves official rates for sarvam, stepfun, upstage, and thinkingmachines models', () => {
+        const sarvamRate = resolveModelRate('sarvam-105b')
+        expect(sarvamRate.inputRate).toBe(0.75)
+        expect(sarvamRate.outputRate).toBe(3.0)
+
+        const stepfunRate = resolveModelRate('step-3.7-flash')
+        expect(stepfunRate.inputRate).toBe(0.14)
+        expect(stepfunRate.outputRate).toBe(0.56)
+
+        const solarRate = resolveModelRate('solar-pro4')
+        expect(solarRate.inputRate).toBe(0.25)
+        expect(solarRate.outputRate).toBe(0.25)
+
+        const tinkerRate = resolveModelRate('thinkingmachines/Inkling')
+        expect(tinkerRate.inputRate).toBe(2.0)
+        expect(tinkerRate.outputRate).toBe(6.0)
+    })
+
     it('infers providers accurately from model names', () => {
         expect(inferProviderFromModel('claude-3-7-sonnet-latest')).toBe('anthropic')
         expect(inferProviderFromModel('gpt-4o')).toBe('openai')
@@ -70,6 +88,11 @@ describe('CLI In-Terminal Usage & Rates (Unit)', () => {
         expect(inferProviderFromModel('laguna-s-2.1')).toBe('poolside')
         expect(inferProviderFromModel('fugu-ultra')).toBe('sakana')
         expect(inferProviderFromModel('sakana-namazu')).toBe('sakana')
+        expect(inferProviderFromModel('sarvam-105b')).toBe('sarvam')
+        expect(inferProviderFromModel('step-3.7-flash')).toBe('stepfun')
+        expect(inferProviderFromModel('solar-pro4')).toBe('upstage')
+        expect(inferProviderFromModel('thinkingmachines/Inkling')).toBe('thinkingmachines')
+        expect(inferProviderFromModel('inkling')).toBe('thinkingmachines')
         expect(inferProviderFromModel('llama3.3:latest')).toBe('ollama')
     })
 
@@ -130,6 +153,62 @@ describe('CLI In-Terminal Usage & Rates (Unit)', () => {
         expect(text).not.toContain('>')
         expect(text).not.toContain('•')
         expect(/[\u{1F300}-\u{1F9FF}]/u.test(text)).toBe(false)
+    })
+
+    it('formats BYOK usage card for Sarvam AI with indus portal link', () => {
+        const text = formatUsageCard({
+            model: 'sarvam-105b',
+            authMethod: 'byok',
+            provider: 'sarvam',
+            isAuthenticated: true,
+        })
+
+        expect(text).toContain('Active Model: `sarvam-105b` (BYOK)')
+        expect(text).toContain('Provider: Sarvam AI')
+        expect(text).toContain('[https://indus.sarvam.ai/](https://indus.sarvam.ai/)')
+    })
+
+    it('formats BYOK usage card for StepFun with platform interface-key link', () => {
+        const text = formatUsageCard({
+            model: 'step-3.7-flash',
+            authMethod: 'byok',
+            provider: 'stepfun',
+            isAuthenticated: true,
+        })
+
+        expect(text).toContain('Active Model: `step-3.7-flash` (BYOK)')
+        expect(text).toContain('Provider: StepFun (Global)')
+        expect(text).toContain(
+            '[https://platform.stepfun.ai/interface-key](https://platform.stepfun.ai/interface-key)'
+        )
+    })
+
+    it('formats BYOK usage card for Upstage Solar with console link', () => {
+        const text = formatUsageCard({
+            model: 'solar-pro4',
+            authMethod: 'byok',
+            provider: 'upstage',
+            isAuthenticated: true,
+        })
+
+        expect(text).toContain('Active Model: `solar-pro4` (BYOK)')
+        expect(text).toContain('Provider: Upstage Solar')
+        expect(text).toContain('[https://console.upstage.ai](https://console.upstage.ai)')
+    })
+
+    it('formats BYOK usage card for Thinking Machines (Tinker) with tinker portal link', () => {
+        const text = formatUsageCard({
+            model: 'thinkingmachines/Inkling',
+            authMethod: 'byok',
+            provider: 'thinkingmachines',
+            isAuthenticated: true,
+        })
+
+        expect(text).toContain('Active Model: `thinkingmachines/Inkling` (BYOK)')
+        expect(text).toContain('Provider: Thinking Machines (Tinker)')
+        expect(text).toContain(
+            '[https://tinker.thinkingmachines.ai/](https://tinker.thinkingmachines.ai/)'
+        )
     })
 
     it('formats Ollama usage card as local and offline without bold', () => {

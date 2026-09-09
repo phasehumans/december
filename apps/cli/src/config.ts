@@ -713,6 +713,34 @@ export function resolveSwitchTarget(
                 model: getTargetModelForProvider(config, 'openai'),
             }
         }
+        if (['solar', 'upstageai'].includes(q) && config.providers['upstage']) {
+            return {
+                provider: 'upstage',
+                authPriority: 'byok',
+                model: getTargetModelForProvider(config, 'upstage'),
+            }
+        }
+        if (['tinker', 'inkling'].includes(q) && config.providers['thinkingmachines']) {
+            return {
+                provider: 'thinkingmachines',
+                authPriority: 'byok',
+                model: getTargetModelForProvider(config, 'thinkingmachines'),
+            }
+        }
+        if (['stepfunai', 'stepfun-ai'].includes(q) && config.providers['stepfun']) {
+            return {
+                provider: 'stepfun',
+                authPriority: 'byok',
+                model: getTargetModelForProvider(config, 'stepfun'),
+            }
+        }
+        if (['sarvamai', 'sarvam-ai'].includes(q) && config.providers['sarvam']) {
+            return {
+                provider: 'sarvam',
+                authPriority: 'byok',
+                model: getTargetModelForProvider(config, 'sarvam'),
+            }
+        }
     }
 
     // Next check December Cloud Wallet
