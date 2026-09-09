@@ -21,6 +21,7 @@ describe('Subscription Verification & Provider Selection (Unit & Integration)', 
         process.env = { ...originalEnv }
         process.env.HOME = testConfigDir
         process.env.USERPROFILE = testConfigDir
+        process.env.DECEMBER_CONFIG_DIR = path.join(testConfigDir, '.config', 'december')
         delete process.env.CLAUDE_CODE_OAUTH_TOKEN
         delete process.env.ANTHROPIC_AUTH_TOKEN
         delete process.env.ANTHROPIC_API_KEY

@@ -105,10 +105,15 @@ export interface DecemberConfig {
 }
 
 export function getConfigDir(): string {
-    return (
-        process.env.DECEMBER_CONFIG_DIR ||
-        path.join(process.env.HOME || os.homedir(), '.config', 'december')
-    )
+    if (process.env.DECEMBER_CONFIG_DIR) {
+        return process.env.DECEMBER_CONFIG_DIR
+    }
+    const home = process.env.HOME || os.homedir()
+    const isTestEnv = process.env.NODE_ENV === 'test' || !!process.env.VITEST
+    if (isTestEnv && home === os.homedir()) {
+        return path.join(os.tmpdir(), 'december-test-config', '.config', 'december')
+    }
+    return path.join(home, '.config', 'december')
 }
 
 export function getConfigFile(): string {

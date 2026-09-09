@@ -1,3 +1,7 @@
+import fs from 'node:fs/promises'
+import os from 'node:os'
+import path from 'node:path'
+
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 import { resolveSubscriptionToken } from '../src/auth/subscriptions/subscription-manager'
@@ -6,14 +10,31 @@ import type { SubscriptionTokenBundle } from '../src/auth/subscriptions/types'
 
 describe('Subscription Token Refresh & Resolver Daemon (Unit)', () => {
     let originalFetch: typeof globalThis.fetch
+    let originalEnv: NodeJS.ProcessEnv
+    let testConfigDir: string
 
-    beforeEach(() => {
+    beforeEach(async () => {
         originalFetch = globalThis.fetch
+        originalEnv = { ...process.env }
+        testConfigDir = path.join(
+            os.tmpdir(),
+            `december-refresh-test-${Date.now()}-${Math.random()}`
+        )
+        await fs.mkdir(testConfigDir, { recursive: true })
+        process.env.DECEMBER_CONFIG_DIR = testConfigDir
+        process.env.HOME = testConfigDir
+        process.env.USERPROFILE = testConfigDir
     })
 
-    afterEach(() => {
+    afterEach(async () => {
         globalThis.fetch = originalFetch
+        process.env = originalEnv
         vi.restoreAllMocks()
+        try {
+            await fs.rm(testConfigDir, { recursive: true, force: true })
+        } catch {
+            // Intentionally swallowed: cleanup test config dir
+        }
     })
 
     it('returns token unchanged if not expiring soon (> 5 minutes remaining)', async () => {
