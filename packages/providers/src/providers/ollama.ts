@@ -76,14 +76,17 @@ export function ollamaProvider(
                 }
             }
 
-            const oaiTools: OpenAI.Chat.ChatCompletionTool[] | undefined = tools?.map((t) => ({
-                type: 'function',
-                function: {
-                    name: t.name,
-                    description: t.description,
-                    parameters: t.inputSchema,
-                },
-            }))
+            const oaiTools: OpenAI.Chat.ChatCompletionTool[] | undefined =
+                tools && tools.length > 0
+                    ? tools.map((t) => ({
+                          type: 'function',
+                          function: {
+                              name: t.name,
+                              description: t.description,
+                              parameters: t.inputSchema,
+                          },
+                      }))
+                    : undefined
 
             const resolvedModel = resolveOllamaModel(modelOptions?.model)
             const numCtx =

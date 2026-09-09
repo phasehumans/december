@@ -190,4 +190,42 @@ describe('Anthropic Provider Adapter (Unit)', () => {
             { type: 'usage', promptTokens: 40, completionTokens: 15 },
         ])
     })
+
+    it('omits tools property when tools array is empty or undefined', async () => {
+        let capturedPayload: any = null
+
+        const mockClient: any = {
+            messages: {
+                create: async (payload: any) => {
+                    capturedPayload = payload
+                    return (async function* () {
+                        yield {
+                            type: 'content_block_start',
+                            index: 0,
+                            content_block: { type: 'text', text: 'OK' },
+                        }
+                    })()
+                },
+            },
+        }
+
+        const provider = anthropicProvider(undefined, undefined, mockClient)
+
+        // Case 1: tools is empty array []
+        const stream1 = provider.stream([{ role: 'user', content: 'hello' }], [])
+        for await (const _ of stream1) {
+            // consume
+        }
+        expect(capturedPayload).not.toBeNull()
+        expect(capturedPayload.tools).toBeUndefined()
+
+        // Case 2: tools is undefined
+        capturedPayload = null
+        const stream2 = provider.stream([{ role: 'user', content: 'hello' }], undefined)
+        for await (const _ of stream2) {
+            // consume
+        }
+        expect(capturedPayload).not.toBeNull()
+        expect(capturedPayload.tools).toBeUndefined()
+    })
 })

@@ -186,14 +186,17 @@ export function openaiProvider(
                 }
             }
 
-            const oaiTools: OpenAI.Chat.ChatCompletionTool[] | undefined = tools?.map((t) => ({
-                type: 'function',
-                function: {
-                    name: t.name,
-                    description: t.description,
-                    parameters: t.inputSchema,
-                },
-            }))
+            const oaiTools: OpenAI.Chat.ChatCompletionTool[] | undefined =
+                tools && tools.length > 0
+                    ? tools.map((t) => ({
+                          type: 'function',
+                          function: {
+                              name: t.name,
+                              description: t.description,
+                              parameters: t.inputSchema,
+                          },
+                      }))
+                    : undefined
 
             const thinkingLevel = modelOptions?.thinkingLevel
             let reasoningEffort: 'low' | 'medium' | 'high' | undefined
@@ -214,10 +217,12 @@ export function openaiProvider(
             const createParams: any = {
                 model: resolvedModel,
                 messages: oaiMessages,
-                tools: oaiTools,
                 stream: true,
                 temperature: modelOptions?.temperature,
                 max_tokens: modelOptions?.max_tokens,
+            }
+            if (oaiTools && oaiTools.length > 0) {
+                createParams.tools = oaiTools
             }
             if (supportsStreamOptions(baseURL)) {
                 createParams.stream_options = { include_usage: true }

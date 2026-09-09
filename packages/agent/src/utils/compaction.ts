@@ -166,7 +166,7 @@ Keep each section concise. You MUST preserve exact file paths, function names, l
     ]
     let summary = ''
 
-    const stream = llm.stream(compactionMessages as any, [], undefined, modelOptions, signal)
+    const stream = llm.stream(compactionMessages as any, undefined, undefined, modelOptions, signal)
     for await (const chunk of stream) {
         if (signal?.aborted) throw new Error('Aborted')
         if (chunk.type === 'text') {

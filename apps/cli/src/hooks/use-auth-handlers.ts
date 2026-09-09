@@ -526,7 +526,7 @@ export function useAuthHandlers(
                 try {
                     const stream = testProvider.stream(
                         [{ role: 'user', content: 'Hi' }],
-                        [],
+                        undefined,
                         undefined,
                         {
                             model: testModel,

@@ -355,4 +355,56 @@ describe('OpenAI Provider Adapter (Unit)', () => {
         expect(capturedPayloads[1].stream_options).toBeUndefined()
         expect(chunks).toEqual([{ type: 'text', text: 'Success after retry' }])
     })
+
+    it('omits tools property when tools array is empty or undefined', async () => {
+        let capturedPayload: any = null
+
+        const mockClient: any = {
+            chat: {
+                completions: {
+                    create: async (payload: any) => {
+                        capturedPayload = payload
+                        return (async function* () {
+                            yield { choices: [{ delta: { content: 'OK' } }] }
+                        })()
+                    },
+                },
+            },
+        }
+
+        const provider = openaiProvider(undefined, 'test-key', undefined, mockClient)
+
+        // Case 1: tools is empty array []
+        const stream1 = provider.stream([{ role: 'user', content: 'hello' }], [])
+        for await (const _ of stream1) {
+            // consume
+        }
+        expect(capturedPayload).not.toBeNull()
+        expect(capturedPayload.tools).toBeUndefined()
+        expect('tools' in capturedPayload).toBe(false)
+
+        // Case 2: tools is undefined
+        capturedPayload = null
+        const stream2 = provider.stream([{ role: 'user', content: 'hello' }], undefined)
+        for await (const _ of stream2) {
+            // consume
+        }
+        expect(capturedPayload).not.toBeNull()
+        expect(capturedPayload.tools).toBeUndefined()
+        expect('tools' in capturedPayload).toBe(false)
+
+        // Case 3: tools is non-empty array
+        capturedPayload = null
+        const stream3 = provider.stream(
+            [{ role: 'user', content: 'hello' }],
+            [{ name: 'test_tool', description: 'test', inputSchema: {} }]
+        )
+        for await (const _ of stream3) {
+            // consume
+        }
+        expect(capturedPayload).not.toBeNull()
+        expect(capturedPayload.tools).toBeDefined()
+        expect(capturedPayload.tools.length).toBe(1)
+        expect(capturedPayload.tools[0].function.name).toBe('test_tool')
+    })
 })

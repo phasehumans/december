@@ -159,17 +159,18 @@ export function antigravityProvider(
                 }
             }
 
-            const antigravityTools = tools
-                ? [
-                      {
-                          functionDeclarations: tools.map((t) => ({
-                              name: t.name,
-                              description: t.description,
-                              parameters: sanitizeSchemaForGemini(t.inputSchema),
-                          })),
-                      },
-                  ]
-                : undefined
+            const antigravityTools =
+                tools && tools.length > 0
+                    ? [
+                          {
+                              functionDeclarations: tools.map((t) => ({
+                                  name: t.name,
+                                  description: t.description,
+                                  parameters: sanitizeSchemaForGemini(t.inputSchema),
+                              })),
+                          },
+                      ]
+                    : undefined
 
             const thinkingLevel = modelOptions?.thinkingLevel
             let thinkingConfig: { thinkingBudget?: number; includeThoughts?: boolean } | undefined

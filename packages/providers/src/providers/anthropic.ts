@@ -165,17 +165,20 @@ export function anthropicProvider(
             }
 
             // Tier 2 Prompt Caching: Mark last tool definition
-            const antTools: Anthropic.Tool[] | undefined = tools?.map((t, idx) => {
-                const toolDef: Anthropic.Tool = {
-                    name: t.name,
-                    description: t.description,
-                    input_schema: t.inputSchema,
-                }
-                if (tools && idx === tools.length - 1) {
-                    ;(toolDef as any).cache_control = { type: 'ephemeral' }
-                }
-                return toolDef
-            })
+            const antTools: Anthropic.Tool[] | undefined =
+                tools && tools.length > 0
+                    ? tools.map((t, idx) => {
+                          const toolDef: Anthropic.Tool = {
+                              name: t.name,
+                              description: t.description,
+                              input_schema: t.inputSchema,
+                          }
+                          if (idx === tools.length - 1) {
+                              ;(toolDef as any).cache_control = { type: 'ephemeral' }
+                          }
+                          return toolDef
+                      })
+                    : undefined
 
             // Tier 1 Prompt Caching: Mark system prompt
             const formattedSystem: Anthropic.TextBlockParam[] | undefined = systemPrompt
@@ -213,7 +216,7 @@ export function anthropicProvider(
                     model: resolveAnthropicModel(modelOptions?.model),
                     messages: antMessages,
                     system: formattedSystem as any,
-                    tools: antTools,
+                    tools: antTools && antTools.length > 0 ? antTools : undefined,
                     stream: true,
                     max_tokens: maxTokens,
                     temperature: thinking ? undefined : modelOptions?.temperature,
