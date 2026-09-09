@@ -329,7 +329,7 @@ export function McpManagerMenu({
                                 selectedScope === 'global' ? THEME.colors.brand : THEME.colors.dim
                             }
                         >
-                            [Global: ~/.config/december/mcp.json]
+                            [Global: ~/.december/mcp.json]
                         </Text>
                     </Box>
                 </Box>
@@ -435,8 +435,7 @@ export function McpManagerMenu({
             {serverInfos.length === 0 ? (
                 <Box flexDirection="column" marginY={1}>
                     <Text color={THEME.colors.muted}>
-                        No MCP servers configured in .december/mcp.json or
-                        ~/.config/december/mcp.json.
+                        No MCP servers configured in .december/mcp.json or ~/.december/mcp.json.
                     </Text>
                     <Box marginTop={1}>
                         <Text color={THEME.colors.brand}>

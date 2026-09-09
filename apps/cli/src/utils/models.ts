@@ -33,6 +33,9 @@ function getModelsCacheFile(): string {
 export function initDiskCacheSync(): void {
     if (diskCacheLoaded) return
     diskCacheLoaded = true
+    const isTestEnv =
+        process.env.NODE_ENV === 'test' || !!process.env.BUN_TEST || !!process.env.VITEST
+    if (isTestEnv && !process.env.DECEMBER_TEST_LOAD_CACHE) return
     try {
         const cacheFile = getModelsCacheFile()
         if (existsSync(cacheFile)) {

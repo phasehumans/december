@@ -130,12 +130,19 @@ if [ "$INSTALL_DIR" != "$HOME/.local/bin" ] && [ -e "$HOME/.local/bin/december" 
     log_tree "Cleaned up legacy binary at $HOME/.local/bin/december to avoid PATH conflicts."
 fi
 
-CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/december"
+CONFIG_DIR="${DECEMBER_CONFIG_DIR:-$HOME/.december}"
+LEGACY_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/december"
 CONFIG_FILE="$CONFIG_DIR/config.json"
 mkdir -p "$CONFIG_DIR"
 
+if [ ! -f "$CONFIG_FILE" ] && [ -f "$LEGACY_CONFIG_DIR/config.json" ]; then
+    cp "$LEGACY_CONFIG_DIR/config.json" "$CONFIG_FILE"
+    chmod 600 "$CONFIG_FILE" 2>/dev/null || true
+fi
+
 if [ ! -f "$CONFIG_FILE" ]; then
     echo '{"installMethod":"curl"}' > "$CONFIG_FILE"
+    chmod 600 "$CONFIG_FILE" 2>/dev/null || true
 else
     if grep -q '"installMethod"' "$CONFIG_FILE"; then
         sed -i 's/"installMethod"[[:space:]]*:[[:space:]]*"[^"]*"/"installMethod": "curl"/' "$CONFIG_FILE" 2>/dev/null || true

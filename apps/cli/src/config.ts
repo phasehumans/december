@@ -179,6 +179,15 @@ export async function loadConfig(): Promise<DecemberConfig> {
             const legacyConfigFile = getLegacyConfigFile()
             if (legacyConfigFile !== configFile && fsSync.existsSync(legacyConfigFile)) {
                 data = await fs.readFile(legacyConfigFile, 'utf-8')
+                try {
+                    await fs.mkdir(path.dirname(configFile), { recursive: true })
+                    await fs.writeFile(configFile, data, 'utf-8')
+                    await fs.chmod(configFile, 0o600).catch(() => {
+                        // Intentionally swallowed: chmod failure on non-POSIX systems
+                    })
+                } catch {
+                    // Intentionally swallowed: auto-migration to canonical path is best-effort
+                }
             } else {
                 throw readErr
             }

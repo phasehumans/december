@@ -93,6 +93,12 @@ describe('Global Machine Root Configuration & Directory Resolution (Unit)', () =
         const loaded = await loadConfig()
         expect(loaded.activeProvider).toBe('anthropic')
         expect(loaded.providers?.anthropic).toBe('sk-ant-test')
+
+        // Verify it auto-migrated into canonical ~/.december/config.json
+        const canonicalContent = await fs.readFile(path.join(canonicalDir, 'config.json'), 'utf-8')
+        const parsedCanonical = JSON.parse(canonicalContent)
+        expect(parsedCanonical.activeProvider).toBe('anthropic')
+        expect(parsedCanonical.providers?.anthropic).toBe('sk-ant-test')
     })
 
     it('saveConfig writes to canonical ~/.december/config.json and preserves permissions', async () => {

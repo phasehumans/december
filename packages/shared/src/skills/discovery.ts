@@ -29,13 +29,13 @@ export class SkillDiscoveryEngine {
         // 1. Scan Builtin Skills (Lowest Precedence)
         this.scanBuiltinSkills(skillMap)
 
-        // 2. Scan Global Declared Skills (~/.config/december/skills.json)
+        // 2. Scan Global Declared Skills (~/.december/skills.json, ~/.config/december/skills.json)
         this.scanGlobalDeclaredSkills(skillMap)
 
         // 3. Scan Global Plugins
         this.scanGlobalPluginSkills(skillMap)
 
-        // 4. Scan Global User Skills (~/.config/december/skills, ~/.gemini/config/skills)
+        // 4. Scan Global User Skills (~/.december/skills, ~/.config/december/skills, ~/.gemini/config/skills)
         this.scanGlobalUserSkills(skillMap)
 
         // 5. Scan Workspace Plugins

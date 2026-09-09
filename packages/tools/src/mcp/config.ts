@@ -78,7 +78,7 @@ export async function loadMcpConfig(options: LoadMcpConfigOptions = {}): Promise
     let globalConfig: McpConfigFile = { mcpServers: {} }
     let workspaceConfig: McpConfigFile = { mcpServers: {} }
 
-    // 1. Read global mcp.json (try ~/.config/december/mcp.json then ~/.december/mcp.json)
+    // 1. Read global mcp.json (try ~/.december/mcp.json then ~/.config/december/mcp.json)
     try {
         const globalPath = path.join(globalConfigDir, 'mcp.json')
         const raw = await fs.readFile(globalPath, 'utf8')
