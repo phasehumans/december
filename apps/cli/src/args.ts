@@ -70,6 +70,7 @@ export function parseCliArgs(args: string[]): ParsedCliArgs {
             'link',
             'key',
             'resume',
+            'docs',
         ]
         let command: string | undefined
         let prompt: string | undefined
@@ -136,6 +137,7 @@ Usage:
   december init                     Initialize local .december configuration
   december update                   Update December CLI to the latest version
   december doctor [--fix]           Inspect installations, health, and resolve PATH collisions
+  december docs [section]           Open documentation in your browser
 
 Options:
   -h, --help                        Show CLI help and exit

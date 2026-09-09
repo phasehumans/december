@@ -222,6 +222,7 @@ const Sidebar: React.FC<
         path.startsWith('/integrations') ||
         path.startsWith('/connections') ||
         path.startsWith('/connectors')
+    const isDocsActive = path.startsWith('/docs')
 
     let activeIndex = 0
     if (isSearchOpen) {
@@ -229,6 +230,7 @@ const Sidebar: React.FC<
     } else if (!isHomeActive) {
         if (isProjectsActive) activeIndex = 2
         else if (isSettingsActive) activeIndex = 3
+        else if (isDocsActive) activeIndex = 4
     } else {
         activeIndex = 0
     }
@@ -275,6 +277,12 @@ const Sidebar: React.FC<
             label: 'Settings',
             icon: <Icons.Settings className="w-[17px] h-[17px]" />,
             onClick: onProfile,
+        },
+        {
+            id: 'docs',
+            label: 'Documentation',
+            icon: <Icons.DocsBook className="w-[17px] h-[17px]" />,
+            onClick: () => navigate('/docs'),
         },
     ]
 

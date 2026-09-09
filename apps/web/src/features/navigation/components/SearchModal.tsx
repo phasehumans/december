@@ -103,6 +103,18 @@ export const SearchModal: React.FC<SearchModalProps> = ({
                     navigate('/activate')
                 },
             },
+            {
+                id: 'go-docs',
+                label: 'Documentation',
+                subtitle: 'Guides, architecture, and CLI reference',
+                category: 'Navigation',
+                icon: <Icons.DocsBook className="w-4 h-4 text-neutral-400" />,
+                keywords: ['docs', 'help', 'guide', 'manual', 'reference', 'cli', 'architecture'],
+                action: () => {
+                    onClose()
+                    navigate('/docs')
+                },
+            },
 
             // Settings Subpages
             {

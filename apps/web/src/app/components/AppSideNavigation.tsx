@@ -41,6 +41,7 @@ export const AppSideNavigation: React.FC<AppSideNavigationProps> = ({
     const showFloatingMobileToggle =
         currentView !== 'sessions' &&
         currentView !== 'profile' &&
+        currentView !== 'docs' &&
         currentView !== 'search' &&
         !isWorkspaceScreen
 

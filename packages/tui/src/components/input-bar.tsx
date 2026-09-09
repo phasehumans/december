@@ -285,6 +285,7 @@ export const InputBar = React.memo(function InputBar({
                 '/copy',
                 '/handoff',
                 '/init',
+                '/docs',
             ]
 
             if (forwardCommands.includes(command.value) || !command.action) {

@@ -24,6 +24,9 @@ const SearchSpaceScreen = React.lazy(() =>
 const SessionList = React.lazy(() =>
     import('@/features/sessions/components/SessionList').then((m) => ({ default: m.SessionList }))
 )
+const DocsView = React.lazy(() =>
+    import('@/features/docs/components/DocsView').then((m) => ({ default: m.DocsView }))
+)
 
 interface AppContentViewProps {
     view: ViewState
@@ -109,6 +112,12 @@ export const AppContentView: React.FC<AppContentViewProps> = ({
                 {view === 'search' && (
                     <AnimatedPage pageKey="search">
                         <SearchSpaceScreen onBack={onNewProject} />
+                    </AnimatedPage>
+                )}
+
+                {view === 'docs' && (
+                    <AnimatedPage pageKey="docs">
+                        <DocsView onBack={onNewProject} />
                     </AnimatedPage>
                 )}
 

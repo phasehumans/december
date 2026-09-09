@@ -1330,6 +1330,32 @@ ${decStatus}
                 return
             }
 
+            const trimmedCmd = text.trim().toLowerCase()
+            if (trimmedCmd === '/docs' || trimmedCmd.startsWith('/docs ')) {
+                const parts = text.trim().split(/\s+/)
+                const section = parts[1]
+                const { resolveDocsSectionPath } = await import('../commands')
+                const sectionPath = resolveDocsSectionPath(section)
+                const baseUrl = (
+                    process.env.DECEMBER_DOCS_URL ||
+                    process.env.WEB_URL ||
+                    'https://trydecember.com'
+                ).replace(/\/$/, '')
+                const targetUrl = `${baseUrl}/docs${sectionPath}`
+
+                addToast('Opening documentation in your browser...', 'info')
+
+                try {
+                    const { openUrl } = await import('../utils/open')
+                    await openUrl(targetUrl)
+                    addToast('Opened documentation in browser.', 'success')
+                } catch {
+                    // Intentionally swallowed: fallback URL displayed in toast
+                    addToast(`Docs: ${targetUrl}`, 'info')
+                }
+                return
+            }
+
             if (text.trim() === '/handoff') {
                 const userMsg: Message = { id: getNextMsgId(), role: 'user', text: '/handoff' }
                 const config = await loadConfig()
@@ -1922,6 +1948,7 @@ ${decStatus}
                         'clear',
                         'context',
                         'copy',
+                        'docs',
                         'exit',
                         'feedback',
                         'fork',

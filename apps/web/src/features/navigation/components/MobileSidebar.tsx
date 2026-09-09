@@ -1,7 +1,7 @@
 import { History } from 'lucide-react'
 import React from 'react'
 import { createPortal } from 'react-dom'
-import { useLocation } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 
 import { SearchModal } from './SearchModal'
 import { SidebarFooter } from './SidebarFooter'
@@ -51,6 +51,7 @@ export const MobileSidebar: React.FC<
     const { data: sessionsData, isLoading: isSessionsLoading } = useSessions()
     const sessions = React.useMemo(() => sessionsData?.sessions || [], [sessionsData?.sessions])
     const location = useLocation()
+    const navigate = useNavigate()
     const path = location.pathname
 
     const isHomeActive = path === '/'
@@ -64,6 +65,7 @@ export const MobileSidebar: React.FC<
         path.startsWith('/integrations') ||
         path.startsWith('/connections') ||
         path.startsWith('/connectors')
+    const isDocsActive = path.startsWith('/docs')
 
     const [isSearchOpen, setIsSearchOpen] = React.useState(false)
     const [isRecentMenuOpen, setIsRecentMenuOpen] = React.useState(false)
@@ -82,6 +84,7 @@ export const MobileSidebar: React.FC<
     } else if (!isHomeActive) {
         if (isProjectsActive) activeIndex = 2
         else if (isSettingsActive) activeIndex = 3
+        else if (isDocsActive) activeIndex = 4
     } else {
         activeIndex = 0
     }
@@ -134,6 +137,15 @@ export const MobileSidebar: React.FC<
             icon: <Icons.Settings className="w-[18px] h-[18px]" />,
             onClick: () => {
                 onProfile()
+                onClose()
+            },
+        },
+        {
+            id: 'docs',
+            label: 'Documentation',
+            icon: <Icons.DocsBook className="w-[18px] h-[18px]" />,
+            onClick: () => {
+                navigate('/docs')
                 onClose()
             },
         },

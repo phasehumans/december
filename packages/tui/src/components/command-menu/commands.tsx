@@ -61,6 +61,14 @@ export const COMMANDS: Command[] = [
         },
     },
     {
+        name: 'docs',
+        description: 'Open December documentation in your browser',
+        value: '/docs',
+        action: (ctx) => {
+            // forwarded to chat screen
+        },
+    },
+    {
         name: 'exit',
         description: 'Exit the CLI',
         value: '/exit',

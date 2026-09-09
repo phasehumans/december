@@ -140,6 +140,13 @@ async function main() {
         process.exit(0)
     }
 
+    if (parsedArgs.command === 'docs') {
+        const section = parsedArgs.positionals[1]
+        const { handleDocsCommand } = await import('./commands')
+        await handleDocsCommand({ section })
+        process.exit(0)
+    }
+
     // Path 4: Headless Task Execution (Load agent harness & tools, skip Ink/React/TUI)
     if (parsedArgs.prompt) {
         const [

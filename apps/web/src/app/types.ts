@@ -1,4 +1,4 @@
-export type ViewState = 'chat' | 'search' | 'sessions' | 'profile' | 'project'
+export type ViewState = 'chat' | 'search' | 'sessions' | 'profile' | 'project' | 'docs'
 
 export type ProfileTab =
     | 'Account'
@@ -54,6 +54,7 @@ const simpleViewToPath: Record<string, string> = {
     chat: '/',
     search: '/search',
     sessions: '/sessions',
+    docs: '/docs',
 }
 
 const simplePathToView: Record<string, ViewState> = Object.fromEntries(
@@ -95,6 +96,11 @@ export const getViewForPath = (pathname: string): ViewState => {
         pathname === '/terms'
     )
         return 'profile'
+
+    // /docs or /docs/* → docs
+    if (pathname === '/docs' || pathname.startsWith('/docs/')) {
+        return 'docs'
+    }
 
     // /sessions/*, /session/* or /project/* → project (workspace screen)
     if (
