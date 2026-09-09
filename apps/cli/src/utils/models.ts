@@ -462,6 +462,15 @@ export const getCuratedProviderModels = (provider: string) => {
                 { label: 'Step 3.5 Flash', value: 'step-3.5-flash' },
                 { label: 'Step 1 32K', value: 'step-1-32k' },
             ]
+        case 'upstage':
+        case 'upstageai':
+        case 'solar':
+            return [
+                { label: 'Solar Pro 4', value: 'solar-pro4' },
+                { label: 'Solar Pro 3', value: 'solar-pro3' },
+                { label: 'Solar Pro 2', value: 'solar-pro2' },
+                { label: 'Solar Mini', value: 'solar-mini' },
+            ]
         case 'dashscope':
         case 'qwen':
             return [
@@ -868,6 +877,11 @@ export async function fetchLiveProviderModels(
                 case 'stepfun-ai':
                     endpoint = 'https://api.stepfun.ai/v1/models'
                     break
+                case 'upstage':
+                case 'upstageai':
+                case 'solar':
+                    endpoint = 'https://api.upstage.ai/v1/solar/models'
+                    break
                 case 'december':
                 case 'december_proxy': {
                     const serverUrl = process.env.SERVER_URL || 'https://api.trydecember.com'
@@ -1020,6 +1034,7 @@ export const getModelLabel = (value: string) => {
         'sakana',
         'sarvam',
         'stepfun',
+        'upstage',
         'december_proxy',
     ]
     for (const p of allProviders) {

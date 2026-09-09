@@ -24,6 +24,7 @@ import { SarvamProvider } from '../../src/providers/sarvam'
 import { SiliconFlowProvider } from '../../src/providers/siliconflow'
 import { StepFunProvider } from '../../src/providers/stepfun'
 import { TogetherProvider } from '../../src/providers/together'
+import { UpstageProvider } from '../../src/providers/upstage'
 import { XAIProvider } from '../../src/providers/xai'
 import { ZAIProvider } from '../../src/providers/zai'
 
@@ -156,5 +157,10 @@ describe('OpenAI-compatible Subproviders (Unit)', () => {
     test('instantiates StepFunProvider with correct ID', () => {
         const provider = new StepFunProvider('dummy-key')
         expect(provider.id).toBe('stepfun')
+    })
+
+    test('instantiates UpstageProvider with correct ID', () => {
+        const provider = new UpstageProvider('dummy-key')
+        expect(provider.id).toBe('upstage')
     })
 })

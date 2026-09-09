@@ -120,6 +120,12 @@ export const OFFICIAL_MODEL_RATES: Record<string, ModelRate> = {
     'step-3.5-flash': { name: 'step-3.5-flash', inputRate: 0.1, outputRate: 0.4 },
     'step-1-32k': { name: 'step-1-32k', inputRate: 0.2, outputRate: 0.8 },
 
+    // Upstage Solar
+    'solar-pro4': { name: 'solar-pro4', inputRate: 0.25, outputRate: 0.25 },
+    'solar-pro3': { name: 'solar-pro3', inputRate: 0.25, outputRate: 0.25 },
+    'solar-pro2': { name: 'solar-pro2', inputRate: 0.25, outputRate: 0.25 },
+    'solar-mini': { name: 'solar-mini', inputRate: 0.15, outputRate: 0.15 },
+
     // Ollama / Local
     ollama: { name: 'ollama', inputRate: 0.0, outputRate: 0.0 },
 }

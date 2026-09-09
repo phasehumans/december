@@ -145,6 +145,26 @@ describe('instantiateProvider', () => {
         )
     })
 
+    it('instantiates upstage provider via openai compat', () => {
+        instantiateProvider('upstage', 'key-123')
+        expect(providers.openaiProvider).toHaveBeenCalledWith(
+            'https://api.upstage.ai/v1/solar',
+            'key-123'
+        )
+
+        instantiateProvider('upstageai', 'key-123')
+        expect(providers.openaiProvider).toHaveBeenCalledWith(
+            'https://api.upstage.ai/v1/solar',
+            'key-123'
+        )
+
+        instantiateProvider('solar', 'key-123')
+        expect(providers.openaiProvider).toHaveBeenCalledWith(
+            'https://api.upstage.ai/v1/solar',
+            'key-123'
+        )
+    })
+
     it('instantiates zai provider via openai compat', () => {
         instantiateProvider('zai', 'key-123')
         expect(providers.openaiProvider).toHaveBeenCalledWith(

@@ -59,6 +59,9 @@ export interface ProviderConfig {
         | 'stepfun'
         | 'stepfunai'
         | 'stepfun-ai'
+        | 'upstage'
+        | 'upstageai'
+        | 'solar'
         | 'december_proxy'
         | string
     apiKey: string
@@ -447,6 +450,10 @@ export function formatProviderName(provider: string): string {
         case 'stepfunai':
         case 'stepfun-ai':
             return 'StepFun (Global)'
+        case 'upstage':
+        case 'upstageai':
+        case 'solar':
+            return 'Upstage Solar'
         case 'claude':
             return 'Claude'
         case 'copilot':

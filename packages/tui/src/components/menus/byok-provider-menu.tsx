@@ -40,6 +40,7 @@ export const PROVIDER_MENU_ITEMS = [
     { label: 'SiliconFlow', value: 'siliconflow' },
     { label: 'StepFun (Global)', value: 'stepfun' },
     { label: 'Together AI', value: 'together' },
+    { label: 'Upstage Solar', value: 'upstage' },
     { label: 'xAI', value: 'xai' },
     { label: 'ZAI', value: 'zai' },
 ]

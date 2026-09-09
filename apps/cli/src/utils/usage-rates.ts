@@ -139,6 +139,12 @@ export const OFFICIAL_MODEL_RATES: Record<string, ModelRate> = {
     'step-3.5-flash': { name: 'step-3.5-flash', inputRate: 0.1, outputRate: 0.4 },
     'step-1-32k': { name: 'step-1-32k', inputRate: 0.56, outputRate: 2.24 },
 
+    // Upstage Solar
+    'solar-pro4': { name: 'solar-pro4', inputRate: 0.25, outputRate: 0.25 },
+    'solar-pro3': { name: 'solar-pro3', inputRate: 0.25, outputRate: 0.25 },
+    'solar-pro2': { name: 'solar-pro2', inputRate: 0.25, outputRate: 0.25 },
+    'solar-mini': { name: 'solar-mini', inputRate: 0.15, outputRate: 0.15 },
+
     // Ollama (Local)
     ollama: { name: 'ollama', inputRate: 0.0, outputRate: 0.0 },
 }
@@ -188,6 +194,9 @@ export const PROVIDER_BILLING_LINKS: Record<string, string> = {
     stepfun: 'https://platform.stepfun.ai/interface-key',
     stepfunai: 'https://platform.stepfun.ai/interface-key',
     'stepfun-ai': 'https://platform.stepfun.ai/interface-key',
+    upstage: 'https://console.upstage.ai',
+    upstageai: 'https://console.upstage.ai',
+    solar: 'https://console.upstage.ai',
     ollama: 'http://localhost:11434',
 }
 
@@ -236,6 +245,9 @@ export const PROVIDER_DISPLAY_NAMES: Record<string, string> = {
     stepfun: 'StepFun (Global)',
     stepfunai: 'StepFun (Global)',
     'stepfun-ai': 'StepFun (Global)',
+    upstage: 'Upstage Solar',
+    upstageai: 'Upstage Solar',
+    solar: 'Upstage Solar',
     ollama: 'Ollama (Local)',
 }
 
@@ -249,6 +261,7 @@ export function inferProviderFromModel(modelName: string): string {
         return 'sakana'
     if (lower.startsWith('sarvam')) return 'sarvam'
     if (lower.startsWith('step-') || lower.startsWith('stepfun')) return 'stepfun'
+    if (lower.startsWith('solar')) return 'upstage'
     if (lower.startsWith('claude') || lower.startsWith('anthropic/')) return 'anthropic'
     if (
         lower.startsWith('gpt') ||

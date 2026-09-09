@@ -214,6 +214,13 @@ export function instantiateProvider(
         case 'stepfunai':
         case 'stepfun-ai':
             return withProviderId(openaiProvider('https://api.stepfun.ai/v1', apiKey), 'stepfun')
+        case 'upstage':
+        case 'upstageai':
+        case 'solar':
+            return withProviderId(
+                openaiProvider('https://api.upstage.ai/v1/solar', apiKey),
+                'upstage'
+            )
         case 'dashscope':
         case 'qwen':
             return withProviderId(

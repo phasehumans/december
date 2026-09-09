@@ -134,6 +134,10 @@ export const MODEL_CONTEXT_WINDOWS: Record<string, number> = {
     'sakana/fugu': 1000000,
     'sakana/fugu-ultra': 1000000,
     'sakana/sakana-namazu': 262144,
+    'solar-pro4': 524288,
+    'solar-pro3': 524288,
+    'solar-pro2': 524288,
+    'solar-mini': 65536,
 }
 
 export function getModelContextWindow(value: string): number {
