@@ -11,6 +11,7 @@ export interface ParsedCliArgs {
     force: boolean
     isGlobal: boolean
     isLocal: boolean
+    resume: boolean
     model?: string
     provider?: string
     sessionId?: string
@@ -32,6 +33,7 @@ export function parseCliArgs(args: string[]): ParsedCliArgs {
                 force: { type: 'boolean', short: 'f' },
                 global: { type: 'boolean', short: 'g' },
                 local: { type: 'boolean', short: 'l' },
+                resume: { type: 'boolean', short: 'r' },
                 model: { type: 'string', short: 'm' },
                 provider: { type: 'string', short: 'p' },
                 'session-id': { type: 'string' },
@@ -50,6 +52,7 @@ export function parseCliArgs(args: string[]): ParsedCliArgs {
         const force = Boolean(values.force)
         const isGlobal = Boolean(values.global)
         const isLocal = Boolean(values.local)
+        const isResume = Boolean(values.resume)
         const model = values.model as string | undefined
         const provider = values.provider as string | undefined
         const sessionId = values['session-id'] as string | undefined
@@ -66,6 +69,7 @@ export function parseCliArgs(args: string[]): ParsedCliArgs {
             'auth',
             'link',
             'key',
+            'resume',
         ]
         let command: string | undefined
         let prompt: string | undefined
@@ -90,6 +94,7 @@ export function parseCliArgs(args: string[]): ParsedCliArgs {
             force,
             isGlobal,
             isLocal,
+            resume: isResume || command === 'resume',
             model,
             provider,
             sessionId,
@@ -108,6 +113,7 @@ export function parseCliArgs(args: string[]): ParsedCliArgs {
             force: false,
             isGlobal: false,
             isLocal: false,
+            resume: false,
             positionals: [],
         }
     }
@@ -120,6 +126,7 @@ a coding agent that lives in your terminal.
 Usage:
   december                          Launch interactive TUI session
   december "<prompt>"               Execute headless agent task
+  december resume [session-id]      Resume the most recent session or specified session ID
   december auth [status|import]     Inspect active subscriptions and authentication status
   december link <provider>          Link AI subscription (copilot, claude, chatgpt, gemini)
   december key <provider> [key]     Save BYOK API key (openai, anthropic, openrouter, etc.)
@@ -133,6 +140,7 @@ Usage:
 Options:
   -h, --help                        Show CLI help and exit
   -v, --version                     Show CLI version and exit
+  -r, --resume                      Resume the most recent session
   -y, --yes                         Auto-approve tool permissions (non-interactive mode)
   --json                            Output structured JSON events
   --fix                             Automatically fix detected PATH collisions and stale links

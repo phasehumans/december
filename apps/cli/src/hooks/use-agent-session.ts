@@ -34,7 +34,11 @@ import { getProjectContext } from '../utils/project-context'
 import { instantiateProvider } from '../utils/provider-factory'
 import { formatUsageCard } from '../utils/usage-rates'
 
-import { getNextMsgId, processAgentStream } from './use-agent-runner'
+import {
+    getNextMsgId,
+    processAgentStream,
+    convertAgentMessagesToTuiMessages,
+} from './use-agent-runner'
 import { useAuthHandlers } from './use-auth-handlers'
 import { useSettingsHandlers } from './use-settings-handlers'
 
@@ -230,6 +234,26 @@ export function useAgentSession({
             })
         }
     }, [agent, setAuthMode, setPendingQuestions, setPendingToolCall])
+
+    useEffect(() => {
+        if (!agent) return
+        const hydrateInitialSession = async () => {
+            try {
+                await agent.loadContext()
+            } catch {
+                // Intentionally swallowed: ignore initial context loading errors
+            }
+            const nonSystem = (agent.messages || []).filter((m: any) => m.role !== 'system')
+            if (nonSystem.length > 0) {
+                const resumed = convertAgentMessagesToTuiMessages(agent.messages)
+                if (resumed.length > 0) {
+                    setStaticMessages([{ id: 'header', role: 'header' }, ...resumed])
+                    setStaticKey((k: number) => k + 1)
+                }
+            }
+        }
+        hydrateInitialSession()
+    }, [agent, setStaticMessages, setStaticKey])
 
     const activeShellAbortRef = useRef<(() => void) | null>(null)
 

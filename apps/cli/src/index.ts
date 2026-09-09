@@ -183,7 +183,14 @@ async function main() {
         }
 
         const sessionRepository = new FileSessionRepository()
-        const sessionId = parsedArgs.sessionId || `session-${Date.now()}`
+        let targetSessionId = parsedArgs.sessionId
+        if (parsedArgs.resume && !targetSessionId) {
+            const sessions = await sessionRepository.listSessions()
+            if (sessions.length > 0) {
+                targetSessionId = sessions[0].id
+            }
+        }
+        const sessionId = targetSessionId || `session-${Date.now()}`
         const config = await loadConfig()
         const activeProvider = providerConfig?.provider || config.activeProvider || 'gemini'
         const initialModel =
@@ -302,7 +309,19 @@ async function main() {
 
     const isAuthenticated = !!providerConfig
     const sessionRepository = new FileSessionRepository()
-    const sessionId = parsedArgs.sessionId || `session-${Date.now()}`
+    let targetSessionId = parsedArgs.sessionId
+    if (parsedArgs.command === 'resume' || parsedArgs.resume) {
+        if (!targetSessionId && parsedArgs.positionals[1]) {
+            targetSessionId = parsedArgs.positionals[1]
+        }
+        if (!targetSessionId) {
+            const sessions = await sessionRepository.listSessions()
+            if (sessions.length > 0) {
+                targetSessionId = sessions[0].id
+            }
+        }
+    }
+    const sessionId = targetSessionId || `session-${Date.now()}`
     const config = await loadConfig()
     const activeProvider = providerConfig?.provider || config.activeProvider || 'gemini'
     const initialModel =

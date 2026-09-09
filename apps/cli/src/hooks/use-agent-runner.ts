@@ -1,11 +1,84 @@
 import { parseError, ErrorParseContext } from '../utils/error-parser'
 import { getToolSummary } from '../utils/formatters'
 
-import type { Message } from '@december/tui'
+import type { Message, MessageBlock } from '@december/tui'
 
 let msgIdCounter = 0
 export function getNextMsgId(): string {
     return `msg-${Date.now()}-${Math.random().toString(36).slice(2, 7)}-${++msgIdCounter}`
+}
+
+export function convertAgentMessagesToTuiMessages(messages: any[]): Message[] {
+    const resumedMessages: Message[] = []
+    for (const msg of messages) {
+        if (msg.role === 'user') {
+            let userText = msg.displayText || msg.content
+            if (!msg.displayText && userText.startsWith('[Skill Invocation: /')) {
+                const match = userText.match(/^\[Skill Invocation: (\/[^\]]+)\]/)
+                if (match) {
+                    userText = match[1]
+                }
+            }
+            resumedMessages.push({ id: getNextMsgId(), role: 'user', text: userText })
+        } else if (msg.role === 'assistant') {
+            const blocks: MessageBlock[] = []
+
+            if (msg.thinking) {
+                blocks.push({ type: 'thinking', content: msg.thinking })
+            }
+
+            if (msg.toolCalls && msg.toolCalls.length > 0) {
+                for (const tc of msg.toolCalls) {
+                    const toolMsg = messages.find(
+                        (m: any) => m.role === 'tool' && m.toolCallId === tc.id
+                    )
+                    const inputStr =
+                        typeof tc.input === 'string' ? tc.input : JSON.stringify(tc.input)
+                    const hasError =
+                        toolMsg &&
+                        (toolMsg.content.startsWith('Error executing tool:') ||
+                            toolMsg.content.startsWith('Tool execution blocked:') ||
+                            (toolMsg.content.startsWith('Tool ') &&
+                                toolMsg.content.endsWith(' not found.')))
+                    blocks.push({
+                        type: 'command',
+                        toolCallId: tc.id,
+                        toolName: tc.name,
+                        toolInput: inputStr,
+                        command: getToolSummary(tc.name, inputStr),
+                        status: hasError ? 'error' : 'success',
+                        output: toolMsg?.content || '',
+                    })
+                }
+            }
+
+            if (msg.errorMessage) {
+                const parsed = parseError({ message: msg.errorMessage })
+                blocks.push({
+                    type: 'error',
+                    error: parsed.message,
+                    cause: parsed.cause,
+                    hint: parsed.hint,
+                })
+            } else if (msg.content) {
+                blocks.push({ type: 'text', content: msg.content })
+            }
+
+            if (blocks.length > 0) {
+                const lastResumed = resumedMessages[resumedMessages.length - 1]
+                if (lastResumed && lastResumed.role === 'assistant' && lastResumed.blocks) {
+                    lastResumed.blocks.push(...blocks)
+                } else {
+                    resumedMessages.push({
+                        id: getNextMsgId(),
+                        role: 'assistant',
+                        blocks,
+                    })
+                }
+            }
+        }
+    }
+    return resumedMessages
 }
 
 const isStatusMessage = (content: string) =>

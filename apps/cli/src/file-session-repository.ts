@@ -109,11 +109,24 @@ export class FileSessionRepository implements SessionRepository {
 
             const branch: AgentMessage[] = []
             let current: AgentMessage | undefined = latestMsg
+            let reachedRoot = false
             while (current) {
                 branch.unshift(current)
-                if (!current.parentId) break
+                if (!current.parentId) {
+                    reachedRoot = true
+                    break
+                }
                 current = msgMap.get(current.parentId)
             }
+
+            // Fallback to chronological order if parentId tree walk returned an incomplete set of messages
+            // (e.g. Broken parentId link where oldest node in branch still expects an unpersisted parent,
+            // or flat history where messages have no parentId links).
+            const hasParentIds = msgs.some((m) => Boolean(m.parentId))
+            const finalBranch =
+                (!reachedRoot || (!hasParentIds && msgs.length > 1)) && branch.length < msgs.length
+                    ? [...msgs].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0))
+                    : branch
 
             // compaction: clean up token-deltas from previous streaming sessions
             if (msgs.length < lines.length) {
@@ -128,7 +141,7 @@ export class FileSessionRepository implements SessionRepository {
             }
             this.sessionCache[sessionId] = cacheObj
 
-            return branch
+            return finalBranch
         } catch (e) {
             return []
         }

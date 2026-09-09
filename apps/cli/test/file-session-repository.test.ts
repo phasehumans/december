@@ -120,6 +120,45 @@ describe('FileSessionRepository', () => {
             expect(msgs[0].content).toBe('hel')
             expect(mockWriteFile).toHaveBeenCalled()
         })
+
+        test('falls back to chronological order when parentId chain is broken', async () => {
+            const repo = new FileSessionRepository()
+            const fileContent = [
+                JSON.stringify({
+                    id: '1',
+                    role: 'user',
+                    parentId: 'missing-system-id',
+                    timestamp: 100,
+                }),
+                JSON.stringify({ id: '2', role: 'assistant', parentId: '1', timestamp: 110 }),
+                JSON.stringify({ id: '3', role: 'user', parentId: '2', timestamp: 120 }),
+            ].join('\n')
+
+            mockReadFile.mockResolvedValueOnce(fileContent)
+
+            const msgs = await repo.loadContext('session-broken-parent')
+            expect(msgs.length).toBe(3)
+            expect(msgs[0].id).toBe('1')
+            expect(msgs[1].id).toBe('2')
+            expect(msgs[2].id).toBe('3')
+        })
+
+        test('falls back to chronological order when messages have no parentId (flat list)', async () => {
+            const repo = new FileSessionRepository()
+            const fileContent = [
+                JSON.stringify({ id: '1', role: 'user', timestamp: 100 }),
+                JSON.stringify({ id: '2', role: 'assistant', timestamp: 110 }),
+                JSON.stringify({ id: '3', role: 'user', timestamp: 120 }),
+            ].join('\n')
+
+            mockReadFile.mockResolvedValueOnce(fileContent)
+
+            const msgs = await repo.loadContext('session-flat')
+            expect(msgs.length).toBe(3)
+            expect(msgs[0].id).toBe('1')
+            expect(msgs[1].id).toBe('2')
+            expect(msgs[2].id).toBe('3')
+        })
     })
 
     describe('listSessions', () => {
