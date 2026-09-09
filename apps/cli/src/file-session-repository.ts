@@ -1,9 +1,10 @@
 import fs from 'node:fs/promises'
-import os from 'node:os'
 import path from 'node:path'
 
 import { SessionRepository } from '@december/agent'
 import { AgentMessage } from '@december/shared'
+
+import { getConfigDir, getLegacyConfigDir } from './config'
 
 export interface SessionInfo {
     id: string
@@ -14,10 +15,19 @@ export interface SessionInfo {
 
 export class FileSessionRepository implements SessionRepository {
     private sessionDir: string
+    private legacySessionDir?: string
     private sessionCache: Record<string, Record<string, AgentMessage>> = {}
 
     constructor(sessionDir?: string) {
-        this.sessionDir = sessionDir || path.join(os.homedir(), '.config', 'december', 'sessions')
+        if (sessionDir) {
+            this.sessionDir = sessionDir
+        } else {
+            this.sessionDir = path.join(getConfigDir(), 'sessions')
+            const legacyDir = path.join(getLegacyConfigDir(), 'sessions')
+            if (legacyDir !== this.sessionDir) {
+                this.legacySessionDir = legacyDir
+            }
+        }
     }
 
     async saveContext(sessionId: string, messages: AgentMessage[]): Promise<void> {
@@ -61,9 +71,20 @@ export class FileSessionRepository implements SessionRepository {
     }
 
     async loadContext(sessionId: string): Promise<AgentMessage[]> {
-        const historyPath = path.join(this.sessionDir, `${sessionId}.jsonl`)
+        let historyPath = path.join(this.sessionDir, `${sessionId}.jsonl`)
         try {
-            const data = await fs.readFile(historyPath, 'utf-8')
+            let data: string
+            try {
+                data = await fs.readFile(historyPath, 'utf-8')
+            } catch (err) {
+                if (this.legacySessionDir) {
+                    const legacyPath = path.join(this.legacySessionDir, `${sessionId}.jsonl`)
+                    data = await fs.readFile(legacyPath, 'utf-8')
+                    historyPath = legacyPath
+                } else {
+                    throw err
+                }
+            }
             const lines = data.split('\n').filter((l) => l.trim().length > 0)
 
             const msgMap = new Map<string, AgentMessage>()
@@ -116,41 +137,56 @@ export class FileSessionRepository implements SessionRepository {
     async listSessions(): Promise<SessionInfo[]> {
         try {
             await fs.mkdir(this.sessionDir, { recursive: true })
-            const files = await fs.readdir(this.sessionDir)
             const sessions: SessionInfo[] = []
+            const seenIds = new Set<string>()
 
-            for (const file of files) {
-                if (!file.endsWith('.jsonl')) continue
-                const id = file.replace('.jsonl', '')
-                const filePath = path.join(this.sessionDir, file)
+            const processDirectory = async (dirPath: string) => {
                 try {
-                    const stat = await fs.stat(filePath)
-                    const data = await fs.readFile(filePath, 'utf-8')
-                    const lines = data.split('\n').filter((l) => l.trim().length > 0)
+                    const dirFiles = await fs.readdir(dirPath)
+                    for (const file of dirFiles) {
+                        if (!file.endsWith('.jsonl')) continue
+                        const id = file.replace('.jsonl', '')
+                        if (seenIds.has(id)) continue
+                        seenIds.add(id)
 
-                    // find first user message for preview
-                    let preview = ''
-                    for (const line of lines) {
+                        const filePath = path.join(dirPath, file)
                         try {
-                            const msg = JSON.parse(line)
-                            if (msg.role === 'user') {
-                                preview = msg.content?.substring(0, 80) || ''
-                                break
+                            const stat = await fs.stat(filePath)
+                            const data = await fs.readFile(filePath, 'utf-8')
+                            const lines = data.split('\n').filter((l) => l.trim().length > 0)
+
+                            // find first user message for preview
+                            let preview = ''
+                            for (const line of lines) {
+                                try {
+                                    const msg = JSON.parse(line)
+                                    if (msg.role === 'user') {
+                                        preview = msg.content?.substring(0, 80) || ''
+                                        break
+                                    }
+                                } catch {
+                                    // Ignore non-JSON line during preview generation
+                                }
                             }
+
+                            sessions.push({
+                                id,
+                                updatedAt: stat.mtime,
+                                messageCount: lines.length,
+                                preview,
+                            })
                         } catch {
-                            // Ignore non-JSON line during preview generation
+                            // Ignore unreadable session file
                         }
                     }
-
-                    sessions.push({
-                        id,
-                        updatedAt: stat.mtime,
-                        messageCount: lines.length,
-                        preview,
-                    })
                 } catch {
-                    // Ignore unreadable session file
+                    // Intentionally swallowed: directory inaccessible
                 }
+            }
+
+            await processDirectory(this.sessionDir)
+            if (this.legacySessionDir) {
+                await processDirectory(this.legacySessionDir)
             }
 
             // sort by most recently updated first
@@ -167,6 +203,13 @@ export class FileSessionRepository implements SessionRepository {
             await fs.unlink(historyPath)
         } catch (e) {
             // ignore if it doesn't exist
+        }
+        if (this.legacySessionDir) {
+            try {
+                await fs.unlink(path.join(this.legacySessionDir, `${sessionId}.jsonl`))
+            } catch {
+                // Intentionally swallowed: legacy session already absent
+            }
         }
     }
 

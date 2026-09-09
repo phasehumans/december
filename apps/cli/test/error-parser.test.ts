@@ -286,5 +286,82 @@ describe('error-parser', () => {
             expect(parsed.cause).toContain('ECONNREFUSED')
             expect(parsed.hint).toContain('server')
         })
+
+        test('attaches custom notice for Sarvam AI credit exhaustion', () => {
+            const rawErr = '402 Payment Required: insufficient credits on sarvam'
+            const parsed = parseError(rawErr)
+            expect(parsed.message).toBe('Insufficient credits in your Sarvam AI account.')
+            expect(parsed.hint).toBe(
+                'Please add credits or top up your balance at https://indus.sarvam.ai/'
+            )
+        })
+
+        test('attaches custom notice for StepFun credit exhaustion', () => {
+            const rawErr = '402 out of credits from stepfun'
+            const parsed = parseError(rawErr)
+            expect(parsed.message).toBe('Insufficient credits in your StepFun account.')
+            expect(parsed.hint).toBe(
+                'Please add credits or top up your balance at https://platform.stepfun.ai/interface-key'
+            )
+        })
+
+        test('attaches custom notice for Upstage Solar credit exhaustion', () => {
+            const rawErr = '402 Insufficient credits. Model solar-pro'
+            const parsed = parseError(rawErr)
+            expect(parsed.message).toBe('Insufficient credits in your Upstage Solar account.')
+            expect(parsed.hint).toBe(
+                'Please add credits or top up your balance at https://console.upstage.ai/'
+            )
+        })
+
+        test('attaches custom notice for Thinking Machines credit exhaustion', () => {
+            const rawErr = '402 credits exhausted on tinker'
+            const parsed = parseError(rawErr)
+            expect(parsed.message).toBe('Insufficient credits in your Thinking Machines account.')
+            expect(parsed.hint).toBe(
+                'Please add credits or top up your balance at https://tinker.thinkingmachines.ai/'
+            )
+        })
+
+        test('attaches custom notice for NVIDIA NIM credit exhaustion', () => {
+            const rawErr = '402 credits exhausted on build.nvidia.com'
+            const parsed = parseError(rawErr)
+            expect(parsed.message).toBe('Insufficient credits in your NVIDIA NIM account.')
+            expect(parsed.hint).toBe('Please check your account at https://build.nvidia.com/')
+        })
+
+        test('attaches custom notice for Google AI Studio credit exhaustion', () => {
+            const rawErr = '402 Insufficient credits from aistudio.google.com'
+            const parsed = parseError(rawErr)
+            expect(parsed.message).toBe('Insufficient credits in your Google AI Studio account.')
+            expect(parsed.hint).toContain('https://aistudio.google.com/')
+        })
+
+        test('dynamically resolves provider from context provider alias when error text lacks provider name', () => {
+            const rawErr = '402 Payment Required: account balance is 0'
+            const parsed = parseError(rawErr, { provider: 'sarvamai' })
+            expect(parsed.message).toBe('Insufficient credits in your Sarvam AI account.')
+            expect(parsed.hint).toBe(
+                'Please add credits or top up your balance at https://indus.sarvam.ai/'
+            )
+        })
+
+        test('dynamically resolves provider from model name when error text lacks provider name', () => {
+            const rawErr = '402 Payment Required: zero balance'
+            const parsed = parseError(rawErr, { model: 'solar-10.7b' })
+            expect(parsed.message).toBe('Insufficient credits in your Upstage Solar account.')
+            expect(parsed.hint).toBe(
+                'Please add credits or top up your balance at https://console.upstage.ai/'
+            )
+        })
+
+        test('dynamically formats custom provider error with baseURL when available', () => {
+            const rawErr = '402 Payment Required: out of credits'
+            const parsed = parseError(rawErr, { baseURL: 'https://llm.internal.corp/v1' })
+            expect(parsed.message).toBe(
+                'Insufficient credits or balance with your custom provider.'
+            )
+            expect(parsed.hint).toContain('https://llm.internal.corp/v1')
+        })
     })
 })

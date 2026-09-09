@@ -12,10 +12,13 @@ export class PromptHistory {
         if (customPath) {
             this.historyPath = customPath
         } else {
-            const configPath = path.join(os.homedir(), '.config', 'december', 'history')
-            const legacyPath = path.join(os.homedir(), '.december', 'history')
+            const home = process.env.HOME || process.env.USERPROFILE || os.homedir()
+            const canonicalPath = path.join(home, '.december', 'history')
+            const legacyPath = path.join(home, '.config', 'december', 'history')
             this.historyPath =
-                fs.existsSync(configPath) || !fs.existsSync(legacyPath) ? configPath : legacyPath
+                fs.existsSync(canonicalPath) || !fs.existsSync(legacyPath)
+                    ? canonicalPath
+                    : legacyPath
         }
         this.load()
     }

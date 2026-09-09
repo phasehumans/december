@@ -1,8 +1,11 @@
 import util from 'util'
 
+import { inferProviderFromModel } from './usage-rates'
+
 export interface ErrorParseContext {
     provider?: string
     model?: string
+    baseURL?: string
 }
 
 export interface ProviderCreditRule {
@@ -314,7 +317,362 @@ export const PROVIDER_CREDIT_RULES: ProviderCreditRule[] = [
         message: 'Insufficient credits in your AgentRouter account.',
         hint: 'Please add credits at https://agentrouter.org/ or switch models using /model.',
     },
+    {
+        id: 'google',
+        name: 'Google AI Studio',
+        match: (str) =>
+            (str.includes('google') || str.includes('gemini') || str.includes('aistudio')) &&
+            (isCreditOrBalanceError(str) || str.includes('credits') || str.includes('402')),
+        notice: 'Insufficient credits in your Google AI Studio account. Please check your account at https://aistudio.google.com/\n',
+        message: 'Insufficient credits in your Google AI Studio account.',
+        hint: 'Please check your account at https://aistudio.google.com/ or switch models using /model.',
+    },
+    {
+        id: 'sarvam',
+        name: 'Sarvam AI',
+        match: (str) =>
+            (str.includes('sarvam') || str.includes('indus.sarvam.ai')) &&
+            (isCreditOrBalanceError(str) || str.includes('credits') || str.includes('402')),
+        notice: 'Insufficient credits in your Sarvam AI account. Please add credits or top up your balance at https://indus.sarvam.ai/\n',
+        message: 'Insufficient credits in your Sarvam AI account.',
+        hint: 'Please add credits or top up your balance at https://indus.sarvam.ai/',
+    },
+    {
+        id: 'stepfun',
+        name: 'StepFun',
+        match: (str) =>
+            (str.includes('stepfun') || str.includes('stepfun.ai')) &&
+            (isCreditOrBalanceError(str) || str.includes('credits') || str.includes('402')),
+        notice: 'Insufficient credits in your StepFun account. Please add credits or top up your balance at https://platform.stepfun.ai/interface-key\n',
+        message: 'Insufficient credits in your StepFun account.',
+        hint: 'Please add credits or top up your balance at https://platform.stepfun.ai/interface-key',
+    },
+    {
+        id: 'upstage',
+        name: 'Upstage Solar',
+        match: (str) =>
+            (str.includes('upstage') || str.includes('solar') || str.includes('upstage.ai')) &&
+            (isCreditOrBalanceError(str) || str.includes('credits') || str.includes('402')),
+        notice: 'Insufficient credits in your Upstage Solar account. Please add credits or top up your balance at https://console.upstage.ai/\n',
+        message: 'Insufficient credits in your Upstage Solar account.',
+        hint: 'Please add credits or top up your balance at https://console.upstage.ai/',
+    },
+    {
+        id: 'thinkingmachines',
+        name: 'Thinking Machines',
+        match: (str) =>
+            (str.includes('thinkingmachines') ||
+                str.includes('tinker') ||
+                str.includes('inkling') ||
+                str.includes('thinkingmachines.ai')) &&
+            (isCreditOrBalanceError(str) || str.includes('credits') || str.includes('402')),
+        notice: 'Insufficient credits in your Thinking Machines account. Please add credits or top up your balance at https://tinker.thinkingmachines.ai/\n',
+        message: 'Insufficient credits in your Thinking Machines account.',
+        hint: 'Please add credits or top up your balance at https://tinker.thinkingmachines.ai/',
+    },
+    {
+        id: 'nvidia',
+        name: 'NVIDIA NIM',
+        match: (str) =>
+            (str.includes('nvidia') ||
+                str.includes('nim') ||
+                str.includes('nemotron') ||
+                str.includes('build.nvidia.com')) &&
+            (isCreditOrBalanceError(str) || str.includes('credits') || str.includes('402')),
+        notice: 'Insufficient credits in your NVIDIA NIM account. Please check your account at https://build.nvidia.com/\n',
+        message: 'Insufficient credits in your NVIDIA NIM account.',
+        hint: 'Please check your account at https://build.nvidia.com/',
+    },
 ]
+
+export const PROVIDER_BILLING_URLS: Record<string, string> = {
+    agentrouter: 'https://agentrouter.org/',
+    anthropic: 'https://console.anthropic.com/settings/billing',
+    arcee: 'https://platform.arcee.ai/api/api-keys',
+    cerebras: 'https://cloud.cerebras.ai/',
+    cohere: 'https://dashboard.cohere.com/billing',
+    dashscope: 'https://dashscope.console.aliyun.com/',
+    deepseek: 'https://platform.deepseek.com/top_up',
+    fireworks: 'https://fireworks.ai/account/billing',
+    google: 'https://aistudio.google.com/',
+    groq: 'https://console.groq.com/settings/limits',
+    huggingface: 'https://huggingface.co/settings/billing',
+    hyperbolic: 'https://app.hyperbolic.xyz/settings',
+    meta: 'https://dev.meta.ai/',
+    minimax: 'https://platform.minimax.io/',
+    mistral: 'https://console.mistral.ai/billing/',
+    moonshot: 'https://platform.moonshot.cn/',
+    nvidia: 'https://build.nvidia.com/',
+    openai: 'https://platform.openai.com/account/billing',
+    openrouter: 'https://openrouter.ai/settings/credits',
+    perplexity: 'https://www.perplexity.ai/settings/api',
+    poolside: 'https://platform.poolside.ai/api-keys',
+    sakana: 'https://console.sakana.ai/api-keys',
+    sambanova: 'https://cloud.sambanova.ai/',
+    sarvam: 'https://indus.sarvam.ai/',
+    siliconflow: 'https://cloud.siliconflow.cn/',
+    stepfun: 'https://platform.stepfun.ai/interface-key',
+    thinkingmachines: 'https://tinker.thinkingmachines.ai/',
+    together: 'https://api.together.ai/settings/billing',
+    upstage: 'https://console.upstage.ai/',
+    xai: 'https://console.x.ai/',
+    zai: 'https://open.bigmodel.cn/',
+}
+
+export const PROVIDER_CREDIT_DISPLAY_NAMES: Record<string, string> = {
+    agentrouter: 'AgentRouter',
+    anthropic: 'Anthropic',
+    arcee: 'Arcee AI',
+    cerebras: 'Cerebras',
+    cohere: 'Cohere',
+    dashscope: 'Alibaba Cloud DashScope',
+    deepseek: 'DeepSeek',
+    fireworks: 'Fireworks AI',
+    google: 'Google AI Studio',
+    groq: 'Groq',
+    huggingface: 'Hugging Face',
+    hyperbolic: 'Hyperbolic',
+    meta: 'Meta',
+    minimax: 'MiniMax',
+    mistral: 'Mistral AI',
+    moonshot: 'Moonshot AI',
+    nvidia: 'NVIDIA NIM',
+    openai: 'OpenAI',
+    openrouter: 'OpenRouter',
+    perplexity: 'Perplexity',
+    poolside: 'Poolside',
+    sakana: 'Sakana AI',
+    sambanova: 'SambaNova',
+    sarvam: 'Sarvam AI',
+    siliconflow: 'SiliconFlow',
+    stepfun: 'StepFun',
+    thinkingmachines: 'Thinking Machines',
+    together: 'Together AI',
+    upstage: 'Upstage Solar',
+    xai: 'xAI',
+    zai: 'Zhipu AI',
+}
+
+export function normalizeProviderAlias(provider?: string): string {
+    if (!provider) return ''
+    const lower = provider.trim().toLowerCase()
+    switch (lower) {
+        case 'gemini':
+        case 'google':
+        case 'google-ai':
+        case 'googleai':
+            return 'google'
+        case 'claude':
+        case 'anthropic':
+            return 'anthropic'
+        case 'chatgpt':
+        case 'codex':
+        case 'openai':
+            return 'openai'
+        case 'arceeai':
+        case 'arcee-ai':
+        case 'arcee':
+            return 'arcee'
+        case 'metaai':
+        case 'meta-ai':
+        case 'meta':
+            return 'meta'
+        case 'minimaxai':
+        case 'minimax-ai':
+        case 'minimax':
+            return 'minimax'
+        case 'mistralai':
+        case 'mistral-ai':
+        case 'mistral':
+            return 'mistral'
+        case 'moonshotai':
+        case 'moonshot-ai':
+        case 'moonshoot':
+        case 'kimi':
+        case 'moonshot':
+            return 'moonshot'
+        case 'sakanaai':
+        case 'sakana-ai':
+        case 'sakana':
+            return 'sakana'
+        case 'sarvamai':
+        case 'sarvam-ai':
+        case 'sarvam':
+            return 'sarvam'
+        case 'stepfunai':
+        case 'stepfun-ai':
+        case 'stepfun':
+            return 'stepfun'
+        case 'upstageai':
+        case 'solar':
+        case 'upstage':
+            return 'upstage'
+        case 'tinker':
+        case 'inkling':
+        case 'thinkingmachines':
+            return 'thinkingmachines'
+        case 'siliconcloud':
+        case 'siliconflow':
+            return 'siliconflow'
+        case 'togetherai':
+        case 'together':
+            return 'together'
+        case 'zhipu':
+        case 'bigmodel':
+        case 'zai':
+            return 'zai'
+        case 'qwen':
+        case 'dashscope':
+            return 'dashscope'
+        default:
+            return lower
+    }
+}
+
+export function detectProviderFromText(str: string): string | null {
+    if (!str) return null
+    const lower = str.toLowerCase()
+    if (lower.includes('arcee') || lower.includes('trinity') || lower.includes('api.arcee.ai'))
+        return 'arcee'
+    if (lower.includes('sarvam') || lower.includes('indus.sarvam.ai')) return 'sarvam'
+    if (lower.includes('stepfun') || lower.includes('stepfun.ai')) return 'stepfun'
+    if (lower.includes('upstage') || lower.includes('solar') || lower.includes('upstage.ai'))
+        return 'upstage'
+    if (
+        lower.includes('thinkingmachines') ||
+        lower.includes('tinker') ||
+        lower.includes('inkling') ||
+        lower.includes('thinkingmachines.ai')
+    )
+        return 'thinkingmachines'
+    if (lower.includes('minimax') || lower.includes('api.minimax.io')) return 'minimax'
+    if (lower.includes('deepseek') || lower.includes('api.deepseek.com')) return 'deepseek'
+    if (lower.includes('openrouter') || lower.includes('openrouter.ai')) return 'openrouter'
+    if (lower.includes('meta') || lower.includes('muse-spark') || lower.includes('dev.meta.ai'))
+        return 'meta'
+    if (
+        lower.includes('siliconflow') ||
+        lower.includes('siliconcloud') ||
+        lower.includes('siliconflow.cn')
+    )
+        return 'siliconflow'
+    if (
+        lower.includes('moonshot') ||
+        lower.includes('kimi') ||
+        lower.includes('moonshot.cn') ||
+        lower.includes('kimi.com')
+    )
+        return 'moonshot'
+    if (
+        lower.includes('together') ||
+        lower.includes('together.ai') ||
+        lower.includes('together.xyz')
+    )
+        return 'together'
+    if (lower.includes('fireworks') || lower.includes('fireworks.ai')) return 'fireworks'
+    if (lower.includes('groq') || lower.includes('api.groq.com')) return 'groq'
+    if (
+        lower.includes('mistral') ||
+        lower.includes('codestral') ||
+        lower.includes('pixtral') ||
+        lower.includes('mistral.ai')
+    )
+        return 'mistral'
+    if (lower.includes('cerebras') || lower.includes('api.cerebras.ai')) return 'cerebras'
+    if (lower.includes('sambanova') || lower.includes('api.sambanova.ai')) return 'sambanova'
+    if (
+        lower.includes('hyperbolic') ||
+        lower.includes('hyperbolic.xyz') ||
+        lower.includes('hyperbolic.ai')
+    )
+        return 'hyperbolic'
+    if (lower.includes('perplexity') || lower.includes('perplexity.ai')) return 'perplexity'
+    if (lower.includes('cohere') || lower.includes('api.cohere.com')) return 'cohere'
+    if (
+        lower.includes('xai') ||
+        lower.includes('grok') ||
+        lower.includes('api.x.ai') ||
+        lower.includes('x.ai')
+    )
+        return 'xai'
+    if (lower.includes('zai') || lower.includes('zhipu') || lower.includes('bigmodel.cn'))
+        return 'zai'
+    if (lower.includes('poolside') || lower.includes('laguna') || lower.includes('poolside.ai'))
+        return 'poolside'
+    if (
+        lower.includes('sakana') ||
+        lower.includes('fugu') ||
+        lower.includes('namazu') ||
+        lower.includes('sakana.ai')
+    )
+        return 'sakana'
+    if (lower.includes('dashscope') || lower.includes('qwen') || lower.includes('aliyuncs.com'))
+        return 'dashscope'
+    if (
+        lower.includes('anthropic') ||
+        lower.includes('claude') ||
+        lower.includes('api.anthropic.com')
+    )
+        return 'anthropic'
+    if (lower.includes('openai') || lower.includes('api.openai.com')) return 'openai'
+    if (
+        lower.includes('google') ||
+        lower.includes('gemini') ||
+        lower.includes('aistudio') ||
+        lower.includes('generativelanguage.googleapis.com')
+    )
+        return 'google'
+    if (lower.includes('huggingface') || lower.includes('router.huggingface.co'))
+        return 'huggingface'
+    if (lower.includes('agentrouter') || lower.includes('agentrouter.org')) return 'agentrouter'
+    if (lower.includes('nvidia') || lower.includes('build.nvidia.com')) return 'nvidia'
+    return null
+}
+
+export function resolveDynamicCreditRule(
+    combined: string,
+    context?: ErrorParseContext
+): ProviderCreditRule | null {
+    let candidate = (context?.provider || '').trim().toLowerCase()
+    if (!candidate && context?.model) {
+        const inferred = inferProviderFromModel(context.model)
+        if (inferred && inferred !== 'openrouter') {
+            candidate = inferred
+        }
+    }
+    if (!candidate) {
+        candidate = detectProviderFromText(combined) || ''
+    }
+
+    const normalized = normalizeProviderAlias(candidate)
+    if (normalized && PROVIDER_BILLING_URLS[normalized]) {
+        const displayName =
+            PROVIDER_CREDIT_DISPLAY_NAMES[normalized] ||
+            normalized.charAt(0).toUpperCase() + normalized.slice(1)
+        const billingUrl = PROVIDER_BILLING_URLS[normalized]
+        return {
+            id: normalized,
+            name: displayName,
+            match: () => true,
+            notice: `Insufficient credits in your ${displayName} account. Please add credits or top up your balance at ${billingUrl}\n`,
+            message: `Insufficient credits in your ${displayName} account.`,
+            hint: `Please add credits or top up your balance at ${billingUrl}`,
+        }
+    }
+
+    if (context?.baseURL) {
+        return {
+            id: 'custom_provider',
+            name: 'Custom Provider',
+            match: () => true,
+            notice: `Insufficient credits or balance with your custom provider. Please check your account or top up at ${context.baseURL}\n`,
+            message: 'Insufficient credits or balance with your custom provider.',
+            hint: `Please check your account or top up at ${context.baseURL} or switch models using /model.`,
+        }
+    }
+
+    return null
+}
 
 export const UNIVERSAL_CREDIT_FALLBACK: ProviderCreditRule = {
     id: 'universal_fallback',
@@ -325,15 +683,25 @@ export const UNIVERSAL_CREDIT_FALLBACK: ProviderCreditRule = {
     hint: 'Please check your account balance and top up credits with your provider, or switch models using /model.',
 }
 
-export function findMatchingCreditRule(combined: string): ProviderCreditRule | null {
+export function findMatchingCreditRule(
+    combined: string,
+    context?: ErrorParseContext
+): ProviderCreditRule | null {
     for (const rule of PROVIDER_CREDIT_RULES) {
         if (rule.match(combined)) {
             return rule
         }
     }
-    if (UNIVERSAL_CREDIT_FALLBACK.match(combined)) {
+
+    if (isCreditOrBalanceError(combined)) {
+        const dynamicRule = resolveDynamicCreditRule(combined, context)
+        if (dynamicRule) {
+            return dynamicRule
+        }
+
         return UNIVERSAL_CREDIT_FALLBACK
     }
+
     return null
 }
 
@@ -474,7 +842,7 @@ export function parseErrorMessage(err: any, context?: ErrorParseContext): string
         lowerStr.includes('december cloud')
 
     if (!isDecemberCredits) {
-        const creditRule = findMatchingCreditRule(lowerStr)
+        const creditRule = findMatchingCreditRule(lowerStr, context)
         if (creditRule) {
             const hasNoticeAlready =
                 finalResult.includes(creditRule.message) ||
@@ -587,7 +955,7 @@ export function parseError(err: any, context?: ErrorParseContext): ParsedErrorDe
         combined.includes('december cloud')
 
     if (!isDecemberCredits) {
-        const creditRule = findMatchingCreditRule(combined)
+        const creditRule = findMatchingCreditRule(combined, context)
         if (creditRule) {
             const parts = fullMessage.split('\n')
             const cause =

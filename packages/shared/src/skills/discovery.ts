@@ -144,14 +144,18 @@ export class SkillDiscoveryEngine {
     }
 
     private scanGlobalDeclaredSkills(map: Map<string, DiscoveredSkill>) {
-        const globalJson = path.join(this.homeDir, '.config', 'december', 'skills.json')
-        this.scanDeclaredConfigFile(globalJson, 'declared', map)
+        const canonicalJson = path.join(this.homeDir, '.december', 'skills.json')
+        const legacyJson = path.join(this.homeDir, '.config', 'december', 'skills.json')
+        this.scanDeclaredConfigFile(legacyJson, 'declared', map)
+        this.scanDeclaredConfigFile(canonicalJson, 'declared', map)
     }
 
     private scanGlobalPluginSkills(map: Map<string, DiscoveredSkill>) {
-        const decemberPlugins = path.join(this.homeDir, '.config', 'december', 'plugins')
+        const legacyPlugins = path.join(this.homeDir, '.config', 'december', 'plugins')
+        const canonicalPlugins = path.join(this.homeDir, '.december', 'plugins')
         const geminiPlugins = path.join(this.homeDir, '.gemini', 'config', 'plugins')
-        this.scanPluginsDir(decemberPlugins, 'global-plugin', map)
+        this.scanPluginsDir(legacyPlugins, 'global-plugin', map)
+        this.scanPluginsDir(canonicalPlugins, 'global-plugin', map)
         this.scanPluginsDir(geminiPlugins, 'global-plugin', map)
     }
 
@@ -165,6 +169,7 @@ export class SkillDiscoveryEngine {
             path.join(this.homeDir, '.agents', 'skills'),
             path.join(this.homeDir, '.agent', 'skills'),
             path.join(this.homeDir, '.config', 'december', 'skills'),
+            path.join(this.homeDir, '.december', 'skills'),
         ]
 
         for (const dir of candidateGlobalDirs) {

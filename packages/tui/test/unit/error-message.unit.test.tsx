@@ -154,4 +154,22 @@ describe('ErrorMessage Component (Unit)', () => {
         expect(frame).toContain('Please visit')
         expect(frame).toContain('for billing.')
     })
+
+    it('parses multi-line Sarvam AI error strings via parseTuiError and renders structured layout', () => {
+        const multiLine =
+            'Insufficient credits in your Sarvam AI account. Please add credits or top up your balance at https://indus.sarvam.ai/\n402 Payment Required'
+        const parsed = parseTuiError(multiLine)
+
+        expect(parsed.message).toBe('Insufficient credits in your Sarvam AI account.')
+        expect(parsed.cause).toBe('402 Payment Required')
+        expect(parsed.hint).toBe(
+            'Please add credits or top up your balance at https://indus.sarvam.ai/'
+        )
+
+        const { lastFrame } = render(<ErrorMessage message={multiLine} />)
+        const frame = lastFrame() || ''
+
+        expect(frame).toContain('Insufficient credits in your Sarvam AI account.')
+        expect(frame).toContain('https://indus.sarvam.ai/')
+    })
 })

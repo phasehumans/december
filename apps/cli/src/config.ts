@@ -1,3 +1,4 @@
+import fsSync from 'node:fs'
 import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
@@ -104,16 +105,37 @@ export interface DecemberConfig {
     }
 }
 
-export function getConfigDir(): string {
-    if (process.env.DECEMBER_CONFIG_DIR) {
-        return process.env.DECEMBER_CONFIG_DIR
-    }
-    const home = process.env.HOME || os.homedir()
+export function getLegacyConfigDir(): string {
+    const home = process.env.HOME || process.env.USERPROFILE || os.homedir()
     const isTestEnv = process.env.NODE_ENV === 'test' || !!process.env.VITEST
     if (isTestEnv && home === os.homedir()) {
         return path.join(os.tmpdir(), 'december-test-config', '.config', 'december')
     }
     return path.join(home, '.config', 'december')
+}
+
+export function getLegacyConfigFile(): string {
+    return path.join(getLegacyConfigDir(), 'config.json')
+}
+
+export function getConfigDir(): string {
+    if (process.env.DECEMBER_CONFIG_DIR) {
+        return process.env.DECEMBER_CONFIG_DIR
+    }
+    const home = process.env.HOME || process.env.USERPROFILE || os.homedir()
+    const isTestEnv = process.env.NODE_ENV === 'test' || !!process.env.VITEST
+    if (isTestEnv && home === os.homedir()) {
+        return path.join(os.tmpdir(), 'december-test-config', '.december')
+    }
+    const canonicalDir = path.join(home, '.december')
+    const legacyDir = path.join(home, '.config', 'december')
+
+    // If canonical directory exists or legacy directory does not exist, use ~/.december
+    if (fsSync.existsSync(canonicalDir) || !fsSync.existsSync(legacyDir)) {
+        return canonicalDir
+    }
+
+    return legacyDir
 }
 
 export function getConfigFile(): string {
@@ -150,7 +172,17 @@ function deepMergeSettings(base: any, overrides: any): any {
 export async function loadConfig(): Promise<DecemberConfig> {
     try {
         const configFile = getConfigFile()
-        const data = await fs.readFile(configFile, 'utf-8')
+        let data: string
+        try {
+            data = await fs.readFile(configFile, 'utf-8')
+        } catch (readErr) {
+            const legacyConfigFile = getLegacyConfigFile()
+            if (legacyConfigFile !== configFile && fsSync.existsSync(legacyConfigFile)) {
+                data = await fs.readFile(legacyConfigFile, 'utf-8')
+            } else {
+                throw readErr
+            }
+        }
         let config = JSON.parse(data)
 
         try {

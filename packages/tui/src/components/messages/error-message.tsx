@@ -77,6 +77,23 @@ export function parseTuiError(message: string, cause?: string, hint?: string): F
                     : 'Please add credits or top up your balance at https://dev.meta.ai/',
             }
         }
+        if (
+            firstLine.includes('Insufficient credits in your ') ||
+            firstLine.includes('Insufficient balance in your ') ||
+            firstLine.includes('Insufficient credits or balance ')
+        ) {
+            const hintMatch = firstLine.match(
+                /Please (?:add credits|top up|check|upgrade|switch).*$/i
+            )
+            const summary = firstLine
+                .replace(/Please (?:add credits|top up|check|upgrade|switch).*$/i, '')
+                .trim()
+            return {
+                message: summary || firstLine,
+                cause: rest,
+                hint: hintMatch ? hintMatch[0] : undefined,
+            }
+        }
         if (firstLine.includes('Authentication failed or session expired')) {
             const hintMatch = firstLine.match(/Please run.*$/i)
             const summary = firstLine.replace(/Please run.*$/i, '').trim()

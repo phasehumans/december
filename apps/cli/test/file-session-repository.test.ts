@@ -17,7 +17,7 @@ describe('FileSessionRepository', () => {
     let mockUnlink: any
     let mockRename: any
 
-    const sessionDir = path.join(os.homedir(), '.config', 'december', 'sessions')
+    const sessionDir = path.join(os.tmpdir(), 'december-test-config', '.december', 'sessions')
 
     beforeEach(() => {
         mockReadFile = spyOn(fs, 'readFile')
@@ -161,7 +161,7 @@ describe('FileSessionRepository', () => {
 
         test('returns empty array on error', async () => {
             const repo = new FileSessionRepository()
-            mockReaddir.mockRejectedValueOnce(new Error('ENOENT'))
+            mockReaddir.mockRejectedValue(new Error('ENOENT'))
             const sessions = await repo.listSessions()
             expect(sessions).toEqual([])
         })

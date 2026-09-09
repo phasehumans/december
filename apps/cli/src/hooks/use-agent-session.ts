@@ -436,7 +436,12 @@ export function useAgentSession({
                     await generatePlanFromGrill([])
                 }
             } catch (err: any) {
-                const cleanError = parseErrorMessage(err)
+                const errorContext = {
+                    provider:
+                        agent?.modelOptions?.provider || useCliStore.getState().selectedProvider,
+                    model: agent?.modelOptions?.model || useCliStore.getState().activeModel,
+                }
+                const cleanError = parseErrorMessage(err, errorContext)
                 const isAuthErr =
                     cleanError.includes('401') ||
                     cleanError.includes('dummy-key') ||
@@ -459,12 +464,6 @@ export function useAgentSession({
                     setStaticMessages((prev) => [...prev, noticeMsg])
                 } else {
                     setActiveMessages([])
-                    const errorContext = {
-                        provider:
-                            agent?.modelOptions?.provider ||
-                            useCliStore.getState().selectedProvider,
-                        model: agent?.modelOptions?.model || useCliStore.getState().activeModel,
-                    }
                     const parsed = parseError(err, errorContext)
                     const errorMsg: Message = {
                         id: getNextMsgId(),

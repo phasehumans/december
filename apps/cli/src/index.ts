@@ -400,7 +400,7 @@ async function main() {
                     ),
             })
         ),
-        { exitOnCtrlC: false, incrementalRendering: true }
+        { exitOnCtrlC: false }
     )
 }
 

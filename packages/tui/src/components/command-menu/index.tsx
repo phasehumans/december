@@ -48,7 +48,7 @@ export function CommandMenu({ query, selectedIndex, windowStart }: CommandMenuPr
                 const absIdx = windowStart + relIdx
                 const isSelected = absIdx === selectedIndex
                 return (
-                    <Box key={cmd.value} paddingLeft={2}>
+                    <Box key={cmd.value}>
                         <Text color={isSelected ? THEME.colors.brand : THEME.colors.muted}>
                             {isSelected ? `${THEME.glyphs.selector} ` : '  '}
                         </Text>

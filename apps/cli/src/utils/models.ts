@@ -18,8 +18,16 @@ const liveModelCache = new Map<string, LiveModelCacheEntry>()
 let diskCacheLoaded = false
 
 function getModelsCacheFile(): string {
-    const dir = process.env.DECEMBER_CONFIG_DIR || path.join(os.homedir(), '.config', 'december')
-    return path.join(dir, 'models-cache.json')
+    if (process.env.DECEMBER_CONFIG_DIR) {
+        return path.join(process.env.DECEMBER_CONFIG_DIR, 'models-cache.json')
+    }
+    const home = process.env.HOME || process.env.USERPROFILE || os.homedir()
+    const canonicalFile = path.join(home, '.december', 'models-cache.json')
+    const legacyFile = path.join(home, '.config', 'december', 'models-cache.json')
+    if (existsSync(canonicalFile) || !existsSync(legacyFile)) {
+        return canonicalFile
+    }
+    return legacyFile
 }
 
 export function initDiskCacheSync(): void {

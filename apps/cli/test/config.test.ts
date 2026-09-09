@@ -136,7 +136,7 @@ describe('config', () => {
             expect(mockWriteFile).toHaveBeenCalled()
 
             const writeArgs = mockWriteFile.mock.calls[0]
-            expect(writeArgs[0]).toContain(path.join('.config', 'december', 'config.json'))
+            expect(writeArgs[0]).toContain(path.join('.december', 'config.json'))
             expect(JSON.parse(writeArgs[1])).toEqual({
                 providers: { test: 'key' },
                 activeProvider: 'test',

@@ -371,7 +371,7 @@ export const InputBar = React.memo(function InputBar({
         ]
     )
 
-    const sepWidth = Math.max(10, columns - THEME.padding.paddingX * 2)
+    const sepWidth = Math.max(10, columns - THEME.padding.paddingX * 2 - 2)
     const sep = '─'.repeat(sepWidth)
 
     const isOverlayActive = Boolean(authUI) && !customInputMode

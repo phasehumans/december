@@ -102,7 +102,13 @@ export const COMMANDS: Command[] = [
         action: async (ctx) => {
             const archivePath = '.december-handoff.tar.gz'
             try {
-                const configPath = path.join(os.homedir(), '.config', 'december', 'config.json')
+                const home = process.env.HOME || process.env.USERPROFILE || os.homedir()
+                const canonicalConfigPath = path.join(home, '.december', 'config.json')
+                const legacyConfigPath = path.join(home, '.config', 'december', 'config.json')
+                const configPath =
+                    fs.existsSync(canonicalConfigPath) || !fs.existsSync(legacyConfigPath)
+                        ? canonicalConfigPath
+                        : legacyConfigPath
                 let config: any = {}
                 try {
                     if (fs.existsSync(configPath)) {

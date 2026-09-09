@@ -72,9 +72,8 @@ export interface LoadMcpConfigOptions {
 
 export async function loadMcpConfig(options: LoadMcpConfigOptions = {}): Promise<McpConfigFile> {
     const workspaceDir = options.workspaceDir || process.cwd()
-    const globalConfigDir =
-        options.globalConfigDir || path.join(os.homedir(), '.config', 'december')
-    const altGlobalDir = path.join(os.homedir(), '.december')
+    const globalConfigDir = options.globalConfigDir || path.join(os.homedir(), '.december')
+    const altGlobalDir = path.join(os.homedir(), '.config', 'december')
 
     let globalConfig: McpConfigFile = { mcpServers: {} }
     let workspaceConfig: McpConfigFile = { mcpServers: {} }
@@ -134,7 +133,7 @@ export async function saveMcpConfig(options: SaveMcpConfigOptions): Promise<void
     const targetDir =
         scope === 'workspace'
             ? path.join(options.workspaceDir || process.cwd(), '.december')
-            : options.globalConfigDir || path.join(os.homedir(), '.config', 'december')
+            : options.globalConfigDir || path.join(os.homedir(), '.december')
 
     const targetFile = path.join(targetDir, 'mcp.json')
     await fs.mkdir(targetDir, { recursive: true })

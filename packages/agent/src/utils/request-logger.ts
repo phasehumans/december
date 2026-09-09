@@ -84,9 +84,14 @@ export function getGlobalConfigDir(): string {
     const home = process.env.HOME || os.homedir()
     const isTestEnv = process.env.NODE_ENV === 'test' || !!process.env.VITEST
     if (isTestEnv && home === os.homedir()) {
-        return path.join(os.tmpdir(), 'december-test-config', '.config', 'december')
+        return path.join(os.tmpdir(), 'december-test-config', '.december')
     }
-    return path.join(home, '.config', 'december')
+    const canonicalDir = path.join(home, '.december')
+    const legacyDir = path.join(home, '.config', 'december')
+    if (fs.existsSync(canonicalDir) || !fs.existsSync(legacyDir)) {
+        return canonicalDir
+    }
+    return legacyDir
 }
 
 export function getLogsDir(customDir?: string): string {

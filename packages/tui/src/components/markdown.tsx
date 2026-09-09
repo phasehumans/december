@@ -149,7 +149,7 @@ const renderToken = (token: any, index: number): React.ReactNode => {
                     {token.items.map((item: any, i: number) => (
                         <Box key={i} flexDirection="row">
                             <Text color={THEME.colors.dim}>{THEME.glyphs.bullet + ' '}</Text>
-                            <Box flexDirection="column">
+                            <Box flexDirection="column" flexShrink={1}>
                                 {item.tokens.map((t: any, j: number) => renderToken(t, j))}
                             </Box>
                         </Box>
