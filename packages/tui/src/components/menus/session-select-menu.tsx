@@ -26,6 +26,7 @@ export function SessionSelectMenu(props: any) {
 
     const [isSearching, setIsSearching] = useState(false)
     const [searchQuery, setSearchQuery] = useState('')
+    const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
     const columns = useTerminalColumns()
     const SESSION_PAGE_SIZE = 10
 
@@ -53,6 +54,9 @@ export function SessionSelectMenu(props: any) {
     const isSearchingRef = useRef(isSearching)
     isSearchingRef.current = isSearching
 
+    const confirmDeleteIdRef = useRef(confirmDeleteId)
+    confirmDeleteIdRef.current = confirmDeleteId
+
     const timeAgo = (date: Date | string) => {
         if (!date) return ''
         const d = typeof date === 'string' ? new Date(date) : date
@@ -69,7 +73,7 @@ export function SessionSelectMenu(props: any) {
     const handleRenameSubmit = (val: string) => {
         const absIndex = startIndex + selectedIdxRef.current
         const session = filteredSessions[absIndex]
-        const newName = val.trim()
+        const newName = val.trim().replace(/\//g, '-')
         if (session && newName && newName !== session.id) {
             if (sessionRepository?.renameSession) {
                 sessionRepository.renameSession(session.id, newName).then(() => {
@@ -94,46 +98,18 @@ export function SessionSelectMenu(props: any) {
             return
         }
 
-        // 2. Search Mode (Vim style / search active)
-        if (isSearchingRef.current) {
-            if (key.escape) {
-                setIsSearching(false)
-                return
-            }
-            if (key.downArrow || key.return) {
-                setIsSearching(false)
-                return
-            }
-            return
-        }
-
-        // 3. Normal / Navigation Mode (Vim style single-key hotkeys)
-        if (input === '/' || input === 's') {
-            setIsSearching(true)
-            return
-        }
-
-        if (input === 'r' || input === 'R') {
-            const absIndex = startIndex + selectedIdxRef.current
-            const session = filteredSessions[absIndex]
-            if (session) {
-                setSessionNewName(session.id)
-                setSessionRenameMode(true)
-            }
-            return
-        }
-
-        if (input === 'd' || input === 'D') {
-            const absIndex = startIndex + selectedIdxRef.current
-            const session = filteredSessions[absIndex]
-            if (session) {
+        // 2. Delete Confirmation Mode
+        if (confirmDeleteIdRef.current) {
+            if (input === 'y' || input === 'Y') {
+                const targetId = confirmDeleteIdRef.current
                 if (sessionRepository?.deleteSession) {
-                    sessionRepository.deleteSession(session.id).catch(() => {
+                    sessionRepository.deleteSession(targetId).catch(() => {
                         // Intentionally swallowed: ignore session deletion failures
                     })
                 }
-                const nextData = sessionsData.filter((s: any) => s.id !== session.id)
+                const nextData = sessionsData.filter((s: any) => s.id !== targetId)
                 setSessionsData(nextData)
+                setConfirmDeleteId(null)
 
                 const nextFiltered = searchQuery.trim()
                     ? nextData.filter((s: any) => {
@@ -158,6 +134,54 @@ export function SessionSelectMenu(props: any) {
                 if (selectedIdxRef.current >= newVisibleCount) {
                     setSessionSelectedIndex(Math.max(0, newVisibleCount - 1))
                 }
+                return
+            }
+
+            if (input === 'n' || input === 'N' || key.escape) {
+                setConfirmDeleteId(null)
+                return
+            }
+
+            return
+        }
+
+        // 3. Search Mode (Vim style / search active)
+        if (isSearchingRef.current) {
+            if (key.escape) {
+                setIsSearching(false)
+                return
+            }
+            if (key.downArrow || key.return) {
+                setIsSearching(false)
+                return
+            }
+            return
+        }
+
+        // 4. Normal / Navigation Mode (Vim style single-key hotkeys)
+        if (input === '/' || input === 's') {
+            setIsSearching(true)
+            return
+        }
+
+        if (input === 'r' || input === 'R') {
+            const absIndex = startIndex + selectedIdxRef.current
+            const session = filteredSessions[absIndex]
+            if (session) {
+                const isCustomName = !session.id.startsWith('session-')
+                const rawTitle = isCustomName ? session.id : session.preview || session.id
+                const singleLineTitle = (rawTitle || '').replace(/\s+/g, ' ').trim()
+                setSessionNewName(singleLineTitle)
+                setSessionRenameMode(true)
+            }
+            return
+        }
+
+        if (input === 'd' || input === 'D') {
+            const absIndex = startIndex + selectedIdxRef.current
+            const session = filteredSessions[absIndex]
+            if (session) {
+                setConfirmDeleteId(session.id)
             }
             return
         }
@@ -220,25 +244,30 @@ export function SessionSelectMenu(props: any) {
     const timeWidth = 14
     const availableWidth = Math.max(20, columns - paddingWidth - indicatorWidth - timeWidth - 4)
 
-    const footerItems = sessionRenameMode
+    const footerItems = confirmDeleteId
         ? [
-              { key: 'enter', label: 'Save Name' },
-              { key: 'esc', label: 'Cancel' },
+              { key: 'y', label: 'Confirm' },
+              { key: 'n / esc', label: 'Cancel' },
           ]
-        : isSearching
+        : sessionRenameMode
           ? [
-                { key: 'enter / ↓', label: 'Focus List' },
-                { key: 'esc', label: 'Exit Search' },
-            ]
-          : [
-                { key: '↑/↓', label: 'Navigate' },
-                { key: '←/→', label: 'Page' },
-                { key: 'enter', label: 'Select' },
-                { key: '/', label: 'Search' },
-                { key: 'r', label: 'Rename' },
-                { key: 'd', label: 'Delete' },
+                { key: 'enter', label: 'Save Name' },
                 { key: 'esc', label: 'Cancel' },
             ]
+          : isSearching
+            ? [
+                  { key: 'enter / ↓', label: 'Focus List' },
+                  { key: 'esc', label: 'Exit Search' },
+              ]
+            : [
+                  { key: '↑/↓', label: 'Navigate' },
+                  { key: '←/→', label: 'Page' },
+                  { key: 'enter', label: 'Select' },
+                  { key: '/', label: 'Search' },
+                  { key: 'r', label: 'Rename' },
+                  { key: 'd', label: 'Delete' },
+                  { key: 'esc', label: 'Cancel' },
+              ]
 
     return (
         <Box flexDirection="column" paddingX={THEME.padding.paddingX}>
@@ -286,22 +315,28 @@ export function SessionSelectMenu(props: any) {
                                     color={THEME.colors.brand}
                                 >{`${THEME.glyphs.selector} `}</Text>
                             </Box>
-                            <TextInput
-                                value={sessionNewName}
-                                onChange={setSessionNewName}
-                                onSubmit={handleRenameSubmit}
-                                focus={true}
-                            />
+                            <Text color={THEME.colors.brand}>
+                                <TextInput
+                                    value={sessionNewName}
+                                    onChange={setSessionNewName}
+                                    onSubmit={handleRenameSubmit}
+                                    focus={true}
+                                />
+                            </Text>
                         </Box>
                     )
                 }
 
+                const isConfirmingDelete = session.id === confirmDeleteId
                 const isCustomName = !session.id.startsWith('session-')
                 const rawTitle = isCustomName ? session.id : session.preview || session.id
                 const singleLineTitle = (rawTitle || '').replace(/\s+/g, ' ').trim()
+                const maxTitleWidth = isConfirmingDelete
+                    ? Math.max(5, availableWidth - 17)
+                    : availableWidth
                 const title =
-                    singleLineTitle.length > availableWidth
-                        ? singleLineTitle.slice(0, availableWidth - 3) + '...'
+                    singleLineTitle.length > maxTitleWidth
+                        ? singleLineTitle.slice(0, maxTitleWidth - 3) + '...'
                         : singleLineTitle
                 const timeStr = timeAgo(session.updatedAt).padStart(12)
 
@@ -313,11 +348,13 @@ export function SessionSelectMenu(props: any) {
                             </Text>
                         </Box>
                         <Box width={availableWidth}>
-                            <Text
-                                color={isSelected ? THEME.colors.brand : THEME.colors.muted}
-                                wrap="truncate"
-                            >
-                                {title}
+                            <Text wrap="truncate">
+                                <Text color={isSelected ? THEME.colors.brand : THEME.colors.muted}>
+                                    {title}
+                                </Text>
+                                {isConfirmingDelete && (
+                                    <Text color={THEME.colors.error}> [Delete? (y/n)]</Text>
+                                )}
                             </Text>
                         </Box>
                         <Box width={timeWidth}>

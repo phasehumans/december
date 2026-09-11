@@ -153,7 +153,7 @@ describe('SessionSelectMenu Component (Unit)', () => {
         expect(setAuthMode).toHaveBeenCalledWith('none')
     })
 
-    it('enters rename mode on single "r" in navigation mode', async () => {
+    it('enters rename mode on single "r" in navigation mode with existing session name', async () => {
         const setSessionRenameMode = mock()
         const setSessionNewName = mock()
         const { stdin } = render(
@@ -176,11 +176,11 @@ describe('SessionSelectMenu Component (Unit)', () => {
         stdin.write('r') // single 'r' hotkey
         await new Promise((r) => setTimeout(r, 50))
 
-        expect(setSessionNewName).toHaveBeenCalledWith('session-1')
+        expect(setSessionNewName).toHaveBeenCalledWith('Build auth module')
         expect(setSessionRenameMode).toHaveBeenCalledWith(true)
     })
 
-    it('deletes session immediately on single "d" in navigation mode without confirmation prompt', async () => {
+    it('shows inline [Delete? (y/n)] confirmation on single "d" without deleting immediately', async () => {
         const deleteSessionMock = mock(() => Promise.resolve())
         const setSessionsData = mock()
         const { lastFrame, stdin } = render(
@@ -205,9 +205,134 @@ describe('SessionSelectMenu Component (Unit)', () => {
         await new Promise((r) => setTimeout(r, 50))
 
         const output = lastFrame() || ''
-        expect(output).not.toContain('Delete session "session-1"?')
+        expect(output).toContain('[Delete? (y/n)]')
+        expect(output).toContain('Confirm')
+        expect(deleteSessionMock).not.toHaveBeenCalled()
+        expect(setSessionsData).not.toHaveBeenCalled()
+    })
+
+    it('cancels inline delete confirmation when pressing n', async () => {
+        const deleteSessionMock = mock(() => Promise.resolve())
+        const setSessionsData = mock()
+        const { lastFrame, stdin } = render(
+            <SessionSelectMenu
+                sessionsData={mockSessions}
+                sessionPage={0}
+                sessionSelectedIndex={0}
+                sessionRenameMode={false}
+                sessionNewName=""
+                setSessionNewName={mock()}
+                setSessionsData={setSessionsData}
+                setSessionRenameMode={mock()}
+                setSessionSelectedIndex={mock()}
+                setSessionPage={mock()}
+                handleSessionSelect={mock()}
+                setAuthMode={mock()}
+                sessionRepository={{ deleteSession: deleteSessionMock }}
+            />
+        )
+
+        stdin.write('d') // enter delete confirmation
+        await new Promise((r) => setTimeout(r, 50))
+        expect(lastFrame() || '').toContain('[Delete? (y/n)]')
+
+        stdin.write('n') // cancel delete confirmation
+        await new Promise((r) => setTimeout(r, 50))
+
+        const output = lastFrame() || ''
+        expect(output).not.toContain('[Delete? (y/n)]')
+        expect(deleteSessionMock).not.toHaveBeenCalled()
+        expect(setSessionsData).not.toHaveBeenCalled()
+    })
+
+    it('confirms and deletes session when pressing y in delete confirmation mode', async () => {
+        const deleteSessionMock = mock(() => Promise.resolve())
+        const setSessionsData = mock()
+        const { lastFrame, stdin } = render(
+            <SessionSelectMenu
+                sessionsData={mockSessions}
+                sessionPage={0}
+                sessionSelectedIndex={0}
+                sessionRenameMode={false}
+                sessionNewName=""
+                setSessionNewName={mock()}
+                setSessionsData={setSessionsData}
+                setSessionRenameMode={mock()}
+                setSessionSelectedIndex={mock()}
+                setSessionPage={mock()}
+                handleSessionSelect={mock()}
+                setAuthMode={mock()}
+                sessionRepository={{ deleteSession: deleteSessionMock }}
+            />
+        )
+
+        stdin.write('d') // enter delete confirmation
+        await new Promise((r) => setTimeout(r, 50))
+        expect(lastFrame() || '').toContain('[Delete? (y/n)]')
+
+        stdin.write('y') // confirm delete
+        await new Promise((r) => setTimeout(r, 50))
+
         expect(deleteSessionMock).toHaveBeenCalledWith('session-1')
         expect(setSessionsData).toHaveBeenCalled()
+    })
+
+    it('cancels inline delete confirmation when pressing escape', async () => {
+        const deleteSessionMock = mock(() => Promise.resolve())
+        const setSessionsData = mock()
+        const { lastFrame, stdin } = render(
+            <SessionSelectMenu
+                sessionsData={mockSessions}
+                sessionPage={0}
+                sessionSelectedIndex={0}
+                sessionRenameMode={false}
+                sessionNewName=""
+                setSessionNewName={mock()}
+                setSessionsData={setSessionsData}
+                setSessionRenameMode={mock()}
+                setSessionSelectedIndex={mock()}
+                setSessionPage={mock()}
+                handleSessionSelect={mock()}
+                setAuthMode={mock()}
+                sessionRepository={{ deleteSession: deleteSessionMock }}
+            />
+        )
+
+        stdin.write('d') // enter delete confirmation
+        await new Promise((r) => setTimeout(r, 50))
+        expect(lastFrame() || '').toContain('[Delete? (y/n)]')
+
+        stdin.write('\x1B') // escape
+        await new Promise((r) => setTimeout(r, 50))
+
+        const output = lastFrame() || ''
+        expect(output).not.toContain('[Delete? (y/n)]')
+        expect(deleteSessionMock).not.toHaveBeenCalled()
+        expect(setSessionsData).not.toHaveBeenCalled()
+    })
+
+    it('renders rename mode showing existing session name and save/cancel footer', () => {
+        const { lastFrame } = render(
+            <SessionSelectMenu
+                sessionsData={mockSessions}
+                sessionPage={0}
+                sessionSelectedIndex={0}
+                sessionRenameMode={true}
+                sessionNewName="Build auth module"
+                setSessionNewName={mock()}
+                setSessionsData={mock()}
+                setSessionRenameMode={mock()}
+                setSessionSelectedIndex={mock()}
+                setSessionPage={mock()}
+                handleSessionSelect={mock()}
+                setAuthMode={mock()}
+            />
+        )
+
+        const output = lastFrame() || ''
+        expect(output).toContain('Build auth module')
+        expect(output).toContain('Save Name')
+        expect(output).toContain('Cancel')
     })
 
     it('navigates sessions with j and k keys in navigation mode', async () => {
