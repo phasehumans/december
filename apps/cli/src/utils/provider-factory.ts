@@ -134,8 +134,43 @@ export function instantiateProvider(
         case 'mistral-ai':
             return withProviderId(openaiProvider('https://api.mistral.ai/v1', apiKey), 'mistral')
         case 'xai':
+            if (options?.baseURL || options?.headers) {
+                return withProviderId(
+                    openaiProvider(
+                        options?.baseURL || 'https://api.x.ai/v1',
+                        apiKey,
+                        options?.headers
+                    ),
+                    'xai'
+                )
+            }
             return withProviderId(openaiProvider('https://api.x.ai/v1', apiKey), 'xai')
+        case 'xiaomi':
+        case 'mimo':
+            if (options?.baseURL || options?.headers) {
+                return withProviderId(
+                    openaiProvider(
+                        options?.baseURL || 'https://api.xiaomimimo.com/v1',
+                        apiKey,
+                        options?.headers
+                    ),
+                    'xiaomi'
+                )
+            }
+            return withProviderId(openaiProvider('https://api.xiaomimimo.com/v1', apiKey), 'xiaomi')
         case 'zai':
+        case 'zhipu':
+        case 'zhipuai':
+            if (options?.baseURL || options?.headers) {
+                return withProviderId(
+                    openaiProvider(
+                        options?.baseURL || 'https://api.z.ai/api/coding/paas/v4',
+                        apiKey,
+                        options?.headers
+                    ),
+                    'zai'
+                )
+            }
             return withProviderId(
                 openaiProvider('https://api.z.ai/api/coding/paas/v4', apiKey),
                 'zai'

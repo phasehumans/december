@@ -5,6 +5,8 @@ import {
     UpstageProvider,
     ThinkingMachinesProvider,
     resolveThinkingMachinesModel,
+    XiaomiProvider,
+    ZhipuAIProvider,
 } from '@december/providers'
 import { describe, expect, it } from 'bun:test'
 
@@ -53,6 +55,16 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
             )
             expect(resolveThinkingMachinesModel(undefined)).toBe('thinkingmachines/Inkling')
         })
+
+        it('instantiates XiaomiProvider with proper OpenAI endpoint and credentials', () => {
+            const provider = new XiaomiProvider('test-xiaomi-key')
+            expect(provider.id).toBe('xiaomi')
+        })
+
+        it('instantiates ZhipuAIProvider with coding endpoint and credentials', () => {
+            const provider = new ZhipuAIProvider('test-zhipu-key')
+            expect(provider.id).toBe('zai')
+        })
     })
 
     describe('Model Context Windows', () => {
@@ -64,6 +76,13 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
             expect(getModelContextWindow('thinkingmachines/Inkling')).toBe(131072)
             expect(getModelContextWindow('thinkingmachines/Inkling:peft:262144')).toBe(262144)
             expect(getModelContextWindow('inkling')).toBe(131072)
+            expect(getModelContextWindow('mimo-v2.5')).toBe(1048576)
+            expect(getModelContextWindow('mimo-v2.5-pro')).toBe(1048576)
+            expect(getModelContextWindow('mimo-v2-flash')).toBe(262144)
+            expect(getModelContextWindow('grok-4.6')).toBe(500000)
+            expect(getModelContextWindow('grok-4.3')).toBe(1000000)
+            expect(getModelContextWindow('grok-4.1-fast')).toBe(2000000)
+            expect(getModelContextWindow('glm-5.1')).toBe(200000)
         })
     })
 
@@ -93,10 +112,21 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
                 'thinkingmachines/Inkling:peft:262144',
             ])
 
+            const xiaomiModels = getProviderModels('xiaomi')
+            expect(xiaomiModels.map((m) => m.value)).toEqual([
+                'mimo-v2.5',
+                'mimo-v2.5-pro',
+                'mimo-v2.5-pro-ultraspeed',
+                'mimo-v2-flash',
+                'mimo-v2-omni',
+                'mimo-v2-pro',
+            ])
+
             // Test aliases
             expect(getProviderModels('solar')).toEqual(upstageModels)
             expect(getProviderModels('tinker')).toEqual(tinkerModels)
             expect(getProviderModels('inkling')).toEqual(tinkerModels)
+            expect(getProviderModels('mimo')).toEqual(xiaomiModels)
         })
 
         it('returns correct default models for providers', () => {
@@ -106,6 +136,10 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
             expect(getDefaultModelForProvider('solar')).toBe('solar-pro4')
             expect(getDefaultModelForProvider('thinkingmachines')).toBe('thinkingmachines/Inkling')
             expect(getDefaultModelForProvider('tinker')).toBe('thinkingmachines/Inkling')
+            expect(getDefaultModelForProvider('xiaomi')).toBe('mimo-v2.5')
+            expect(getDefaultModelForProvider('mimo')).toBe('mimo-v2.5')
+            expect(getDefaultModelForProvider('zai')).toBe('glm-5.3-flash')
+            expect(getDefaultModelForProvider('zhipuai')).toBe('glm-5.3-flash')
         })
 
         it('validates and normalizes models correctly', () => {
@@ -116,6 +150,10 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
                 true
             )
             expect(isValidModelForProvider('thinkingmachines', 'inkling')).toBe(true)
+            expect(isValidModelForProvider('xiaomi', 'mimo-v2.5')).toBe(true)
+            expect(isValidModelForProvider('mimo', 'mimo-v2.5')).toBe(true)
+            expect(isValidModelForProvider('zai', 'glm-5.3-flash')).toBe(true)
+            expect(isValidModelForProvider('zhipuai', 'glm-5.3-flash')).toBe(true)
 
             expect(ensureValidModelForProvider('thinkingmachines', 'inkling')).toBe(
                 'thinkingmachines/Inkling'
@@ -124,6 +162,8 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
                 'thinkingmachines/Inkling'
             )
             expect(ensureValidModelForProvider('upstage', 'solar-pro4')).toBe('solar-pro4')
+            expect(ensureValidModelForProvider('xiaomi', 'mimo-v2.5')).toBe('mimo-v2.5')
+            expect(ensureValidModelForProvider('mimo', 'mimo-v2.5')).toBe('mimo-v2.5')
         })
     })
 
@@ -136,6 +176,11 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
             expect(formatProviderName('upstage')).toBe('Upstage Solar')
             expect(formatProviderName('solar')).toBe('Upstage Solar')
             expect(formatProviderName('thinkingmachines')).toBe('Thinking Machines (Tinker)')
+            expect(formatProviderName('xiaomi')).toBe('Xiaomi')
+            expect(formatProviderName('mimo')).toBe('Xiaomi')
+            expect(formatProviderName('xai')).toBe('xAI')
+            expect(formatProviderName('zhipuai')).toBe('Zhipu AI')
+            expect(formatProviderName('zhipu')).toBe('Zhipu AI')
             expect(formatProviderName('tinker')).toBe('Thinking Machines (Tinker)')
             expect(formatProviderName('inkling')).toBe('Thinking Machines (Tinker)')
         })

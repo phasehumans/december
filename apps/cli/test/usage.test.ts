@@ -77,6 +77,32 @@ describe('CLI In-Terminal Usage & Rates (Unit)', () => {
         expect(tinkerRate.outputRate).toBe(6.0)
     })
 
+    it('resolves official rates for xai, zai, and xiaomi models', () => {
+        const grokRate = resolveModelRate('grok-4.6')
+        expect(grokRate.inputRate).toBe(2.0)
+        expect(grokRate.outputRate).toBe(6.0)
+
+        const grokFastRate = resolveModelRate('grok-4.1-fast')
+        expect(grokFastRate.inputRate).toBe(0.2)
+        expect(grokFastRate.outputRate).toBe(0.5)
+
+        const glmFlashRate = resolveModelRate('glm-5.3-flash')
+        expect(glmFlashRate.inputRate).toBe(0.075)
+        expect(glmFlashRate.outputRate).toBe(0.25)
+
+        const glmRate = resolveModelRate('glm-5.3')
+        expect(glmRate.inputRate).toBe(1.4)
+        expect(glmRate.outputRate).toBe(4.4)
+
+        const mimoRate = resolveModelRate('mimo-v2.5')
+        expect(mimoRate.inputRate).toBe(0.14)
+        expect(mimoRate.outputRate).toBe(0.28)
+
+        const mimoProRate = resolveModelRate('mimo-v2.5-pro')
+        expect(mimoProRate.inputRate).toBe(0.435)
+        expect(mimoProRate.outputRate).toBe(0.87)
+    })
+
     it('infers providers accurately from model names', () => {
         expect(inferProviderFromModel('claude-3-7-sonnet-latest')).toBe('anthropic')
         expect(inferProviderFromModel('gpt-4o')).toBe('openai')
@@ -93,7 +119,25 @@ describe('CLI In-Terminal Usage & Rates (Unit)', () => {
         expect(inferProviderFromModel('solar-pro4')).toBe('upstage')
         expect(inferProviderFromModel('thinkingmachines/Inkling')).toBe('thinkingmachines')
         expect(inferProviderFromModel('inkling')).toBe('thinkingmachines')
+        expect(inferProviderFromModel('mimo-v2.5')).toBe('xiaomi')
+        expect(inferProviderFromModel('glm-5.3')).toBe('zai')
+        expect(inferProviderFromModel('grok-4.6')).toBe('xai')
         expect(inferProviderFromModel('llama3.3:latest')).toBe('ollama')
+    })
+
+    it('formats BYOK usage card for Xiaomi with console link', () => {
+        const text = formatUsageCard({
+            model: 'mimo-v2.5',
+            authMethod: 'byok',
+            provider: 'xiaomi',
+            isAuthenticated: true,
+        })
+
+        expect(text).toContain('Active Model: `mimo-v2.5` (BYOK)')
+        expect(text).toContain('Provider: Xiaomi MiMo')
+        expect(text).toContain(
+            '[https://platform.xiaomimimo.com/console/api-keys](https://platform.xiaomimimo.com/console/api-keys)'
+        )
     })
 
     it('formats December Cloud Wallet usage card with accurate link and no emojis or bold', () => {

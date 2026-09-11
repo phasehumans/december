@@ -225,4 +225,43 @@ describe('Provider Switch Logic (Unit)', () => {
         expect(res.config.activeProvider).toBe('sarvam')
         expect(res.config.activeModel).toBe('sarvam-105b')
     })
+
+    it('smoothly switches between xiaomi, xai, and zai with model fallbacks and alias resolution', () => {
+        let config: DecemberConfig = {
+            activeProvider: 'xai',
+            activeModel: 'grok-4.6',
+            authPriority: 'byok',
+            providers: {
+                xai: 'key-xai',
+                xiaomi: 'key-xiaomi',
+                zai: 'key-zai',
+            },
+        }
+
+        // Switch to xiaomi via alias 'mimo' -> default model mimo-v2.5
+        const targetXiaomi = resolveSwitchTarget(config, 'mimo')
+        expect(targetXiaomi).toBeDefined()
+        expect(targetXiaomi?.provider).toBe('xiaomi')
+        let res = applyProviderSwitch(config, targetXiaomi!)
+        expect(res.config.activeProvider).toBe('xiaomi')
+        expect(res.config.activeModel).toBe('mimo-v2.5')
+        config = res.config
+
+        // Switch to zai via alias 'zhipuai' -> default model glm-5.3-flash
+        const targetZai = resolveSwitchTarget(config, 'zhipuai')
+        expect(targetZai).toBeDefined()
+        expect(targetZai?.provider).toBe('zai')
+        res = applyProviderSwitch(config, targetZai!)
+        expect(res.config.activeProvider).toBe('zai')
+        expect(res.config.activeModel).toBe('glm-5.3-flash')
+        config = res.config
+
+        // Switch back to xai -> preserves remembered model grok-4.6
+        const targetXai = resolveSwitchTarget(config, 'xai')
+        expect(targetXai).toBeDefined()
+        expect(targetXai?.provider).toBe('xai')
+        res = applyProviderSwitch(config, targetXai!)
+        expect(res.config.activeProvider).toBe('xai')
+        expect(res.config.activeModel).toBe('grok-4.6')
+    })
 })

@@ -232,10 +232,27 @@ export const PROVIDER_CREDIT_RULES: ProviderCreditRule[] = [
         hint: 'Please check your billing at https://console.x.ai/ or switch models using /model.',
     },
     {
+        id: 'xiaomi',
+        name: 'Xiaomi',
+        match: (str) =>
+            (str.includes('xiaomi') ||
+                str.includes('mimo') ||
+                str.includes('api.xiaomimimo.com') ||
+                str.includes('xiaomimimo.com')) &&
+            (isCreditOrBalanceError(str) || str.includes('credits') || str.includes('402')),
+        notice: 'Insufficient balance in your Xiaomi account. Please check your account at https://platform.xiaomimimo.com/console/api-keys\n',
+        message: 'Insufficient balance in your Xiaomi account.',
+        hint: 'Please check your account at https://platform.xiaomimimo.com/console/api-keys or switch models using /model.',
+    },
+    {
         id: 'zai',
         name: 'Zhipu AI',
         match: (str) =>
-            (str.includes('zai') || str.includes('zhipu') || str.includes('bigmodel.cn')) &&
+            (str.includes('zai') ||
+                str.includes('zhipu') ||
+                str.includes('zhipuai') ||
+                str.includes('bigmodel.cn') ||
+                str.includes('z.ai')) &&
             isCreditOrBalanceError(str),
         notice: 'Insufficient balance in your Zhipu AI account. Please top up your balance at https://open.bigmodel.cn/\n',
         message: 'Insufficient balance in your Zhipu AI account.',
@@ -416,7 +433,11 @@ export const PROVIDER_BILLING_URLS: Record<string, string> = {
     together: 'https://api.together.ai/settings/billing',
     upstage: 'https://console.upstage.ai/',
     xai: 'https://console.x.ai/',
+    xiaomi: 'https://platform.xiaomimimo.com/console/api-keys',
     zai: 'https://open.bigmodel.cn/',
+    zhipu: 'https://open.bigmodel.cn/',
+    zhipuai: 'https://open.bigmodel.cn/',
+    mimo: 'https://platform.xiaomimimo.com/console/api-keys',
 }
 
 export const PROVIDER_CREDIT_DISPLAY_NAMES: Record<string, string> = {
@@ -433,6 +454,7 @@ export const PROVIDER_CREDIT_DISPLAY_NAMES: Record<string, string> = {
     huggingface: 'Hugging Face',
     hyperbolic: 'Hyperbolic',
     meta: 'Meta',
+    mimo: 'Xiaomi',
     minimax: 'MiniMax',
     mistral: 'Mistral AI',
     moonshot: 'Moonshot AI',
@@ -450,7 +472,10 @@ export const PROVIDER_CREDIT_DISPLAY_NAMES: Record<string, string> = {
     together: 'Together AI',
     upstage: 'Upstage Solar',
     xai: 'xAI',
+    xiaomi: 'Xiaomi',
     zai: 'Zhipu AI',
+    zhipu: 'Zhipu AI',
+    zhipuai: 'Zhipu AI',
 }
 
 export function normalizeProviderAlias(provider?: string): string {
@@ -517,6 +542,11 @@ export function normalizeProviderAlias(provider?: string): string {
         case 'togetherai':
         case 'together':
             return 'together'
+        case 'mimo':
+        case 'xiaomi':
+            return 'xiaomi'
+        case 'zhipuai':
+        case 'zhipu-ai':
         case 'zhipu':
         case 'bigmodel':
         case 'zai':
@@ -595,7 +625,15 @@ export function detectProviderFromText(str: string): string | null {
         lower.includes('x.ai')
     )
         return 'xai'
-    if (lower.includes('zai') || lower.includes('zhipu') || lower.includes('bigmodel.cn'))
+    if (lower.includes('xiaomi') || lower.includes('mimo') || lower.includes('xiaomimimo.com'))
+        return 'xiaomi'
+    if (
+        lower.includes('zai') ||
+        lower.includes('zhipu') ||
+        lower.includes('zhipuai') ||
+        lower.includes('bigmodel.cn') ||
+        lower.includes('api.z.ai')
+    )
         return 'zai'
     if (lower.includes('poolside') || lower.includes('laguna') || lower.includes('poolside.ai'))
         return 'poolside'

@@ -36,6 +36,11 @@ export const SENSITIVE_LLM_ENV_KEYS: readonly string[] = [
     'SILICONFLOW_API_KEY',
     'XAI_API_KEY',
     'ZAI_API_KEY',
+    'ZHIPUAI_API_KEY',
+    'ZHIPU_API_KEY',
+    'XIAOMI_API_KEY',
+    'MIMO_API_KEY',
+
     'AGENTROUTER_API_KEY',
     'ARCEE_API_KEY',
     'META_API_KEY',

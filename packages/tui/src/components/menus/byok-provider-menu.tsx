@@ -42,6 +42,7 @@ export const PROVIDER_MENU_ITEMS = [
     { label: 'Thinking Machines (Tinker)', value: 'thinkingmachines' },
     { label: 'Together AI', value: 'together' },
     { label: 'Upstage Solar', value: 'upstage' },
+    { label: 'Xiaomi', value: 'xiaomi' },
     { label: 'xAI', value: 'xai' },
     { label: 'ZAI', value: 'zai' },
 ]

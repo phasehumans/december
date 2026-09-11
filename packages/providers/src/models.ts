@@ -57,9 +57,21 @@ export const MODEL_CONTEXT_WINDOWS: Record<string, number> = {
     'glm-5.3-flash': 1000000,
     'glm-5.3': 1000000,
     'glm-5.2': 1000000,
-    'glm-5.1': 1000000,
-    'glm-5': 1000000,
-    'glm-5-turbo': 1000000,
+    'glm-5.1': 200000,
+    'glm-5': 204800,
+    'glm-5-turbo': 200000,
+    'glm-5v-turbo': 200000,
+    'glm-4.7': 204800,
+    'glm-4.7-flash': 200000,
+    'glm-4.7-flashx': 200000,
+    'glm-4.6': 204800,
+    'glm-4.6v': 128000,
+    'glm-4.5': 131072,
+    'glm-4.5-air': 131072,
+    'glm-4.5-flash': 131072,
+    'glm-4.5v': 64000,
+    'glm-4-plus': 128000,
+    'glm-4-flash': 128000,
     'MiniMax-M3': 1000000,
     'MiniMax-M2.7': 204800,
     'MiniMax-M2.7-highspeed': 204800,
@@ -76,9 +88,26 @@ export const MODEL_CONTEXT_WINDOWS: Record<string, number> = {
     'qwen3-coder-30b-a3b-instruct': 262144,
     'grok-4.6': 500000,
     'grok-4.5': 500000,
-    'grok-4.3': 500000,
-    'grok-4.20': 500000,
-    'grok-build-0.1': 500000,
+    'grok-4.3': 1000000,
+    'grok-4.20': 1000000,
+    'grok-4.20-0309-reasoning': 1000000,
+    'grok-4.20-0309-non-reasoning': 1000000,
+    'grok-4.1-fast': 2000000,
+    'grok-4.1-fast-reasoning': 2000000,
+    'grok-build-0.1': 256000,
+    'mimo-v2.5': 1048576,
+    'mimo-v2.5-pro': 1048576,
+    'mimo-v2.5-pro-ultraspeed': 1048576,
+    'mimo-v2-flash': 262144,
+    'mimo-v2-omni': 262144,
+    'mimo-v2-pro': 1048576,
+    'xiaomi/mimo-v2.5': 1048576,
+    'xiaomi/mimo-v2.5-pro': 1048576,
+    'xiaomi/mimo-v2.5-pro-ultraspeed': 1048576,
+    'xiaomi/mimo-v2-flash': 262144,
+    'xiaomi/mimo-v2-omni': 262144,
+    'xiaomi/mimo-v2-pro': 1048576,
+
     'sonar-deep-research': 128000,
     'sonar-reasoning-pro': 128000,
     'sonar-pro': 128000,
@@ -163,7 +192,13 @@ export function getModelContextWindow(value: string): number {
     )
         return 1000000
     if (lower.includes('claude')) return 200000
+    if (lower.includes('grok-4.1-fast')) return 2000000
+    if (lower.includes('grok-4.3') || lower.includes('grok-4.20')) return 1000000
+    if (lower.includes('grok-build')) return 256000
     if (lower.includes('grok')) return 500000
+    if (lower.includes('mimo-v2-flash') || lower.includes('mimo-v2-omni')) return 262144
+    if (lower.includes('mimo')) return 1048576
+
     if (
         lower.includes('codestral') ||
         lower.includes('mistral-large') ||

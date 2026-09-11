@@ -220,9 +220,22 @@ export const getCuratedProviderModels = (provider: string) => {
                 { label: 'Grok 4.5', value: 'grok-4.5' },
                 { label: 'Grok 4.3', value: 'grok-4.3' },
                 { label: 'Grok 4.20', value: 'grok-4.20' },
+                { label: 'Grok 4.1 Fast', value: 'grok-4.1-fast' },
                 { label: 'Grok Build 0.1', value: 'grok-build-0.1' },
             ]
+        case 'xiaomi':
+        case 'mimo':
+            return [
+                { label: 'MiMo v2.5', value: 'mimo-v2.5' },
+                { label: 'MiMo v2.5 Pro', value: 'mimo-v2.5-pro' },
+                { label: 'MiMo v2.5 Pro Ultraspeed', value: 'mimo-v2.5-pro-ultraspeed' },
+                { label: 'MiMo v2 Flash', value: 'mimo-v2-flash' },
+                { label: 'MiMo v2 Omni', value: 'mimo-v2-omni' },
+                { label: 'MiMo v2 Pro', value: 'mimo-v2-pro' },
+            ]
         case 'zai':
+        case 'zhipu':
+        case 'zhipuai':
             return [
                 { label: 'GLM 5.3 Flash', value: 'glm-5.3-flash' },
                 { label: 'GLM 5.3', value: 'glm-5.3' },
@@ -232,6 +245,9 @@ export const getCuratedProviderModels = (provider: string) => {
                 { label: 'GLM 5 Turbo', value: 'glm-5-turbo' },
                 { label: 'GLM 4.7', value: 'glm-4.7' },
                 { label: 'GLM 4.7 Flash', value: 'glm-4.7-flash' },
+                { label: 'GLM 4.7 FlashX', value: 'glm-4.7-flashx' },
+                { label: 'GLM 4.6', value: 'glm-4.6' },
+                { label: 'GLM 4.5', value: 'glm-4.5' },
                 { label: 'GLM 4.5 Air', value: 'glm-4.5-air' },
                 { label: 'GLM 4 Plus', value: 'glm-4-plus' },
                 { label: 'GLM 4 Flash', value: 'glm-4-flash' },
@@ -813,10 +829,22 @@ export async function fetchLiveProviderModels(
                     endpoint = 'https://api.mistral.ai/v1/models'
                     break
                 case 'xai':
-                    endpoint = 'https://api.x.ai/v1/models'
+                    endpoint = baseUrl
+                        ? `${baseUrl.replace(/\/+$/, '')}/models`
+                        : 'https://api.x.ai/v1/models'
+                    break
+                case 'xiaomi':
+                case 'mimo':
+                    endpoint = baseUrl
+                        ? `${baseUrl.replace(/\/+$/, '')}/models`
+                        : 'https://api.xiaomimimo.com/v1/models'
                     break
                 case 'zai':
-                    endpoint = 'https://api.z.ai/api/coding/paas/v4/models'
+                case 'zhipu':
+                case 'zhipuai':
+                    endpoint = baseUrl
+                        ? `${baseUrl.replace(/\/+$/, '')}/models`
+                        : 'https://api.z.ai/api/coding/paas/v4/models'
                     break
                 case 'together':
                 case 'togetherai':
@@ -1030,6 +1058,7 @@ export const getModelLabel = (value: string) => {
         'moonshot',
         'mistral',
         'xai',
+        'xiaomi',
         'zai',
         'nvidia',
         'sambanova',
@@ -1074,6 +1103,16 @@ export const isValidModelForProvider = (provider: string, model?: string): boole
     if (normalized === 'agentrouter' && (model.includes('/') || model.includes(':'))) return true
     if (normalized === 'arcee' && (model.includes('/') || model.includes(':'))) return true
     if (normalized === 'meta' && (model.includes('/') || model.includes(':'))) return true
+    if (
+        (normalized === 'xiaomi' || normalized === 'mimo') &&
+        (model.includes('/') || model.startsWith('mimo'))
+    )
+        return true
+    if (
+        (normalized === 'zai' || normalized === 'zhipu' || normalized === 'zhipuai') &&
+        (model.includes('/') || model.startsWith('glm'))
+    )
+        return true
     if (normalized === 'poolside' && (model.includes('/') || model.startsWith('laguna')))
         return true
     if (

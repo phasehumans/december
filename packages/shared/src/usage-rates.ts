@@ -139,6 +139,68 @@ export const OFFICIAL_MODEL_RATES: Record<string, ModelRate> = {
     },
     inkling: { name: 'thinkingmachines/Inkling', inputRate: 2.0, outputRate: 6.0 },
 
+    // xAI (Grok)
+    'grok-4.6': { name: 'grok-4.6', inputRate: 2.0, outputRate: 6.0 },
+    'grok-4.5': { name: 'grok-4.5', inputRate: 2.0, outputRate: 6.0 },
+    'grok-4.3': { name: 'grok-4.3', inputRate: 1.25, outputRate: 2.5 },
+    'grok-4.20': { name: 'grok-4.20', inputRate: 1.25, outputRate: 2.5 },
+    'grok-4.20-0309-reasoning': {
+        name: 'grok-4.20-0309-reasoning',
+        inputRate: 1.25,
+        outputRate: 2.5,
+    },
+    'grok-4.20-0309-non-reasoning': {
+        name: 'grok-4.20-0309-non-reasoning',
+        inputRate: 1.25,
+        outputRate: 2.5,
+    },
+    'grok-4.1-fast': { name: 'grok-4.1-fast', inputRate: 0.2, outputRate: 0.5 },
+    'grok-4.1-fast-reasoning': { name: 'grok-4.1-fast-reasoning', inputRate: 0.2, outputRate: 0.5 },
+    'grok-build-0.1': { name: 'grok-build-0.1', inputRate: 1.0, outputRate: 2.0 },
+
+    // Zhipu AI (GLM)
+    'glm-5.3-flash': { name: 'glm-5.3-flash', inputRate: 0.075, outputRate: 0.25 },
+    'glm-5.3': { name: 'glm-5.3', inputRate: 1.4, outputRate: 4.4 },
+    'glm-5.2': { name: 'glm-5.2', inputRate: 1.4, outputRate: 4.4 },
+    'zai-org/glm-5.2': { name: 'zai-org/glm-5.2', inputRate: 1.4, outputRate: 4.4 },
+    'glm-5.1': { name: 'glm-5.1', inputRate: 1.4, outputRate: 4.4 },
+    'glm-5': { name: 'glm-5', inputRate: 1.0, outputRate: 3.2 },
+    'glm-5-turbo': { name: 'glm-5-turbo', inputRate: 5.0, outputRate: 22.0 },
+    'glm-5v-turbo': { name: 'glm-5v-turbo', inputRate: 5.0, outputRate: 22.0 },
+    'glm-4.7': { name: 'glm-4.7', inputRate: 0.6, outputRate: 2.2 },
+    'glm-4.7-flash': { name: 'glm-4.7-flash', inputRate: 0.0, outputRate: 0.0 },
+    'glm-4.7-flashx': { name: 'glm-4.7-flashx', inputRate: 0.07, outputRate: 0.4 },
+    'glm-4.6': { name: 'glm-4.6', inputRate: 0.6, outputRate: 2.2 },
+    'glm-4.6v': { name: 'glm-4.6v', inputRate: 0.3, outputRate: 0.9 },
+    'glm-4.5': { name: 'glm-4.5', inputRate: 0.6, outputRate: 2.2 },
+    'glm-4.5-air': { name: 'glm-4.5-air', inputRate: 0.2, outputRate: 1.1 },
+    'glm-4.5-flash': { name: 'glm-4.5-flash', inputRate: 0.0, outputRate: 0.0 },
+    'glm-4.5v': { name: 'glm-4.5v', inputRate: 0.6, outputRate: 1.8 },
+    'glm-4-plus': { name: 'glm-4-plus', inputRate: 1.4, outputRate: 4.4 },
+    'glm-4-flash': { name: 'glm-4-flash', inputRate: 0.0, outputRate: 0.0 },
+
+    // Xiaomi (MiMo)
+    'mimo-v2.5': { name: 'mimo-v2.5', inputRate: 0.14, outputRate: 0.28 },
+    'mimo-v2.5-pro': { name: 'mimo-v2.5-pro', inputRate: 0.435, outputRate: 0.87 },
+    'mimo-v2.5-pro-ultraspeed': {
+        name: 'mimo-v2.5-pro-ultraspeed',
+        inputRate: 1.305,
+        outputRate: 2.61,
+    },
+    'mimo-v2-flash': { name: 'mimo-v2-flash', inputRate: 0.14, outputRate: 0.28 },
+    'mimo-v2-omni': { name: 'mimo-v2-omni', inputRate: 0.14, outputRate: 0.28 },
+    'mimo-v2-pro': { name: 'mimo-v2-pro', inputRate: 0.435, outputRate: 0.87 },
+    'xiaomi/mimo-v2.5': { name: 'xiaomi/mimo-v2.5', inputRate: 0.14, outputRate: 0.28 },
+    'xiaomi/mimo-v2.5-pro': { name: 'xiaomi/mimo-v2.5-pro', inputRate: 0.435, outputRate: 0.87 },
+    'xiaomi/mimo-v2.5-pro-ultraspeed': {
+        name: 'xiaomi/mimo-v2.5-pro-ultraspeed',
+        inputRate: 1.305,
+        outputRate: 2.61,
+    },
+    'xiaomi/mimo-v2-flash': { name: 'xiaomi/mimo-v2-flash', inputRate: 0.14, outputRate: 0.28 },
+    'xiaomi/mimo-v2-omni': { name: 'xiaomi/mimo-v2-omni', inputRate: 0.14, outputRate: 0.28 },
+    'xiaomi/mimo-v2-pro': { name: 'xiaomi/mimo-v2-pro', inputRate: 0.435, outputRate: 0.87 },
+
     // Ollama / Local
     ollama: { name: 'ollama', inputRate: 0.0, outputRate: 0.0 },
 }
@@ -259,6 +321,14 @@ export const PROVIDER_BILLING_LINKS: Record<string, string> = {
     'minimax-ai': 'https://platform.minimax.io/console/access',
     poolside: 'https://platform.poolside.ai/api-keys',
     sakana: 'https://console.sakana.ai/api-keys',
+    sarvam: 'https://indus.sarvam.ai/',
+    stepfun: 'https://platform.stepfun.ai/interface-key',
+    upstage: 'https://console.upstage.ai',
+    thinkingmachines: 'https://tinker.thinkingmachines.ai/',
+    xiaomi: 'https://platform.xiaomimimo.com/console/api-keys',
+    mimo: 'https://platform.xiaomimimo.com/console/api-keys',
+    zhipu: 'https://open.bigmodel.cn/usercenter/apikeys',
+    zhipuai: 'https://z.ai/manage-apikey/apikey-list',
     ollama: 'http://localhost:11434',
 }
 
@@ -281,7 +351,9 @@ export const PROVIDER_DISPLAY_NAMES: Record<string, string> = {
     moonshoot: 'Moonshot AI Platform',
     kimi: 'Moonshot Kimi Console',
     xai: 'xAI Console',
-    zai: 'ZAI Platform',
+    zai: 'Zhipu AI',
+    zhipu: 'Zhipu AI',
+    zhipuai: 'Zhipu AI',
     nvidia: 'NVIDIA NIM Console',
     sambanova: 'SambaNova Cloud',
     cerebras: 'Cerebras Cloud',
@@ -304,6 +376,12 @@ export const PROVIDER_DISPLAY_NAMES: Record<string, string> = {
     'minimax-ai': 'MiniMax',
     poolside: 'Poolside',
     sakana: 'Sakana AI',
+    sarvam: 'Sarvam AI',
+    stepfun: 'StepFun (Global)',
+    upstage: 'Upstage Solar',
+    thinkingmachines: 'Thinking Machines (Tinker)',
+    xiaomi: 'Xiaomi',
+    mimo: 'Xiaomi',
     ollama: 'Ollama (Local)',
 }
 
@@ -350,8 +428,10 @@ export function formatInsufficientCreditsNotice(
             normalized = 'mistral'
         } else if (modelLower.includes('grok')) {
             normalized = 'xai'
-        } else if (modelLower.includes('glm')) {
+        } else if (modelLower.includes('glm') || modelLower.includes('zhipu')) {
             normalized = 'zai'
+        } else if (modelLower.includes('mimo') || modelLower.includes('xiaomi')) {
+            normalized = 'xiaomi'
         }
     }
 
@@ -376,6 +456,10 @@ export function formatInsufficientCreditsNotice(
 
     if (normalized === 'minimax' || normalized === 'minimaxai' || normalized === 'minimax-ai') {
         return 'Insufficient credits in your MiniMax account. Please add credits or top up your balance at https://platform.minimax.io/console/access'
+    }
+
+    if (normalized === 'xiaomi' || normalized === 'mimo') {
+        return 'Insufficient credits in your Xiaomi account. Please add credits or check your account at https://platform.xiaomimimo.com/console/api-keys'
     }
 
     const displayName = PROVIDER_DISPLAY_NAMES[normalized] || normalized.toUpperCase()

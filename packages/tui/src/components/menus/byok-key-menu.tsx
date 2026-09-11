@@ -71,7 +71,11 @@ export const PROVIDER_NAMES: Record<string, string> = {
     together: 'Together AI',
     xAI: 'xAI',
     xai: 'xAI',
+    xiaomi: 'Xiaomi',
+    mimo: 'Xiaomi',
     zai: 'ZAI',
+    zhipu: 'Zhipu AI',
+    zhipuai: 'Zhipu AI',
 }
 
 export const PROVIDER_KEY_URLS: Record<string, string> = {
@@ -138,7 +142,11 @@ export const PROVIDER_KEY_URLS: Record<string, string> = {
     togetherai: 'https://api.together.ai/settings/api-keys',
     xAI: 'https://console.x.ai/',
     xai: 'https://console.x.ai/',
+    xiaomi: 'https://platform.xiaomimimo.com/console/api-keys',
+    mimo: 'https://platform.xiaomimimo.com/console/api-keys',
     zai: 'https://open.bigmodel.cn/usercenter/apikeys',
+    zhipu: 'https://open.bigmodel.cn/usercenter/apikeys',
+    zhipuai: 'https://open.bigmodel.cn/usercenter/apikeys',
 }
 
 export function formatProviderName(provider?: string): string {

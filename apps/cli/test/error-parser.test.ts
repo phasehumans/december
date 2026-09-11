@@ -337,6 +337,20 @@ describe('error-parser', () => {
             expect(parsed.hint).toContain('https://aistudio.google.com/')
         })
 
+        test('attaches custom notice for Xiaomi credit exhaustion', () => {
+            const rawErr = '402 Payment Required: insufficient balance on api.xiaomimimo.com'
+            const parsed = parseError(rawErr)
+            expect(parsed.message).toBe('Insufficient balance in your Xiaomi account.')
+            expect(parsed.hint).toContain('https://platform.xiaomimimo.com/console/api-keys')
+        })
+
+        test('attaches custom notice for Zhipu AI credit exhaustion', () => {
+            const rawErr = '402 Payment Required: balance insufficient on z.ai'
+            const parsed = parseError(rawErr)
+            expect(parsed.message).toBe('Insufficient balance in your Zhipu AI account.')
+            expect(parsed.hint).toContain('https://open.bigmodel.cn/')
+        })
+
         test('dynamically resolves provider from context provider alias when error text lacks provider name', () => {
             const rawErr = '402 Payment Required: account balance is 0'
             const parsed = parseError(rawErr, { provider: 'sarvamai' })

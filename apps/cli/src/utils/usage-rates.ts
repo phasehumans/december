@@ -47,10 +47,6 @@ export const OFFICIAL_MODEL_RATES: Record<string, ModelRate> = {
     'deepseek-reasoner': { name: 'deepseek-reasoner', inputRate: 0.55, outputRate: 2.19 },
     'deepseek-r1': { name: 'deepseek-r1', inputRate: 0.55, outputRate: 2.19 },
 
-    // xAI (Grok)
-    'grok-4.6': { name: 'grok-4.6', inputRate: 2.0, outputRate: 10.0 },
-    'grok-4.5': { name: 'grok-4.5', inputRate: 2.0, outputRate: 10.0 },
-
     // Arcee AI & Hosted Models
     'trinity-large-thinking': { name: 'trinity-large-thinking', inputRate: 0.25, outputRate: 0.8 },
     'deepseek/deepseek-v4-flash-latest': {
@@ -158,6 +154,67 @@ export const OFFICIAL_MODEL_RATES: Record<string, ModelRate> = {
     },
     inkling: { name: 'thinkingmachines/Inkling', inputRate: 2.0, outputRate: 6.0 },
 
+    // xAI (Grok)
+    'grok-4.6': { name: 'grok-4.6', inputRate: 2.0, outputRate: 6.0 },
+    'grok-4.5': { name: 'grok-4.5', inputRate: 2.0, outputRate: 6.0 },
+    'grok-4.3': { name: 'grok-4.3', inputRate: 1.25, outputRate: 2.5 },
+    'grok-4.20': { name: 'grok-4.20', inputRate: 1.25, outputRate: 2.5 },
+    'grok-4.20-0309-reasoning': {
+        name: 'grok-4.20-0309-reasoning',
+        inputRate: 1.25,
+        outputRate: 2.5,
+    },
+    'grok-4.20-0309-non-reasoning': {
+        name: 'grok-4.20-0309-non-reasoning',
+        inputRate: 1.25,
+        outputRate: 2.5,
+    },
+    'grok-4.1-fast': { name: 'grok-4.1-fast', inputRate: 0.2, outputRate: 0.5 },
+    'grok-4.1-fast-reasoning': { name: 'grok-4.1-fast-reasoning', inputRate: 0.2, outputRate: 0.5 },
+    'grok-build-0.1': { name: 'grok-build-0.1', inputRate: 1.0, outputRate: 2.0 },
+
+    // Zhipu AI (GLM)
+    'glm-5.3-flash': { name: 'glm-5.3-flash', inputRate: 0.075, outputRate: 0.25 },
+    'glm-5.3': { name: 'glm-5.3', inputRate: 1.4, outputRate: 4.4 },
+    'glm-5.2': { name: 'glm-5.2', inputRate: 1.4, outputRate: 4.4 },
+    'glm-5.1': { name: 'glm-5.1', inputRate: 1.4, outputRate: 4.4 },
+    'glm-5': { name: 'glm-5', inputRate: 1.0, outputRate: 3.2 },
+    'glm-5-turbo': { name: 'glm-5-turbo', inputRate: 5.0, outputRate: 22.0 },
+    'glm-5v-turbo': { name: 'glm-5v-turbo', inputRate: 5.0, outputRate: 22.0 },
+    'glm-4.7': { name: 'glm-4.7', inputRate: 0.6, outputRate: 2.2 },
+    'glm-4.7-flash': { name: 'glm-4.7-flash', inputRate: 0.0, outputRate: 0.0 },
+    'glm-4.7-flashx': { name: 'glm-4.7-flashx', inputRate: 0.07, outputRate: 0.4 },
+    'glm-4.6': { name: 'glm-4.6', inputRate: 0.6, outputRate: 2.2 },
+    'glm-4.6v': { name: 'glm-4.6v', inputRate: 0.3, outputRate: 0.9 },
+    'glm-4.5': { name: 'glm-4.5', inputRate: 0.6, outputRate: 2.2 },
+    'glm-4.5-air': { name: 'glm-4.5-air', inputRate: 0.2, outputRate: 1.1 },
+    'glm-4.5-flash': { name: 'glm-4.5-flash', inputRate: 0.0, outputRate: 0.0 },
+    'glm-4.5v': { name: 'glm-4.5v', inputRate: 0.6, outputRate: 1.8 },
+    'glm-4-plus': { name: 'glm-4-plus', inputRate: 1.4, outputRate: 4.4 },
+    'glm-4-flash': { name: 'glm-4-flash', inputRate: 0.0, outputRate: 0.0 },
+
+    // Xiaomi (MiMo)
+    'mimo-v2.5': { name: 'mimo-v2.5', inputRate: 0.14, outputRate: 0.28 },
+    'mimo-v2.5-pro': { name: 'mimo-v2.5-pro', inputRate: 0.435, outputRate: 0.87 },
+    'mimo-v2.5-pro-ultraspeed': {
+        name: 'mimo-v2.5-pro-ultraspeed',
+        inputRate: 1.305,
+        outputRate: 2.61,
+    },
+    'mimo-v2-flash': { name: 'mimo-v2-flash', inputRate: 0.14, outputRate: 0.28 },
+    'mimo-v2-omni': { name: 'mimo-v2-omni', inputRate: 0.14, outputRate: 0.28 },
+    'mimo-v2-pro': { name: 'mimo-v2-pro', inputRate: 0.435, outputRate: 0.87 },
+    'xiaomi/mimo-v2.5': { name: 'xiaomi/mimo-v2.5', inputRate: 0.14, outputRate: 0.28 },
+    'xiaomi/mimo-v2.5-pro': { name: 'xiaomi/mimo-v2.5-pro', inputRate: 0.435, outputRate: 0.87 },
+    'xiaomi/mimo-v2.5-pro-ultraspeed': {
+        name: 'xiaomi/mimo-v2.5-pro-ultraspeed',
+        inputRate: 1.305,
+        outputRate: 2.61,
+    },
+    'xiaomi/mimo-v2-flash': { name: 'xiaomi/mimo-v2-flash', inputRate: 0.14, outputRate: 0.28 },
+    'xiaomi/mimo-v2-omni': { name: 'xiaomi/mimo-v2-omni', inputRate: 0.14, outputRate: 0.28 },
+    'xiaomi/mimo-v2-pro': { name: 'xiaomi/mimo-v2-pro', inputRate: 0.435, outputRate: 0.87 },
+
     // Ollama (Local)
     ollama: { name: 'ollama', inputRate: 0.0, outputRate: 0.0 },
 }
@@ -180,7 +237,11 @@ export const PROVIDER_BILLING_LINKS: Record<string, string> = {
     moonshoot: 'https://platform.moonshot.ai/console/api-keys',
     kimi: 'https://platform.moonshot.ai/console/api-keys',
     xai: 'https://console.x.ai/',
+    xiaomi: 'https://platform.xiaomimimo.com/console/api-keys',
+    mimo: 'https://platform.xiaomimimo.com/console/api-keys',
     zai: 'https://open.bigmodel.cn/usercenter/apikeys',
+    zhipu: 'https://open.bigmodel.cn/usercenter/apikeys',
+    zhipuai: 'https://open.bigmodel.cn/usercenter/apikeys',
     nvidia: 'https://build.nvidia.com/',
     sambanova: 'https://cloud.sambanova.ai/',
     cerebras: 'https://cloud.cerebras.ai/',
@@ -234,7 +295,11 @@ export const PROVIDER_DISPLAY_NAMES: Record<string, string> = {
     moonshoot: 'Moonshot AI (Kimi)',
     kimi: 'Moonshot AI (Kimi)',
     xai: 'xAI Console',
+    xiaomi: 'Xiaomi MiMo',
+    mimo: 'Xiaomi MiMo',
     zai: 'Zhipu AI (GLM)',
+    zhipu: 'Zhipu AI (GLM)',
+    zhipuai: 'Zhipu AI (GLM)',
     nvidia: 'NVIDIA NIM',
     sambanova: 'SambaNova Cloud',
     cerebras: 'Cerebras Inference',
@@ -308,7 +373,9 @@ export function inferProviderFromModel(modelName: string): string {
         return 'mistral'
     if (lower.startsWith('moonshot') || lower.startsWith('kimi')) return 'moonshot'
     if (lower.startsWith('grok') || lower.startsWith('xai')) return 'xai'
-    if (lower.startsWith('zai') || lower.startsWith('glm')) return 'zai'
+    if (lower.startsWith('mimo') || lower.startsWith('xiaomi')) return 'xiaomi'
+    if (lower.startsWith('zai') || lower.startsWith('glm') || lower.startsWith('zhipu'))
+        return 'zai'
     if (lower.startsWith('nvidia') || lower.startsWith('nim') || lower.includes('nemotron'))
         return 'nvidia'
     if (lower.startsWith('sambanova')) return 'sambanova'

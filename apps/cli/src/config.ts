@@ -36,6 +36,10 @@ export interface ProviderConfig {
         | 'mistral-ai'
         | 'xai'
         | 'zai'
+        | 'zhipu'
+        | 'zhipuai'
+        | 'xiaomi'
+        | 'mimo'
         | 'nvidia'
         | 'sambanova'
         | 'cerebras'
@@ -507,6 +511,15 @@ export function formatProviderName(provider: string): string {
         case 'tinker':
         case 'inkling':
             return 'Thinking Machines (Tinker)'
+        case 'xai':
+            return 'xAI'
+        case 'zai':
+        case 'zhipu':
+        case 'zhipuai':
+            return 'Zhipu AI'
+        case 'xiaomi':
+        case 'mimo':
+            return 'Xiaomi'
         case 'claude':
             return 'Claude'
         case 'copilot':
@@ -785,6 +798,27 @@ export function resolveSwitchTarget(
                 provider: 'sarvam',
                 authPriority: 'byok',
                 model: getTargetModelForProvider(config, 'sarvam'),
+            }
+        }
+        if (['mimo'].includes(q) && config.providers['xiaomi']) {
+            return {
+                provider: 'xiaomi',
+                authPriority: 'byok',
+                model: getTargetModelForProvider(config, 'xiaomi'),
+            }
+        }
+        if (['zhipu', 'zhipuai'].includes(q) && config.providers['zai']) {
+            return {
+                provider: 'zai',
+                authPriority: 'byok',
+                model: getTargetModelForProvider(config, 'zai'),
+            }
+        }
+        if (['zai', 'zhipu'].includes(q) && config.providers['zhipuai']) {
+            return {
+                provider: 'zhipuai',
+                authPriority: 'byok',
+                model: getTargetModelForProvider(config, 'zhipuai'),
             }
         }
     }

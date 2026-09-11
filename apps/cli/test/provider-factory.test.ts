@@ -365,6 +365,45 @@ describe('instantiateProvider', () => {
         expect(providers.openaiProvider).toHaveBeenCalledWith('https://api.sarvam.ai/v1', 'key-123')
     })
 
+    it('instantiates xai provider via openai compat', () => {
+        instantiateProvider('xai', 'key-123')
+        expect(providers.openaiProvider).toHaveBeenCalledWith('https://api.x.ai/v1', 'key-123')
+    })
+
+    it('instantiates xiaomi and mimo providers via openai compat', () => {
+        instantiateProvider('xiaomi', 'key-123')
+        expect(providers.openaiProvider).toHaveBeenCalledWith(
+            'https://api.xiaomimimo.com/v1',
+            'key-123'
+        )
+
+        instantiateProvider('mimo', 'key-123')
+        expect(providers.openaiProvider).toHaveBeenCalledWith(
+            'https://api.xiaomimimo.com/v1',
+            'key-123'
+        )
+    })
+
+    it('instantiates zai, zhipu, and zhipuai providers via openai compat', () => {
+        instantiateProvider('zai', 'key-123')
+        expect(providers.openaiProvider).toHaveBeenCalledWith(
+            'https://api.z.ai/api/coding/paas/v4',
+            'key-123'
+        )
+
+        instantiateProvider('zhipu', 'key-123')
+        expect(providers.openaiProvider).toHaveBeenCalledWith(
+            'https://api.z.ai/api/coding/paas/v4',
+            'key-123'
+        )
+
+        instantiateProvider('zhipuai', 'key-123')
+        expect(providers.openaiProvider).toHaveBeenCalledWith(
+            'https://api.z.ai/api/coding/paas/v4',
+            'key-123'
+        )
+    })
+
     it('instantiates ollama provider with default localhost endpoint', () => {
         const p = instantiateProvider('ollama', '')
         expect(p).toBe('mock-ollama')

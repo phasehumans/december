@@ -30,7 +30,8 @@ import {
 import { TogetherProvider } from '../../src/providers/together'
 import { UpstageProvider } from '../../src/providers/upstage'
 import { XAIProvider } from '../../src/providers/xai'
-import { ZAIProvider } from '../../src/providers/zai'
+import { XiaomiProvider } from '../../src/providers/xiaomi'
+import { ZAIProvider, ZhipuAIProvider } from '../../src/providers/zai'
 
 describe('OpenAI-compatible Subproviders (Unit)', () => {
     test('instantiates DeepSeekProvider with correct ID', () => {
@@ -176,5 +177,15 @@ describe('OpenAI-compatible Subproviders (Unit)', () => {
             'thinkingmachines/Inkling:peft:262144'
         )
         expect(resolveThinkingMachinesModel(undefined)).toBe('thinkingmachines/Inkling')
+    })
+
+    test('instantiates XiaomiProvider with correct ID', () => {
+        const provider = new XiaomiProvider('dummy-key')
+        expect(provider.id).toBe('xiaomi')
+    })
+
+    test('instantiates ZhipuAIProvider alias with correct ID', () => {
+        const provider = new ZhipuAIProvider('dummy-key')
+        expect(provider.id).toBe('zai')
     })
 })

@@ -8,8 +8,8 @@ import {
 import { PROVIDER_MENU_ITEMS } from '../../src/components/menus/byok-provider-menu'
 
 describe('BYOK Provider URLs & Names Audit (Unit)', () => {
-    it('ensures all 35 BYOK providers have corresponding key URLs starting with https://', () => {
-        expect(PROVIDER_MENU_ITEMS.length).toBe(35)
+    it('ensures all 36 BYOK providers have corresponding key URLs starting with https://', () => {
+        expect(PROVIDER_MENU_ITEMS.length).toBe(36)
 
         for (const item of PROVIDER_MENU_ITEMS) {
             const url = PROVIDER_KEY_URLS[item.value]
@@ -19,7 +19,7 @@ describe('BYOK Provider URLs & Names Audit (Unit)', () => {
         }
     })
 
-    it('ensures all 35 BYOK providers have a display name defined in PROVIDER_NAMES', () => {
+    it('ensures all 36 BYOK providers have a display name defined in PROVIDER_NAMES', () => {
         for (const item of PROVIDER_MENU_ITEMS) {
             const name = PROVIDER_NAMES[item.value]
             expect(name).toBeDefined()
@@ -51,5 +51,8 @@ describe('BYOK Provider URLs & Names Audit (Unit)', () => {
         expect(PROVIDER_KEY_URLS['lmstudio']).toBe('https://lmstudio.ai/')
         expect(PROVIDER_KEY_URLS['llamacpp']).toBe('https://github.com/ggerganov/llama.cpp')
         expect(PROVIDER_KEY_URLS['ollama']).toBe('https://ollama.com/download')
+        expect(PROVIDER_KEY_URLS['xiaomi']).toBe('https://platform.xiaomimimo.com/console/api-keys')
+        expect(PROVIDER_KEY_URLS['xai']).toBe('https://console.x.ai/')
+        expect(PROVIDER_KEY_URLS['zai']).toBe('https://open.bigmodel.cn/usercenter/apikeys')
     })
 })
