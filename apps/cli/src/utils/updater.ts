@@ -198,6 +198,13 @@ export interface PerformUpdateOptions {
     force?: boolean
     fetchLatestFn?: () => Promise<string | null>
     onProgress?: (message: string) => void
+    onResolvedVersion?: (info: {
+        currentVersion: string
+        targetVersion?: string
+        method: InstallMethod
+        description: string
+        activeBinaryPath?: string
+    }) => void
     onSuccess?: () => Promise<void> | void
     onError?: (error: string, manualCmd: string) => void
     execFn?: typeof exec
@@ -300,6 +307,15 @@ export async function performCliUpdate(options?: PerformUpdateOptions): Promise<
     }
 
     const currentVersion = options?.currentVersion ?? pkg.version
+    const activeBinaryPath = preDiagnosis?.activeBinary?.path
+
+    options?.onResolvedVersion?.({
+        currentVersion,
+        targetVersion,
+        method,
+        description,
+        activeBinaryPath,
+    })
 
     // Fast-path: already on latest version
     if (
@@ -317,6 +333,7 @@ export async function performCliUpdate(options?: PerformUpdateOptions): Promise<
             targetVersion,
             installedVersion: currentVersion,
             activeVersion: currentVersion,
+            activeBinaryPath,
             verified: true,
             output: `December CLI is already up to date (v${currentVersion}).`,
         }

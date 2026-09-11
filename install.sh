@@ -5,19 +5,34 @@ REPO="phasehumans/december"
 BINARY_NAME="december"
 INSTALL_DIR="${DECEMBER_INSTALL_DIR:-$HOME/.december/bin}"
 
-# Brand Colors (#87B2F4 Brand Blue)
-BLUE="\033[38;2;135;178;244m"
-GREEN="\033[38;2;110;231;183m"
-RED="\033[38;2;252;165;165m"
-WHITE="\033[38;2;244;244;245m"
-GREY="\033[38;2;161;161;170m"
-TRUNK="\033[38;2;63;63;70m"
-RESET="\033[0m"
+# Color formatting with NO_COLOR & TTY awareness
+if [ -n "${NO_COLOR:-}" ] || [ ! -t 1 ]; then
+    BLUE=""
+    GREEN=""
+    RED=""
+    YELLOW=""
+    WHITE=""
+    GREY=""
+    TRUNK=""
+    RESET=""
+else
+    BLUE="\033[38;2;135;178;244m"
+    GREEN="\033[38;2;110;231;183m"
+    RED="\033[38;2;252;165;165m"
+    YELLOW="\033[38;2;253;224;71m"
+    WHITE="\033[38;2;244;244;245m"
+    GREY="\033[38;2;161;161;170m"
+    TRUNK="\033[38;2;63;63;70m"
+    RESET="\033[0m"
+fi
 
-log_step()  { echo -e "${BLUE}✱${RESET}  ${WHITE}$1${RESET}"; }
-log_tree()  { echo -e "${TRUNK}│${RESET}  ${GREY}$1${RESET}"; }
-log_space() { echo -e "${TRUNK}│${RESET}"; }
-log_error() { echo -e "${BLUE}✱${RESET}  ${RED}$1${RESET}"; }
+log_step()    { echo -e "${BLUE}✱${RESET}  ${WHITE}$1${RESET}"; }
+log_tree()    { echo -e "${TRUNK}│${RESET}  ${GREY}$1${RESET}"; }
+log_item()    { echo -e "${TRUNK}│${RESET}  ${WHITE}$1:${RESET} ${GREY}$2${RESET}"; }
+log_success() { echo -e "${TRUNK}│${RESET}  ${GREEN}✔${RESET}  ${WHITE}$1${RESET}"; }
+log_warn()    { echo -e "${TRUNK}│${RESET}  ${YELLOW}⚠${RESET}  ${WHITE}$1${RESET}"; }
+log_space()   { echo -e "${TRUNK}│${RESET}"; }
+log_error()   { echo -e "${BLUE}✱${RESET}  ${RED}$1${RESET}"; }
 
 detect_target() {
     local os arch
@@ -82,29 +97,48 @@ case "$TARGET" in
     *)                          DISPLAY_TARGET="$TARGET" ;;
 esac
 
+echo ""
 log_step "installing december for ${DISPLAY_TARGET}..."
+log_space
 
 VERSION="${DECEMBER_VERSION:-latest}"
 ARCHIVE="december-${TARGET}.tar.gz"
 
 if [ "$VERSION" = "latest" ]; then
     DOWNLOAD_URL="https://github.com/${REPO}/releases/latest/download/${ARCHIVE}"
+    SHASUMS_URL="https://github.com/${REPO}/releases/latest/download/SHASUMS256.txt"
 else
     DOWNLOAD_URL="https://github.com/${REPO}/releases/download/v${VERSION#v}/${ARCHIVE}"
+    SHASUMS_URL="https://github.com/${REPO}/releases/download/v${VERSION#v}/SHASUMS256.txt"
 fi
 
 TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TMP_DIR"' EXIT
 
 log_tree "downloading pre-compiled release binary..."
-if ! curl -fL --progress-bar "$DOWNLOAD_URL" -o "${TMP_DIR}/${ARCHIVE}"; then
-    log_space
-    log_error "Failed to download from ${DOWNLOAD_URL}"
-    log_tree "Check https://github.com/${REPO}/releases for available versions."
-    exit 1
+if ! curl -fSL "$DOWNLOAD_URL" -o "${TMP_DIR}/${ARCHIVE}" 2>/dev/null; then
+    # Fallback to standard curl output if silent fetch fails
+    if ! curl -fSL "$DOWNLOAD_URL" -o "${TMP_DIR}/${ARCHIVE}"; then
+        log_space
+        log_error "Failed to download from ${DOWNLOAD_URL}"
+        log_tree "Check https://github.com/${REPO}/releases for available versions."
+        exit 1
+    fi
+fi
+log_success "downloaded release asset"
+
+# Verify sha256 checksum if manifest is available
+if curl -fsSL "$SHASUMS_URL" -o "${TMP_DIR}/SHASUMS256.txt" 2>/dev/null; then
+    (
+        cd "$TMP_DIR"
+        if grep -F "${ARCHIVE}" SHASUMS256.txt | sha256sum --check --status 2>/dev/null; then
+            log_success "sha256 checksum verified"
+        else
+            log_warn "sha256 checksum not verified (manifest unverified); proceeding"
+        fi
+    )
 fi
 
-printf "\033[1A\033[2K"
 log_tree "extracting binary..."
 tar -xzf "${TMP_DIR}/${ARCHIVE}" -C "$TMP_DIR"
 
@@ -118,16 +152,18 @@ else
     if [ -n "$FOUND_BIN" ]; then
         mv "$FOUND_BIN" "${INSTALL_DIR}/${BINARY_NAME}"
     else
+        log_space
         log_error "Failed to locate extracted binary."
         exit 1
     fi
 fi
 chmod +x "${INSTALL_DIR}/${BINARY_NAME}"
+log_success "installed binary to ${WHITE}${INSTALL_DIR}/${BINARY_NAME}${RESET}"
 
 # Clean up legacy ~/.local/bin/december to prevent PATH shadowing
 if [ "$INSTALL_DIR" != "$HOME/.local/bin" ] && [ -e "$HOME/.local/bin/december" ]; then
     rm -f "$HOME/.local/bin/december" 2>/dev/null || true
-    log_tree "Cleaned up legacy binary at $HOME/.local/bin/december to avoid PATH conflicts."
+    log_success "cleaned up legacy binary at $HOME/.local/bin/december"
 fi
 
 CONFIG_DIR="${DECEMBER_CONFIG_DIR:-$HOME/.december}"
@@ -151,13 +187,10 @@ else
     fi
 fi
 
-log_space
-log_step "${BLUE}december successfully installed${RESET} to ${WHITE}${INSTALL_DIR}/${BINARY_NAME}${RESET}"
-
 # Check if INSTALL_DIR is in PATH
 if ! echo "$PATH" | tr ':' '\n' | grep -qx "$INSTALL_DIR"; then
     log_space
-    log_tree "Configuring PATH in shell profile..."
+    log_tree "configuring PATH in shell profile..."
 
     SHELL_PROFILE=""
     DETECTED_SHELL="$(basename "${SHELL:-bash}")"
@@ -175,20 +208,25 @@ if ! echo "$PATH" | tr ':' '\n' | grep -qx "$INSTALL_DIR"; then
     EXPORT_LINE="export PATH=\"${INSTALL_DIR}:\$PATH\""
 
     if [ -f "$SHELL_PROFILE" ] && grep -Fq "${INSTALL_DIR}" "$SHELL_PROFILE"; then
-        log_tree "PATH export already present in ${SHELL_PROFILE}."
+        log_success "PATH export already present in ${WHITE}${SHELL_PROFILE}${RESET}"
     else
         echo "" >> "$SHELL_PROFILE"
         echo "# Added by December CLI installer" >> "$SHELL_PROFILE"
         echo "$EXPORT_LINE" >> "$SHELL_PROFILE"
-        log_tree "Added ${INSTALL_DIR} to ${WHITE}${SHELL_PROFILE}${RESET}"
+        log_success "added ${INSTALL_DIR} to ${WHITE}${SHELL_PROFILE}${RESET}"
     fi
 
     log_space
-    log_tree "Restart your terminal or run:"
-    echo -e "${TRUNK}│${RESET}  ${WHITE}source ${SHELL_PROFILE}${RESET}"
+    log_step "december successfully installed"
+    log_space
+    log_tree "run: ${WHITE}source ${SHELL_PROFILE} && december${RESET}"
+else
+    log_space
+    log_step "december successfully installed"
+    log_space
+    log_tree "run: ${WHITE}december${RESET}"
 fi
 
 log_space
-log_step "run ${WHITE}december${RESET} to start your session"
-log_tree "(If your active terminal still runs an older version, run: ${WHITE}hash -r${RESET} or restart terminal)"
-
+log_step "ready"
+echo ""

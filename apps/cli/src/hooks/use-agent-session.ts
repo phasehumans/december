@@ -1729,7 +1729,9 @@ ${decStatus}
                     onProgress: (msg) => addToast(msg, 'info'),
                     onSuccess: async () => {
                         if (agent) {
-                            await agent.saveContext().catch(() => {})
+                            await agent.saveContext().catch(() => {
+                                // Intentionally swallowed: context save failure before update is non-fatal
+                            })
                         }
                     },
                 })
@@ -1758,7 +1760,7 @@ ${decStatus}
                         )
                     }
                     addToast(
-                        `December CLI updated successfully${verStr} via ${result.method}! Restart via "december" to run the latest version.`,
+                        `December CLI updated successfully${verStr} via ${result.method}! Run "december" to start your updated session.`,
                         'success'
                     )
                     if (result.shellHashNotice) {
@@ -2478,9 +2480,6 @@ ${decStatus}
         handleSubmit,
         sessionRepository,
         handleSettingsMainSelect,
-        handleSettingsAgentSelect,
-        handleSettingsUISelect,
-        handleSettingsKeysSelect,
         handleAuthMenuSelect,
         handleModelSelect,
         handleSessionSelect,

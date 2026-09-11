@@ -384,6 +384,7 @@ export async function handleLoginCommand(options?: { provider?: string }): Promi
     configToSave.decemberToken = token
     if (email) configToSave.email = email
     configToSave.authPriority = 'december'
+    configToSave.activeModel = 'december-auto'
     await saveConfig(configToSave)
     console.log('\x1b[32mSuccessfully logged in via device code!\x1b[0m\n')
 }
@@ -452,118 +453,153 @@ export async function handleInitCommand(options?: { quiet?: boolean }): Promise<
 
 export async function handleUpdateCommand(options?: { force?: boolean }): Promise<void> {
     const { performCliUpdate } = await import('./utils/updater')
-    const BLUE = '\x1b[38;2;135;178;244m'
-    const GREEN = '\x1b[38;2;110;231;183m'
-    const YELLOW = '\x1b[38;2;253;224;71m'
-    const RED = '\x1b[38;2;252;165;165m'
-    const WHITE = '\x1b[38;2;244;244;245m'
-    const GRAY = '\x1b[38;2;161;161;170m'
-    const RESET = '\x1b[0m'
+    const { TreeReporter } = await import('./utils/tree-reporter')
+    const reporter = new TreeReporter()
 
-    console.log(`\n${BLUE}✱${RESET}  ${WHITE}Checking and updating December CLI...${RESET}`)
+    console.log('')
+    reporter.step('checking December CLI for updates...')
+    reporter.space()
+    reporter.startSpinner('fetching latest release information...')
 
     const result = await performCliUpdate({
         currentVersion: pkg.version,
         force: options?.force,
+        onResolvedVersion: (info) => {
+            reporter.stopSpinner()
+            reporter.item('current version', `v${info.currentVersion}`)
+            if (info.targetVersion) {
+                reporter.item('latest version', `v${info.targetVersion}`)
+            }
+            if (info.activeBinaryPath) {
+                reporter.item('active binary', info.activeBinaryPath)
+            }
+            reporter.space()
+        },
         onProgress: (msg) => {
-            console.log(`${BLUE}✱${RESET}  ${msg}`)
+            reporter.startSpinner(msg)
         },
     })
 
+    reporter.stopSpinner()
+
     if (result.method === 'source') {
-        console.log(
-            `\n${BLUE}✱${RESET}  Running December CLI from local source development directory.`
-        )
-        console.log(
-            `   Run ${WHITE}git pull && bun install && bun --cwd apps/cli run build${RESET} to update.\n`
-        )
+        reporter.step('December CLI development build')
+        reporter.space()
+        reporter.tree('detected local source development repository.')
+        reporter.tree('to rebuild or update your local dev build, run:')
+        reporter.tree('git pull && bun install && bun --cwd apps/cli run build')
+        reporter.space()
+        reporter.step('ready')
+        console.log('')
         return
     }
 
     if (result.method === 'npx') {
-        console.log(`\n${BLUE}✱${RESET}  Running December CLI via npx/bunx.`)
-        console.log(`   Each invocation automatically pulls the latest version.\n`)
+        reporter.step('December CLI ephemeral build')
+        reporter.space()
+        reporter.tree('running via npx/bunx ephemeral execution.')
+        reporter.tree('each invocation automatically pulls the latest version.')
+        reporter.space()
+        reporter.step('ready')
+        console.log('')
         return
     }
 
     if (result.alreadyUpToDate) {
-        console.log(
-            `\n  ${WHITE}You are already using the latest version of December CLI (v${result.installedVersion || result.targetVersion}).${RESET}`
+        reporter.tree(
+            `you are already using the latest version of December CLI (v${result.installedVersion || result.targetVersion}).`
         )
-        console.log(`   ${GRAY}Use ${WHITE}december update --force${GRAY} to reinstall.${RESET}\n`)
+        reporter.tree('use december update --force to reinstall.')
+        reporter.space()
+        reporter.step('nothing to update')
+        console.log('')
         return
     }
 
     if (result.success && result.verified) {
-        const versionStr = result.installedVersion ? ` to v${result.installedVersion}` : ''
-        console.log(
-            `\n  ${GREEN}December CLI successfully updated${versionStr} via ${result.method}!${RESET}`
-        )
+        reporter.step('updating December CLI...')
+        reporter.space()
+        if (result.targetVersion) {
+            reporter.item('updated to', `v${result.installedVersion || result.targetVersion}`)
+        }
+        reporter.item('method', result.method)
+        reporter.space()
+        reporter.success(`package successfully updated via ${result.method}`)
 
         if (result.collisionFixed && result.cleanedBinaries && result.cleanedBinaries.length > 0) {
-            console.log(
-                `\n  ${WHITE}Resolved ${result.cleanedBinaries.length} conflicting older binary location(s):${RESET}`
+            reporter.success(
+                `aligned ${result.cleanedBinaries.length} older conflicting binary location(s)`
             )
             for (const b of result.cleanedBinaries) {
-                console.log(`   ${GRAY}• ${b}${RESET}`)
+                reporter.tree(`• cleaned: ${b}`)
             }
         }
 
         if (result.shellHashNotice) {
-            console.log(
-                `\n${YELLOW}ℹ${RESET}  ${GRAY}Note: If your active terminal still runs an older version, run: ${WHITE}hash -r${GRAY} (bash) or ${WHITE}rehash${GRAY} (zsh) or restart your terminal.${RESET}\n`
-            )
-        } else {
-            console.log('')
+            reporter.space()
+            reporter.warn('shell cached previous binary path.')
+            reporter.tree('run "hash -r" (bash) or "rehash" (zsh) or restart terminal.')
         }
+
+        reporter.space()
+        reporter.step('update complete')
+        reporter.space()
+        reporter.tree('run december to start your session')
+        reporter.space()
+        reporter.step('ready')
+        console.log('')
     } else {
+        reporter.step('update attention needed')
+        reporter.space()
+
         if (!result.verified && result.shadowingBinary) {
-            console.error(
-                `\n${YELLOW}⚠ Update completed, but your terminal is still starting an older version!${RESET}`
+            reporter.warn('update completed, but active terminal still starts an older version!')
+            reporter.space()
+            reporter.item(
+                'installed version',
+                `v${result.installedVersion || result.targetVersion} (${result.method})`
             )
-            console.error(
-                `  • Installed version: ${WHITE}v${result.installedVersion || result.targetVersion}${RESET} (via ${result.method})`
+            reporter.item(
+                'active in $path',
+                `v${result.activeVersion || 'older'} (${result.activeBinaryPath || result.shadowingBinary.path})`
             )
-            console.error(
-                `  • Active in $PATH:   ${RED}v${result.activeVersion || 'older'}${RESET} (${result.activeBinaryPath || result.shadowingBinary.path})`
-            )
-            console.error(
-                `\n  ${GRAY}Why this happens: Your shell's $PATH resolves "${result.activeBinaryPath || result.shadowingBinary.path}" before the newly updated location.${RESET}`
+            reporter.space()
+            reporter.tree(
+                'reason: your shell resolves the older path before the newly updated location.'
             )
 
             if (result.failedBinaries && result.failedBinaries.some((b) => b.needsSudo)) {
-                console.error(`\n  ${YELLOW}Permission required to clean older binary:${RESET}`)
+                reporter.space()
+                reporter.warn('elevated permissions required to clean older binary:')
                 for (const fb of result.failedBinaries) {
                     if (fb.needsSudo) {
-                        console.error(`    ${WHITE}sudo rm "${fb.path}"${RESET}`)
+                        reporter.tree(`sudo rm "${fb.path}"`)
                     }
                 }
             } else {
-                console.error(
-                    `\n  ${WHITE}To ensure your terminal uses the latest version:${RESET}`
-                )
-                console.error(
-                    `    ${YELLOW}1.${RESET} Remove older binary: ${WHITE}rm "${result.shadowingBinary.path}"${RESET}`
-                )
-                console.error(
-                    `    ${YELLOW}2.${RESET} Or update active package: ${WHITE}bun add -g @trydecember/cli@latest${RESET} (or appropriate package manager)`
-                )
-                console.error(
-                    `    ${YELLOW}3.${RESET} Clear shell command cache: ${WHITE}hash -r${RESET} (bash) or ${WHITE}rehash${RESET} (zsh)`
-                )
+                reporter.space()
+                reporter.tree('to ensure your terminal uses the latest version:')
+                reporter.tree(`1. remove older binary: rm "${result.shadowingBinary.path}"`)
+                reporter.tree(`2. or rehash shell cache: hash -r (bash) or rehash (zsh)`)
             }
-            console.error('')
+            reporter.space()
+            reporter.step('action required')
         } else if (result.isPermissionError) {
-            console.error(`\n${RED}Permission denied while installing global package.${RESET}`)
-            console.error(
-                `   ${YELLOW}→${RESET} Try running with elevated permissions: ${WHITE}${result.sudoCmd || result.manualCmd}${RESET}\n`
-            )
+            reporter.error('permission denied while installing global package')
+            reporter.space()
+            reporter.tree('try running with elevated permissions:')
+            reporter.tree(result.sudoCmd || result.manualCmd)
+            reporter.space()
+            reporter.step('update failed')
         } else {
-            console.error(
-                `\n${RED}Failed to update December CLI via ${result.method}: ${result.error || 'Unknown error'}${RESET}`
-            )
-            console.error(`   Try running manually: ${WHITE}${result.manualCmd}${RESET}\n`)
+            reporter.error(`update failed via ${result.method}: ${result.error || 'Unknown error'}`)
+            reporter.space()
+            reporter.tree('try running manually:')
+            reporter.tree(result.manualCmd)
+            reporter.space()
+            reporter.step('update failed')
         }
+        console.log('')
         process.exitCode = 1
     }
 }
