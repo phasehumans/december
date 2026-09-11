@@ -90,4 +90,68 @@ describe('GrillQuestionMenu Component (Unit)', () => {
         stdin.write('b')
         expect(setCurrentGrillIndex).toHaveBeenCalledWith(0)
     })
+
+    it('prompts for confirmation on escape key when answers exist', async () => {
+        const onCancel = mock()
+        const generatePlanFromGrill = mock()
+
+        const { stdin, lastFrame } = render(
+            <GrillQuestionMenu
+                grillQuestions={mockQuestions}
+                currentGrillIndex={1}
+                customInputMode={false}
+                handleGrillSelect={mock()}
+                customAnswer=""
+                setCustomAnswer={mock()}
+                setCustomInputMode={mock()}
+                grillAnswers={['PostgreSQL']}
+                setGrillAnswers={mock()}
+                setCurrentGrillIndex={mock()}
+                generatePlanFromGrill={generatePlanFromGrill}
+                onCancel={onCancel}
+            />
+        )
+
+        // Press escape to trigger confirmation
+        stdin.write('\x1B')
+        await new Promise((resolve) => setTimeout(resolve, 50))
+        const frameAfterEscape = lastFrame() || ''
+        expect(frameAfterEscape).toContain('Exit interview?')
+        expect(frameAfterEscape).toContain('discard')
+
+        // Press y to confirm exit
+        stdin.write('y')
+        await new Promise((resolve) => setTimeout(resolve, 50))
+        expect(onCancel).toHaveBeenCalled()
+    })
+
+    it('generates plan from answered questions when pressing p during exit confirmation', async () => {
+        const generatePlanFromGrill = mock()
+
+        const { stdin, lastFrame } = render(
+            <GrillQuestionMenu
+                grillQuestions={mockQuestions}
+                currentGrillIndex={1}
+                customInputMode={false}
+                handleGrillSelect={mock()}
+                customAnswer=""
+                setCustomAnswer={mock()}
+                setCustomInputMode={mock()}
+                grillAnswers={['PostgreSQL']}
+                setGrillAnswers={mock()}
+                setCurrentGrillIndex={mock()}
+                generatePlanFromGrill={generatePlanFromGrill}
+            />
+        )
+
+        // Press escape to trigger confirmation
+        stdin.write('\x1B')
+        await new Promise((resolve) => setTimeout(resolve, 50))
+        expect(lastFrame() || '').toContain('Exit interview?')
+
+        // Press p to generate plan with answered questions
+        stdin.write('p')
+        await new Promise((resolve) => setTimeout(resolve, 50))
+        expect(generatePlanFromGrill).toHaveBeenCalledWith(['PostgreSQL'])
+    })
 })

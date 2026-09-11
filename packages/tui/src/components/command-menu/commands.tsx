@@ -96,6 +96,14 @@ export const COMMANDS: Command[] = [
         },
     },
     {
+        name: 'grill',
+        description: 'Interview me to align on a plan (alias for /grill-me)',
+        value: '/grill',
+        action: (ctx) => {
+            // forwarded to chat screen
+        },
+    },
+    {
         name: 'grill-me',
         description: 'Interview me to align on a plan',
         value: '/grill-me',

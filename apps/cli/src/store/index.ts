@@ -1,5 +1,5 @@
 import { Agent } from '@december/agent'
-import { Message, AuthMode } from '@december/tui'
+import { Message, AuthMode, PlanWorkflowState } from '@december/tui'
 import { create } from 'zustand'
 
 import { DecemberConfig } from '../config'
@@ -55,6 +55,12 @@ export interface CliState {
     setDynamicModels: (models: { label: string; value: string }[]) => void
 
     // chat feature
+    planWorkflow: PlanWorkflowState
+    setPlanWorkflow: (
+        workflow: PlanWorkflowState | ((prev: PlanWorkflowState) => PlanWorkflowState)
+    ) => void
+    interactivePlanGoalMode: boolean
+    setInteractivePlanGoalMode: (mode: boolean) => void
     currentPlannedPrompt: string | null
     setCurrentPlannedPrompt: (prompt: string | null) => void
     currentPlanText: string | null
@@ -203,6 +209,13 @@ export const useCliStore = create<CliState>((set) => ({
     setDynamicModels: (dynamicModels) => set({ dynamicModels }),
 
     // chat
+    planWorkflow: { phase: 'idle' },
+    setPlanWorkflow: (updater) =>
+        set((state) => ({
+            planWorkflow: typeof updater === 'function' ? updater(state.planWorkflow) : updater,
+        })),
+    interactivePlanGoalMode: false,
+    setInteractivePlanGoalMode: (interactivePlanGoalMode) => set({ interactivePlanGoalMode }),
     currentPlannedPrompt: null,
     setCurrentPlannedPrompt: (currentPlannedPrompt) => set({ currentPlannedPrompt }),
     currentPlanText: null,

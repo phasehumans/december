@@ -100,14 +100,14 @@ describe('taskManager', () => {
         const retrieved = taskManager.getTask(task.id)
         expect(retrieved?.status).toBe('killed')
 
-        expect(mockProcessKill).toHaveBeenCalledWith(-5555, 'SIGINT')
+        expect(mockProcessKill).toHaveBeenCalledWith(-5555, 'SIGKILL')
     })
 
     test('kills task using childProcess.kill if pid is missing', () => {
         let killed = false
         const mockCp = {
             kill: (signal?: string) => {
-                expect(signal).toBe('SIGINT')
+                expect(signal).toBe('SIGKILL')
                 killed = true
                 return true
             },

@@ -30,3 +30,29 @@ export type AuthMode =
     | 'usage'
     | 'ollama_setup'
     | 'mcp_manager'
+
+export interface GrillQuestion {
+    question: string
+    options: string[]
+    docSource?: string
+}
+
+export type PlanWorkflowState =
+    | { phase: 'idle' }
+    | {
+          phase: 'grilling'
+          prompt: string
+          questions: GrillQuestion[]
+          currentIndex: number
+          answers: string[]
+      }
+    | {
+          phase: 'reviewing'
+          prompt: string
+          planText: string
+          qaPairs: { question: string; answer: string }[]
+      }
+    | { phase: 'refining'; prompt: string; previousPlan: string; feedback: string }
+    | { phase: 'executing'; prompt: string; planText: string; currentStepIndex?: number }
+
+export type PlanWorkflowPhase = PlanWorkflowState['phase']

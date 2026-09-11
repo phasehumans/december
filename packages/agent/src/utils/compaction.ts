@@ -1,9 +1,195 @@
 import { MODEL_CONTEXT_WINDOWS } from '@december/providers'
 
 import type { LLMProvider } from '@december/providers'
-import type { Message } from '@december/shared'
+import type { Message, AgentMessage } from '@december/shared'
 
 export const DEFAULT_MAX_TOKENS = 32000 // safe limit
+export const PRUNE_PROTECT_TOKENS = 40_000
+export const PRUNE_MINIMUM_SAVINGS = 15_000
+export const PRUNE_PROTECTED_TOOLS = new Set(['skill'])
+
+export interface PruneOptions {
+    protectTokens?: number
+    minSavings?: number
+    protectedTools?: Set<string>
+}
+
+export function pruneToolResults(
+    messages: (AgentMessage | Message)[],
+    options?: PruneOptions
+): {
+    pruned: boolean
+    tokensSaved: number
+} {
+    const protectTokens = options?.protectTokens ?? PRUNE_PROTECT_TOKENS
+    const minSavings = options?.minSavings ?? PRUNE_MINIMUM_SAVINGS
+    const protectedTools = options?.protectedTools ?? PRUNE_PROTECTED_TOOLS
+
+    const toolCallMap = new Map<string, string>()
+    for (const msg of messages) {
+        if (msg.toolCalls) {
+            for (const tc of msg.toolCalls) {
+                if (tc.id && tc.name) {
+                    toolCallMap.set(tc.id, tc.name)
+                }
+            }
+        }
+    }
+
+    let totalToolTokens = 0
+    let tokensToPrune = 0
+    const indicesToPrune: number[] = []
+
+    // Scan backwards, protecting recent turns
+    let userTurns = 0
+    for (let i = messages.length - 1; i >= 0; i--) {
+        const msg = messages[i]
+        if (!msg) continue
+
+        if (msg.role === 'user') {
+            userTurns++
+        }
+        if (userTurns < 2) {
+            // Preserve last 2 user turns untouched
+            continue
+        }
+
+        if (msg.role === 'tool') {
+            const toolName =
+                (msg.toolCallId ? toolCallMap.get(msg.toolCallId) : undefined) ||
+                (msg as any).name ||
+                ''
+            if (protectedTools.has(toolName)) {
+                continue
+            }
+
+            if (msg.content === '[Old tool result content cleared]') {
+                continue
+            }
+
+            const outputText =
+                typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)
+            const tokenEstimate = Math.ceil(outputText.length / 4)
+            totalToolTokens += tokenEstimate
+
+            if (totalToolTokens > protectTokens) {
+                tokensToPrune += tokenEstimate
+                indicesToPrune.push(i)
+            }
+        }
+    }
+
+    if (tokensToPrune < minSavings) {
+        return { pruned: false, tokensSaved: 0 }
+    }
+
+    for (const idx of indicesToPrune) {
+        const target = messages[idx]
+        if (target) {
+            target.content = '[Old tool result content cleared]'
+        }
+    }
+
+    return { pruned: true, tokensSaved: tokensToPrune }
+}
+
+export interface FileManifests {
+    readFiles: string[]
+    modifiedFiles: string[]
+}
+
+export function extractFileManifests(
+    messages: (Message | AgentMessage)[],
+    previousSummary?: string
+): FileManifests {
+    const readSet = new Set<string>()
+    const modifiedSet = new Set<string>()
+
+    if (previousSummary) {
+        const readMatch = previousSummary.match(/<read-files>([\s\S]*?)<\/read-files>/)
+        if (readMatch && readMatch[1]) {
+            readMatch[1]
+                .split('\n')
+                .map((s) => s.trim())
+                .filter(Boolean)
+                .forEach((f) => readSet.add(f))
+        }
+
+        const modMatch = previousSummary.match(/<modified-files>([\s\S]*?)<\/modified-files>/)
+        if (modMatch && modMatch[1]) {
+            modMatch[1]
+                .split('\n')
+                .map((s) => s.trim())
+                .filter(Boolean)
+                .forEach((f) => modifiedSet.add(f))
+        }
+    }
+
+    for (const msg of messages) {
+        if (!msg.toolCalls) continue
+        for (const tc of msg.toolCalls) {
+            let parsedInput: any = {}
+            if (typeof tc.input === 'string') {
+                try {
+                    parsedInput = JSON.parse(tc.input)
+                } catch {
+                    // Intentionally swallowed: tool call input was not valid JSON
+                }
+            } else if (tc.input && typeof tc.input === 'object') {
+                parsedInput = tc.input
+            }
+
+            const rawPath =
+                parsedInput.path ||
+                parsedInput.filePath ||
+                parsedInput.TargetFile ||
+                parsedInput.AbsolutePath ||
+                parsedInput.file
+
+            if (typeof rawPath === 'string' && rawPath.trim().length > 0) {
+                const targetPath = rawPath.trim()
+                const toolName = tc.name.toLowerCase()
+
+                if (
+                    [
+                        'write_file',
+                        'write',
+                        'write_to_file',
+                        'edit_file',
+                        'edit',
+                        'edit_diff',
+                        'replace_file_content',
+                    ].includes(toolName)
+                ) {
+                    modifiedSet.add(targetPath)
+                } else if (['read_file', 'read', 'view_file'].includes(toolName)) {
+                    readSet.add(targetPath)
+                }
+            }
+        }
+    }
+
+    // Partition: readFiles are read-only (not in modifiedFiles)
+    for (const mod of modifiedSet) {
+        readSet.delete(mod)
+    }
+
+    return {
+        readFiles: Array.from(readSet).sort(),
+        modifiedFiles: Array.from(modifiedSet).sort(),
+    }
+}
+
+export function formatFileManifestsXml(manifests: FileManifests): string {
+    const parts: string[] = []
+    if (manifests.readFiles.length > 0) {
+        parts.push(`<read-files>\n${manifests.readFiles.join('\n')}\n</read-files>`)
+    }
+    if (manifests.modifiedFiles.length > 0) {
+        parts.push(`<modified-files>\n${manifests.modifiedFiles.join('\n')}\n</modified-files>`)
+    }
+    return parts.join('\n\n')
+}
 
 function estimateTokens(messages: Message[]): number {
     return messages.reduce((acc, msg) => {
@@ -59,6 +245,8 @@ export async function compactContextIfNeeded(
         previousSummaryText = middleHistory[0].content.replace('[COMPACTED HISTORY SUMMARY]\n', '')
         messagesToSummarize = middleHistory.slice(1)
     }
+
+    const fileManifests = extractFileManifests(messagesToSummarize, previousSummaryText)
 
     const historyText = messagesToSummarize
         .map((m) => {
@@ -174,9 +362,20 @@ Keep each section concise. You MUST preserve exact file paths, function names, l
         }
     }
 
+    let finalSummary = summary.trim()
+    const xmlManifests = formatFileManifestsXml(fileManifests)
+    if (xmlManifests) {
+        if (!finalSummary.includes('<read-files>') && fileManifests.readFiles.length > 0) {
+            finalSummary += `\n\n<read-files>\n${fileManifests.readFiles.join('\n')}\n</read-files>`
+        }
+        if (!finalSummary.includes('<modified-files>') && fileManifests.modifiedFiles.length > 0) {
+            finalSummary += `\n\n<modified-files>\n${fileManifests.modifiedFiles.join('\n')}\n</modified-files>`
+        }
+    }
+
     const summaryMessage: Message = {
         role: 'system',
-        content: `[COMPACTED HISTORY SUMMARY]\n${summary}`,
+        content: `[COMPACTED HISTORY SUMMARY]\n${finalSummary}`,
     }
 
     return [systemPrompt, summaryMessage, ...recentHistory]

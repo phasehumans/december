@@ -32,6 +32,9 @@ type Props = {
     grillMode?: boolean
     planRefineMode?: boolean
     customInputMode?: boolean
+    planWorkflowPhase?: 'idle' | 'grilling' | 'reviewing' | 'refining' | 'executing'
+    interactivePlanGoalMode?: boolean
+    workflowUI?: React.ReactNode
     onInterrupt?: () => void
     onCopy?: () => void
     contextTokens?: number
@@ -51,12 +54,16 @@ export const InputBar = React.memo(function InputBar({
     isAuthenticated = true,
     hasBothAuth = false,
     authUI,
+    workflowUI,
     agent,
     resetChat,
     onUpdateSuccess,
+    planMode = false,
     grillMode = false,
     planRefineMode = false,
     customInputMode = false,
+    planWorkflowPhase,
+    interactivePlanGoalMode = false,
     onInterrupt,
     onCopy,
     contextTokens,
@@ -262,6 +269,7 @@ export const InputBar = React.memo(function InputBar({
 
             // Forward chat & session commands and custom commands to chat component
             const forwardCommands = [
+                '/grill',
                 '/grill-me',
                 '/login',
                 '/logout',
@@ -377,7 +385,20 @@ export const InputBar = React.memo(function InputBar({
     const sepWidth = Math.max(10, columns - paddingLeft - paddingRight - 2)
     const sep = '─'.repeat(sepWidth)
 
-    const isOverlayActive = Boolean(authUI) && !customInputMode
+    const isOverlayActive = Boolean(authUI || workflowUI) && !customInputMode
+
+    const activeModeTag =
+        planWorkflowPhase === 'grilling' || grillMode
+            ? '[GRILL]'
+            : planWorkflowPhase === 'executing'
+              ? '[EXEC]'
+              : planWorkflowPhase === 'reviewing' ||
+                  planWorkflowPhase === 'refining' ||
+                  planRefineMode ||
+                  planMode ||
+                  interactivePlanGoalMode
+                ? '[PLAN]'
+                : null
 
     return (
         <Box
@@ -447,6 +468,11 @@ export const InputBar = React.memo(function InputBar({
                                 <Text color={THEME.colors.brand}>[Refine Plan] </Text>
                             </Box>
                         )}
+                        {interactivePlanGoalMode && (
+                            <Box flexShrink={0}>
+                                <Text color={THEME.colors.brand}>[Plan Goal] </Text>
+                            </Box>
+                        )}
                         <Box flexGrow={1} flexShrink={1}>
                             <TextArea
                                 value={value}
@@ -459,7 +485,9 @@ export const InputBar = React.memo(function InputBar({
                                         ? ''
                                         : planRefineMode
                                           ? 'Enter feedback to refine plan (or Esc to cancel)...'
-                                          : placeholder
+                                          : interactivePlanGoalMode
+                                            ? 'Enter your goal (e.g. add dark mode) or Esc to cancel...'
+                                            : placeholder
                                 }
                                 focus={!disabled && !dialog.isOpen}
                                 disableHistoryNav={
@@ -509,6 +537,11 @@ export const InputBar = React.memo(function InputBar({
                             <Box gap={2} alignItems="center" flexShrink={1}>
                                 <Box gap={1} flexShrink={1}>
                                     <Text color={THEME.colors.muted}>
+                                        {activeModeTag ? (
+                                            <Text color={THEME.colors.brand} bold>
+                                                {activeModeTag}{' '}
+                                            </Text>
+                                        ) : null}
                                         {!isAuthenticated
                                             ? 'Not connected (run /login)'
                                             : `${activeModel}${
@@ -545,8 +578,8 @@ export const InputBar = React.memo(function InputBar({
                 </>
             )}
 
-            {/* auth ui */}
-            {authUI && <Box paddingBottom={1}>{authUI}</Box>}
+            {/* auth ui & workflow ui */}
+            {(workflowUI || authUI) && <Box paddingBottom={1}>{workflowUI || authUI}</Box>}
 
             {/* command dropdown */}
             {showCommandMenu && (

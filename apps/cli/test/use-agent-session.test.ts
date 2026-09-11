@@ -199,4 +199,114 @@ describe('useCliStore activeMessages handling', () => {
         expect(useCliStore.getState().switchItems).toEqual([])
         expect(useCliStore.getState().authMode).toBe('none')
     })
+
+    it('manages planWorkflow state machine decoupled from authMode', () => {
+        const store = useCliStore.getState()
+        expect(store.planWorkflow).toEqual({ phase: 'idle' })
+        expect(store.interactivePlanGoalMode).toBe(false)
+
+        // 1. Transition to grilling
+        store.setPlanWorkflow({
+            phase: 'grilling',
+            prompt: 'Implement auth',
+            questions: [
+                {
+                    question: 'Which auth method?',
+                    options: ['JWT', 'Session'],
+                },
+            ],
+            currentIndex: 0,
+            answers: [],
+        })
+        expect(useCliStore.getState().planWorkflow.phase).toBe('grilling')
+        expect(useCliStore.getState().authMode).toBe('none') // Decoupled from authMode
+
+        // 2. Transition to reviewing
+        store.setPlanWorkflow({
+            phase: 'reviewing',
+            prompt: 'Implement auth',
+            planText: '### Implementation Plan\n1. Add auth.ts',
+            qaPairs: [{ question: 'Which auth method?', answer: 'JWT' }],
+        })
+        expect(useCliStore.getState().planWorkflow.phase).toBe('reviewing')
+        if (useCliStore.getState().planWorkflow.phase === 'reviewing') {
+            expect((useCliStore.getState().planWorkflow as any).planText).toContain(
+                '### Implementation Plan'
+            )
+        }
+
+        // 3. Transition to refining
+        store.setPlanWorkflow({
+            phase: 'refining',
+            prompt: 'Implement auth',
+            previousPlan: '### Implementation Plan\n1. Add auth.ts',
+            feedback: 'Use sessions instead',
+        })
+        expect(useCliStore.getState().planWorkflow.phase).toBe('refining')
+
+        // 4. Transition to executing
+        store.setPlanWorkflow({
+            phase: 'executing',
+            prompt: 'Implement auth',
+            planText: '### Implementation Plan\n1. Add auth.ts',
+        })
+        expect(useCliStore.getState().planWorkflow.phase).toBe('executing')
+
+        // 5. Back to idle
+        store.setPlanWorkflow({ phase: 'idle' })
+        expect(useCliStore.getState().planWorkflow.phase).toBe('idle')
+
+        // 6. Interactive plan goal mode toggle
+        store.setInteractivePlanGoalMode(true)
+        expect(useCliStore.getState().interactivePlanGoalMode).toBe(true)
+        store.setInteractivePlanGoalMode(false)
+        expect(useCliStore.getState().interactivePlanGoalMode).toBe(false)
+    })
+
+    it('handles approval actions and abort transition logic', () => {
+        const store = useCliStore.getState()
+
+        // 1. Initial review phase
+        store.setPlanWorkflow({
+            phase: 'reviewing',
+            prompt: 'Refactor logger',
+            planText: '1. Update logger.ts',
+            qaPairs: [],
+        })
+        expect(useCliStore.getState().planWorkflow.phase).toBe('reviewing')
+
+        // 2. Action: refine
+        store.setPlanWorkflow({
+            phase: 'refining',
+            prompt: 'Refactor logger',
+            previousPlan: '1. Update logger.ts',
+            feedback: '',
+        })
+        expect(useCliStore.getState().planWorkflow.phase).toBe('refining')
+
+        // 3. Action: approve -> executing
+        store.setPlanWorkflow({
+            phase: 'executing',
+            prompt: 'Refactor logger',
+            planText: '1. Update logger.ts',
+        })
+        expect(useCliStore.getState().planWorkflow.phase).toBe('executing')
+
+        // 4. Abort during execution -> resets to idle
+        if (useCliStore.getState().planWorkflow.phase === 'executing') {
+            store.setPlanWorkflow({ phase: 'idle' })
+        }
+        expect(useCliStore.getState().planWorkflow.phase).toBe('idle')
+
+        // 5. Action: reject from review -> resets to idle
+        store.setPlanWorkflow({
+            phase: 'reviewing',
+            prompt: 'Refactor logger',
+            planText: '1. Update logger.ts',
+            qaPairs: [],
+        })
+        expect(useCliStore.getState().planWorkflow.phase).toBe('reviewing')
+        store.setPlanWorkflow({ phase: 'idle' })
+        expect(useCliStore.getState().planWorkflow.phase).toBe('idle')
+    })
 })

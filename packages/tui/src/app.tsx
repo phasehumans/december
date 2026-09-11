@@ -6,8 +6,11 @@ import { GlobalShortcuts } from './components/global-shortcuts'
 import { InputBar } from './components/input-bar'
 import { AskQuestionMenu } from './components/menus/ask-question-menu'
 import { AuthMenus } from './components/menus/auth-menus'
+import { GrillQuestionMenu } from './components/menus/grill-question-menu'
+import { PlanApproveMenu } from './components/menus/plan-approve-menu'
 import { ToolPermissionMenu } from './components/menus/tool-permission-menu'
 import { MessageList } from './components/message-list'
+import { extractPlanSummary } from './utils/pager'
 
 export function ChatApp({
     agent,
@@ -85,12 +88,35 @@ export function ChatApp({
         currentEmail,
         authMode,
         grillMode,
+        planWorkflow,
         setStaticMessages,
         setStaticKey,
         setActiveMessages,
         setAuthMode,
         handleSubmit,
     } = session
+
+    const workflowPhase = planWorkflow?.phase
+
+    const workflowUI =
+        workflowPhase === 'grilling' ? (
+            <GrillQuestionMenu
+                {...session}
+                grillQuestions={planWorkflow.questions}
+                currentGrillIndex={planWorkflow.currentIndex}
+                grillAnswers={planWorkflow.answers}
+            />
+        ) : workflowPhase === 'reviewing' ? (
+            <PlanApproveMenu
+                {...session}
+                planSummary={
+                    planWorkflow.planText
+                        ? extractPlanSummary(planWorkflow.planText)
+                        : session.planSummary || planWorkflow.prompt
+                }
+            />
+        ) : null
+
     const authUI =
         authMode !== 'none' ? (
             authMode === 'ask_question' && session.pendingQuestions ? (
@@ -152,7 +178,7 @@ export function ChatApp({
 
             <InputBar
                 onSubmit={handleFormSubmit}
-                disabled={authMode !== 'none'}
+                disabled={authMode !== 'none' || (Boolean(workflowUI) && !session.customInputMode)}
                 onCopy={() => {
                     import('./utils/clipboard')
                         .then((cb) => {
@@ -179,6 +205,9 @@ export function ChatApp({
                 isAuthenticated={isAuthenticated}
                 hasBothAuth={session.hasBothAuth}
                 authUI={authUI}
+                workflowUI={workflowUI}
+                planWorkflowPhase={workflowPhase}
+                interactivePlanGoalMode={session.interactivePlanGoalMode}
                 agent={agent}
                 toasts={session.toasts}
                 resetChat={() => {
@@ -193,7 +222,7 @@ export function ChatApp({
                 queuedPrompts={session.queuedPrompts}
                 grillMode={grillMode}
                 planRefineMode={session.planRefineMode}
-                customInputMode={false}
+                customInputMode={session.customInputMode || false}
                 showExitConfirm={exitConfirm}
             />
         </Box>

@@ -1,5 +1,6 @@
 import { Agent, runAgentLoop } from '@december/agent'
 import { SkillDiscoveryEngine, parseSkillFile, interpolateSkillPrompt } from '@december/shared'
+import { type Message, openPlanInPager } from '@december/tui'
 import { useEffect, useCallback, useState, useRef } from 'react'
 
 import {
@@ -41,8 +42,6 @@ import {
 } from './use-agent-runner'
 import { useAuthHandlers } from './use-auth-handlers'
 import { useSettingsHandlers } from './use-settings-handlers'
-
-import type { Message } from '@december/tui'
 
 // formatters and msgid extracted
 
@@ -105,6 +104,10 @@ export function useAgentSession({
         setOllamaStatus,
         ollamaModels,
         setOllamaModels,
+        planWorkflow,
+        setPlanWorkflow,
+        interactivePlanGoalMode,
+        setInteractivePlanGoalMode,
         currentPlannedPrompt,
         setCurrentPlannedPrompt,
         currentPlanText,
@@ -444,19 +447,34 @@ export function useAgentSession({
                     }
                 }
 
-                const questions = extractJsonArray(accumulatedText)
+                let questions: any[] = []
+                try {
+                    questions = extractJsonArray(accumulatedText)
+                } catch {
+                    // Intentionally swallowed: fallback to direct plan generation on malformed json
+                    questions = []
+                }
                 if (Array.isArray(questions) && questions.length > 0) {
                     setGrillQuestions(questions)
                     setGrillPrompt(trimmedPrompt)
                     setGrillAnswers([])
                     setCurrentGrillIndex(0)
-                    setAuthMode('grill_question')
+                    setGrillMode(true)
+                    setPlanWorkflow({
+                        phase: 'grilling',
+                        prompt: trimmedPrompt,
+                        questions,
+                        currentIndex: 0,
+                        answers: [],
+                    })
+                    setAuthMode('none')
                     setCustomInputMode(false)
                     setActiveMessages([])
                 } else {
                     // Task is clear with zero questions or fallback: generate plan directly
                     setActiveMessages([])
                     setGrillPrompt(trimmedPrompt)
+                    setGrillMode(false)
                     await generatePlanFromGrill([])
                 }
             } catch (err: any) {
@@ -510,9 +528,11 @@ export function useAgentSession({
             setCurrentGrillIndex,
             setCustomInputMode,
             setGrillAnswers,
+            setGrillMode,
             setGrillPrompt,
             setGrillQuestions,
             setIsStreaming,
+            setPlanWorkflow,
             setStaticMessages,
         ]
     )
@@ -621,8 +641,15 @@ export function useAgentSession({
                 setStaticMessages((prev) => [...prev, ...useCliStore.getState().activeMessages])
                 setActiveMessages([])
                 if (planSuccess) {
-                    setAuthMode('plan_approve')
+                    setPlanWorkflow({
+                        phase: 'reviewing',
+                        prompt: originalPrompt,
+                        planText: textContent,
+                        qaPairs,
+                    })
+                    setAuthMode('none')
                 } else {
+                    setPlanWorkflow({ phase: 'idle' })
                     setAuthMode('none')
                 }
             }
@@ -641,6 +668,7 @@ export function useAgentSession({
             setGrillPrompt,
             setGrillQuestions,
             setIsStreaming,
+            setPlanWorkflow,
             setStaticMessages,
         ]
     )
@@ -717,8 +745,15 @@ export function useAgentSession({
                 setStaticMessages((prev) => [...prev, ...useCliStore.getState().activeMessages])
                 setActiveMessages([])
                 if (planSuccess) {
-                    setAuthMode('plan_approve')
+                    setPlanWorkflow({
+                        phase: 'reviewing',
+                        prompt: originalPrompt,
+                        planText: textContent,
+                        qaPairs,
+                    })
+                    setAuthMode('none')
                 } else {
+                    setPlanWorkflow({ phase: 'idle' })
                     setAuthMode('none')
                 }
             }
@@ -732,6 +767,125 @@ export function useAgentSession({
             setAuthMode,
             setCurrentPlanText,
             setIsStreaming,
+            setPlanWorkflow,
+            setStaticMessages,
+        ]
+    )
+
+    const generatePlanFromGoal = useCallback(
+        async (goal: string) => {
+            const trimmedGoal = goal.trim()
+            if (!trimmedGoal) return
+
+            if (!isAuthenticated) {
+                const userMsg: Message = {
+                    id: getNextMsgId(),
+                    role: 'user',
+                    text: `/plan ${trimmedGoal}`,
+                }
+                const noticeMsg: Message = {
+                    id: getNextMsgId(),
+                    role: 'assistant',
+                    blocks: [
+                        {
+                            type: 'text',
+                            content: AUTH_REQUIRED_NOTICE,
+                        },
+                    ],
+                }
+                setStaticMessages((prev) => [
+                    ...prev,
+                    ...useCliStore.getState().activeMessages,
+                    userMsg,
+                    noticeMsg,
+                ])
+                setActiveMessages([])
+                return
+            }
+
+            setCurrentPlannedPrompt(trimmedGoal)
+            setCurrentPlanQAPairs([])
+            const planPrompt = getPlanPrompt(trimmedGoal, [])
+
+            setIsStreaming(true)
+            setStaticMessages((prev) => [...prev, ...useCliStore.getState().activeMessages])
+            const assistantMsgId = getNextMsgId()
+            setActiveMessages([
+                {
+                    id: getNextMsgId(),
+                    role: 'user',
+                    text: `/plan ${trimmedGoal}`,
+                },
+                { id: assistantMsgId, role: 'assistant', blocks: [] },
+            ])
+            let planSuccess = false
+            const errorContext = {
+                provider: agent?.modelOptions?.provider || useCliStore.getState().selectedProvider,
+                model: agent?.modelOptions?.model || useCliStore.getState().activeModel,
+            }
+            try {
+                const stream = runAgentLoop(agent, planPrompt)
+                await processAgentStream({
+                    stream,
+                    setActiveMessages,
+                    assistantMsgId,
+                    context: errorContext,
+                })
+                planSuccess = true
+            } catch (err: any) {
+                const parsed = parseError(err, errorContext)
+                setActiveMessages((prev) => [
+                    ...prev,
+                    {
+                        id: getNextMsgId(),
+                        role: 'error',
+                        text: parsed.message,
+                        cause: parsed.cause,
+                        hint: parsed.hint,
+                    },
+                ])
+            } finally {
+                setIsStreaming(false)
+                const assistantMsg = useCliStore
+                    .getState()
+                    .activeMessages.find((m) => m.id === assistantMsgId)
+                const textContent =
+                    assistantMsg?.blocks
+                        ?.filter((b: any) => b.type === 'text')
+                        .map((b: any) => b.content)
+                        .join('') ||
+                    assistantMsg?.text ||
+                    ''
+                if (textContent) {
+                    setCurrentPlanText(textContent)
+                }
+
+                setStaticMessages((prev) => [...prev, ...useCliStore.getState().activeMessages])
+                setActiveMessages([])
+                if (planSuccess) {
+                    setPlanWorkflow({
+                        phase: 'reviewing',
+                        prompt: trimmedGoal,
+                        planText: textContent,
+                        qaPairs: [],
+                    })
+                    setAuthMode('none')
+                } else {
+                    setPlanWorkflow({ phase: 'idle' })
+                    setAuthMode('none')
+                }
+            }
+        },
+        [
+            agent,
+            isAuthenticated,
+            setActiveMessages,
+            setAuthMode,
+            setCurrentPlanText,
+            setCurrentPlanQAPairs,
+            setCurrentPlannedPrompt,
+            setIsStreaming,
+            setPlanWorkflow,
             setStaticMessages,
         ]
     )
@@ -742,7 +896,7 @@ export function useAgentSession({
                 setCustomInputMode(true)
                 return
             }
-            if (item.value === '__finish_now__') {
+            if (item.value === '__finish_now__' || item.value === '__plan_now__') {
                 await generatePlanFromGrill(grillAnswers)
                 return
             }
@@ -752,6 +906,15 @@ export function useAgentSession({
 
             if (currentGrillIndex + 1 < grillQuestions.length) {
                 setCurrentGrillIndex(currentGrillIndex + 1)
+                setPlanWorkflow((prev) =>
+                    prev.phase === 'grilling'
+                        ? {
+                              ...prev,
+                              currentIndex: prev.currentIndex + 1,
+                              answers: nextAnswers,
+                          }
+                        : prev
+                )
             } else {
                 await generatePlanFromGrill(nextAnswers)
             }
@@ -764,6 +927,7 @@ export function useAgentSession({
             setCurrentGrillIndex,
             setCustomInputMode,
             setGrillAnswers,
+            setPlanWorkflow,
         ]
     )
 
@@ -1548,94 +1712,11 @@ ${decStatus}
             if (text.trim() === '/plan' || text.trim().startsWith('/plan ')) {
                 const goal = text.trim().slice('/plan'.length).trim()
                 if (!goal) {
-                    addToast('Usage: /plan <goal description> (e.g. /plan add dark mode)', 'info')
+                    setInteractivePlanGoalMode(true)
+                    addToast('Enter your plan goal below, or press Esc/cancel', 'info')
                     return
                 }
-                if (!isAuthenticated) {
-                    const userMsg: Message = { id: getNextMsgId(), role: 'user', text }
-                    const noticeMsg: Message = {
-                        id: getNextMsgId(),
-                        role: 'assistant',
-                        blocks: [
-                            {
-                                type: 'text',
-                                content: AUTH_REQUIRED_NOTICE,
-                            },
-                        ],
-                    }
-                    setStaticMessages((prev) => [
-                        ...prev,
-                        ...useCliStore.getState().activeMessages,
-                        userMsg,
-                        noticeMsg,
-                    ])
-                    setActiveMessages([])
-                    return
-                }
-                setCurrentPlannedPrompt(goal)
-                setCurrentPlanQAPairs([])
-                const planPrompt = getPlanPrompt(goal, [])
-
-                setIsStreaming(true)
-                setStaticMessages((prev) => [...prev, ...useCliStore.getState().activeMessages])
-                const assistantMsgId = getNextMsgId()
-                setActiveMessages([
-                    {
-                        id: getNextMsgId(),
-                        role: 'user',
-                        text: `/plan ${goal}`,
-                    },
-                    { id: assistantMsgId, role: 'assistant', blocks: [] },
-                ])
-                let planSuccess = false
-                const errorContext = {
-                    provider:
-                        agent?.modelOptions?.provider || useCliStore.getState().selectedProvider,
-                    model: agent?.modelOptions?.model || useCliStore.getState().activeModel,
-                }
-                try {
-                    const stream = runAgentLoop(agent, planPrompt)
-                    await processAgentStream({
-                        stream,
-                        setActiveMessages,
-                        assistantMsgId,
-                        context: errorContext,
-                    })
-                    planSuccess = true
-                } catch (err: any) {
-                    const parsed = parseError(err, errorContext)
-                    setActiveMessages((prev) => [
-                        ...prev,
-                        {
-                            id: getNextMsgId(),
-                            role: 'error',
-                            text: parsed.message,
-                            cause: parsed.cause,
-                            hint: parsed.hint,
-                        },
-                    ])
-                } finally {
-                    setIsStreaming(false)
-                    const assistantMsg = useCliStore
-                        .getState()
-                        .activeMessages.find((m) => m.id === assistantMsgId)
-                    const textContent =
-                        assistantMsg?.blocks
-                            ?.filter((b: any) => b.type === 'text')
-                            .map((b: any) => b.content)
-                            .join('') ||
-                        assistantMsg?.text ||
-                        ''
-                    if (textContent) {
-                        setCurrentPlanText(textContent)
-                    }
-
-                    setStaticMessages((prev) => [...prev, ...useCliStore.getState().activeMessages])
-                    setActiveMessages([])
-                    if (planSuccess) {
-                        setAuthMode('plan_approve')
-                    }
-                }
+                await generatePlanFromGoal(goal)
                 return
             }
 
@@ -1888,6 +1969,18 @@ ${decStatus}
                 return
             }
 
+            if (interactivePlanGoalMode) {
+                setInteractivePlanGoalMode(false)
+                const goal = text.trim()
+                if (goal) {
+                    await generatePlanFromGoal(goal)
+                    return
+                } else {
+                    addToast('Plan creation cancelled.', 'info')
+                    return
+                }
+            }
+
             if (planRefineMode) {
                 setPlanRefineMode(false)
                 const feedback = text.trim()
@@ -2079,8 +2172,14 @@ ${decStatus}
             isAuthenticated,
             isStreaming,
             generateGrillQuestions,
+            generatePlanFromGoal,
+            generatePlanRefinement,
+            interactivePlanGoalMode,
+            planRefineMode,
             sessionRepository,
             grillMode,
+            setInteractivePlanGoalMode,
+            setPlanRefineMode,
             setQueuedPrompts,
             addToast,
             setActiveMessages,
@@ -2123,7 +2222,10 @@ ${decStatus}
             agent.abort()
             setQueuedPrompts([])
         }
-    }, [isStreaming, agent, setQueuedPrompts])
+        if (useCliStore.getState().planWorkflow.phase === 'executing') {
+            setPlanWorkflow({ phase: 'idle' })
+        }
+    }, [isStreaming, agent, setQueuedPrompts, setPlanWorkflow])
 
     const {
         handleSettingsMainSelect,
@@ -2149,26 +2251,45 @@ ${decStatus}
 
     const handlePlanApprovalSelect = useCallback(
         async (item: any) => {
+            const originalPrompt =
+                currentPlannedPrompt || useCliStore.getState().currentPlannedPrompt || ''
+            const planText = currentPlanText || useCliStore.getState().currentPlanText || ''
+            const qaPairs = currentPlanQAPairs || useCliStore.getState().currentPlanQAPairs || []
+
+            if (item.value === 'view') {
+                addToast('Opened plan in pager/editor', 'info')
+                await openPlanInPager(planText, 'december-plan')
+                return
+            }
+
             if (item.value === 'refine') {
                 setAuthMode('none')
                 setPlanRefineMode(true)
+                setPlanWorkflow({
+                    phase: 'refining',
+                    prompt: originalPrompt,
+                    previousPlan: planText,
+                    feedback: '',
+                })
                 addToast('Enter feedback in the prompt bar to refine the plan', 'info')
                 return
             }
 
             setAuthMode('none')
-            const originalPrompt =
-                currentPlannedPrompt || useCliStore.getState().currentPlannedPrompt
-            const planText = currentPlanText || useCliStore.getState().currentPlanText || ''
-            const qaPairs = currentPlanQAPairs || useCliStore.getState().currentPlanQAPairs || []
-
-            setCurrentPlannedPrompt(null)
-            setCurrentPlanText(null)
-            setCurrentPlanQAPairs([])
-            setPlanRefineMode(false)
 
             if (item.value === 'approve') {
+                setCurrentPlannedPrompt(null)
+                setCurrentPlanText(null)
+                setCurrentPlanQAPairs([])
+                setPlanRefineMode(false)
+
                 if (originalPrompt) {
+                    setPlanWorkflow({
+                        phase: 'executing',
+                        prompt: originalPrompt,
+                        planText,
+                    })
+
                     const executionDirective = getPlanExecutionPrompt(
                         originalPrompt,
                         planText,
@@ -2228,6 +2349,7 @@ ${decStatus}
                         ])
                     } finally {
                         setIsStreaming(false)
+                        setPlanWorkflow({ phase: 'idle' })
                         setStaticMessages((prev) => {
                             const currentActive = useCliStore
                                 .getState()
@@ -2246,6 +2368,11 @@ ${decStatus}
                     }
                 }
             } else {
+                setCurrentPlannedPrompt(null)
+                setCurrentPlanText(null)
+                setCurrentPlanQAPairs([])
+                setPlanRefineMode(false)
+                setPlanWorkflow({ phase: 'idle' })
                 addToast('Plan rejected.', 'error')
             }
         },
@@ -2260,6 +2387,7 @@ ${decStatus}
             setCurrentPlanText,
             setCurrentPlanQAPairs,
             setPlanRefineMode,
+            setPlanWorkflow,
             setIsStreaming,
             setActiveMessages,
             setStaticMessages,
@@ -2379,6 +2507,11 @@ ${decStatus}
         setPlanRefineFeedback,
         generatePlanFromGrill,
         generatePlanRefinement,
+        generatePlanFromGoal,
+        planWorkflow,
+        setPlanWorkflow,
+        interactivePlanGoalMode,
+        setInteractivePlanGoalMode,
         planSummary: currentPlannedPrompt ? `Plan: ${currentPlannedPrompt}` : undefined,
         grillMode,
         setGrillMode,

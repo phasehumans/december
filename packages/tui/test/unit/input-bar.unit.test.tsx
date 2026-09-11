@@ -183,4 +183,54 @@ describe('InputBar Component (Unit)', () => {
         expect(frame).toContain('real-time applications')
         expect(frame).toContain('gemini-3.8-flash')
     })
+
+    it('renders active mode tags in the status bar based on planWorkflowPhase', () => {
+        const { lastFrame, rerender } = render(
+            <RootLayout>
+                <InputBar
+                    onSubmit={mock(() => {})}
+                    activeModel="claude-3-7-sonnet"
+                    planWorkflowPhase="grilling"
+                />
+            </RootLayout>
+        )
+        expect(lastFrame()).toContain('[GRILL]')
+
+        rerender(
+            <RootLayout>
+                <InputBar
+                    onSubmit={mock(() => {})}
+                    activeModel="claude-3-7-sonnet"
+                    planWorkflowPhase="reviewing"
+                />
+            </RootLayout>
+        )
+        expect(lastFrame()).toContain('[PLAN]')
+
+        rerender(
+            <RootLayout>
+                <InputBar
+                    onSubmit={mock(() => {})}
+                    activeModel="claude-3-7-sonnet"
+                    planWorkflowPhase="executing"
+                />
+            </RootLayout>
+        )
+        expect(lastFrame()).toContain('[EXEC]')
+    })
+
+    it('renders [Plan Goal] prefix when interactivePlanGoalMode is true', () => {
+        const { lastFrame } = render(
+            <RootLayout>
+                <InputBar
+                    onSubmit={mock(() => {})}
+                    activeModel="claude-3-7-sonnet"
+                    interactivePlanGoalMode={true}
+                />
+            </RootLayout>
+        )
+        const frame = lastFrame() || ''
+        expect(frame).toContain('[Plan Goal]')
+        expect(frame).toContain('[PLAN]')
+    })
 })

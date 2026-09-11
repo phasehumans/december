@@ -71,4 +71,37 @@ describe('ConversationManager (Unit)', () => {
         expect(result.compacted).toBe(false)
         expect(manager.messages.length).toBe(2)
     })
+
+    test('compactIfNeeded prunes tool results in Tier 1', async () => {
+        const manager = new ConversationManager()
+        manager.addMessage({ role: 'system', content: 'system' })
+        // Add user 1 and a massive tool result
+        manager.addMessage({ role: 'user', content: 'user 1' })
+        manager.addMessage({
+            role: 'assistant',
+            content: '',
+            toolCalls: [{ id: 'tc-old', name: 'read_file', input: '{"path":"big.ts"}' }],
+        })
+        manager.addMessage({
+            role: 'tool',
+            toolCallId: 'tc-old',
+            content: 'z'.repeat(250_000), // ~62,500 tokens
+        })
+        // Turn 2
+        manager.addMessage({ role: 'user', content: 'user 2' })
+        manager.addMessage({ role: 'assistant', content: 'ack 2' })
+        // Turn 3
+        manager.addMessage({ role: 'user', content: 'user 3' })
+        manager.addMessage({ role: 'assistant', content: 'ack 3' })
+
+        const llm = new MockLLM()
+        // Large maxTokens so Tier 2 does not trigger, but Tier 1 prunes
+        const result = await manager.compactIfNeeded(llm, 1_000_000)
+
+        expect(result.compacted).toBe(true)
+        expect(result.pruned).toBe(true)
+        expect(result.tokensSaved).toBeGreaterThan(15000)
+        expect(manager.messages[3]!.content).toBe('[Old tool result content cleared]')
+        expect(llm.calls.length).toBe(0)
+    })
 })

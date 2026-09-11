@@ -68,4 +68,19 @@ describe('PlanApproveMenu Component (Unit)', () => {
             expect.objectContaining({ value: 'refine' })
         )
     })
+
+    it('views full plan on pressing v key', () => {
+        const handlePlanApprovalSelect = mock()
+        const { stdin } = render(
+            <PlanApproveMenu
+                handlePlanApprovalSelect={handlePlanApprovalSelect}
+                planSummary="Test plan"
+            />
+        )
+
+        stdin.write('v')
+        expect(handlePlanApprovalSelect).toHaveBeenCalledWith(
+            expect.objectContaining({ value: 'view' })
+        )
+    })
 })

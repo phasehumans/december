@@ -26,6 +26,8 @@ function PlanItemComponent({
         color = THEME.colors.success
     } else if (value === 'refine') {
         color = THEME.colors.brand
+    } else if (value === 'view') {
+        color = THEME.colors.brand
     } else if (value === 'reject') {
         color = THEME.colors.error
     }
@@ -37,6 +39,7 @@ export function PlanApproveMenu({ handlePlanApprovalSelect, planSummary }: PlanA
     const planItems = [
         { label: '[y] Approve & Execute', value: 'approve' },
         { label: '[r] Refine Plan', value: 'refine' },
+        { label: '[v] View Full Plan', value: 'view' },
         { label: '[n] Reject / Cancel', value: 'reject' },
     ]
 
@@ -46,6 +49,8 @@ export function PlanApproveMenu({ handlePlanApprovalSelect, planSummary }: PlanA
             handlePlanApprovalSelect({ label: '[y] Approve & Execute', value: 'approve' })
         } else if (lower === 'r') {
             handlePlanApprovalSelect({ label: '[r] Refine Plan', value: 'refine' })
+        } else if (lower === 'v') {
+            handlePlanApprovalSelect({ label: '[v] View Full Plan', value: 'view' })
         } else if (lower === 'n' || key.escape) {
             handlePlanApprovalSelect({ label: '[n] Reject / Cancel', value: 'reject' })
         }
@@ -59,8 +64,8 @@ export function PlanApproveMenu({ handlePlanApprovalSelect, planSummary }: PlanA
                         <Text color={THEME.colors.brand}>{planSummary}</Text>
                     </Box>
                 )}
-                <Text color={THEME.colors.text}>
-                    Plan generated. Please approve, refine, or reject:
+                <Text color={THEME.colors.brand} bold>
+                    [PLAN] Plan generated. Please approve, refine, or reject:
                 </Text>
             </Box>
             <SelectInput
@@ -73,6 +78,7 @@ export function PlanApproveMenu({ handlePlanApprovalSelect, planSummary }: PlanA
                 items={[
                     { key: 'y', label: 'Approve' },
                     { key: 'r', label: 'Refine' },
+                    { key: 'v', label: 'View Full' },
                     { key: 'n', label: 'Reject' },
                     { key: '↑/↓', label: 'Navigate' },
                     { key: 'enter', label: 'Select' },

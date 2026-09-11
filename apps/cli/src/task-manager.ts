@@ -1,5 +1,7 @@
 import { EventEmitter } from 'node:events'
 
+import { killProcessGroup } from '@december/tools'
+
 import type { ChildProcess } from 'node:child_process'
 
 export interface BackgroundTask {
@@ -72,19 +74,14 @@ export class TaskManager extends EventEmitter {
     killTask(id: string): boolean {
         const task = this.getTask(id)
         if (task && task.status === 'running') {
+            if (task.pid) {
+                killProcessGroup(task.pid)
+            }
             if (task.childProcess) {
                 try {
-                    if (task.pid) {
-                        process.kill(-task.pid, 'SIGINT')
-                    } else {
-                        task.childProcess.kill('SIGINT')
-                    }
+                    task.childProcess.kill('SIGKILL')
                 } catch {
-                    try {
-                        task.childProcess?.kill()
-                    } catch {
-                        // Intentionally swallowed: fallback when SIGINT/kill fails
-                    }
+                    // Intentionally swallowed: fallback when childProcess kill fails
                 }
             }
             task.status = 'killed'

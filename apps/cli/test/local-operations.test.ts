@@ -50,6 +50,20 @@ describe('local-operations', () => {
             expect(res).toBe(true)
             expect(killed).toBe(true)
         })
+
+        test('killTask terminates process group when pid is present', async () => {
+            const killSpy = spyOn(process, 'kill').mockImplementation((() => true) as any)
+            const mockCp = {
+                pid: 54321,
+                kill: () => true,
+            } as any
+            const task = taskManager.addTask('echo hello', mockCp)
+
+            const res = await (localOperations.bash as any).killTask(task.id)
+            expect(res).toBe(true)
+            expect(killSpy).toHaveBeenCalledWith(-54321, 'SIGKILL')
+            killSpy.mockRestore()
+        })
     })
 
     describe('fs operations', () => {

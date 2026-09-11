@@ -1,3 +1,7 @@
+import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
+
 export const DEFAULT_MAX_BYTES = 10_000
 export const DEFAULT_MAX_LINES = 200
 
@@ -6,6 +10,7 @@ export interface TruncationResult {
     originalBytes: number
     truncated: boolean
     text: string
+    spillPath?: string
 }
 
 export function truncateOutput(
@@ -33,13 +38,26 @@ export function truncateOutput(
     const omittedLines = lines.length - maxLines
     const omittedBytes = bytes - Buffer.byteLength(head.join('\n') + '\n' + tail.join('\n'), 'utf8')
 
+    let spillPath: string | undefined
+    try {
+        spillPath = path.join(
+            os.tmpdir(),
+            `december-output-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.log`
+        )
+        fs.writeFileSync(spillPath, text, 'utf8')
+    } catch {
+        // Intentionally swallowed: spill file creation fallback handled
+    }
+
     const kb = (omittedBytes / 1024).toFixed(1)
-    const marker = `\n<... ${omittedLines} lines (${kb}KB) truncated ...>\n`
+    const spillNotice = spillPath ? ` Full output spilled to ${spillPath}.` : ''
+    const marker = `\n<... ${omittedLines} lines (${kb}KB) truncated.${spillNotice} ...>\n`
 
     return {
         originalLength: lines.length,
         originalBytes: bytes,
         truncated: true,
         text: head.join('\n') + marker + tail.join('\n'),
+        spillPath,
     }
 }

@@ -164,3 +164,20 @@ describe('/switch command', () => {
         expect(() => switchCmd?.action(mockContext)).not.toThrow()
     })
 })
+
+describe('/grill and /plan commands', () => {
+    test('should define /grill and /grill-me commands with alias parity', () => {
+        const grillMeCmd = COMMANDS.find((c) => c.name === 'grill-me')
+        const grillCmd = COMMANDS.find((c) => c.name === 'grill')
+        expect(grillMeCmd).toBeDefined()
+        expect(grillMeCmd?.value).toBe('/grill-me')
+        expect(grillCmd).toBeDefined()
+        expect(grillCmd?.value).toBe('/grill')
+    })
+
+    test('should define /plan command', () => {
+        const planCmd = COMMANDS.find((c) => c.name === 'plan')
+        expect(planCmd).toBeDefined()
+        expect(planCmd?.value).toBe('/plan')
+    })
+})

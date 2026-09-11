@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process'
+import path from 'node:path'
 
 const trackedDetachedChildPids = new Set<number>()
 
@@ -12,21 +13,28 @@ export function untrackDetachedChildPid(pid: number): void {
 
 export function killTrackedDetachedChildren(): void {
     for (const pid of trackedDetachedChildPids) {
-        killProcessTree(pid)
+        killProcessGroup(pid)
     }
     trackedDetachedChildPids.clear()
 }
 
-export function killProcessTree(pid: number): void {
+export function killProcessGroup(pid: number): void {
     if (process.platform === 'win32') {
         try {
-            spawn('taskkill', ['/F', '/T', '/PID', String(pid)], {
-                stdio: 'ignore',
-                detached: true,
-                windowsHide: true,
+            const child = spawn(
+                path.join(process.env.SystemRoot ?? 'C:\\Windows', 'System32', 'taskkill.exe'),
+                ['/F', '/T', '/PID', String(pid)],
+                {
+                    stdio: 'ignore',
+                    detached: true,
+                    windowsHide: true,
+                }
+            )
+            ;(child as any).once?.('error', () => {
+                // Intentionally swallowed: Windows taskkill error fallback
             })
         } catch {
-            // Ignore failure when killing Windows process tree
+            // Intentionally swallowed: Windows taskkill execution failed
         }
     } else {
         try {
@@ -36,11 +44,13 @@ export function killProcessTree(pid: number): void {
             try {
                 process.kill(pid, 'SIGKILL')
             } catch {
-                // Ignore process kill failure if already terminated
+                // Intentionally swallowed: direct process kill fallback if already exited
             }
         }
     }
 }
+
+export const killProcessTree = killProcessGroup
 
 export function createLocalBashOperations() {
     return {
@@ -64,13 +74,6 @@ export function createLocalBashOperations() {
                         stdio: ['pipe', 'pipe', 'pipe'],
                     })
 
-                    // Immediately close stdin so child doesn't hang waiting for terminal input
-                    try {
-                        child.stdin?.end?.()
-                    } catch {
-                        // Intentionally swallowed: stdin might already be closed or unavailable
-                    }
-
                     if (child.pid) trackDetachedChildPid(child.pid)
 
                     let output = ''
@@ -90,12 +93,12 @@ export function createLocalBashOperations() {
                     if (options.timeout) {
                         timeoutHandle = setTimeout(() => {
                             timedOut = true
-                            if (child.pid) killProcessTree(child.pid)
+                            if (child.pid) killProcessGroup(child.pid)
                         }, options.timeout * 1000)
                     }
 
                     const onAbort = () => {
-                        if (child.pid) killProcessTree(child.pid)
+                        if (child.pid) killProcessGroup(child.pid)
                     }
 
                     if (options.signal) {

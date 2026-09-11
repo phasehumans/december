@@ -57,7 +57,8 @@ ${planText}
 You are now in execution mode. Proceed with implementation immediately.
 Execute the plan step-by-step using your available tools (file editing, file creation, bash commands).
 Do not wait for further confirmation before starting tool execution.
-Report your progress as you complete each step.`
+Report your progress as you complete each step.
+If a tool execution fails or encounters unexpected errors, do not repeat the failing action in a loop. Assess the failure, adjust your approach or remaining steps, and if critical information is missing, ask for clarification.`
 
 export const getPlanRefinePrompt = (
     originalPrompt: string,

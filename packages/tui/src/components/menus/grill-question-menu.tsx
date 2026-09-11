@@ -21,9 +21,50 @@ export function GrillQuestionMenu(props: any) {
         setGrillAnswers,
         setCurrentGrillIndex,
         generatePlanFromGrill,
+        onCancel,
     } = props
 
+    const [confirmExit, setConfirmExit] = React.useState(false)
+
     useInput((input, key) => {
+        if (confirmExit) {
+            const lower = (input || '').toLowerCase()
+            if (lower === 'y') {
+                setConfirmExit(false)
+                if (onCancel) {
+                    onCancel()
+                } else if (props.setAuthMode) {
+                    props.setGrillQuestions?.([])
+                    props.setCurrentGrillIndex?.(0)
+                    props.setGrillAnswers?.([])
+                    props.setGrillPrompt?.(null)
+                    props.setGrillMode?.(false)
+                    props.setPlanWorkflow?.({ phase: 'idle' })
+                    props.setAuthMode('none')
+                }
+                return
+            }
+            if (lower === 'p' || lower === 's') {
+                setConfirmExit(false)
+                void generatePlanFromGrill(grillAnswers)
+                return
+            }
+            if (lower === 'c' || key.escape) {
+                setConfirmExit(false)
+                return
+            }
+            return
+        }
+
+        if (key.escape) {
+            if (customInputMode) {
+                setCustomInputMode(false)
+                return
+            }
+            setConfirmExit(true)
+            return
+        }
+
         if (customInputMode) return
 
         const lower = (input || '').toLowerCase()
@@ -33,9 +74,53 @@ export function GrillQuestionMenu(props: any) {
         }
         if ((lower === 'b' || key.leftArrow) && currentGrillIndex > 0) {
             setCurrentGrillIndex(currentGrillIndex - 1)
+            if (props.setPlanWorkflow) {
+                props.setPlanWorkflow((prev: any) =>
+                    prev?.phase === 'grilling'
+                        ? {
+                              ...prev,
+                              currentIndex: prev.currentIndex - 1,
+                          }
+                        : prev
+                )
+            }
             return
         }
     })
+
+    if (confirmExit) {
+        return (
+            <Box flexDirection="column" paddingX={THEME.padding.paddingX}>
+                <Box marginBottom={1} flexDirection="column" gap={1}>
+                    <Text color={THEME.colors.warning}>
+                        Exit interview? Any unanswered questions will be skipped.
+                    </Text>
+                    <Text color={THEME.colors.text}>
+                        Press{' '}
+                        <Text bold color={THEME.colors.error}>
+                            y
+                        </Text>{' '}
+                        to discard,{' '}
+                        <Text bold color={THEME.colors.brand}>
+                            p
+                        </Text>{' '}
+                        to generate plan now with answered questions, or{' '}
+                        <Text bold color={THEME.colors.success}>
+                            c
+                        </Text>{' '}
+                        to continue interview.
+                    </Text>
+                </Box>
+                <MenuFooter
+                    items={[
+                        { key: 'y', label: 'Discard & Exit' },
+                        { key: 'p', label: 'Plan with answers' },
+                        { key: 'c/esc', label: 'Continue' },
+                    ]}
+                />
+            </Box>
+        )
+    }
 
     const q = grillQuestions[currentGrillIndex]
     if (q) {
@@ -54,7 +139,7 @@ export function GrillQuestionMenu(props: any) {
                         <Text color={THEME.colors.brand}>[Doc Grounding: {q.docSource}]</Text>
                     )}
                     <Text color={THEME.colors.brand}>
-                        Question {currentGrillIndex + 1}/{grillQuestions.length}:
+                        [GRILL] Question {currentGrillIndex + 1}/{grillQuestions.length}:
                     </Text>
                     <Text color={THEME.colors.text}>{q.question}</Text>
                 </Box>
@@ -99,6 +184,17 @@ export function GrillQuestionMenu(props: any) {
 
                                     if (currentGrillIndex + 1 < grillQuestions.length) {
                                         setCurrentGrillIndex(currentGrillIndex + 1)
+                                        if (props.setPlanWorkflow) {
+                                            props.setPlanWorkflow((prev: any) =>
+                                                prev?.phase === 'grilling'
+                                                    ? {
+                                                          ...prev,
+                                                          currentIndex: prev.currentIndex + 1,
+                                                          answers: nextAnswers,
+                                                      }
+                                                    : prev
+                                            )
+                                        }
                                     } else {
                                         void generatePlanFromGrill(nextAnswers)
                                     }

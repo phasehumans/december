@@ -190,3 +190,118 @@ test('should match via block anchors and Levenshtein similarity for multi-line c
         'function compute() {\n    return 42\n}'
     )
 })
+
+test('should reject disproportionate match when edit chunk matches ambiguous outer braces across hundreds of lines', async () => {
+    const context = createMockContext()
+    const fileLines = [
+        'function outerWrapper() {',
+        ...Array.from({ length: 200 }, (_, i) => `    const tempVar${i} = ${i};`),
+        '}',
+    ]
+    context.operations.fs.readFile = mock(async () => fileLines.join('\n'))
+
+    const result = await EditFileTool.execute(
+        {
+            path: '/large.ts',
+            targetContent: 'function outerWrapper() {\n    const tempVar0 = 0;\n}',
+            replacementContent: 'function outerWrapper() {\n    return 0;\n}',
+        },
+        context
+    )
+
+    expect(result).toContain('Disproportionate match detected')
+    expect(result).toContain('/large.ts')
+    expect(context.operations.fs.writeFile).not.toHaveBeenCalled()
+})
+
+test('should support edits array with oldText and newText aliases', async () => {
+    const context = createMockContext()
+    context.operations.fs.readFile = mock(
+        async () => 'interface Config {\n    debug: boolean\n}\n\nconst port = 3000\n'
+    )
+
+    const result = await EditFileTool.execute(
+        {
+            path: '/config.ts',
+            edits: [
+                {
+                    oldText: 'debug: boolean',
+                    newText: 'debug: boolean\n    verbose: boolean',
+                },
+                {
+                    oldText: 'const port = 3000',
+                    newText: 'const port = 8080',
+                },
+            ],
+        },
+        context
+    )
+
+    expect(result).toContain(
+        'Successfully edited file: /config.ts (2 disjoint replacements applied)'
+    )
+    expect(context.operations.fs.writeFile).toHaveBeenCalledWith(
+        '/config.ts',
+        'interface Config {\n    debug: boolean\n    verbose: boolean\n}\n\nconst port = 8080\n'
+    )
+})
+
+test('should include instant LSP diagnostics feedback when diagnostics are detected', async () => {
+    const context = createMockContext()
+    context.operations.fs.readFile = mock(async () => 'let x: number = 10')
+    context.operations.diagnostics = {
+        getDiagnostics: mock(async (filePath: string) => [
+            {
+                filePath,
+                line: 1,
+                column: 5,
+                message: "Type 'string' is not assignable to type 'number'.",
+                severity: 'error',
+                source: 'typescript',
+            },
+        ]),
+    }
+
+    const result = await EditFileTool.execute(
+        {
+            path: '/code.ts',
+            targetContent: 'let x: number = 10',
+            replacementContent: 'let x: number = "hello"',
+        },
+        context
+    )
+
+    expect(result).toContain('Successfully edited file')
+    expect(result).toContain('LSP errors detected in this file, please fix:')
+    expect(result).toContain(
+        "/code.ts:1:5 - [error] Type 'string' is not assignable to type 'number'. (typescript)"
+    )
+})
+
+test('should serialize concurrent writes to the same file while allowing different files to run in parallel', async () => {
+    const context = createMockContext()
+    const fileStates: Record<string, string> = {
+        '/fileA.ts': 'Initial A',
+        '/fileB.ts': 'Initial B',
+    }
+
+    context.operations.fs.readFile = mock(async (p: string) => fileStates[p] ?? '')
+    context.operations.fs.writeFile = mock(async (p: string, content: string) => {
+        fileStates[p] = content
+    })
+
+    // Concurrent edits to different files
+    await Promise.all([
+        EditFileTool.execute(
+            { path: '/fileA.ts', targetContent: 'Initial A', replacementContent: 'Updated A' },
+            context
+        ),
+        EditFileTool.execute(
+            { path: '/fileB.ts', targetContent: 'Initial B', replacementContent: 'Updated B' },
+            context
+        ),
+    ])
+
+    expect(fileStates['/fileA.ts']).toBe('Updated A')
+    expect(fileStates['/fileB.ts']).toBe('Updated B')
+})

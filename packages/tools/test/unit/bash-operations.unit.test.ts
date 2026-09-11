@@ -7,6 +7,7 @@ import {
     untrackDetachedChildPid,
     killTrackedDetachedChildren,
     killProcessTree,
+    killProcessGroup,
     createLocalBashOperations,
 } from '../../src/bash-operations'
 
@@ -51,6 +52,18 @@ describe('bash-operations', () => {
         killProcessTree(999)
         expect(process.kill).toHaveBeenNthCalledWith(1, -999, 'SIGKILL')
         expect(process.kill).toHaveBeenNthCalledWith(2, 999, 'SIGKILL')
+    })
+
+    it('killProcessGroup terminates negative pid and falls back to positive pid', () => {
+        killProcessGroup(888)
+        expect(process.kill).toHaveBeenCalledWith(-888, 'SIGKILL')
+
+        vi.spyOn(process, 'kill').mockImplementationOnce(() => {
+            throw new Error('group kill failed')
+        })
+        killProcessGroup(777)
+        expect(process.kill).toHaveBeenNthCalledWith(2, -777, 'SIGKILL')
+        expect(process.kill).toHaveBeenNthCalledWith(3, 777, 'SIGKILL')
     })
 
     it('createLocalBashOperations > exec executes successfully', async () => {

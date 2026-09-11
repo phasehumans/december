@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from 'uuid'
 
-import { compactContextIfNeeded } from './utils/compaction'
+import { compactContextIfNeeded, pruneToolResults } from './utils/compaction'
 
 import type { LLMProvider } from '@december/providers'
 import type { AgentMessage } from '@december/shared'
@@ -35,10 +35,13 @@ export class ConversationManager {
         maxTokens?: number,
         modelOptions?: Record<string, any>,
         signal?: AbortSignal
-    ): Promise<{ compacted: boolean; summary?: string }> {
+    ): Promise<{ compacted: boolean; summary?: string; pruned?: boolean; tokensSaved?: number }> {
+        // Tier 1: Zero-LLM Tool Result Pruning
+        const pruneResult = pruneToolResults(this._messages)
+
         const originalLength = this._messages.length
 
-        // token > max * 0.8 (80% limit)
+        // Tier 2: LLM Context Summarization
         const newMessages = (await compactContextIfNeeded(
             this._messages as any,
             llm,
@@ -50,7 +53,21 @@ export class ConversationManager {
         if (newMessages.length < originalLength) {
             this._messages = newMessages
             const summaryMsg = newMessages[1]
-            return { compacted: true, summary: summaryMsg?.content || '' }
+            return {
+                compacted: true,
+                summary: summaryMsg?.content || '',
+                pruned: pruneResult.pruned,
+                tokensSaved: pruneResult.tokensSaved,
+            }
+        }
+
+        if (pruneResult.pruned) {
+            return {
+                compacted: true,
+                summary: `Pruned old tool results, saving ~${pruneResult.tokensSaved} tokens.`,
+                pruned: true,
+                tokensSaved: pruneResult.tokensSaved,
+            }
         }
 
         return { compacted: false }

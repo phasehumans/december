@@ -417,13 +417,33 @@ async function streamAssistantResponse(
                       )
                     : Array.from(agent.tools.values())
 
-                const toolsArray = activeTools.map((t) => ({
+                // Breakpoint 2: Tools definition array (last tool marked for caching)
+                const toolsArray = activeTools.map((t, idx) => ({
                     name: t.name,
                     description: t.description ? t.description.replace(/\s+/g, ' ').trim() : '',
                     inputSchema: trimToolSchema(t.inputSchema),
+                    ...(idx === activeTools.length - 1
+                        ? { cache_control: { type: 'ephemeral' } }
+                        : {}),
                 }))
 
                 const providerMessages = agent.convertToLlm(agent.messages) as any
+
+                // Breakpoint 3: Last user message in conversation history marked for caching
+                if (Array.isArray(providerMessages)) {
+                    let lastUserIdx = -1
+                    for (let i = providerMessages.length - 1; i >= 0; i--) {
+                        if (providerMessages[i]?.role === 'user') {
+                            lastUserIdx = i
+                            break
+                        }
+                    }
+                    if (lastUserIdx !== -1 && providerMessages[lastUserIdx]) {
+                        ;(providerMessages[lastUserIdx] as any).cache_control = {
+                            type: 'ephemeral',
+                        }
+                    }
+                }
 
                 const effectiveThinkingLevel = getAdaptiveThinkingLevel(
                     agent.messages,

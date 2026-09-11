@@ -1,3 +1,16 @@
+export interface DiagnosticItem {
+    filePath: string
+    line?: number
+    column?: number
+    message: string
+    severity?: 'error' | 'warning' | 'info'
+    source?: string
+}
+
+export interface DiagnosticsOperations {
+    getDiagnostics: (filePath: string) => Promise<DiagnosticItem[] | string>
+}
+
 export interface Environment {
     bash: {
         exec: (
@@ -36,4 +49,5 @@ export interface Environment {
     browser?: {
         navigate: (url: string) => Promise<{ text: string; vncUrl?: string; error?: string }>
     }
+    diagnostics?: DiagnosticsOperations
 }

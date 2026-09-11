@@ -18,6 +18,12 @@ const editSchema = Type.Object({
     replacementContent: Type.Optional(
         Type.String({ description: 'The replacement text (single edit mode)' })
     ),
+    oldText: Type.Optional(
+        Type.String({ description: 'Alias for targetContent (single edit mode)' })
+    ),
+    newText: Type.Optional(
+        Type.String({ description: 'Alias for replacementContent (single edit mode)' })
+    ),
     edits: Type.Optional(
         Type.Array(singleEditSchema, {
             description:
@@ -86,25 +92,63 @@ export function stringSimilarity(a: string, b: string): number {
     return 1.0 - levenshteinDistance(a, b) / maxLen
 }
 
+export function isDisproportionateMatch(
+    candidateLines: number,
+    targetLines: number,
+    candidateChars: number,
+    targetChars: number
+): boolean {
+    if (candidateLines >= Math.max(targetLines + 3, targetLines * 2)) return true
+    if (targetLines === 1) return false
+    return candidateChars > Math.max(targetChars + 500, targetChars * 4)
+}
+
 interface NormalizedEdit {
     target: string
     replacement: string
 }
 
-interface MatchSpan {
+export interface MatchSpan {
     startIndex: number
     endIndex: number
     method: 'exact' | 'line-trimmed' | 'block-anchor' | 'unicode-fuzzy'
 }
 
-function findMatchSpan(contentLF: string, targetLF: string): MatchSpan | null {
-    // 1. Exact match
-    const exactIdx = contentLF.indexOf(targetLF)
-    if (exactIdx !== -1) {
+export interface FindMatchResult {
+    success: boolean
+    span?: MatchSpan
+    error?: string
+}
+
+export function findMatchSpan(
+    contentLF: string,
+    targetLF: string,
+    filePath: string = 'file'
+): FindMatchResult {
+    // 1. Exact match & duplicate check
+    let firstExactIdx = -1
+    let exactCount = 0
+    let pos = 0
+    while ((pos = contentLF.indexOf(targetLF, pos)) !== -1) {
+        if (firstExactIdx === -1) firstExactIdx = pos
+        exactCount++
+        pos += Math.max(1, targetLF.length)
+    }
+
+    if (exactCount === 1 && firstExactIdx !== -1) {
         return {
-            startIndex: exactIdx,
-            endIndex: exactIdx + targetLF.length,
-            method: 'exact',
+            success: true,
+            span: {
+                startIndex: firstExactIdx,
+                endIndex: firstExactIdx + targetLF.length,
+                method: 'exact',
+            },
+        }
+    }
+    if (exactCount > 1) {
+        return {
+            success: false,
+            error: `Error: Multiple occurrences found for edit in '${filePath}'. Provide more context lines.`,
         }
     }
 
@@ -122,6 +166,7 @@ function findMatchSpan(contentLF: string, targetLF: string): MatchSpan | null {
 
     // 2. Line-trimmed match
     const trimmedTargetLines = targetLines.map((l) => l.trimEnd())
+    const lineTrimmedMatches: MatchSpan[] = []
     for (let i = 0; i <= contentLines.length - targetLen; i++) {
         let match = true
         for (let j = 0; j < targetLen; j++) {
@@ -137,54 +182,89 @@ function findMatchSpan(contentLF: string, targetLF: string): MatchSpan | null {
             const endOffset = lineOffsets[endLineIndex] ?? 0
             const endLine = contentLines[endLineIndex] ?? ''
             const endIndex = endOffset + endLine.length
-            return {
+            lineTrimmedMatches.push({
                 startIndex,
                 endIndex,
                 method: 'line-trimmed',
-            }
+            })
         }
     }
 
-    // 3. Block-anchor match with Levenshtein distance (for blocks >= 3 lines)
-    if (targetLen >= 3) {
+    if (lineTrimmedMatches.length === 1) {
+        return { success: true, span: lineTrimmedMatches[0]! }
+    }
+    if (lineTrimmedMatches.length > 1) {
+        return {
+            success: false,
+            error: `Error: Multiple occurrences found for edit in '${filePath}'. Provide more context lines.`,
+        }
+    }
+
+    let detectedDisproportionate: { candidateLines: number; targetLines: number } | null = null
+
+    // 3. Block-anchor match with Levenshtein distance (for blocks >= 2 lines)
+    if (targetLen >= 2) {
         const firstTarget = trimmedTargetLines[0]
         const lastTarget = trimmedTargetLines[targetLen - 1]
 
-        for (let i = 0; i <= contentLines.length - targetLen; i++) {
-            const startLine = contentLines[i] ?? ''
-            if (startLine.trimEnd() === firstTarget) {
-                // Find candidate end anchor within reasonable range [targetLen - 2, targetLen + 2]
-                for (
-                    let offset = Math.max(1, targetLen - 3);
-                    offset <= Math.min(contentLines.length - i - 1, targetLen + 3);
-                    offset++
-                ) {
-                    const endLineIdx = i + offset
-                    const candidateEndLine = contentLines[endLineIdx] ?? ''
-                    if (candidateEndLine.trimEnd() === lastTarget) {
-                        // Compare inner lines with Levenshtein similarity
-                        const innerTarget = targetLines.slice(1, -1).join('\n')
-                        const innerCandidate = contentLines.slice(i + 1, endLineIdx).join('\n')
-                        const sim = stringSimilarity(
-                            normalizeForFuzzyMatch(innerTarget),
-                            normalizeForFuzzyMatch(innerCandidate)
-                        )
+        if (firstTarget && lastTarget) {
+            const anchorMatches: Array<MatchSpan & { sim: number }> = []
 
-                        // Disproportionate match guard
-                        const searchLineCount = offset + 1
-                        if (
-                            searchLineCount <= Math.max(targetLen + 3, targetLen * 2) &&
-                            sim >= 0.65
-                        ) {
+            for (let i = 0; i < contentLines.length; i++) {
+                const startLine = contentLines[i]?.trimEnd() ?? ''
+                if (startLine === firstTarget) {
+                    for (let j = i + 1; j < contentLines.length; j++) {
+                        const endLine = contentLines[j]?.trimEnd() ?? ''
+                        if (endLine === lastTarget) {
+                            const candidateLines = j - i + 1
                             const startOffset = lineOffsets[i] ?? 0
-                            const endOffset = lineOffsets[endLineIdx] ?? 0
-                            return {
-                                startIndex: startOffset,
-                                endIndex: endOffset + candidateEndLine.length,
-                                method: 'block-anchor',
+                            const endOffset = (lineOffsets[j] ?? 0) + (contentLines[j]?.length ?? 0)
+                            const candidateChars = endOffset - startOffset
+                            const targetChars = targetLF.length
+
+                            if (
+                                isDisproportionateMatch(
+                                    candidateLines,
+                                    targetLen,
+                                    candidateChars,
+                                    targetChars
+                                )
+                            ) {
+                                detectedDisproportionate = {
+                                    candidateLines,
+                                    targetLines: targetLen,
+                                }
+                            } else {
+                                const innerTarget = targetLines.slice(1, -1).join('\n')
+                                const innerCandidate = contentLines.slice(i + 1, j).join('\n')
+                                const sim =
+                                    targetLen === 2
+                                        ? 1.0
+                                        : stringSimilarity(
+                                              normalizeForFuzzyMatch(innerTarget),
+                                              normalizeForFuzzyMatch(innerCandidate)
+                                          )
+                                if (sim >= 0.65) {
+                                    anchorMatches.push({
+                                        startIndex: startOffset,
+                                        endIndex: endOffset,
+                                        method: 'block-anchor',
+                                        sim,
+                                    })
+                                }
                             }
                         }
                     }
+                }
+            }
+
+            if (anchorMatches.length === 1) {
+                return { success: true, span: anchorMatches[0]! }
+            }
+            if (anchorMatches.length > 1) {
+                return {
+                    success: false,
+                    error: `Error: Multiple occurrences found for edit in '${filePath}'. Provide more context lines.`,
                 }
             }
         }
@@ -195,23 +275,61 @@ function findMatchSpan(contentLF: string, targetLF: string): MatchSpan | null {
     const normTarget = normalizeForFuzzyMatch(targetLF)
     const fuzzyIdx = normContent.indexOf(normTarget)
     if (fuzzyIdx !== -1) {
-        // Map back to line boundaries
+        if (normContent.split(normTarget).length - 1 > 1) {
+            return {
+                success: false,
+                error: `Error: Multiple occurrences found for edit in '${filePath}'. Provide more context lines.`,
+            }
+        }
+
         const beforeLines = normContent.substring(0, fuzzyIdx).split('\n').length - 1
         const targetLineCount = normTarget.split('\n').length
-        const afterLine = Math.min(contentLines.length - 1, beforeLines + targetLineCount - 1)
-        const startOffset = lineOffsets[beforeLines] ?? 0
-        const endOffset = lineOffsets[afterLine] ?? 0
-        const afterLineContent = contentLines[afterLine] ?? ''
+        const candidateLines = targetLineCount
+        if (
+            isDisproportionateMatch(candidateLines, targetLen, normTarget.length, targetLF.length)
+        ) {
+            detectedDisproportionate = { candidateLines, targetLines: targetLen }
+        } else {
+            const afterLine = Math.min(contentLines.length - 1, beforeLines + targetLineCount - 1)
+            const startOffset = lineOffsets[beforeLines] ?? 0
+            const endOffset = lineOffsets[afterLine] ?? 0
+            const afterLineContent = contentLines[afterLine] ?? ''
 
-        return {
-            startIndex: startOffset,
-            endIndex: endOffset + afterLineContent.length,
-            method: 'unicode-fuzzy',
+            return {
+                success: true,
+                span: {
+                    startIndex: startOffset,
+                    endIndex: endOffset + afterLineContent.length,
+                    method: 'unicode-fuzzy',
+                },
+            }
         }
     }
 
-    return null
+    if (detectedDisproportionate) {
+        return {
+            success: false,
+            error: `Error: Disproportionate match detected for edit chunk in '${filePath}'. The candidate match span (${detectedDisproportionate.candidateLines} lines) is substantially larger than the target (${detectedDisproportionate.targetLines} lines).`,
+        }
+    }
+
+    return {
+        success: false,
+        error: `Error: targetContent not found in file '${filePath}'. Ensure line breaks and indentation match, or view the file using read_file.`,
+    }
 }
+
+export const editToolSystemPromptContribution = {
+    name: 'edit_file',
+    snippet:
+        'Make precise file edits with exact or fuzzy text replacement, including multiple disjoint edits in one call',
+    guidelines: [
+        'Use edit_file for precise changes (edits[].oldText/targetContent must match uniquely)',
+        'When changing multiple separate locations in one file, use one edit_file call with multiple entries in edits[] instead of multiple sequential edit calls',
+        'Each edits[].oldText is matched against the original file, not after earlier edits are applied. Do not emit overlapping edits. Merge nearby changes into one edit.',
+        'Keep edits[].oldText as small as possible while still being unique in the file. Do not pad with large unchanged regions.',
+    ],
+} as const
 
 export const EditFileTool: Tool<EditFileInput> = {
     name: 'edit_file',
@@ -240,12 +358,16 @@ export const EditFileTool: Tool<EditFileInput> = {
                         }
                     }
                 } else if (
-                    typeof input.targetContent === 'string' &&
-                    typeof input.replacementContent === 'string'
+                    (typeof input.targetContent === 'string' ||
+                        typeof input.oldText === 'string') &&
+                    (typeof input.replacementContent === 'string' ||
+                        typeof input.newText === 'string')
                 ) {
+                    const target = input.targetContent ?? input.oldText!
+                    const replacement = input.replacementContent ?? input.newText!
                     normalizedEdits.push({
-                        target: normalizeToLF(input.targetContent),
-                        replacement: normalizeToLF(input.replacementContent),
+                        target: normalizeToLF(target),
+                        replacement: normalizeToLF(replacement),
                     })
                 }
 
@@ -264,11 +386,14 @@ export const EditFileTool: Tool<EditFileInput> = {
                     const edit = normalizedEdits[idx]
                     if (!edit) continue
                     const { target, replacement } = edit
-                    const span = findMatchSpan(contentLF, target)
-                    if (!span) {
-                        return `Error: targetContent not found in file '${filePath}'. Ensure line breaks and indentation match, or view the file using read_file.`
+                    const matchRes = findMatchSpan(contentLF, target, filePath)
+                    if (!matchRes.success || !matchRes.span) {
+                        return (
+                            matchRes.error ||
+                            `Error: targetContent not found in file '${filePath}'. Ensure line breaks and indentation match, or view the file using read_file.`
+                        )
                     }
-                    resolvedSpans.push({ span, replacement, target })
+                    resolvedSpans.push({ span: matchRes.span, replacement, target })
                 }
 
                 // Check for overlapping edits
@@ -296,17 +421,42 @@ export const EditFileTool: Tool<EditFileInput> = {
                 const finalContent = restoreLineEndings(newContentLF, ending)
                 await context.operations.fs.writeFile(filePath, finalContent)
 
+                // Instant LSP diagnostic feedback hook
+                let lspNotice = ''
+                if (context.operations.diagnostics?.getDiagnostics) {
+                    try {
+                        const diags = await context.operations.diagnostics.getDiagnostics(filePath)
+                        if (typeof diags === 'string' && diags.trim()) {
+                            lspNotice = `\n\nLSP errors detected in this file, please fix:\n${diags.trim()}`
+                        } else if (Array.isArray(diags) && diags.length > 0) {
+                            const formatted = diags
+                                .map((d) => {
+                                    const loc = d.line
+                                        ? `:${d.line}${d.column ? `:${d.column}` : ''}`
+                                        : ''
+                                    return `${d.filePath}${loc} - [${d.severity ?? 'error'}] ${d.message}${d.source ? ` (${d.source})` : ''}`
+                                })
+                                .join('\n')
+                            lspNotice = `\n\nLSP errors detected in this file, please fix:\n${formatted}`
+                        }
+                    } catch {
+                        // Intentionally swallowed: diagnostic feedback failure must not abort successful edit
+                    }
+                }
+
                 const methods = resolvedSpans.map((r) => r.span.method)
                 const hasFuzzy = methods.some((m) => m !== 'exact')
                 const methodNotice = hasFuzzy ? ` (matched with normalized whitespace)` : ''
 
                 if (resolvedSpans.length > 1) {
-                    return `Successfully edited file: ${filePath} (${resolvedSpans.length} disjoint replacements applied)`
+                    return `Successfully edited file: ${filePath} (${resolvedSpans.length} disjoint replacements applied)${lspNotice}`
                 }
-                return `Successfully edited file${methodNotice}: ${filePath}`
+                return `Successfully edited file${methodNotice}: ${filePath}${lspNotice}`
             } catch (error: any) {
                 return `Failed to edit file: ${error.message}`
             }
         })
     },
 }
+
+export const EditTool = EditFileTool

@@ -5,7 +5,7 @@ import { promisify } from 'node:util'
 
 import { PlatformAdapter } from '@december/agent'
 import { getWorkspaceIgnores, isPathIgnored } from '@december/shared'
-import { createLocalBashOperations } from '@december/tools'
+import { createLocalBashOperations, killProcessGroup } from '@december/tools'
 import fg from 'fast-glob'
 
 import { taskManager } from './task-manager'
@@ -39,13 +39,6 @@ export const localOperations: PlatformAdapter = {
                     stdio: ['pipe', 'pipe', 'pipe'],
                 })
 
-                // Immediately close stdin so child doesn't hang waiting for terminal input
-                try {
-                    child.stdin?.end?.()
-                } catch {
-                    // Intentionally swallowed: stdin might already be closed or unavailable
-                }
-
                 const task = taskManager.addTask(command, child)
                 let output = ''
                 let resolved = false
@@ -65,8 +58,19 @@ export const localOperations: PlatformAdapter = {
                 let timeoutHandle: NodeJS.Timeout | undefined
                 if (options.timeout) {
                     timeoutHandle = setTimeout(() => {
-                        if (child.pid) taskManager.killTask(task.id)
+                        if (child.pid) killProcessGroup(child.pid)
+                        taskManager.killTask(task.id)
                     }, options.timeout * 1000)
+                }
+
+                const onAbort = () => {
+                    if (child.pid) killProcessGroup(child.pid)
+                    taskManager.killTask(task.id)
+                }
+
+                if (options.signal) {
+                    if (options.signal.aborted) onAbort()
+                    else options.signal.addEventListener('abort', onAbort, { once: true })
                 }
 
                 const bgTimeout = options?.waitMsBeforeAsync
@@ -78,9 +82,14 @@ export const localOperations: PlatformAdapter = {
                       }, options.waitMsBeforeAsync)
                     : undefined
 
-                const finish = (code: number | null) => {
+                const cleanup = () => {
                     if (bgTimeout) clearTimeout(bgTimeout)
                     if (timeoutHandle) clearTimeout(timeoutHandle)
+                    if (options.signal) options.signal.removeEventListener('abort', onAbort)
+                }
+
+                const finish = (code: number | null) => {
+                    cleanup()
                     taskManager.markCompleted(task.id, code)
                     if (!resolved) {
                         resolved = true
@@ -94,8 +103,7 @@ export const localOperations: PlatformAdapter = {
                     setTimeout(() => finish(code), 50)
                 })
                 ;(child as any).on('error', (err: any) => {
-                    if (bgTimeout) clearTimeout(bgTimeout)
-                    if (timeoutHandle) clearTimeout(timeoutHandle)
+                    cleanup()
                     taskManager.markCompleted(task.id, 1)
                     if (!resolved) {
                         resolved = true

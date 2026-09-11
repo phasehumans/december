@@ -48,6 +48,7 @@ describe('CLI Prompts (Unit)', () => {
             'You are now in execution mode. Proceed with implementation immediately.'
         )
         expect(prompt).toContain('using your available tools')
+        expect(prompt).toContain('If a tool execution fails or encounters unexpected errors')
     })
 
     test('getPlanRefinePrompt incorporates previous plan and user feedback', () => {

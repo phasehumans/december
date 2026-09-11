@@ -1,6 +1,11 @@
 import { describe, test, expect } from 'bun:test'
 
-import { compactContextIfNeeded } from '../../src/utils/compaction'
+import {
+    compactContextIfNeeded,
+    pruneToolResults,
+    extractFileManifests,
+    formatFileManifestsXml,
+} from '../../src/utils/compaction'
 import { MockLLM } from '../mock-provider'
 
 import type { Message } from '@december/shared'
@@ -102,5 +107,165 @@ describe('compactContextIfNeeded (Unit)', () => {
         await expect(
             compactContextIfNeeded(messages, llm, 10, undefined, controller.signal)
         ).rejects.toThrow('Aborted')
+    })
+})
+
+describe('pruneToolResults (Tier 1)', () => {
+    test('does not prune if tokens saved is less than minimum savings', () => {
+        const messages: Message[] = [
+            { role: 'user', content: 'user 1' },
+            {
+                role: 'assistant',
+                content: '',
+                toolCalls: [{ id: 'call_1', name: 'read_file', input: '{"path":"a.ts"}' }],
+            },
+            { role: 'tool', toolCallId: 'call_1', content: 'short output' },
+            { role: 'user', content: 'user 2' },
+            { role: 'assistant', content: 'answer 2' },
+            { role: 'user', content: 'user 3' },
+            { role: 'assistant', content: 'answer 3' },
+        ]
+
+        const result = pruneToolResults(messages)
+        expect(result.pruned).toBe(false)
+        expect(result.tokensSaved).toBe(0)
+        expect(messages[2]!.content).toBe('short output')
+    })
+
+    test('protects the last 2 user turns untouched', () => {
+        const messages: Message[] = [
+            // Turn 1 (old)
+            { role: 'user', content: 'user 1' },
+            {
+                role: 'assistant',
+                content: '',
+                toolCalls: [{ id: 'call_old', name: 'bash', input: '{"cmd":"run"}' }],
+            },
+            { role: 'tool', toolCallId: 'call_old', content: 'x'.repeat(400) },
+            // Turn 2
+            { role: 'user', content: 'user 2' },
+            {
+                role: 'assistant',
+                content: '',
+                toolCalls: [{ id: 'call_recent', name: 'bash', input: '{"cmd":"run"}' }],
+            },
+            { role: 'tool', toolCallId: 'call_recent', content: 'y'.repeat(400) },
+            // Turn 3 (most recent)
+            { role: 'user', content: 'user 3' },
+            { role: 'assistant', content: 'answer 3' },
+        ]
+
+        // Use low thresholds for testing
+        const result = pruneToolResults(messages, {
+            protectTokens: 50,
+            minSavings: 50,
+        })
+
+        expect(result.pruned).toBe(true)
+        // call_old should be pruned because it is in Turn 1 (older than 2 turns back)
+        expect(messages[2]!.content).toBe('[Old tool result content cleared]')
+        // call_recent should NOT be pruned because it is in Turn 2 (within last 2 user turns)
+        expect(messages[5]!.content).toBe('y'.repeat(400))
+    })
+
+    test('exempts protected tools like skill', () => {
+        const messages: Message[] = [
+            { role: 'user', content: 'user 1' },
+            {
+                role: 'assistant',
+                content: '',
+                toolCalls: [{ id: 'call_skill', name: 'skill', input: '{"name":"code"}' }],
+            },
+            { role: 'tool', toolCallId: 'call_skill', content: 'skill output '.repeat(50) },
+            { role: 'user', content: 'user 2' },
+            { role: 'assistant', content: 'answer 2' },
+            { role: 'user', content: 'user 3' },
+            { role: 'assistant', content: 'answer 3' },
+        ]
+
+        const result = pruneToolResults(messages, {
+            protectTokens: 10,
+            minSavings: 10,
+            protectedTools: new Set(['skill']),
+        })
+
+        expect(result.pruned).toBe(false)
+        expect(messages[2]!.content).toContain('skill output')
+    })
+})
+
+describe('extractFileManifests (Tier 2)', () => {
+    test('extracts read and modified files and partitions them correctly', () => {
+        const messages: Message[] = [
+            {
+                role: 'assistant',
+                content: '',
+                toolCalls: [
+                    { id: '1', name: 'read_file', input: JSON.stringify({ path: 'src/index.ts' }) },
+                    {
+                        id: '2',
+                        name: 'view_file',
+                        input: JSON.stringify({ AbsolutePath: 'src/utils.ts' }),
+                    },
+                    { id: '3', name: 'edit_file', input: JSON.stringify({ path: 'src/index.ts' }) },
+                    {
+                        id: '4',
+                        name: 'write_file',
+                        input: JSON.stringify({ filePath: 'src/config.ts' }),
+                    },
+                ],
+            },
+        ]
+
+        const manifests = extractFileManifests(messages)
+
+        // src/index.ts was both read and edited, so it must be partitioned into modifiedFiles only
+        expect(manifests.modifiedFiles).toContain('src/index.ts')
+        expect(manifests.modifiedFiles).toContain('src/config.ts')
+        expect(manifests.readFiles).toContain('src/utils.ts')
+        expect(manifests.readFiles).not.toContain('src/index.ts')
+
+        const xml = formatFileManifestsXml(manifests)
+        expect(xml).toContain('<read-files>\nsrc/utils.ts\n</read-files>')
+        expect(xml).toContain('<modified-files>\nsrc/config.ts\nsrc/index.ts\n</modified-files>')
+    })
+
+    test('inherits previous manifests across subsequent compactions', () => {
+        const previousSummary = `Some summary...
+<read-files>
+src/old-read.ts
+src/to-be-modified.ts
+</read-files>
+
+<modified-files>
+src/old-modified.ts
+</modified-files>`
+
+        const newMessages: Message[] = [
+            {
+                role: 'assistant',
+                content: '',
+                toolCalls: [
+                    {
+                        id: '1',
+                        name: 'edit_file',
+                        input: JSON.stringify({ path: 'src/to-be-modified.ts' }),
+                    },
+                    {
+                        id: '2',
+                        name: 'read_file',
+                        input: JSON.stringify({ path: 'src/new-read.ts' }),
+                    },
+                ],
+            },
+        ]
+
+        const manifests = extractFileManifests(newMessages, previousSummary)
+
+        expect(manifests.modifiedFiles).toContain('src/old-modified.ts')
+        expect(manifests.modifiedFiles).toContain('src/to-be-modified.ts')
+        expect(manifests.readFiles).toContain('src/old-read.ts')
+        expect(manifests.readFiles).toContain('src/new-read.ts')
+        expect(manifests.readFiles).not.toContain('src/to-be-modified.ts')
     })
 })

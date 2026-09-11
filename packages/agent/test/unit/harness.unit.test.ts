@@ -208,4 +208,127 @@ description: Forces the laziest solution that actually works.
 
         expect(agentV2.tools.has('test_srv__query_v2')).toBe(false)
     })
+
+    test('climbs ancestor directories to root collecting rules with root-most rules ordered first', () => {
+        const rootDir = tmpDir
+        const subDir = path.join(tmpDir, 'packages', 'agent')
+        fs.mkdirSync(subDir, { recursive: true })
+
+        fs.writeFileSync(path.join(rootDir, 'AGENTS.md'), '# Root Instructions\nRoot level policy.')
+        fs.writeFileSync(
+            path.join(subDir, 'AGENTS.md'),
+            '# Nested Instructions\nAgent module policy.'
+        )
+
+        const harness = new AgentHarness({
+            llm: new MockLLM(),
+            tools: [],
+            operations: {} as any,
+            workspaceDir: subDir,
+            rootBoundary: rootDir,
+        })
+
+        const systemPrompt = harness.getAgent().systemPrompt
+        expect(systemPrompt).toContain('Root Instructions')
+        expect(systemPrompt).toContain('Nested Instructions')
+
+        const rootPos = systemPrompt.indexOf('Root Instructions')
+        const nestedPos = systemPrompt.indexOf('Nested Instructions')
+        expect(rootPos).toBeLessThan(nestedPos)
+    })
+
+    test('suppresses <thought> tags instruction for native reasoning models (o3, deepseek-r1, claude thinking)', () => {
+        const o3Harness = new AgentHarness({
+            llm: new MockLLM(),
+            tools: [],
+            operations: {} as any,
+            workspaceDir: tmpDir,
+            modelOptions: { model: 'o3-mini' },
+        })
+
+        const o3Prompt = o3Harness.getAgent().systemPrompt
+        expect(o3Prompt).not.toContain('<thought>')
+        expect(o3Prompt).toContain('Autonomous Reasoning & Verification')
+        expect(o3Prompt).toContain('Persistent Problem Solving')
+        expect(o3Prompt).toContain('Comprehensive Verification')
+
+        const claudeThinkingHarness = new AgentHarness({
+            llm: new MockLLM(),
+            tools: [],
+            operations: {} as any,
+            workspaceDir: tmpDir,
+            modelOptions: { model: 'claude-3-7-sonnet-20250219', thinkingLevel: 'high' },
+        })
+        const claudeThinkingPrompt = claudeThinkingHarness.getAgent().systemPrompt
+        expect(claudeThinkingPrompt).not.toContain('<thought>')
+    })
+
+    test('specializes prompt for Anthropic with objectivity and task breakdown', () => {
+        const anthropicHarness = new AgentHarness({
+            llm: new MockLLM(),
+            tools: [],
+            operations: {} as any,
+            workspaceDir: tmpDir,
+            modelOptions: { model: 'claude-3-5-sonnet-20241022' },
+        })
+
+        const prompt = anthropicHarness.getAgent().systemPrompt
+        expect(prompt).toContain('Anthropic / Claude')
+        expect(prompt).toContain('Objectivity & Discipline')
+        expect(prompt).toContain('Proactive Task Breakdown')
+        expect(prompt).toContain('<thought>')
+    })
+
+    test('specializes prompt for Gemini with absolute file path enforcement and operational phases', () => {
+        const geminiHarness = new AgentHarness({
+            llm: new MockLLM(),
+            tools: [],
+            operations: {} as any,
+            workspaceDir: tmpDir,
+            modelOptions: { model: 'gemini-2.5-pro' },
+        })
+
+        const prompt = geminiHarness.getAgent().systemPrompt
+        expect(prompt).toContain('Model Specialization (Gemini)')
+        expect(prompt).toContain('STRICTLY specify absolute file paths')
+        expect(prompt).toContain('Structured Execution')
+    })
+
+    test('dynamically includes guidelines only for active tools', () => {
+        const harnessWithEdit = new AgentHarness({
+            llm: new MockLLM(),
+            tools: [
+                {
+                    name: 'edit_file',
+                    description: 'edit',
+                    inputSchema: {},
+                    execute: async () => '',
+                },
+            ],
+            operations: {} as any,
+            workspaceDir: tmpDir,
+        })
+
+        const promptWithEdit = harnessWithEdit.getAgent().systemPrompt
+        expect(promptWithEdit).toContain('multiple entries in edits[]')
+        expect(promptWithEdit).not.toContain("Use 'web_search'")
+
+        const harnessWithWeb = new AgentHarness({
+            llm: new MockLLM(),
+            tools: [
+                {
+                    name: 'web_search',
+                    description: 'web search',
+                    inputSchema: {},
+                    execute: async () => '',
+                },
+            ],
+            operations: {} as any,
+            workspaceDir: tmpDir,
+        })
+
+        const promptWithWeb = harnessWithWeb.getAgent().systemPrompt
+        expect(promptWithWeb).toContain("Use 'web_search'")
+        expect(promptWithWeb).not.toContain('multiple entries in edits[]')
+    })
 })
