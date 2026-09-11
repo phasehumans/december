@@ -11,8 +11,6 @@ export function useSettingsHandlers() {
         settingsPathGuard,
         setSettingsPathGuard,
         setAuthMode,
-        setSettingsDefaultModel,
-        setSettingsMaxTokens,
         settingsThinkingLevel,
         setSettingsThinkingLevel,
         settingsSteeringMode,
@@ -126,14 +124,24 @@ export function useSettingsHandlers() {
                 break
             }
             case 'steeringMode': {
-                config.steeringMode = settingsSteeringMode === 'all' ? 'one-at-a-time' : 'all'
-                setSettingsSteeringMode(config.steeringMode)
+                const nextVal = (settingsSteeringMode || 'all') === 'all' ? 'one-at-a-time' : 'all'
+                config.steeringMode = nextVal
+                setSettingsSteeringMode(nextVal)
+                if (agent) {
+                    agent.steeringQueue.mode = nextVal
+                }
+                addToast(`Steering mode set to ${nextVal}`)
                 updated = true
                 break
             }
             case 'followUpMode': {
-                config.followUpMode = settingsFollowUpMode === 'all' ? 'one-at-a-time' : 'all'
-                setSettingsFollowUpMode(config.followUpMode)
+                const nextVal = (settingsFollowUpMode || 'all') === 'all' ? 'one-at-a-time' : 'all'
+                config.followUpMode = nextVal
+                setSettingsFollowUpMode(nextVal)
+                if (agent) {
+                    agent.followUpQueue.mode = nextVal
+                }
+                addToast(`Follow-up mode set to ${nextVal}`)
                 updated = true
                 break
             }
@@ -195,10 +203,6 @@ export function useSettingsHandlers() {
                 }
                 break
             }
-            case 'mcpServers': {
-                setAuthMode('mcp_manager')
-                break
-            }
             case 'back':
                 setAuthMode('none')
                 break
@@ -209,40 +213,7 @@ export function useSettingsHandlers() {
         }
     }
 
-    const handleSettingsAgentSelect = (item: any) => {
-        if (item.value === 'back') {
-            setAuthMode('settings_main')
-            return
-        }
-        if (item.value.startsWith('model:')) {
-            const model = item.value.split(':')[1]
-            setSettingsDefaultModel(model)
-            addToast(`Default model updated to ${model}`)
-        } else if (item.value.startsWith('tokens:')) {
-            const tokens = parseInt(item.value.split(':')[1], 10)
-            setSettingsMaxTokens(tokens.toString())
-            addToast(`Max tokens set to ${tokens}`)
-        }
-    }
-
-    const handleSettingsUISelect = (item: any) => {
-        if (item.value === 'back') {
-            setAuthMode('settings_main')
-            return
-        }
-    }
-
-    const handleSettingsKeysSelect = (item: any) => {
-        if (item.value === 'back') {
-            setAuthMode('settings_main')
-            return
-        }
-    }
-
     return {
         handleSettingsMainSelect,
-        handleSettingsAgentSelect,
-        handleSettingsUISelect,
-        handleSettingsKeysSelect,
     }
 }

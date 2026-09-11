@@ -1,6 +1,7 @@
 import type { LLMProvider, Message, ProviderTool, ProviderStreamChunk } from './types.ts'
 
 export const MODEL_CONTEXT_WINDOWS: Record<string, number> = {
+    'december-auto': 1000000,
     'gemini-3.8-flash': 1000000,
     'gemini-3.7-flash': 1000000,
     'gemini-3.6-flash': 1000000,
@@ -181,6 +182,7 @@ export function getModelContextWindow(value: string): number {
     if (lower.startsWith('ollama/')) {
         lower = lower.slice('ollama/'.length)
     }
+    if (lower.includes('december-auto')) return 1000000
     if (lower.includes('gemini')) return 1000000
     if (
         lower.includes('claude-5') ||

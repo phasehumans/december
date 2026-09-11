@@ -58,7 +58,7 @@ const generateHandoffUrl = async (data: GenerateHandoffUrl) => {
 
 const proxyChatCompletions = async (data: ProxyChatCompletions) => {
     const { userId, body, res } = data
-    const requestedModel = body.model || 'auto'
+    const requestedModel = body.model || 'december-auto'
 
     const { provider, model } = cliDispatcher.resolveServerProvider(requestedModel)
     const { systemPrompt, messages, tools, modelOptions } = parseOpenAiChatRequest(body)
@@ -223,11 +223,15 @@ const proxyChatCompletions = async (data: ProxyChatCompletions) => {
             usageService
                 .recordUsageEvent({
                     userId,
-                    model: requestedModel,
+                    model: model || requestedModel,
                     inputTokens: usage.prompt_tokens || 0,
                     outputTokens: usage.completion_tokens || 0,
                     totalTokens: usage.total_tokens || 0,
                     externalRequestId: `proxy-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+                    metadata: {
+                        requestedModel,
+                        routedModel: model,
+                    },
                 })
                 .catch((e) => console.error('[Proxy Usage Record Error]:', e))
         }

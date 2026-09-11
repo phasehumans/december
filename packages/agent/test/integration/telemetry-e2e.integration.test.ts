@@ -88,7 +88,6 @@ describe('Telemetry End-to-End Runtime Resolution & Tracing (Integration)', () =
             tools: [readTool],
             operations: mockPlatformAdapter,
             workspaceDir: '/workspace',
-            skipMcp: true,
         })
 
         const agent = harness.getAgent()
@@ -119,7 +118,6 @@ describe('Telemetry End-to-End Runtime Resolution & Tracing (Integration)', () =
             tools: [],
             operations: mockPlatformAdapter,
             workspaceDir: '/workspace',
-            skipMcp: true,
         })
 
         const agent = harness.getAgent()
@@ -150,7 +148,6 @@ describe('Telemetry End-to-End Runtime Resolution & Tracing (Integration)', () =
             tools: [],
             operations: mockPlatformAdapter,
             workspaceDir: '/workspace',
-            skipMcp: true,
         })
 
         const agent = harness.getAgent()

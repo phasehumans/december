@@ -24,5 +24,20 @@ describe('CLI Multi-Provider Dispatcher - Unit Tests', () => {
             expect(resolution.provider.id).toBe('openrouter')
             expect(resolution.model).toBe('anthropic/claude-3.7-sonnet')
         })
+
+        it('routes december-auto to gemini-3.8-flash under the hood', () => {
+            const resolution = resolveServerProvider('december-auto')
+            expect(resolution.providerName).toBe('gemini')
+            expect(resolution.provider.id).toBe('gemini')
+            expect(resolution.model).toBe('gemini-3.8-flash')
+        })
+
+        it('routes undefined or auto to gemini-3.8-flash under the hood', () => {
+            const resolution = resolveServerProvider('auto')
+            expect(resolution.model).toBe('gemini-3.8-flash')
+
+            const resolutionEmpty = resolveServerProvider('')
+            expect(resolutionEmpty.model).toBe('gemini-3.8-flash')
+        })
     })
 })

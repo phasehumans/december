@@ -285,7 +285,6 @@ export const InputBar = React.memo(function InputBar({
                 '/tasks',
                 '/usage',
                 '/feedback',
-                '/mcp',
                 '/update',
                 '/new',
                 '/clear',

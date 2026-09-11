@@ -2,13 +2,11 @@ import fs from 'node:fs'
 import path from 'node:path'
 
 import { SkillDiscoveryEngine, formatSkillsCatalog } from '@december/shared'
-import { McpClientPool } from '@december/tools'
 
 import { Agent } from '../agent'
 
 import type { AgentConfig } from '../agent'
 import type { Tool, DiscoveredSkill } from '@december/shared'
-import type { McpConfigFile } from '@december/tools'
 
 export const DEFAULT_TOOL_PROMPTS: Record<string, { snippet: string; guidelines: string[] }> = {
     grep_search: {
@@ -302,16 +300,12 @@ export interface HarnessConfig extends Omit<AgentConfig, 'systemPrompt'> {
     baseSystemPrompt?: string
     workspaceDir: string
     homeDir?: string
-    mcpPool?: McpClientPool
-    mcpConfig?: McpConfigFile
-    skipMcp?: boolean
     rootBoundary?: string
 }
 
 export class AgentHarness {
     private agent: Agent
     private config: HarnessConfig
-    private mcpPool?: McpClientPool
     private skills: DiscoveredSkill[]
 
     constructor(config: HarnessConfig) {
@@ -343,48 +337,10 @@ export class AgentHarness {
             ...config,
             systemPrompt: finalPrompt,
         })
-
-        // 5. attach mcp pool for local CLI runtime
-        if (!config.skipMcp && config.runtime !== 'cloud') {
-            this.mcpPool =
-                config.mcpPool ||
-                new McpClientPool({
-                    workspaceDir: config.workspaceDir,
-                    operations: config.operations,
-                })
-            this.agent.mcpPool = this.mcpPool
-        }
-    }
-
-    public async initMCP(config?: McpConfigFile): Promise<Tool[]> {
-        if (this.config.skipMcp || this.config.runtime === 'cloud' || !this.mcpPool) {
-            return []
-        }
-        await this.mcpPool.initialize(config || this.config.mcpConfig)
-        const tools = this.mcpPool.getTools()
-        this.agent.syncMcpTools(tools)
-        return tools
-    }
-
-    public async reloadMCP(config?: McpConfigFile): Promise<{ tools: Tool[]; serverInfos: any[] }> {
-        if (this.config.skipMcp || this.config.runtime === 'cloud' || !this.mcpPool) {
-            return { tools: [], serverInfos: [] }
-        }
-        const result = await this.mcpPool.reload(config)
-        this.agent.syncMcpTools(result.tools)
-        return result
-    }
-
-    public getMcpPool(): McpClientPool | undefined {
-        return this.mcpPool
     }
 
     public static async create(config: HarnessConfig): Promise<AgentHarness> {
-        const harness = new AgentHarness(config)
-        if (!config.skipMcp) {
-            await harness.initMCP(config.mcpConfig)
-        }
-        return harness
+        return new AgentHarness(config)
     }
 
     public getDiscoveredSkills(): DiscoveredSkill[] {

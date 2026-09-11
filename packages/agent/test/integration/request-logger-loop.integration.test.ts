@@ -22,9 +22,9 @@ describe('Request Logger Loop Integration', () => {
                 execute: async (args: any) => `Result: ${args.expr}`,
             }
 
-            const mcpTool = {
-                name: 'github__search_issues',
-                description: 'Search GitHub issues via MCP',
+            const searchTool = {
+                name: 'custom_search',
+                description: 'Search repository issues',
                 inputSchema: { type: 'object', properties: { query: { type: 'string' } } },
                 execute: async () => 'Found 3 issues',
             }
@@ -72,7 +72,7 @@ Current working directory: ${tmpDir}`
                 logsDir,
                 systemPrompt,
                 llm: mockLlm,
-                tools: [mockTool, mcpTool],
+                tools: [mockTool, searchTool],
                 operations: {} as any,
                 modelOptions: { model: 'gemini-3.6-flash' },
             })
@@ -113,14 +113,11 @@ Current working directory: ${tmpDir}`
             expect(turn1.request.tools.length).toBe(2)
             const calcToolLog = turn1.request.tools.find((t) => t.name === 'custom_calc')
             expect(calcToolLog).toBeDefined()
-            expect(calcToolLog?.isMcp).toBe(false)
             expect(calcToolLog?.tokens).toBeGreaterThan(0)
 
-            const mcpToolLog = turn1.request.tools.find((t) => t.name === 'github__search_issues')
-            expect(mcpToolLog).toBeDefined()
-            expect(mcpToolLog?.isMcp).toBe(true)
-            expect(mcpToolLog?.serverName).toBe('github')
-            expect(mcpToolLog?.tokens).toBeGreaterThan(0)
+            const searchToolLog = turn1.request.tools.find((t) => t.name === 'custom_search')
+            expect(searchToolLog).toBeDefined()
+            expect(searchToolLog?.tokens).toBeGreaterThan(0)
 
             // Response snapshot for Turn 1
             expect(turn1.response.assistantMessage).toBe('Evaluating...')

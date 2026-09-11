@@ -179,8 +179,6 @@ export interface RequestLogToolEntry {
     description?: string
     inputSchema?: any
     tokens: number
-    isMcp: boolean
-    serverName?: string
 }
 
 export interface RequestLogRuleEntry {
@@ -252,11 +250,7 @@ export interface ContextDecomposition {
         text: string
         tokens: number
     }
-    builtInTools: {
-        tools: RequestLogToolEntry[]
-        tokens: number
-    }
-    dynamicMcpTools: {
+    tools: {
         tools: RequestLogToolEntry[]
         tokens: number
     }

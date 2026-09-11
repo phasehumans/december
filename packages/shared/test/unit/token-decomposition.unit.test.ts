@@ -118,7 +118,7 @@ Available skills:
     })
 
     describe('decomposeTools', () => {
-        test('separates built-in tools from dynamic MCP tools', () => {
+        test('decomposes tools schema and estimates tokens', () => {
             const tools = [
                 {
                     name: 'read_file',
@@ -130,27 +130,14 @@ Available skills:
                     description: 'Edit a file',
                     inputSchema: { type: 'object' },
                 },
-                {
-                    name: 'github__search_issues',
-                    description: 'Search github issues via MCP',
-                    inputSchema: { type: 'object', properties: { query: { type: 'string' } } },
-                },
             ]
 
             const result = decomposeTools(tools)
 
-            expect(result.builtInTools.tools.length).toBe(2)
-            expect(result.builtInTools.tools.map((t) => t.name)).toEqual(['read_file', 'edit_file'])
-            expect(result.builtInTools.tools.every((t) => !t.isMcp)).toBe(true)
-
-            expect(result.dynamicMcpTools.tools.length).toBe(1)
-            expect(result.dynamicMcpTools.tools[0].name).toBe('github__search_issues')
-            expect(result.dynamicMcpTools.tools[0].isMcp).toBe(true)
-            expect(result.dynamicMcpTools.tools[0].serverName).toBe('github')
-
-            expect(result.totalTokens).toBe(
-                result.builtInTools.tokens + result.dynamicMcpTools.tokens
-            )
+            expect(result.tools.tools.length).toBe(2)
+            expect(result.tools.tools.map((t) => t.name)).toEqual(['read_file', 'edit_file'])
+            expect(result.totalTokens).toBe(result.tools.tokens)
+            expect(result.totalTokens).toBeGreaterThan(0)
         })
 
         test('handles Map of tools and empty tools safely', () => {
@@ -158,8 +145,7 @@ Available skills:
                 ['bash', { name: 'bash', description: 'Run bash command', inputSchema: {} }],
             ])
             const result = decomposeTools(toolMap)
-            expect(result.builtInTools.tools.length).toBe(1)
-            expect(result.dynamicMcpTools.tools.length).toBe(0)
+            expect(result.tools.tools.length).toBe(1)
 
             const emptyResult = decomposeTools(null)
             expect(emptyResult.totalTokens).toBe(0)
@@ -206,7 +192,7 @@ Available skills:
 
             const tools = [
                 { name: 'read_file', description: 'Read', inputSchema: {} },
-                { name: 'mcp__tool', description: 'MCP', inputSchema: {} },
+                { name: 'write_file', description: 'Write', inputSchema: {} },
             ]
 
             const messages = [
@@ -228,16 +214,14 @@ Available skills:
             expect(decomp.basePrompt.text).toBe('Base prompt')
             expect(decomp.skills.items).toEqual(['skill-a'])
             expect(decomp.rules.files.length).toBe(1)
-            expect(decomp.builtInTools.tools.length).toBe(1)
-            expect(decomp.dynamicMcpTools.tools.length).toBe(1)
+            expect(decomp.tools.tools.length).toBe(2)
 
-            // Cacheable static prefix = basePrompt + rules + skills + builtInTools + dynamicMcpTools
+            // Cacheable static prefix = basePrompt + rules + skills + tools
             const expectedCacheable =
                 decomp.basePrompt.tokens +
                 decomp.rules.tokens +
                 decomp.skills.tokens +
-                decomp.builtInTools.tokens +
-                decomp.dynamicMcpTools.tokens
+                decomp.tools.tokens
             expect(decomp.cacheableStaticPrefixTokens).toBe(expectedCacheable)
 
             expect(decomp.totalTokens).toBe(
@@ -245,8 +229,7 @@ Available skills:
                     decomp.rules.tokens +
                     decomp.skills.tokens +
                     decomp.dynamicEnv.tokens +
-                    decomp.builtInTools.tokens +
-                    decomp.dynamicMcpTools.tokens +
+                    decomp.tools.tokens +
                     decomp.conversationHistory.totalTokens
             )
             expect(decomp.freeTokens).toBe(100000 - decomp.totalTokens)

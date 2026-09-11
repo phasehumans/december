@@ -239,7 +239,6 @@ async function main() {
 
         const agent = harness.getAgent()
         await agent.loadContext()
-        await harness.initMCP().catch(() => {})
 
         if (!parsedArgs.json) {
             console.log(`\nExecuting Headless Task: "${parsedArgs.prompt}"\n`)
@@ -373,8 +372,7 @@ async function main() {
 
     const agent = harness.getAgent()
 
-    // Non-blocking MCP initialization and session context loading during TUI mounting
-    harness.initMCP().catch(() => {})
+    // Non-blocking session context loading during TUI mounting
     agent.loadContext().catch(() => {
         // Intentionally swallowed: ignore context load errors on fresh sessions
     })

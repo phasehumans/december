@@ -251,14 +251,6 @@ export function classifyOperation(toolCall: any): OperationClassification {
         }
     }
 
-    // MCP dynamic tools
-    if (name.includes('__')) {
-        return {
-            tier: 'modifying',
-            reason: `External MCP tool: ${name}`,
-        }
-    }
-
     return {
         tier: 'modifying',
         reason: `General tool: ${name}`,

@@ -49,12 +49,6 @@ describe('formatters', () => {
             )
         })
 
-        test('formats mcp tool', () => {
-            expect(
-                getToolSummary('mcp', JSON.stringify({ server: 'github', tool: 'search_repos' }))
-            ).toBe('MCP(github:search_repos)')
-        })
-
         test('handles unknown tools', () => {
             expect(getToolSummary('unknown_tool', JSON.stringify({ foo: 'bar' }))).toBe(
                 'unknown_tool()'

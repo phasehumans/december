@@ -1,7 +1,11 @@
 import type { ModelRate } from './usage.types'
 
 export const OFFICIAL_MODEL_RATES: Record<string, ModelRate> = {
+    // December Auto Managed
+    'december-auto': { name: 'december-auto', inputRate: 0.1, outputRate: 0.4 },
+
     // Google Gemini
+    'gemini-3.8-flash': { name: 'gemini-3.8-flash', inputRate: 0.1, outputRate: 0.4 },
     'gemini-3.7-flash': { name: 'gemini-3.7-flash', inputRate: 0.1, outputRate: 0.4 },
     'gemini-3.6-flash': { name: 'gemini-3.6-flash', inputRate: 0.1, outputRate: 0.4 },
     'gemini-3.5-flash': { name: 'gemini-3.5-flash', inputRate: 0.1, outputRate: 0.4 },

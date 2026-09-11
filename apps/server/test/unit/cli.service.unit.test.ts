@@ -155,5 +155,59 @@ describe('CLI Service - Unit Tests', () => {
             expect(writtenChunks.some((c) => c.includes('data: [DONE]'))).toBe(true)
             expect(recordUsageSpy).toHaveBeenCalled()
         })
+
+        it('preserves december-auto in SSE chunks and records usage under the routed model', async () => {
+            const writtenChunks: string[] = []
+            const headers: Record<string, string> = {}
+            const mockRes: any = {
+                setHeader: (k: string, v: string) => {
+                    headers[k] = v
+                },
+                write: (chunk: string) => {
+                    writtenChunks.push(chunk)
+                },
+                end: () => {},
+                headersSent: true,
+                writableEnded: false,
+            }
+
+            const mockProvider = {
+                stream: async function* () {
+                    yield { type: 'text', text: 'Auto response' }
+                    yield { type: 'usage', promptTokens: 15, completionTokens: 25 }
+                },
+            }
+
+            spyOn(cliDispatcher, 'resolveServerProvider').mockReturnValue({
+                provider: mockProvider as any,
+                providerName: 'gemini',
+                model: 'gemini-3.8-flash',
+            })
+
+            const recordUsageSpy = spyOn(usageService, 'recordUsageEvent').mockImplementation(
+                (async () => ({}) as any) as any
+            )
+
+            await cliService.proxyChatCompletions({
+                userId: 'user-456',
+                body: {
+                    model: 'december-auto',
+                    messages: [{ role: 'user', content: 'hello' }],
+                },
+                res: mockRes,
+            })
+
+            expect(writtenChunks.some((c) => c.includes('december-auto'))).toBe(true)
+            expect(recordUsageSpy).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    userId: 'user-456',
+                    model: 'gemini-3.8-flash',
+                    metadata: {
+                        requestedModel: 'december-auto',
+                        routedModel: 'gemini-3.8-flash',
+                    },
+                })
+            )
+        })
     })
 })

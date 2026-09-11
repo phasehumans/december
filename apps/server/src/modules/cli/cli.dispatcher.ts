@@ -11,6 +11,9 @@ import { AppError } from '../../shared/appError'
 import type { ServerProviderResolution } from './cli.types'
 
 export const OPENROUTER_MODEL_MAP: Record<string, string> = {
+    'december-auto': 'google/gemini-3.8-flash',
+    auto: 'google/gemini-3.8-flash',
+    'gemini-3.8-flash': 'google/gemini-3.8-flash',
     'gemini-3.7-flash': 'google/gemini-3.7-flash',
     'gemini-3.6-flash': 'google/gemini-3.6-flash',
     'gemini-3.5-flash': 'google/gemini-3.5-flash',
@@ -34,7 +37,10 @@ export const OPENROUTER_MODEL_MAP: Record<string, string> = {
 }
 
 export function resolveServerProvider(modelInput?: string): ServerProviderResolution {
-    const model = (modelInput || '').trim()
+    const rawModel = (modelInput || '').trim()
+    const isAuto =
+        !rawModel || rawModel.toLowerCase() === 'december-auto' || rawModel.toLowerCase() === 'auto'
+    const model = isAuto ? 'gemini-3.8-flash' : rawModel
     const lowerModel = model.toLowerCase()
     const strippedModel = lowerModel.includes('/') ? lowerModel.split('/').pop()! : lowerModel
 

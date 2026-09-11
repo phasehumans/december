@@ -54,8 +54,6 @@ export function getToolSummary(name: string, inputStr: string): string {
                 return `AskQuestion()`
             case 'manage_task':
                 return `ManageTask(${args.Action || ''})`.trim()
-            case 'mcp':
-                return `MCP(${args.server || ''}:${args.tool || ''})`.trim()
             default:
                 return `${name}()`
         }

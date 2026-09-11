@@ -27,7 +27,7 @@ describe('Adaptive Thinking Level Classifier (Unit)', () => {
         expect(getAdaptiveThinkingLevel([{ role: 'user', content: '/help' }])).toBe('off')
         expect(getAdaptiveThinkingLevel([{ role: 'user', content: '/commit' }])).toBe('off')
         expect(getAdaptiveThinkingLevel([{ role: 'user', content: '/settings' }])).toBe('off')
-        expect(getAdaptiveThinkingLevel([{ role: 'user', content: '/mcp add server' }])).toBe('off')
+        expect(getAdaptiveThinkingLevel([{ role: 'user', content: '/model gpt-4' }])).toBe('off')
     })
 
     it('returns off for simple greetings and short conversational queries', () => {

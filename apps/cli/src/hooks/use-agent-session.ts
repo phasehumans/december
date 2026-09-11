@@ -186,10 +186,6 @@ export function useAgentSession({
         setSettingsStreamSpeed,
         settingsSelectedIndex,
         setSettingsSelectedIndex,
-        settingsDefaultModel,
-        setSettingsDefaultModel,
-        settingsMaxTokens,
-        setSettingsMaxTokens,
         settingsThinkingLevel,
         setSettingsThinkingLevel,
         settingsSteeringMode,
@@ -1791,11 +1787,6 @@ ${decStatus}
                 return
             }
 
-            if (text.trim() === '/mcp') {
-                setAuthMode('mcp_manager')
-                return
-            }
-
             if (text.trim() === '/model') {
                 const { getAuthStatus } = await import('../config')
                 const status = await getAuthStatus()
@@ -2050,7 +2041,6 @@ ${decStatus}
                         'init',
                         'login',
                         'logout',
-                        'mcp',
                         'model',
                         'new',
                         'plan',
@@ -2227,12 +2217,7 @@ ${decStatus}
         }
     }, [isStreaming, agent, setQueuedPrompts, setPlanWorkflow])
 
-    const {
-        handleSettingsMainSelect,
-        handleSettingsAgentSelect,
-        handleSettingsUISelect,
-        handleSettingsKeysSelect,
-    } = useSettingsHandlers()
+    const { handleSettingsMainSelect } = useSettingsHandlers()
 
     const {
         handleAuthMenuSelect,
@@ -2396,104 +2381,6 @@ ${decStatus}
 
     const handleContextSelect = () => {}
 
-    const handleToggleMcpServer = async (serverName: string) => {
-        try {
-            const { toggleMcpServer } = await import('@december/tools')
-            const { config, disabled } = await toggleMcpServer({
-                name: serverName,
-                workspaceDir: process.cwd(),
-            })
-            if (agent.mcpPool) {
-                const { tools } = await agent.mcpPool.reload(config)
-                agent.syncMcpTools(tools)
-            }
-            addToast(`MCP server '${serverName}' ${disabled ? 'disabled' : 'enabled'}`)
-            setStaticKey((k: number) => k + 1)
-        } catch (err: any) {
-            addToast(`Failed to toggle MCP server: ${err.message}`, 'error')
-        }
-    }
-
-    const handleReloadMcp = async () => {
-        try {
-            if (agent.mcpPool) {
-                const { tools } = await agent.mcpPool.reload()
-                agent.syncMcpTools(tools)
-                addToast('MCP servers and tools reloaded successfully')
-                setStaticKey((k: number) => k + 1)
-            } else {
-                addToast('MCP pool not initialized', 'error')
-            }
-        } catch (err: any) {
-            addToast(`Failed to reload MCP servers: ${err.message}`, 'error')
-        }
-    }
-
-    const handleAddMcpServer = async (
-        name: string,
-        serverConfig: any,
-        scope: 'workspace' | 'global' = 'workspace'
-    ) => {
-        try {
-            const { addMcpServer } = await import('@december/tools')
-            const config = await addMcpServer({
-                name,
-                serverConfig,
-                scope,
-                workspaceDir: process.cwd(),
-            })
-            if (agent.mcpPool) {
-                const { tools } = await agent.mcpPool.reload(config)
-                agent.syncMcpTools(tools)
-            }
-            addToast(`Added MCP server '${name}'`)
-            setStaticKey((k: number) => k + 1)
-        } catch (err: any) {
-            addToast(`Failed to add MCP server: ${err.message}`, 'error')
-        }
-    }
-
-    const handleRemoveMcpServer = async (
-        serverName: string,
-        scope: 'workspace' | 'global' = 'workspace'
-    ) => {
-        try {
-            const { removeMcpServer } = await import('@december/tools')
-            const config = await removeMcpServer({
-                name: serverName,
-                scope,
-                workspaceDir: process.cwd(),
-            })
-            if (agent.mcpPool) {
-                const { tools } = await agent.mcpPool.reload(config)
-                agent.syncMcpTools(tools)
-            }
-            addToast(`Removed MCP server '${serverName}'`)
-            setStaticKey((k: number) => k + 1)
-        } catch (err: any) {
-            addToast(`Failed to remove MCP server: ${err.message}`, 'error')
-        }
-    }
-
-    const handleTestMcpServer = async (serverName: string) => {
-        try {
-            if (agent.mcpPool) {
-                const result = await agent.mcpPool.testServer(serverName)
-                if (result.success) {
-                    addToast(
-                        `Server '${serverName}' connected (${result.latencyMs}ms, ${result.toolsCount} tools)`
-                    )
-                } else {
-                    addToast(`Connection failed: ${result.error}`, 'error')
-                }
-                return result
-            }
-        } catch (err: any) {
-            addToast(`Test connection failed: ${err.message}`, 'error')
-            return { success: false, error: err.message }
-        }
-    }
-
     return {
         currentPlannedPrompt,
         setCurrentPlannedPrompt,
@@ -2628,11 +2515,6 @@ ${decStatus}
         handleOllamaProceed,
         pendingToolCall,
         setPendingToolCall,
-        handleToggleMcpServer,
-        handleReloadMcp,
-        handleAddMcpServer,
-        handleRemoveMcpServer,
-        handleTestMcpServer,
         activeModel,
         setActiveModel,
         detectedSubscriptions,

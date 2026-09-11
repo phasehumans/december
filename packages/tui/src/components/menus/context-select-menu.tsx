@@ -26,8 +26,7 @@ export function ContextSelectMenu(props: any) {
     const basePromptTokens = decomp.basePrompt.tokens
     const rulesTokens = decomp.rules.tokens
     const skillsTokens = decomp.skills.tokens
-    const builtInToolsTokens = decomp.builtInTools.tokens
-    const dynamicMcpToolsTokens = decomp.dynamicMcpTools.tokens
+    const toolsTokens = decomp.tools.tokens
     const conversationHistoryTokens = decomp.conversationHistory.totalTokens
     const totalTokens = decomp.totalTokens
     const freeTokens = decomp.freeTokens
@@ -65,14 +64,9 @@ export function ContextSelectMenu(props: any) {
         THEME.colors.error
     )
     addSquares(
-        Math.round((builtInToolsTokens / maxTokens) * totalSquares),
+        Math.round((toolsTokens / maxTokens) * totalSquares),
         THEME.glyphs.status,
         THEME.colors.brand
-    )
-    addSquares(
-        Math.round((dynamicMcpToolsTokens / maxTokens) * totalSquares),
-        THEME.glyphs.status,
-        THEME.colors.dim
     )
     addSquares(
         Math.round((conversationHistoryTokens / maxTokens) * totalSquares),
@@ -141,15 +135,7 @@ export function ContextSelectMenu(props: any) {
                         <Box gap={1}>
                             <Text color={THEME.colors.brand}>{THEME.glyphs.status}</Text>
                             <Text color={THEME.colors.muted}>
-                                Built-in Tool Schemas: {formatK(builtInToolsTokens)} tokens (
-                                {pct(builtInToolsTokens)}%)
-                            </Text>
-                        </Box>
-                        <Box gap={1}>
-                            <Text color={THEME.colors.dim}>{THEME.glyphs.status}</Text>
-                            <Text color={THEME.colors.muted}>
-                                Dynamic MCP Tools: {formatK(dynamicMcpToolsTokens)} tokens (
-                                {pct(dynamicMcpToolsTokens)}%)
+                                Tool Schemas: {formatK(toolsTokens)} tokens ({pct(toolsTokens)}%)
                             </Text>
                         </Box>
                         <Box gap={1}>

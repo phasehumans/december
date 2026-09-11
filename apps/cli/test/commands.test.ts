@@ -58,7 +58,7 @@ describe('CLI Standalone Commands', () => {
             const agentsContent = await fs.readFile(rootAgentsPath, 'utf-8')
             expect(agentsContent).toContain('Agent Guidelines')
 
-            const decFiles = ['settings.json', 'mcp.json']
+            const decFiles = ['settings.json']
             for (const file of decFiles) {
                 const exists = await fs
                     .access(path.join(tmpDir, '.december', file))

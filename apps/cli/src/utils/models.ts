@@ -85,6 +85,10 @@ export function clearProviderModelsCache(provider?: string): void {
             }
         }
         saveDiskCache().catch(() => {})
+    }
+
+    if (normalized === 'december' || normalized === 'december_proxy') {
+        return curated
     } else {
         liveModelCache.clear()
         diskCacheLoaded = false
@@ -385,15 +389,7 @@ export const getCuratedProviderModels = (provider: string) => {
             ]
         case 'december':
         case 'december_proxy':
-            return [
-                { label: 'Gemini 3.8 Flash', value: 'gemini-3.8-flash' },
-                { label: 'Gemini 3.7 Flash', value: 'gemini-3.7-flash' },
-                { label: 'Claude Sonnet 5', value: 'claude-sonnet-5' },
-                { label: 'Claude Opus 5', value: 'claude-opus-5' },
-                { label: 'GPT-5.6 Sol', value: 'gpt-5.6-sol' },
-                { label: 'DeepSeek V4 Pro', value: 'deepseek-v4-pro' },
-                { label: 'o4-mini', value: 'o4-mini' },
-            ]
+            return [{ label: 'december-auto', value: 'december-auto' }]
         case 'copilot':
         case 'github_copilot':
         case 'github':
@@ -728,6 +724,10 @@ export async function fetchLiveProviderModels(
 ): Promise<{ label: string; value: string }[]> {
     const normalized = (provider || '').toLowerCase().trim()
     const curated = getCuratedProviderModels(normalized)
+
+    if (normalized === 'december' || normalized === 'december_proxy') {
+        return curated
+    }
 
     if (normalized === 'openrouter') {
         const cacheKey = `openrouter:${apiKey || 'none'}:${baseUrl || 'default'}`

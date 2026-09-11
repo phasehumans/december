@@ -27,8 +27,8 @@ describe('Request Logger Core (Unit)', () => {
                     inputSchema: { type: 'object' },
                 },
                 {
-                    name: 'github__search_prs',
-                    description: 'Search PRs via MCP',
+                    name: 'write_file',
+                    description: 'Write file',
                     inputSchema: { type: 'object' },
                 },
             ],
@@ -49,9 +49,7 @@ describe('Request Logger Core (Unit)', () => {
         expect(entry.request.systemPromptDecomposition.rules[0].path).toBe('AGENTS.md')
         expect(entry.request.tools.length).toBe(2)
         expect(entry.request.tools[0].name).toBe('read_file')
-        expect(entry.request.tools[0].isMcp).toBe(false)
-        expect(entry.request.tools[1].name).toBe('github__search_prs')
-        expect(entry.request.tools[1].isMcp).toBe(true)
+        expect(entry.request.tools[1].name).toBe('write_file')
 
         expect(entry.response.assistantMessage).toBe('I will inspect auth files.')
         expect(entry.response.thinking).toBe('Let us check the auth module first.')

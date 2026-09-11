@@ -126,16 +126,7 @@ export function setupAgentInterceptors(agent: Agent, storeState: any) {
             }
         }
 
-        // 2. Check MCP auto-approval if the tool is a dynamic MCP tool
-        if (toolCall.name?.includes('__')) {
-            const [serverName, ...toolParts] = toolCall.name.split('__')
-            const mcpToolName = toolParts.join('__')
-            if (agent.mcpPool?.isAutoApproved(serverName, mcpToolName)) {
-                return { block: false }
-            }
-        }
-
-        // 3. Classify operation
+        // 2. Classify operation
         const classification = classifyOperation(toolCall)
 
         // Tier 1 (Safe Read & Inspect): Safe operations bypass UI prompts entirely, even in always-ask mode (unless accessing secret files)

@@ -30,8 +30,10 @@ describe('SettingsMainMenu Component (Unit)', () => {
         expect(frame).toContain('[off]')
         expect(frame).toContain('Thinking Level')
         expect(frame).toContain('[auto]')
-        expect(frame).toContain('MCP Servers')
-        expect(frame).toContain('[Configure]')
+        expect(frame).toContain('Steering Mode')
+        expect(frame).toContain('[all]')
+        expect(frame).toContain('Follow-Up Mode')
+        expect(frame).toContain('[all]')
     })
 
     it('renders active provider and model when configured', () => {
@@ -44,6 +46,8 @@ describe('SettingsMainMenu Component (Unit)', () => {
                 settingsToolPermission="always-ask"
                 settingsThinkingLevel="high"
                 settingsPathGuard={false}
+                settingsSteeringMode="one-at-a-time"
+                settingsFollowUpMode="one-at-a-time"
                 handleSettingsMainSelect={mock(() => {})}
             />
         )
@@ -61,6 +65,10 @@ describe('SettingsMainMenu Component (Unit)', () => {
         expect(frame).toContain('[on]')
         expect(frame).toContain('Thinking Level')
         expect(frame).toContain('[high]')
+        expect(frame).toContain('Steering Mode')
+        expect(frame).toContain('[one-at-a-time]')
+        expect(frame).toContain('Follow-Up Mode')
+        expect(frame).toContain('[one-at-a-time]')
     })
 
     it('renders subscription and december cloud labels correctly', () => {

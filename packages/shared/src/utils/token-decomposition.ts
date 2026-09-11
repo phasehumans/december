@@ -151,8 +151,7 @@ export function decomposeSystemPrompt(
 }
 
 export function decomposeTools(toolsInput?: any[] | Map<string, any> | null): {
-    builtInTools: { tools: RequestLogToolEntry[]; tokens: number }
-    dynamicMcpTools: { tools: RequestLogToolEntry[]; tokens: number }
+    tools: { tools: RequestLogToolEntry[]; tokens: number }
     allTools: RequestLogToolEntry[]
     totalTokens: number
 } {
@@ -166,16 +165,12 @@ export function decomposeTools(toolsInput?: any[] | Map<string, any> | null): {
     }
 
     const allTools: RequestLogToolEntry[] = []
-    const builtInToolsList: RequestLogToolEntry[] = []
-    const dynamicMcpToolsList: RequestLogToolEntry[] = []
 
     for (const t of rawTools) {
         if (!t || typeof t !== 'object') continue
         const name = String(t.name || '')
         const description = t.description ? String(t.description).replace(/\s+/g, ' ').trim() : ''
         const inputSchema = t.inputSchema || {}
-        const isMcp = Boolean(name.includes('__') || t.isMcp || t.serverName)
-        const serverName = name.includes('__') ? name.split('__')[0] : t.serverName || undefined
 
         const schemaPayload = JSON.stringify({ name, description, inputSchema })
         const tokens = estimateTextTokens(schemaPayload)
@@ -185,32 +180,20 @@ export function decomposeTools(toolsInput?: any[] | Map<string, any> | null): {
             description,
             inputSchema,
             tokens,
-            isMcp,
-            serverName,
         }
 
         allTools.push(entry)
-        if (isMcp) {
-            dynamicMcpToolsList.push(entry)
-        } else {
-            builtInToolsList.push(entry)
-        }
     }
 
-    const builtInTokens = builtInToolsList.reduce((acc, cur) => acc + cur.tokens, 0)
-    const dynamicMcpTokens = dynamicMcpToolsList.reduce((acc, cur) => acc + cur.tokens, 0)
+    const totalTokens = allTools.reduce((acc, cur) => acc + cur.tokens, 0)
 
     return {
-        builtInTools: {
-            tools: builtInToolsList,
-            tokens: builtInTokens,
-        },
-        dynamicMcpTools: {
-            tools: dynamicMcpToolsList,
-            tokens: dynamicMcpTokens,
+        tools: {
+            tools: allTools,
+            tokens: totalTokens,
         },
         allTools,
-        totalTokens: builtInTokens + dynamicMcpTokens,
+        totalTokens,
     }
 }
 
@@ -307,8 +290,7 @@ export function decomposeContext(options: DecomposeContextOptions): ContextDecom
             text: sysDecomp.dynamicEnv,
             tokens: sysDecomp.dynamicEnvTokens,
         },
-        builtInTools: toolsDecomp.builtInTools,
-        dynamicMcpTools: toolsDecomp.dynamicMcpTools,
+        tools: toolsDecomp.tools,
         conversationHistory: msgsDecomp,
         totalTokens,
         freeTokens,

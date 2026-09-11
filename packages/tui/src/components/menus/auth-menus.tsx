@@ -5,7 +5,6 @@ import { ByokProviderMenu } from './byok-provider-menu'
 import { ContextSelectMenu } from './context-select-menu'
 import { GrillQuestionMenu } from './grill-question-menu'
 import { LogoutSelectMenu } from './logout-select-menu'
-import { McpManagerMenu } from './mcp-manager-menu'
 import { MenuMenu } from './menu-menu'
 import { ModelSelectMenu } from './model-select-menu'
 import { OllamaSetupMenu } from './ollama-setup-menu'
@@ -24,8 +23,6 @@ export function AuthMenus(props: any) {
         case 'subscription_select':
         case 'subscription_provider':
             return <SubscriptionSelectMenu {...props} />
-        case 'mcp_manager':
-            return <McpManagerMenu {...props} />
         case 'byok_provider':
             return <ByokProviderMenu {...props} />
         case 'byok_key':

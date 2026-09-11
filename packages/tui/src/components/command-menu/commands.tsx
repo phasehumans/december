@@ -251,14 +251,9 @@ export const COMMANDS: Command[] = [
                 const decDir = path.join(rootDir, '.december')
 
                 const agentsFile = path.join(rootDir, 'AGENTS.md')
-                const mcpFile = path.join(decDir, 'mcp.json')
                 const settingsFile = path.join(decDir, 'settings.json')
 
-                if (
-                    fs.existsSync(agentsFile) &&
-                    fs.existsSync(mcpFile) &&
-                    fs.existsSync(settingsFile)
-                ) {
+                if (fs.existsSync(agentsFile) && fs.existsSync(settingsFile)) {
                     ctx.toast.show({ message: 'December workspace is already initialized.' })
                     return
                 }
@@ -269,18 +264,6 @@ export const COMMANDS: Command[] = [
                     fs.writeFileSync(
                         agentsFile,
                         '# Agent Guidelines & Project Instructions\n\nAdd project-specific guidelines, rules, skills, testing commands, architecture patterns, and conventions in this file for December to follow.\n'
-                    )
-                }
-                if (!fs.existsSync(mcpFile)) {
-                    fs.writeFileSync(
-                        mcpFile,
-                        JSON.stringify(
-                            {
-                                mcpServers: {},
-                            },
-                            null,
-                            2
-                        ) + '\n'
                     )
                 }
                 if (!fs.existsSync(settingsFile)) {
@@ -324,14 +307,6 @@ export const COMMANDS: Command[] = [
         value: '/logout',
         action: (ctx) => {
             ctx.toast.show({ variant: 'success', message: 'Signed out' })
-        },
-    },
-    {
-        name: 'mcp',
-        description: 'Manage Model Context Protocol (MCP) servers and tools',
-        value: '/mcp',
-        action: (ctx) => {
-            // forwarded to chat screen
         },
     },
     {

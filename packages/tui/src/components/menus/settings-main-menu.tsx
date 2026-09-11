@@ -17,6 +17,8 @@ export interface SettingsMainMenuProps {
     settingsNonWorkspace?: boolean
     settingsToolPermission?: 'always-ask' | 'always-proceed'
     settingsThinkingLevel?: 'auto' | 'off' | 'minimal' | 'low' | 'medium' | 'high'
+    settingsSteeringMode?: 'all' | 'one-at-a-time'
+    settingsFollowUpMode?: 'all' | 'one-at-a-time'
     handleSettingsMainSelect: (item: { label: string; value: string }) => void
 }
 
@@ -30,6 +32,8 @@ export function SettingsMainMenu(props: SettingsMainMenuProps | any) {
         settingsToolPermission = 'always-proceed',
         settingsThinkingLevel = 'auto',
         settingsPathGuard = true,
+        settingsSteeringMode = 'all',
+        settingsFollowUpMode = 'all',
         handleSettingsMainSelect,
     } = props
 
@@ -74,8 +78,12 @@ export function SettingsMainMenu(props: SettingsMainMenuProps | any) {
             value: 'thinkingLevel',
         },
         {
-            label: `MCP Servers              [Configure]`,
-            value: 'mcpServers',
+            label: `Steering Mode            [${settingsSteeringMode}]`,
+            value: 'steeringMode',
+        },
+        {
+            label: `Follow-Up Mode           [${settingsFollowUpMode}]`,
+            value: 'followUpMode',
         },
     ]
 

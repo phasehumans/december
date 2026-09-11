@@ -74,7 +74,6 @@ export class Agent {
     public followUpQueue: PendingMessageQueue
     public activeAbortController?: AbortController
     public convertToLlm: (messages: AgentMessage[]) => Message[]
-    public mcpPool?: any
     public workspaceDir?: string
     public logsDir?: string
     public disableLogging: boolean
@@ -161,17 +160,6 @@ export class Agent {
 
     public unregisterTool(toolName: string): void {
         this.tools.delete(toolName)
-    }
-
-    public syncMcpTools(newMcpTools: Tool[]): void {
-        for (const toolName of Array.from(this.tools.keys())) {
-            if (toolName.includes('__')) {
-                this.tools.delete(toolName)
-            }
-        }
-        for (const tool of newMcpTools) {
-            this.tools.set(tool.name, tool)
-        }
     }
 
     public abort() {

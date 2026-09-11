@@ -41,7 +41,7 @@ A self-learning coding agent cannot rely solely on weight updates (which are slo
 Instead, **December's Self-Learning and Growing Harness** combines:
 
 1. **Fast-Loop In-Context Experiential Learning**: Multi-turn verbal reinforcement learning (Reflexion) and cross-session rule synthesis (ExpeL) stored in structured project memory (`.december/rules.md`).
-2. **Autonomous Tool & Skill Synthesis**: Dynamic creation, unit testing, and sandbox deployment of reusable TypeScript/Bun tool scripts and MCP servers (Voyager & LATM paradigms).
+2. **Autonomous Tool & Skill Synthesis**: Dynamic creation, unit testing, and sandbox deployment of reusable TypeScript/Bun tool scripts and Markdown skills (Voyager & LATM paradigms).
 3. **Deterministic Ground-Truth Verification**: AST-level error parsing, automated reproduction test generation (TDD), and pre/post-flight test suites.
 4. **Slow-Loop Trajectory Distillation Flywheel**: Telemetry-driven filtering of verified trajectories to generate high-fidelity SFT and DPO preference datasets for continuous local adapter / model fine-tuning.
 
@@ -255,7 +255,7 @@ To implement this vision in December, we design a 4-pillar architectural system 
     | 5. AUTONOMOUS SKILL SYNTHESIS (Voyager / LATM Engine)                             |
     |    - Synthesize TypeScript Tool (.december/skills/<name>.ts)                       |
     |    - Generate & Execute Unit Test in Worker Sandbox                                |
-    |    - Hot-Reload into Agent McpClientPool / Tool Registry                           |
+    |    - Hot-Reload into Agent Tool Registry                                           |
     +-----------------------------------------+------------------------------------------+
                                               |
                                               v [On Session Completion / Verification Pass]
@@ -368,7 +368,7 @@ export async function execute(args: z.infer<typeof schema>, ctx: ToolContext): P
 1. **Authoring**: The agent writes the proposed skill code and an accompanying unit test file into `.december/skills/staging/`.
 2. **Sandbox Validation**: The harness runs the unit test inside an isolated worker container (`apps/worker/src/e2b-sandbox.service.ts`). The test must pass with exit code 0 and comply with timeout and memory limits.
 3. **Security & Boundary Analysis**: An automated static analysis check ensures the skill does not touch forbidden paths outside the workspace boundary (`/etc`, `~/.ssh`).
-4. **Hot-Reloading**: The skill is moved to `.december/skills/` and immediately registered into `AgentHarness.initMCP()` / `McpClientPool`, making it instantly callable in subsequent turns without restarting the agent.
+4. **Hot-Reloading**: The skill is moved to `.december/skills/` and immediately registered into the `AgentHarness` tool registry, making it instantly callable in subsequent turns without restarting the agent.
 
 ---
 
