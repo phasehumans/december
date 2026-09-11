@@ -2,6 +2,30 @@
 
 ### Features
 
+- _(providers)_ Add poolside and sakana ai byok providers
+- _(cli)_ Add sarvam ai byok provider vertical slice (#491)
+- _(cli)_ Add stepfun global byok provider vertical slice (#492)
+- _(cli)_ Add upstage solar byok provider vertical slice (#493)
+- _(cli)_ Add thinking machines tinker byok provider vertical slice (#494)
+- _(cli)_ Unify global config directory to ~/.december with legacy fallback
+- _(cli)_ Complete migration to ~/.december with installer, tui, and auto-migration support
+- _(cli)_ Add resume command and flag with automatic session hydration and dag fallback
+- _(cli,web)_ Add web docs view and docs cli command, remove guide cmd
+
+### Bug Fixes
+
+- _(providers)_ Omit tools parameter when array is empty to satisfy strict openapi schemas
+- _(tui)_ Improve terminal width layout, right margin safety buffer, and bullet formatting
+
+### Testing
+
+- _(cli)_ End-to-end byok provider regression and switching verification (#495)
+- _(cli)_ Isolate test config directory from user home directory
+
+## [0.3.26] - 2026-09-08
+
+### Features
+
 - _(tui)_ Add search filtering to byok and subscription provider menus
 - _(tui)_ Always show persistent gray thoughts and decouple from ctrl+o (#480)
 - _(tui)_ Add minimal two-column /skills guide command
@@ -22,6 +46,10 @@
 ### Testing
 
 - _(tui)_ Update skills_guide block unit test description
+
+### Miscellaneous Tasks
+
+- _(release)_ V0.3.26
 
 ### Revert
 
