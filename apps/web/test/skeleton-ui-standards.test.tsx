@@ -51,6 +51,19 @@ describe('Skeleton UI Standards & Preview Mode', () => {
         expect(mobileRows.length).toBeGreaterThanOrEqual(7)
     })
 
+    test('ProfileSettingsSkeleton renders accurate Account tab without obsolete password row', () => {
+        const { container } = render(<ProfileSettingsSkeleton activeTab="Account" />)
+
+        // Verify section titles: Account, Notifications, System
+        expect(container.textContent).toContain('Account')
+        expect(container.textContent).toContain('Notifications')
+        expect(container.textContent).toContain('System')
+
+        // Verify exactly 2 toggle skeletons in Notifications
+        const toggles = container.querySelectorAll('.rounded-full.bg-white\\/\\[0\\.04\\]')
+        expect(toggles.length).toBe(2)
+    })
+
     test('ProfileSettingsSkeleton renders 2-column card grid for Repositories tab', () => {
         const { container } = render(<ProfileSettingsSkeleton activeTab="Repositories" />)
 

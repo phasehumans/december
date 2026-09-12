@@ -352,6 +352,50 @@ export const ProfileBillingSkeleton: React.FC = () => (
     </div>
 )
 
+export const ProfileAccountSkeleton: React.FC = () => (
+    <div className="flex flex-col w-full max-w-[800px] text-[#D6D5C9] animate-in fade-in duration-200">
+        {/* Account Section */}
+        <div className="flex flex-col mb-6">
+            <h1 className="text-[16px] font-medium mb-3">Account</h1>
+            <div className="flex flex-col gap-2 border-t border-[#242323] pt-4">
+                {/* Full name */}
+                <SettingRowSkeleton titleWidth="w-20" descWidth="w-36" actionType="button" />
+                {/* Username */}
+                <SettingRowSkeleton titleWidth="w-20" descWidth="w-28" actionType="button" />
+                {/* Email (no action button) */}
+                <SettingRowSkeleton titleWidth="w-12" descWidth="w-48" actionType="none" />
+            </div>
+        </div>
+
+        {/* Notifications Section */}
+        <div className="flex flex-col mb-6">
+            <h2 className="text-[16px] font-medium text-[#D6D5C9] mb-3">Notifications</h2>
+            <div className="flex flex-col gap-4 border-t border-[#242323] pt-4">
+                {/* Product updates */}
+                <SettingRowSkeleton titleWidth="w-28" descWidth="w-80" actionType="toggle" />
+                {/* Security alerts */}
+                <SettingRowSkeleton titleWidth="w-24" descWidth="w-72" actionType="toggle" />
+            </div>
+        </div>
+
+        {/* System Section */}
+        <div className="flex flex-col mb-0">
+            <h2 className="text-[16px] font-medium text-[#D6D5C9] mb-3">System</h2>
+            <div className="flex flex-col gap-6 sm:gap-2 border-t border-[#242323] pt-4">
+                {/* Signed in as... */}
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0 py-2.5">
+                    <Skeleton className="h-4 w-52 bg-white/[0.04] rounded" />
+                    <Skeleton className="h-7 sm:h-8 w-20 rounded-lg bg-white/[0.03] shrink-0" />
+                </div>
+                {/* Sign out of all sessions */}
+                <SettingRowSkeleton titleWidth="w-40" descWidth="w-64" actionType="button" />
+                {/* Delete account */}
+                <SettingRowSkeleton titleWidth="w-28" descWidth="w-56" actionType="button" />
+            </div>
+        </div>
+    </div>
+)
+
 export const ProfileSettingsSkeleton: React.FC<ProfileSettingsSkeletonProps> = ({
     activeTab = 'Account',
 }) => {
@@ -489,35 +533,5 @@ export const ProfileSettingsSkeleton: React.FC<ProfileSettingsSkeletonProps> = (
     }
 
     // Default Account Skeleton
-    return (
-        <div className="flex flex-col w-full max-w-[800px] text-[#D6D5C9] animate-in fade-in duration-150 gap-6">
-            <div className="flex flex-col gap-2">
-                <Skeleton className="h-4 w-24 bg-white/[0.04] rounded mb-1" />
-                <div className="flex flex-col gap-1">
-                    <SettingRowSkeleton titleWidth="w-28" descWidth="w-48" actionType="button" />
-                    <SettingRowSkeleton titleWidth="w-32" descWidth="w-40" actionType="button" />
-                    <SettingRowSkeleton titleWidth="w-24" descWidth="w-56" actionType="none" />
-                    <SettingRowSkeleton titleWidth="w-28" descWidth="w-36" actionType="button" />
-                </div>
-            </div>
-
-            <div className="flex flex-col gap-2">
-                <Skeleton className="h-4 w-28 bg-white/[0.04] rounded mb-1" />
-                <div className="flex flex-col gap-1">
-                    <SettingRowSkeleton titleWidth="w-40" descWidth="w-64" actionType="toggle" />
-                    <SettingRowSkeleton titleWidth="w-36" descWidth="w-52" actionType="toggle" />
-                    <SettingRowSkeleton titleWidth="w-32" descWidth="w-48" actionType="toggle" />
-                </div>
-            </div>
-
-            <div className="flex flex-col gap-2">
-                <Skeleton className="h-4 w-20 bg-white/[0.04] rounded mb-1" />
-                <div className="flex flex-col gap-1">
-                    <SettingRowSkeleton titleWidth="w-36" descWidth="w-60" actionType="button" />
-                    <SettingRowSkeleton titleWidth="w-32" descWidth="w-52" actionType="button" />
-                    <SettingRowSkeleton titleWidth="w-28" descWidth="w-44" actionType="button" />
-                </div>
-            </div>
-        </div>
-    )
+    return <ProfileAccountSkeleton />
 }
