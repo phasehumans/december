@@ -54,7 +54,7 @@ describe('TasksModeMenu Component (Unit)', () => {
         expect(output).toContain('Showing lines 1-4 of 4')
     })
 
-    it('renders column headers, status tabs, and duration metrics', () => {
+    it('renders column headers, task counts, and duration metrics', () => {
         const now = new Date()
         const tenSecondsAgo = new Date(now.getTime() - 10_000)
         const tasksData = [
@@ -86,18 +86,14 @@ describe('TasksModeMenu Component (Unit)', () => {
         )
         const output = lastFrame() || ''
 
-        // Column headers
+        // Column headers & header count
+        expect(output).toContain('Tasks')
+        expect(output).toContain('(2 tasks)')
         expect(output).toContain('ID')
         expect(output).toContain('STATUS')
         expect(output).toContain('PID')
         expect(output).toContain('DURATION')
         expect(output).toContain('COMMAND')
-
-        // Tabs
-        expect(output).toContain('[1: All (2)]')
-        expect(output).toContain('[2: Running (1)]')
-        expect(output).toContain('[3: Done (0)]')
-        expect(output).toContain('[4: Failed (1)]')
 
         // PID & Exit code
         expect(output).toContain('41234')

@@ -1,5 +1,5 @@
 import { Box, Text, useInput } from 'ink'
-import React, { useState, useMemo, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 
 import { useTerminalColumns, useTerminalRows } from '../../hooks/use-terminal-columns'
 import { THEME } from '../../theme'
@@ -78,7 +78,6 @@ export function TasksModeMenu(props: TasksModeMenuProps) {
     const [scrollOffset, setScrollOffset] = useState<number>(propTaskScrollOffset)
     const [pageSelectedIndex, setPageSelectedIndex] = useState<number>(propTaskSelectedIndex)
     const [page, setPage] = useState<number>(0)
-    const [activeTab, setActiveTab] = useState<'all' | 'running' | 'completed' | 'failed'>('all')
     const [isFollowing, setIsFollowing] = useState<boolean>(true)
     const [statusNotice, setStatusNotice] = useState<string | null>(null)
 
@@ -162,33 +161,11 @@ export function TasksModeMenu(props: TasksModeMenuProps) {
         }
     }
 
-    // Counts by tab
-    const counts = useMemo(
-        () => ({
-            all: tasksData.length,
-            running: tasksData.filter((t) => t.status === 'running').length,
-            completed: tasksData.filter((t) => t.status === 'completed').length,
-            failed: tasksData.filter((t) => t.status === 'failed' || t.status === 'killed').length,
-        }),
-        [tasksData]
-    )
-
-    // Filter by tab
-    const filteredTasks = useMemo(() => {
-        return tasksData.filter((t) => {
-            if (activeTab === 'all') return true
-            if (activeTab === 'running') return t.status === 'running'
-            if (activeTab === 'completed') return t.status === 'completed'
-            if (activeTab === 'failed') return t.status === 'failed' || t.status === 'killed'
-            return true
-        })
-    }, [tasksData, activeTab])
-
     const PAGE_SIZE = 8
-    const totalPages = Math.max(1, Math.ceil(filteredTasks.length / PAGE_SIZE))
+    const totalPages = Math.max(1, Math.ceil(tasksData.length / PAGE_SIZE))
     const currentPage = Math.min(page, totalPages - 1)
     const startIndex = currentPage * PAGE_SIZE
-    const visibleTasks = filteredTasks.slice(startIndex, startIndex + PAGE_SIZE)
+    const visibleTasks = tasksData.slice(startIndex, startIndex + PAGE_SIZE)
 
     // Layout widths
     const paddingWidth = THEME.padding.paddingX * 2
@@ -208,7 +185,7 @@ export function TasksModeMenu(props: TasksModeMenuProps) {
     // Ref to track latest state inside useInput
     const stateRef = useRef({
         viewingId,
-        filteredTasks,
+        tasksData,
         visibleTasks,
         pageSelectedIndex,
         page: currentPage,
@@ -216,11 +193,10 @@ export function TasksModeMenu(props: TasksModeMenuProps) {
         scrollOffset,
         visibleLineCount,
         isFollowing,
-        activeTab,
     })
     stateRef.current = {
         viewingId,
-        filteredTasks,
+        tasksData,
         visibleTasks,
         pageSelectedIndex,
         page: currentPage,
@@ -228,7 +204,6 @@ export function TasksModeMenu(props: TasksModeMenuProps) {
         scrollOffset,
         visibleLineCount,
         isFollowing,
-        activeTab,
     }
 
     useInput((input, key) => {
@@ -310,50 +285,6 @@ export function TasksModeMenu(props: TasksModeMenuProps) {
         // 2. List Mode
         if (key.escape) {
             handleClose()
-            return
-        }
-
-        // Tab cycling
-        if (key.tab) {
-            const tabs: Array<'all' | 'running' | 'completed' | 'failed'> = [
-                'all',
-                'running',
-                'completed',
-                'failed',
-            ]
-            const nextIdx = (tabs.indexOf(state.activeTab) + 1) % tabs.length
-            setActiveTab(tabs[nextIdx])
-            setPage(0)
-            setPageSelectedIndex(0)
-            if (setTaskSelectedIndex) setTaskSelectedIndex(0)
-            return
-        }
-        if (input === '1') {
-            setActiveTab('all')
-            setPage(0)
-            setPageSelectedIndex(0)
-            if (setTaskSelectedIndex) setTaskSelectedIndex(0)
-            return
-        }
-        if (input === '2') {
-            setActiveTab('running')
-            setPage(0)
-            setPageSelectedIndex(0)
-            if (setTaskSelectedIndex) setTaskSelectedIndex(0)
-            return
-        }
-        if (input === '3') {
-            setActiveTab('completed')
-            setPage(0)
-            setPageSelectedIndex(0)
-            if (setTaskSelectedIndex) setTaskSelectedIndex(0)
-            return
-        }
-        if (input === '4') {
-            setActiveTab('failed')
-            setPage(0)
-            setPageSelectedIndex(0)
-            if (setTaskSelectedIndex) setTaskSelectedIndex(0)
             return
         }
 
@@ -548,35 +479,13 @@ export function TasksModeMenu(props: TasksModeMenuProps) {
         <Box flexDirection="column" paddingX={THEME.padding.paddingX}>
             <Box marginBottom={1} justifyContent="space-between" flexDirection="row">
                 <Box flexDirection="row" gap={2}>
-                    <Text color={THEME.colors.text}>Tasks</Text>
-                    <Box flexDirection="row" gap={1}>
-                        <Text color={activeTab === 'all' ? THEME.colors.brand : THEME.colors.muted}>
-                            [1: All ({counts.all})]
-                        </Text>
-                        <Text
-                            color={
-                                activeTab === 'running' ? THEME.colors.warning : THEME.colors.muted
-                            }
-                        >
-                            [2: Running ({counts.running})]
-                        </Text>
-                        <Text
-                            color={
-                                activeTab === 'completed'
-                                    ? THEME.colors.success
-                                    : THEME.colors.muted
-                            }
-                        >
-                            [3: Done ({counts.completed})]
-                        </Text>
-                        <Text
-                            color={activeTab === 'failed' ? THEME.colors.error : THEME.colors.muted}
-                        >
-                            [4: Failed ({counts.failed})]
-                        </Text>
-                    </Box>
+                    <Text color={THEME.colors.text} bold>
+                        Tasks
+                    </Text>
+                    <Text color={THEME.colors.muted}>
+                        ({tasksData.length} {tasksData.length === 1 ? 'task' : 'tasks'})
+                    </Text>
                 </Box>
-                <Text color={THEME.colors.muted}>Tab: cycle</Text>
             </Box>
 
             {/* Table Header */}
@@ -600,13 +509,9 @@ export function TasksModeMenu(props: TasksModeMenuProps) {
             </Box>
 
             {/* Rows */}
-            {filteredTasks.length === 0 ? (
+            {tasksData.length === 0 ? (
                 <Box paddingLeft={2}>
-                    <Text color={THEME.colors.muted}>
-                        {tasksData.length === 0
-                            ? 'No background tasks.'
-                            : 'No tasks matching filter.'}
-                    </Text>
+                    <Text color={THEME.colors.muted}>No background tasks.</Text>
                 </Box>
             ) : (
                 visibleTasks.map((task, idx) => {
@@ -657,11 +562,11 @@ export function TasksModeMenu(props: TasksModeMenuProps) {
             )}
 
             {/* Pagination info */}
-            {filteredTasks.length > 0 && (
+            {tasksData.length > PAGE_SIZE && (
                 <Box marginTop={1} justifyContent="space-between" flexDirection="row">
                     <Text color={THEME.colors.muted}>
-                        [{startIndex + 1}-{Math.min(startIndex + PAGE_SIZE, filteredTasks.length)}{' '}
-                        of {filteredTasks.length} tasks]
+                        [{startIndex + 1}-{Math.min(startIndex + PAGE_SIZE, tasksData.length)} of{' '}
+                        {tasksData.length} tasks]
                     </Text>
                     {totalPages > 1 && (
                         <Text color={THEME.colors.muted}>
@@ -675,12 +580,11 @@ export function TasksModeMenu(props: TasksModeMenuProps) {
             <MenuFooter
                 items={[
                     { key: '↑/↓', label: 'Navigate' },
-                    { key: '←/→', label: 'Page' },
-                    { key: 'enter', label: 'View output' },
+                    { key: 'enter', label: 'View logs' },
                     { key: 'x', label: 'Kill' },
                     { key: 'c', label: 'Clear finished' },
                     { key: 'd', label: 'Dismiss' },
-                    { key: 'esc', label: 'Cancel' },
+                    { key: 'esc', label: 'Back' },
                 ]}
             />
         </Box>

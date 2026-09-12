@@ -1,9 +1,11 @@
 import { spawn, type ChildProcess } from 'node:child_process'
 
+import { SERVER_READY_REGEX } from '../local-operations'
 import { taskManager } from '../task-manager'
 
 export interface DirectShellOptions {
-    timeoutMs?: number // Default: 60,000ms
+    timeoutMs?: number // Default: 20,000ms
+    serverReadyDelayMs?: number // Default: 2,500ms
     onData?: (chunk: string) => void
     onBackground?: (taskId: string) => void
 }
@@ -16,7 +18,7 @@ export interface DirectShellResult {
 }
 
 export function startDirectCommand(command: string, options: DirectShellOptions = {}) {
-    const { timeoutMs = 60_000, onData, onBackground } = options
+    const { timeoutMs = 20_000, serverReadyDelayMs = 2_500, onData, onBackground } = options
 
     let output = ''
     let isBackground = false
@@ -42,9 +44,39 @@ export function startDirectCommand(command: string, options: DirectShellOptions 
     }
 
     let timeoutTimer: ReturnType<typeof setTimeout> | null = null
+    let serverReadyTimer: ReturnType<typeof setTimeout> | null = null
 
     const promise = new Promise<DirectShellResult>((resolve) => {
         let closed = false
+
+        const promoteToBackground = () => {
+            if (closed || isBackground) return
+            isBackground = true
+            if (timeoutTimer) clearTimeout(timeoutTimer)
+            if (serverReadyTimer) clearTimeout(serverReadyTimer)
+            const task = taskManager.addTask(command, child)
+            bgTaskId = task.id
+            if (output) {
+                taskManager.appendOutput(task.id, output)
+            }
+            if (onBackground) {
+                onBackground(task.id)
+            }
+            resolve({
+                output,
+                exitCode: 0,
+                isBackground: true,
+                taskId: task.id,
+            })
+        }
+
+        const checkServerReady = (str: string) => {
+            if (!isBackground && !serverReadyTimer && SERVER_READY_REGEX.test(str)) {
+                serverReadyTimer = setTimeout(() => {
+                    promoteToBackground()
+                }, serverReadyDelayMs)
+            }
+        }
 
         child.stdout?.on('data', (data: Buffer | string) => {
             const str = typeof data === 'string' ? data : data.toString('utf8')
@@ -54,6 +86,7 @@ export function startDirectCommand(command: string, options: DirectShellOptions 
             } else if (onData) {
                 onData(str)
             }
+            checkServerReady(str)
         })
 
         child.stderr?.on('data', (data: Buffer | string) => {
@@ -64,6 +97,7 @@ export function startDirectCommand(command: string, options: DirectShellOptions 
             } else if (onData) {
                 onData(str)
             }
+            checkServerReady(str)
         })
         ;(child as any).on('error', (err: any) => {
             if (closed) return
@@ -72,6 +106,7 @@ export function startDirectCommand(command: string, options: DirectShellOptions 
             output += errStr
             if (onData) onData(errStr)
             if (timeoutTimer) clearTimeout(timeoutTimer)
+            if (serverReadyTimer) clearTimeout(serverReadyTimer)
             resolve({
                 output,
                 exitCode: 1,
@@ -84,6 +119,7 @@ export function startDirectCommand(command: string, options: DirectShellOptions 
             if (closed) return
             closed = true
             if (timeoutTimer) clearTimeout(timeoutTimer)
+            if (serverReadyTimer) clearTimeout(serverReadyTimer)
             const finalCode = isAborted ? 130 : (code ?? 0)
             if (isBackground && bgTaskId) {
                 taskManager.markCompleted(bgTaskId, finalCode)
@@ -104,21 +140,7 @@ export function startDirectCommand(command: string, options: DirectShellOptions 
 
         if (timeoutMs > 0 && timeoutMs < Infinity) {
             timeoutTimer = setTimeout(() => {
-                isBackground = true
-                const task = taskManager.addTask(command, child)
-                bgTaskId = task.id
-                if (output) {
-                    taskManager.appendOutput(task.id, output)
-                }
-                if (onBackground) {
-                    onBackground(task.id)
-                }
-                resolve({
-                    output,
-                    exitCode: 0,
-                    isBackground: true,
-                    taskId: task.id,
-                })
+                promoteToBackground()
             }, timeoutMs)
         }
     })
@@ -126,6 +148,7 @@ export function startDirectCommand(command: string, options: DirectShellOptions 
     const abort = () => {
         isAborted = true
         if (timeoutTimer) clearTimeout(timeoutTimer)
+        if (serverReadyTimer) clearTimeout(serverReadyTimer)
         if (isBackground && bgTaskId) {
             taskManager.killTask(bgTaskId)
         } else {

@@ -3,7 +3,7 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import { promisify } from 'node:util'
 
-import { PlatformAdapter } from '@december/agent'
+import { PlatformAdapter, BashExecOptions } from '@december/agent'
 import { getWorkspaceIgnores, isPathIgnored } from '@december/shared'
 import { createLocalBashOperations, killProcessGroup } from '@december/tools'
 import fg from 'fast-glob'
@@ -26,71 +26,126 @@ export function getScopedCwd(): string {
     return process.cwd()
 }
 
+export const SERVER_READY_REGEX =
+    /(?:localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\]):\d+|listening on (?:port |http)|ready in \d+(?:\.\d+)?\s*(?:m?s)|ready on http|local:\s+http:\/\//i
+
+export const DEFAULT_BG_TIMEOUT_MS = 20_000
+export const DEFAULT_SERVER_READY_DELAY_MS = 2_500
+
 export const localOperations: PlatformAdapter = {
     bash: {
-        exec: async (command, cwd, options) => {
-            const targetCwd = cwd || getScopedCwd()
+        exec: async (command, cwdOrOnData, options = {}) => {
+            const targetCwd = typeof cwdOrOnData === 'string' ? cwdOrOnData : getScopedCwd()
+            const actualOptions: BashExecOptions =
+                typeof cwdOrOnData === 'function'
+                    ? { onData: cwdOrOnData, ...options }
+                    : (options ?? {})
+            const fallbackTimeoutMs = actualOptions.waitMsBeforeAsync ?? DEFAULT_BG_TIMEOUT_MS
+            const serverDelayMs = actualOptions.serverReadyDelayMs ?? DEFAULT_SERVER_READY_DELAY_MS
+
             return new Promise((resolve, reject) => {
                 const child = spawn(command, {
                     cwd: targetCwd,
                     detached: process.platform !== 'win32',
-                    env: options.env ?? process.env,
+                    env: actualOptions.env ?? process.env,
                     shell: true,
                     stdio: ['pipe', 'pipe', 'pipe'],
                 })
 
-                const task = taskManager.addTask(command, child)
                 let output = ''
                 let resolved = false
+                let isBackground = false
+                let bgTaskId: string | undefined
+
+                const promoteToBackground = () => {
+                    if (resolved || isBackground) return
+                    isBackground = true
+                    const task = taskManager.addTask(command, child)
+                    bgTaskId = task.id
+                    if (output) {
+                        taskManager.appendOutput(task.id, output)
+                    }
+                    resolved = true
+                    resolve({ exitCode: null, output, taskId: task.id })
+                }
+
+                let serverReadyTimer: NodeJS.Timeout | undefined
+                const checkServerReady = (text: string) => {
+                    if (!isBackground && !serverReadyTimer && SERVER_READY_REGEX.test(text)) {
+                        serverReadyTimer = setTimeout(() => {
+                            promoteToBackground()
+                        }, serverDelayMs)
+                    }
+                }
 
                 const handleData = (data: Buffer | string) => {
                     const chunk = typeof data === 'string' ? data : data.toString()
                     output += chunk
-                    taskManager.appendOutput(task.id, chunk)
-                    if (!resolved && options.onData) {
-                        options.onData(chunk)
+                    if (isBackground && bgTaskId) {
+                        taskManager.appendOutput(bgTaskId, chunk)
+                    } else if (!resolved && actualOptions.onData) {
+                        actualOptions.onData(chunk)
                     }
+                    checkServerReady(chunk)
                 }
 
                 child.stdout?.on('data', handleData)
                 child.stderr?.on('data', handleData)
 
                 let timeoutHandle: NodeJS.Timeout | undefined
-                if (options.timeout) {
+                if (actualOptions.timeout) {
                     timeoutHandle = setTimeout(() => {
                         if (child.pid) killProcessGroup(child.pid)
-                        taskManager.killTask(task.id)
-                    }, options.timeout * 1000)
+                        if (isBackground && bgTaskId) {
+                            taskManager.killTask(bgTaskId)
+                        } else {
+                            try {
+                                child.kill('SIGKILL')
+                            } catch {
+                                // Intentionally swallowed: child kill fallback
+                            }
+                        }
+                    }, actualOptions.timeout * 1000)
                 }
 
                 const onAbort = () => {
                     if (child.pid) killProcessGroup(child.pid)
-                    taskManager.killTask(task.id)
+                    if (isBackground && bgTaskId) {
+                        taskManager.killTask(bgTaskId)
+                    } else {
+                        try {
+                            child.kill('SIGKILL')
+                        } catch {
+                            // Intentionally swallowed: child kill fallback
+                        }
+                    }
                 }
 
-                if (options.signal) {
-                    if (options.signal.aborted) onAbort()
-                    else options.signal.addEventListener('abort', onAbort, { once: true })
+                if (actualOptions.signal) {
+                    if (actualOptions.signal.aborted) onAbort()
+                    else actualOptions.signal.addEventListener('abort', onAbort, { once: true })
                 }
 
-                const bgTimeout = options?.waitMsBeforeAsync
-                    ? setTimeout(() => {
-                          if (!resolved) {
-                              resolved = true
-                              resolve({ exitCode: null, output, taskId: task.id })
-                          }
-                      }, options.waitMsBeforeAsync)
-                    : undefined
+                const bgTimeout =
+                    fallbackTimeoutMs > 0 && fallbackTimeoutMs < Infinity
+                        ? setTimeout(() => {
+                              promoteToBackground()
+                          }, fallbackTimeoutMs)
+                        : undefined
 
                 const cleanup = () => {
+                    if (serverReadyTimer) clearTimeout(serverReadyTimer)
                     if (bgTimeout) clearTimeout(bgTimeout)
                     if (timeoutHandle) clearTimeout(timeoutHandle)
-                    if (options.signal) options.signal.removeEventListener('abort', onAbort)
+                    if (actualOptions.signal)
+                        actualOptions.signal.removeEventListener('abort', onAbort)
                 }
 
                 const finish = (code: number | null) => {
                     cleanup()
-                    taskManager.markCompleted(task.id, code)
+                    if (isBackground && bgTaskId) {
+                        taskManager.markCompleted(bgTaskId, code)
+                    }
                     if (!resolved) {
                         resolved = true
                         resolve({ exitCode: code, output })
@@ -104,7 +159,9 @@ export const localOperations: PlatformAdapter = {
                 })
                 ;(child as any).on('error', (err: any) => {
                     cleanup()
-                    taskManager.markCompleted(task.id, 1)
+                    if (isBackground && bgTaskId) {
+                        taskManager.markCompleted(bgTaskId, 1)
+                    }
                     if (!resolved) {
                         resolved = true
                         const errMsg = `\nFailed to start process: ${err?.message || err}\n`

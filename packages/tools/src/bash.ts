@@ -13,17 +13,18 @@ export type BashInput = Static<typeof bashSchema>
 export const BashTool: Tool<BashInput> = {
     name: 'bash',
     description:
-        'Execute a shell command. Use this tool to run commands on the terminal (e.g., building, testing, or running scripts). Long-running commands (like dev servers) will automatically detach after 3 seconds and run in the background.',
+        'Execute a shell command. Use this tool to run commands on the terminal (e.g., building, testing, or running scripts). Long-running commands (like dev servers) will automatically detach and run in the background.',
     inputSchema: bashSchema,
     execute: async ({ command, timeout }, context: ToolExecuteContext) => {
         const cwd = context.operations.env.cwd()
 
         const { exitCode, output, taskId } = await context.operations.bash.exec(command, cwd, {
             timeout,
+            waitMsBeforeAsync: 20_000,
             onData: (chunk: string | Buffer) => {
                 context.onStream(chunk.toString())
             },
-        })
+        } as any)
 
         let msg = ''
         if (exitCode === null) {

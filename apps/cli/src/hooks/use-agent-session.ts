@@ -970,7 +970,7 @@ export function useAgentSession({
                 setIsStreaming(true)
 
                 const { promise, abort } = startDirectCommand(rawCmd, {
-                    timeoutMs: 60_000,
+                    timeoutMs: 20_000,
                     onData: (chunk) => {
                         setActiveMessages((prev) =>
                             prev.map((msg) => {
@@ -991,7 +991,7 @@ export function useAgentSession({
                     },
                     onBackground: (taskId) => {
                         addToast(
-                            `Command running > 60s moved to background (${taskId}). Use /tasks to view logs.`,
+                            `Command moved to background (${taskId}). Use /tasks to view logs.`,
                             'info'
                         )
                         setActiveMessages((prev) =>

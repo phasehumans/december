@@ -70,4 +70,17 @@ describe('BashTool (Unit)', () => {
         capturedOnData(Buffer.from('stream chunk'))
         expect(context.onStream).toHaveBeenCalledWith('stream chunk')
     })
+
+    test('should pass waitMsBeforeAsync 20000 option to operations.bash.exec', async () => {
+        const context = createMockContext()
+        let capturedOptions: any = null
+        context.operations.bash.exec = mock(async (_cmd, _cwd, options: any) => {
+            capturedOptions = options
+            return { exitCode: 0, output: 'ok' }
+        })
+
+        await BashTool.execute({ command: 'echo test' }, context)
+        expect(capturedOptions).toBeDefined()
+        expect(capturedOptions.waitMsBeforeAsync).toBe(20_000)
+    })
 })

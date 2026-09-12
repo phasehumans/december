@@ -54,4 +54,32 @@ describe('Direct Shell Runner (Unit)', () => {
         // Clean up task
         taskManager.killTask(result.taskId!)
     })
+
+    it('transitions to background task quickly when server ready pattern is detected', async () => {
+        let bgTaskId = ''
+        const start = Date.now()
+        const result = await runDirectCommand(
+            'echo "Local: http://localhost:3000\\nready in 100ms" && sleep 4',
+            {
+                timeoutMs: 10_000,
+                serverReadyDelayMs: 100,
+                onBackground: (taskId) => {
+                    bgTaskId = taskId
+                },
+            }
+        )
+
+        const elapsed = Date.now() - start
+        expect(elapsed).toBeLessThan(3_000)
+        expect(result.isBackground).toBe(true)
+        expect(result.taskId).toBeDefined()
+        expect(bgTaskId).toBe(result.taskId!)
+
+        const task = taskManager.getTask(result.taskId!)
+        expect(task).toBeDefined()
+        expect(task?.output).toContain('http://localhost:3000')
+
+        // Clean up task
+        taskManager.killTask(result.taskId!)
+    })
 })

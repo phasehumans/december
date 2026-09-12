@@ -22,6 +22,53 @@ describe('local-operations', () => {
             expect(typeof localOperations.bash.exec).toBe('function')
         })
 
+        test('exec executes short command without adding to taskManager', async () => {
+            const initialTaskCount = taskManager.getTasks().length
+            const res = await localOperations.bash.exec('echo "short command run"', process.cwd())
+            expect(res.exitCode).toBe(0)
+            expect(res.output).toContain('short command run')
+            expect(res.taskId).toBeUndefined()
+            expect(taskManager.getTasks().length).toBe(initialTaskCount)
+        })
+
+        test('exec promotes command to background task when exceeding fallback timeout', async () => {
+            const res = await localOperations.bash.exec('sleep 2', process.cwd(), {
+                waitMsBeforeAsync: 80,
+            } as any)
+
+            expect(res.exitCode).toBeNull()
+            expect(res.taskId).toBeDefined()
+
+            const task = taskManager.getTask(res.taskId!)
+            expect(task).toBeDefined()
+            expect(task?.status).toBe('running')
+
+            // Cleanup
+            taskManager.killTask(res.taskId!)
+        })
+
+        test('exec promotes command to background task quickly when detecting server ready output', async () => {
+            const cmd = 'echo "VITE ready in 120 ms\\nLocal: http://localhost:5173" && sleep 5'
+            const start = Date.now()
+            const res = await localOperations.bash.exec(cmd, process.cwd(), {
+                waitMsBeforeAsync: 10_000,
+                serverReadyDelayMs: 100,
+            } as any)
+
+            const duration = Date.now() - start
+            expect(duration).toBeLessThan(3_000)
+            expect(res.exitCode).toBeNull()
+            expect(res.taskId).toBeDefined()
+            expect(res.output).toContain('http://localhost:5173')
+
+            const task = taskManager.getTask(res.taskId!)
+            expect(task).toBeDefined()
+            expect(task?.status).toBe('running')
+
+            // Cleanup
+            taskManager.killTask(res.taskId!)
+        })
+
         test('getTaskStatus retrieves status and output', async () => {
             const task = taskManager.addTask('echo hello', {} as any)
             task.output = 'hello'

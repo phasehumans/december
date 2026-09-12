@@ -1,3 +1,12 @@
+export interface BashExecOptions {
+    onData?: (chunk: string | Buffer) => void
+    timeout?: number
+    waitMsBeforeAsync?: number
+    serverReadyDelayMs?: number
+    signal?: AbortSignal
+    env?: NodeJS.ProcessEnv
+}
+
 export interface PlatformAdapter {
     fs: {
         readFile: (path: string) => Promise<string>
@@ -9,7 +18,8 @@ export interface PlatformAdapter {
     bash: {
         exec: (
             command: string,
-            onData?: (chunk: string) => void
+            cwdOrOnData?: string | ((chunk: string) => void),
+            options?: BashExecOptions
         ) => Promise<{ exitCode: number | null; output: string; taskId?: string }>
         getTaskStatus?: (taskId: string) => Promise<{ status: string; output: string }>
         killTask?: (taskId: string) => Promise<boolean>
