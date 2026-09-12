@@ -14,6 +14,7 @@ import {
     type AppliedProjectChangeResult,
     type GenerationStreamEvent,
 } from '@/features/generation/api/generation'
+import { playGenerationSoundNotification } from '@/shared/utils/sound'
 
 export const useChatController = (
     view: ViewState,
@@ -94,6 +95,17 @@ export const useChatController = (
         generationAbortControllerRef.current?.abort()
         generationAbortControllerRef.current = null
     }, [generationAbortControllerRef])
+
+    const triggerCompletionSound = React.useCallback(() => {
+        const profile = queryClient.getQueryData<any>(['profile'])
+        const soundPreference = profile?.generationSound ?? 'FIRST_GENERATION'
+        const assistantCount = useAppStore
+            .getState()
+            .messages.filter((m) => m.role === 'assistant').length
+        playGenerationSoundNotification(soundPreference, {
+            isFirstGeneration: assistantCount <= 1,
+        })
+    }, [queryClient])
 
     const hydrateAppliedProjectChange = React.useCallback(
         (result: AppliedProjectChangeResult) => {
@@ -359,6 +371,7 @@ export const useChatController = (
                                     setGenerationPhase('done')
                                     setAssistantStatus(activeMessageId, 'done')
                                     setIsGenerating(false)
+                                    triggerCompletionSound()
                                     void queryClient.invalidateQueries({ queryKey: ['sessions'] })
                                     const currentPid = useAppStore.getState().activeProjectId
                                     if (currentPid) {
@@ -560,6 +573,7 @@ export const useChatController = (
             setProjectType,
             startGeneratedFile,
             setShowOutOfCreditsModal,
+            triggerCompletionSound,
         ]
     )
 
@@ -863,6 +877,7 @@ export const useChatController = (
                                 setGenerationPhase('done')
                                 setAssistantStatus(activeMessageId, 'done')
                                 setIsGenerating(false)
+                                triggerCompletionSound()
                                 void queryClient.invalidateQueries({ queryKey: ['sessions'] })
                                 const currentPid = useAppStore.getState().activeProjectId
                                 if (currentPid) {
@@ -1058,6 +1073,7 @@ export const useChatController = (
             appendGeneratedFileChunk,
             completeGeneratedFile,
             markGeneratedFileError,
+            triggerCompletionSound,
         ]
     )
 

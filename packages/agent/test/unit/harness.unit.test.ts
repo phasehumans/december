@@ -240,4 +240,42 @@ description: Forces the laziest solution that actually works.
         expect(promptWithWeb).toContain("Use 'web_search'")
         expect(promptWithWeb).not.toContain('multiple entries in edits[]')
     })
+
+    test('injects userRules into system prompt alongside discovered workspace rules', () => {
+        fs.writeFileSync(
+            path.join(tmpDir, 'AGENTS.md'),
+            '# Workspace Rules\nFollow project architecture.'
+        )
+
+        const harness = new AgentHarness({
+            llm: new MockLLM(),
+            tools: [],
+            operations: {} as any,
+            workspaceDir: tmpDir,
+            userRules: '# User Custom Rules\nAlways prefer TypeScript and concise responses.',
+        })
+
+        const systemPrompt = harness.getAgent().systemPrompt
+        expect(systemPrompt).toContain('<project_context>')
+        expect(systemPrompt).toContain('<project_instructions path="User Custom Rules">')
+        expect(systemPrompt).toContain('Always prefer TypeScript and concise responses.')
+        expect(systemPrompt).toContain('Follow project architecture.')
+    })
+
+    test('does not duplicate userRules if identical content exists in workspace rules', () => {
+        const rulesContent = '# Custom Rules\nSame content everywhere.'
+        fs.writeFileSync(path.join(tmpDir, 'AGENTS.md'), rulesContent)
+
+        const harness = new AgentHarness({
+            llm: new MockLLM(),
+            tools: [],
+            operations: {} as any,
+            workspaceDir: tmpDir,
+            userRules: rulesContent,
+        })
+
+        const systemPrompt = harness.getAgent().systemPrompt
+        const matches = systemPrompt.match(/Same content everywhere\./g)
+        expect(matches?.length).toBe(1)
+    })
 })

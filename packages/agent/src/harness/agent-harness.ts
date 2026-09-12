@@ -224,6 +224,7 @@ export function assembleSystemPrompt(options: {
     thinkingLevel?: string
     skills?: DiscoveredSkill[]
     rules?: { path: string; content: string }[]
+    userRules?: string
 }): string {
     const {
         baseSystemPrompt,
@@ -233,7 +234,20 @@ export function assembleSystemPrompt(options: {
         thinkingLevel,
         skills = [],
         rules = [],
+        userRules,
     } = options
+
+    const effectiveRules = [...rules]
+    if (userRules && userRules.trim()) {
+        const trimmedUserRules = userRules.trim()
+        const alreadyIncluded = effectiveRules.some((r) => r.content.trim() === trimmedUserRules)
+        if (!alreadyIncluded) {
+            effectiveRules.unshift({
+                path: 'User Custom Rules',
+                content: trimmedUserRules,
+            })
+        }
+    }
 
     if (baseSystemPrompt) {
         let finalPrompt = baseSystemPrompt
@@ -242,9 +256,9 @@ export function assembleSystemPrompt(options: {
             finalPrompt += `\n\n${formatSkillsCatalog(skills)}`
         }
 
-        if (rules.length > 0) {
+        if (effectiveRules.length > 0) {
             finalPrompt += `\n\n<project_context>\nThe user has provided the following project-specific instructions and guidelines from their .december workspace:\n`
-            for (const rule of rules) {
+            for (const rule of effectiveRules) {
                 finalPrompt += `<project_instructions path="${rule.path}">\n${rule.content}\n</project_instructions>\n`
             }
             finalPrompt += `</project_context>`
@@ -282,9 +296,9 @@ export function assembleSystemPrompt(options: {
         finalPrompt += `\n\n${formatSkillsCatalog(skills)}`
     }
 
-    if (rules.length > 0) {
+    if (effectiveRules.length > 0) {
         finalPrompt += `\n\n<project_context>\nThe user has provided the following project-specific instructions and guidelines from their .december workspace:\n`
-        for (const rule of rules) {
+        for (const rule of effectiveRules) {
             finalPrompt += `<project_instructions path="${rule.path}">\n${rule.content}\n</project_instructions>\n`
         }
         finalPrompt += `</project_context>`
@@ -301,6 +315,7 @@ export interface HarnessConfig extends Omit<AgentConfig, 'systemPrompt'> {
     workspaceDir: string
     homeDir?: string
     rootBoundary?: string
+    userRules?: string
 }
 
 export class AgentHarness {
@@ -330,6 +345,7 @@ export class AgentHarness {
             thinkingLevel: config.thinkingLevel,
             skills: this.skills,
             rules,
+            userRules: config.userRules,
         })
 
         // 4. initialize core agent

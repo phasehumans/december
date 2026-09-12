@@ -114,11 +114,15 @@ export const worker = new Worker(
                 }
             }
 
+            let userRules: string | undefined
             if (userId) {
                 const user = await prisma.user.findUnique({
                     where: { id: userId },
-                    select: { creditBalance: true },
+                    select: { creditBalance: true, rules: true },
                 })
+                if (user?.rules) {
+                    userRules = user.rules
+                }
                 if (user && user.creditBalance < 1) {
                     console.warn(
                         `[WORKER ENGINE] Insufficient credits for user '${userId}' on session '${sessionId}'`
@@ -187,6 +191,7 @@ export const worker = new Worker(
             const stream = await E2BSandboxService.runAgentSession({
                 sessionId,
                 userId,
+                userRules,
                 sandboxId: provisionResult.sandboxId,
                 prompt: job.data.prompt || 'You are Antigravity, an AI agent.',
                 workspaceDir: '/workspace',

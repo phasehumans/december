@@ -16,7 +16,8 @@ export function startAgentSession(
     workspaceDir: string,
     systemPrompt: string,
     token: string,
-    apiHostUrl: string
+    apiHostUrl: string,
+    userRules?: string
 ): any {
     return E2BSandboxService.runAgentSession({
         sessionId,
@@ -24,6 +25,7 @@ export function startAgentSession(
         workspaceDir,
         token,
         apiHostUrl,
+        userRules,
     })
 }
 

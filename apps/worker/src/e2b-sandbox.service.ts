@@ -603,8 +603,23 @@ const getLlmProvider = (providerName?: string, apiKey?: string) => {
 }
 
 const runAgentSession = async (data: RunAgentSessionInput) => {
-    const { sessionId, userId, sandboxId, prompt, workspaceDir } = data
+    const { sessionId, userId, userRules, sandboxId, prompt, workspaceDir } = data
     console.log(`[E2BSandboxService] Starting in-sandbox agent runner session for ${sessionId}`)
+
+    let effectiveUserRules = userRules
+    if (!effectiveUserRules && userId) {
+        try {
+            const userRecord = await prisma.user.findUnique({
+                where: { id: userId },
+                select: { rules: true },
+            })
+            if (userRecord?.rules) {
+                effectiveUserRules = userRecord.rules
+            }
+        } catch {
+            // Intentionally swallowed: user lookup fallback
+        }
+    }
 
     const hasLlmKey = !!(
         process.env.GEMINI_API_KEY ||
@@ -668,6 +683,7 @@ const runAgentSession = async (data: RunAgentSessionInput) => {
         workspaceDir: workspaceDir || '/workspace',
         sessionId,
         userId,
+        userRules: effectiveUserRules,
         runtime: 'cloud',
         modelOptions: {
             model: process.env.DEFAULT_MODEL || 'gemini-3.6-flash',
