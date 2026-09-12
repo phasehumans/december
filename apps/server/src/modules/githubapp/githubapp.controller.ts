@@ -62,9 +62,28 @@ const handleCallback = asyncHandler(async (req: Request, res: Response) => {
         })
     }
 
-    const redirectTarget = returnUrl.startsWith('http')
-        ? returnUrl
-        : `${env.WEB_URL}${returnUrl.startsWith('/') ? returnUrl : `/${returnUrl}`}`
+    let redirectTarget = `${env.WEB_URL}${returnUrl.startsWith('/') ? returnUrl : `/${returnUrl}`}`
+    if (returnUrl.startsWith('http://') || returnUrl.startsWith('https://')) {
+        try {
+            const parsed = new URL(returnUrl)
+            const allowedHosts = [
+                'localhost',
+                '127.0.0.1',
+                'trydecember.com',
+                'www.trydecember.com',
+                ...(env.WEB_URL ? [new URL(env.WEB_URL).hostname] : []),
+            ]
+            if (
+                allowedHosts.includes(parsed.hostname) ||
+                parsed.hostname.endsWith('.trydecember.com') ||
+                parsed.hostname.endsWith('.vercel.app')
+            ) {
+                redirectTarget = returnUrl
+            }
+        } catch {
+            // Intentionally swallowed: invalid URL fallback to env.WEB_URL
+        }
+    }
 
     return res.redirect(redirectTarget)
 })

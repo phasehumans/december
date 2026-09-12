@@ -184,7 +184,15 @@ export const useAuthMutations = ({
 
     const githubLogin = () => {
         const clientId = getGithubClientId()
-        const url = `https://github.com/login/oauth/authorize?client_id=${clientId}&state=auth&scope=read:user%20user:email`
+        const origin =
+            typeof window !== 'undefined' &&
+            window.location.origin &&
+            window.location.origin !== 'null'
+                ? window.location.origin
+                : ''
+        const redirectUri = origin ? `${origin}/github/callback` : undefined
+        const redirectParam = redirectUri ? `&redirect_uri=${encodeURIComponent(redirectUri)}` : ''
+        const url = `https://github.com/login/oauth/authorize?client_id=${clientId}${redirectParam}&state=auth&scope=read:user%20user:email`
         window.location.href = url
     }
 

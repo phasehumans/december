@@ -191,6 +191,18 @@ describe('GitHubApp Module Integration Tests', () => {
         expect(installation?.userId).toBe(testUserId)
     })
 
+    it('7b. GET /api/v1/githubapp/callback - redirects to localhost origin when provided in returnUrl (302)', async () => {
+        const state = encodeURIComponent(`${testUserId}|http://localhost:3000/settings/connections`)
+        const res = await request(app)
+            .get(
+                `/api/v1/githubapp/callback?installation_id=98766&setup_action=install&state=${state}`
+            )
+            .set('x-forwarded-for', getRandomIP())
+
+        expect(res.status).toBe(302)
+        expect(res.headers.location).toBe('http://localhost:3000/settings/connections')
+    })
+
     it('8. GET /api/v1/githubapp/status - returns installation status for authenticated user (200)', async () => {
         const res = await request(app)
             .get('/api/v1/githubapp/status')
@@ -200,6 +212,6 @@ describe('GitHubApp Module Integration Tests', () => {
         expect(res.status).toBe(200)
         expect(res.body.success).toBe(true)
         expect(res.body.data.installed).toBe(true)
-        expect(res.body.data.installationId).toBe('98765')
+        expect(res.body.data.installationId).toBe('98766')
     })
 })

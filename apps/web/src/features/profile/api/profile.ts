@@ -236,10 +236,15 @@ const getGithubRepos = () => {
 }
 
 const getGithubConnectUrl = (userId: string) => {
-    const redirectPath =
+    const origin =
+        typeof window !== 'undefined' && window.location.origin && window.location.origin !== 'null'
+            ? window.location.origin
+            : ''
+    const currentPath =
         typeof window !== 'undefined'
             ? window.location.pathname + window.location.search
             : '/settings/repositories'
+    const redirectPath = origin ? `${origin}${currentPath}` : currentPath
     const appName = getGithubAppName() || 'trydecember'
     const stateVal = userId ? `${userId}|${redirectPath}` : redirectPath
     return `https://github.com/apps/${appName}/installations/new?state=${encodeURIComponent(stateVal)}`
