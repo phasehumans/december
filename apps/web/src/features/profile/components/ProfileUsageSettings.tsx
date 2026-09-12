@@ -5,6 +5,7 @@ import React, { useState, useEffect } from 'react'
 import { useCreditsHistory, useBillingOverview } from '@/features/billing/hooks/useBillingData'
 import { profileAPI } from '@/features/profile/api/profile'
 import { Skeleton } from '@/shared/components/ui/Skeleton'
+import { isSkeletonPreviewActive } from '@/shared/lib/skeletonPreview'
 
 export const ProfileUsageSettings: React.FC = () => {
     const { data: profile } = useQuery({
@@ -122,7 +123,7 @@ export const ProfileUsageSettings: React.FC = () => {
     const currentPage = Math.floor(offset / limit) + 1
     const totalPages = Math.max(Math.ceil(totalEvents / limit), 1)
 
-    const isLoading = isOverviewLoading || isHistoryLoading
+    const isLoading = isOverviewLoading || isHistoryLoading || isSkeletonPreviewActive()
 
     return (
         <div className="flex flex-col w-full max-w-[800px] text-[#D6D5C9]">

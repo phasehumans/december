@@ -1,10 +1,12 @@
 import { motion, AnimatePresence, useMotionValue, useSpring } from 'framer-motion'
-import { ArrowUpRight, Loader2 } from 'lucide-react'
+import { ArrowUpRight } from 'lucide-react'
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import { useBillingOverview } from '@/features/billing/hooks/useBillingData'
 import { Icons } from '@/shared/components/ui/Icons'
+import { Skeleton } from '@/shared/components/ui/Skeleton'
+import { isSkeletonPreviewActive } from '@/shared/lib/skeletonPreview'
 
 interface HomeHeaderProps {
     isAuthenticated?: boolean
@@ -89,13 +91,11 @@ export const HomeHeader: React.FC<HomeHeaderProps> = ({
                         className="hidden md:flex items-center gap-1.5 h-7 px-2.5 rounded-full bg-[#1F1F1F] hover:bg-[#252525] text-[12px] transition-all font-medium text-[#999999] hover:text-[#E8E8E8] cursor-pointer"
                     >
                         <span>Credits:</span>
-                        <span>
-                            {isOverviewLoading ? (
-                                <Loader2 className="w-3 h-3 animate-spin inline-block" />
-                            ) : (
-                                `$ ${(remaining / 100).toFixed(2)}`
-                            )}
-                        </span>
+                        {isOverviewLoading || isSkeletonPreviewActive() ? (
+                            <Skeleton className="w-11 h-3 bg-white/[0.06] rounded inline-block" />
+                        ) : (
+                            <span>{`$ ${(remaining / 100).toFixed(2)}`}</span>
+                        )}
                     </button>
                 ) : (
                     <a

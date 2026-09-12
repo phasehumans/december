@@ -5,6 +5,7 @@ import type { ViewState } from '@/app/types'
 import type { PreviewRuntimeError, PreviewSelectedElement } from '@/features/preview/types'
 
 import { HomeHero } from '@/features/home/components/HomeHero'
+import { Skeleton } from '@/shared/components/ui/Skeleton'
 
 const WorkspaceScreen = React.lazy(() =>
     import('@/features/preview/components/WorkspaceScreen').then((m) => ({
@@ -78,6 +79,20 @@ const AnimatedPage: React.FC<{ pageKey: string; children: React.ReactNode }> = (
     )
 }
 
+const RouteSuspenseFallback: React.FC = () => (
+    <div className="h-full w-full bg-background flex flex-col p-6 animate-in fade-in duration-200">
+        <div className="flex items-center justify-between mb-6">
+            <Skeleton className="h-6 w-36 bg-white/[0.04] rounded-lg" />
+            <Skeleton className="h-8 w-24 bg-white/[0.03] rounded-lg" />
+        </div>
+        <div className="flex flex-col gap-3 flex-1">
+            <Skeleton className="h-10 w-full bg-white/[0.025] rounded-xl" />
+            <Skeleton className="h-24 w-full bg-white/[0.02] rounded-xl" />
+            <Skeleton className="h-24 w-full bg-white/[0.02] rounded-xl" />
+        </div>
+    </div>
+)
+
 export const AppContentView: React.FC<AppContentViewProps> = ({
     view,
     isHome,
@@ -95,7 +110,7 @@ export const AppContentView: React.FC<AppContentViewProps> = ({
     onResetImportState,
 }) => {
     return (
-        <React.Suspense fallback={<div className="h-full w-full bg-background" />}>
+        <React.Suspense fallback={<RouteSuspenseFallback />}>
             <AnimatePresence mode="wait" initial={false}>
                 {view === 'sessions' && (
                     <AnimatedPage pageKey="sessions">

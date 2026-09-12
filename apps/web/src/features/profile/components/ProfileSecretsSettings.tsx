@@ -6,15 +6,20 @@ import {
     Copy,
     Check,
     Trash2,
-    Loader2,
     MoreHorizontal,
+    ChevronDown,
+    ChevronLeft,
+    ChevronRight,
 } from 'lucide-react'
 import React, { useEffect, useState } from 'react'
 
 import { secretsAPI, type SecretSummary } from '../api/secrets'
 
+import { ProfileSecretsSkeleton } from './ProfileSettingsSkeleton'
+
 import { Modal } from '@/shared/components/ui/Modal'
 import { Tooltip } from '@/shared/components/ui/Tooltip'
+import { isSkeletonPreviewActive } from '@/shared/lib/skeletonPreview'
 
 export const ProfileSecretsSettings: React.FC = () => {
     const [secrets, setSecrets] = useState<SecretSummary[]>([])
@@ -31,7 +36,13 @@ export const ProfileSecretsSettings: React.FC = () => {
     const [newName, setNewName] = useState('')
     const [newValue, setNewValue] = useState('')
     const [newNote, setNewNote] = useState('')
+    const [showNewValue, setShowNewValue] = useState(false)
     const [isSubmitting, setIsSubmitting] = useState(false)
+
+    // Pagination state
+    const [limit, setLimit] = useState(10)
+    const [offset, setOffset] = useState(0)
+    const [isDropdownOpen, setIsDropdownOpen] = useState(false)
 
     // Modal state for Bulk Add Secrets
     const [isBulkAddOpen, setIsBulkAddOpen] = useState(false)
@@ -55,12 +66,33 @@ export const ProfileSecretsSettings: React.FC = () => {
         loadSecrets()
     }, [])
 
+    useEffect(() => {
+        setOffset(0)
+    }, [searchQuery])
+
     const filteredSecrets = secrets.filter((s) => {
         const matchesQuery =
             s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
             (s.note && s.note.toLowerCase().includes(searchQuery.toLowerCase()))
         return matchesQuery
     })
+
+    const totalSecrets = filteredSecrets.length
+    const paginatedSecrets = filteredSecrets.slice(offset, offset + limit)
+    const currentPage = Math.floor(offset / limit) + 1
+    const totalPages = Math.max(Math.ceil(totalSecrets / limit), 1)
+
+    const handlePreviousPage = () => {
+        if (offset >= limit) {
+            setOffset((prev) => prev - limit)
+        }
+    }
+
+    const handleNextPage = () => {
+        if (offset + limit < totalSecrets) {
+            setOffset((prev) => prev + limit)
+        }
+    }
 
     const toggleReveal = async (name: string) => {
         const currentlyRevealed = Boolean(revealedNames[name])
@@ -142,6 +174,7 @@ export const ProfileSecretsSettings: React.FC = () => {
             setNewName('')
             setNewValue('')
             setNewNote('')
+            setShowNewValue(false)
             setIsAddOpen(false)
             await loadSecrets()
         } catch (err: unknown) {
@@ -277,11 +310,8 @@ export const ProfileSecretsSettings: React.FC = () => {
                         </div>
 
                         {/* Table Rows or Loading/Empty State */}
-                        {isLoading ? (
-                            <div className="flex-1 flex flex-col items-center justify-center gap-2 text-center text-[#7B7A79] min-h-[320px]">
-                                <Loader2 className="w-5 h-5 animate-spin" />
-                                <span className="text-[13px]">Loading secrets...</span>
-                            </div>
+                        {isLoading || isSkeletonPreviewActive() ? (
+                            <ProfileSecretsSkeleton />
                         ) : filteredSecrets.length === 0 ? (
                             <div className="flex-1 flex flex-col items-center justify-center gap-2 text-center min-h-[320px] p-6">
                                 <h3 className="text-[14px] font-medium text-[#D6D5C9]">
@@ -293,7 +323,7 @@ export const ProfileSecretsSettings: React.FC = () => {
                             </div>
                         ) : (
                             <div className="flex flex-col divide-y divide-[#242323]">
-                                {filteredSecrets.map((sec) => {
+                                {paginatedSecrets.map((sec) => {
                                     const isRevealed = Boolean(revealedNames[sec.name])
                                     const decryptedVal = decryptedValues[sec.name]
 
@@ -516,6 +546,80 @@ export const ProfileSecretsSettings: React.FC = () => {
                             </div>
                         )}
                     </div>
+
+                    {/* footer controls */}
+                    {totalSecrets > 0 && (
+                        <div className="flex items-center justify-between mt-5">
+                            {/* left limit selector */}
+                            <div className="flex items-center gap-2">
+                                <span className="text-[12.5px] text-[#7B7A79]">Show</span>
+                                <div className="relative">
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                                        className="flex items-center justify-between w-[70px] bg-[#191919] border border-[#282828] rounded-lg px-2.5 py-1 text-[12.5px] text-[#D6D5C9] hover:bg-[#202020] transition-colors focus:outline-none focus:border-[#7B7A79] font-medium cursor-pointer"
+                                    >
+                                        <span>{limit}</span>
+                                        <ChevronDown className="w-3.5 h-3.5 text-[#7B7A79]" />
+                                    </button>
+
+                                    {isDropdownOpen && (
+                                        <>
+                                            <div
+                                                className="fixed inset-0 z-10"
+                                                onClick={() => setIsDropdownOpen(false)}
+                                            />
+                                            <div className="absolute bottom-full left-0 mb-1 z-20 w-[70px] bg-[#191919] border border-[#242323] rounded-lg shadow-xl overflow-hidden py-1">
+                                                {[10, 20, 30].map((num) => (
+                                                    <button
+                                                        key={num}
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setLimit(num)
+                                                            setOffset(0)
+                                                            setIsDropdownOpen(false)
+                                                        }}
+                                                        className={`w-full text-left px-2.5 py-1 text-[12.5px] transition-colors cursor-pointer ${
+                                                            limit === num
+                                                                ? 'bg-[#2B2A29] text-[#D6D5C9] font-medium'
+                                                                : 'text-[#7B7A79] hover:bg-[#202020] hover:text-[#D6D5C9]'
+                                                        }`}
+                                                    >
+                                                        {num}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* right page selectors */}
+                            <div className="flex items-center gap-4 text-[12.5px] text-[#7B7A79] font-medium">
+                                <span>
+                                    {currentPage} of {totalPages}
+                                </span>
+                                <div className="flex items-center gap-1.5">
+                                    <button
+                                        onClick={handlePreviousPage}
+                                        disabled={offset === 0}
+                                        aria-label="Previous page"
+                                        className="p-1.5 rounded-lg border border-[#383736] disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[#191919] transition-colors bg-[#141414] text-[#D6D5C9] cursor-pointer"
+                                    >
+                                        <ChevronLeft className="w-4 h-4" />
+                                    </button>
+                                    <button
+                                        onClick={handleNextPage}
+                                        disabled={offset + limit >= totalSecrets}
+                                        aria-label="Next page"
+                                        className="p-1.5 rounded-lg border border-[#383736] disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[#191919] transition-colors bg-[#141414] text-[#D6D5C9] cursor-pointer"
+                                    >
+                                        <ChevronRight className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -527,6 +631,7 @@ export const ProfileSecretsSettings: React.FC = () => {
                     setNewName('')
                     setNewValue('')
                     setNewNote('')
+                    setShowNewValue(false)
                 }}
                 title="Add Secret"
                 description="Add environment variables or API keys available to your workspace."
@@ -559,15 +664,31 @@ export const ProfileSecretsSettings: React.FC = () => {
                         >
                             Secret Value
                         </label>
-                        <input
-                            id="secret-value-input"
-                            type="password"
-                            placeholder="Enter key or token value..."
-                            value={newValue}
-                            onChange={(e) => setNewValue(e.target.value)}
-                            className="w-full bg-white/[0.03] border border-[#2B2A27] rounded-lg px-3.5 py-2.5 text-white text-[13px] font-mono focus:outline-none transition-[border-color,box-shadow] duration-200 placeholder:text-[#4A4948]"
-                            required
-                        />
+                        <div className="relative">
+                            <input
+                                id="secret-value-input"
+                                type={showNewValue ? 'text' : 'password'}
+                                placeholder="Enter key or token value..."
+                                value={newValue}
+                                onChange={(e) => setNewValue(e.target.value)}
+                                className="w-full bg-white/[0.03] border border-[#2B2A27] rounded-lg pl-3.5 pr-10 py-2.5 text-white text-[13px] font-mono focus:outline-none transition-[border-color,box-shadow] duration-200 placeholder:text-[#4A4948]"
+                                required
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setShowNewValue(!showNewValue)}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#7B7A79] hover:text-[#D6D5C9] transition-colors cursor-pointer"
+                                aria-label={
+                                    showNewValue ? 'Hide secret value' : 'Show secret value'
+                                }
+                            >
+                                {showNewValue ? (
+                                    <EyeOff className="w-4 h-4" />
+                                ) : (
+                                    <Eye className="w-4 h-4" />
+                                )}
+                            </button>
+                        </div>
                     </div>
 
                     <div className="flex flex-col gap-1.5">

@@ -13,9 +13,10 @@ import { useSessions } from '@/features/sessions/hooks/useSessions'
 import { Icons } from '@/shared/components/ui/Icons'
 import { Skeleton } from '@/shared/components/ui/Skeleton'
 import { Tooltip } from '@/shared/components/ui/Tooltip'
+import { isSkeletonPreviewActive } from '@/shared/lib/skeletonPreview'
 import { cn } from '@/shared/lib/utils'
 
-const SidebarSessionsSkeleton: React.FC = () => (
+export const SidebarSessionsSkeleton: React.FC = () => (
     <div className="flex flex-col gap-0.5 px-1 py-1">
         {[
             { titleW: 'w-[75%]', timeW: 'w-12' },
@@ -640,7 +641,7 @@ const Sidebar: React.FC<
 
                     <div className="flex flex-col gap-[2px] mt-1 overflow-y-auto no-scrollbar flex-1 min-h-0 pb-2">
                         {isAuthenticated ? (
-                            isSessionsLoading ? (
+                            isSessionsLoading || isSkeletonPreviewActive() ? (
                                 <SidebarSessionsSkeleton />
                             ) : recentProjects.length > 0 ? (
                                 recentProjects.map((project) => (

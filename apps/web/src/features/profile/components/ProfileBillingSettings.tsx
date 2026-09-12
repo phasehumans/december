@@ -9,6 +9,7 @@ import { RedeemCodeModal } from './RedeemCodeModal'
 
 import { useBillingOverview } from '@/features/billing/hooks/useBillingData'
 import { profileAPI } from '@/features/profile/api/profile'
+import { isSkeletonPreviewActive } from '@/shared/lib/skeletonPreview'
 
 interface ProfileBillingSettingsProps {
     profile?: {
@@ -79,7 +80,7 @@ export const ProfileBillingSettings: React.FC<ProfileBillingSettingsProps> = (pr
         return combined.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
     }, [overview])
 
-    if (isOverviewLoading) {
+    if (isOverviewLoading || isSkeletonPreviewActive()) {
         return <ProfileSettingsSkeleton activeTab="Billing" />
     }
 

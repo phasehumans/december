@@ -2,9 +2,11 @@ import { useQuery } from '@tanstack/react-query'
 import { Github, GitBranch, Clock, Lock, Globe, Search, RotateCw, Plus } from 'lucide-react'
 import React, { useState } from 'react'
 
+import { ProfileRepositoriesSkeleton } from './ProfileSettingsSkeleton'
+
 import { profileAPI, type GithubRepo } from '@/features/profile/api/profile'
-import { Skeleton } from '@/shared/components/ui/Skeleton'
 import { Tooltip } from '@/shared/components/ui/Tooltip'
+import { isSkeletonPreviewActive } from '@/shared/lib/skeletonPreview'
 
 interface ProfileRepositoriesSettingsProps {
     isGithubConnected: boolean
@@ -139,26 +141,8 @@ export const ProfileRepositoriesSettings: React.FC<ProfileRepositoriesSettingsPr
                                 Connect GitHub
                             </button>
                         </div>
-                    ) : reposQuery.isLoading ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-                            {Array.from({ length: 6 }).map((_, i) => (
-                                <div
-                                    key={i}
-                                    className="p-3.5 bg-[#1B1B1B] rounded-xl flex flex-col justify-between gap-3 h-[100px]"
-                                >
-                                    <div className="flex items-center justify-between">
-                                        <Skeleton className="h-4 w-36 bg-white/[0.06] rounded" />
-                                        <Skeleton className="h-4 w-14 bg-white/[0.04] rounded" />
-                                    </div>
-                                    <Skeleton className="h-3.5 w-full bg-white/[0.04] rounded" />
-                                    <div className="flex items-center gap-3">
-                                        <Skeleton className="h-3 w-14 bg-white/[0.04] rounded" />
-                                        <Skeleton className="h-3 w-12 bg-white/[0.04] rounded" />
-                                        <Skeleton className="h-3 w-16 bg-white/[0.04] rounded" />
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
+                    ) : reposQuery.isLoading || isSkeletonPreviewActive() ? (
+                        <ProfileRepositoriesSkeleton />
                     ) : reposQuery.isError ? (
                         <div className="border border-[#242323] rounded-xl py-16 flex flex-col items-center justify-center gap-3 bg-[#1B1B1B]">
                             <span className="text-[13px] text-red-400">

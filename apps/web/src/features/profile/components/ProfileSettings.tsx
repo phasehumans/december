@@ -36,6 +36,7 @@ import { getProfileTabFromSlug, getSlugForProfileTab } from '@/app/types'
 import { MobileBreadcrumbsHeader } from '@/features/navigation/components/MobileBreadcrumbsHeader'
 import { ErrorAlert } from '@/shared/components/ui/ErrorAlert'
 import { Icons } from '@/shared/components/ui/Icons'
+import { isSkeletonPreviewActive } from '@/shared/lib/skeletonPreview'
 import { cn } from '@/shared/lib/utils'
 
 const SETTINGS_NAV_GROUPS = [
@@ -231,7 +232,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
     const hasProfile = Boolean(profile)
 
     const renderTabContent = () => {
-        if (isProfileLoading && !profile) {
+        if ((isProfileLoading && !profile) || isSkeletonPreviewActive()) {
             return <ProfileSettingsSkeleton activeTab={activeTab} />
         }
 

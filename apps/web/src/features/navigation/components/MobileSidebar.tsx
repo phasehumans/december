@@ -4,33 +4,15 @@ import { createPortal } from 'react-dom'
 import { useLocation, useNavigate } from 'react-router-dom'
 
 import { SearchModal } from './SearchModal'
+import { SidebarSessionsSkeleton } from './Sidebar'
 import { SidebarFooter } from './SidebarFooter'
 
 import type { MobileSidebarProps } from '@/features/navigation/types'
 
 import { useSessions } from '@/features/sessions/hooks/useSessions'
 import { Icons } from '@/shared/components/ui/Icons'
-import { Skeleton } from '@/shared/components/ui/Skeleton'
+import { isSkeletonPreviewActive } from '@/shared/lib/skeletonPreview'
 import { cn } from '@/shared/lib/utils'
-
-const SidebarSessionsSkeleton: React.FC = () => (
-    <div className="flex flex-col gap-0.5 px-1 py-1">
-        {[
-            { titleW: 'w-[75%]', timeW: 'w-12' },
-            { titleW: 'w-[60%]', timeW: 'w-16' },
-            { titleW: 'w-[85%]', timeW: 'w-10' },
-            { titleW: 'w-[50%]', timeW: 'w-14' },
-            { titleW: 'w-[68%]', timeW: 'w-12' },
-            { titleW: 'w-[80%]', timeW: 'w-16' },
-            { titleW: 'w-[55%]', timeW: 'w-10' },
-        ].map((item, i) => (
-            <div key={i} className="flex flex-col gap-1 px-2.5 py-1.5 rounded-xl">
-                <Skeleton className={`h-3 ${item.titleW} bg-white/[0.04] rounded`} />
-                <Skeleton className={`h-2.5 ${item.timeW} bg-white/[0.02] rounded`} />
-            </div>
-        ))}
-    </div>
-)
 
 export const MobileSidebar: React.FC<
     MobileSidebarProps & { onSignOut?: () => void; onHomeClick?: () => void; user?: any }
@@ -457,7 +439,7 @@ export const MobileSidebar: React.FC<
 
                         <div className="flex flex-col gap-[2px] mt-1 overflow-y-auto no-scrollbar flex-1 min-h-0 pb-2">
                             {isAuthenticated ? (
-                                isSessionsLoading ? (
+                                isSessionsLoading || isSkeletonPreviewActive() ? (
                                     <SidebarSessionsSkeleton />
                                 ) : recentProjects.length > 0 ? (
                                     recentProjects.map((project) => (

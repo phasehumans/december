@@ -11,6 +11,7 @@ import type { DeleteModalState, RenameModalState } from '@/features/sessions/typ
 
 import { useAppStore } from '@/app/store'
 import { MobileBreadcrumbsHeader } from '@/features/navigation/components/MobileBreadcrumbsHeader'
+import { isSkeletonPreviewActive } from '@/shared/lib/skeletonPreview'
 
 export type SortOption = 'newest' | 'oldest'
 
@@ -68,7 +69,7 @@ export const SessionList: React.FC<{
         project: null,
     })
     const [actionError, setActionError] = useState<string | null>(null)
-    const isInitialLoading = isLoading && sessions.length === 0
+    const isInitialLoading = (isLoading && sessions.length === 0) || isSkeletonPreviewActive()
 
     useEffect(() => {
         const handleClickOutside = () => setMenuOpenId(null)
