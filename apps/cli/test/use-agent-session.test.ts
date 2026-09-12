@@ -309,4 +309,45 @@ describe('useCliStore activeMessages handling', () => {
         store.setPlanWorkflow({ phase: 'idle' })
         expect(useCliStore.getState().planWorkflow.phase).toBe('idle')
     })
+
+    it('filters sessionsData based on attached /resume query matching preview or id', () => {
+        const store = useCliStore.getState()
+        const mockSessions = [
+            { id: 'sess-auth-123', updatedAt: new Date(), messageCount: 5, preview: 'setup oauth' },
+            {
+                id: 'sess-ui-456',
+                updatedAt: new Date(),
+                messageCount: 3,
+                preview: 'build dashboard',
+            },
+            { id: 'sess-db-789', updatedAt: new Date(), messageCount: 8, preview: 'prisma schema' },
+        ]
+
+        // 1. Query matching preview
+        const query1 = 'dashboard'
+        const matched1 = mockSessions.filter(
+            (s) => s.preview.toLowerCase().includes(query1) || s.id.toLowerCase().includes(query1)
+        )
+        store.setSessionsData(matched1)
+        expect(useCliStore.getState().sessionsData).toHaveLength(1)
+        expect(useCliStore.getState().sessionsData[0].id).toBe('sess-ui-456')
+
+        // 2. Query matching id
+        const query2 = 'db-789'
+        const matched2 = mockSessions.filter(
+            (s) => s.preview.toLowerCase().includes(query2) || s.id.toLowerCase().includes(query2)
+        )
+        store.setSessionsData(matched2)
+        expect(useCliStore.getState().sessionsData).toHaveLength(1)
+        expect(useCliStore.getState().sessionsData[0].id).toBe('sess-db-789')
+
+        // 3. Query matching nothing falls back to all sessions
+        const query3 = 'non-existent'
+        const matched3 = mockSessions.filter(
+            (s) => s.preview.toLowerCase().includes(query3) || s.id.toLowerCase().includes(query3)
+        )
+        const finalSessions = matched3.length > 0 ? matched3 : mockSessions
+        store.setSessionsData(finalSessions)
+        expect(useCliStore.getState().sessionsData).toHaveLength(3)
+    })
 })

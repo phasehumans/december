@@ -264,6 +264,23 @@ export const InputBar = React.memo(function InputBar({
             if (!command) return
 
             const currentValue = value.trim()
+            const isExactMatch =
+                currentValue.toLowerCase() === command.value.toLowerCase() ||
+                currentValue.toLowerCase() === `/${command.name.toLowerCase()}`
+
+            const hasArguments =
+                currentValue.length > command.value.length &&
+                currentValue.toLowerCase().startsWith(command.value.toLowerCase() + ' ')
+
+            // If the user typed only a partial prefix and selected the command from the menu,
+            // autofill the command name with a trailing space on first Enter so they can type extra prompt arguments.
+            if (!isExactMatch && !hasArguments) {
+                const autofillValue = `${command.value} `
+                setValue(autofillValue)
+                handleContentChange(autofillValue)
+                return
+            }
+
             setValue('')
             handleContentChange('')
 
@@ -296,22 +313,7 @@ export const InputBar = React.memo(function InputBar({
             ]
 
             if (forwardCommands.includes(command.value) || !command.action) {
-                if (command.value === '/plan') {
-                    if (
-                        currentValue.toLowerCase().startsWith('/plan ') &&
-                        currentValue.trim().length > 6
-                    ) {
-                        onSubmit(currentValue)
-                    } else {
-                        setValue('/plan ')
-                        handleContentChange('/plan ')
-                    }
-                    return
-                }
-                if (
-                    currentValue.length > command.value.length &&
-                    currentValue.toLowerCase().startsWith(command.value.toLowerCase())
-                ) {
+                if (hasArguments) {
                     onSubmit(currentValue)
                 } else {
                     onSubmit(command.value)

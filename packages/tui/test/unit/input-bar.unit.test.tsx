@@ -146,9 +146,9 @@ describe('InputBar Component (Unit)', () => {
         expect(frame).toContain('gemini-3.8-flash (Subscription)')
     })
 
-    it('forwards command to onSubmit when selected from command menu on return', async () => {
+    it('autofills command with trailing space on first return when partially typed in command menu, and submits on second return', async () => {
         const handleSubmit = mock(() => {})
-        const { stdin } = render(
+        const { stdin, lastFrame } = render(
             <RootLayout>
                 <InputBar onSubmit={handleSubmit} />
             </RootLayout>
@@ -157,11 +157,84 @@ describe('InputBar Component (Unit)', () => {
         stdin.write('/tas')
         await new Promise((resolve) => setTimeout(resolve, 30))
 
-        // Press Enter to select /tasks from command menu
+        // First Enter: autofills '/tasks ' into input bar, does not submit yet
+        stdin.write('\r')
+        await new Promise((resolve) => setTimeout(resolve, 30))
+
+        expect(handleSubmit).not.toHaveBeenCalled()
+        expect(lastFrame()).toContain('/tasks')
+
+        // Second Enter: submits '/tasks'
         stdin.write('\r')
         await new Promise((resolve) => setTimeout(resolve, 30))
 
         expect(handleSubmit).toHaveBeenCalledWith('/tasks')
+    })
+
+    it('executes command immediately on first return when full command name is typed', async () => {
+        const handleSubmit = mock(() => {})
+        const { stdin } = render(
+            <RootLayout>
+                <InputBar onSubmit={handleSubmit} />
+            </RootLayout>
+        )
+
+        stdin.write('/tasks')
+        await new Promise((resolve) => setTimeout(resolve, 30))
+
+        // Full command name typed: executes immediately on first Enter
+        stdin.write('\r')
+        await new Promise((resolve) => setTimeout(resolve, 30))
+
+        expect(handleSubmit).toHaveBeenCalledWith('/tasks')
+    })
+
+    it('executes command with arguments immediately on first return', async () => {
+        const handleSubmit = mock(() => {})
+        const { stdin } = render(
+            <RootLayout>
+                <InputBar onSubmit={handleSubmit} />
+            </RootLayout>
+        )
+
+        stdin.write('/docs search query')
+        await new Promise((resolve) => setTimeout(resolve, 30))
+
+        stdin.write('\r')
+        await new Promise((resolve) => setTimeout(resolve, 30))
+
+        expect(handleSubmit).toHaveBeenCalledWith('/docs search query')
+    })
+
+    it('autofills /resume on partial match, allows typing prompt, and submits on second return', async () => {
+        const handleSubmit = mock(() => {})
+        const { stdin, lastFrame } = render(
+            <RootLayout>
+                <InputBar onSubmit={handleSubmit} />
+            </RootLayout>
+        )
+
+        stdin.write('/res')
+        await new Promise((resolve) => setTimeout(resolve, 30))
+
+        // First Enter: autofills '/resume '
+        stdin.write('\r')
+        await new Promise((resolve) => setTimeout(resolve, 30))
+
+        expect(handleSubmit).not.toHaveBeenCalled()
+        expect(lastFrame()).toContain('/resume')
+
+        // Type additional prompt
+        stdin.write('feature-branch')
+        await new Promise((resolve) => setTimeout(resolve, 30))
+
+        expect(lastFrame()).toContain('/resume feature-branch')
+
+        // Second Enter: submits '/resume feature-branch'
+        stdin.write('\r')
+        await new Promise((resolve) => setTimeout(resolve, 30))
+
+        expect(handleSubmit).toHaveBeenCalledWith('/resume feature-branch')
     })
 
     it('handles long text prompt input without losing prompt glyph or layout structure', async () => {

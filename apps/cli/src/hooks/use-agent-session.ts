@@ -1840,7 +1840,8 @@ ${decStatus}
                 return
             }
 
-            if (text.trim() === '/resume') {
+            if (text.trim() === '/resume' || text.trim().startsWith('/resume ')) {
+                const resumeQuery = text.trim().slice('/resume'.length).trim().toLowerCase()
                 if (!sessionRepository) {
                     const userMsg: Message = { id: getNextMsgId(), role: 'user', text }
                     const noticeMsg: Message = {
@@ -1862,7 +1863,22 @@ ${decStatus}
                         addToast('No previous sessions found.', 'info')
                         return
                     }
-                    setSessionsData(sessions)
+                    let matchedSessions = sessions
+                    if (resumeQuery) {
+                        matchedSessions = sessions.filter((s: any) => {
+                            const preview = (s.preview || s.title || '').toLowerCase()
+                            const id = (s.id || '').toLowerCase()
+                            return preview.includes(resumeQuery) || id.includes(resumeQuery)
+                        })
+                        if (matchedSessions.length === 0) {
+                            addToast(
+                                `No sessions found matching "${resumeQuery}". Showing all sessions.`,
+                                'info'
+                            )
+                            matchedSessions = sessions
+                        }
+                    }
+                    setSessionsData(matchedSessions)
                     setSessionPage(0)
                     setSessionSelectedIndex(0)
                     setSessionRenameMode(false)
