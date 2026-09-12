@@ -26,6 +26,7 @@ describe('Billing Service - Unit Tests', () => {
         it('should aggregate credit balance, gifted credits, usage, and transactions', async () => {
             const originalFindUser = billingRepository.findUserForOverview
             const originalAggregate = billingRepository.aggregateUsage
+            const originalGifted = billingRepository.findGiftedCreditsSum
 
             const mockCreatedAt = new Date('2026-01-01T00:00:00.000Z')
             billingRepository.findUserForOverview = (async () => ({
@@ -51,6 +52,8 @@ describe('Billing Service - Unit Tests', () => {
                 ],
             })) as any
 
+            billingRepository.findGiftedCreditsSum = (async () => 1000) as any
+
             billingRepository.aggregateUsage = (async () => ({
                 _sum: {
                     inputTokens: 100,
@@ -72,6 +75,7 @@ describe('Billing Service - Unit Tests', () => {
             } finally {
                 billingRepository.findUserForOverview = originalFindUser
                 billingRepository.aggregateUsage = originalAggregate
+                billingRepository.findGiftedCreditsSum = originalGifted
             }
         })
     })
@@ -371,6 +375,26 @@ describe('Billing Service - Unit Tests', () => {
                 expect(receivedCodeHash).toBe(expectedHash)
                 expect(res.creditAmount).toBe(1500)
                 expect(notificationSent).toBe(true)
+            } finally {
+                billingRepository.redeemCode = originalRedeem
+                notificationService.sendNotificationToUser = originalSendNotif
+            }
+        })
+
+        it('should strip zero-width spaces and invisible characters from redeem code', async () => {
+            const originalRedeem = billingRepository.redeemCode
+            const originalSendNotif = notificationService.sendNotificationToUser
+            let receivedCodeHash = ''
+            billingRepository.redeemCode = (async (data: any) => {
+                receivedCodeHash = data.codeHash
+                return { creditAmount: 1500, newBalance: 6500 }
+            }) as any
+            notificationService.sendNotificationToUser = (async () => ({}) as any) as any
+
+            try {
+                await billingService.redeemCode({ userId: 'user-1', code: '\uFEFFgift\u200B100 ' })
+                const expectedHash = crypto.createHash('sha256').update('GIFT100').digest('hex')
+                expect(receivedCodeHash).toBe(expectedHash)
             } finally {
                 billingRepository.redeemCode = originalRedeem
                 notificationService.sendNotificationToUser = originalSendNotif

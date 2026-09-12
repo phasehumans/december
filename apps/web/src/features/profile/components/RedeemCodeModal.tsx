@@ -77,7 +77,7 @@ export const RedeemCodeModal: React.FC<RedeemCodeModalProps> = ({ onClose }) => 
                             setError(null)
                         }}
                         onKeyDown={(e: React.KeyboardEvent) => {
-                            if (e.key === 'Enter' && !successMessage) handleRedeem()
+                            if (e.key === 'Enter' && !isRedeeming && !successMessage) handleRedeem()
                         }}
                         className="w-full bg-white/[0.03] border border-[#2B2A27] rounded-lg px-3.5 py-2.5 text-white text-[13px] focus:outline-none transition-[border-color,box-shadow]"
                         placeholder="K47B9X2P"

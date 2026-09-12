@@ -603,7 +603,7 @@ const getLlmProvider = (providerName?: string, apiKey?: string) => {
 }
 
 const runAgentSession = async (data: RunAgentSessionInput) => {
-    const { sessionId, userId, userRules, sandboxId, prompt, workspaceDir } = data
+    const { sessionId, userId, userRules, sandboxId, prompt, workspaceDir, secrets } = data
     console.log(`[E2BSandboxService] Starting in-sandbox agent runner session for ${sessionId}`)
 
     let effectiveUserRules = userRules
@@ -676,6 +676,8 @@ const runAgentSession = async (data: RunAgentSessionInput) => {
         WebSearchTool,
     ]
 
+    const secretKeys = Array.isArray(secrets) ? secrets.map((s) => s.key).filter(Boolean) : []
+
     const harness = new AgentHarness({
         llm,
         tools,
@@ -685,6 +687,7 @@ const runAgentSession = async (data: RunAgentSessionInput) => {
         userId,
         userRules: effectiveUserRules,
         runtime: 'cloud',
+        availableSecrets: secretKeys,
         modelOptions: {
             model: process.env.DEFAULT_MODEL || 'gemini-3.6-flash',
             thinkingLevel: 'auto',

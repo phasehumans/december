@@ -82,6 +82,54 @@ const SlackIcon = () => (
     </svg>
 )
 
+const LinearIcon = () => (
+    <svg viewBox="0 0 24 24" fill="#5E6AD2" className="w-5 h-5">
+        <path d="M2.886 4.18A11.982 11.982 0 0 1 11.99 0C18.624 0 24 5.376 24 12.009c0 3.64-1.62 6.903-4.18 9.105L2.887 4.18ZM1.817 5.626l16.556 16.556c-.524.33-1.075.62-1.65.866L.951 7.277c.247-.575.537-1.126.866-1.65ZM.322 9.163l14.515 14.515c-.71.172-1.443.282-2.195.322L0 11.358a12 12 0 0 1 .322-2.195Zm-.17 4.862 9.823 9.824a12.02 12.02 0 0 1-9.824-9.824Z" />
+    </svg>
+)
+
+const SentryIcon = () => (
+    <svg viewBox="0 0 24 24" fill="#FF4088" className="w-5 h-5">
+        <path d="M13.91 2.505c-.873-1.448-2.972-1.448-3.844 0L6.904 7.92a15.478 15.478 0 0 1 8.53 12.811h-2.221A13.301 13.301 0 0 0 5.784 9.814l-2.926 5.06a7.65 7.65 0 0 1 4.435 5.848H2.194a.365.365 0 0 1-.298-.534l1.413-2.402a5.16 5.16 0 0 0-1.614-.913L.296 19.275a2.182 2.182 0 0 0 .812 2.999 2.24 2.24 0 0 0 1.086.288h6.983a9.322 9.322 0 0 0-3.845-8.318l1.11-1.922a11.47 11.47 0 0 1 4.95 10.24h5.915a17.242 17.242 0 0 0-7.885-15.28l2.244-3.845a.37.37 0 0 1 .504-.13c.255.14 9.75 16.708 9.928 16.9a.365.365 0 0 1-.327.543h-2.287c.029.612.029 1.223 0 1.831h2.297a2.206 2.206 0 0 0 1.922-3.31z" />
+    </svg>
+)
+
+const NeonIcon = () => (
+    <svg viewBox="0 0 24 24" fill="#00E599" className="w-5 h-5">
+        <path d="M24 0V24l-9.365-8.045V24H0V0ZM2.942 21.087h8.751V9.563l9.365 8.204V2.919L2.942 2.914Z" />
+    </svg>
+)
+
+const CloudflareIcon = () => (
+    <svg viewBox="0 0 24 24" fill="#F38020" className="w-5 h-5">
+        <path d="M16.5088 16.8447c.1475-.5068.0908-.9707-.1553-1.3154-.2246-.3164-.6045-.499-1.0615-.5205l-8.6592-.1123a.1559.1559 0 0 1-.1333-.0713c-.0283-.042-.0351-.0986-.021-.1553.0278-.084.1123-.1484.2036-.1562l8.7359-.1123c1.0351-.0489 2.1601-.8868 2.5537-1.9136l.499-1.3013c.0215-.0561.0293-.1128.0147-.168-.5625-2.5463-2.835-4.4453-5.5499-4.4453-2.5039 0-4.6284 1.6177-5.3876 3.8614-.4927-.3658-1.1187-.5625-1.794-.499-1.2026.119-2.1665 1.083-2.2861 2.2856-.0283.31-.0069.6128.0635.894C1.5683 13.171 0 14.7754 0 16.752c0 .1748.0142.3515.0352.5273.0141.083.0844.1475.1689.1475h15.9814c.0909 0 .1758-.0645.2032-.1553l.12-.4268zm2.7568-5.5634c-.0771 0-.1611 0-.2383.0112-.0566 0-.1054.0415-.127.0976l-.3378 1.1744c-.1475.5068-.0918.9707.1543 1.3164.2256.3164.6055.498 1.0625.5195l1.8437.1133c.0557 0 .1055.0263.1329.0703.0283.043.0351.1074.0214.1562-.0283.084-.1132.1485-.204.1553l-1.921.1123c-1.041.0488-2.1582.8867-2.5527 1.914l-.1406.3585c-.0283.0713.0215.1416.0986.1416h6.5977c.0771 0 .1474-.0489.169-.126.1122-.4082.1757-.837.1757-1.2803 0-2.6025-2.125-4.727-4.7344-4.727" />
+    </svg>
+)
+
+const UpstashIcon = () => (
+    <svg viewBox="0 0 24 24" fill="#00E9A3" className="w-5 h-5">
+        <path d="M13.8027 0C11.193 0 8.583.9952 6.5918 2.9863c-3.9823 3.9823-3.9823 10.4396 0 14.4219 1.9911 1.9911 5.2198 1.9911 7.211 0 1.991-1.9911 1.991-5.2198 0-7.211L12 12c.9956.9956.9956 2.6098 0 3.6055-.9956.9955-2.6099.9955-3.6055 0-2.9866-2.9868-2.9866-7.8297 0-10.8164 2.9868-2.9868 7.8297-2.9868 10.8164 0l1.8028-1.8028C19.0225.9952 16.4125 0 13.8027 0zM12 12c-.9956-.9956-.9956-2.6098 0-3.6055.9956-.9955 2.6098-.9955 3.6055 0 2.9867 2.9868 2.9867 7.8297 0 10.8164-2.9867 2.9868-7.8297 2.9868-10.8164 0l-1.8028 1.8028c3.9823 3.9822 10.4396 3.9822 14.4219 0 3.9823-3.9824 3.9823-10.4396 0-14.4219-.9956-.9956-2.3006-1.4922-3.6055-1.4922-1.3048 0-2.6099.4966-3.6054 1.4922-1.9912 1.9912-1.9912 5.2198 0 7.211z" />
+    </svg>
+)
+
+const RailwayIcon = () => (
+    <svg viewBox="0 0 24 24" fill="white" className="w-5 h-5">
+        <path d="M.113 10.27A13.026 13.026 0 000 11.48h18.23c-.064-.125-.15-.237-.235-.347-3.117-4.027-4.793-3.677-7.19-3.78-.8-.034-1.34-.048-4.524-.048-1.704 0-3.555.005-5.358.01-.234.63-.459 1.24-.567 1.737h9.342v1.216H.113v.002zm18.26 2.426H.009c.02.326.05.645.094.961h16.955c.754 0 1.179-.429 1.315-.96zm-17.318 4.28s2.81 6.902 10.93 7.024c4.855 0 9.027-2.883 10.92-7.024H1.056zM11.988 0C7.5 0 3.593 2.466 1.531 6.108l4.75-.005v-.002c3.71 0 3.849.016 4.573.047l.448.016c1.563.052 3.485.22 4.996 1.364.82.621 2.007 1.99 2.712 2.965.654.902.842 1.94.396 2.934-.408.914-1.289 1.458-2.353 1.458H.391s.099.42.249.886h22.748A12.026 12.026 0 0024 12.005C24 5.377 18.621 0 11.988 0z" />
+    </svg>
+)
+
+const PostHogIcon = () => (
+    <svg viewBox="0 0 24 24" fill="#F54E00" className="w-5 h-5">
+        <path d="M9.854 14.5 5 9.647.854 5.5A.5.5 0 0 0 0 5.854V8.44a.5.5 0 0 0 .146.353L5 13.647l.147.146L9.854 18.5l.146.147v-.049c.065.03.134.049.207.049h2.586a.5.5 0 0 0 .353-.854L9.854 14.5zm0-5-4-4a.487.487 0 0 0-.409-.144.515.515 0 0 0-.356.21.493.493 0 0 0-.089.288V8.44a.5.5 0 0 0 .147.353l9 9a.5.5 0 0 0 .853-.354v-2.585a.5.5 0 0 0-.146-.354l-5-5zm1-4a.5.5 0 0 0-.854.354V8.44a.5.5 0 0 0 .147.353l4 4a.5.5 0 0 0 .853-.354V9.854a.5.5 0 0 0-.146-.354l-4-4zm12.647 11.515a3.863 3.863 0 0 1-2.232-1.1l-4.708-4.707a.5.5 0 0 0-.854.354v6.585a.5.5 0 0 0 .5.5H23.5a.5.5 0 0 0 .5-.5v-.6c0-.276-.225-.497-.499-.532zm-5.394.032a.8.8 0 1 1 0-1.6.8.8 0 0 1 0 1.6zM.854 15.5a.5.5 0 0 0-.854.354v2.293a.5.5 0 0 0 .5.5h2.293c.222 0 .39-.135.462-.309a.493.493 0 0 0-.109-.545L.854 15.501zM5 14.647.854 10.5a.5.5 0 0 0-.854.353v2.586a.5.5 0 0 0 .146.353L4.854 18.5l.146.147h2.793a.5.5 0 0 0 .353-.854L5 14.647z" />
+    </svg>
+)
+
+const DiscordIcon = () => (
+    <svg viewBox="0 0 24 24" fill="#5865F2" className="w-5 h-5">
+        <path d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189Z" />
+    </svg>
+)
+
 export const ProfileConnectionsSettings: React.FC<ProfileConnectionsSettingsProps> = ({
     isGithubConnected,
     onConnectGithub,
@@ -115,7 +163,8 @@ export const ProfileConnectionsSettings: React.FC<ProfileConnectionsSettingsProp
         {
             id: 'supabase' as const,
             name: 'Supabase',
-            description: 'Connect your Supabase project to manage database schemas and tables.',
+            description:
+                'Connect your Supabase project to introspect schemas, inspect RLS policies, and generate migrations.',
             Icon: SupabaseIcon,
             iconColor: '#D6D5C9',
             isConnected: isSupabaseConnected,
@@ -131,11 +180,11 @@ export const ProfileConnectionsSettings: React.FC<ProfileConnectionsSettingsProp
             onConnect: onConnectNotion,
         },
         {
-            id: 'slack' as const,
-            name: 'Slack',
+            id: 'linear' as const,
+            name: 'Linear',
             description:
-                'Send agent activity alerts, PR status updates, and build summaries to your Slack channels.',
-            Icon: SlackIcon,
+                'Import issues and specs directly into agent sessions and auto-sync resolution status.',
+            Icon: LinearIcon,
             iconColor: '#D6D5C9',
             isConnected: false,
             onConnect: undefined,
@@ -146,6 +195,86 @@ export const ProfileConnectionsSettings: React.FC<ProfileConnectionsSettingsProp
             description:
                 'Import styles, components, and design tokens directly from your Figma files.',
             Icon: FigmaIcon,
+            iconColor: '#D6D5C9',
+            isConnected: false,
+            onConnect: undefined,
+        },
+        {
+            id: 'sentry' as const,
+            name: 'Sentry',
+            description:
+                'Pull production stack traces and error logs to automatically reproduce and fix bugs.',
+            Icon: SentryIcon,
+            iconColor: '#D6D5C9',
+            isConnected: false,
+            onConnect: undefined,
+        },
+        {
+            id: 'neon' as const,
+            name: 'Neon',
+            description:
+                'Connect serverless Postgres to inspect schemas and create instant database branches.',
+            Icon: NeonIcon,
+            iconColor: '#D6D5C9',
+            isConnected: false,
+            onConnect: undefined,
+        },
+        {
+            id: 'cloudflare' as const,
+            name: 'Cloudflare',
+            description:
+                'Deploy Workers and Pages, manage environment bindings, and inspect D1 databases.',
+            Icon: CloudflareIcon,
+            iconColor: '#D6D5C9',
+            isConnected: false,
+            onConnect: undefined,
+        },
+        {
+            id: 'upstash' as const,
+            name: 'Upstash',
+            description:
+                'Connect serverless Redis, rate limiters, and QStash background messaging.',
+            Icon: UpstashIcon,
+            iconColor: '#D6D5C9',
+            isConnected: false,
+            onConnect: undefined,
+        },
+        {
+            id: 'railway' as const,
+            name: 'Railway',
+            description:
+                'Deploy backend services, manage Docker containers, and provision cloud infrastructure.',
+            Icon: RailwayIcon,
+            iconColor: '#D6D5C9',
+            isConnected: false,
+            onConnect: undefined,
+        },
+        {
+            id: 'posthog' as const,
+            name: 'PostHog',
+            description:
+                'Manage feature flags, track event schemas, and inspect analytics definitions.',
+            Icon: PostHogIcon,
+            iconColor: '#D6D5C9',
+            isConnected: false,
+            onConnect: undefined,
+        },
+        {
+            id: 'slack' as const,
+            name: 'Slack',
+            description:
+                'Send agent activity alerts, PR status updates, and build summaries to your Slack channels.',
+            Icon: SlackIcon,
+            iconColor: '#D6D5C9',
+            isConnected: false,
+            onConnect: undefined,
+        },
+        {
+            id: 'discord' as const,
+            name: 'Discord',
+            description:
+                'Broadcast session progress, test runs, and deployment alerts to Discord channels.',
+            Icon: DiscordIcon,
             iconColor: '#D6D5C9',
             isConnected: false,
             onConnect: undefined,

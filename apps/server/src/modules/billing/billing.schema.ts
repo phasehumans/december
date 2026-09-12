@@ -28,7 +28,11 @@ export const creditsHistoryQuerySchema = z.object({
 
 export const redeemCodeSchema = z
     .object({
-        code: z.string().trim().min(1, { message: 'redeem code cannot be empty' }),
+        code: z
+            .string()
+            .trim()
+            .min(1, { message: 'redeem code cannot be empty' })
+            .max(100, { message: 'redeem code cannot exceed 100 characters' }),
     })
     .strict()
 

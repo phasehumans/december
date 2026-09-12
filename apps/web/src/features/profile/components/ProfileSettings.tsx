@@ -232,8 +232,29 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
     const hasProfile = Boolean(profile)
 
     const renderTabContent = () => {
-        if ((isProfileLoading && !profile) || isSkeletonPreviewActive()) {
+        if (isProfileLoading && !profile) {
             return <ProfileSettingsSkeleton activeTab={activeTab} />
+        }
+
+        if (isSkeletonPreviewActive()) {
+            switch (activeTab) {
+                case 'Repositories':
+                    return (
+                        <ProfileRepositoriesSettings
+                            isGithubConnected={isGithubConnected}
+                            onConnectGithub={connectGithub}
+                        />
+                    )
+                case 'Secrets':
+                    return <ProfileSecretsSettings />
+                case 'Billing':
+                    return <ProfileBillingSettings profile={profile} />
+                case 'Usage':
+                case 'Analytics':
+                    return <ProfileUsageSettings />
+                default:
+                    return <ProfileSettingsSkeleton activeTab={activeTab} />
+            }
         }
 
         switch (activeTab) {

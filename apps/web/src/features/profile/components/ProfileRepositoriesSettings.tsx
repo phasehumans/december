@@ -120,7 +120,9 @@ export const ProfileRepositoriesSettings: React.FC<ProfileRepositoriesSettingsPr
                         </div>
                     </div>
 
-                    {!githubConnected ? (
+                    {reposQuery.isLoading || isSkeletonPreviewActive() ? (
+                        <ProfileRepositoriesSkeleton />
+                    ) : !githubConnected ? (
                         <div className="border border-dashed border-[#383736] rounded-xl py-16 flex flex-col items-center justify-center gap-4 bg-[#100E12]/30 hover:border-[#4A4948] transition-colors">
                             <div className="w-12 h-12 rounded-xl bg-[#191919] border border-[#383736] flex items-center justify-center">
                                 <Github className="w-6 h-6 text-[#7B7A79]" />
@@ -141,8 +143,6 @@ export const ProfileRepositoriesSettings: React.FC<ProfileRepositoriesSettingsPr
                                 Connect GitHub
                             </button>
                         </div>
-                    ) : reposQuery.isLoading || isSkeletonPreviewActive() ? (
-                        <ProfileRepositoriesSkeleton />
                     ) : reposQuery.isError ? (
                         <div className="border border-[#242323] rounded-xl py-16 flex flex-col items-center justify-center gap-3 bg-[#1B1B1B]">
                             <span className="text-[13px] text-red-400">

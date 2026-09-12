@@ -1,3 +1,4 @@
+import { Plus, RotateCw, Search } from 'lucide-react'
 import React from 'react'
 
 import { Skeleton } from '@/shared/components/ui/Skeleton'
@@ -20,7 +21,7 @@ export const ProfileRepositoriesSkeleton: React.FC = () => (
         {REPO_SKELETON_ITEMS.map((item, i) => (
             <div
                 key={i}
-                className="p-3.5 bg-[#1B1B1B] border border-[#242323] rounded-xl flex flex-col justify-between gap-3 min-h-[96px]"
+                className="p-3.5 bg-[#1B1B1B] rounded-xl flex flex-col justify-between gap-3 min-h-[96px]"
             >
                 <div className="flex items-start justify-between gap-2">
                     <div className="flex flex-col gap-1 min-w-0 flex-1">
@@ -93,170 +94,229 @@ export const ProfileSecretsSkeleton: React.FC = () => (
 
 export const ProfileUsageSkeleton: React.FC = () => (
     <div className="flex flex-col w-full max-w-[800px] text-[#D6D5C9] animate-in fade-in duration-200">
-        <div className="h-6 flex items-center mb-3">
-            <Skeleton className="h-4 w-16 bg-white/[0.04] rounded" />
-        </div>
-        <div className="flex flex-col border-t border-[#242323] pt-4 gap-4">
-            <div className="flex flex-col gap-1.5">
-                <Skeleton className="h-3.5 w-full bg-white/[0.025] rounded" />
-                <Skeleton className="h-3.5 w-3/4 bg-white/[0.025] rounded" />
-            </div>
+        <div className="flex flex-col mb-0">
+            <h1 className="text-[16px] font-medium mb-3">Usage</h1>
+            <div className="flex flex-col border-t border-[#242323] pt-4 gap-4">
+                <p className="text-[13px] text-[#7B7A79]">
+                    Track your token consumption, credit deductions, and generation costs across
+                    recent model sessions.
+                </p>
 
-            {/* controls row */}
-            <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-1 bg-[#191919] p-0.5 rounded-lg border border-[#242323]">
-                    {['1d', '7d', '30d', '90d'].map((range, idx) => (
-                        <div
-                            key={range}
-                            className={`px-3 py-1.5 rounded-md text-[12px] ${idx === 0 ? 'bg-[#2B2A29]' : ''}`}
-                        >
-                            <Skeleton className="h-3 w-5 bg-white/[0.04] rounded" />
-                        </div>
-                    ))}
-                </div>
-                <div className="flex items-center gap-1.5 text-[13px] text-neutral-400 font-medium">
-                    <Skeleton className="h-3.5 w-16 bg-white/[0.03] rounded" />
-                    <Skeleton className="h-4 w-12 bg-white/[0.04] rounded" />
-                </div>
-            </div>
-
-            {/* table skeleton */}
-            <div className="flex flex-col bg-[#191919] border border-[#242323] rounded-xl overflow-hidden min-h-[380px]">
-                <div className="bg-[#202020] border-b border-[#242323] px-3.5 sm:px-4 py-2.5 text-[12px] text-[#7B7A79] font-medium">
-                    <div className="flex md:hidden items-center justify-between">
-                        <span>Project / Date</span>
-                        <span>Tokens / Cost</span>
+                {/* controls row */}
+                <div className="flex items-center justify-between mb-2">
+                    {/* quick filters */}
+                    <div className="flex items-center gap-1 bg-[#191919] p-0.5 rounded-lg border border-[#242323]">
+                        {['1d', '7d', '30d', '90d'].map((range, idx) => (
+                            <div
+                                key={range}
+                                className={`px-3 py-1.5 rounded-md text-[12px] font-medium ${
+                                    idx === 0
+                                        ? 'bg-[#2B2A29] text-[#D6D5C9] shadow-sm'
+                                        : 'text-[#7B7A79]'
+                                }`}
+                            >
+                                {range}
+                            </div>
+                        ))}
                     </div>
-                    <div className="hidden md:grid grid-cols-[130px_200px_1fr_100px_70px] items-center">
-                        <div>Date</div>
-                        <div>Project</div>
-                        <div>Model</div>
-                        <div>Token Usage</div>
-                        <div className="text-right">Cost</div>
+
+                    <div className="flex items-center gap-1.5 text-[13px] text-neutral-400 font-medium">
+                        <span>Total spent:</span>
+                        <Skeleton className="h-4 w-12 bg-white/[0.06] rounded" />
                     </div>
                 </div>
 
-                {/* Mobile skeletons */}
-                <div className="flex md:hidden flex-col divide-y divide-[#242323]">
-                    {[
-                        { titleW: 'w-28', costW: 'w-12', subW: 'w-36' },
-                        { titleW: 'w-36', costW: 'w-10', subW: 'w-44' },
-                        { titleW: 'w-24', costW: 'w-14', subW: 'w-32' },
-                        { titleW: 'w-32', costW: 'w-11', subW: 'w-40' },
-                        { titleW: 'w-26', costW: 'w-12', subW: 'w-36' },
-                    ].map((row, i) => (
-                        <div key={i} className="p-3.5 flex flex-col gap-2">
-                            <div className="flex items-center justify-between">
-                                <Skeleton className={`h-4 ${row.titleW} bg-white/[0.04] rounded`} />
-                                <Skeleton
-                                    className={`h-3.5 ${row.costW} bg-white/[0.03] rounded`}
-                                />
-                            </div>
-                            <Skeleton className={`h-3 ${row.subW} bg-white/[0.025] rounded`} />
+                {/* table skeleton */}
+                <div className="flex flex-col bg-[#191919] border border-[#242323] rounded-xl overflow-hidden min-h-[380px]">
+                    <div className="bg-[#202020] border-b border-[#242323] px-3.5 sm:px-4 py-2.5 text-[12px] text-[#7B7A79] font-medium">
+                        <div className="flex md:hidden items-center justify-between">
+                            <span>Project / Date</span>
+                            <span>Tokens / Cost</span>
                         </div>
-                    ))}
-                </div>
+                        <div className="hidden md:grid grid-cols-[130px_200px_1fr_100px_70px] items-center">
+                            <div>Date</div>
+                            <div>Project</div>
+                            <div>Model</div>
+                            <div>Token Usage</div>
+                            <div className="text-right">Cost</div>
+                        </div>
+                    </div>
 
-                {/* Desktop skeletons */}
-                <div className="hidden md:flex flex-col divide-y divide-[#242323]">
-                    {[
-                        {
-                            dateW: 'w-20',
-                            projW: 'w-28',
-                            modelW: 'w-24',
-                            tokensW: 'w-14',
-                            costW: 'w-10',
-                        },
-                        {
-                            dateW: 'w-20',
-                            projW: 'w-36',
-                            modelW: 'w-20',
-                            tokensW: 'w-16',
-                            costW: 'w-12',
-                        },
-                        {
-                            dateW: 'w-20',
-                            projW: 'w-24',
-                            modelW: 'w-24',
-                            tokensW: 'w-12',
-                            costW: 'w-9',
-                        },
-                        {
-                            dateW: 'w-20',
-                            projW: 'w-32',
-                            modelW: 'w-28',
-                            tokensW: 'w-15',
-                            costW: 'w-11',
-                        },
-                        {
-                            dateW: 'w-20',
-                            projW: 'w-26',
-                            modelW: 'w-20',
-                            tokensW: 'w-14',
-                            costW: 'w-10',
-                        },
-                    ].map((row, i) => (
-                        <div
-                            key={i}
-                            className="grid grid-cols-[130px_200px_1fr_100px_70px] items-center py-3 px-4"
-                        >
-                            <div className="pr-4">
-                                <Skeleton
-                                    className={`h-3.5 ${row.dateW} bg-white/[0.03] rounded`}
-                                />
+                    {/* Mobile skeletons */}
+                    <div className="flex md:hidden flex-col divide-y divide-[#242323]">
+                        {[
+                            { titleW: 'w-28', costW: 'w-12', subW: 'w-36' },
+                            { titleW: 'w-36', costW: 'w-10', subW: 'w-44' },
+                            { titleW: 'w-24', costW: 'w-14', subW: 'w-32' },
+                            { titleW: 'w-32', costW: 'w-11', subW: 'w-40' },
+                            { titleW: 'w-26', costW: 'w-12', subW: 'w-36' },
+                        ].map((row, i) => (
+                            <div key={i} className="p-3.5 flex flex-col gap-2">
+                                <div className="flex items-center justify-between">
+                                    <Skeleton
+                                        className={`h-4 ${row.titleW} bg-white/[0.04] rounded`}
+                                    />
+                                    <Skeleton
+                                        className={`h-3.5 ${row.costW} bg-white/[0.03] rounded`}
+                                    />
+                                </div>
+                                <Skeleton className={`h-3 ${row.subW} bg-white/[0.025] rounded`} />
                             </div>
-                            <div className="pr-4">
-                                <Skeleton
-                                    className={`h-3.5 ${row.projW} bg-white/[0.04] rounded`}
-                                />
+                        ))}
+                    </div>
+
+                    {/* Desktop skeletons */}
+                    <div className="hidden md:flex flex-col divide-y divide-[#242323]">
+                        {[
+                            {
+                                dateW: 'w-20',
+                                projW: 'w-28',
+                                modelW: 'w-24',
+                                tokensW: 'w-14',
+                                costW: 'w-10',
+                            },
+                            {
+                                dateW: 'w-20',
+                                projW: 'w-36',
+                                modelW: 'w-20',
+                                tokensW: 'w-16',
+                                costW: 'w-12',
+                            },
+                            {
+                                dateW: 'w-20',
+                                projW: 'w-24',
+                                modelW: 'w-24',
+                                tokensW: 'w-12',
+                                costW: 'w-9',
+                            },
+                            {
+                                dateW: 'w-20',
+                                projW: 'w-32',
+                                modelW: 'w-28',
+                                tokensW: 'w-15',
+                                costW: 'w-11',
+                            },
+                            {
+                                dateW: 'w-20',
+                                projW: 'w-26',
+                                modelW: 'w-20',
+                                tokensW: 'w-14',
+                                costW: 'w-10',
+                            },
+                        ].map((row, i) => (
+                            <div
+                                key={i}
+                                className="grid grid-cols-[130px_200px_1fr_100px_70px] items-center py-3 px-4"
+                            >
+                                <div className="pr-4">
+                                    <Skeleton
+                                        className={`h-3.5 ${row.dateW} bg-white/[0.03] rounded`}
+                                    />
+                                </div>
+                                <div className="pr-4">
+                                    <Skeleton
+                                        className={`h-3.5 ${row.projW} bg-white/[0.04] rounded`}
+                                    />
+                                </div>
+                                <div className="pr-4">
+                                    <Skeleton
+                                        className={`h-3.5 ${row.modelW} bg-white/[0.025] rounded`}
+                                    />
+                                </div>
+                                <div className="pr-4">
+                                    <Skeleton
+                                        className={`h-3.5 ${row.tokensW} bg-white/[0.025] rounded`}
+                                    />
+                                </div>
+                                <div className="flex justify-end pr-1">
+                                    <Skeleton
+                                        className={`h-3.5 ${row.costW} bg-white/[0.04] rounded`}
+                                    />
+                                </div>
                             </div>
-                            <div className="pr-4">
-                                <Skeleton
-                                    className={`h-3.5 ${row.modelW} bg-white/[0.025] rounded`}
-                                />
-                            </div>
-                            <div className="pr-4">
-                                <Skeleton
-                                    className={`h-3.5 ${row.tokensW} bg-white/[0.025] rounded`}
-                                />
-                            </div>
-                            <div className="flex justify-end pr-1">
-                                <Skeleton
-                                    className={`h-3.5 ${row.costW} bg-white/[0.04] rounded`}
-                                />
-                            </div>
-                        </div>
-                    ))}
+                        ))}
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 )
 
-export const ProfileBillingSkeleton: React.FC = () => (
+export const ProfileBillingHistorySkeleton: React.FC = () => (
+    <div className="flex flex-col divide-y divide-[#242323]/40">
+        {[
+            { titleW: 'w-36', dateW: 'w-24', statusW: 'w-14', amountW: 'w-12' },
+            { titleW: 'w-48', dateW: 'w-20', statusW: 'w-16', amountW: 'w-14' },
+            { titleW: 'w-40', dateW: 'w-24', statusW: 'w-14', amountW: 'w-10' },
+            { titleW: 'w-32', dateW: 'w-22', statusW: 'w-16', amountW: 'w-12' },
+        ].map((row, i) => (
+            <div key={i} className="py-3 text-[13px]">
+                {/* Mobile layout */}
+                <div className="md:hidden flex items-start justify-between gap-2">
+                    <div className="flex flex-col gap-1 min-w-0 pr-2">
+                        <Skeleton className={`h-4 ${row.titleW} bg-white/[0.04] rounded`} />
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                            <Skeleton className={`h-3 ${row.dateW} bg-white/[0.02] rounded`} />
+                            <Skeleton className={`h-3 ${row.statusW} bg-white/[0.03] rounded`} />
+                        </div>
+                        <Skeleton className="h-2.5 w-16 bg-white/[0.02] rounded mt-0.5" />
+                    </div>
+                    <Skeleton className={`h-4 ${row.amountW} bg-white/[0.04] rounded shrink-0`} />
+                </div>
+
+                {/* Desktop layout */}
+                <div className="hidden md:grid grid-cols-12 gap-2 items-center">
+                    <div className="md:col-span-3">
+                        <Skeleton className={`h-3.5 ${row.dateW} bg-white/[0.025] rounded`} />
+                    </div>
+                    <div className="md:col-span-5 flex flex-col gap-1 min-w-0 pr-2">
+                        <Skeleton className={`h-3.5 ${row.titleW} bg-white/[0.04] rounded`} />
+                        <Skeleton className="h-2.5 w-20 bg-white/[0.02] rounded" />
+                    </div>
+                    <div className="md:col-span-2">
+                        <Skeleton className={`h-3.5 ${row.statusW} bg-white/[0.03] rounded`} />
+                    </div>
+                    <div className="md:col-span-2 flex justify-end">
+                        <Skeleton className={`h-3.5 ${row.amountW} bg-white/[0.04] rounded`} />
+                    </div>
+                </div>
+            </div>
+        ))}
+    </div>
+)
+
+export const ProfileBillingSkeleton: React.FC<{ onAddCredits?: () => void }> = ({
+    onAddCredits,
+}) => (
     <div className="flex flex-col w-full max-w-[800px] text-[#D6D5C9] animate-in fade-in duration-200">
         {/* credits section */}
         <div className="flex flex-col mb-6">
-            <div className="h-6 flex items-center mb-3">
-                <Skeleton className="h-4 w-20 bg-white/[0.04] rounded" />
-            </div>
+            <h1 className="text-[16px] font-medium text-[#D6D5C9] mb-3">Credits</h1>
             <div className="flex flex-col gap-4 border-t border-[#242323] pt-4">
-                <div className="flex flex-col gap-1.5">
-                    <Skeleton className="h-3.5 w-full bg-white/[0.025] rounded" />
-                    <Skeleton className="h-3.5 w-2/3 bg-white/[0.025] rounded" />
-                </div>
+                <p className="text-[13px] text-[#7B7A79]">
+                    Prepaid credits are used to power AI model completions and agent execution in
+                    your workspaces.
+                </p>
 
                 {/* compact credits balance box */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#191919] border border-[#242323] rounded-xl p-4 sm:p-5 w-full max-w-[560px]">
-                    <div className="flex flex-col gap-2">
-                        <Skeleton className="h-3.5 w-24 bg-white/[0.03] rounded" />
-                        <div className="flex items-baseline gap-2">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#191919] rounded-xl p-4 sm:p-5 w-full max-w-[560px]">
+                    <div className="flex flex-col gap-1">
+                        <span className="text-[12px] font-medium text-[#7B7A79]">
+                            Wallet Balance
+                        </span>
+                        <div className="flex items-baseline gap-1.5">
                             <Skeleton className="h-7 sm:h-8 w-28 bg-white/[0.05] rounded" />
-                            <Skeleton className="h-3 w-8 bg-white/[0.02] rounded" />
+                            <span className="text-[11px] text-[#7B7A79] font-mono">USD</span>
                         </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <Skeleton className="h-8 w-24 rounded-lg bg-white/[0.04]" />
+                    <div className="flex items-center">
+                        <button
+                            type="button"
+                            onClick={onAddCredits}
+                            className="w-full sm:w-auto px-4 py-1.5 rounded-lg bg-[#87B2F4] text-[#100E12] hover:bg-[#A3C7FF] text-[13px] font-medium transition-colors cursor-pointer text-center shadow-sm"
+                        >
+                            Add Credits
+                        </button>
                     </div>
                 </div>
             </div>
@@ -264,70 +324,18 @@ export const ProfileBillingSkeleton: React.FC = () => (
 
         {/* credits history section */}
         <div className="flex flex-col mb-0">
-            <div className="h-6 flex items-center mb-3">
-                <Skeleton className="h-4 w-32 bg-white/[0.04] rounded" />
-            </div>
+            <h2 className="text-[16px] font-medium text-[#D6D5C9] mb-3">Credits History</h2>
             <div className="flex flex-col border-t border-[#242323] pt-4">
-                <div className="grid grid-cols-12 gap-2 text-[11px] font-semibold uppercase tracking-wider text-neutral-500 pb-2">
-                    <div className="hidden md:block md:col-span-3">Date</div>
-                    <div className="col-span-7 md:col-span-5">Details</div>
-                    <div className="hidden md:block md:col-span-2">Status</div>
-                    <div className="col-span-5 md:col-span-2 text-right">Amount</div>
-                </div>
+                <div className="flex flex-col">
+                    {/* Header row */}
+                    <div className="grid grid-cols-12 gap-2 text-[11px] font-semibold uppercase tracking-wider text-neutral-500 pb-1">
+                        <div className="hidden md:block md:col-span-3">Date</div>
+                        <div className="col-span-7 md:col-span-5">Details</div>
+                        <div className="hidden md:block md:col-span-2">Status</div>
+                        <div className="col-span-5 md:col-span-2 text-right">Amount</div>
+                    </div>
 
-                <div className="flex flex-col divide-y divide-[#242323]/40">
-                    {[
-                        { titleW: 'w-36', dateW: 'w-24', statusW: 'w-14', amountW: 'w-12' },
-                        { titleW: 'w-48', dateW: 'w-20', statusW: 'w-16', amountW: 'w-14' },
-                        { titleW: 'w-40', dateW: 'w-24', statusW: 'w-14', amountW: 'w-10' },
-                        { titleW: 'w-32', dateW: 'w-22', statusW: 'w-16', amountW: 'w-12' },
-                    ].map((row, i) => (
-                        <div key={i} className="py-3 text-[13px]">
-                            {/* Mobile layout */}
-                            <div className="md:hidden flex items-start justify-between gap-2">
-                                <div className="flex flex-col gap-1 min-w-0 pr-2">
-                                    <Skeleton
-                                        className={`h-4 ${row.titleW} bg-white/[0.04] rounded`}
-                                    />
-                                    <div className="flex items-center gap-1.5 mt-0.5">
-                                        <Skeleton
-                                            className={`h-3 ${row.dateW} bg-white/[0.02] rounded`}
-                                        />
-                                        <Skeleton
-                                            className={`h-3 ${row.statusW} bg-white/[0.03] rounded`}
-                                        />
-                                    </div>
-                                </div>
-                                <Skeleton
-                                    className={`h-4 ${row.amountW} bg-white/[0.04] rounded shrink-0`}
-                                />
-                            </div>
-
-                            {/* Desktop layout */}
-                            <div className="hidden md:grid grid-cols-12 gap-2 items-center">
-                                <div className="md:col-span-3">
-                                    <Skeleton
-                                        className={`h-3.5 ${row.dateW} bg-white/[0.025] rounded`}
-                                    />
-                                </div>
-                                <div className="md:col-span-5">
-                                    <Skeleton
-                                        className={`h-3.5 ${row.titleW} bg-white/[0.04] rounded`}
-                                    />
-                                </div>
-                                <div className="md:col-span-2">
-                                    <Skeleton
-                                        className={`h-3.5 ${row.statusW} bg-white/[0.03] rounded`}
-                                    />
-                                </div>
-                                <div className="md:col-span-2 flex justify-end">
-                                    <Skeleton
-                                        className={`h-3.5 ${row.amountW} bg-white/[0.04] rounded`}
-                                    />
-                                </div>
-                            </div>
-                        </div>
-                    ))}
+                    <ProfileBillingHistorySkeleton />
                 </div>
             </div>
         </div>
@@ -469,6 +477,59 @@ export const ProfilePreferencesSkeleton: React.FC = () => (
     </div>
 )
 
+const CONNECTION_SKELETON_ITEMS = [
+    { nameW: 'w-16', descW: 'w-[75%] sm:w-[340px]', btnW: 'w-16 sm:w-20' },
+    { nameW: 'w-14', descW: 'w-[65%] sm:w-[300px]', btnW: 'w-16 sm:w-20' },
+    { nameW: 'w-20', descW: 'w-[85%] sm:w-[380px]', btnW: 'w-16 sm:w-20' },
+    { nameW: 'w-14', descW: 'w-[70%] sm:w-[320px]', btnW: 'w-16 sm:w-20' },
+    { nameW: 'w-16', descW: 'w-[80%] sm:w-[360px]', btnW: 'w-12 sm:w-14' },
+    { nameW: 'w-14', descW: 'w-[75%] sm:w-[340px]', btnW: 'w-12 sm:w-14' },
+    { nameW: 'w-16', descW: 'w-[80%] sm:w-[370px]', btnW: 'w-12 sm:w-14' },
+    { nameW: 'w-12', descW: 'w-[70%] sm:w-[330px]', btnW: 'w-12 sm:w-14' },
+]
+
+export const ProfileConnectionsSkeleton: React.FC = () => (
+    <div className="flex flex-col w-full max-w-[800px] text-[#D6D5C9] animate-in fade-in duration-200">
+        {/* connections section */}
+        <div className="flex flex-col mb-0">
+            <div className="h-6 flex items-center mb-3">
+                <Skeleton className="h-4 w-28 bg-white/[0.04] rounded" />
+            </div>
+            <div className="flex flex-col border-t border-[#242323] pt-4 gap-4">
+                <div className="flex flex-col gap-1.5 mb-1">
+                    <Skeleton className="h-3.5 w-full bg-white/[0.025] rounded" />
+                    <Skeleton className="h-3.5 w-2/3 bg-white/[0.025] rounded" />
+                </div>
+                <div className="flex flex-col sm:gap-5 pt-1">
+                    {CONNECTION_SKELETON_ITEMS.map((item, idx) => (
+                        <div
+                            key={idx}
+                            className="flex items-center justify-between gap-3 sm:gap-4 py-3 sm:py-0"
+                        >
+                            <div className="flex items-center gap-3 sm:gap-3.5 min-w-0 flex-1">
+                                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-[#191919] flex items-center justify-center shrink-0">
+                                    <Skeleton className="w-5 h-5 rounded bg-white/[0.04]" />
+                                </div>
+                                <div className="flex flex-col gap-1 sm:gap-0.5 min-w-0">
+                                    <Skeleton
+                                        className={`h-4 ${item.nameW} bg-white/[0.04] rounded`}
+                                    />
+                                    <Skeleton
+                                        className={`h-3 sm:h-3.5 ${item.descW} bg-white/[0.025] rounded mt-0.5`}
+                                    />
+                                </div>
+                            </div>
+                            <Skeleton
+                                className={`h-[31px] ${item.btnW} rounded-lg bg-white/[0.03] shrink-0`}
+                            />
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </div>
+    </div>
+)
+
 export const ProfileSettingsSkeleton: React.FC<ProfileSettingsSkeletonProps> = ({
     activeTab = 'Account',
 }) => {
@@ -477,50 +538,53 @@ export const ProfileSettingsSkeleton: React.FC<ProfileSettingsSkeletonProps> = (
     }
 
     if (activeTab === 'Connections' || activeTab === 'Integrations') {
-        return (
-            <div className="flex flex-col w-full max-w-[800px] text-[#D6D5C9] animate-in fade-in duration-150 gap-6">
-                <div className="flex flex-col gap-3">
-                    <Skeleton className="h-4 w-28 bg-white/[0.04] rounded mb-1" />
-                    <div className="flex flex-col gap-3">
-                        {[
-                            { nameW: 'w-24', descW: 'w-64' },
-                            { nameW: 'w-20', descW: 'w-56' },
-                            { nameW: 'w-28', descW: 'w-72' },
-                            { nameW: 'w-20', descW: 'w-60' },
-                        ].map((item, i) => (
-                            <div
-                                key={i}
-                                className="flex items-center justify-between p-2.5 rounded-lg bg-white/[0.015]"
-                            >
-                                <div className="flex items-center gap-3">
-                                    <Skeleton className="w-8 h-8 rounded-lg bg-white/[0.03] shrink-0" />
-                                    <div className="flex flex-col gap-1.5">
-                                        <Skeleton
-                                            className={`h-3.5 ${item.nameW} bg-white/[0.04] rounded`}
-                                        />
-                                        <Skeleton
-                                            className={`h-3 ${item.descW} bg-white/[0.025] rounded`}
-                                        />
-                                    </div>
-                                </div>
-                                <Skeleton className="h-7 w-20 rounded-lg bg-white/[0.03] shrink-0" />
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </div>
-        )
+        return <ProfileConnectionsSkeleton />
     }
 
     if (activeTab === 'Repositories') {
         return (
-            <div className="flex flex-col w-full max-w-[800px] text-[#D6D5C9] animate-in fade-in duration-150 gap-6">
-                <div className="flex flex-col gap-3">
-                    <div className="flex items-center justify-between mb-1">
-                        <Skeleton className="h-4 w-32 bg-white/[0.04] rounded" />
-                        <Skeleton className="h-7 w-28 rounded-lg bg-white/[0.03]" />
+            <div className="flex flex-col w-full max-w-[800px] text-[#D6D5C9] animate-in fade-in duration-150">
+                <div className="flex flex-col mb-0">
+                    <h1 className="text-[16px] font-medium mb-3">Repositories</h1>
+
+                    <div className="flex flex-col border-t border-[#242323] pt-4 gap-4">
+                        <p className="text-[13px] text-[#7B7A79]">
+                            Reference a repository with an at sign, e.g.{' '}
+                            <span className="text-[#87B2F4]">@repos:spacetime</span>. Connected
+                            repositories are cloned directly into your workspace sandbox.
+                        </p>
+
+                        {/* Top Control Bar */}
+                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mb-2">
+                            <div className="relative w-full max-w-full sm:max-w-[340px]">
+                                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#7B7A79]" />
+                                <input
+                                    type="text"
+                                    placeholder="Search repositories..."
+                                    readOnly
+                                    className="w-full pl-9 pr-3 py-1.5 bg-[#202020] border border-[#282828] rounded-lg text-[13px] text-[#D6D5C9] placeholder-[#7B7A79] focus:outline-none"
+                                />
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                                <button
+                                    type="button"
+                                    className="p-2 rounded-lg border border-[#282828] bg-[#202020] text-[#949494] transition-colors"
+                                >
+                                    <RotateCw className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                    type="button"
+                                    className="flex-1 sm:flex-initial px-4 py-1.5 rounded-lg bg-[#87B2F4] text-[#100E12] text-[13px] font-medium transition-colors flex items-center justify-center gap-1.5 shadow-sm"
+                                >
+                                    <Plus className="w-3.5 h-3.5" />
+                                    <span>Connect GitHub</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <ProfileRepositoriesSkeleton />
                     </div>
-                    <ProfileRepositoriesSkeleton />
                 </div>
             </div>
         )
@@ -528,20 +592,63 @@ export const ProfileSettingsSkeleton: React.FC<ProfileSettingsSkeletonProps> = (
 
     if (activeTab === 'Secrets') {
         return (
-            <div className="flex flex-col w-full max-w-[800px] text-[#D6D5C9] animate-in fade-in duration-150 gap-6">
-                <div className="flex flex-col gap-3">
-                    <div className="flex items-center justify-between mb-1">
-                        <Skeleton className="h-4 w-24 bg-white/[0.04] rounded" />
-                        <Skeleton className="h-7 w-28 rounded-lg bg-white/[0.03]" />
-                    </div>
-                    <div className="bg-[#191919] border border-[#242323] rounded-xl overflow-hidden">
-                        <div className="bg-[#202020] border-b border-[#242323] px-4 py-2.5 text-[12px] text-[#7B7A79] font-medium hidden md:grid grid-cols-12">
-                            <div className="col-span-4">Name</div>
-                            <div className="col-span-4">Note</div>
-                            <div className="col-span-2">Updated at</div>
-                            <div className="col-span-2 text-right"></div>
+            <div className="flex flex-col w-full max-w-[800px] text-[#D6D5C9] animate-in fade-in duration-150">
+                <div className="flex flex-col mb-0">
+                    <h1 className="text-[16px] font-medium mb-3">Secrets</h1>
+                    <div className="flex flex-col border-t border-[#242323] pt-4 gap-4">
+                        <p className="text-[13px] text-[#7B7A79]">
+                            Reference a secret with a dollar sign, e.g.{' '}
+                            <span className="text-[#87B2F4]">$SERVICE_USERNAME</span>. Secrets are
+                            encrypted at rest and injected into your sandbox sessions.
+                        </p>
+
+                        {/* Controls Row: Search Input + Action Buttons */}
+                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                            <div className="relative flex-1 max-w-full sm:max-w-[280px]">
+                                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#7B7A79]" />
+                                <input
+                                    type="text"
+                                    placeholder="Search secrets"
+                                    readOnly
+                                    className="w-full pl-9 pr-3 py-1.5 bg-[#202020] border border-[#282828] rounded-lg text-[13px] text-[#D6D5C9] placeholder-[#7B7A79] focus:outline-none"
+                                />
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                                <button
+                                    type="button"
+                                    className="flex-1 sm:flex-initial px-3.5 py-1.5 rounded-lg border border-[#282828] bg-[#202020] text-[12.5px] font-medium text-[#D6D5C9] transition-colors"
+                                >
+                                    Bulk add
+                                </button>
+
+                                <button
+                                    type="button"
+                                    className="flex-1 sm:flex-initial px-4 py-1.5 rounded-lg bg-[#87B2F4] text-[#100E12] text-[13px] font-medium transition-colors flex items-center justify-center gap-1.5 shadow-sm"
+                                >
+                                    <Plus className="w-3.5 h-3.5" />
+                                    <span>Add secret</span>
+                                </button>
+                            </div>
                         </div>
-                        <ProfileSecretsSkeleton />
+
+                        {/* Secrets Table Container */}
+                        <div className="bg-[#191919] border border-[#242323] rounded-xl overflow-hidden mt-1 min-h-[380px] flex flex-col">
+                            <div className="bg-[#202020] border-b border-[#242323] px-3.5 sm:px-4 py-2.5 text-[12px] font-medium text-[#7B7A79]">
+                                <div className="flex md:hidden items-center justify-between">
+                                    <span>Name</span>
+                                    <span className="pr-6">Updated at</span>
+                                </div>
+                                <div className="hidden md:grid grid-cols-12">
+                                    <div className="col-span-4">Name</div>
+                                    <div className="col-span-4">Note</div>
+                                    <div className="col-span-2">Updated at</div>
+                                    <div className="col-span-2 text-right"></div>
+                                </div>
+                            </div>
+
+                            <ProfileSecretsSkeleton />
+                        </div>
                     </div>
                 </div>
             </div>

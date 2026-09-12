@@ -278,4 +278,24 @@ description: Forces the laziest solution that actually works.
         const matches = systemPrompt.match(/Same content everywhere\./g)
         expect(matches?.length).toBe(1)
     })
+
+    test('injects availableSecrets into system prompt with instructions on @secret: and $KEY', () => {
+        const harness = new AgentHarness({
+            llm: new MockLLM(),
+            tools: [],
+            operations: {} as any,
+            workspaceDir: tmpDir,
+            availableSecrets: ['STRIPE_API_KEY', 'DATABASE_URL'],
+        })
+
+        const systemPrompt = harness.getAgent().systemPrompt
+        expect(systemPrompt).toContain('Environment Secrets & Variables')
+        expect(systemPrompt).toContain('<injected_secrets>')
+        expect(systemPrompt).toContain(
+            '- $STRIPE_API_KEY (referenced in prompts as @secret:STRIPE_API_KEY or $STRIPE_API_KEY)'
+        )
+        expect(systemPrompt).toContain(
+            '- $DATABASE_URL (referenced in prompts as @secret:DATABASE_URL or $DATABASE_URL)'
+        )
+    })
 })

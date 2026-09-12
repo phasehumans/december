@@ -4,7 +4,7 @@ import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import { AddCreditsModal } from './AddCreditsModal'
-import { ProfileSettingsSkeleton } from './ProfileSettingsSkeleton'
+import { ProfileBillingSkeleton } from './ProfileSettingsSkeleton'
 import { RedeemCodeModal } from './RedeemCodeModal'
 
 import { useBillingOverview } from '@/features/billing/hooks/useBillingData'
@@ -81,7 +81,14 @@ export const ProfileBillingSettings: React.FC<ProfileBillingSettingsProps> = (pr
     }, [overview])
 
     if (isOverviewLoading || isSkeletonPreviewActive()) {
-        return <ProfileSettingsSkeleton activeTab="Billing" />
+        return (
+            <>
+                <ProfileBillingSkeleton onAddCredits={() => setShowAddCreditsModal(true)} />
+                {showAddCreditsModal && (
+                    <AddCreditsModal onClose={() => setShowAddCreditsModal(false)} />
+                )}
+            </>
+        )
     }
 
     if (overviewError || !overview) {

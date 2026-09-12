@@ -58,6 +58,20 @@ export const billingRepository = {
         })
     },
 
+    async findGiftedCreditsSum(userId: string) {
+        const claims = await prisma.redeemCodeClaim.findMany({
+            where: { userId },
+            select: {
+                redeemCode: {
+                    select: {
+                        creditAmount: true,
+                    },
+                },
+            },
+        })
+        return claims.reduce((sum, claim) => sum + (claim.redeemCode?.creditAmount || 0), 0)
+    },
+
     async createWalletTransaction(data: {
         userId: string
         amountInCents: number
@@ -223,6 +237,19 @@ export const billingRepository = {
                 throw new AppError('this redeem code has reached its maximum redemptions', 400)
             }
 
+            const user = await tx.user.findUnique({
+                where: { id: userId },
+                select: { id: true, isDeleted: true },
+            })
+
+            if (!user || user.isDeleted) {
+                throw new AppError('user not found', 404)
+            }
+
+            if (dbCode.creditAmount <= 0) {
+                throw new AppError('invalid redeem code credit amount', 400)
+            }
+
             const existingClaim = await tx.redeemCodeClaim.findUnique({
                 where: {
                     redeemCodeId_userId: {
@@ -245,12 +272,19 @@ export const billingRepository = {
                 },
             })
 
-            await tx.redeemCodeClaim.create({
-                data: {
-                    redeemCodeId: dbCode.id,
-                    userId,
-                },
-            })
+            try {
+                await tx.redeemCodeClaim.create({
+                    data: {
+                        redeemCodeId: dbCode.id,
+                        userId,
+                    },
+                })
+            } catch (err: any) {
+                if (err?.code === 'P2002' || err?.message?.includes('Unique constraint failed')) {
+                    throw new AppError('you have already redeemed this code', 409)
+                }
+                throw err
+            }
 
             // Atomically update redemptionCount ensuring maxRedemptions limit isn't exceeded concurrently
             if (dbCode.maxRedemptions !== null) {

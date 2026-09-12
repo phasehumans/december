@@ -41,7 +41,10 @@ const getOverview = async (data: GetOverview) => {
         code: (claim.redeemCode.metadata as any)?.code || 'GIFT',
     }))
 
-    const giftedCredits = claims.reduce((sum: number, claim: any) => sum + claim.amountInCents, 0)
+    const giftedCredits =
+        typeof billingRepository.findGiftedCreditsSum === 'function'
+            ? await billingRepository.findGiftedCreditsSum(userId)
+            : claims.reduce((sum: number, claim: any) => sum + claim.amountInCents, 0)
     const USD_TO_INR_RATE = env.USD_TO_INR_RATE ?? 95.26
 
     return {
@@ -251,7 +254,10 @@ const getCreditsHistory = async (data: CreditsHistory) => {
 const redeemCode = async (data: RedeemCode) => {
     const { userId, code } = data
 
-    const normalizedCode = code.trim().toUpperCase()
+    const normalizedCode = code
+        .replace(/[\u200B-\u200D\uFEFF]/g, '')
+        .trim()
+        .toUpperCase()
     if (!normalizedCode) {
         throw new AppError('redeem code cannot be empty', 400)
     }

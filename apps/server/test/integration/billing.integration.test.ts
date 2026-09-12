@@ -261,7 +261,42 @@ describe('Billing Integration Tests', () => {
         expect(res.body.data.creditAmount).toBe(1500)
         expect(res.body.data.newBalance).toBe(6500) // 5000 + 1500 = 6500
 
+        // Attempting to redeem the same code again returns 409
+        const duplicateRes = await request(app)
+            .post('/api/v1/billing/redeem-code')
+            .set('Authorization', `Bearer ${accessToken}`)
+            .send({ code: rawCode })
+
+        expect(duplicateRes.status).toBe(409)
+        expect(duplicateRes.body.message).toBe('you have already redeemed this code')
+
         // Cleanup redeem code
+        await prisma.redeemCodeClaim.deleteMany({ where: { redeemCodeId: redeemCode.id } })
+        await prisma.redeemCode.delete({ where: { id: redeemCode.id } })
+    })
+
+    it('POST /api/v1/billing/redeem-code - handles zero-width spaces correctly', async () => {
+        const rawCode = `ZWSPGIFT-${Date.now()}`
+        const codeHash = crypto.createHash('sha256').update(rawCode.toUpperCase()).digest('hex')
+
+        const redeemCode = await prisma.redeemCode.create({
+            data: {
+                codeHash,
+                creditAmount: 500,
+                maxRedemptions: 1,
+            },
+        })
+
+        // Send with zero-width space in the middle and BOM at start
+        const res = await request(app)
+            .post('/api/v1/billing/redeem-code')
+            .set('Authorization', `Bearer ${accessToken}`)
+            .send({ code: `\uFEFF${rawCode.slice(0, 4)}\u200B${rawCode.slice(4)} ` })
+
+        expect(res.status).toBe(200)
+        expect(res.body.data.creditAmount).toBe(500)
+
+        // Cleanup
         await prisma.redeemCodeClaim.deleteMany({ where: { redeemCodeId: redeemCode.id } })
         await prisma.redeemCode.delete({ where: { id: redeemCode.id } })
     })

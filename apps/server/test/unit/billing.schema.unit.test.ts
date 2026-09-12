@@ -115,6 +115,11 @@ describe('Billing Schema - Unit Tests', () => {
             const result = redeemCodeSchema.safeParse({ code: '   ' })
             expect(result.success).toBe(false)
         })
+
+        it('should fail if code exceeds 100 characters', () => {
+            const result = redeemCodeSchema.safeParse({ code: 'A'.repeat(101) })
+            expect(result.success).toBe(false)
+        })
     })
 
     describe('addCreditsSchema', () => {

@@ -28,6 +28,7 @@ billingRouter.post(
         windowMs: 60 * 1000,
         max: env.NODE_ENV === 'test' ? 1000 : 15,
         message: 'Too many order requests. Please try again in a minute.',
+        prefix: 'rl:billing:order:',
     }),
     billingController.createRazorpayOrder
 )
@@ -38,6 +39,7 @@ billingRouter.post(
         windowMs: 60 * 1000,
         max: env.NODE_ENV === 'test' ? 1000 : 30,
         message: 'Too many verification attempts. Please try again in a minute.',
+        prefix: 'rl:billing:verify:',
     }),
     billingController.verifyRazorpayPayment
 )
@@ -48,6 +50,7 @@ billingRouter.post(
         windowMs: 15 * 60 * 1000,
         max: env.NODE_ENV === 'test' ? 1000 : 3,
         message: 'Too many redemption attempts. Please try again in 15 minutes.',
+        prefix: 'rl:billing:redeem:',
     }),
     billingController.redeemCode
 )
