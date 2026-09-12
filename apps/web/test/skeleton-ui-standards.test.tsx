@@ -35,7 +35,7 @@ afterEach(() => {
 
 describe('Skeleton UI Standards & Preview Mode', () => {
     test('skeleton preview helper is active when flag or override is enabled', () => {
-        expect(FORCE_SKELETON_PREVIEW).toBe(true)
+        expect(FORCE_SKELETON_PREVIEW).toBe(false)
         setSkeletonPreview(true)
         expect(isSkeletonPreviewActive()).toBe(true)
         setSkeletonPreview(false)

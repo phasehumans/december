@@ -8,7 +8,7 @@
  *
  * To undo: Set FORCE_SKELETON_PREVIEW = false (or remove ?skeleton from the URL).
  */
-export const FORCE_SKELETON_PREVIEW = true
+export const FORCE_SKELETON_PREVIEW = false
 
 let previewOverride: boolean | null = null
 
