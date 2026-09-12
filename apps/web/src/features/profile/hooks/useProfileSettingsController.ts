@@ -42,7 +42,7 @@ export const useProfileSettingsController = () => {
         },
     })
 
-    const isGithubConnected = profile?.githubConnected ?? false
+    const isGithubConnected = Boolean(profile?.githubAppInstall || profile?.githubConnected)
     const isVercelConnected = profile?.vercelConnected ?? false
     const isSupabaseConnected = profile?.supabaseConnected ?? false
     const isNotionConnected = Boolean(profile?.notionWorkspaceId)

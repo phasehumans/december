@@ -131,7 +131,8 @@ describe('models utils', () => {
             expect(isValidModelForProvider('anthropic', 'claude-sonnet-5')).toBe(true)
             expect(isValidModelForProvider('anthropic', 'gpt-4o')).toBe(false)
             expect(isValidModelForProvider('openai', 'gpt-4o')).toBe(true)
-            expect(isValidModelForProvider('december_proxy', 'gemini-3.7-flash')).toBe(true)
+            expect(isValidModelForProvider('december_proxy', 'december-auto')).toBe(true)
+            expect(isValidModelForProvider('december_proxy', 'gemini-3.7-flash')).toBe(false)
             expect(
                 isValidModelForProvider('openrouter', 'meta-llama/llama-3.3-70b-instruct:free')
             ).toBe(true)
@@ -143,7 +144,7 @@ describe('models utils', () => {
         it('returns first available model for provider', () => {
             expect(getDefaultModelForProvider('anthropic')).toBe('claude-opus-5')
             expect(getDefaultModelForProvider('openai')).toBe('gpt-5.6-sol')
-            expect(getDefaultModelForProvider('december_proxy')).toBe('gemini-3.8-flash')
+            expect(getDefaultModelForProvider('december_proxy')).toBe('december-auto')
             expect(getDefaultModelForProvider('lmstudio')).toBe('default')
             expect(getDefaultModelForProvider('llamacpp')).toBe('default')
             expect(getDefaultModelForProvider('ollama')).toBe('qwen2.5-coder:7b')
@@ -158,8 +159,8 @@ describe('models utils', () => {
             )
             expect(ensureValidModelForProvider('openai', 'gpt-4o')).toBe('gpt-4o')
             expect(ensureValidModelForProvider('copilot', 'gpt-4o')).toBe('gpt-4o')
-            expect(ensureValidModelForProvider('december_proxy', 'gemini-3.7-flash')).toBe(
-                'gemini-3.7-flash'
+            expect(ensureValidModelForProvider('december_proxy', 'december-auto')).toBe(
+                'december-auto'
             )
         })
 

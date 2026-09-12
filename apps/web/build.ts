@@ -149,7 +149,7 @@ const result = await Bun.build({
         'process.env.GITHUB_CLIENT_ID': JSON.stringify(
             process.env.PUBLIC_GITHUB_CLIENT_ID ||
                 process.env.GITHUB_CLIENT_ID ||
-                'Ov23liFGkTAwCW7E8gtk'
+                'Iv23liFEvEZntQIz6Enc'
         ),
         'process.env.GOOGLE_CLIENT_ID': JSON.stringify(
             process.env.PUBLIC_GOOGLE_CLIENT_ID ||

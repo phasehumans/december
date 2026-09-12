@@ -1,7 +1,6 @@
 import { apiRequest } from '@/shared/api/client'
 import {
-    getGithubClientId,
-    getGithubRedirectUri,
+    getGithubAppName,
     getVercelIntegrationSlug,
     getSupabaseClientId,
     getSupabaseRedirectUri,
@@ -241,15 +240,9 @@ const getGithubConnectUrl = (userId: string) => {
         typeof window !== 'undefined'
             ? window.location.pathname + window.location.search
             : '/settings/repositories'
-    const clientId = getGithubClientId()
-    const redirectUri = getGithubRedirectUri()
-    const stateVal = userId ? `${userId}:${redirectPath}` : redirectPath
-    return buildUrl('https://github.com/login/oauth/authorize', {
-        client_id: clientId,
-        redirect_uri: redirectUri,
-        scope: 'repo,read:user,user:email',
-        state: stateVal,
-    })
+    const appName = getGithubAppName() || 'trydecember'
+    const stateVal = userId ? `${userId}|${redirectPath}` : redirectPath
+    return `https://github.com/apps/${appName}/installations/new?state=${encodeURIComponent(stateVal)}`
 }
 
 const getVercelConnectUrl = (userId: string) => {

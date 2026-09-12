@@ -7,6 +7,7 @@ export interface ProvisionSandboxInput {
     backoffDelays?: number[]
     secrets?: Array<{ key: string; value: string }>
     envs?: Record<string, string>
+    gitToken?: string
 }
 
 export interface ProvisionSandboxResult {

@@ -321,11 +321,10 @@ export async function getProviderConfig(): Promise<ProviderConfig | undefined> {
 
     // 1. If explicit authPriority is december
     if (config.authPriority === 'december' && hasDecember) {
-        const model = ensureValidModelForProvider('december_proxy', config.activeModel)
         return {
             provider: 'december_proxy',
             apiKey: config.decemberToken!,
-            model,
+            model: 'december-auto',
             authMethod: 'december',
         }
     }
@@ -376,11 +375,10 @@ export async function getProviderConfig(): Promise<ProviderConfig | undefined> {
 
     // 5. December Proxy fallback
     if (hasDecember) {
-        const model = ensureValidModelForProvider('december_proxy', config.activeModel)
         return {
             provider: 'december_proxy',
             apiKey: config.decemberToken!,
-            model,
+            model: 'december-auto',
             authMethod: 'december',
         }
     }
@@ -536,6 +534,10 @@ export function formatProviderName(provider: string): string {
 }
 
 export function getTargetModelForProvider(config: DecemberConfig, provider: string): string {
+    const normalized = (provider || '').toLowerCase().trim()
+    if (normalized === 'december' || normalized === 'december_proxy') {
+        return 'december-auto'
+    }
     const remembered = config.lastUsedModels?.[provider]
     if (remembered && isValidModelForProvider(provider, remembered)) {
         return remembered

@@ -130,7 +130,9 @@ export const usePromptInputController = ({
         enabled: isReposTriggered && !!isAuthenticated,
     })
 
-    const isGithubConnected = profile?.githubConnected || (quickInfo?.githubConnected ?? false)
+    const isGithubConnected = Boolean(
+        profile?.githubAppInstall || profile?.githubConnected || quickInfo?.githubConnected
+    )
 
     const githubConnectUrl = profile?.id
         ? profileAPI.getGithubConnectUrl(profile.id)

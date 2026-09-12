@@ -172,8 +172,10 @@ describe('PromptFooter & PromptInput: Mention Dropdown & Back Navigation', () =>
         // "Connect GitHub" should be rendered as a link with href
         const connectLink = screen.getByRole('link', { name: /Connect GitHub/i })
         expect(connectLink).not.toBeNull()
-        expect(connectLink.getAttribute('href')).toContain('github.com/login/oauth/authorize')
-        expect(connectLink.getAttribute('href')).toContain('client_id=')
+        expect(connectLink.getAttribute('href')).toContain(
+            'github.com/apps/trydecember/installations/new'
+        )
+        expect(connectLink.getAttribute('href')).toContain('state=')
 
         // Suffix text should be visible
         expect(screen.getByText(/to see repos\./i)).not.toBeNull()

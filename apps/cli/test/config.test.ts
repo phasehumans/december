@@ -161,7 +161,7 @@ describe('config', () => {
             expect(providerConfig).toEqual({
                 provider: 'december_proxy',
                 apiKey: 'dec-token',
-                model: 'claude-sonnet-5',
+                model: 'december-auto',
                 authMethod: 'december',
             })
         })
@@ -249,7 +249,7 @@ describe('config', () => {
             expect(providerConfig).toEqual({
                 provider: 'december_proxy',
                 apiKey: 'dec-token',
-                model: 'gemini-3.7-flash',
+                model: 'december-auto',
                 authMethod: 'december',
             })
         })

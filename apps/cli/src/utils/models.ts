@@ -85,10 +85,6 @@ export function clearProviderModelsCache(provider?: string): void {
             }
         }
         saveDiskCache().catch(() => {})
-    }
-
-    if (normalized === 'december' || normalized === 'december_proxy') {
-        return curated
     } else {
         liveModelCache.clear()
         diskCacheLoaded = false
@@ -1127,6 +1123,9 @@ export const isValidModelForProvider = (provider: string, model?: string): boole
         (model.includes('/') || model.startsWith('inkling'))
     )
         return true
+    if (normalized === 'december' || normalized === 'december_proxy') {
+        return model.toLowerCase() === 'december-auto'
+    }
     if (normalized === 'ollama') return isToolCompatibleOllamaModel(model)
 
     const models = getProviderModels(normalized)
@@ -1145,6 +1144,9 @@ export const isValidModelForProvider = (provider: string, model?: string): boole
 
 export const getDefaultModelForProvider = (provider: string): string => {
     const normalized = (provider || '').toLowerCase().trim()
+    if (normalized === 'december' || normalized === 'december_proxy') {
+        return 'december-auto'
+    }
     if (normalized === 'ollama') {
         return 'qwen2.5-coder:7b'
     }
@@ -1160,6 +1162,9 @@ export const getDefaultModelForProvider = (provider: string): string => {
 
 export const ensureValidModelForProvider = (provider: string, model?: string): string => {
     const normalizedProvider = (provider || '').toLowerCase().trim()
+    if (normalizedProvider === 'december' || normalizedProvider === 'december_proxy') {
+        return 'december-auto'
+    }
     if (
         (normalizedProvider === 'thinkingmachines' ||
             normalizedProvider === 'tinker' ||

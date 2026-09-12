@@ -3,7 +3,7 @@ import { expect, test, describe, afterEach } from 'bun:test'
 import React from 'react'
 import { MemoryRouter } from 'react-router-dom'
 
-import { getViewForPath } from '../src/app/types'
+import { getViewForPath, isPublicPath } from '../src/app/types'
 import { DocsView } from '../src/features/docs/components/DocsView'
 
 if (!globalThis.document) {
@@ -119,5 +119,31 @@ describe('Web Documentation & Mobile Navigation (DocsView)', () => {
 
         expect(screen.getAllByText('Docs').length).toBeGreaterThan(0)
         expect(screen.getAllByText('Quick Start').length).toBeGreaterThan(0)
+    })
+
+    test('isPublicPath recognizes /docs and all documentation subroutes as accessible without authentication', () => {
+        expect(isPublicPath('/docs')).toBe(true)
+        expect(isPublicPath('/docs/')).toBe(true)
+        expect(isPublicPath('/docs/intro')).toBe(true)
+        expect(isPublicPath('/docs/quickstart')).toBe(true)
+        expect(isPublicPath('/docs/architecture')).toBe(true)
+        expect(isPublicPath('/docs/cli')).toBe(true)
+        expect(isPublicPath('/docs/privacy')).toBe(true)
+        expect(isPublicPath('/docs/terms')).toBe(true)
+    })
+
+    test('isPublicPath protects authenticated private routes while allowing public routes', () => {
+        expect(isPublicPath('/')).toBe(true)
+        expect(isPublicPath('/terms')).toBe(true)
+        expect(isPublicPath('/privacy')).toBe(true)
+        expect(isPublicPath('/settings/terms')).toBe(true)
+        expect(isPublicPath('/settings/privacy')).toBe(true)
+
+        // Protected routes must return false
+        expect(isPublicPath('/sessions')).toBe(false)
+        expect(isPublicPath('/sessions/my-project')).toBe(false)
+        expect(isPublicPath('/settings')).toBe(false)
+        expect(isPublicPath('/settings/billing')).toBe(false)
+        expect(isPublicPath('/settings/connections')).toBe(false)
     })
 })

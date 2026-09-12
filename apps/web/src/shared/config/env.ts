@@ -100,7 +100,7 @@ export const getGithubClientId = (): string => {
     return (
         getClientEnv('GITHUB_CLIENT_ID') ??
         getClientEnv('PUBLIC_GITHUB_CLIENT_ID') ??
-        'Ov23liFGkTAwCW7E8gtk'
+        'Iv23liFEvEZntQIz6Enc'
     )
 }
 

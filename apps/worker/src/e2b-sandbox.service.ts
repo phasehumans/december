@@ -123,7 +123,17 @@ const enforceUserLruLimit = async (userId: string): Promise<void> => {
 }
 
 const provisionSandbox = async (data: ProvisionSandboxInput): Promise<ProvisionSandboxResult> => {
-    const { sessionId, userId, apiKey, template, timeoutMs, backoffDelays, secrets, envs } = data
+    const {
+        sessionId,
+        userId,
+        apiKey,
+        template,
+        timeoutMs,
+        backoffDelays,
+        secrets,
+        envs,
+        gitToken,
+    } = data
     const delays = backoffDelays || [1000, 3000, 7000]
     let lastError: any = null
 
@@ -285,11 +295,19 @@ const provisionSandbox = async (data: ProvisionSandboxInput): Promise<ProvisionS
             if (!restored) {
                 try {
                     if (sessionRecord?.githubRepoUrl && sandbox?.commands?.run) {
+                        let cloneUrl = sessionRecord.githubRepoUrl
+                        const effectiveToken = gitToken || envsMap['GITHUB_TOKEN']
+                        if (effectiveToken && cloneUrl.startsWith('https://')) {
+                            cloneUrl = cloneUrl.replace(
+                                'https://',
+                                `https://x-access-token:${effectiveToken}@`
+                            )
+                        }
                         console.log(
                             `[E2BSandboxService] Initializing sandbox workspace from GitHub repo: ${sessionRecord.githubRepoUrl}`
                         )
                         await sandbox.commands
-                            .run(`git clone ${sessionRecord.githubRepoUrl} /workspace`, {
+                            .run(`git clone ${cloneUrl} /workspace`, {
                                 cwd: '/workspace',
                             })
                             .catch((e: any) => {

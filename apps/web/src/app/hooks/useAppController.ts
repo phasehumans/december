@@ -3,7 +3,7 @@ import React from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 
 import { useAppStore } from '@/app/store'
-import { getViewForPath, toProjectSlug, type ViewState } from '@/app/types'
+import { getViewForPath, isPublicPath, toProjectSlug, type ViewState } from '@/app/types'
 import { useChatController } from '@/features/chat/hooks/useChatController'
 import { useNavigationController } from '@/features/navigation/hooks/useNavigationController'
 import { previewAPI } from '@/features/preview/api'
@@ -96,20 +96,7 @@ export const useAppController = () => {
     React.useEffect(() => {
         if (!isAuthRestored || isAuthenticated) return
 
-        const pathname = location.pathname
-        const isPublic =
-            pathname === '/' ||
-            pathname === '/search' ||
-            pathname === '/terms' ||
-            pathname === '/privacy' ||
-            pathname === '/settings/terms' ||
-            pathname === '/settings/privacy' ||
-            pathname === '/settings/changelog' ||
-            pathname.startsWith('/github/callback') ||
-            pathname.startsWith('/cli-login') ||
-            pathname.startsWith('/device/activate')
-
-        if (!isPublic) {
+        if (!isPublicPath(location.pathname)) {
             navigate('/', { replace: true })
         }
     }, [isAuthRestored, isAuthenticated, location.pathname, navigate])

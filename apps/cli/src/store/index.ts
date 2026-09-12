@@ -127,10 +127,6 @@ export interface CliState {
     setSettingsStreamSpeed: (val: 'smooth' | 'instant') => void
     settingsSelectedIndex: number
     setSettingsSelectedIndex: (val: number) => void
-    settingsDefaultModel: string
-    setSettingsDefaultModel: (val: string) => void
-    settingsMaxTokens: string
-    setSettingsMaxTokens: (val: string) => void
     settingsThinkingLevel: 'auto' | 'off' | 'minimal' | 'low' | 'medium' | 'high'
     setSettingsThinkingLevel: (val: 'auto' | 'off' | 'minimal' | 'low' | 'medium' | 'high') => void
     settingsSteeringMode: 'all' | 'one-at-a-time'
@@ -294,10 +290,6 @@ export const useCliStore = create<CliState>((set) => ({
     setSettingsStreamSpeed: (settingsStreamSpeed) => set({ settingsStreamSpeed }),
     settingsSelectedIndex: 0,
     setSettingsSelectedIndex: (settingsSelectedIndex) => set({ settingsSelectedIndex }),
-    settingsDefaultModel: '',
-    setSettingsDefaultModel: (settingsDefaultModel) => set({ settingsDefaultModel }),
-    settingsMaxTokens: '',
-    setSettingsMaxTokens: (settingsMaxTokens) => set({ settingsMaxTokens }),
     settingsThinkingLevel: 'auto',
     setSettingsThinkingLevel: (settingsThinkingLevel) => set({ settingsThinkingLevel }),
     settingsSteeringMode: 'all',

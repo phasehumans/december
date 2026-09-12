@@ -59,7 +59,7 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
     const [showFeedbackModal, setShowFeedbackModal] = useState(false)
     const [unauthDismissedCards, setUnauthDismissedCards] = useState<{
         github?: boolean
-        star?: boolean
+        docs?: boolean
         feedback?: boolean
     }>({})
 
@@ -87,20 +87,20 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
         },
     })
 
-    const handleDismissCard = (card: 'github' | 'star' | 'feedback') => {
+    const handleDismissCard = (card: 'github' | 'docs' | 'feedback') => {
         if (isAuthenticated) {
-            dismissCardMutation.mutate(card === 'star' ? 'welcome' : card)
+            dismissCardMutation.mutate(card === 'docs' ? 'welcome' : card)
         } else {
             setUnauthDismissedCards((prev) => ({ ...prev, [card]: true }))
         }
     }
 
     const isGithubDone = isAuthenticated
-        ? Boolean(profile?.githubAppInstall || profile?.githubCardDone)
+        ? Boolean(profile?.githubAppInstall || profile?.githubConnected || profile?.githubCardDone)
         : Boolean(unauthDismissedCards.github)
-    const isStarDone = isAuthenticated
+    const isDocsDone = isAuthenticated
         ? Boolean(profile?.welcomeCardDone)
-        : Boolean(unauthDismissedCards.star)
+        : Boolean(unauthDismissedCards.docs)
     const isFeedbackDone = isAuthenticated
         ? Boolean(profile?.feedbackCardDone)
         : Boolean(unauthDismissedCards.feedback)
@@ -266,7 +266,7 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
                     />
 
                     {/* Get Started Section - Desktop View */}
-                    {(!isGithubDone || !isStarDone || !isFeedbackDone) && (
+                    {(!isGithubDone || !isDocsDone || !isFeedbackDone) && (
                         <div className="mt-8 w-full hidden md:flex flex-col gap-3.5 select-none animate-in fade-in duration-300">
                             <div className="flex flex-col gap-0.5 text-left px-1.5">
                                 <h3 className="text-[13px] md:text-[14px] font-sans font-medium text-[#D6D5D4] tracking-tight">
@@ -309,11 +309,11 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
                                     </div>
                                 )}
 
-                                {/* Card 2: Star on GitHub */}
-                                {!isStarDone && (
+                                {/* Card 2: Read Docs */}
+                                {!isDocsDone && (
                                     <div className="relative flex flex-col justify-between p-4 rounded-[15px] bg-[#141414] border border-dashed border-[#333333] min-h-[190px] text-left">
                                         <button
-                                            onClick={() => handleDismissCard('star')}
+                                            onClick={() => handleDismissCard('docs')}
                                             className="absolute top-3 right-3 text-[#8F8E8D] hover:text-white transition-colors cursor-pointer"
                                             title="Dismiss card"
                                         >
@@ -321,20 +321,20 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
                                         </button>
                                         <div className="flex flex-col gap-1.5 pr-4">
                                             <h4 className="text-[13px] font-sans font-medium text-[#E8E8E8]">
-                                                Star on GitHub
+                                                Read documentation
                                             </h4>
                                             <p className="text-[11px] font-sans text-[#8F8E8D] leading-normal font-normal">
-                                                Support December by starring our repository on
-                                                GitHub and following our roadmap.
+                                                Explore how December works, read guides, and learn
+                                                CLI & agent capabilities.
                                             </p>
                                         </div>
                                         <a
-                                            href="https://github.com/phasehumans/december"
+                                            href="/docs"
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             className="mt-6 w-full py-1.5 rounded-[7px] bg-[#191919] border border-[#262626] text-[#9A9998] hover:text-[#E8E8E8] text-[11.5px] font-sans font-medium text-center cursor-pointer block select-none transition-transform duration-75 active:scale-[0.98] active:translate-y-[0.5px]"
                                         >
-                                            Star on GitHub
+                                            Read Docs
                                         </a>
                                     </div>
                                 )}

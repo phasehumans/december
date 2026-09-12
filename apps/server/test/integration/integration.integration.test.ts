@@ -78,7 +78,7 @@ describe('Integrations Module Integration Tests', () => {
                 .set('x-forwarded-for', getRandomIP())
 
             expect(res.status).toBe(302)
-            expect(res.headers.location).toBe(`${env.WEB_URL}/profile/integrations`)
+            expect(res.headers.location).toBe(`${env.WEB_URL}/settings/connections`)
         } finally {
             integrationsService.connectSupabase = originalConnect
         }
@@ -94,7 +94,7 @@ describe('Integrations Module Integration Tests', () => {
                 .set('x-forwarded-for', getRandomIP())
 
             expect(res.status).toBe(302)
-            expect(res.headers.location).toBe(`${env.WEB_URL}/profile/integrations`)
+            expect(res.headers.location).toBe(`${env.WEB_URL}/settings/connections`)
         } finally {
             integrationsService.connectNotion = originalConnect
         }

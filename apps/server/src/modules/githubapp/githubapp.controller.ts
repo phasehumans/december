@@ -17,7 +17,7 @@ const startInstall = asyncHandler(async (req: Request, res: Response) => {
     }
 
     const appName = env.GITHUB_APP_NAME || 'trydecember'
-    const returnUrl = (req.query.returnUrl as string) || '/profile/integrations'
+    const returnUrl = (req.query.returnUrl as string) || '/settings/repositories'
     const state = encodeURIComponent(`${userId}|${returnUrl}`)
 
     return res.redirect(`https://github.com/apps/${appName}/installations/new?state=${state}`)
@@ -29,7 +29,7 @@ const handleCallback = asyncHandler(async (req: Request, res: Response) => {
     const setupAction = req.query.setup_action as string
 
     let userId: string | null = null
-    let returnUrl = '/profile/integrations'
+    let returnUrl = '/settings/repositories'
 
     if (state) {
         const decoded = decodeURIComponent(state)
@@ -38,6 +38,10 @@ const handleCallback = asyncHandler(async (req: Request, res: Response) => {
         if (parts[1]) {
             returnUrl = parts[1]
         }
+    }
+
+    if (!userId && (req as any).user?.userId) {
+        userId = (req as any).user.userId
     }
 
     if (installationId && userId) {

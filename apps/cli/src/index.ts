@@ -201,9 +201,11 @@ async function main() {
         const config = await loadConfig()
         const activeProvider = providerConfig?.provider || config.activeProvider || 'gemini'
         const initialModel =
-            parsedArgs.model ||
-            providerConfig?.model ||
-            ensureValidModelForProvider(activeProvider, config.activeModel)
+            providerConfig?.authMethod === 'december'
+                ? 'december-auto'
+                : parsedArgs.model ||
+                  providerConfig?.model ||
+                  ensureValidModelForProvider(activeProvider, config.activeModel)
 
         const harness = new AgentHarness({
             llm: llm,
@@ -331,9 +333,11 @@ async function main() {
     const config = await loadConfig()
     const activeProvider = providerConfig?.provider || config.activeProvider || 'gemini'
     const initialModel =
-        parsedArgs.model ||
-        providerConfig?.model ||
-        ensureValidModelForProvider(activeProvider, config.activeModel)
+        providerConfig?.authMethod === 'december'
+            ? 'december-auto'
+            : parsedArgs.model ||
+              providerConfig?.model ||
+              ensureValidModelForProvider(activeProvider, config.activeModel)
 
     useCliStore.getState().setActiveModel(initialModel)
     useCliStore.getState().setSelectedProvider(activeProvider)

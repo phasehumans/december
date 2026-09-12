@@ -96,6 +96,8 @@ export function useAuthHandlers(
 
                 const config = await loadConfig()
                 config.decemberToken = token
+                config.authPriority = 'december'
+                config.activeModel = 'december-auto'
                 if (email) {
                     config.email = email
                     setCurrentEmail(email)
@@ -118,7 +120,10 @@ export function useAuthHandlers(
                         }
                     )
                     agent.setLLM(provider)
-                    const activeModel = providerConfig.model
+                    const activeModel =
+                        providerConfig.authMethod === 'december'
+                            ? 'december-auto'
+                            : providerConfig.model
                     config.activeModel = activeModel
                     await saveConfig(config)
                     agent.modelOptions = { ...agent.modelOptions, model: activeModel }

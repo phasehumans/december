@@ -40,7 +40,8 @@ describe('HomeHero Get Started Section', () => {
 
         expect(getByText('Get Started')).not.toBeNull()
         expect(getByText('Connect GitHub')).not.toBeNull()
-        expect(getAllByText('Star on GitHub').length).toBeGreaterThan(0)
+        expect(getByText('Read documentation')).not.toBeNull()
+        expect(getByText('Read Docs')).not.toBeNull()
         expect(getByText('Give feedback')).not.toBeNull()
         expect(queryByText('Recent Sessions')).toBeNull()
     })
@@ -65,7 +66,8 @@ describe('HomeHero Get Started Section', () => {
         // Verify Get Started section is rendered and Recent Sessions is never displayed
         expect(getByText('Get Started')).not.toBeNull()
         expect(getByText('Connect GitHub')).not.toBeNull()
-        expect(getAllByText('Star on GitHub').length).toBeGreaterThan(0)
+        expect(getByText('Read documentation')).not.toBeNull()
+        expect(getByText('Read Docs')).not.toBeNull()
         expect(getByText('Give feedback')).not.toBeNull()
         expect(queryByText('Recent Sessions')).toBeNull()
     })

@@ -112,3 +112,20 @@ export const getViewForPath = (pathname: string): ViewState => {
 
     return 'chat'
 }
+
+export const isPublicPath = (pathname: string): boolean => {
+    return (
+        pathname === '/' ||
+        pathname === '/search' ||
+        pathname === '/terms' ||
+        pathname === '/privacy' ||
+        pathname === '/settings/terms' ||
+        pathname === '/settings/privacy' ||
+        pathname === '/settings/changelog' ||
+        pathname === '/docs' ||
+        pathname.startsWith('/docs/') ||
+        pathname.startsWith('/github/callback') ||
+        pathname.startsWith('/cli-login') ||
+        pathname.startsWith('/device/activate')
+    )
+}
