@@ -2,6 +2,29 @@
 
 ### Features
 
+- _(providers)_ Add xiaomi byok provider and audit xai and zhipuai
+- _(cli,agent)_ Overhaul grill-me and plan workflows (#481) and next-gen runtime (#482)
+- _(tui)_ Add inline delete confirmation and improve session rename experience
+- _(agent)_ Remove mcp completely across terminal and cloud
+- _(cli)_ Implement proposal 2 tree update ui and linux distribution polish
+- _(cli,tui)_ Smart background task promotion and simplified tasks menu
+- _(tui)_ Autofill slash commands on partial menu selection
+- _(auth,githubapp)_ Migrate to github app for repo access and configure credentials
+- _(web,worker,agent)_ Wire completion sound notification and user custom rules end-to-end
+- _(web)_ Elevate skeleton ui across website and add preview mode
+- _(web)_ Polish skeleton ui across profile settings pages
+
+### Bug Fixes
+
+- _(web,server)_ Preserve current origin in github redirects to prevent production fallback
+- _(web)_ Remove obsolete password row and extra toggle from account skeleton
+- _(web)_ Align account skeleton layout 1:1 with real ui and eliminate unwanted scroll
+- _(web)_ Render section titles and descriptive labels as skeletons in settings
+
+## [0.3.27] - 2026-09-11
+
+### Features
+
 - _(providers)_ Add poolside and sakana ai byok providers
 - _(cli)_ Add sarvam ai byok provider vertical slice (#491)
 - _(cli)_ Add stepfun global byok provider vertical slice (#492)
@@ -21,6 +44,10 @@
 
 - _(cli)_ End-to-end byok provider regression and switching verification (#495)
 - _(cli)_ Isolate test config directory from user home directory
+
+### Miscellaneous Tasks
+
+- _(release)_ V0.3.27
 
 ## [0.3.26] - 2026-09-08
 
