@@ -6,28 +6,6 @@ interface ProfileSettingsSkeletonProps {
     activeTab?: string
 }
 
-const SettingRowSkeleton: React.FC<{
-    titleWidth?: string
-    descWidth?: string
-    actionType?: 'button' | 'toggle' | 'badge' | 'none'
-}> = ({ titleWidth = 'w-36', descWidth = 'w-56', actionType = 'button' }) => (
-    <div className="flex flex-col sm:flex-row sm:items-center justify-between py-2.5 gap-2 sm:gap-0">
-        <div className="flex flex-col gap-1.5 min-w-0 pr-4">
-            <Skeleton className={`h-4 ${titleWidth} bg-white/[0.04] rounded`} />
-            {descWidth && <Skeleton className={`h-3 ${descWidth} bg-white/[0.025] rounded`} />}
-        </div>
-        {actionType === 'button' && (
-            <Skeleton className="h-7 sm:h-8 w-24 rounded-lg bg-white/[0.03] shrink-0" />
-        )}
-        {actionType === 'toggle' && (
-            <Skeleton className="h-5 w-9 rounded-full bg-white/[0.04] shrink-0" />
-        )}
-        {actionType === 'badge' && (
-            <Skeleton className="h-5 w-16 rounded-md bg-white/[0.03] shrink-0" />
-        )}
-    </div>
-)
-
 const REPO_SKELETON_ITEMS = [
     { nameW: 'w-36', descW: 'w-[90%]', langW: 'w-14', starsW: 'w-10' },
     { nameW: 'w-44', descW: 'w-[75%]', langW: 'w-16', starsW: 'w-12' },
@@ -354,43 +332,124 @@ export const ProfileBillingSkeleton: React.FC = () => (
 
 export const ProfileAccountSkeleton: React.FC = () => (
     <div className="flex flex-col w-full max-w-[800px] text-[#D6D5C9] animate-in fade-in duration-200">
-        {/* Account Section */}
+        {/* account */}
         <div className="flex flex-col mb-6">
             <h1 className="text-[16px] font-medium mb-3">Account</h1>
             <div className="flex flex-col gap-2 border-t border-[#242323] pt-4">
-                {/* Full name */}
-                <SettingRowSkeleton titleWidth="w-20" descWidth="w-36" actionType="button" />
-                {/* Username */}
-                <SettingRowSkeleton titleWidth="w-20" descWidth="w-28" actionType="button" />
-                {/* Email (no action button) */}
-                <SettingRowSkeleton titleWidth="w-12" descWidth="w-48" actionType="none" />
+                {/* full name row */}
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
+                    <div className="flex flex-col gap-0.5">
+                        <Skeleton className="h-4 w-16 bg-white/[0.04] rounded" />
+                        <Skeleton className="h-3.5 w-28 bg-white/[0.025] rounded" />
+                    </div>
+                    <Skeleton className="w-full sm:w-[138px] h-[31px] rounded-lg bg-white/[0.03] shrink-0" />
+                </div>
+
+                {/* username row */}
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
+                    <div className="flex flex-col gap-0.5">
+                        <Skeleton className="h-4 w-20 bg-white/[0.04] rounded" />
+                        <Skeleton className="h-3.5 w-24 bg-white/[0.025] rounded" />
+                    </div>
+                    <Skeleton className="w-full sm:w-[136px] h-[31px] rounded-lg bg-white/[0.03] shrink-0" />
+                </div>
+
+                {/* email row */}
+                <div className="flex items-center justify-between">
+                    <div className="flex flex-col gap-0.5">
+                        <Skeleton className="h-4 w-12 bg-white/[0.04] rounded" />
+                        <Skeleton className="h-3.5 w-44 bg-white/[0.025] rounded" />
+                    </div>
+                </div>
             </div>
         </div>
 
-        {/* Notifications Section */}
+        {/* notifications */}
         <div className="flex flex-col mb-6">
             <h2 className="text-[16px] font-medium text-[#D6D5C9] mb-3">Notifications</h2>
             <div className="flex flex-col gap-4 border-t border-[#242323] pt-4">
-                {/* Product updates */}
-                <SettingRowSkeleton titleWidth="w-28" descWidth="w-80" actionType="toggle" />
-                {/* Security alerts */}
-                <SettingRowSkeleton titleWidth="w-24" descWidth="w-72" actionType="toggle" />
+                {/* product updates */}
+                <div className="flex items-center justify-between">
+                    <div className="flex flex-col gap-0.5">
+                        <Skeleton className="h-4 w-28 bg-white/[0.04] rounded" />
+                        <Skeleton className="h-3.5 w-72 sm:w-96 bg-white/[0.025] rounded" />
+                    </div>
+                    <Skeleton className="h-5 w-9 rounded-full bg-white/[0.04] shrink-0" />
+                </div>
+
+                {/* security alerts */}
+                <div className="flex items-center justify-between">
+                    <div className="flex flex-col gap-0.5">
+                        <Skeleton className="h-4 w-24 bg-white/[0.04] rounded" />
+                        <Skeleton className="h-3.5 w-64 sm:w-80 bg-white/[0.025] rounded" />
+                    </div>
+                    <Skeleton className="h-5 w-9 rounded-full bg-white/[0.04] shrink-0" />
+                </div>
             </div>
         </div>
 
-        {/* System Section */}
+        {/* system */}
         <div className="flex flex-col mb-0">
             <h2 className="text-[16px] font-medium text-[#D6D5C9] mb-3">System</h2>
             <div className="flex flex-col gap-6 sm:gap-2 border-t border-[#242323] pt-4">
-                {/* Signed in as... */}
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0 py-2.5">
+                {/* signed in as */}
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
                     <Skeleton className="h-4 w-52 bg-white/[0.04] rounded" />
-                    <Skeleton className="h-7 sm:h-8 w-20 rounded-lg bg-white/[0.03] shrink-0" />
+                    <Skeleton className="w-full sm:w-[78px] h-[31px] rounded-lg bg-white/[0.03] shrink-0" />
                 </div>
-                {/* Sign out of all sessions */}
-                <SettingRowSkeleton titleWidth="w-40" descWidth="w-64" actionType="button" />
-                {/* Delete account */}
-                <SettingRowSkeleton titleWidth="w-28" descWidth="w-56" actionType="button" />
+
+                {/* sign out of all sessions */}
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
+                    <div className="flex flex-col gap-0.5">
+                        <Skeleton className="h-4 w-40 bg-white/[0.04] rounded" />
+                        <Skeleton className="h-3.5 w-56 sm:w-72 bg-white/[0.025] rounded" />
+                    </div>
+                    <Skeleton className="w-full sm:w-[176px] h-[31px] rounded-lg bg-white/[0.03] shrink-0" />
+                </div>
+
+                {/* delete account */}
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
+                    <div className="flex flex-col gap-0.5">
+                        <Skeleton className="h-4 w-28 bg-white/[0.04] rounded" />
+                        <Skeleton className="h-3.5 w-48 sm:w-64 bg-white/[0.025] rounded" />
+                    </div>
+                    <Skeleton className="w-full sm:w-[124px] h-[31px] rounded-lg bg-white/[0.03] shrink-0" />
+                </div>
+            </div>
+        </div>
+    </div>
+)
+
+export const ProfilePreferencesSkeleton: React.FC = () => (
+    <div className="flex flex-col w-full max-w-[800px] text-[#D6D5C9] animate-in fade-in duration-200">
+        {/* preferences */}
+        <div className="flex flex-col mb-10">
+            <h1 className="text-[16px] font-medium mb-4">Preferences</h1>
+            <div className="flex flex-col gap-7 border-t border-[#242323] pt-6">
+                {/* completion sound */}
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 sm:gap-4">
+                    <div className="flex flex-col gap-0.5 max-w-full sm:max-w-[60%]">
+                        <Skeleton className="h-4 w-32 bg-white/[0.04] rounded" />
+                        <Skeleton className="h-3.5 w-80 bg-white/[0.025] rounded" />
+                    </div>
+                    <div className="flex flex-col gap-2.5 sm:gap-3 shrink-0 pt-1 sm:pt-0">
+                        <Skeleton className="h-5 w-36 bg-white/[0.03] rounded" />
+                        <Skeleton className="h-5 w-28 bg-white/[0.03] rounded" />
+                        <Skeleton className="h-5 w-24 bg-white/[0.03] rounded" />
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {/* custom rules */}
+        <div className="flex flex-col mb-0">
+            <h1 className="text-[16px] font-medium mb-4">Custom Rules</h1>
+            <div className="flex flex-col gap-4 border-t border-[#242323] pt-6">
+                <Skeleton className="h-3.5 w-full bg-white/[0.025] rounded" />
+                <Skeleton className="h-3.5 w-4/5 bg-white/[0.025] rounded" />
+                <div className="mt-2">
+                    <Skeleton className="h-9 w-36 rounded-lg bg-white/[0.03]" />
+                </div>
             </div>
         </div>
     </div>
@@ -400,41 +459,7 @@ export const ProfileSettingsSkeleton: React.FC<ProfileSettingsSkeletonProps> = (
     activeTab = 'Account',
 }) => {
     if (activeTab === 'Preferences' || activeTab === 'General') {
-        return (
-            <div className="flex flex-col w-full max-w-[800px] text-[#D6D5C9] animate-in fade-in duration-150 gap-6">
-                <div className="flex flex-col gap-2">
-                    <Skeleton className="h-4 w-28 bg-white/[0.04] rounded mb-1" />
-                    <div className="flex flex-col gap-1">
-                        <SettingRowSkeleton
-                            titleWidth="w-36"
-                            descWidth="w-72"
-                            actionType="toggle"
-                        />
-                        <SettingRowSkeleton
-                            titleWidth="w-44"
-                            descWidth="w-80"
-                            actionType="button"
-                        />
-                    </div>
-                </div>
-
-                <div className="flex flex-col gap-2">
-                    <Skeleton className="h-4 w-32 bg-white/[0.04] rounded mb-1" />
-                    <div className="flex flex-col gap-1">
-                        <SettingRowSkeleton
-                            titleWidth="w-48"
-                            descWidth="w-96"
-                            actionType="toggle"
-                        />
-                        <SettingRowSkeleton
-                            titleWidth="w-32"
-                            descWidth="w-60"
-                            actionType="button"
-                        />
-                    </div>
-                </div>
-            </div>
-        )
+        return <ProfilePreferencesSkeleton />
     }
 
     if (activeTab === 'Connections' || activeTab === 'Integrations') {
