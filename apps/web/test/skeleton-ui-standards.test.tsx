@@ -51,13 +51,13 @@ describe('Skeleton UI Standards & Preview Mode', () => {
         expect(mobileRows.length).toBeGreaterThanOrEqual(7)
     })
 
-    test('ProfileSettingsSkeleton renders accurate Account tab without obsolete password row', () => {
+    test('ProfileSettingsSkeleton renders accurate Account tab with skeleton section headers and without obsolete password row', () => {
         const { container } = render(<ProfileSettingsSkeleton activeTab="Account" />)
 
-        // Verify section titles: Account, Notifications, System
-        expect(container.textContent).toContain('Account')
-        expect(container.textContent).toContain('Notifications')
-        expect(container.textContent).toContain('System')
+        // Verify section titles are skeleton bars and not rendered as plain text
+        expect(container.textContent).not.toContain('Account')
+        expect(container.textContent).not.toContain('Notifications')
+        expect(container.textContent).not.toContain('System')
 
         // Verify exactly 2 toggle skeletons in Notifications
         const toggles = container.querySelectorAll('.rounded-full.bg-white\\/\\[0\\.04\\]')

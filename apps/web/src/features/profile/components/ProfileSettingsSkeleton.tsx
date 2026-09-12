@@ -93,12 +93,14 @@ export const ProfileSecretsSkeleton: React.FC = () => (
 
 export const ProfileUsageSkeleton: React.FC = () => (
     <div className="flex flex-col w-full max-w-[800px] text-[#D6D5C9] animate-in fade-in duration-200">
-        <h1 className="text-[16px] font-medium mb-3">Usage</h1>
+        <div className="h-6 flex items-center mb-3">
+            <Skeleton className="h-4 w-16 bg-white/[0.04] rounded" />
+        </div>
         <div className="flex flex-col border-t border-[#242323] pt-4 gap-4">
-            <p className="text-[13px] text-[#7B7A79]">
-                Track your token consumption, credit deductions, and generation costs across recent
-                model sessions.
-            </p>
+            <div className="flex flex-col gap-1.5">
+                <Skeleton className="h-3.5 w-full bg-white/[0.025] rounded" />
+                <Skeleton className="h-3.5 w-3/4 bg-white/[0.025] rounded" />
+            </div>
 
             {/* controls row */}
             <div className="flex items-center justify-between mb-2">
@@ -113,7 +115,7 @@ export const ProfileUsageSkeleton: React.FC = () => (
                     ))}
                 </div>
                 <div className="flex items-center gap-1.5 text-[13px] text-neutral-400 font-medium">
-                    <span>Total spent:</span>
+                    <Skeleton className="h-3.5 w-16 bg-white/[0.03] rounded" />
                     <Skeleton className="h-4 w-12 bg-white/[0.04] rounded" />
                 </div>
             </div>
@@ -235,22 +237,22 @@ export const ProfileBillingSkeleton: React.FC = () => (
     <div className="flex flex-col w-full max-w-[800px] text-[#D6D5C9] animate-in fade-in duration-200">
         {/* credits section */}
         <div className="flex flex-col mb-6">
-            <h1 className="text-[16px] font-medium text-[#D6D5C9] mb-3">Credits</h1>
+            <div className="h-6 flex items-center mb-3">
+                <Skeleton className="h-4 w-20 bg-white/[0.04] rounded" />
+            </div>
             <div className="flex flex-col gap-4 border-t border-[#242323] pt-4">
-                <p className="text-[13px] text-[#7B7A79]">
-                    Prepaid credits are used to power AI model completions and agent execution in
-                    your workspaces.
-                </p>
+                <div className="flex flex-col gap-1.5">
+                    <Skeleton className="h-3.5 w-full bg-white/[0.025] rounded" />
+                    <Skeleton className="h-3.5 w-2/3 bg-white/[0.025] rounded" />
+                </div>
 
                 {/* compact credits balance box */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#191919] border border-[#242323] rounded-xl p-4 sm:p-5 w-full max-w-[560px]">
                     <div className="flex flex-col gap-2">
-                        <span className="text-[12px] font-medium text-[#7B7A79]">
-                            Wallet Balance
-                        </span>
+                        <Skeleton className="h-3.5 w-24 bg-white/[0.03] rounded" />
                         <div className="flex items-baseline gap-2">
                             <Skeleton className="h-7 sm:h-8 w-28 bg-white/[0.05] rounded" />
-                            <span className="text-[11px] text-[#7B7A79] font-mono">USD</span>
+                            <Skeleton className="h-3 w-8 bg-white/[0.02] rounded" />
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -262,7 +264,9 @@ export const ProfileBillingSkeleton: React.FC = () => (
 
         {/* credits history section */}
         <div className="flex flex-col mb-0">
-            <h2 className="text-[16px] font-medium text-[#D6D5C9] mb-3">Credits History</h2>
+            <div className="h-6 flex items-center mb-3">
+                <Skeleton className="h-4 w-32 bg-white/[0.04] rounded" />
+            </div>
             <div className="flex flex-col border-t border-[#242323] pt-4">
                 <div className="grid grid-cols-12 gap-2 text-[11px] font-semibold uppercase tracking-wider text-neutral-500 pb-2">
                     <div className="hidden md:block md:col-span-3">Date</div>
@@ -334,7 +338,9 @@ export const ProfileAccountSkeleton: React.FC = () => (
     <div className="flex flex-col w-full max-w-[800px] text-[#D6D5C9] animate-in fade-in duration-200">
         {/* account */}
         <div className="flex flex-col mb-6">
-            <h1 className="text-[16px] font-medium mb-3">Account</h1>
+            <div className="h-6 flex items-center mb-3">
+                <Skeleton className="h-4 w-20 bg-white/[0.04] rounded" />
+            </div>
             <div className="flex flex-col gap-2 border-t border-[#242323] pt-4">
                 {/* full name row */}
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
@@ -366,7 +372,9 @@ export const ProfileAccountSkeleton: React.FC = () => (
 
         {/* notifications */}
         <div className="flex flex-col mb-6">
-            <h2 className="text-[16px] font-medium text-[#D6D5C9] mb-3">Notifications</h2>
+            <div className="h-6 flex items-center mb-3">
+                <Skeleton className="h-4 w-28 bg-white/[0.04] rounded" />
+            </div>
             <div className="flex flex-col gap-4 border-t border-[#242323] pt-4">
                 {/* product updates */}
                 <div className="flex items-center justify-between">
@@ -390,7 +398,9 @@ export const ProfileAccountSkeleton: React.FC = () => (
 
         {/* system */}
         <div className="flex flex-col mb-0">
-            <h2 className="text-[16px] font-medium text-[#D6D5C9] mb-3">System</h2>
+            <div className="h-6 flex items-center mb-3">
+                <Skeleton className="h-4 w-16 bg-white/[0.04] rounded" />
+            </div>
             <div className="flex flex-col gap-6 sm:gap-2 border-t border-[#242323] pt-4">
                 {/* signed in as */}
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
@@ -424,7 +434,9 @@ export const ProfilePreferencesSkeleton: React.FC = () => (
     <div className="flex flex-col w-full max-w-[800px] text-[#D6D5C9] animate-in fade-in duration-200">
         {/* preferences */}
         <div className="flex flex-col mb-10">
-            <h1 className="text-[16px] font-medium mb-4">Preferences</h1>
+            <div className="h-6 flex items-center mb-4">
+                <Skeleton className="h-4 w-28 bg-white/[0.04] rounded" />
+            </div>
             <div className="flex flex-col gap-7 border-t border-[#242323] pt-6">
                 {/* completion sound */}
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 sm:gap-4">
@@ -443,7 +455,9 @@ export const ProfilePreferencesSkeleton: React.FC = () => (
 
         {/* custom rules */}
         <div className="flex flex-col mb-0">
-            <h1 className="text-[16px] font-medium mb-4">Custom Rules</h1>
+            <div className="h-6 flex items-center mb-4">
+                <Skeleton className="h-4 w-32 bg-white/[0.04] rounded" />
+            </div>
             <div className="flex flex-col gap-4 border-t border-[#242323] pt-6">
                 <Skeleton className="h-3.5 w-full bg-white/[0.025] rounded" />
                 <Skeleton className="h-3.5 w-4/5 bg-white/[0.025] rounded" />
