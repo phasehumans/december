@@ -36,7 +36,7 @@ describe('MessageList Component (Unit)', () => {
         )
 
         const frame = lastFrame()
-        expect(frame).toContain('December CLI')
+        expect(frame).toContain('December v0.2.20')
         expect(frame).toContain('Hello AI')
         expect(frame).toContain('Hello User!')
         expect(frame).toContain('Streaming response...')
@@ -120,8 +120,8 @@ describe('MessageList Component (Unit)', () => {
         )
 
         const frame = lastFrame()
-        expect(frame).toContain('December CLI 0.2.24')
-        expect(frame).toContain('Tips for getting started')
+        expect(frame).toContain('December v0.2.24')
+        expect(frame).toContain('Press / for commands')
         expect(frame).toContain('git status')
         expect(frame).toContain('On branch main')
     })

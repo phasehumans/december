@@ -1,6 +1,3 @@
-import fs from 'node:fs/promises'
-import path from 'node:path'
-
 import pkg from '../package.json' with { type: 'json' }
 
 import {
@@ -392,68 +389,6 @@ export async function handleLoginCommand(options?: { provider?: string }): Promi
     configToSave.activeModel = 'december-auto'
     await saveConfig(configToSave)
     console.log('\x1b[32mSuccessfully logged in via device code!\x1b[0m\n')
-}
-
-const DEFAULT_AGENTS_MD = `# Agent Guidelines & Project Instructions
-
-Add project-specific guidelines, rules, skills, testing commands, architecture patterns, and conventions in this file for December to follow.
-`
-
-const DEFAULT_SETTINGS_JSON =
-    JSON.stringify(
-        {
-            thinkingLevel: 'auto',
-            steeringMode: 'all',
-            followUpMode: 'all',
-            toolPermission: 'always-proceed',
-            pathGuard: true,
-        },
-        null,
-        2
-    ) + '\n'
-
-export async function handleInitCommand(options?: { quiet?: boolean }): Promise<void> {
-    const rootDir = process.cwd()
-    const decDir = path.join(rootDir, '.december')
-    await fs.mkdir(decDir, { recursive: true })
-
-    const filesToScaffold: {
-        name: string
-        targetPath: string
-        displayPath: string
-        content: string
-    }[] = [
-        {
-            name: 'AGENTS.md',
-            targetPath: path.join(rootDir, 'AGENTS.md'),
-            displayPath: 'AGENTS.md',
-            content: DEFAULT_AGENTS_MD,
-        },
-        {
-            name: 'settings.json',
-            targetPath: path.join(decDir, 'settings.json'),
-            displayPath: '.december/settings.json',
-            content: DEFAULT_SETTINGS_JSON,
-        },
-    ]
-
-    for (const file of filesToScaffold) {
-        try {
-            await fs.access(file.targetPath)
-            if (!options?.quiet) {
-                console.log(`${file.displayPath} already exists.`)
-            }
-        } catch {
-            await fs.writeFile(file.targetPath, file.content, 'utf-8')
-            if (!options?.quiet) {
-                console.log(`Created ${file.displayPath}`)
-            }
-        }
-    }
-
-    if (!options?.quiet) {
-        console.log('\nDecember project initialization complete.')
-    }
 }
 
 export async function handleUpdateCommand(options?: { force?: boolean }): Promise<void> {

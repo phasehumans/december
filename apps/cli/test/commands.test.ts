@@ -4,7 +4,7 @@ import path from 'node:path'
 
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test'
 
-import { handleLogoutCommand, handleInitCommand, handleUpdateCommand } from '../src/commands'
+import { handleLogoutCommand, handleUpdateCommand } from '../src/commands'
 import { loadConfig, saveConfig } from '../src/config'
 
 describe('CLI Standalone Commands', () => {
@@ -40,64 +40,6 @@ describe('CLI Standalone Commands', () => {
         expect(config.email).toBeUndefined()
         expect(config.providers).toEqual({})
         expect(config.activeProvider).toBeUndefined()
-    })
-
-    it('handleInitCommand scaffolds workspace files with AGENTS.md in root and config in .december', async () => {
-        const originalCwd = process.cwd()
-        try {
-            process.chdir(tmpDir)
-            await handleInitCommand()
-
-            const rootAgentsPath = path.join(tmpDir, 'AGENTS.md')
-            const agentsExists = await fs
-                .access(rootAgentsPath)
-                .then(() => true)
-                .catch(() => false)
-            expect(agentsExists).toBe(true)
-
-            const agentsContent = await fs.readFile(rootAgentsPath, 'utf-8')
-            expect(agentsContent).toContain('Agent Guidelines')
-
-            const decFiles = ['settings.json']
-            for (const file of decFiles) {
-                const exists = await fs
-                    .access(path.join(tmpDir, '.december', file))
-                    .then(() => true)
-                    .catch(() => false)
-                expect(exists).toBe(true)
-            }
-
-            const ignoreExists = await fs
-                .access(path.join(tmpDir, '.decemberignore'))
-                .then(() => true)
-                .catch(() => false)
-            expect(ignoreExists).toBe(false)
-
-            const rulesExists = await fs
-                .access(path.join(tmpDir, '.december', 'rules.md'))
-                .then(() => true)
-                .catch(() => false)
-            expect(rulesExists).toBe(false)
-
-            const skillsExists = await fs
-                .access(path.join(tmpDir, '.december', 'skills.md'))
-                .then(() => true)
-                .catch(() => false)
-            expect(skillsExists).toBe(false)
-
-            const rawSettingsContent = await fs.readFile(
-                path.join(tmpDir, '.december', 'settings.json'),
-                'utf-8'
-            )
-            const parsedSettings = JSON.parse(rawSettingsContent)
-            expect(parsedSettings.toolPermission).toBe('always-proceed')
-            expect(parsedSettings.thinkingLevel).toBe('auto')
-            expect(parsedSettings.steeringMode).toBe('all')
-            expect(parsedSettings.followUpMode).toBe('all')
-            expect(parsedSettings.pathGuard).toBe(true)
-        } finally {
-            process.chdir(originalCwd)
-        }
     })
 
     it('handleUpdateCommand executes successfully for local source environment', async () => {

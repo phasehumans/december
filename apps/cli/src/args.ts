@@ -63,7 +63,6 @@ export function parseCliArgs(args: string[]): ParsedCliArgs {
             'login',
             'logout',
             'switch',
-            'init',
             'update',
             'doctor',
             'auth',
@@ -136,7 +135,6 @@ Usage:
   december login [provider]         Log in to December Cloud or subscription
   december logout [provider]        Remove saved authentication credentials
   december switch [provider]        Switch active provider and restore remembered model
-  december init                     Initialize local .december configuration
   december update                   Update December CLI to the latest version
   december doctor [--fix]           Inspect installations, health, and resolve PATH collisions
   december docs [section]           Open documentation in your browser

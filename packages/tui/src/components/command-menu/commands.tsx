@@ -249,60 +249,7 @@ export const COMMANDS: Command[] = [
             }
         },
     },
-    {
-        name: 'init',
-        description: 'Create initial configuration, commands, and AGENTS.md',
-        value: '/init',
-        action: (ctx) => {
-            try {
-                const rootDir = process.cwd()
-                const decDir = path.join(rootDir, '.december')
 
-                const agentsFile = path.join(rootDir, 'AGENTS.md')
-                const settingsFile = path.join(decDir, 'settings.json')
-
-                if (fs.existsSync(agentsFile) && fs.existsSync(settingsFile)) {
-                    ctx.toast.show({ message: 'December workspace is already initialized.' })
-                    return
-                }
-
-                fs.mkdirSync(decDir, { recursive: true })
-
-                if (!fs.existsSync(agentsFile)) {
-                    fs.writeFileSync(
-                        agentsFile,
-                        '# Agent Guidelines & Project Instructions\n\nAdd project-specific guidelines, rules, skills, testing commands, architecture patterns, and conventions in this file for December to follow.\n'
-                    )
-                }
-                if (!fs.existsSync(settingsFile)) {
-                    fs.writeFileSync(
-                        settingsFile,
-                        JSON.stringify(
-                            {
-                                thinkingLevel: 'auto',
-                                steeringMode: 'all',
-                                followUpMode: 'all',
-                                toolPermission: 'always-proceed',
-                                pathGuard: true,
-                            },
-                            null,
-                            2
-                        ) + '\n'
-                    )
-                }
-
-                ctx.toast.show({
-                    variant: 'success',
-                    message: 'Initialized December workspace successfully!',
-                })
-            } catch {
-                ctx.toast.show({
-                    variant: 'error',
-                    message: 'Failed to initialize December workspace',
-                })
-            }
-        },
-    },
     {
         name: 'login',
         description: 'Configure API keys or Connect via December Cloud',

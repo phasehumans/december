@@ -7,6 +7,7 @@ describe('THEME Contract (Unit)', () => {
         expect(THEME.colors.brand).toBe('#89B4F8')
         expect(THEME.colors.text).toBe('white')
         expect(THEME.colors.muted).toBe('#AAAAAA')
+        expect(THEME.colors.subtle).toBe('#777777')
         expect(THEME.colors.dim).toBe('#666666')
         expect(THEME.colors.border).toBe('#333333')
         expect(THEME.colors.success).toBe('#6EE7B7')

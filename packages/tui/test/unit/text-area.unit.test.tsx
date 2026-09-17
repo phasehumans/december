@@ -177,6 +177,41 @@ describe('TextArea Component (Unit)', () => {
         expect(textValue).toBe('[Pasted 3 lines]')
     })
 
+    it('folds 2-line paste into token', () => {
+        let textValue = ''
+        const { stdin } = render(
+            <TextArea
+                value={textValue}
+                onChange={(val) => {
+                    textValue = val
+                }}
+                onSubmit={() => {}}
+                focus={true}
+            />
+        )
+
+        stdin.write('first line\nsecond line')
+        expect(textValue).toBe('[Pasted 2 lines]')
+    })
+
+    it('folds single line paste >= 80 characters into token', () => {
+        let textValue = ''
+        const { stdin } = render(
+            <TextArea
+                value={textValue}
+                onChange={(val) => {
+                    textValue = val
+                }}
+                onSubmit={() => {}}
+                focus={true}
+            />
+        )
+
+        const longText = 'a'.repeat(85)
+        stdin.write(`\x1b[200~${longText}\x1b[201~`)
+        expect(textValue).toBe('[Pasted 1 lines]')
+    })
+
     it('deletes folded paste token atomically on backspace', () => {
         let textValue = '[Pasted 4 lines]'
         const { stdin } = render(

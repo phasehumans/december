@@ -81,8 +81,7 @@ describe('InputBar Component (Unit)', () => {
         const frame = lastFrame()
         expect(frame).toContain('Active Menu Content')
         expect(frame).not.toContain('Ask December to build...')
-        expect(frame).not.toContain('gemini-3.6-flash')
-        expect(frame).not.toContain('? for shortcuts')
+        expect(frame).not.toContain('0 /')
     })
 
     it('renders updated model name immediately when activeModel prop changes', () => {
@@ -305,5 +304,29 @@ describe('InputBar Component (Unit)', () => {
         const frame = lastFrame() || ''
         expect(frame).toContain('[Plan Goal]')
         expect(frame).toContain('[PLAN]')
+    })
+
+    it('renders context token usage and percentage in status row', () => {
+        const { lastFrame } = render(
+            <RootLayout>
+                <InputBar
+                    onSubmit={mock(() => {})}
+                    activeModel="claude-3-7-sonnet-latest"
+                    contextTokens={24000}
+                />
+            </RootLayout>
+        )
+        const frame = lastFrame() || ''
+        expect(frame).toContain('24k / 200k (12%)')
+    })
+
+    it('renders 0% context usage by default when no tokens consumed', () => {
+        const { lastFrame } = render(
+            <RootLayout>
+                <InputBar onSubmit={mock(() => {})} activeModel="gemini-3.7-flash" />
+            </RootLayout>
+        )
+        const frame = lastFrame() || ''
+        expect(frame).toContain('0 / 1M (0%)')
     })
 })

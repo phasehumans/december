@@ -8,7 +8,10 @@ describe('Header Component (Unit)', () => {
     it('renders with default version', () => {
         const { lastFrame } = render(<Header />)
         const frame = lastFrame()
-        expect(frame).toContain('December CLI')
+        expect(frame).toContain('December v0.1.0')
+        expect(frame).toContain('Use /handoff to continue in cloud')
+        expect(frame).toContain('trydecember.com')
+        expect(frame).toContain('https://trydecember.com')
     })
 
     it('renders with custom version and email', () => {

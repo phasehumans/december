@@ -1,4 +1,4 @@
-import { Text, useInput } from 'ink'
+import { Text, useInput, usePaste } from 'ink'
 import React, { useState, useEffect, useRef } from 'react'
 
 import { THEME } from '../theme'
@@ -27,6 +27,10 @@ export function TextArea({
 }: Props) {
     const [cursorOffset, setCursorOffset] = useState(value.length)
     const prevValueRef = useRef(value)
+    const valueRef = useRef(value)
+    valueRef.current = value
+    const cursorOffsetRef = useRef(cursorOffset)
+    cursorOffsetRef.current = cursorOffset
 
     useEffect(() => {
         if (value !== prevValueRef.current) {
@@ -48,27 +52,49 @@ export function TextArea({
     const isPastingRef = useRef(false)
     const pasteBufferRef = useRef('')
 
-    const handlePastedText = (pasted: string, offset: number) => {
+    const handlePastedText = (pasted: string, offset?: number) => {
         const cleaned = pasted.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
+        if (!cleaned) return
+        const currentVal = valueRef.current
+        const currentOffset =
+            offset !== undefined
+                ? Math.min(Math.max(0, offset), currentVal.length)
+                : Math.min(Math.max(0, cursorOffsetRef.current), currentVal.length)
         const lines = cleaned.split('\n')
-        if (lines.length > 2 || cleaned.length >= 100) {
+        if (lines.length >= 2 || cleaned.length >= 80) {
             const token = storePaste(cleaned)
-            const newValue = value.slice(0, offset) + token + value.slice(offset)
+            const newValue =
+                currentVal.slice(0, currentOffset) + token + currentVal.slice(currentOffset)
+            valueRef.current = newValue
             onChange(newValue)
-            setCursorOffset(offset + token.length)
+            const newOffset = currentOffset + token.length
+            cursorOffsetRef.current = newOffset
+            setCursorOffset(newOffset)
         } else {
-            const newValue = value.slice(0, offset) + cleaned + value.slice(offset)
+            const newValue =
+                currentVal.slice(0, currentOffset) + cleaned + currentVal.slice(currentOffset)
+            valueRef.current = newValue
             onChange(newValue)
-            setCursorOffset(offset + cleaned.length)
+            const newOffset = currentOffset + cleaned.length
+            cursorOffsetRef.current = newOffset
+            setCursorOffset(newOffset)
         }
     }
+
+    usePaste(
+        (pastedText) => {
+            if (!focus) return
+            handlePastedText(pastedText)
+        },
+        { isActive: focus }
+    )
 
     useInput((input, key) => {
         if (!focus) return
 
         const offset = Math.min(Math.max(0, cursorOffset), value.length)
 
-        // Bracketed paste detection
+        // Bracketed paste detection fallback (for mock stdin / testing environments)
         if (input.includes('\x1b[200~')) {
             const startIdx = input.indexOf('\x1b[200~')
             const endIdx = input.indexOf('\x1b[201~')
@@ -97,11 +123,11 @@ export function TextArea({
             return
         }
 
-        // Multiline raw paste fallback
+        // Multiline raw paste fallback (for non-bracketed paste environments)
         if (
             input &&
             (input.includes('\n') || input.includes('\r')) &&
-            input.split(/\r?\n/).length > 2
+            input.split(/\r?\n/).length >= 2
         ) {
             handlePastedText(input, offset)
             return
@@ -229,7 +255,7 @@ export function TextArea({
 
     if (!value && placeholder) {
         return (
-            <Text color={THEME.colors.muted} wrap="wrap">
+            <Text color={THEME.colors.subtle} wrap="wrap">
                 {focus ? <Text inverse>{placeholder[0] || ' '}</Text> : null}
                 {placeholder.slice(focus ? 1 : 0)}
             </Text>

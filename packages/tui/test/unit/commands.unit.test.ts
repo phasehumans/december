@@ -81,69 +81,10 @@ describe('/fork command', () => {
     })
 })
 
-describe('/init command action', () => {
-    test('scaffolds AGENTS.md in root and config in .december', async () => {
-        const fs = await import('node:fs')
-        const path = await import('node:path')
-        const os = await import('node:os')
-
-        const initCmd = COMMANDS.find((c) => c.name === 'init')
-        expect(initCmd).toBeDefined()
-
-        const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'tui-init-test-'))
-        const originalCwd = process.cwd()
-
-        try {
-            process.chdir(tmpDir)
-
-            const toastMessages: any[] = []
-            const mockContext: any = {
-                toast: {
-                    show: (msg: any) => toastMessages.push(msg),
-                },
-            }
-
-            initCmd?.action(mockContext)
-
-            const agentsFile = path.join(tmpDir, 'AGENTS.md')
-            const ignoreFile = path.join(tmpDir, '.decemberignore')
-            const rulesFile = path.join(tmpDir, '.december', 'rules.md')
-            const skillsFile = path.join(tmpDir, '.december', 'skills.md')
-            const commandsFile = path.join(tmpDir, '.december', 'commands.json')
-            const settingsFile = path.join(tmpDir, '.december', 'settings.json')
-
-            expect(fs.existsSync(agentsFile)).toBe(true)
-            expect(fs.readFileSync(agentsFile, 'utf8')).toContain('Agent Guidelines')
-
-            expect(fs.existsSync(ignoreFile)).toBe(false)
-            expect(fs.existsSync(rulesFile)).toBe(false)
-            expect(fs.existsSync(skillsFile)).toBe(false)
-
-            expect(fs.existsSync(commandsFile)).toBe(false)
-
-            expect(fs.existsSync(settingsFile)).toBe(true)
-            const settingsContent = JSON.parse(fs.readFileSync(settingsFile, 'utf8'))
-            expect(settingsContent.toolPermission).toBe('always-proceed')
-            expect(settingsContent.thinkingLevel).toBe('auto')
-            expect(settingsContent.steeringMode).toBe('all')
-            expect(settingsContent.followUpMode).toBe('all')
-            expect(settingsContent.pathGuard).toBe(true)
-
-            expect(toastMessages[0]).toEqual({
-                variant: 'success',
-                message: 'Initialized December workspace successfully!',
-            })
-
-            // Second invocation
-            toastMessages.length = 0
-            initCmd?.action(mockContext)
-            expect(toastMessages[0]).toEqual({
-                message: 'December workspace is already initialized.',
-            })
-        } finally {
-            process.chdir(originalCwd)
-            fs.rmSync(tmpDir, { recursive: true, force: true })
-        }
+describe('/init command', () => {
+    test('is removed and not registered in COMMANDS', () => {
+        const initCmd = COMMANDS.find((c) => c.name === 'init' || c.value === '/init')
+        expect(initCmd).toBeUndefined()
     })
 })
 

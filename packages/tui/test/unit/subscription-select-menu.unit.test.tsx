@@ -31,8 +31,11 @@ describe('SubscriptionSelectMenu Component (Unit)', () => {
         expect(frame).not.toContain('[detected locally]')
         expect(frame).toContain('GitHub (Copilot)')
         expect(frame).toContain('Google (Gemini / Antigravity)')
-        expect(frame).not.toContain('[connect]')
         expect(frame).toContain('OpenAI (ChatGPT)')
+        expect(frame).not.toContain('Requires Claude Pro or Max')
+        expect(frame).not.toContain('Requires active Copilot plan')
+        expect(frame).not.toContain('Requires Gemini Advanced / Antigravity')
+        expect(frame).not.toContain('Requires ChatGPT Plus / Pro')
     })
 
     it('navigates with arrows and selects subscription', async () => {

@@ -39,8 +39,10 @@ describe('TUI State Flow & Menu Transitions (Integration)', () => {
             />
         )
 
-        expect(appNormal.lastFrame()).toContain('December CLI')
-        expect(appNormal.lastFrame()).toContain('Ask December to build...')
+        expect(appNormal.lastFrame()).toContain('December v0.3.9')
+        expect(appNormal.lastFrame()).toContain(
+            'Ask December to build features, fix bugs, or work on your code...'
+        )
         appNormal.unmount()
 
         // Render in settings mode
@@ -60,7 +62,9 @@ describe('TUI State Flow & Menu Transitions (Integration)', () => {
         )
 
         expect(appSettings.lastFrame()).toContain('Settings')
-        expect(appSettings.lastFrame()).not.toContain('Ask December to build...')
+        expect(appSettings.lastFrame()).not.toContain(
+            'Ask December to build features, fix bugs, or work on your code...'
+        )
         appSettings.unmount()
     })
 

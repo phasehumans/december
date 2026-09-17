@@ -1,3 +1,4 @@
+import { getModelContextWindow } from '@december/providers'
 import { getWorkspaceIgnores } from '@december/shared'
 import fg from 'fast-glob'
 import { Box, Text, useInput } from 'ink'
@@ -48,10 +49,22 @@ type Props = {
 
 const MAX_FILE_SUGGESTIONS = 5
 
+function formatTokenCount(n: number): string {
+    if (n >= 1_000_000) {
+        const val = n / 1_000_000
+        return `${Number.isInteger(val) ? val : val.toFixed(1).replace(/\.0$/, '')}M`
+    }
+    if (n >= 1_000) {
+        const val = n / 1_000
+        return `${Number.isInteger(val) ? val : val.toFixed(1).replace(/\.0$/, '')}k`
+    }
+    return n.toString()
+}
+
 export const InputBar = React.memo(function InputBar({
     onSubmit,
     disabled = false,
-    placeholder = 'Ask December to build...',
+    placeholder = 'Ask December to build features, fix bugs, or work on your code...',
     activeModel = 'unknown',
     authMethod,
     isAuthenticated = true,
@@ -156,6 +169,20 @@ export const InputBar = React.memo(function InputBar({
             .filter((f) => f.toLowerCase().includes(fileQuery))
             .slice(0, MAX_FILE_SUGGESTIONS)
     }, [showFileMenu, allWorkspaceFiles, fileQuery])
+
+    const maxTokens = useMemo(
+        () => getModelContextWindow(activeModel || 'gemini-3.7-flash') || 1_000_000,
+        [activeModel]
+    )
+    const tokens = contextTokens ?? 0
+    const contextPct = maxTokens > 0 ? Math.round((tokens / maxTokens) * 100) : 0
+    const contextLabel = `${formatTokenCount(tokens)} / ${formatTokenCount(maxTokens)} (${contextPct}%)`
+    const contextColor =
+        contextPct >= 90
+            ? THEME.colors.error
+            : contextPct >= 70
+              ? THEME.colors.warning
+              : THEME.colors.muted
 
     const stateRef = useRef({
         showFileMenu,
@@ -513,7 +540,7 @@ export const InputBar = React.memo(function InputBar({
                         </Text>
                     </Box>
 
-                    {/* status row — clean & minimal: <model> (<authMethod>)                  ? for shortcuts */}
+                    {/* status row — clean & minimal: <model> (<authMethod>)                  <tokens> / <max> (<pct>%) */}
                     {!showCommandMenu && !showShortcutsMenu && showExitConfirm && (
                         <Box width="100%" justifyContent="space-between">
                             <Box gap={2} alignItems="center" flexShrink={1}>
@@ -580,7 +607,7 @@ export const InputBar = React.memo(function InputBar({
                                 </Box>
                             </Box>
                             <Box gap={0} flexShrink={0} marginLeft={2}>
-                                <Text color={THEME.colors.muted}>? for shortcuts</Text>
+                                <Text color={contextColor}>{contextLabel}</Text>
                             </Box>
                         </Box>
                     )}

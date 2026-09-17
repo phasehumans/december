@@ -40,9 +40,9 @@ describe('ChatApp TUI Integration', () => {
         )
 
         const frame = lastFrame()
-        expect(frame).toContain('December CLI')
-        expect(frame).toContain('Ask December to build...')
-        expect(frame).toContain('? for shortcuts')
+        expect(frame).toContain('December v0.2.20')
+        expect(frame).toContain('Ask December to build features, fix bugs, or work on your code...')
+        expect(frame).toContain('0 / 100k (0%)')
     })
 
     it('does not render model and shortcuts hint when menu (authUI) is active', () => {
@@ -81,9 +81,11 @@ describe('ChatApp TUI Integration', () => {
 
         const frame = lastFrame()
         expect(frame).toContain('Settings')
-        expect(frame).not.toContain('? for shortcuts')
+        expect(frame).not.toContain('0 /')
         expect(frame).not.toContain('gemini-3.6-flash')
-        expect(frame).not.toContain('Ask December to build...')
+        expect(frame).not.toContain(
+            'Ask December to build features, fix bugs, or work on your code...'
+        )
     })
 
     it('shows exit confirmation on first Ctrl+C and exits on second Ctrl+C', async () => {

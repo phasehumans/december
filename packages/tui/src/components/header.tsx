@@ -6,6 +6,7 @@ import { Box, Text } from 'ink'
 import React from 'react'
 
 import { THEME } from '../theme'
+import { terminalLink } from '../utils/terminal-link'
 
 let cachedBranch: string | null | undefined = undefined
 
@@ -80,21 +81,25 @@ export const Header = React.memo(function Header({
             paddingTop={1}
             paddingBottom={0}
         >
-            <Text bold color={THEME.colors.text}>
-                ✱ December CLI {cliVersion.replace(/^v/, '')}
+            <Text>
+                <Text color={THEME.colors.brand}>✱ </Text>
+                <Text bold color={THEME.colors.text}>
+                    December
+                </Text>
+                <Text color={THEME.colors.subtle}> v{cliVersion.replace(/^v/, '')}</Text>
             </Text>
-            {userEmail && <Text color={THEME.colors.muted}>{userEmail}</Text>}
+            {userEmail && <Text color={THEME.colors.subtle}>{userEmail}</Text>}
             <Box gap={1}>
-                <Text color={THEME.colors.muted}>{cwd}</Text>
-                {branch && <Text color={THEME.colors.muted}>({branch})</Text>}
+                <Text color={THEME.colors.subtle}>{cwd}</Text>
+                {branch && <Text color={THEME.colors.subtle}>({branch})</Text>}
             </Box>
             <Box flexDirection="column" marginTop={1}>
-                <Text color={THEME.colors.brand}>Tips for getting started</Text>
                 <Text color={THEME.colors.muted}>
-                    Run /init to scaffold .december workspace for custom rules and skills
-                </Text>
-                <Text color={THEME.colors.muted}>
-                    Use /handoff to continue this session in December (trydecember.com)
+                    {'Press / for commands  ·  Use /handoff to continue in cloud ('}
+                    <Text color={THEME.colors.brand}>
+                        {terminalLink('trydecember.com', 'https://trydecember.com')}
+                    </Text>
+                    {')'}
                 </Text>
                 {latestVersion && (
                     <Text color={THEME.colors.muted}>

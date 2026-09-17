@@ -196,7 +196,7 @@ export function ChatApp({
                         })
                         .catch(console.error)
                 }}
-                placeholder="Ask December to build..."
+                placeholder="Ask December to build features, fix bugs, or work on your code..."
                 activeModel={
                     session.activeModel || agent?.modelOptions?.model || 'gemini-3.7-flash'
                 }

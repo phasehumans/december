@@ -6,6 +6,7 @@ export const THEME = {
         brand: '#89B4F8',
         text: 'white',
         muted: '#AAAAAA',
+        subtle: '#777777',
         dim: '#666666',
         border: '#333333',
         success: '#6EE7B7',
