@@ -2,6 +2,22 @@
 
 ### Features
 
+- _(tui,agent)_ Add collapsible reasoning and stop forcing thoughts
+- _(cli)_ Add /ask command and december ask headless mode
+- _(tui)_ Place /ask command before /clear in command menu
+- _(cli,tui)_ Add /ask command, headless mode, and collapsible reasoning (#510)
+
+### Bug Fixes
+
+- _(web)_ Disable skeleton preview flag
+- _(cli)_ Handle copilot 403 no_copilot_access with clean human error message
+- _(tui)_ Render entire collapsed thought line in uniform grey
+- _(tui,cli)_ Preserve actual measured thought duration on completion
+
+## [0.3.28] - 2026-09-12
+
+### Features
+
 - _(providers)_ Add xiaomi byok provider and audit xai and zhipuai
 - _(cli,agent)_ Overhaul grill-me and plan workflows (#481) and next-gen runtime (#482)
 - _(tui)_ Add inline delete confirmation and improve session rename experience
@@ -20,6 +36,10 @@
 - _(web)_ Remove obsolete password row and extra toggle from account skeleton
 - _(web)_ Align account skeleton layout 1:1 with real ui and eliminate unwanted scroll
 - _(web)_ Render section titles and descriptive labels as skeletons in settings
+
+### Miscellaneous Tasks
+
+- _(release)_ V0.3.28
 
 ## [0.3.27] - 2026-09-11
 
