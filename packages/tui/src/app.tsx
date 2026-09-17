@@ -224,6 +224,7 @@ export function ChatApp({
                 planRefineMode={session.planRefineMode}
                 customInputMode={session.customInputMode || false}
                 showExitConfirm={exitConfirm}
+                tasks={session.tasks}
             />
         </Box>
     )

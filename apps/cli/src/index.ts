@@ -19,7 +19,6 @@ export {
     handleLinkCommand,
     handleKeyCommand,
     handleAuthCommand,
-    handleInitCommand,
     handleUpdateCommand,
     handleDoctorCommand,
 } from './commands'
@@ -122,9 +121,10 @@ async function main() {
         process.exit(0)
     }
 
-    if (parsedArgs.command === 'init') {
-        const { handleInitCommand } = await import('./commands')
-        await handleInitCommand()
+    if (parsedArgs.command === 'init' || parsedArgs.positionals[0] === 'init') {
+        console.log(
+            '\nThe "init" command has been removed. December does not scaffold a .december directory in project roots.\nTo define project-specific instructions, create an AGENTS.md file in your project root.\n'
+        )
         process.exit(0)
     }
 
@@ -456,6 +456,20 @@ async function main() {
     }
 
     const userEmail = config.decemberToken ? config.email : undefined
+
+    if (process.stdout.isTTY) {
+        process.stdout.write('\x1b[?2004h')
+        const cleanupBracketedPaste = () => {
+            try {
+                process.stdout.write('\x1b[?2004l')
+            } catch {
+                // Intentionally swallowed: cleanup bracketed paste on terminal exit
+            }
+        }
+        process.on('exit', cleanupBracketedPaste)
+        process.on('SIGINT', cleanupBracketedPaste)
+        process.on('SIGTERM', cleanupBracketedPaste)
+    }
 
     render(
         React.createElement(

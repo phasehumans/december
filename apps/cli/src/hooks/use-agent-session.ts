@@ -197,6 +197,7 @@ export function useAgentSession({
 
     const [expandCommands, setExpandCommands] = useState(false)
     const toggleExpandCommands = useCallback(() => {
+        console.clear()
         setExpandCommands((prev) => !prev)
     }, [])
 
@@ -1731,9 +1732,10 @@ ${decStatus}
             }
 
             if (text.trim() === '/init') {
-                const { handleInitCommand } = await import('../commands')
-                await handleInitCommand({ quiet: true })
-                addToast('Initialized December workspace successfully!', 'success')
+                addToast(
+                    'The /init command has been removed. Create AGENTS.md in project root for instructions.',
+                    'info'
+                )
                 return
             }
 
@@ -2454,6 +2456,7 @@ ${decStatus}
         grillMode,
         setGrillMode,
         tasksData,
+        tasks: tasksData,
         setTasksData,
         taskSelectedIndex,
         setTaskSelectedIndex,

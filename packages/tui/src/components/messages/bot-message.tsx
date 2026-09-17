@@ -2,6 +2,8 @@ import { Box, Text } from 'ink'
 import React, { useState, useRef, useEffect } from 'react'
 
 import { THEME } from '../../theme'
+import { fileLink } from '../../utils/terminal-link'
+import { DiffGutterView } from '../diff-gutter'
 import { Spinner } from '../spinner'
 
 import { parseTuiError, FormattedErrorText } from './error-message'
@@ -184,9 +186,14 @@ export const ThoughtView = CollapsibleThought
 function StyledCommand({ command, truncate = true }: { command: string; truncate?: boolean }) {
     const match = command.match(/^([A-Za-z_]+)\(([\s\S]*)\)$/)
     if (match) {
-        let args = (match[2] || '').replace(/\r?\n/g, ' ')
-        if (truncate && args.length > 80) {
-            args = args.substring(0, 80) + '...'
+        const args = (match[2] || '').replace(/\r?\n/g, ' ')
+        const toolName = match[1]
+        let displayArgs = args
+        if (truncate && displayArgs.length > 80) {
+            displayArgs = displayArgs.substring(0, 80) + '...'
+        }
+        if ((toolName === 'read_file' || toolName === 'view_file') && args && !args.includes(' ')) {
+            displayArgs = fileLink(displayArgs, args)
         }
         const cmdColor = THEME.colors.warning
 
@@ -196,7 +203,7 @@ function StyledCommand({ command, truncate = true }: { command: string; truncate
                 <Text color={cmdColor} bold>
                     {match[1]}
                 </Text>
-                <Text color={THEME.colors.muted}>({args})</Text>
+                <Text color={THEME.colors.muted}>({displayArgs})</Text>
             </Text>
         )
     }
@@ -558,6 +565,26 @@ export const BotMessage = React.memo(function BotMessage({ blocks, usage, expand
                                         .map((l: string) => (l.startsWith('+') ? l : `+${l}`))
                                         .join('\n')
                                 }
+
+                                if (displayOutput) {
+                                    const filePath =
+                                        parsedInput.TargetFile ??
+                                        parsedInput.targetFile ??
+                                        parsedInput.filePath ??
+                                        parsedInput.path
+                                    const startLine =
+                                        parsedInput.StartLine ?? parsedInput.startLine ?? 1
+
+                                    return (
+                                        <DiffGutterView
+                                            key={idx}
+                                            diff={displayOutput}
+                                            filePath={filePath}
+                                            startLine={startLine}
+                                            forceExpanded={expandCommands}
+                                        />
+                                    )
+                                }
                             }
 
                             return (
@@ -650,6 +677,18 @@ export const BotMessage = React.memo(function BotMessage({ blocks, usage, expand
                               ? 'DELETED'
                               : 'MODIFIED'
 
+                        if (block.diff) {
+                            return (
+                                <DiffGutterView
+                                    key={idx}
+                                    diff={block.diff}
+                                    filePath={block.filePath}
+                                    actionLabel={actionLabel}
+                                    forceExpanded={expandCommands}
+                                />
+                            )
+                        }
+
                         return (
                             <Box key={idx} gap={1} alignItems="center">
                                 <Text
@@ -658,7 +697,9 @@ export const BotMessage = React.memo(function BotMessage({ blocks, usage, expand
                                 <Text color={THEME.colors.warning} bold>
                                     {actionLabel}
                                 </Text>
-                                <Text color={THEME.colors.muted}>{block.filePath}</Text>
+                                <Text color={THEME.colors.muted}>
+                                    {fileLink(block.filePath, block.filePath)}
+                                </Text>
                             </Box>
                         )
                     }

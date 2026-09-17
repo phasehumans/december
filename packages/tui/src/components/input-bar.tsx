@@ -7,11 +7,13 @@ import { useTerminalColumns } from '../hooks/use-terminal-columns'
 import { useDialog, InlineDialog } from '../providers/dialog'
 import { useToast } from '../providers/toast'
 import { THEME } from '../theme'
+import { expandPastes } from '../utils/paste-manager'
 import { defaultPromptHistory } from '../utils/prompt-history'
 
 import { CommandMenu } from './command-menu'
 import { useCommandMenu } from './command-menu/use-command-menu'
 import { ShortcutsMenu } from './menus/shortcuts-menu'
+import { TaskTree, type TaskItem } from './task-tree'
 import { TextArea } from './text-area'
 
 import type { Command } from './command-menu/types'
@@ -23,6 +25,7 @@ type Props = {
     activeModel?: string
     authMethod?: 'byok' | 'december' | 'env' | 'subscription'
     isAuthenticated?: boolean
+    tasks?: TaskItem[]
     hasBothAuth?: boolean
     authUI?: React.ReactNode
     agent?: any
@@ -70,6 +73,7 @@ export const InputBar = React.memo(function InputBar({
     showExitConfirm = false,
     toasts,
     queuedPrompts,
+    tasks,
 }: Props) {
     const [value, setValue] = useState('')
     const toast = useToast()
@@ -309,7 +313,6 @@ export const InputBar = React.memo(function InputBar({
                 '/fork',
                 '/copy',
                 '/handoff',
-                '/init',
                 '/docs',
             ]
 
@@ -347,8 +350,9 @@ export const InputBar = React.memo(function InputBar({
             if (showShortcutsMenu) {
                 return
             }
-            const trimmed = text.trim()
-            if (trimmed.length === 0) return
+            const rawTrimmed = text.trim()
+            if (rawTrimmed.length === 0) return
+            const trimmed = expandPastes(rawTrimmed)
             defaultPromptHistory.append(trimmed)
             defaultPromptHistory.resetCursor()
             setValue('')
@@ -424,6 +428,9 @@ export const InputBar = React.memo(function InputBar({
                     </Text>
                 </Box>
             )}
+
+            {/* background task tree */}
+            {tasks && tasks.length > 0 && <TaskTree tasks={tasks} />}
 
             {/* file mention popup */}
             {showFileMenu && matchingFiles.length > 0 && (

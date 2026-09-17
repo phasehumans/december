@@ -12,6 +12,8 @@ export * from './components/menus/ask-question-menu'
 
 export { Spinner } from './components/spinner'
 export { Pill } from './components/pill'
+export { TaskTree } from './components/task-tree'
+export type { TaskItem } from './components/task-tree'
 
 export * from './components/menus/menu-menu'
 export * from './components/menus/subscription-select-menu'
@@ -35,3 +37,4 @@ export * from './components/global-shortcuts'
 export * from './utils/clipboard'
 export * from './utils/handoff'
 export * from './utils/pager'
+export * from './utils/terminal-link'

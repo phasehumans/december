@@ -1,10 +1,14 @@
-import { describe, expect, it, mock } from 'bun:test'
+import { describe, expect, it, mock, beforeEach } from 'bun:test'
 import { render } from 'ink-testing-library'
 import React from 'react'
 
 import { TextArea } from '../../src/components/text-area'
+import { clearPastes } from '../../src/utils/paste-manager'
 
 describe('TextArea Component (Unit)', () => {
+    beforeEach(() => {
+        clearPastes()
+    })
     it('renders with placeholder text', () => {
         const { lastFrame } = render(
             <TextArea
@@ -135,5 +139,76 @@ describe('TextArea Component (Unit)', () => {
         )
         const frame = lastFrame() || ''
         expect(frame).toContain('Ask December to build...')
+    })
+
+    it('folds bracketed multiline paste into token', () => {
+        let textValue = ''
+        const { stdin } = render(
+            <TextArea
+                value={textValue}
+                onChange={(val) => {
+                    textValue = val
+                }}
+                onSubmit={() => {}}
+                focus={true}
+            />
+        )
+
+        // Send bracketed paste sequence with 4 lines
+        stdin.write('\x1b[200~line 1\nline 2\nline 3\nline 4\x1b[201~')
+        expect(textValue).toBe('[Pasted 4 lines]')
+    })
+
+    it('folds raw multiline paste into token as fallback', () => {
+        let textValue = ''
+        const { stdin } = render(
+            <TextArea
+                value={textValue}
+                onChange={(val) => {
+                    textValue = val
+                }}
+                onSubmit={() => {}}
+                focus={true}
+            />
+        )
+
+        // Send raw 3-line paste
+        stdin.write('error log 1\nerror log 2\nerror log 3')
+        expect(textValue).toBe('[Pasted 3 lines]')
+    })
+
+    it('deletes folded paste token atomically on backspace', () => {
+        let textValue = '[Pasted 4 lines]'
+        const { stdin } = render(
+            <TextArea
+                value={textValue}
+                onChange={(val) => {
+                    textValue = val
+                }}
+                onSubmit={() => {}}
+                focus={true}
+            />
+        )
+
+        // Press backspace
+        stdin.write('\x7f')
+        expect(textValue).toBe('')
+    })
+
+    it('inserts newline on Shift+Enter escape sequence', () => {
+        let textValue = 'first line'
+        const { stdin } = render(
+            <TextArea
+                value={textValue}
+                onChange={(val) => {
+                    textValue = val
+                }}
+                onSubmit={() => {}}
+                focus={true}
+            />
+        )
+
+        stdin.write('\x1b[13;2u')
+        expect(textValue).toBe('first line\n')
     })
 })

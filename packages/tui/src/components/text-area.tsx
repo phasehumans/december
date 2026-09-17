@@ -2,6 +2,7 @@ import { Text, useInput } from 'ink'
 import React, { useState, useEffect, useRef } from 'react'
 
 import { THEME } from '../theme'
+import { storePaste } from '../utils/paste-manager'
 
 type Props = {
     value: string
@@ -44,19 +45,92 @@ export function TextArea({
         }
     }, [value])
 
+    const isPastingRef = useRef(false)
+    const pasteBufferRef = useRef('')
+
+    const handlePastedText = (pasted: string, offset: number) => {
+        const cleaned = pasted.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
+        const lines = cleaned.split('\n')
+        if (lines.length > 2 || cleaned.length >= 100) {
+            const token = storePaste(cleaned)
+            const newValue = value.slice(0, offset) + token + value.slice(offset)
+            onChange(newValue)
+            setCursorOffset(offset + token.length)
+        } else {
+            const newValue = value.slice(0, offset) + cleaned + value.slice(offset)
+            onChange(newValue)
+            setCursorOffset(offset + cleaned.length)
+        }
+    }
+
     useInput((input, key) => {
         if (!focus) return
 
         const offset = Math.min(Math.max(0, cursorOffset), value.length)
 
-        if (key.return) {
-            if (key.meta) {
-                const newValue = value.slice(0, offset) + '\n' + value.slice(offset)
-                onChange(newValue)
-                setCursorOffset(offset + 1)
+        // Bracketed paste detection
+        if (input.includes('\x1b[200~')) {
+            const startIdx = input.indexOf('\x1b[200~')
+            const endIdx = input.indexOf('\x1b[201~')
+            if (endIdx !== -1 && endIdx > startIdx) {
+                const pasted = input.slice(startIdx + 6, endIdx)
+                handlePastedText(pasted, offset)
+                return
             } else {
-                onSubmit(value)
+                isPastingRef.current = true
+                pasteBufferRef.current = input.slice(startIdx + 6)
+                return
             }
+        }
+
+        if (isPastingRef.current) {
+            if (input.includes('\x1b[201~')) {
+                const endIdx = input.indexOf('\x1b[201~')
+                pasteBufferRef.current += input.slice(0, endIdx)
+                isPastingRef.current = false
+                const pasted = pasteBufferRef.current
+                pasteBufferRef.current = ''
+                handlePastedText(pasted, offset)
+            } else {
+                pasteBufferRef.current += input
+            }
+            return
+        }
+
+        // Multiline raw paste fallback
+        if (
+            input &&
+            (input.includes('\n') || input.includes('\r')) &&
+            input.split(/\r?\n/).length > 2
+        ) {
+            handlePastedText(input, offset)
+            return
+        }
+
+        // Multiline key handlers: Shift+Enter, Alt+Enter, and line continuation (\ + Enter)
+        const isShiftEnter =
+            input === '\x1b[13;2u' ||
+            input === '\x1b[27;2;13~' ||
+            (Boolean(key.shift) && Boolean(key.return))
+        const isAltEnter = Boolean(key.meta) && Boolean(key.return)
+        const isBackslashEnter = Boolean(key.return) && offset > 0 && value[offset - 1] === '\\'
+
+        if (isShiftEnter || isAltEnter) {
+            const newValue = value.slice(0, offset) + '\n' + value.slice(offset)
+            onChange(newValue)
+            setCursorOffset(offset + 1)
+            return
+        }
+
+        if (isBackslashEnter) {
+            const newValue = value.slice(0, offset - 1) + '\n' + value.slice(offset)
+            onChange(newValue)
+            setCursorOffset(offset)
+            return
+        }
+
+        if (key.return) {
+            onSubmit(value)
             return
         }
 
@@ -108,6 +182,15 @@ export function TextArea({
         }
         if (key.backspace || key.delete) {
             if (offset > 0) {
+                const preCursor = value.slice(0, offset)
+                const tokenMatch = preCursor.match(/(\[Pasted \d+ lines(?: #\d+)?\])$/)
+                if (tokenMatch && tokenMatch[1]) {
+                    const tokenLen = tokenMatch[1].length
+                    const newValue = value.slice(0, offset - tokenLen) + value.slice(offset)
+                    onChange(newValue)
+                    setCursorOffset(offset - tokenLen)
+                    return
+                }
                 const newValue = value.slice(0, offset - 1) + value.slice(offset)
                 onChange(newValue)
                 setCursorOffset(offset - 1)
@@ -174,6 +257,16 @@ export function TextArea({
     // 3. Direct shell command at start (e.g. !git status, !ping, or standalone !)
     const isDirectShell = value.startsWith('!')
 
+    // 4. Folded [Pasted X lines] tokens
+    const pasteRanges: [number, number][] = []
+    const pasteRegex = /\[Pasted \d+ lines(?: #\d+)?\]/g
+    let pMatch: RegExpExecArray | null
+    while ((pMatch = pasteRegex.exec(value)) !== null) {
+        if (pMatch[0].length > 0) {
+            pasteRanges.push([pMatch.index, pMatch.index + pMatch[0].length])
+        }
+    }
+
     const getCharColor = (index: number): string | undefined => {
         if (isDirectShell) {
             return THEME.colors.brand
@@ -185,6 +278,11 @@ export function TextArea({
             return THEME.colors.brand
         }
         for (const [start, end] of mentionRanges) {
+            if (index >= start && index < end) {
+                return THEME.colors.brand
+            }
+        }
+        for (const [start, end] of pasteRanges) {
             if (index >= start && index < end) {
                 return THEME.colors.brand
             }

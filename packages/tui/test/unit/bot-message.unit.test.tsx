@@ -223,6 +223,36 @@ describe('BotMessage Component (Unit)', () => {
         expect(frame).toContain('+new code')
     })
 
+    it('renders file modification commands with DiffGutterView line numbers and clickable links', () => {
+        const { lastFrame } = render(
+            <BotMessage
+                expandCommands={true}
+                blocks={[
+                    {
+                        type: 'command',
+                        toolCallId: '102',
+                        toolName: 'replace_file_content',
+                        toolInput: JSON.stringify({
+                            TargetFile: 'src/theme.ts',
+                            StartLine: 15,
+                            targetContent: 'brand: "#89B4F8"',
+                            replacementContent: 'brand: "#7AA2F7"',
+                        }),
+                        command: 'replace_file_content(src/theme.ts)',
+                        status: 'success',
+                    },
+                ]}
+            />
+        )
+        const frame = lastFrame() || ''
+        expect(frame).toContain('Updated')
+        expect(frame).toContain('src/theme.ts')
+        expect(frame).toContain('15')
+        expect(frame).toContain('│')
+        expect(frame).toContain('brand: "#89B4F8"')
+        expect(frame).toContain('brand: "#7AA2F7"')
+    })
+
     it('renders multiple command blocks compactly without gaps between them', () => {
         const blocks: any[] = [
             { type: 'text', content: 'Working...' },

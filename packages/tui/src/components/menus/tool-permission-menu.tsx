@@ -3,6 +3,7 @@ import SelectInput from 'ink-select-input'
 import React from 'react'
 
 import { THEME } from '../../theme'
+import { DiffGutterView } from '../diff-gutter'
 
 import { MenuFooter } from './menu-footer'
 import { CustomIndicator } from './menu-items'
@@ -134,47 +135,13 @@ export function ToolPermissionMenu({ toolCall, questions, onComplete }: ToolPerm
                         marginBottom={1}
                     >
                         <Text color={THEME.colors.brand}>{toolSummary}</Text>
-                        {visibleDiffLines.length > 0 && (
+                        {rawDiff && (
                             <Box flexDirection="column" marginTop={1}>
-                                {visibleDiffLines.map((line, lidx) => {
-                                    let color: string = THEME.colors.text
-                                    let bgColor: string | undefined = undefined
-
-                                    if (line.startsWith('+') && !line.startsWith('+++')) {
-                                        color = THEME.colors.success
-                                        bgColor = THEME.colors.diffAddBg
-                                    } else if (line.startsWith('-') && !line.startsWith('---')) {
-                                        color = THEME.colors.error
-                                        bgColor = THEME.colors.diffDeleteBg
-                                    } else if (
-                                        line.startsWith('@@') ||
-                                        line.startsWith('diff --git') ||
-                                        line.startsWith('---') ||
-                                        line.startsWith('+++')
-                                    ) {
-                                        color = THEME.colors.muted
-                                    }
-
-                                    return (
-                                        <Box
-                                            key={lidx}
-                                            backgroundColor={bgColor}
-                                            flexDirection="row"
-                                        >
-                                            <Text color={color} wrap="truncate-end">
-                                                {line}
-                                            </Text>
-                                        </Box>
-                                    )
-                                })}
-                                {isDiffTruncated && (
-                                    <Box paddingTop={0}>
-                                        <Text color={THEME.colors.muted}>
-                                            ... ({diffLines.length - MAX_VISIBLE_DIFF_LINES} more
-                                            lines)
-                                        </Text>
-                                    </Box>
-                                )}
+                                <DiffGutterView
+                                    diff={rawDiff}
+                                    forceExpanded={true}
+                                    maxVisibleLines={MAX_VISIBLE_DIFF_LINES}
+                                />
                             </Box>
                         )}
                     </Box>
