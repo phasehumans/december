@@ -12,11 +12,12 @@ describe('BotMessage Component (Unit)', () => {
         expect(lastFrame()).toContain('Assistant response text')
     })
 
-    it('renders thought blocks persistently inline without accordion or collapse state', () => {
+    it('renders thought blocks collapsed by default and expands with ctrl+o toggle', () => {
         const thoughtContent =
             'Line 1: Planning search\nLine 2: Locating files\nLine 3: Reading contents\nLine 4: Done'
         const { lastFrame, rerender } = render(
             <BotMessage
+                expandCommands={false}
                 blocks={[
                     { type: 'thinking', content: thoughtContent },
                     { type: 'text', content: 'Final answer' },
@@ -24,14 +25,13 @@ describe('BotMessage Component (Unit)', () => {
             />
         )
         let frame = lastFrame() || ''
-        expect(frame).toContain('Line 1: Planning search')
-        expect(frame).toContain('Line 4: Done')
+        expect(frame).toContain('✱')
+        expect(frame).toContain('Thought for')
+        expect(frame).toContain('ctrl+o to view')
+        expect(frame).not.toContain('Line 1: Planning search')
         expect(frame).toContain('Final answer')
-        expect(frame).not.toContain('Thoughts (')
-        expect(frame).not.toContain('ctrl+o to expand')
-        expect(frame).not.toContain('ctrl+o to collapse')
 
-        // Re-render with expandCommands=true remains consistently visible
+        // Re-render with expandCommands=true expands thoughts without vertical border
         rerender(
             <BotMessage
                 expandCommands={true}
@@ -43,17 +43,19 @@ describe('BotMessage Component (Unit)', () => {
         )
 
         frame = lastFrame() || ''
+        expect(frame).toContain('✱')
+        expect(frame).toContain('Thought for')
+        expect(frame).toContain('ctrl+o to collapse')
         expect(frame).toContain('Line 1: Planning search')
         expect(frame).toContain('Line 4: Done')
         expect(frame).toContain('Final answer')
-        expect(frame).not.toContain('Thoughts (')
-        expect(frame).not.toContain('ctrl+o to expand')
-        expect(frame).not.toContain('ctrl+o to collapse')
+        expect(frame).not.toContain('│')
     })
 
-    it('parses both <thought> and <think> tags in text blocks and renders them inline', () => {
-        const { lastFrame } = render(
+    it('parses both <thought> and <think> tags in text blocks and collapses or expands them', () => {
+        const { lastFrame, rerender } = render(
             <BotMessage
+                expandCommands={false}
                 blocks={[
                     {
                         type: 'text',
@@ -63,18 +65,36 @@ describe('BotMessage Component (Unit)', () => {
                 ]}
             />
         )
-        const frame = lastFrame() || ''
-        expect(frame).toContain('Thinking deep on problem')
-        expect(frame).toContain('Reasoning with DeepSeek R1')
+        let frame = lastFrame() || ''
+        expect(frame).toContain('✱')
+        expect(frame).toContain('Thought for')
+        expect(frame).toContain('ctrl+o to view')
         expect(frame).toContain('First response part')
         expect(frame).toContain('Final response part')
         expect(frame).not.toContain('<thought>')
         expect(frame).not.toContain('</thought>')
         expect(frame).not.toContain('<think>')
         expect(frame).not.toContain('</think>')
+
+        // Expanded shows the thought contents
+        rerender(
+            <BotMessage
+                expandCommands={true}
+                blocks={[
+                    {
+                        type: 'text',
+                        content:
+                            '<thought>Thinking deep on problem</thought>First response part\n<think>Reasoning with DeepSeek R1</think>Final response part',
+                    },
+                ]}
+            />
+        )
+        frame = lastFrame() || ''
+        expect(frame).toContain('Thinking deep on problem')
+        expect(frame).toContain('Reasoning with DeepSeek R1')
     })
 
-    it('renders active streaming thought blocks cleanly with side border', () => {
+    it('renders active streaming thought blocks cleanly with timer and brand star icon', () => {
         const thoughtContent =
             'Line 1: Planning search\nLine 2: Locating files\nLine 3: Reading contents\nLine 4: Still thinking'
         const { lastFrame } = render(
@@ -83,8 +103,9 @@ describe('BotMessage Component (Unit)', () => {
             />
         )
         const frame = lastFrame() || ''
-        expect(frame).toContain('Line 4: Still thinking')
-        expect(frame).not.toContain('Thought process')
+        expect(frame).toContain('✱')
+        expect(frame).toContain('Thinking')
+        expect(frame).not.toContain('Line 4: Still thinking')
     })
 
     it('renders HTTP 429 rate limit error messages correctly without badges', () => {
@@ -273,7 +294,9 @@ describe('BotMessage Component (Unit)', () => {
         const { lastFrame } = render(<BotMessage blocks={blocks} expandCommands={false} />)
         const frame = lastFrame() || ''
         const rawLines = frame.split('\n')
-        const thoughtIdx = rawLines.findIndex((l) => l.includes('Planning next steps'))
+        const thoughtIdx = rawLines.findIndex(
+            (l) => l.includes('Thought for') || l.includes('Planning next steps')
+        )
         const cmdIdx = rawLines.findIndex((l) => l.includes('ListDir'))
         // 0 blank lines: cmdIdx is directly thoughtIdx + 1
         expect(cmdIdx).toBe(thoughtIdx + 1)
@@ -293,7 +316,9 @@ describe('BotMessage Component (Unit)', () => {
         const { lastFrame } = render(<BotMessage blocks={blocks} expandCommands={false} />)
         const frame = lastFrame() || ''
         const rawLines = frame.split('\n')
-        const thoughtIdx = rawLines.findIndex((l) => l.includes('Planning next steps'))
+        const thoughtIdx = rawLines.findIndex(
+            (l) => l.includes('Thought for') || l.includes('Planning next steps')
+        )
         const textIdx = rawLines.findIndex((l) => l.includes('Here is the answer'))
         // Exactly 1 blank line between thoughts summary and text response
         expect(textIdx).toBe(thoughtIdx + 2)
@@ -369,6 +394,7 @@ describe('BotMessage Component (Unit)', () => {
 
         const { lastFrame } = render(
             <BotMessage
+                expandCommands={true}
                 blocks={[
                     { type: 'thinking', content: rawThought },
                     { type: 'text', content: 'Final response' },

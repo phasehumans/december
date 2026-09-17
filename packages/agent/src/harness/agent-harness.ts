@@ -83,11 +83,18 @@ export function isReasoningModel(model?: string, thinkingLevel?: string): boolea
         m.includes('o1') ||
         m.includes('o3') ||
         m.includes('deepseek-reasoner') ||
-        m.includes('deepseek-r1')
+        m.includes('deepseek-r1') ||
+        m.includes('thinking')
     ) {
         return true
     }
     if (m.includes('claude') && thinkingLevel && thinkingLevel !== 'off') {
+        return true
+    }
+    if (
+        m.includes('gemini') &&
+        (m.includes('gemini-2.5') || (thinkingLevel !== undefined && thinkingLevel !== 'off'))
+    ) {
         return true
     }
     return false
@@ -101,7 +108,7 @@ export function getModelFamilyPrompt(options: { model?: string; thinkingLevel?: 
     const model = options.model?.toLowerCase() || ''
     const reasoning = isReasoningModel(options.model, options.thinkingLevel)
 
-    if (reasoning) {
+    if (reasoning && !model.includes('gemini')) {
         return {
             roleGuidelines: `### Model Specialization (Autonomous Reasoning & Verification)
 - Persistent Problem Solving: Keep going until the user's task or bug is completely resolved and empirically verified before ending your turn.
@@ -128,25 +135,32 @@ export function getModelFamilyPrompt(options: { model?: string; thinkingLevel?: 
     }
 
     if (model.includes('gemini')) {
+        const isGeminiThinking =
+            model.includes('thinking') ||
+            model.includes('gemini-2.5') ||
+            (options.thinkingLevel !== undefined && options.thinkingLevel !== 'off')
         return {
             roleGuidelines: `### Model Specialization (Gemini)
 - Structured Execution: Follow clear operational phases: 1) Explore and gather context, 2) Formulate targeted edits, 3) Verify thoroughly.
 - Absolute File Paths: STRICTLY specify absolute file paths when referencing, viewing, or editing files. NEVER output ambiguous relative paths.`,
-            reasoningProtocol: `### Reasoning & Communication Protocol
+            reasoningProtocol: isGeminiThinking
+                ? `### Communication Protocol
+- Conciseness & Chat Focus: Be direct and concise. In chat messages, provide ONLY high-level status updates, architectural decisions, and tool confirmations. Do not repeat file contents in chat.
+- Execution Summary: At the end of your work, provide a concise summary (max 4-5 lines, single cohesive paragraph) highlighting key actions, modified files, and test verification results.`
+                : `### Reasoning & Communication Protocol
 - Thought Enclosure: Before calling any tool, you MUST enclose your step-by-step reasoning inside <thought>...</thought> tags. Write thoughts directly as natural, concise reasoning steps without outline scaffolding, markdown headers, or bullet lists (do NOT write labels like "* **Goal Understanding:**" or structured outlines).
 - Conciseness & Chat Focus: Be direct and concise. In chat messages, provide ONLY high-level status updates, architectural decisions, and tool confirmations. Do not repeat file contents in chat.
 - Execution Summary: At the end of your work, provide a concise summary (max 4-5 lines, single cohesive paragraph) highlighting key actions, modified files, and test verification results.`,
-            suppressThoughtTags: false,
+            suppressThoughtTags: isGeminiThinking,
         }
     }
 
     return {
         roleGuidelines: '',
-        reasoningProtocol: `### Reasoning & Communication Protocol
-- Thought Enclosure: Before calling any tool, you MUST enclose your step-by-step reasoning inside <thought>...</thought> tags. Write thoughts directly as natural, concise reasoning steps without outline scaffolding, markdown headers, or bullet lists (do NOT write labels like "* **Goal Understanding:**" or structured outlines).
+        reasoningProtocol: `### Communication Protocol
 - Conciseness & Chat Focus: Be direct and concise. In chat messages, provide ONLY high-level status updates, architectural decisions, and tool confirmations. Do not repeat file contents in chat.
 - Execution Summary: At the end of your work, provide a concise summary (max 4-5 lines, single cohesive paragraph) highlighting key actions, modified files, and test verification results.`,
-        suppressThoughtTags: false,
+        suppressThoughtTags: true,
     }
 }
 
