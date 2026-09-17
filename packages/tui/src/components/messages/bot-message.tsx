@@ -151,13 +151,13 @@ export function CollapsibleThought({
     return (
         <Box flexDirection="column" marginY={0}>
             <Box flexDirection="row" gap={1} alignItems="center">
-                <Text color={THEME.colors.brand} bold>
-                    ✱
-                </Text>
+                <Text color={THEME.colors.muted}>✱</Text>
                 <Text color={THEME.colors.muted}>
                     Thought for {displayDuration}s ({tokenCount} tokens)
                 </Text>
-                <Text color={THEME.colors.dim}>· ctrl+o to {isExpanded ? 'collapse' : 'view'}</Text>
+                <Text color={THEME.colors.muted}>
+                    · ctrl+o to {isExpanded ? 'collapse' : 'view'}
+                </Text>
             </Box>
             {isExpanded && formattedLines.length > 0 && (
                 <Box flexDirection="column" paddingLeft={2} marginTop={0}>
