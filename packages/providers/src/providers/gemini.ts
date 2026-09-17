@@ -2,7 +2,7 @@ import { safeParseJson } from '@december/shared'
 import { GoogleGenAI } from '@google/genai'
 import { v4 as uuidv4 } from 'uuid'
 
-import { createProvider } from '../models.ts'
+import { createProvider, supportsModelThinking } from '../models.ts'
 
 import type { LLMProvider, Message, ProviderStreamChunk, ProviderTool } from '../types.ts'
 import type { Content } from '@google/genai'
@@ -181,25 +181,30 @@ export function geminiProvider(apiKey?: string, customClient?: GoogleGenAI): LLM
                       ]
                     : undefined
 
+            const resolvedModel = resolveGeminiModel(modelOptions?.model)
+            const supportsThinking = supportsModelThinking(resolvedModel)
+
             const thinkingLevel = modelOptions?.thinkingLevel
             let thinkingConfig: { thinkingBudget?: number; includeThoughts?: boolean } | undefined
-            if (thinkingLevel === 'off') {
-                thinkingConfig = { thinkingBudget: 0 }
-            } else if (thinkingLevel && thinkingLevel !== 'auto') {
-                const budgetMap: Record<string, number> = {
-                    minimal: 1024,
-                    low: 2048,
-                    medium: 4096,
-                    high: 8192,
-                }
-                const budget = budgetMap[thinkingLevel]
-                if (budget !== undefined) {
-                    thinkingConfig = { thinkingBudget: budget, includeThoughts: true }
+            if (supportsThinking) {
+                if (thinkingLevel === 'off') {
+                    thinkingConfig = { thinkingBudget: 0 }
+                } else if (thinkingLevel && thinkingLevel !== 'auto') {
+                    const budgetMap: Record<string, number> = {
+                        minimal: 1024,
+                        low: 2048,
+                        medium: 4096,
+                        high: 8192,
+                    }
+                    const budget = budgetMap[thinkingLevel]
+                    if (budget !== undefined) {
+                        thinkingConfig = { thinkingBudget: budget, includeThoughts: true }
+                    } else {
+                        thinkingConfig = { includeThoughts: true }
+                    }
                 } else {
                     thinkingConfig = { includeThoughts: true }
                 }
-            } else {
-                thinkingConfig = { includeThoughts: true }
             }
 
             const DEFAULT_GEMINI_MAX_OUTPUT_TOKENS = 65536
@@ -209,7 +214,7 @@ export function geminiProvider(apiKey?: string, customClient?: GoogleGenAI): LLM
             }
 
             const responseStream = await (client.models.generateContentStream as any)({
-                model: resolveGeminiModel(modelOptions?.model),
+                model: resolvedModel,
                 contents: geminiMessages,
                 config: {
                     systemInstruction: systemPrompt

@@ -1,5 +1,6 @@
 import util from 'util'
 
+import { supportsModelThinking } from '@december/providers'
 import { safeParseJson, formatInsufficientCreditsNotice } from '@december/shared'
 import pRetry, { AbortError } from 'p-retry'
 
@@ -513,10 +514,12 @@ async function streamAssistantResponse(
                     }
                 }
 
-                const effectiveThinkingLevel = getAdaptiveThinkingLevel(
-                    agent.messages,
-                    agent.thinkingLevel
-                )
+                const modelName = (agent.modelOptions as any)?.model
+                const modelSupportsThinking = modelName ? supportsModelThinking(modelName) : true
+                const effectiveThinkingLevel =
+                    modelSupportsThinking && agent.thinkingLevel !== 'off'
+                        ? getAdaptiveThinkingLevel(agent.messages, agent.thinkingLevel)
+                        : 'off'
 
                 const providerModelOptions = {
                     ...agent.modelOptions,

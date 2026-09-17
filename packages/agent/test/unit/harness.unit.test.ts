@@ -47,6 +47,36 @@ describe('AgentHarness (Unit)', () => {
         expect(systemPrompt).toContain('Execution & Verification')
     })
 
+    test('discovers global machine root rules from ~/.december or DECEMBER_CONFIG_DIR', () => {
+        const globalDir = path.join(tmpDir, 'global-december')
+        fs.mkdirSync(globalDir, { recursive: true })
+        fs.writeFileSync(
+            path.join(globalDir, 'rules.md'),
+            '# Global Machine Rules\nGlobal rules here.'
+        )
+
+        const originalConfigDir = process.env.DECEMBER_CONFIG_DIR
+        process.env.DECEMBER_CONFIG_DIR = globalDir
+
+        try {
+            const harness = new AgentHarness({
+                llm: new MockLLM(),
+                tools: [],
+                operations: {} as any,
+                workspaceDir: tmpDir,
+            })
+
+            const agent = harness.getAgent()
+            expect(agent.systemPrompt).toContain('Global Machine Rules')
+        } finally {
+            if (originalConfigDir) {
+                process.env.DECEMBER_CONFIG_DIR = originalConfigDir
+            } else {
+                delete process.env.DECEMBER_CONFIG_DIR
+            }
+        }
+    })
+
     test('discovers structured skills from .december/skills and .agents/skills and injects alphabetized <skills> catalog', () => {
         const decSkillDir = path.join(tmpDir, '.december', 'skills', 'docker-deploy')
         fs.mkdirSync(decSkillDir, { recursive: true })
@@ -185,7 +215,7 @@ description: Forces the laziest solution that actually works.
         expect(prompt).toContain('Anthropic / Claude')
         expect(prompt).toContain('Objectivity & Discipline')
         expect(prompt).toContain('Proactive Task Breakdown')
-        expect(prompt).toContain('<thought>')
+        expect(prompt).not.toContain('<thought>')
     })
 
     test('specializes prompt for Gemini with absolute file path enforcement and operational phases', () => {

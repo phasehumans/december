@@ -191,9 +191,6 @@ export const MODEL_CONTEXT_WINDOWS: Record<string, number> = {
     'agnes/agnes-2.5-pro-beta': 1000000,
 
     // AI Router
-    'gpt-5.6-luna': 1050000,
-    'gpt-5.6-terra': 1050000,
-    'gpt-5.6-sol': 1050000,
     'airouter/gpt-5.6-luna': 1050000,
     'airouter/gpt-5.6-terra': 1050000,
     'airouter/gpt-5.6-sol': 1050000,
@@ -203,8 +200,6 @@ export const MODEL_CONTEXT_WINDOWS: Record<string, number> = {
     // AI&
     'deepseek-ai/deepseek-v4-flash': 1050000,
     'deepseek-ai/deepseek-v4-pro': 1050000,
-    'zai-org/glm-5.3': 1050000,
-    'zai-org/glm-5.2': 1050000,
     'aiand/deepseek-ai/deepseek-v4-flash': 1050000,
     'aiand/deepseek-ai/deepseek-v4-pro': 1050000,
     'aiand/zai-org/glm-5.3': 1050000,
@@ -346,6 +341,139 @@ export function getModelContextWindow(value: string): number {
     if (lower.includes('8192')) return 8192
     if (lower.includes('8k')) return 8192
     return 100000
+}
+
+export function supportsModelThinking(model?: string): boolean {
+    if (!model) return false
+    let lower = model.toLowerCase()
+    if (lower.startsWith('ollama/')) {
+        lower = lower.slice('ollama/'.length)
+    }
+    if (lower.startsWith('openai/')) {
+        lower = lower.slice('openai/'.length)
+    }
+    if (lower.startsWith('anthropic/')) {
+        lower = lower.slice('anthropic/'.length)
+    }
+    if (lower.startsWith('google/')) {
+        lower = lower.slice('google/'.length)
+    }
+    if (lower.startsWith('deepseek/')) {
+        lower = lower.slice('deepseek/'.length)
+    }
+
+    // Explicit non-thinking models first
+    if (
+        lower.includes('claude-3-5') ||
+        lower.includes('claude-3.5') ||
+        lower.includes('claude-3-opus') ||
+        lower.includes('claude-3-haiku') ||
+        lower.includes('claude-2')
+    ) {
+        return false
+    }
+
+    if (
+        lower === 'gpt-4o' ||
+        lower === 'gpt-4o-mini' ||
+        lower.startsWith('gpt-4o') ||
+        lower.startsWith('gpt-4') ||
+        lower.startsWith('gpt-3.5')
+    ) {
+        return false
+    }
+
+    if (
+        lower.includes('gemini-1.5') ||
+        lower.includes('gemini-1.0') ||
+        lower === 'gemini-pro' ||
+        lower === 'gemini-flash' ||
+        (lower.includes('gemini-2.0-flash') && !lower.includes('thinking'))
+    ) {
+        return false
+    }
+
+    if (
+        lower.includes('llama') ||
+        lower.includes('mistral') ||
+        lower.includes('codestral') ||
+        lower.includes('ministral') ||
+        lower.includes('magistral') ||
+        lower.includes('devstral') ||
+        lower.includes('sarvam') ||
+        lower.includes('minimax') ||
+        lower.includes('gemma') ||
+        lower.includes('command-r')
+    ) {
+        if (
+            !lower.includes('thinking') &&
+            !lower.includes('reasoning') &&
+            !lower.includes('reasoner')
+        ) {
+            return false
+        }
+    }
+
+    // Known thinking / reasoning models
+    if (
+        lower.startsWith('o1') ||
+        lower.startsWith('o3') ||
+        lower.startsWith('o4') ||
+        lower.includes('/o1') ||
+        lower.includes('/o3') ||
+        lower.includes('/o4')
+    ) {
+        return true
+    }
+
+    if (
+        lower.includes('claude-3-7') ||
+        lower.includes('claude-3.7') ||
+        lower.includes('claude-4') ||
+        lower.includes('claude-opus-4') ||
+        lower.includes('claude-sonnet-4') ||
+        lower.includes('claude-haiku-4') ||
+        lower.includes('claude-5') ||
+        lower.includes('claude-fable-5') ||
+        lower.includes('sonnet-5') ||
+        lower.includes('opus-5')
+    ) {
+        return true
+    }
+
+    if (
+        lower.includes('gemini-2.5') ||
+        lower.includes('gemini-3') ||
+        lower.includes('december-auto')
+    ) {
+        return true
+    }
+
+    if (
+        lower.includes('deepseek-reasoner') ||
+        lower.includes('deepseek-r1') ||
+        lower.includes('r1-1776')
+    ) {
+        return true
+    }
+
+    if (
+        lower.includes('glm-5') ||
+        lower.includes('glm5') ||
+        lower.includes('abliterated-model-large-v2')
+    ) {
+        return true
+    }
+
+    if (lower.includes('qwq')) {
+        return true
+    }
+
+    if (lower.includes('thinking') || lower.includes('reasoning') || lower.includes('reasoner')) {
+        return true
+    }
+
+    return false
 }
 
 export interface ProviderConfig<T> {

@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { safeParseJson } from '@december/shared'
 
-import { createProvider } from '../models.ts'
+import { createProvider, supportsModelThinking } from '../models.ts'
 
 import type { LLMProvider, Message, ProviderStreamChunk, ProviderTool } from '../types.ts'
 
@@ -191,29 +191,34 @@ export function anthropicProvider(
                   ]
                 : undefined
 
+            const resolvedModel = resolveAnthropicModel(modelOptions?.model)
             const thinkingLevel = modelOptions?.thinkingLevel
             let thinking: { type: 'enabled' | 'adaptive'; budget_tokens?: number } | undefined
             let maxTokens = modelOptions?.max_tokens || 4096
 
-            if (thinkingLevel === 'auto') {
-                thinking = { type: 'adaptive' }
-            } else if (thinkingLevel && thinkingLevel !== 'off') {
-                const budgetMap: Record<string, number> = {
-                    minimal: 1024,
-                    low: 2048,
-                    medium: 4096,
-                    high: 8192,
-                }
-                const budget = budgetMap[thinkingLevel]
-                if (budget) {
-                    thinking = { type: 'enabled', budget_tokens: budget }
-                    maxTokens = Math.max(maxTokens, budget + 1024)
+            const supportsThinking = supportsModelThinking(resolvedModel)
+
+            if (supportsThinking) {
+                if (thinkingLevel === 'auto') {
+                    thinking = { type: 'adaptive' }
+                } else if (thinkingLevel && thinkingLevel !== 'off') {
+                    const budgetMap: Record<string, number> = {
+                        minimal: 1024,
+                        low: 2048,
+                        medium: 4096,
+                        high: 8192,
+                    }
+                    const budget = budgetMap[thinkingLevel]
+                    if (budget) {
+                        thinking = { type: 'enabled', budget_tokens: budget }
+                        maxTokens = Math.max(maxTokens, budget + 1024)
+                    }
                 }
             }
 
             const stream = await client.messages.create(
                 {
-                    model: resolveAnthropicModel(modelOptions?.model),
+                    model: resolvedModel,
                     messages: antMessages,
                     system: formattedSystem as any,
                     tools: antTools && antTools.length > 0 ? antTools : undefined,

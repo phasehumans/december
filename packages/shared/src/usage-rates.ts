@@ -267,13 +267,11 @@ export const OFFICIAL_MODEL_RATES: Record<string, ModelRate> = {
         outputRate: 2.5,
     },
     'zai-org/glm-5.3': { name: 'zai-org/glm-5.3', inputRate: 1.0, outputRate: 4.0 },
-    'zai-org/glm-5.2': { name: 'zai-org/glm-5.2', inputRate: 1.0, outputRate: 4.0 },
     'moonshotai/kimi-k2.7-code': {
         name: 'moonshotai/kimi-k2.7-code',
         inputRate: 0.75,
         outputRate: 3.5,
     },
-    'moonshotai/kimi-k3': { name: 'moonshotai/kimi-k3', inputRate: 3.0, outputRate: 12.5 },
     'google/gemma-4-31b-it': { name: 'google/gemma-4-31b-it', inputRate: 0.2, outputRate: 0.5 },
     'openai/gpt-oss-120b': { name: 'openai/gpt-oss-120b', inputRate: 0.15, outputRate: 0.6 },
     'motif-technologies/motif-3': {

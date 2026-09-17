@@ -1,6 +1,8 @@
 import fs from 'node:fs'
+import os from 'node:os'
 import path from 'node:path'
 
+import { supportsModelThinking } from '@december/providers'
 import { SkillDiscoveryEngine, formatSkillsCatalog } from '@december/shared'
 
 import { Agent } from '../agent'
@@ -75,29 +77,13 @@ export const DEFAULT_TOOL_PROMPTS: Record<string, { snippet: string; guidelines:
 }
 
 export function isReasoningModel(model?: string, thinkingLevel?: string): boolean {
+    if (thinkingLevel === 'off') {
+        return false
+    }
     if (!model) {
         return thinkingLevel !== undefined && thinkingLevel !== 'off'
     }
-    const m = model.toLowerCase()
-    if (
-        m.includes('o1') ||
-        m.includes('o3') ||
-        m.includes('deepseek-reasoner') ||
-        m.includes('deepseek-r1') ||
-        m.includes('thinking')
-    ) {
-        return true
-    }
-    if (m.includes('claude') && thinkingLevel && thinkingLevel !== 'off') {
-        return true
-    }
-    if (
-        m.includes('gemini') &&
-        (m.includes('gemini-2.5') || (thinkingLevel !== undefined && thinkingLevel !== 'off'))
-    ) {
-        return true
-    }
-    return false
+    return supportsModelThinking(model)
 }
 
 export function getModelFamilyPrompt(options: { model?: string; thinkingLevel?: string }): {
@@ -108,55 +94,24 @@ export function getModelFamilyPrompt(options: { model?: string; thinkingLevel?: 
     const model = options.model?.toLowerCase() || ''
     const reasoning = isReasoningModel(options.model, options.thinkingLevel)
 
-    if (reasoning && !model.includes('gemini')) {
-        return {
-            roleGuidelines: `### Model Specialization (Autonomous Reasoning & Verification)
+    let roleGuidelines = ''
+    if (reasoning && !model.includes('gemini') && !model.includes('claude')) {
+        roleGuidelines = `### Model Specialization (Autonomous Reasoning & Verification)
 - Persistent Problem Solving: Keep going until the user's task or bug is completely resolved and empirically verified before ending your turn.
 - Comprehensive Verification: Failing to test your code sufficiently rigorously is the primary failure mode. NEVER end your turn without having truly and completely solved the problem, run test/build commands, and verified edge cases.
-- Independent Execution: Solve blockers and diagnose root causes autonomously rather than stopping to ask premature questions.`,
-            reasoningProtocol: `### Communication Protocol
-- Conciseness & Chat Focus: Be direct and concise. In chat messages, provide ONLY high-level status updates, architectural decisions, and tool confirmations. Do not repeat file contents in chat.
-- Execution Summary: At the end of your work, provide a concise summary (max 4-5 lines, single cohesive paragraph) highlighting key actions, modified files, and test verification results.`,
-            suppressThoughtTags: true,
-        }
-    }
-
-    if (model.includes('claude') || model.includes('anthropic')) {
-        return {
-            roleGuidelines: `### Model Specialization (Anthropic / Claude)
+- Independent Execution: Solve blockers and diagnose root causes autonomously rather than stopping to ask premature questions.`
+    } else if (model.includes('claude') || model.includes('anthropic')) {
+        roleGuidelines = `### Model Specialization (Anthropic / Claude)
 - Objectivity & Discipline: Maintain strict professional objectivity. Do not use emojis, unnecessary pleasantries, or verbose conversational filler.
-- Proactive Task Breakdown: Break down complex requests into orderly stages, verify each stage empirically, and maintain single-step transitions.`,
-            reasoningProtocol: `### Reasoning & Communication Protocol
-- Thought Enclosure: Before calling any tool, you MUST enclose your step-by-step reasoning inside <thought>...</thought> tags. Write thoughts directly as natural, concise reasoning steps without outline scaffolding, markdown headers, or bullet lists (do NOT write labels like "* **Goal Understanding:**" or structured outlines).
-- Conciseness & Chat Focus: Be direct and concise. In chat messages, provide ONLY high-level status updates, architectural decisions, and tool confirmations. Do not repeat file contents in chat.
-- Execution Summary: At the end of your work, provide a concise summary (max 4-5 lines, single cohesive paragraph) highlighting key actions, modified files, and test verification results.`,
-            suppressThoughtTags: false,
-        }
-    }
-
-    if (model.includes('gemini')) {
-        const isGeminiThinking =
-            model.includes('thinking') ||
-            model.includes('gemini-2.5') ||
-            (options.thinkingLevel !== undefined && options.thinkingLevel !== 'off')
-        return {
-            roleGuidelines: `### Model Specialization (Gemini)
+- Proactive Task Breakdown: Break down complex requests into orderly stages, verify each stage empirically, and maintain single-step transitions.`
+    } else if (model.includes('gemini')) {
+        roleGuidelines = `### Model Specialization (Gemini)
 - Structured Execution: Follow clear operational phases: 1) Explore and gather context, 2) Formulate targeted edits, 3) Verify thoroughly.
-- Absolute File Paths: STRICTLY specify absolute file paths when referencing, viewing, or editing files. NEVER output ambiguous relative paths.`,
-            reasoningProtocol: isGeminiThinking
-                ? `### Communication Protocol
-- Conciseness & Chat Focus: Be direct and concise. In chat messages, provide ONLY high-level status updates, architectural decisions, and tool confirmations. Do not repeat file contents in chat.
-- Execution Summary: At the end of your work, provide a concise summary (max 4-5 lines, single cohesive paragraph) highlighting key actions, modified files, and test verification results.`
-                : `### Reasoning & Communication Protocol
-- Thought Enclosure: Before calling any tool, you MUST enclose your step-by-step reasoning inside <thought>...</thought> tags. Write thoughts directly as natural, concise reasoning steps without outline scaffolding, markdown headers, or bullet lists (do NOT write labels like "* **Goal Understanding:**" or structured outlines).
-- Conciseness & Chat Focus: Be direct and concise. In chat messages, provide ONLY high-level status updates, architectural decisions, and tool confirmations. Do not repeat file contents in chat.
-- Execution Summary: At the end of your work, provide a concise summary (max 4-5 lines, single cohesive paragraph) highlighting key actions, modified files, and test verification results.`,
-            suppressThoughtTags: isGeminiThinking,
-        }
+- Absolute File Paths: STRICTLY specify absolute file paths when referencing, viewing, or editing files. NEVER output ambiguous relative paths.`
     }
 
     return {
-        roleGuidelines: '',
+        roleGuidelines,
         reasoningProtocol: `### Communication Protocol
 - Conciseness & Chat Focus: Be direct and concise. In chat messages, provide ONLY high-level status updates, architectural decisions, and tool confirmations. Do not repeat file contents in chat.
 - Execution Summary: At the end of your work, provide a concise summary (max 4-5 lines, single cohesive paragraph) highlighting key actions, modified files, and test verification results.`,
@@ -225,6 +180,33 @@ export function discoverProjectRules(
         const parent = path.dirname(current)
         if (parent === current) break
         current = parent
+    }
+
+    // Check machine root global rules (~/.december/rules.md, ~/.december/AGENTS.md, etc.)
+    const home = process.env.HOME || process.env.USERPROFILE || os.homedir()
+    const globalCandidateDirs = [
+        process.env.DECEMBER_CONFIG_DIR,
+        path.join(home, '.december'),
+        path.join(home, '.config', 'december'),
+    ].filter((dir): dir is string => !!dir)
+
+    for (const globalDir of globalCandidateDirs) {
+        for (const candidate of ['rules.md', 'AGENTS.md']) {
+            const globalPath = path.join(globalDir, candidate)
+            if (fs.existsSync(globalPath) && !seen.has(globalPath)) {
+                try {
+                    if (fs.statSync(globalPath).isFile()) {
+                        seen.add(globalPath)
+                        const content = fs.readFileSync(globalPath, 'utf8').trim()
+                        if (content) {
+                            collectedFiles.unshift({ path: globalPath, content }) // Global rules have lowest precedence
+                        }
+                    }
+                } catch {
+                    // Intentionally swallowed: global rule read error fallback
+                }
+            }
+        }
     }
 
     return collectedFiles

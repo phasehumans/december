@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'bun:test'
 
-import { getModelContextWindow, createProvider, MODEL_CONTEXT_WINDOWS } from '../../src/models'
+import {
+    getModelContextWindow,
+    createProvider,
+    MODEL_CONTEXT_WINDOWS,
+    supportsModelThinking,
+} from '../../src/models'
 
 describe('Models Utility & Context Windows (Unit)', () => {
     it('returns exact context window size for known model names in lookup map', () => {
@@ -85,5 +90,80 @@ describe('Models Utility & Context Windows (Unit)', () => {
         expect(MODEL_CONTEXT_WINDOWS['claude-opus-5']).toBe(1000000)
         expect(MODEL_CONTEXT_WINDOWS['claude-haiku-4.5']).toBe(200000)
         expect(MODEL_CONTEXT_WINDOWS['gpt-4o']).toBe(128000)
+    })
+
+    describe('supportsModelThinking', () => {
+        it('identifies non-thinking models accurately', () => {
+            // Anthropic legacy
+            expect(supportsModelThinking('claude-3-5-sonnet-20241022')).toBe(false)
+            expect(supportsModelThinking('claude-3-5-haiku-20241022')).toBe(false)
+            expect(supportsModelThinking('claude-3-opus-20240229')).toBe(false)
+            expect(supportsModelThinking('anthropic/claude-3-5-sonnet')).toBe(false)
+
+            // OpenAI non-reasoning
+            expect(supportsModelThinking('gpt-4o')).toBe(false)
+            expect(supportsModelThinking('gpt-4o-mini')).toBe(false)
+            expect(supportsModelThinking('gpt-4-turbo')).toBe(false)
+            expect(supportsModelThinking('gpt-3.5-turbo')).toBe(false)
+            expect(supportsModelThinking('openai/gpt-4o')).toBe(false)
+
+            // Gemini non-thinking
+            expect(supportsModelThinking('gemini-1.5-pro')).toBe(false)
+            expect(supportsModelThinking('gemini-1.5-flash')).toBe(false)
+            expect(supportsModelThinking('gemini-1.0-pro')).toBe(false)
+            expect(supportsModelThinking('gemini-2.0-flash')).toBe(false)
+
+            // Open source standard
+            expect(supportsModelThinking('meta-llama/llama-3.3-70b-instruct')).toBe(false)
+            expect(supportsModelThinking('mistral-large-latest')).toBe(false)
+            expect(supportsModelThinking('codestral-2501')).toBe(false)
+            expect(supportsModelThinking('sarvam-105b')).toBe(false)
+            expect(supportsModelThinking('minimax-m2.7')).toBe(false)
+            expect(supportsModelThinking('google/gemma-4-31b-it')).toBe(false)
+            expect(supportsModelThinking('qwen2.5-coder-32b')).toBe(false)
+
+            // Empty or undefined
+            expect(supportsModelThinking('')).toBe(false)
+            expect(supportsModelThinking(undefined)).toBe(false)
+        })
+
+        it('identifies thinking and reasoning models accurately', () => {
+            // OpenAI reasoning
+            expect(supportsModelThinking('o1')).toBe(true)
+            expect(supportsModelThinking('o1-mini')).toBe(true)
+            expect(supportsModelThinking('o3-mini')).toBe(true)
+            expect(supportsModelThinking('o3-pro')).toBe(true)
+            expect(supportsModelThinking('o4-mini')).toBe(true)
+            expect(supportsModelThinking('openai/o3-mini')).toBe(true)
+
+            // Anthropic extended thinking
+            expect(supportsModelThinking('claude-3-7-sonnet-20250219')).toBe(true)
+            expect(supportsModelThinking('claude-sonnet-4-6')).toBe(true)
+            expect(supportsModelThinking('claude-opus-5')).toBe(true)
+            expect(supportsModelThinking('claude-fable-5-1')).toBe(true)
+
+            // Gemini thinking
+            expect(supportsModelThinking('gemini-2.5-pro')).toBe(true)
+            expect(supportsModelThinking('gemini-2.5-flash')).toBe(true)
+            expect(supportsModelThinking('gemini-3.8-flash')).toBe(true)
+            expect(supportsModelThinking('gemini-2.0-flash-thinking-exp')).toBe(true)
+            expect(supportsModelThinking('december-auto')).toBe(true)
+
+            // DeepSeek reasoning
+            expect(supportsModelThinking('deepseek-reasoner')).toBe(true)
+            expect(supportsModelThinking('deepseek-r1')).toBe(true)
+            expect(supportsModelThinking('deepseek/deepseek-r1')).toBe(true)
+
+            // GLM reasoning & abliterated-model-large-v2
+            expect(supportsModelThinking('glm-5.3')).toBe(true)
+            expect(supportsModelThinking('glm-5.2')).toBe(true)
+            expect(supportsModelThinking('abliterated-model-large-v2')).toBe(true)
+
+            // Others
+            expect(supportsModelThinking('qwq-32b')).toBe(true)
+            expect(supportsModelThinking('trinity-large-thinking')).toBe(true)
+            expect(supportsModelThinking('command-a-reasoning-08-2025')).toBe(true)
+            expect(supportsModelThinking('grok-4.20-0309-reasoning')).toBe(true)
+        })
     })
 })
