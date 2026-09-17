@@ -1,5 +1,5 @@
 import { Box, Text } from 'ink'
-import React from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 
 import { THEME } from '../../theme'
 import { Spinner } from '../spinner'
@@ -9,7 +9,7 @@ import { SmoothMarkdown } from './smooth-markdown'
 
 export type MessageBlock =
     | { type: 'text'; content: string; color?: string }
-    | { type: 'thinking'; content: string; isStreaming?: boolean }
+    | { type: 'thinking'; content: string; isStreaming?: boolean; durationMs?: number }
     | { type: 'compaction'; summary: string }
     | { type: 'error'; error: string; cause?: string; hint?: string }
     | { type: 'interrupt' }
@@ -83,17 +83,106 @@ export function formatThought(raw: string): string {
     return cleanedLines.join('\n')
 }
 
-export function ThoughtView({ content }: { content: string }) {
+export function CollapsibleThought({
+    content,
+    isStreaming,
+    forceExpanded,
+    durationMs,
+}: {
+    content: string
+    isStreaming?: boolean
+    forceExpanded?: boolean
+    durationMs?: number
+}) {
+    const [elapsedSeconds, setElapsedSeconds] = useState(0)
+    const startTimeRef = useRef<number | null>(null)
+    const finalDurationRef = useRef<number | null>(null)
+
+    useEffect(() => {
+        // explicitly documented ref: startTimeRef and finalDurationRef are mutable refs to track live and completed thought duration
+        if (!isStreaming) {
+            if (startTimeRef.current) {
+                const totalElapsed = (Date.now() - startTimeRef.current) / 1000
+                const finalSec = Math.round(totalElapsed * 10) / 10
+                finalDurationRef.current = Math.max(0.1, finalSec)
+                setElapsedSeconds(finalSec)
+                startTimeRef.current = null
+            }
+            return
+        }
+        if (!startTimeRef.current) {
+            startTimeRef.current = Date.now()
+        }
+        const timer = setInterval(() => {
+            if (startTimeRef.current) {
+                const diff = (Date.now() - startTimeRef.current) / 1000
+                setElapsedSeconds(Math.round(diff * 10) / 10)
+            }
+        }, 100)
+        return () => clearInterval(timer)
+    }, [isStreaming])
+
     const formatted = formatThought(content)
-    if (!formatted) return null
+    if (!formatted && !isStreaming) return null
+
+    const words = formatted.trim() ? formatted.trim().split(/\s+/).length : 0
+    const tokenCount = Math.max(1, Math.round(words * 1.33))
+
+    const displayDuration =
+        durationMs !== undefined
+            ? (durationMs / 1000).toFixed(1)
+            : finalDurationRef.current !== null && finalDurationRef.current > 0
+              ? finalDurationRef.current.toFixed(1)
+              : elapsedSeconds > 0
+                ? elapsedSeconds.toFixed(1)
+                : Math.max(0.5, Math.round((words / 25) * 10) / 10).toFixed(1)
+
+    // Option A: December Brand Star ✱
+    // While streaming: ✱ Thinking (3.4s)...
+    if (isStreaming) {
+        return (
+            <Box flexDirection="row" marginY={0} gap={1} alignItems="center">
+                <Text color={THEME.colors.brand} bold>
+                    ✱
+                </Text>
+                <Text color={THEME.colors.text}>Thinking</Text>
+                <Text color={THEME.colors.muted}>({displayDuration}s)...</Text>
+            </Box>
+        )
+    }
+
+    // When done:
+    // Collapsed: ✱ Thought for 3.4s (412 tokens)  ·  ctrl+o to view
+    // Expanded:  ✱ Thought for 3.4s (412 tokens)  ·  ctrl+o to collapse
+    //            actual thoughts shown here in gray text (paddingLeft={2}, no left side dash)
+    const isExpanded = forceExpanded ?? false
+    const formattedLines = formatted.split(/\r?\n/).filter((l) => l.trim() !== '')
+
     return (
-        <Box flexDirection="column" paddingLeft={1} marginY={0}>
-            <Text color={THEME.colors.muted} italic>
-                {formatted}
-            </Text>
+        <Box flexDirection="column" marginY={0}>
+            <Box flexDirection="row" gap={1} alignItems="center">
+                <Text color={THEME.colors.muted}>✱</Text>
+                <Text color={THEME.colors.muted}>
+                    Thought for {displayDuration}s ({tokenCount} tokens)
+                </Text>
+                <Text color={THEME.colors.muted}>
+                    · ctrl+o to {isExpanded ? 'collapse' : 'view'}
+                </Text>
+            </Box>
+            {isExpanded && formattedLines.length > 0 && (
+                <Box flexDirection="column" paddingLeft={2} marginTop={0}>
+                    {formattedLines.map((line, lidx) => (
+                        <Text key={lidx} color={THEME.colors.muted}>
+                            {line}
+                        </Text>
+                    ))}
+                </Box>
+            )}
         </Box>
     )
 }
+
+export const ThoughtView = CollapsibleThought
 
 function StyledCommand({ command, truncate = true }: { command: string; truncate?: boolean }) {
     const match = command.match(/^([A-Za-z_]+)\(([\s\S]*)\)$/)
@@ -273,11 +362,23 @@ export const BotMessage = React.memo(function BotMessage({ blocks, usage, expand
                                 {needsTopMargin && <Text> </Text>}
                                 {parts.map((part, pidx) => {
                                     if (/^<(?:thought|think)(?:>| [^>]*>)/i.test(part)) {
+                                        const isClosed = /<\/(?:thought|think)>$/i.test(part)
+                                        const isStreaming =
+                                            !isClosed &&
+                                            idx === blocks.length - 1 &&
+                                            pidx === parts.length - 1
                                         const thoughtContent = part
                                             .replace(/^<(?:thought|think)(?:>| [^>]*>)/i, '')
                                             .replace(/<\/(?:thought|think)>$/i, '')
                                             .trim()
-                                        return <ThoughtView key={pidx} content={thoughtContent} />
+                                        return (
+                                            <CollapsibleThought
+                                                key={pidx}
+                                                content={thoughtContent}
+                                                isStreaming={isStreaming}
+                                                forceExpanded={expandCommands}
+                                            />
+                                        )
                                     }
                                     if (part.trim() === '') return null
                                     const hasLeadingNewline =
@@ -322,7 +423,15 @@ export const BotMessage = React.memo(function BotMessage({ blocks, usage, expand
                         )
                     }
                     case 'thinking': {
-                        return <ThoughtView key={idx} content={block.content} />
+                        return (
+                            <CollapsibleThought
+                                key={idx}
+                                content={block.content}
+                                isStreaming={block.isStreaming}
+                                durationMs={block.durationMs}
+                                forceExpanded={expandCommands}
+                            />
+                        )
                     }
                     case 'compaction': {
                         return (

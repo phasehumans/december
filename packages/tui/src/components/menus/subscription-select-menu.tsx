@@ -16,18 +16,22 @@ export const SUBSCRIPTION_MENU_ITEMS: SubscriptionItem[] = [
     {
         label: 'Anthropic (Claude)',
         value: 'claude',
+        hint: 'Requires Claude Pro or Max',
     },
     {
         label: 'GitHub (Copilot)',
         value: 'copilot',
+        hint: 'Requires active Copilot plan',
     },
     {
         label: 'Google (Gemini / Antigravity)',
         value: 'gemini',
+        hint: 'Requires Gemini Advanced / Antigravity',
     },
     {
         label: 'OpenAI (ChatGPT)',
         value: 'codex',
+        hint: 'Requires ChatGPT Plus / Pro',
     },
 ]
 
@@ -178,6 +182,11 @@ export function SubscriptionSelectMenu(props: SubscriptionSelectMenuProps) {
                         <Text color={isSelected ? THEME.colors.brand : THEME.colors.text}>
                             {item.label}
                         </Text>
+                        {item.hint && (
+                            <Box marginLeft={1}>
+                                <Text color={THEME.colors.muted}>({item.hint})</Text>
+                            </Box>
+                        )}
                     </Box>
                 )
             })}

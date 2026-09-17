@@ -71,6 +71,7 @@ export function parseCliArgs(args: string[]): ParsedCliArgs {
             'key',
             'resume',
             'docs',
+            'ask',
         ]
         let command: string | undefined
         let prompt: string | undefined
@@ -127,6 +128,7 @@ a coding agent that lives in your terminal.
 Usage:
   december                          Launch interactive TUI session
   december "<prompt>"               Execute headless agent task
+  december ask "<question>"         Ask a question about the codebase (read-only Q&A mode)
   december resume [session-id]      Resume the most recent session or specified session ID
   december auth [status|import]     Inspect active subscriptions and authentication status
   december link <provider>          Link AI subscription (copilot, claude, chatgpt, gemini)

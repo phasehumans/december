@@ -307,4 +307,37 @@ describe('runHeadlessTask', () => {
         restoreConsole()
         expect(console.log).toBe(originalLog)
     })
+
+    it('blocks mutating tools in requestPermission and forwards readOnly option when readOnly is true', async () => {
+        mockRunAgentLoop.mockImplementation(async function* (_agent: any, input: any) {
+            expect(input).toEqual({
+                content: 'test ask prompt',
+                readOnly: true,
+            })
+            const blockedBash = await mockAgent.operations.ui.requestPermission({
+                name: 'bash',
+                input: { command: 'ls' },
+            })
+            expect(blockedBash.block).toBe(true)
+            expect(blockedBash.reason).toContain('read-only / ask mode')
+
+            const allowedRead = await mockAgent.operations.ui.requestPermission({
+                name: 'read_file',
+                input: { path: 'file.txt' },
+            })
+            expect(allowedRead.block).toBe(false)
+
+            yield { type: 'StreamChunk', content: 'Answer' }
+        })
+
+        const result = await runHeadlessTask('test ask prompt', {
+            agent: mockAgent,
+            stdin: mockStdin as any,
+            stdout: mockStdout as any,
+            stderr: mockStderr as any,
+            readOnly: true,
+        })
+
+        expect(result.success).toBe(true)
+    })
 })

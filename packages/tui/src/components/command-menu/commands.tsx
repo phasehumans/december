@@ -9,6 +9,14 @@ import type { Command } from './types'
 
 export const COMMANDS: Command[] = [
     {
+        name: 'ask',
+        description: 'Ask a question about the codebase (read-only Q&A mode)',
+        value: '/ask',
+        action: (ctx) => {
+            // forwarded to chat screen
+        },
+    },
+    {
         name: 'clear',
         description: 'Clear conversation history',
         value: '/clear',

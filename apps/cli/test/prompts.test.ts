@@ -62,4 +62,13 @@ describe('CLI Prompts (Unit)', () => {
         expect(prompt).toContain('Use Tailwind classes instead of CSS variables')
         expect(prompt).toContain('Do NOT execute any tools. Only describe the updated plan.')
     })
+
+    test('getAskPrompt generates specialized read-only Q&A instructions', async () => {
+        const { getAskPrompt } = await import('../src/constants/prompts')
+        const prompt = getAskPrompt('How does user authentication work?')
+        expect(prompt).toContain('The user is asking: "How does user authentication work?"')
+        expect(prompt).toContain('Ask mode')
+        expect(prompt).toContain('read-only')
+        expect(prompt).toContain('CANNOT and MUST NOT modify any files')
+    })
 })

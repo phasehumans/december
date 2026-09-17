@@ -201,6 +201,34 @@ description: Forces the laziest solution that actually works.
         expect(prompt).toContain('Model Specialization (Gemini)')
         expect(prompt).toContain('STRICTLY specify absolute file paths')
         expect(prompt).toContain('Structured Execution')
+        expect(prompt).not.toContain('<thought>')
+    })
+
+    test('does not force <thought> tags instruction on non-reasoning models (sarvam, llama, mistral)', () => {
+        const sarvamHarness = new AgentHarness({
+            llm: new MockLLM(),
+            tools: [],
+            operations: {} as any,
+            workspaceDir: tmpDir,
+            modelOptions: { model: 'sarvam-105b' },
+        })
+
+        const sarvamPrompt = sarvamHarness.getAgent().systemPrompt
+        expect(sarvamPrompt).not.toContain('<thought>')
+        expect(sarvamPrompt).toContain('Communication Protocol')
+        expect(sarvamPrompt).not.toContain('Thought Enclosure')
+
+        const llamaHarness = new AgentHarness({
+            llm: new MockLLM(),
+            tools: [],
+            operations: {} as any,
+            workspaceDir: tmpDir,
+            modelOptions: { model: 'meta-llama/llama-3.3-70b-instruct' },
+        })
+
+        const llamaPrompt = llamaHarness.getAgent().systemPrompt
+        expect(llamaPrompt).not.toContain('<thought>')
+        expect(llamaPrompt).not.toContain('Thought Enclosure')
     })
 
     test('dynamically includes guidelines only for active tools', () => {

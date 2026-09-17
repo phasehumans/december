@@ -796,6 +796,8 @@ export function parseErrorMessage(err: any, context?: ErrorParseContext): string
                 }
 
                 // normal object access
+                if (typeof parsed.error_details?.message === 'string')
+                    return parsed.error_details.message
                 if (typeof parsed.error?.message === 'string') return parsed.error.message
                 if (typeof parsed.message === 'string') return parsed.message
                 if (typeof parsed.error === 'string') return parsed.error
@@ -811,6 +813,11 @@ export function parseErrorMessage(err: any, context?: ErrorParseContext): string
             const jsonStr = str.slice(firstBrace, lastBrace + 1)
             try {
                 const parsed = JSON.parse(jsonStr)
+                if (
+                    parsed?.error_details?.message &&
+                    typeof parsed.error_details.message === 'string'
+                )
+                    return parsed.error_details.message
                 if (parsed?.error?.message && typeof parsed.error.message === 'string')
                     return parsed.error.message
                 if (parsed?.message && typeof parsed.message === 'string') return parsed.message
@@ -1024,6 +1031,30 @@ export function parseError(err: any, context?: ErrorParseContext): ParsedErrorDe
                 'The selected model is not available or not enabled for your token group on this provider.',
             cause: cause,
             hint: 'Please switch models using `/model` (e.g. glm-5.2, gpt-5.5, claude-opus-4-6, glm-4-plus).',
+        }
+    }
+
+    // 5.5 Copilot subscription authorization & missing license errors
+    const isCopilotNoAccess =
+        combined.includes('no_copilot_access') ||
+        combined.includes('no access to github copilot') ||
+        combined.includes('no active github copilot subscription')
+
+    if (isCopilotNoAccess) {
+        let cause = explicitCause
+        if (!cause) {
+            const match = fullMessage.match(/No access to GitHub Copilot found[^\n]*/i)
+            if (match) {
+                cause = match[0].trim()
+            } else {
+                const parts = fullMessage.split('\n')
+                cause = parts.length > 1 ? parts.slice(1).join('\n').trim() : fullMessage
+            }
+        }
+        return {
+            message: 'No active GitHub Copilot subscription found.',
+            cause: cause,
+            hint: 'Please subscribe at https://github.com/github-copilot/signup, ensure your browser is logged into the correct GitHub account, or use BYOK / Ollama instead.',
         }
     }
 

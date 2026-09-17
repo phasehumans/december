@@ -329,6 +329,10 @@ export function useAuthHandlers(
                         if (code && !code.endsWith('-AUTH')) {
                             promptText = `\nPlease open [${uri}](${uri}) on your device and enter code: \`${code}\``
                         }
+                        if (item.value === 'copilot') {
+                            promptText +=
+                                '\n*(Note: Ensure your browser is logged into the GitHub account that owns your active Copilot subscription)*'
+                        }
                         setActiveMessages([
                             {
                                 id: codeMsgId,
@@ -398,7 +402,11 @@ export function useAuthHandlers(
                     addToast(formatSubscriptionToast(bundle, targetModel), 'success')
                 } catch (err: any) {
                     const parsed = parseError(err)
-                    const errorText = `Subscription verification failed: ${parsed.message}`
+                    const errorText =
+                        parsed.message.startsWith('Subscription verification failed') ||
+                        parsed.message.startsWith('No active GitHub Copilot subscription')
+                            ? parsed.message
+                            : `Subscription verification failed: ${parsed.message}`
                     setAuthError(errorText)
                     setStaticMessages((prev) => [...prev, ...useCliStore.getState().activeMessages])
                     setActiveMessages([
@@ -849,6 +857,7 @@ export function useAuthHandlers(
         try {
             await agent.loadContext(item.value)
             const resumedMessages = convertAgentMessagesToTuiMessages(agent.messages)
+            console.clear()
             setStaticMessages([{ id: 'header', role: 'header' }, ...resumedMessages])
             setStaticKey((k) => k + 1) // force ink <static> to remount and render the entire array
             setActiveMessages([])

@@ -110,14 +110,14 @@ describe('CommandMenu Component (Unit)', () => {
             </KeyboardLayerProvider>
         )
 
-        expect(lastFrame()).toContain('❭ /clear')
+        expect(lastFrame()).toContain('❭ /ask')
 
         stdin.write('\u001B[B') // Down
         await new Promise((resolve) => setTimeout(resolve, 20))
-        expect(lastFrame()).toContain('❭ /context')
+        expect(lastFrame()).toContain('❭ /clear')
 
         stdin.write('\u001B[A') // Up
         await new Promise((resolve) => setTimeout(resolve, 20))
-        expect(lastFrame()).toContain('❭ /clear')
+        expect(lastFrame()).toContain('❭ /ask')
     })
 })

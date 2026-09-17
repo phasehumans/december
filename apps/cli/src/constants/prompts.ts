@@ -83,3 +83,12 @@ Please update and refine the detailed, step-by-step implementation plan based on
 Do NOT execute any tools. Only describe the updated plan.
 Start your response with '### Implementation Plan' and list the concrete updated steps.
 Explain which files need to be created, modified, or deleted, and what the changes will be.`
+
+export const getAskPrompt = (question: string) => `You are in Ask mode (read-only Q&A).
+The user is asking: "${question}"
+
+Guidelines:
+1. Answer the user's question thoroughly, clearly, and accurately based on the codebase.
+2. You can use your available tools (search, read files, list directories, search web) to inspect and verify code facts.
+3. You CANNOT and MUST NOT modify any files, write new files, or run bash/terminal commands.
+4. Provide comprehensive explanations, referencing relevant file paths, types, functions, and code snippets directly in your answer.`

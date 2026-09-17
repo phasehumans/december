@@ -36,6 +36,7 @@ export interface HeadlessTaskOptions {
     nonInteractive?: boolean
     isAuthenticated?: boolean
     json?: boolean
+    readOnly?: boolean
 }
 
 export interface HeadlessTaskResult {
@@ -130,6 +131,24 @@ export async function runHeadlessTask(
     }
 
     agent.operations.ui.requestPermission = async (toolCall: any) => {
+        if (
+            options.readOnly &&
+            ![
+                'read_file',
+                'ls',
+                'find_files',
+                'grep_search',
+                'web_search',
+                'browser',
+                'ask_question',
+            ].includes(toolCall.name)
+        ) {
+            return {
+                block: true,
+                reason: `Tool '${toolCall.name}' is not allowed in read-only / ask mode.`,
+            }
+        }
+
         if (isNonInteractive) {
             return { block: false }
         }
@@ -181,7 +200,10 @@ export async function runHeadlessTask(
             }
         }
 
-        const stream = runAgentLoop(agent, effectivePrompt)
+        const stream = runAgentLoop(
+            agent,
+            options.readOnly ? { content: effectivePrompt, readOnly: true } : effectivePrompt
+        )
 
         for await (const event of stream) {
             switch (event.type) {

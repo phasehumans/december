@@ -343,6 +343,11 @@ export async function handleLoginCommand(options?: { provider?: string }): Promi
             console.log(
                 `\nPlease open ${uri} in your browser and enter code: ${code}\nWaiting for authorization...`
             )
+            if (targetProvider === 'copilot' || targetProvider === 'github') {
+                console.log(
+                    '*(Note: Ensure your browser is signed into the GitHub account that owns your active Copilot subscription)*'
+                )
+            }
         })
         const configToSave = await loadConfig()
         configToSave.subscriptions = configToSave.subscriptions || {}

@@ -18,6 +18,7 @@ import {
     HANDOFF_SUCCESS_NOTICE,
 } from '../constants/messages'
 import {
+    getAskPrompt,
     getGrillPrompt,
     getPlanPrompt,
     getPlanExecutionPrompt,
@@ -244,8 +245,13 @@ export function useAgentSession({
             }
             const nonSystem = (agent.messages || []).filter((m: any) => m.role !== 'system')
             if (nonSystem.length > 0) {
+                const currentStatic = useCliStore.getState().staticMessages
+                if (currentStatic.length > 1) {
+                    return
+                }
                 const resumed = convertAgentMessagesToTuiMessages(agent.messages)
                 if (resumed.length > 0) {
+                    console.clear()
                     setStaticMessages([{ id: 'header', role: 'header' }, ...resumed])
                     setStaticKey((k: number) => k + 1)
                 }
@@ -1705,6 +1711,14 @@ ${decStatus}
                 return
             }
 
+            if (text.trim() === '/ask') {
+                addToast(
+                    'Please enter your question after /ask (e.g. /ask how does auth work?)',
+                    'info'
+                )
+                return
+            }
+
             if (text.trim() === '/plan' || text.trim().startsWith('/plan ')) {
                 const goal = text.trim().slice('/plan'.length).trim()
                 if (!goal) {
@@ -2035,9 +2049,26 @@ ${decStatus}
                 const promptToProcess = currentRawPrompt
                 let displayText = promptToProcess
                 let executionPrompt = promptToProcess
+                let isAskPrompt = false
+
+                if (
+                    promptToProcess.trim() === '/ask' ||
+                    promptToProcess.trim().startsWith('/ask ') ||
+                    promptToProcess.trim().startsWith('/ask\t')
+                ) {
+                    const question = promptToProcess
+                        .trim()
+                        .replace(/^\/ask\s*/, '')
+                        .trim()
+                    if (question) {
+                        isAskPrompt = true
+                        executionPrompt = getAskPrompt(question)
+                        displayText = `/ask ${question}`
+                    }
+                }
 
                 // Check if input matches an installed skill (e.g. /skill:handoff or /skill:tdd or /tdd [args])
-                if (promptToProcess.startsWith('/')) {
+                if (!isAskPrompt && promptToProcess.startsWith('/')) {
                     const [firstToken, ...restArgs] = promptToProcess.split(/\s+/)
                     let potentialCmd = firstToken ? firstToken.slice(1).toLowerCase() : ''
                     const isExplicitSkillPrefix = potentialCmd.startsWith('skill:')
@@ -2047,6 +2078,7 @@ ${decStatus}
 
                     // Core built-ins take priority unless explicitly prefixed with /skill:
                     const coreBuiltins = new Set([
+                        'ask',
                         'clear',
                         'context',
                         'copy',
@@ -2130,6 +2162,7 @@ ${decStatus}
                     const stream = runAgentLoop(agent, {
                         content: executionPrompt,
                         displayText,
+                        readOnly: isAskPrompt,
                     })
                     await processAgentStream({
                         stream,
@@ -2202,6 +2235,7 @@ ${decStatus}
             setSessionsData,
             setSettingsFollowUpMode,
             setSettingsNonWorkspace,
+            setSettingsPathGuard,
             setSettingsSteeringMode,
             setSettingsThinkingLevel,
             setSettingsToolPermission,
@@ -2209,7 +2243,6 @@ ${decStatus}
             setStaticMessages,
             setStaticKey,
             setOllamaModels,
-            setCurrentPlannedPrompt,
             authMethod,
             selectedProvider,
             setActiveModel,

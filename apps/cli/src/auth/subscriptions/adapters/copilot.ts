@@ -25,6 +25,41 @@ export async function exchangeGitHubTokenForCopilot(
 
     if (!res.ok) {
         const text = await res.text().catch(() => '')
+        let parsedJson: any = null
+        try {
+            parsedJson = JSON.parse(text)
+        } catch {
+            // Intentionally swallowed: response is not valid JSON
+        }
+
+        if (res.status === 403) {
+            const errorDetails = parsedJson?.error_details
+            if (errorDetails?.notification_id === 'no_copilot_access') {
+                const detailMsg = errorDetails.message || ''
+                const userMatch = detailMsg.match(/logged in as ([^.]+)/i)
+                const userNotice = userMatch ? ` for account @${userMatch[1].trim()}` : ''
+                throw new Error(
+                    `No active GitHub Copilot subscription found${userNotice}. ${detailMsg} Please sign up at https://github.com/github-copilot/signup or ensure your browser is logged into an authorized GitHub account.`
+                )
+            }
+            if (errorDetails?.message) {
+                throw new Error(
+                    `GitHub Copilot subscription verification failed (403): ${errorDetails.message}`
+                )
+            }
+            if (parsedJson?.message) {
+                throw new Error(
+                    `GitHub Copilot subscription verification failed (403): ${parsedJson.message}`
+                )
+            }
+        }
+
+        if (parsedJson?.message) {
+            throw new Error(
+                `Failed to exchange GitHub token for Copilot token (${res.status}): ${parsedJson.message}`
+            )
+        }
+
         throw new Error(
             `Failed to exchange GitHub token for Copilot token (${res.status}): ${text}`
         )
@@ -240,8 +275,15 @@ export const copilotAdapter: SubscriptionAdapter = {
         try {
             exchangeResult = await exchangeGitHubTokenForCopilot(ghOAuthToken)
         } catch (err: any) {
+            const msg = err?.message || String(err)
+            if (
+                msg.includes('No active GitHub Copilot subscription') ||
+                msg.includes('GitHub Copilot subscription verification failed')
+            ) {
+                throw err
+            }
             throw new Error(
-                `GitHub Copilot subscription verification failed. Please make sure your GitHub account has an active Copilot subscription and that external integrations are allowed by your organization. (${err?.message || err})`,
+                `GitHub Copilot subscription verification failed. Please make sure your GitHub account has an active Copilot subscription and that external integrations are allowed by your organization. (${msg})`,
                 { cause: err }
             )
         }

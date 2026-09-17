@@ -147,6 +147,17 @@ async function main() {
         process.exit(0)
     }
 
+    const isAskMode = parsedArgs.command === 'ask'
+    if (isAskMode) {
+        const question = parsedArgs.positionals.slice(1).join(' ').trim() || parsedArgs.prompt
+        if (!question) {
+            console.error('Error: Please provide a question to ask.')
+            console.error('Usage: december ask "<question>"\n')
+            process.exit(1)
+        }
+        parsedArgs.prompt = question
+    }
+
     // Path 4: Headless Task Execution (Load agent harness & tools, skip Ink/React/TUI)
     if (parsedArgs.prompt) {
         const [
@@ -159,6 +170,7 @@ async function main() {
             { localOperations, setActiveScopeDir },
             { instantiateProvider },
             { ensureValidModelForProvider },
+            { getAskPrompt },
         ] = await Promise.all([
             import('@december/agent'),
             import('@december/providers'),
@@ -169,6 +181,7 @@ async function main() {
             import('./local-operations'),
             import('./utils/provider-factory'),
             import('./utils/models'),
+            import('./constants/prompts'),
         ])
 
         if (parsedArgs.scope) {
@@ -207,22 +220,34 @@ async function main() {
                   providerConfig?.model ||
                   ensureValidModelForProvider(activeProvider, config.activeModel)
 
+        const effectiveTools = isAskMode
+            ? [
+                  toolsModule.ReadFileTool,
+                  toolsModule.LsTool,
+                  toolsModule.FindFilesTool,
+                  toolsModule.GrepSearchTool,
+                  toolsModule.AskQuestionTool,
+                  toolsModule.BrowserTool,
+                  toolsModule.WebSearchTool,
+              ]
+            : [
+                  toolsModule.BashTool,
+                  toolsModule.ReadFileTool,
+                  toolsModule.WriteFileTool,
+                  toolsModule.LsTool,
+                  toolsModule.EditFileTool,
+                  toolsModule.EditDiffTool,
+                  toolsModule.FindFilesTool,
+                  toolsModule.GrepSearchTool,
+                  toolsModule.AskQuestionTool,
+                  toolsModule.ManageTaskTool,
+                  toolsModule.BrowserTool,
+                  toolsModule.WebSearchTool,
+              ]
+
         const harness = new AgentHarness({
             llm: llm,
-            tools: [
-                toolsModule.BashTool,
-                toolsModule.ReadFileTool,
-                toolsModule.WriteFileTool,
-                toolsModule.LsTool,
-                toolsModule.EditFileTool,
-                toolsModule.EditDiffTool,
-                toolsModule.FindFilesTool,
-                toolsModule.GrepSearchTool,
-                toolsModule.AskQuestionTool,
-                toolsModule.ManageTaskTool,
-                toolsModule.BrowserTool,
-                toolsModule.WebSearchTool,
-            ],
+            tools: effectiveTools,
             operations: localOperations,
             modelOptions: {
                 model: initialModel,
@@ -243,13 +268,20 @@ async function main() {
         await agent.loadContext()
 
         if (!parsedArgs.json) {
-            console.log(`\nExecuting Headless Task: "${parsedArgs.prompt}"\n`)
+            console.log(
+                isAskMode
+                    ? `\nExecuting Ask Q&A: "${parsedArgs.prompt}"\n`
+                    : `\nExecuting Headless Task: "${parsedArgs.prompt}"\n`
+            )
         }
 
-        const result = await runHeadlessTask(parsedArgs.prompt, {
+        const effectivePrompt = isAskMode ? getAskPrompt(parsedArgs.prompt) : parsedArgs.prompt
+
+        const result = await runHeadlessTask(effectivePrompt, {
             agent,
             nonInteractive: parsedArgs.yes,
             json: parsedArgs.json,
+            readOnly: isAskMode,
         })
         process.exit(result.success ? 0 : 1)
     }
@@ -376,10 +408,26 @@ async function main() {
 
     const agent = harness.getAgent()
 
-    // Non-blocking session context loading during TUI mounting
-    agent.loadContext().catch(() => {
-        // Intentionally swallowed: ignore context load errors on fresh sessions
-    })
+    if (targetSessionId) {
+        await agent.loadContext().catch(() => {
+            // Intentionally swallowed: ignore context load errors on fresh sessions
+        })
+        const nonSystem = (agent.messages || []).filter((m: any) => m.role !== 'system')
+        if (nonSystem.length > 0) {
+            const { convertAgentMessagesToTuiMessages } = await import('./hooks/use-agent-runner')
+            const resumed = convertAgentMessagesToTuiMessages(agent.messages)
+            if (resumed.length > 0) {
+                useCliStore
+                    .getState()
+                    .setStaticMessages([{ id: 'header', role: 'header' }, ...resumed])
+            }
+        }
+    } else {
+        // Non-blocking session context loading during TUI mounting for fresh sessions
+        agent.loadContext().catch(() => {
+            // Intentionally swallowed: ignore context load errors on fresh sessions
+        })
+    }
 
     function AppWrapper(props: any) {
         const [latestVersion, setLatestVersion] = React.useState(undefined as string | undefined)
