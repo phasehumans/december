@@ -185,13 +185,41 @@ function formatError(e: any): string {
     return String(e) || 'Unknown error'
 }
 
+export type AgentLoopInput =
+    | string
+    | {
+          content: string
+          displayText?: string
+          readOnly?: boolean
+      }
+
+export interface AgentLoopOptions {
+    readOnly?: boolean
+}
+
+export const READ_ONLY_TOOLS = new Set([
+    'read_file',
+    'ls',
+    'find_files',
+    'grep_search',
+    'web_search',
+    'browser',
+    'ask_question',
+])
+
 export async function* runAgentLoop(
     agent: Agent,
-    userInput?: string | { content: string; displayText?: string }
+    userInput?: AgentLoopInput,
+    options?: AgentLoopOptions
 ): AsyncGenerator<AgentEvent, void, unknown> {
     const eventQueue = new AsyncQueue<AgentEvent>()
     const abortController = new AbortController()
     agent.activeAbortController = abortController
+
+    const isReadOnly = Boolean(
+        options?.readOnly ||
+        (typeof userInput === 'object' && userInput !== null && userInput.readOnly)
+    )
 
     if (userInput) {
         if (typeof userInput === 'string') {
@@ -218,7 +246,9 @@ export async function* runAgentLoop(
             }
 
             eventQueue.push({ type: 'AgentStart' })
-            await runOuterLoop(agent, eventQueue, abortController.signal as any)
+            await runOuterLoop(agent, eventQueue, abortController.signal as any, {
+                readOnly: isReadOnly,
+            })
 
             try {
                 if (abortController.signal.aborted) {
@@ -269,10 +299,15 @@ export async function* runAgentLoop(
     yield* eventQueue
 }
 
-async function runOuterLoop(agent: Agent, eventQueue: AsyncQueue<AgentEvent>, signal: AbortSignal) {
+async function runOuterLoop(
+    agent: Agent,
+    eventQueue: AsyncQueue<AgentEvent>,
+    signal: AbortSignal,
+    options?: { readOnly?: boolean }
+) {
     while (!signal.aborted) {
         // run inner loop for turns
-        await runInnerLoop(agent, eventQueue, signal)
+        await runInnerLoop(agent, eventQueue, signal, options)
 
         if (signal.aborted) break
 
@@ -289,7 +324,12 @@ async function runOuterLoop(agent: Agent, eventQueue: AsyncQueue<AgentEvent>, si
     }
 }
 
-async function runInnerLoop(agent: Agent, eventQueue: AsyncQueue<AgentEvent>, signal: AbortSignal) {
+async function runInnerLoop(
+    agent: Agent,
+    eventQueue: AsyncQueue<AgentEvent>,
+    signal: AbortSignal,
+    options?: { readOnly?: boolean }
+) {
     let isDone = false
     let turnCount = 0
 
@@ -323,7 +363,8 @@ async function runInnerLoop(agent: Agent, eventQueue: AsyncQueue<AgentEvent>, si
             agent,
             eventQueue,
             signal,
-            turnCount
+            turnCount,
+            options
         )
 
         if (error || signal.aborted) {
@@ -341,7 +382,7 @@ async function runInnerLoop(agent: Agent, eventQueue: AsyncQueue<AgentEvent>, si
             })
 
             // execute tools
-            await executeToolCalls(agent, toolCalls, eventQueue, signal)
+            await executeToolCalls(agent, toolCalls, eventQueue, signal, options)
         }
 
         await agent.saveContext()
@@ -371,7 +412,8 @@ async function streamAssistantResponse(
     agent: Agent,
     eventQueue: AsyncQueue<AgentEvent>,
     signal: AbortSignal,
-    turnCount: number = 1
+    turnCount: number = 1,
+    options?: { readOnly?: boolean }
 ): Promise<{ assistantMessage: string; toolCalls: ToolCall[]; error?: string }> {
     let assistantMessage = ''
     let toolCalls: ToolCall[] = []
@@ -410,12 +452,14 @@ async function streamAssistantResponse(
                 }
                 const isConversational = isSimpleConversationalTurn(agent.messages)
 
-                // Dynamic Tool Masking: omit heavy tool schemas on simple conversational turns
-                const activeTools = isConversational
-                    ? Array.from(agent.tools.values()).filter((t) =>
-                          ['read_file', 'ls', 'ask_question'].includes(t.name)
-                      )
-                    : Array.from(agent.tools.values())
+                // Dynamic Tool Masking: omit heavy tool schemas on simple conversational turns or restrict to read-only tools
+                const activeTools = options?.readOnly
+                    ? Array.from(agent.tools.values()).filter((t) => READ_ONLY_TOOLS.has(t.name))
+                    : isConversational
+                      ? Array.from(agent.tools.values()).filter((t) =>
+                            ['read_file', 'ls', 'ask_question'].includes(t.name)
+                        )
+                      : Array.from(agent.tools.values())
 
                 // Breakpoint 2: Tools definition array (last tool marked for caching)
                 const toolsArray = activeTools.map((t, idx) => ({
@@ -751,7 +795,8 @@ async function executeToolCalls(
     agent: Agent,
     toolCalls: ToolCall[],
     eventQueue: AsyncQueue<AgentEvent>,
-    signal: AbortSignal
+    signal: AbortSignal,
+    options?: { readOnly?: boolean }
 ) {
     const isSequentialTool = (tc: ToolCall) => {
         const tool = agent.tools.get(tc.name)
@@ -773,11 +818,11 @@ async function executeToolCalls(
     }
 
     if (parallelReadCalls.length > 0) {
-        await executeToolCallsParallel(agent, parallelReadCalls, eventQueue, signal)
+        await executeToolCallsParallel(agent, parallelReadCalls, eventQueue, signal, options)
     }
 
     if (sequentialWriteCalls.length > 0 && !signal.aborted) {
-        await executeToolCallsSequential(agent, sequentialWriteCalls, eventQueue, signal)
+        await executeToolCallsSequential(agent, sequentialWriteCalls, eventQueue, signal, options)
     }
 }
 
@@ -785,7 +830,8 @@ async function executeSingleTool(
     agent: Agent,
     toolCall: ToolCall,
     eventQueue: AsyncQueue<AgentEvent>,
-    signal: AbortSignal
+    signal: AbortSignal,
+    options?: { readOnly?: boolean }
 ): Promise<{ toolCall: ToolCall; toolResult: ToolResult; resultStr: string; errorStr?: string }> {
     const toolStartTime = Date.now()
     eventQueue.push({ type: 'ToolCallStart', toolCall })
@@ -793,6 +839,25 @@ async function executeSingleTool(
     const tool = agent.tools.get(toolCall.name)
     let resultStr = ''
     let errorStr = undefined
+
+    if (options?.readOnly && !READ_ONLY_TOOLS.has(toolCall.name)) {
+        errorStr = `Tool execution blocked: '${toolCall.name}' is not permitted in read-only / ask mode.`
+        const res = { toolCallId: toolCall.id, result: '', error: errorStr }
+        eventQueue.push({ type: 'ToolCallResult', result: res })
+        try {
+            agent.tracer?.recordToolExecution({
+                toolCallId: toolCall.id,
+                toolName: toolCall.name,
+                input: toolCall.input,
+                output: '',
+                error: errorStr,
+                durationMs: Date.now() - toolStartTime,
+            })
+        } catch {
+            // Intentionally swallowed: Telemetry tool execution recording must not disrupt agent loop
+        }
+        return { toolCall, toolResult: res, resultStr: '', errorStr }
+    }
 
     if (agent.operations?.ui?.requestPermission) {
         const hookRes = await agent.operations.ui.requestPermission(toolCall)
@@ -870,11 +935,12 @@ async function executeToolCallsSequential(
     agent: Agent,
     toolCalls: ToolCall[],
     eventQueue: AsyncQueue<AgentEvent>,
-    signal: AbortSignal
+    signal: AbortSignal,
+    options?: { readOnly?: boolean }
 ) {
     for (const toolCall of toolCalls) {
         if (signal.aborted) break
-        const r = await executeSingleTool(agent, toolCall, eventQueue, signal)
+        const r = await executeSingleTool(agent, toolCall, eventQueue, signal, options)
 
         let finalContent = r.resultStr || ''
         if (r.errorStr) {
@@ -893,9 +959,12 @@ async function executeToolCallsParallel(
     agent: Agent,
     toolCalls: ToolCall[],
     eventQueue: AsyncQueue<AgentEvent>,
-    signal: AbortSignal
+    signal: AbortSignal,
+    options?: { readOnly?: boolean }
 ) {
-    const promises = toolCalls.map((tc) => executeSingleTool(agent, tc, eventQueue, signal))
+    const promises = toolCalls.map((tc) =>
+        executeSingleTool(agent, tc, eventQueue, signal, options)
+    )
     const results = await Promise.all(promises)
     for (const r of results) {
         let finalContent = r.resultStr || ''

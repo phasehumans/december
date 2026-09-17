@@ -55,6 +55,15 @@ describe('parseCliArgs', () => {
         expect(parseCliArgs(['guide']).prompt).toBe('guide')
         expect(parseCliArgs(['handoff']).command).toBeUndefined()
         expect(parseCliArgs(['handoff']).prompt).toBe('handoff')
+        expect(parseCliArgs(['ask']).command).toBe('ask')
+        expect(parseCliArgs(['ask', 'how', 'does', 'auth', 'work']).command).toBe('ask')
+        expect(parseCliArgs(['ask', 'how', 'does', 'auth', 'work']).positionals).toEqual([
+            'ask',
+            'how',
+            'does',
+            'auth',
+            'work',
+        ])
     })
 
     it('parses --scope and --cwd flags correctly', () => {
@@ -68,6 +77,7 @@ describe('parseCliArgs', () => {
         expect(help).toContain('a coding agent that lives in your terminal.')
         expect(help).toContain('Usage:')
         expect(help).toContain('december')
+        expect(help).toContain('december ask')
         expect(help).toContain('--help')
         expect(help).toContain('--version')
         expect(help).toContain('--scope')

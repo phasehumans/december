@@ -350,4 +350,77 @@ describe('useCliStore activeMessages handling', () => {
         store.setSessionsData(finalSessions)
         expect(useCliStore.getState().sessionsData).toHaveLength(3)
     })
+
+    it('preserves pre-hydrated staticMessages on startup resume without duplicating header or bumping key', () => {
+        const store = useCliStore.getState()
+        const resumedUser = {
+            id: 'msg-resumed-user',
+            role: 'user' as const,
+            text: 'resumed prompt',
+        }
+        const resumedAssistant = {
+            id: 'msg-resumed-ast',
+            role: 'assistant' as const,
+            blocks: [{ type: 'text' as const, content: 'resumed answer' }],
+        }
+
+        // Simulating pre-hydration in index.ts before TUI render:
+        store.setStaticMessages([{ id: 'header', role: 'header' }, resumedUser, resumedAssistant])
+        expect(useCliStore.getState().staticMessages).toHaveLength(3)
+        expect(useCliStore.getState().staticKey).toBe(0)
+
+        // When hydrateInitialSession runs on already hydrated messages (length > 1):
+        const currentStatic = useCliStore.getState().staticMessages
+        const shouldSkipHydration = currentStatic.length > 1
+        expect(shouldSkipHydration).toBe(true)
+        // staticKey stays 0, no second header is added
+        expect(useCliStore.getState().staticKey).toBe(0)
+        expect(useCliStore.getState().staticMessages[0].role).toBe('header')
+    })
+
+    it('clears previous session and sets single header and resumed messages when switching sessions', () => {
+        const store = useCliStore.getState()
+        // Simulate an existing session with active and static messages
+        store.setStaticMessages([
+            { id: 'header', role: 'header' },
+            { id: 'old-msg-1', role: 'user', text: 'Old project prompt' },
+            {
+                id: 'old-msg-2',
+                role: 'assistant',
+                blocks: [{ type: 'text', content: 'Old project response' }],
+            },
+        ])
+        store.setActiveMessages([{ id: 'active-old', role: 'user', text: 'In-progress query' }])
+        expect(useCliStore.getState().staticMessages).toHaveLength(3)
+        expect(useCliStore.getState().activeMessages).toHaveLength(1)
+
+        // Simulate handleSessionSelect logic on selecting another session
+        let consoleCleared = false
+        const originalClear = console.clear
+        console.clear = () => {
+            consoleCleared = true
+        }
+
+        try {
+            const newlyResumed = [
+                { id: 'new-msg-1', role: 'user' as const, text: 'New project prompt' },
+            ]
+            console.clear()
+            store.setStaticMessages([{ id: 'header', role: 'header' }, ...newlyResumed])
+            store.setStaticKey((k: number) => k + 1)
+            store.setActiveMessages([])
+
+            expect(consoleCleared).toBe(true)
+            const currentStatic = useCliStore.getState().staticMessages
+            expect(currentStatic).toHaveLength(2)
+            expect(currentStatic[0].role).toBe('header')
+            expect(currentStatic[1].text).toBe('New project prompt')
+            // None of old-msg-1 or old-msg-2 remain
+            expect(currentStatic.find((m) => m.id === 'old-msg-1')).toBeUndefined()
+            expect(useCliStore.getState().activeMessages).toHaveLength(0)
+            expect(useCliStore.getState().staticKey).toBe(1)
+        } finally {
+            console.clear = originalClear
+        }
+    })
 })

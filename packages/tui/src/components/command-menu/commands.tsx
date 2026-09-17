@@ -385,4 +385,12 @@ export const COMMANDS: Command[] = [
             // forwarded to chat screen
         },
     },
+    {
+        name: 'ask',
+        description: 'Ask a question about the codebase (read-only Q&A mode)',
+        value: '/ask',
+        action: (ctx) => {
+            // forwarded to chat screen
+        },
+    },
 ]

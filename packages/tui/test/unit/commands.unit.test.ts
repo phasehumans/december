@@ -179,3 +179,12 @@ describe('/grill and /plan commands', () => {
         expect(planCmd?.value).toBe('/plan')
     })
 })
+
+describe('/ask command', () => {
+    test('should define /ask command forwarded to chat screen', () => {
+        const askCmd = COMMANDS.find((c) => c.name === 'ask')
+        expect(askCmd).toBeDefined()
+        expect(askCmd?.value).toBe('/ask')
+        expect(askCmd?.description).toContain('Ask a question about the codebase')
+    })
+})
