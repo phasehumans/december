@@ -377,5 +377,28 @@ describe('error-parser', () => {
             )
             expect(parsed.hint).toContain('https://llm.internal.corp/v1')
         })
+
+        test('attaches custom notice and hint for GitHub Copilot missing subscription error', () => {
+            const rawErr =
+                'GitHub Copilot subscription verification failed. (Failed to exchange GitHub token for Copilot token (403): {"error_details":{"message":"No access to GitHub Copilot found. You are currently logged in as Pranavjadhav9988.","notification_id":"no_copilot_access","title":"Sign up for GitHub Copilot","url":"https://github.com/github-copilot/signup?editor={EDITOR}"}})'
+            const parsed = parseError(rawErr)
+            expect(parsed.message).toBe('No active GitHub Copilot subscription found.')
+            expect(parsed.cause).toContain('No access to GitHub Copilot found')
+            expect(parsed.hint).toContain('https://github.com/github-copilot/signup')
+            expect(parsed.hint).toContain('BYOK')
+        })
+
+        test('extracts error_details.message from GitHub API JSON error object', () => {
+            const rawErr = JSON.stringify({
+                error_details: {
+                    message:
+                        'No access to GitHub Copilot found. You are currently logged in as octocat.',
+                    notification_id: 'no_copilot_access',
+                },
+            })
+            const parsed = parseError(rawErr)
+            expect(parsed.message).toBe('No active GitHub Copilot subscription found.')
+            expect(parsed.cause).toContain('octocat')
+        })
     })
 })

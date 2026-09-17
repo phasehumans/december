@@ -256,4 +256,81 @@ describe('Agent core functionality (Unit)', () => {
         expect(userMsg?.content).toBe('Full expanded skill prompt with procedures...')
         expect(userMsg?.displayText).toBe('/skill:implement')
     })
+
+    test('runAgentLoop with readOnly filters out mutation tools so LLM only receives read-only tools', async () => {
+        const mockLlm = new MockLLM()
+        const agent = new Agent({
+            llm: mockLlm,
+            tools: [
+                { name: 'read_file', description: 'read', inputSchema: {} } as any,
+                { name: 'write_file', description: 'write', inputSchema: {} } as any,
+                { name: 'bash', description: 'bash', inputSchema: {} } as any,
+                { name: 'ls', description: 'ls', inputSchema: {} } as any,
+            ],
+            operations: mockOperations,
+        })
+
+        for await (const _ of runAgentLoop(agent, {
+            content: 'How does this work?',
+            displayText: '/ask How does this work?',
+            readOnly: true,
+        })) {
+            // consume stream
+        }
+
+        expect(mockLlm.calls.length).toBeGreaterThan(0)
+        const sentTools = mockLlm.calls[0]?.tools || []
+        const sentToolNames = sentTools.map((t) => t.name)
+        expect(sentToolNames).toContain('read_file')
+        expect(sentToolNames).toContain('ls')
+        expect(sentToolNames).not.toContain('write_file')
+        expect(sentToolNames).not.toContain('bash')
+    })
+
+    test('runAgentLoop with readOnly blocks mutation tool execution if called', async () => {
+        const mockLlm = new MockLLM()
+        mockLlm.pushResponse([
+            {
+                type: 'tool_call',
+                toolCall: {
+                    id: 'tc-1',
+                    name: 'bash',
+                    input: JSON.stringify({ command: 'rm -rf /' }),
+                },
+            },
+        ])
+        mockLlm.pushResponse([{ type: 'text', text: 'I understand.' }])
+
+        let executedBash = false
+        const agent = new Agent({
+            llm: mockLlm,
+            tools: [
+                {
+                    name: 'bash',
+                    description: 'bash',
+                    inputSchema: {},
+                    execute: async () => {
+                        executedBash = true
+                        return 'done'
+                    },
+                } as any,
+            ],
+            operations: mockOperations,
+        })
+
+        const events = []
+        for await (const event of runAgentLoop(agent, {
+            content: 'How does this work?',
+            readOnly: true,
+        })) {
+            events.push(event)
+        }
+
+        expect(executedBash).toBe(false)
+        const toolResult = events.find((e) => e.type === 'ToolCallResult')
+        expect(toolResult).toBeDefined()
+        expect((toolResult as any)?.result?.error).toContain(
+            'not permitted in read-only / ask mode'
+        )
+    })
 })

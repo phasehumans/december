@@ -251,4 +251,59 @@ describe('Subscription Verification & Provider Selection (Unit & Integration)', 
             'GitHub Copilot subscription verification failed'
         )
     })
+
+    it('throws cleanly formatted error without raw JSON when copilot returns 403 no_copilot_access', async () => {
+        globalThis.fetch = vi.fn().mockImplementation(async (url: any) => {
+            if (String(url).includes('login/device/code')) {
+                return new Response(
+                    JSON.stringify({
+                        device_code: 'dev-1234',
+                        user_code: 'COPILOT-CODE',
+                        verification_uri: 'https://github.com/login/device',
+                        expires_in: 900,
+                        interval: 1,
+                    }),
+                    { status: 200, headers: { 'content-type': 'application/json' } }
+                )
+            }
+            if (String(url).includes('login/oauth/access_token')) {
+                return new Response(
+                    JSON.stringify({
+                        access_token: 'gho_new_token',
+                    }),
+                    { status: 200, headers: { 'content-type': 'application/json' } }
+                )
+            }
+            if (String(url).includes('copilot_internal/v2/token')) {
+                return new Response(
+                    JSON.stringify({
+                        error_details: {
+                            message:
+                                'No access to GitHub Copilot found. You are currently logged in as Pranavjadhav9988.',
+                            notification_id: 'no_copilot_access',
+                            title: 'Sign up for GitHub Copilot',
+                            url: 'https://github.com/github-copilot/signup?editor={EDITOR}',
+                        },
+                        message: 'Resource not accessible by integration.',
+                        can_signup_for_limited: true,
+                    }),
+                    { status: 403, headers: { 'content-type': 'application/json' } }
+                )
+            }
+            throw new Error(`Unexpected URL: ${url}`)
+        }) as any
+
+        let thrownErr: any
+        try {
+            await loginSubscription('copilot')
+        } catch (err: any) {
+            thrownErr = err
+        }
+
+        expect(thrownErr).toBeDefined()
+        expect(thrownErr.message).toContain('No active GitHub Copilot subscription found')
+        expect(thrownErr.message).toContain('@Pranavjadhav9988')
+        expect(thrownErr.message).toContain('https://github.com/github-copilot/signup')
+        expect(thrownErr.message).not.toContain('{"error_details"')
+    })
 })
