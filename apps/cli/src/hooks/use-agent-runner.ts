@@ -119,6 +119,22 @@ export async function processAgentStream({
 }) {
     let pendingEvents: any[] = []
     let flushTimeout: NodeJS.Timeout | null = null
+    let thinkingStartTime: number | null = null
+
+    const finalizeThinking = (bList: any[]) => {
+        if (thinkingStartTime) {
+            const elapsed = Date.now() - thinkingStartTime
+            for (let i = bList.length - 1; i >= 0; i--) {
+                const b = bList[i]
+                if (b && b.type === 'thinking' && b.isStreaming) {
+                    b.isStreaming = false
+                    b.durationMs = elapsed
+                    break
+                }
+            }
+            thinkingStartTime = null
+        }
+    }
 
     const flush = () => {
         if (pendingEvents.length === 0) return
@@ -138,6 +154,7 @@ export async function processAgentStream({
                             blocks.push({ type: 'text', content: 'Thinking...' })
                             break
                         case 'AgentError': {
+                            finalizeThinking(blocks)
                             const lastBlock = blocks[blocks.length - 1]
                             if (
                                 lastBlock &&
@@ -157,6 +174,7 @@ export async function processAgentStream({
                             break
                         }
                         case 'AgentInterrupt': {
+                            finalizeThinking(blocks)
                             const lastBlock = blocks[blocks.length - 1]
                             if (
                                 lastBlock &&
@@ -193,6 +211,7 @@ export async function processAgentStream({
                             break
                         }
                         case 'StreamChunk': {
+                            finalizeThinking(blocks)
                             if (!event.content) break
                             const lastBlock = blocks[blocks.length - 1]
                             if (lastBlock && lastBlock.type === 'text') {
@@ -210,9 +229,13 @@ export async function processAgentStream({
                         case 'ThinkingChunk': {
                             const chunk = event.content || ''
                             if (!chunk) break
+                            if (!thinkingStartTime) {
+                                thinkingStartTime = Date.now()
+                            }
                             const lastBlock = blocks[blocks.length - 1]
                             if (lastBlock && lastBlock.type === 'thinking') {
                                 lastBlock.content += chunk
+                                lastBlock.isStreaming = true
                             } else {
                                 if (
                                     lastBlock &&
@@ -221,11 +244,12 @@ export async function processAgentStream({
                                 ) {
                                     blocks.pop()
                                 }
-                                blocks.push({ type: 'thinking', content: chunk })
+                                blocks.push({ type: 'thinking', content: chunk, isStreaming: true })
                             }
                             break
                         }
                         case 'ToolCallStart': {
+                            finalizeThinking(blocks)
                             const lastBlock = blocks[blocks.length - 1]
                             if (
                                 lastBlock &&
@@ -317,9 +341,19 @@ export async function processAgentStream({
     setActiveMessages((prev: Message[]) =>
         prev.map((msg) => {
             if (msg.id !== assistantMsgId) return msg
-            const blocks = (msg.blocks || []).filter(
-                (b) => !(b.type === 'text' && isStatusMessage(b.content))
-            )
+            const finalElapsed = thinkingStartTime ? Date.now() - thinkingStartTime : undefined
+            const blocks = (msg.blocks || [])
+                .map((b) => {
+                    if (b.type === 'thinking' && b.isStreaming) {
+                        return {
+                            ...b,
+                            isStreaming: false,
+                            durationMs: b.durationMs ?? finalElapsed,
+                        }
+                    }
+                    return b
+                })
+                .filter((b) => !(b.type === 'text' && isStatusMessage(b.content)))
             return { ...msg, blocks }
         })
     )

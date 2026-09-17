@@ -108,6 +108,24 @@ describe('BotMessage Component (Unit)', () => {
         expect(frame).not.toContain('Line 4: Still thinking')
     })
 
+    it('renders exact measured duration from durationMs prop on thinking blocks', () => {
+        const { lastFrame } = render(
+            <BotMessage
+                blocks={[
+                    {
+                        type: 'thinking',
+                        content: 'Short thought',
+                        durationMs: 4200,
+                    } as any,
+                ]}
+            />
+        )
+        const frame = lastFrame() || ''
+        expect(frame).toContain('✱')
+        expect(frame).toContain('Thought for 4.2s')
+        expect(frame).toContain('ctrl+o to view')
+    })
+
     it('renders HTTP 429 rate limit error messages correctly without badges', () => {
         const { lastFrame } = render(
             <BotMessage

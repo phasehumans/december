@@ -96,10 +96,18 @@ export function CollapsibleThought({
 }) {
     const [elapsedSeconds, setElapsedSeconds] = useState(0)
     const startTimeRef = useRef<number | null>(null)
+    const finalDurationRef = useRef<number | null>(null)
 
     useEffect(() => {
+        // explicitly documented ref: startTimeRef and finalDurationRef are mutable refs to track live and completed thought duration
         if (!isStreaming) {
-            startTimeRef.current = null
+            if (startTimeRef.current) {
+                const totalElapsed = (Date.now() - startTimeRef.current) / 1000
+                const finalSec = Math.round(totalElapsed * 10) / 10
+                finalDurationRef.current = Math.max(0.1, finalSec)
+                setElapsedSeconds(finalSec)
+                startTimeRef.current = null
+            }
             return
         }
         if (!startTimeRef.current) {
@@ -123,9 +131,11 @@ export function CollapsibleThought({
     const displayDuration =
         durationMs !== undefined
             ? (durationMs / 1000).toFixed(1)
-            : elapsedSeconds > 0
-              ? elapsedSeconds.toFixed(1)
-              : Math.max(0.5, Math.round((words / 25) * 10) / 10).toFixed(1)
+            : finalDurationRef.current !== null && finalDurationRef.current > 0
+              ? finalDurationRef.current.toFixed(1)
+              : elapsedSeconds > 0
+                ? elapsedSeconds.toFixed(1)
+                : Math.max(0.5, Math.round((words / 25) * 10) / 10).toFixed(1)
 
     // Option A: December Brand Star ✱
     // While streaming: ✱ Thinking (3.4s)...
