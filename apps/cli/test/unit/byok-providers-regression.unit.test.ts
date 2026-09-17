@@ -7,6 +7,7 @@ import {
     resolveThinkingMachinesModel,
     XiaomiProvider,
     ZhipuAIProvider,
+    AbliterationProvider,
 } from '@december/providers'
 import { describe, expect, it } from 'bun:test'
 
@@ -65,6 +66,11 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
             const provider = new ZhipuAIProvider('test-zhipu-key')
             expect(provider.id).toBe('zai')
         })
+
+        it('instantiates AbliterationProvider with proper OpenAI endpoint and credentials', () => {
+            const provider = new AbliterationProvider('test-abliteration-key')
+            expect(provider.id).toBe('abliteration')
+        })
     })
 
     describe('Model Context Windows', () => {
@@ -83,6 +89,9 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
             expect(getModelContextWindow('grok-4.3')).toBe(1000000)
             expect(getModelContextWindow('grok-4.1-fast')).toBe(2000000)
             expect(getModelContextWindow('glm-5.1')).toBe(200000)
+            expect(getModelContextWindow('abliterated-model-large-v2')).toBe(1000000)
+            expect(getModelContextWindow('abliterated-model-large')).toBe(1000000)
+            expect(getModelContextWindow('abliterated-model')).toBe(262144)
         })
     })
 
@@ -127,6 +136,15 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
             expect(getProviderModels('tinker')).toEqual(tinkerModels)
             expect(getProviderModels('inkling')).toEqual(tinkerModels)
             expect(getProviderModels('mimo')).toEqual(xiaomiModels)
+
+            const abliterationModels = getProviderModels('abliteration')
+            expect(abliterationModels.map((m) => m.value)).toEqual([
+                'abliterated-model-large-v2',
+                'abliterated-model-large',
+                'abliterated-model',
+            ])
+            expect(getProviderModels('abliterationai')).toEqual(abliterationModels)
+            expect(getProviderModels('abliteration-ai')).toEqual(abliterationModels)
         })
 
         it('returns correct default models for providers', () => {
@@ -140,6 +158,9 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
             expect(getDefaultModelForProvider('mimo')).toBe('mimo-v2.5')
             expect(getDefaultModelForProvider('zai')).toBe('glm-5.3-flash')
             expect(getDefaultModelForProvider('zhipuai')).toBe('glm-5.3-flash')
+            expect(getDefaultModelForProvider('abliteration')).toBe('abliterated-model-large-v2')
+            expect(getDefaultModelForProvider('abliterationai')).toBe('abliterated-model-large-v2')
+            expect(getDefaultModelForProvider('abliteration-ai')).toBe('abliterated-model-large-v2')
         })
 
         it('validates and normalizes models correctly', () => {
@@ -154,6 +175,8 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
             expect(isValidModelForProvider('mimo', 'mimo-v2.5')).toBe(true)
             expect(isValidModelForProvider('zai', 'glm-5.3-flash')).toBe(true)
             expect(isValidModelForProvider('zhipuai', 'glm-5.3-flash')).toBe(true)
+            expect(isValidModelForProvider('abliteration', 'abliterated-model-large-v2')).toBe(true)
+            expect(isValidModelForProvider('abliterationai', 'abliterated-model')).toBe(true)
 
             expect(ensureValidModelForProvider('thinkingmachines', 'inkling')).toBe(
                 'thinkingmachines/Inkling'
@@ -164,6 +187,9 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
             expect(ensureValidModelForProvider('upstage', 'solar-pro4')).toBe('solar-pro4')
             expect(ensureValidModelForProvider('xiaomi', 'mimo-v2.5')).toBe('mimo-v2.5')
             expect(ensureValidModelForProvider('mimo', 'mimo-v2.5')).toBe('mimo-v2.5')
+            expect(ensureValidModelForProvider('abliteration', 'abliterated-model-large-v2')).toBe(
+                'abliterated-model-large-v2'
+            )
         })
     })
 
@@ -183,6 +209,9 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
             expect(formatProviderName('zhipu')).toBe('Zhipu AI')
             expect(formatProviderName('tinker')).toBe('Thinking Machines (Tinker)')
             expect(formatProviderName('inkling')).toBe('Thinking Machines (Tinker)')
+            expect(formatProviderName('abliteration')).toBe('Abliteration AI')
+            expect(formatProviderName('abliterationai')).toBe('Abliteration AI')
+            expect(formatProviderName('abliteration-ai')).toBe('Abliteration AI')
         })
     })
 
@@ -219,6 +248,14 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
             })
             // 500k * 2.0 = $1.00, 100k * 6.0 = $0.60 => total $1.60
             expect(tinkerCost.totalCost).toBeCloseTo(1.6, 2)
+
+            const abliterationCost = calculateUsageCost({
+                model: 'abliterated-model-large-v2',
+                promptTokens: 100_000,
+                completionTokens: 100_000,
+            })
+            // 100k * 5.0/1M = $0.50, 100k * 5.0/1M = $0.50 => total $1.00
+            expect(abliterationCost.totalCost).toBeCloseTo(1.0, 2)
         })
 
         it('infers providers from models correctly', () => {
@@ -228,6 +265,8 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
             expect(inferProviderFromModel('thinkingmachines/Inkling:peft:262144')).toBe(
                 'thinkingmachines'
             )
+            expect(inferProviderFromModel('abliterated-model-large-v2')).toBe('abliteration')
+            expect(inferProviderFromModel('abliteration/abliterated-model')).toBe('abliteration')
         })
 
         it('generates usage cards with legitimate console/portal URLs', () => {
@@ -262,6 +301,14 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
                 isAuthenticated: true,
             })
             expect(tinkerCard).toContain('https://tinker.thinkingmachines.ai/')
+
+            const abliterationCard = formatUsageCard({
+                model: 'abliterated-model-large-v2',
+                authMethod: 'byok',
+                provider: 'abliteration',
+                isAuthenticated: true,
+            })
+            expect(abliterationCard).toContain('https://abliteration.ai/console')
         })
     })
 
@@ -276,6 +323,7 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
                     stepfun: 'sk-stepfun-live',
                     upstage: 'sk-upstage-live',
                     thinkingmachines: 'sk-tinker-live',
+                    abliteration: 'sk-abliteration-live',
                 },
             }
 
@@ -284,6 +332,7 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
             expect(configured.some((p) => p.value === 'provider:stepfun')).toBe(true)
             expect(configured.some((p) => p.value === 'provider:upstage')).toBe(true)
             expect(configured.some((p) => p.value === 'provider:thinkingmachines')).toBe(true)
+            expect(configured.some((p) => p.value === 'provider:abliteration')).toBe(true)
 
             // Switch: sarvam -> stepfun
             const targetStepfun = resolveSwitchTarget(initialConfig, 'stepfun')
@@ -306,12 +355,19 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
             expect(switched3.config.activeProvider).toBe('thinkingmachines')
             expect(switched3.config.activeModel).toBe('thinkingmachines/Inkling')
 
-            // Switch: thinkingmachines -> sarvam
-            const targetSarvam = resolveSwitchTarget(switched3.config, 'sarvam')
+            // Switch: thinkingmachines -> abliteration via alias abliteration-ai
+            const targetAblit = resolveSwitchTarget(switched3.config, 'abliteration-ai')
+            expect(targetAblit).toBeDefined()
+            const switched4 = applyProviderSwitch(switched3.config, targetAblit!)
+            expect(switched4.config.activeProvider).toBe('abliteration')
+            expect(switched4.config.activeModel).toBe('abliterated-model-large-v2')
+
+            // Switch: abliteration -> sarvam
+            const targetSarvam = resolveSwitchTarget(switched4.config, 'sarvam')
             expect(targetSarvam).toBeDefined()
-            const switched4 = applyProviderSwitch(switched3.config, targetSarvam!)
-            expect(switched4.config.activeProvider).toBe('sarvam')
-            expect(switched4.config.activeModel).toBe('sarvam-105b')
+            const switched5 = applyProviderSwitch(switched4.config, targetSarvam!)
+            expect(switched5.config.activeProvider).toBe('sarvam')
+            expect(switched5.config.activeModel).toBe('sarvam-105b')
         })
     })
 })

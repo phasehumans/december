@@ -9,6 +9,7 @@ import { MenuFooter } from './menu-footer'
 const WINDOW_SIZE = 7
 
 export const PROVIDER_MENU_ITEMS = [
+    { label: 'Abliteration AI', value: 'abliteration' },
     { label: 'AgentRouter', value: 'agentrouter' },
     { label: 'Anthropic', value: 'anthropic' },
     { label: 'Arcee AI', value: 'arcee' },

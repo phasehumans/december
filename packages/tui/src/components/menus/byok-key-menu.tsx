@@ -8,6 +8,9 @@ import { Spinner } from '../spinner'
 import { MenuFooter } from './menu-footer'
 
 export const PROVIDER_NAMES: Record<string, string> = {
+    abliteration: 'Abliteration AI',
+    abliterationai: 'Abliteration AI',
+    'abliteration-ai': 'Abliteration AI',
     agentrouter: 'AgentRouter',
     'agentrouter.org': 'AgentRouter',
     anthropic: 'Anthropic',
@@ -79,6 +82,9 @@ export const PROVIDER_NAMES: Record<string, string> = {
 }
 
 export const PROVIDER_KEY_URLS: Record<string, string> = {
+    abliteration: 'https://abliteration.ai/console',
+    abliterationai: 'https://abliteration.ai/console',
+    'abliteration-ai': 'https://abliteration.ai/console',
     agentrouter: 'https://agentrouter.org/console/token',
     'agentrouter.org': 'https://agentrouter.org/console/token',
     anthropic: 'https://console.anthropic.com/settings/keys',

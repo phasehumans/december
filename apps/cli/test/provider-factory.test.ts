@@ -404,6 +404,26 @@ describe('instantiateProvider', () => {
         )
     })
 
+    it('instantiates abliteration provider via openai compat', () => {
+        instantiateProvider('abliteration', 'key-123')
+        expect(providers.openaiProvider).toHaveBeenCalledWith(
+            'https://api.abliteration.ai/v1',
+            'key-123'
+        )
+
+        instantiateProvider('abliterationai', 'key-123')
+        expect(providers.openaiProvider).toHaveBeenCalledWith(
+            'https://api.abliteration.ai/v1',
+            'key-123'
+        )
+
+        instantiateProvider('abliteration-ai', 'key-123')
+        expect(providers.openaiProvider).toHaveBeenCalledWith(
+            'https://api.abliteration.ai/v1',
+            'key-123'
+        )
+    })
+
     it('instantiates ollama provider with default localhost endpoint', () => {
         const p = instantiateProvider('ollama', '')
         expect(p).toBe('mock-ollama')

@@ -40,6 +40,9 @@ export interface ProviderConfig {
         | 'zhipuai'
         | 'xiaomi'
         | 'mimo'
+        | 'abliteration'
+        | 'abliterationai'
+        | 'abliteration-ai'
         | 'nvidia'
         | 'sambanova'
         | 'cerebras'
@@ -518,6 +521,10 @@ export function formatProviderName(provider: string): string {
         case 'xiaomi':
         case 'mimo':
             return 'Xiaomi'
+        case 'abliteration':
+        case 'abliterationai':
+        case 'abliteration-ai':
+            return 'Abliteration AI'
         case 'claude':
             return 'Claude'
         case 'copilot':
@@ -821,6 +828,13 @@ export function resolveSwitchTarget(
                 provider: 'zhipuai',
                 authPriority: 'byok',
                 model: getTargetModelForProvider(config, 'zhipuai'),
+            }
+        }
+        if (['abliterationai', 'abliteration-ai'].includes(q) && config.providers['abliteration']) {
+            return {
+                provider: 'abliteration',
+                authPriority: 'byok',
+                model: getTargetModelForProvider(config, 'abliteration'),
             }
         }
     }

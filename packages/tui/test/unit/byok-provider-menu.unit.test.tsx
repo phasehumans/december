@@ -9,12 +9,12 @@ import {
 import { KeyboardLayerProvider } from '../../src/providers/keyboard-layer'
 
 describe('ByokProviderMenu Component (Unit)', () => {
-    it('has 36 total API key and local provider items without subscriptions', () => {
-        expect(PROVIDER_MENU_ITEMS.length).toBe(36)
-        expect(PROVIDER_MENU_ITEMS[0].value).toBe('agentrouter')
-        expect(PROVIDER_MENU_ITEMS[1].value).toBe('anthropic')
-        expect(PROVIDER_MENU_ITEMS[2].value).toBe('arcee')
-        expect(PROVIDER_MENU_ITEMS[3].value).toBe('cerebras')
+    it('has 37 total API key and local provider items without subscriptions', () => {
+        expect(PROVIDER_MENU_ITEMS.length).toBe(37)
+        expect(PROVIDER_MENU_ITEMS[0].value).toBe('abliteration')
+        expect(PROVIDER_MENU_ITEMS[1].value).toBe('agentrouter')
+        expect(PROVIDER_MENU_ITEMS[2].value).toBe('anthropic')
+        expect(PROVIDER_MENU_ITEMS[3].value).toBe('arcee')
     })
 
     it('renders 7 visible items with down more indicator initially', () => {
@@ -27,14 +27,14 @@ describe('ByokProviderMenu Component (Unit)', () => {
 
         const frame = lastFrame() || ''
         expect(frame).toContain('Select API Provider (BYOK):')
+        expect(frame).toContain('Abliteration AI')
         expect(frame).toContain('AgentRouter')
         expect(frame).toContain('Anthropic')
         expect(frame).toContain('Arcee AI')
         expect(frame).toContain('Cerebras')
         expect(frame).toContain('Cohere')
         expect(frame).toContain('DeepSeek')
-        expect(frame).toContain('Fireworks AI')
-        expect(frame).toContain('↓ 29 more')
+        expect(frame).toContain('↓ 30 more')
     })
 
     it('navigates through items with arrow keys and updates more indicators', async () => {
@@ -49,7 +49,7 @@ describe('ByokProviderMenu Component (Unit)', () => {
             </KeyboardLayerProvider>
         )
 
-        expect(lastFrame()).toContain('❭ AgentRouter')
+        expect(lastFrame()).toContain('❭ Abliteration AI')
 
         // Move down 7 times to shift window
         for (let i = 0; i < 7; i++) {
@@ -59,13 +59,13 @@ describe('ByokProviderMenu Component (Unit)', () => {
 
         const frameAfterScroll = lastFrame() || ''
         expect(frameAfterScroll).toContain('↑ 1 more')
-        expect(frameAfterScroll).toContain('↓ 28 more')
+        expect(frameAfterScroll).toContain('↓ 29 more')
 
-        // Press Enter to select current item (Google AI Studio)
+        // Press Enter to select current item (Fireworks AI)
         stdin.write('\r')
         await new Promise((resolve) => setTimeout(resolve, 10))
         expect(selectedItem).toBeDefined()
-        expect(selectedItem?.value).toBe('google')
+        expect(selectedItem?.value).toBe('fireworks')
     })
 
     it('renders search prompt and Search in footer initially', () => {
@@ -399,6 +399,39 @@ describe('ByokProviderMenu Component (Unit)', () => {
         expect(selectedItem).toBeDefined()
         expect(selectedItem?.value).toBe('thinkingmachines')
         expect(selectedItem?.label).toBe('Thinking Machines (Tinker)')
+    })
+
+    it('selects Abliteration AI provider on enter after searching', async () => {
+        let selectedItem: any = null
+        const handleSelect = (item: any) => {
+            selectedItem = item
+        }
+
+        const { stdin } = render(
+            <KeyboardLayerProvider>
+                <ByokProviderMenu handleProviderSelect={handleSelect} />
+            </KeyboardLayerProvider>
+        )
+
+        // Type / to search
+        stdin.write('/')
+        await new Promise((r) => setTimeout(r, 50))
+
+        // Type 'abliteration'
+        stdin.write('abliteration')
+        await new Promise((r) => setTimeout(r, 50))
+
+        // Press enter to focus list
+        stdin.write('\r')
+        await new Promise((r) => setTimeout(r, 50))
+
+        // Press enter to select
+        stdin.write('\r')
+        await new Promise((r) => setTimeout(r, 50))
+
+        expect(selectedItem).toBeDefined()
+        expect(selectedItem?.value).toBe('abliteration')
+        expect(selectedItem?.label).toBe('Abliteration AI')
     })
 
     it('renders "No providers found." when filter matches nothing', async () => {

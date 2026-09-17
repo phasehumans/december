@@ -171,6 +171,14 @@ export const MODEL_CONTEXT_WINDOWS: Record<string, number> = {
     'thinkingmachines/Inkling': 131072,
     'thinkingmachines/Inkling:peft:262144': 262144,
     inkling: 131072,
+
+    // Abliteration AI
+    'abliterated-model': 262144,
+    'abliterated-model-large': 1000000,
+    'abliterated-model-large-v2': 1000000,
+    'abliteration/abliterated-model': 262144,
+    'abliteration/abliterated-model-large': 1000000,
+    'abliteration/abliterated-model-large-v2': 1000000,
 }
 
 export function getModelContextWindow(value: string): number {
@@ -200,6 +208,8 @@ export function getModelContextWindow(value: string): number {
     if (lower.includes('grok')) return 500000
     if (lower.includes('mimo-v2-flash') || lower.includes('mimo-v2-omni')) return 262144
     if (lower.includes('mimo')) return 1048576
+    if (lower.includes('abliterated-model-large')) return 1000000
+    if (lower.includes('abliterated-model')) return 262144
 
     if (
         lower.includes('codestral') ||

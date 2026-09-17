@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 
+import { AbliterationProvider } from '../../src/providers/abliteration'
 import { AgentRouterProvider } from '../../src/providers/agentrouter'
 import { ArceeProvider } from '../../src/providers/arcee'
 import { CerebrasProvider } from '../../src/providers/cerebras'
@@ -187,5 +188,10 @@ describe('OpenAI-compatible Subproviders (Unit)', () => {
     test('instantiates ZhipuAIProvider alias with correct ID', () => {
         const provider = new ZhipuAIProvider('dummy-key')
         expect(provider.id).toBe('zai')
+    })
+
+    test('instantiates AbliterationProvider with correct ID', () => {
+        const provider = new AbliterationProvider('dummy-key')
+        expect(provider.id).toBe('abliteration')
     })
 })

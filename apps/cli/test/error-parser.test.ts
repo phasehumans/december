@@ -351,6 +351,13 @@ describe('error-parser', () => {
             expect(parsed.hint).toContain('https://open.bigmodel.cn/')
         })
 
+        test('attaches custom notice for Abliteration AI credit exhaustion', () => {
+            const rawErr = '402 Insufficient credits. api.abliteration.ai account empty'
+            const parsed = parseError(rawErr)
+            expect(parsed.message).toBe('Insufficient credits in your Abliteration AI account.')
+            expect(parsed.hint).toContain('https://abliteration.ai/console')
+        })
+
         test('dynamically resolves provider from context provider alias when error text lacks provider name', () => {
             const rawErr = '402 Payment Required: account balance is 0'
             const parsed = parseError(rawErr, { provider: 'sarvamai' })

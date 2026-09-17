@@ -400,6 +400,18 @@ export const PROVIDER_CREDIT_RULES: ProviderCreditRule[] = [
         message: 'Insufficient credits in your NVIDIA NIM account.',
         hint: 'Please check your account at https://build.nvidia.com/',
     },
+    {
+        id: 'abliteration',
+        name: 'Abliteration AI',
+        match: (str) =>
+            (str.includes('abliteration') ||
+                str.includes('abliterated') ||
+                str.includes('api.abliteration.ai')) &&
+            (isCreditOrBalanceError(str) || str.includes('credits') || str.includes('402')),
+        notice: 'Insufficient credits in your Abliteration AI account. Please check your billing at https://abliteration.ai/console\n',
+        message: 'Insufficient credits in your Abliteration AI account.',
+        hint: 'Please check your billing at https://abliteration.ai/console or switch models using /model.',
+    },
 ]
 
 export const PROVIDER_BILLING_URLS: Record<string, string> = {
@@ -438,6 +450,9 @@ export const PROVIDER_BILLING_URLS: Record<string, string> = {
     zhipu: 'https://open.bigmodel.cn/',
     zhipuai: 'https://open.bigmodel.cn/',
     mimo: 'https://platform.xiaomimimo.com/console/api-keys',
+    abliteration: 'https://abliteration.ai/console',
+    'abliteration-ai': 'https://abliteration.ai/console',
+    abliterationai: 'https://abliteration.ai/console',
 }
 
 export const PROVIDER_CREDIT_DISPLAY_NAMES: Record<string, string> = {
@@ -476,6 +491,9 @@ export const PROVIDER_CREDIT_DISPLAY_NAMES: Record<string, string> = {
     zai: 'Zhipu AI',
     zhipu: 'Zhipu AI',
     zhipuai: 'Zhipu AI',
+    abliteration: 'Abliteration AI',
+    'abliteration-ai': 'Abliteration AI',
+    abliterationai: 'Abliteration AI',
 }
 
 export function normalizeProviderAlias(provider?: string): string {
@@ -494,6 +512,10 @@ export function normalizeProviderAlias(provider?: string): string {
         case 'codex':
         case 'openai':
             return 'openai'
+        case 'abliterationai':
+        case 'abliteration-ai':
+        case 'abliteration':
+            return 'abliteration'
         case 'arceeai':
         case 'arcee-ai':
         case 'arcee':
@@ -562,6 +584,12 @@ export function normalizeProviderAlias(provider?: string): string {
 export function detectProviderFromText(str: string): string | null {
     if (!str) return null
     const lower = str.toLowerCase()
+    if (
+        lower.includes('abliteration') ||
+        lower.includes('abliterated') ||
+        lower.includes('api.abliteration.ai')
+    )
+        return 'abliteration'
     if (lower.includes('arcee') || lower.includes('trinity') || lower.includes('api.arcee.ai'))
         return 'arcee'
     if (lower.includes('sarvam') || lower.includes('indus.sarvam.ai')) return 'sarvam'

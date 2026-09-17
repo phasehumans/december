@@ -40,6 +40,8 @@ export const SENSITIVE_LLM_ENV_KEYS: readonly string[] = [
     'ZHIPU_API_KEY',
     'XIAOMI_API_KEY',
     'MIMO_API_KEY',
+    'ABLITERATION_API_KEY',
+    'ABLIT_KEY',
 
     'AGENTROUTER_API_KEY',
     'ARCEE_API_KEY',

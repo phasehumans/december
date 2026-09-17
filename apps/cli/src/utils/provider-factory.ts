@@ -256,6 +256,23 @@ export function instantiateProvider(
                 openaiProvider('https://api.upstage.ai/v1/solar', apiKey),
                 'upstage'
             )
+        case 'abliteration':
+        case 'abliterationai':
+        case 'abliteration-ai':
+            if (options?.baseURL || options?.headers) {
+                return withProviderId(
+                    openaiProvider(
+                        options?.baseURL || 'https://api.abliteration.ai/v1',
+                        apiKey,
+                        options?.headers
+                    ),
+                    'abliteration'
+                )
+            }
+            return withProviderId(
+                openaiProvider('https://api.abliteration.ai/v1', apiKey),
+                'abliteration'
+            )
         case 'thinkingmachines':
         case 'tinker':
         case 'inkling':

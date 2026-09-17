@@ -51,7 +51,8 @@ export function supportsReasoningEffort(model?: string, baseURL?: string): boole
             baseURL.includes('sakana.ai') ||
             baseURL.includes('sarvam.ai') ||
             baseURL.includes('stepfun.ai') ||
-            baseURL.includes('upstage.ai'))
+            baseURL.includes('upstage.ai') ||
+            baseURL.includes('abliteration.ai'))
     ) {
         return false
     }

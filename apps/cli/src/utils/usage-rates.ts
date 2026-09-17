@@ -215,6 +215,30 @@ export const OFFICIAL_MODEL_RATES: Record<string, ModelRate> = {
     'xiaomi/mimo-v2-omni': { name: 'xiaomi/mimo-v2-omni', inputRate: 0.14, outputRate: 0.28 },
     'xiaomi/mimo-v2-pro': { name: 'xiaomi/mimo-v2-pro', inputRate: 0.435, outputRate: 0.87 },
 
+    // Abliteration AI
+    'abliterated-model': { name: 'abliterated-model', inputRate: 3.0, outputRate: 3.0 },
+    'abliterated-model-large': { name: 'abliterated-model-large', inputRate: 5.0, outputRate: 5.0 },
+    'abliterated-model-large-v2': {
+        name: 'abliterated-model-large-v2',
+        inputRate: 5.0,
+        outputRate: 5.0,
+    },
+    'abliteration/abliterated-model': {
+        name: 'abliteration/abliterated-model',
+        inputRate: 3.0,
+        outputRate: 3.0,
+    },
+    'abliteration/abliterated-model-large': {
+        name: 'abliteration/abliterated-model-large',
+        inputRate: 5.0,
+        outputRate: 5.0,
+    },
+    'abliteration/abliterated-model-large-v2': {
+        name: 'abliteration/abliterated-model-large-v2',
+        inputRate: 5.0,
+        outputRate: 5.0,
+    },
+
     // Ollama (Local)
     ollama: { name: 'ollama', inputRate: 0.0, outputRate: 0.0 },
 }
@@ -274,6 +298,9 @@ export const PROVIDER_BILLING_LINKS: Record<string, string> = {
     thinkingmachines: 'https://tinker.thinkingmachines.ai/',
     tinker: 'https://tinker.thinkingmachines.ai/',
     inkling: 'https://tinker.thinkingmachines.ai/',
+    abliteration: 'https://abliteration.ai/console',
+    'abliteration-ai': 'https://abliteration.ai/console',
+    abliterationai: 'https://abliteration.ai/console',
     ollama: 'http://localhost:11434',
 }
 
@@ -332,6 +359,9 @@ export const PROVIDER_DISPLAY_NAMES: Record<string, string> = {
     thinkingmachines: 'Thinking Machines (Tinker)',
     tinker: 'Thinking Machines (Tinker)',
     inkling: 'Thinking Machines (Tinker)',
+    abliteration: 'Abliteration AI',
+    'abliteration-ai': 'Abliteration AI',
+    abliterationai: 'Abliteration AI',
     ollama: 'Ollama (Local)',
 }
 
@@ -385,6 +415,7 @@ export function inferProviderFromModel(modelName: string): string {
     if (lower.startsWith('hyperbolic')) return 'hyperbolic'
     if (lower.startsWith('fireworks') || lower.startsWith('accounts/fireworks/')) return 'fireworks'
     if (lower.startsWith('agentrouter') || lower.startsWith('agentrouter/')) return 'agentrouter'
+    if (lower.startsWith('abliterated') || lower.startsWith('abliteration/')) return 'abliteration'
     if (lower.includes('meta-llama') || lower.includes('qwen/')) return 'huggingface'
     if (lower.includes('ollama') || lower.includes('llama') || lower.includes('qwen'))
         return 'ollama'

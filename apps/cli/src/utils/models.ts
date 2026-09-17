@@ -500,6 +500,20 @@ export const getCuratedProviderModels = (provider: string) => {
                     value: 'thinkingmachines/Inkling:peft:262144',
                 },
             ]
+        case 'abliteration':
+        case 'abliterationai':
+        case 'abliteration-ai':
+            return [
+                {
+                    label: 'Abliterated Model Large V2 (GLM-5.3)',
+                    value: 'abliterated-model-large-v2',
+                },
+                {
+                    label: 'Abliterated Model Large (GLM-5.2)',
+                    value: 'abliterated-model-large',
+                },
+                { label: 'Abliterated Model (Multimodal)', value: 'abliterated-model' },
+            ]
         case 'dashscope':
         case 'qwen':
             return [
@@ -927,6 +941,13 @@ export async function fetchLiveProviderModels(
                 case 'solar':
                     endpoint = 'https://api.upstage.ai/v1/solar/models'
                     break
+                case 'abliteration':
+                case 'abliterationai':
+                case 'abliteration-ai':
+                    endpoint = baseUrl
+                        ? `${baseUrl.replace(/\/+$/, '')}/models`
+                        : 'https://api.abliteration.ai/v1/models'
+                    break
                 case 'december':
                 case 'december_proxy': {
                     const serverUrl = process.env.SERVER_URL || 'https://api.trydecember.com'
@@ -1082,6 +1103,7 @@ export const getModelLabel = (value: string) => {
         'stepfun',
         'upstage',
         'thinkingmachines',
+        'abliteration',
         'december_proxy',
     ]
     for (const p of allProviders) {
@@ -1107,6 +1129,13 @@ export const isValidModelForProvider = (provider: string, model?: string): boole
     if (
         (normalized === 'zai' || normalized === 'zhipu' || normalized === 'zhipuai') &&
         (model.includes('/') || model.startsWith('glm'))
+    )
+        return true
+    if (
+        (normalized === 'abliteration' ||
+            normalized === 'abliterationai' ||
+            normalized === 'abliteration-ai') &&
+        (model.includes('/') || model.startsWith('abliterated'))
     )
         return true
     if (normalized === 'poolside' && (model.includes('/') || model.startsWith('laguna')))

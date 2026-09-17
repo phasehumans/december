@@ -205,6 +205,30 @@ export const OFFICIAL_MODEL_RATES: Record<string, ModelRate> = {
     'xiaomi/mimo-v2-omni': { name: 'xiaomi/mimo-v2-omni', inputRate: 0.14, outputRate: 0.28 },
     'xiaomi/mimo-v2-pro': { name: 'xiaomi/mimo-v2-pro', inputRate: 0.435, outputRate: 0.87 },
 
+    // Abliteration AI
+    'abliterated-model': { name: 'abliterated-model', inputRate: 3.0, outputRate: 3.0 },
+    'abliterated-model-large': { name: 'abliterated-model-large', inputRate: 5.0, outputRate: 5.0 },
+    'abliterated-model-large-v2': {
+        name: 'abliterated-model-large-v2',
+        inputRate: 5.0,
+        outputRate: 5.0,
+    },
+    'abliteration/abliterated-model': {
+        name: 'abliteration/abliterated-model',
+        inputRate: 3.0,
+        outputRate: 3.0,
+    },
+    'abliteration/abliterated-model-large': {
+        name: 'abliteration/abliterated-model-large',
+        inputRate: 5.0,
+        outputRate: 5.0,
+    },
+    'abliteration/abliterated-model-large-v2': {
+        name: 'abliteration/abliterated-model-large-v2',
+        inputRate: 5.0,
+        outputRate: 5.0,
+    },
+
     // Ollama / Local
     ollama: { name: 'ollama', inputRate: 0.0, outputRate: 0.0 },
 }
@@ -333,6 +357,9 @@ export const PROVIDER_BILLING_LINKS: Record<string, string> = {
     mimo: 'https://platform.xiaomimimo.com/console/api-keys',
     zhipu: 'https://open.bigmodel.cn/usercenter/apikeys',
     zhipuai: 'https://z.ai/manage-apikey/apikey-list',
+    abliteration: 'https://abliteration.ai/console',
+    'abliteration-ai': 'https://abliteration.ai/console',
+    abliterationai: 'https://abliteration.ai/console',
     ollama: 'http://localhost:11434',
 }
 
@@ -386,6 +413,9 @@ export const PROVIDER_DISPLAY_NAMES: Record<string, string> = {
     thinkingmachines: 'Thinking Machines (Tinker)',
     xiaomi: 'Xiaomi',
     mimo: 'Xiaomi',
+    abliteration: 'Abliteration AI',
+    'abliteration-ai': 'Abliteration AI',
+    abliterationai: 'Abliteration AI',
     ollama: 'Ollama (Local)',
 }
 
@@ -436,6 +466,8 @@ export function formatInsufficientCreditsNotice(
             normalized = 'zai'
         } else if (modelLower.includes('mimo') || modelLower.includes('xiaomi')) {
             normalized = 'xiaomi'
+        } else if (modelLower.includes('abliterated')) {
+            normalized = 'abliteration'
         }
     }
 
@@ -464,6 +496,14 @@ export function formatInsufficientCreditsNotice(
 
     if (normalized === 'xiaomi' || normalized === 'mimo') {
         return 'Insufficient credits in your Xiaomi account. Please add credits or check your account at https://platform.xiaomimimo.com/console/api-keys'
+    }
+
+    if (
+        normalized === 'abliteration' ||
+        normalized === 'abliteration-ai' ||
+        normalized === 'abliterationai'
+    ) {
+        return 'Insufficient credits in your Abliteration AI account. Please add credits or check your account at https://abliteration.ai/console'
     }
 
     const displayName = PROVIDER_DISPLAY_NAMES[normalized] || normalized.toUpperCase()
