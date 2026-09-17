@@ -46,6 +46,13 @@ export interface ProviderConfig {
         | 'agnes'
         | 'agnesai'
         | 'agnes-ai'
+        | 'airouter'
+        | 'ai-router'
+        | 'aiand'
+        | 'aki'
+        | 'aki-io'
+        | 'akiio'
+        | 'ambient'
         | 'nvidia'
         | 'sambanova'
         | 'cerebras'
@@ -532,6 +539,17 @@ export function formatProviderName(provider: string): string {
         case 'agnesai':
         case 'agnes-ai':
             return 'Agnes AI'
+        case 'airouter':
+        case 'ai-router':
+            return 'AI Router'
+        case 'aiand':
+            return 'AI&'
+        case 'aki':
+        case 'aki-io':
+        case 'akiio':
+            return 'AKI.IO'
+        case 'ambient':
+            return 'Ambient'
         case 'claude':
             return 'Claude'
         case 'copilot':
@@ -849,6 +867,34 @@ export function resolveSwitchTarget(
                 provider: 'agnes',
                 authPriority: 'byok',
                 model: getTargetModelForProvider(config, 'agnes'),
+            }
+        }
+        if (['ai-router'].includes(q) && config.providers['airouter']) {
+            return {
+                provider: 'airouter',
+                authPriority: 'byok',
+                model: getTargetModelForProvider(config, 'airouter'),
+            }
+        }
+        if (['airouter'].includes(q) && config.providers['ai-router']) {
+            return {
+                provider: 'ai-router',
+                authPriority: 'byok',
+                model: getTargetModelForProvider(config, 'ai-router'),
+            }
+        }
+        if (['aki-io', 'akiio'].includes(q) && config.providers['aki']) {
+            return {
+                provider: 'aki',
+                authPriority: 'byok',
+                model: getTargetModelForProvider(config, 'aki'),
+            }
+        }
+        if (['aki'].includes(q) && config.providers['aki-io']) {
+            return {
+                provider: 'aki-io',
+                authPriority: 'byok',
+                model: getTargetModelForProvider(config, 'aki-io'),
             }
         }
     }

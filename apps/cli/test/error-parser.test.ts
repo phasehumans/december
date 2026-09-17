@@ -365,6 +365,34 @@ describe('error-parser', () => {
             expect(parsed.hint).toContain('https://platform.agnes-ai.com/settings/apiKeys')
         })
 
+        test('attaches custom notice for AI Router credit exhaustion', () => {
+            const rawErr = '402 Insufficient credits. api.ai-router.dev account empty'
+            const parsed = parseError(rawErr)
+            expect(parsed.message).toBe('Insufficient credits in your AI Router account.')
+            expect(parsed.hint).toContain('https://ai-router.dev/keys')
+        })
+
+        test('attaches custom notice for AI& credit exhaustion', () => {
+            const rawErr = '402 Insufficient credits. api.aiand.com account empty'
+            const parsed = parseError(rawErr)
+            expect(parsed.message).toBe('Insufficient credits in your AI& account.')
+            expect(parsed.hint).toContain('https://console.aiand.com/api-keys')
+        })
+
+        test('attaches custom notice for AKI.IO credit exhaustion', () => {
+            const rawErr = '402 Insufficient credits. aki.io account empty'
+            const parsed = parseError(rawErr)
+            expect(parsed.message).toBe('Insufficient credits in your AKI.IO account.')
+            expect(parsed.hint).toContain('https://aki.io/admin/user-dashboard')
+        })
+
+        test('attaches custom notice for Ambient credit exhaustion', () => {
+            const rawErr = '402 Insufficient credits. api.ambient.xyz account empty'
+            const parsed = parseError(rawErr)
+            expect(parsed.message).toBe('Insufficient credits in your Ambient account.')
+            expect(parsed.hint).toContain('https://app.ambient.xyz/keys')
+        })
+
         test('dynamically resolves provider from context provider alias when error text lacks provider name', () => {
             const rawErr = '402 Payment Required: account balance is 0'
             const parsed = parseError(rawErr, { provider: 'sarvamai' })

@@ -3,6 +3,10 @@ import { describe, expect, test } from 'bun:test'
 import { AbliterationProvider } from '../../src/providers/abliteration'
 import { AgentRouterProvider } from '../../src/providers/agentrouter'
 import { AgnesProvider } from '../../src/providers/agnes'
+import { AIAndProvider } from '../../src/providers/aiand'
+import { AIRouterProvider } from '../../src/providers/airouter'
+import { AKIProvider } from '../../src/providers/aki'
+import { AmbientProvider } from '../../src/providers/ambient'
 import { ArceeProvider } from '../../src/providers/arcee'
 import { CerebrasProvider } from '../../src/providers/cerebras'
 import { CohereProvider } from '../../src/providers/cohere'
@@ -199,5 +203,25 @@ describe('OpenAI-compatible Subproviders (Unit)', () => {
     test('instantiates AgnesProvider with correct ID', () => {
         const provider = new AgnesProvider('dummy-key')
         expect(provider.id).toBe('agnes')
+    })
+
+    test('instantiates AIRouterProvider with correct ID', () => {
+        const provider = new AIRouterProvider('dummy-key')
+        expect(provider.id).toBe('airouter')
+    })
+
+    test('instantiates AIAndProvider with correct ID', () => {
+        const provider = new AIAndProvider('dummy-key')
+        expect(provider.id).toBe('aiand')
+    })
+
+    test('instantiates AKIProvider with correct ID', () => {
+        const provider = new AKIProvider('dummy-key')
+        expect(provider.id).toBe('aki')
+    })
+
+    test('instantiates AmbientProvider with correct ID', () => {
+        const provider = new AmbientProvider('dummy-key')
+        expect(provider.id).toBe('ambient')
     })
 })

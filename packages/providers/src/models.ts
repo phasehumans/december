@@ -189,6 +189,59 @@ export const MODEL_CONTEXT_WINDOWS: Record<string, number> = {
     'agnes/agnes-2.5-pro': 1000000,
     'agnes/agnes-2.5-flash': 512000,
     'agnes/agnes-2.5-pro-beta': 1000000,
+
+    // AI Router
+    'gpt-5.6-luna': 1050000,
+    'gpt-5.6-terra': 1050000,
+    'gpt-5.6-sol': 1050000,
+    'airouter/gpt-5.6-luna': 1050000,
+    'airouter/gpt-5.6-terra': 1050000,
+    'airouter/gpt-5.6-sol': 1050000,
+    'airouter/gpt-5.4': 1050000,
+    'airouter/gpt-5.5': 1050000,
+
+    // AI&
+    'deepseek-ai/deepseek-v4-flash': 1050000,
+    'deepseek-ai/deepseek-v4-pro': 1050000,
+    'zai-org/glm-5.3': 1050000,
+    'zai-org/glm-5.2': 1050000,
+    'aiand/deepseek-ai/deepseek-v4-flash': 1050000,
+    'aiand/deepseek-ai/deepseek-v4-pro': 1050000,
+    'aiand/zai-org/glm-5.3': 1050000,
+    'aiand/zai-org/glm-5.2': 1050000,
+    'aiand/moonshotai/kimi-k2.7-code': 262144,
+    'aiand/moonshotai/kimi-k3': 1050000,
+    'aiand/google/gemma-4-31b-it': 262144,
+    'aiand/openai/gpt-oss-120b': 131072,
+    'aiand/motif-technologies/motif-3': 262144,
+    'aiand/qwen/qwen3.8-27b': 262144,
+
+    // AKI.IO
+    'deepseek-v4-flash-0731-284b': 1050000,
+    'glm5.3-754b': 524288,
+    'gemma4-26b': 256000,
+    'mistral4-119b': 262144,
+    'qwen3.6-35b': 256000,
+    'aki/deepseek-v4-flash-0731-284b': 1050000,
+    'aki/glm5.3-754b': 524288,
+    'aki/gemma4-26b': 256000,
+    'aki/gpt-oss-120b': 128000,
+    'aki/mistral4-119b': 262144,
+    'aki/qwen3.8-27b': 262144,
+    'aki/qwen3.6-35b': 256000,
+
+    // Ambient
+    'deepseek/deepseek-v4-flash': 1050000,
+    'deepseek/deepseek-v4-flash-0731': 1050000,
+    'ambient/large': 202000,
+    'zai-org/GLM-5.2-FP8': 202000,
+    'ambient/deepseek/deepseek-v4-flash': 1050000,
+    'ambient/deepseek/deepseek-v4-flash-0731': 1050000,
+    'ambient/ambient/large': 202000,
+    'ambient/zai-org/GLM-5.2-FP8': 202000,
+    'ambient/moonshotai/kimi-k2.7-code': 262144,
+    'ambient/xiaomi/mimo-v2.5': 1050000,
+    'ambient/stepfun/step-3.7-flash': 262144,
 }
 
 export function getModelContextWindow(value: string): number {
@@ -223,6 +276,8 @@ export function getModelContextWindow(value: string): number {
     if (lower.includes('agnes-2.5-pro') || lower.includes('agnes-2.5-pro-beta')) return 1000000
     if (lower.includes('agnes-3.0-flash') || lower.includes('agnes-2.5-flash')) return 512000
     if (lower.startsWith('agnes-') || lower.startsWith('agnes/')) return 512000
+    if (lower.includes('ambient/large') || lower.includes('glm-5.2-fp8')) return 202000
+    if (lower.includes('glm5.3-754b')) return 524288
 
     if (
         lower.includes('codestral') ||

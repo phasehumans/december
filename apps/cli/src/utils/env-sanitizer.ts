@@ -44,6 +44,12 @@ export const SENSITIVE_LLM_ENV_KEYS: readonly string[] = [
     'ABLIT_KEY',
     'AGNES_API_KEY',
     'AGNES_AI_KEY',
+    'AI_ROUTER_API_KEY',
+    'AIROUTER_API_KEY',
+    'AIAND_API_KEY',
+    'AKI_API_KEY',
+    'AKI_IO_KEY',
+    'AMBIENT_API_KEY',
 
     'AGENTROUTER_API_KEY',
     'ARCEE_API_KEY',

@@ -287,6 +287,60 @@ export function instantiateProvider(
                 )
             }
             return withProviderId(openaiProvider('https://apihub.agnes-ai.com/v1', apiKey), 'agnes')
+        case 'airouter':
+        case 'ai-router':
+            if (options?.baseURL || options?.headers) {
+                return withProviderId(
+                    openaiProvider(
+                        options?.baseURL || 'https://api.ai-router.dev/v1',
+                        apiKey,
+                        options?.headers
+                    ),
+                    'airouter'
+                )
+            }
+            return withProviderId(
+                openaiProvider('https://api.ai-router.dev/v1', apiKey),
+                'airouter'
+            )
+        case 'aiand':
+            if (options?.baseURL || options?.headers) {
+                return withProviderId(
+                    openaiProvider(
+                        options?.baseURL || 'https://api.aiand.com/v1',
+                        apiKey,
+                        options?.headers
+                    ),
+                    'aiand'
+                )
+            }
+            return withProviderId(openaiProvider('https://api.aiand.com/v1', apiKey), 'aiand')
+        case 'aki':
+        case 'aki-io':
+        case 'akiio':
+            if (options?.baseURL || options?.headers) {
+                return withProviderId(
+                    openaiProvider(
+                        options?.baseURL || 'https://aki.io/v1',
+                        apiKey,
+                        options?.headers
+                    ),
+                    'aki'
+                )
+            }
+            return withProviderId(openaiProvider('https://aki.io/v1', apiKey), 'aki')
+        case 'ambient':
+            if (options?.baseURL || options?.headers) {
+                return withProviderId(
+                    openaiProvider(
+                        options?.baseURL || 'https://api.ambient.xyz/v1',
+                        apiKey,
+                        options?.headers
+                    ),
+                    'ambient'
+                )
+            }
+            return withProviderId(openaiProvider('https://api.ambient.xyz/v1', apiKey), 'ambient')
         case 'thinkingmachines':
         case 'tinker':
         case 'inkling':

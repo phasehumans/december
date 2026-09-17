@@ -529,6 +529,137 @@ export const getCuratedProviderModels = (provider: string) => {
                 { label: 'Agnes 2.5 Flash', value: 'agnes-2.5-flash' },
                 { label: 'Agnes 2.5 Pro Beta', value: 'agnes-2.5-pro-beta' },
             ]
+        case 'airouter':
+        case 'ai-router':
+            return [
+                {
+                    label: 'GPT-5.6 Luna (Flagship)',
+                    value: 'gpt-5.6-luna',
+                },
+                {
+                    label: 'GPT-5.6 Terra (Balanced)',
+                    value: 'gpt-5.6-terra',
+                },
+                {
+                    label: 'GPT-5.6 Sol (High-Compute)',
+                    value: 'gpt-5.6-sol',
+                },
+                {
+                    label: 'GPT-5.4',
+                    value: 'gpt-5.4',
+                },
+                {
+                    label: 'GPT-5.5',
+                    value: 'gpt-5.5',
+                },
+            ]
+        case 'aiand':
+            return [
+                {
+                    label: 'DeepSeek V4 Flash (Fast & Efficient)',
+                    value: 'deepseek-ai/deepseek-v4-flash',
+                },
+                {
+                    label: 'DeepSeek V4 Pro',
+                    value: 'deepseek-ai/deepseek-v4-pro',
+                },
+                {
+                    label: 'GLM 5.3 (Zhipu AI)',
+                    value: 'zai-org/glm-5.3',
+                },
+                {
+                    label: 'GLM 5.2 (Zhipu AI)',
+                    value: 'zai-org/glm-5.2',
+                },
+                {
+                    label: 'Kimi K2.7 Code (Moonshot)',
+                    value: 'moonshotai/kimi-k2.7-code',
+                },
+                {
+                    label: 'Kimi K3 (Moonshot)',
+                    value: 'moonshotai/kimi-k3',
+                },
+                {
+                    label: 'Gemma 4 31B IT (Google)',
+                    value: 'google/gemma-4-31b-it',
+                },
+                {
+                    label: 'GPT OSS 120B (OpenAI)',
+                    value: 'openai/gpt-oss-120b',
+                },
+                {
+                    label: 'Motif 3',
+                    value: 'motif-technologies/motif-3',
+                },
+                {
+                    label: 'Qwen 3.8 27B',
+                    value: 'qwen/qwen3.8-27b',
+                },
+            ]
+        case 'aki':
+        case 'aki-io':
+        case 'akiio':
+            return [
+                {
+                    label: 'DeepSeek V4 Flash 0731 284B',
+                    value: 'deepseek-v4-flash-0731-284b',
+                },
+                {
+                    label: 'GLM 5.3 754B',
+                    value: 'glm5.3-754b',
+                },
+                {
+                    label: 'Gemma 4 26B',
+                    value: 'gemma4-26b',
+                },
+                {
+                    label: 'GPT OSS 120B',
+                    value: 'gpt-oss-120b',
+                },
+                {
+                    label: 'Mistral 4 119B',
+                    value: 'mistral4-119b',
+                },
+                {
+                    label: 'Qwen 3.8 27B',
+                    value: 'qwen3.8-27b',
+                },
+                {
+                    label: 'Qwen 3.6 35B',
+                    value: 'qwen3.6-35b',
+                },
+            ]
+        case 'ambient':
+            return [
+                {
+                    label: 'DeepSeek V4 Flash',
+                    value: 'deepseek/deepseek-v4-flash',
+                },
+                {
+                    label: 'DeepSeek V4 Flash 0731',
+                    value: 'deepseek/deepseek-v4-flash-0731',
+                },
+                {
+                    label: 'Ambient Large',
+                    value: 'ambient/large',
+                },
+                {
+                    label: 'GLM 5.2 FP8',
+                    value: 'zai-org/GLM-5.2-FP8',
+                },
+                {
+                    label: 'Kimi K2.7 Code',
+                    value: 'moonshotai/kimi-k2.7-code',
+                },
+                {
+                    label: 'MiMo V2.5',
+                    value: 'xiaomi/mimo-v2.5',
+                },
+                {
+                    label: 'Step 3.7 Flash',
+                    value: 'stepfun/step-3.7-flash',
+                },
+            ]
         case 'dashscope':
         case 'qwen':
             return [
@@ -970,6 +1101,29 @@ export async function fetchLiveProviderModels(
                         ? `${baseUrl.replace(/\/+$/, '')}/models`
                         : 'https://apihub.agnes-ai.com/v1/models'
                     break
+                case 'airouter':
+                case 'ai-router':
+                    endpoint = baseUrl
+                        ? `${baseUrl.replace(/\/+$/, '')}/models`
+                        : 'https://api.ai-router.dev/v1/models'
+                    break
+                case 'aiand':
+                    endpoint = baseUrl
+                        ? `${baseUrl.replace(/\/+$/, '')}/models`
+                        : 'https://api.aiand.com/v1/models'
+                    break
+                case 'aki':
+                case 'aki-io':
+                case 'akiio':
+                    endpoint = baseUrl
+                        ? `${baseUrl.replace(/\/+$/, '')}/models`
+                        : 'https://aki.io/v1/models'
+                    break
+                case 'ambient':
+                    endpoint = baseUrl
+                        ? `${baseUrl.replace(/\/+$/, '')}/models`
+                        : 'https://api.ambient.xyz/v1/models'
+                    break
                 case 'december':
                 case 'december_proxy': {
                     const serverUrl = process.env.SERVER_URL || 'https://api.trydecember.com'
@@ -1127,6 +1281,10 @@ export const getModelLabel = (value: string) => {
         'thinkingmachines',
         'abliteration',
         'agnes',
+        'airouter',
+        'aiand',
+        'aki',
+        'ambient',
         'december_proxy',
     ]
     for (const p of allProviders) {
@@ -1164,6 +1322,45 @@ export const isValidModelForProvider = (provider: string, model?: string): boole
     if (
         (normalized === 'agnes' || normalized === 'agnesai' || normalized === 'agnes-ai') &&
         (model.includes('/') || model.startsWith('agnes'))
+    )
+        return true
+    if (
+        (normalized === 'airouter' || normalized === 'ai-router') &&
+        (model.includes('/') || model.startsWith('gpt-'))
+    )
+        return true
+    if (
+        normalized === 'aiand' &&
+        (model.includes('/') ||
+            model.startsWith('deepseek') ||
+            model.startsWith('glm') ||
+            model.startsWith('kimi') ||
+            model.startsWith('gemma') ||
+            model.startsWith('gpt') ||
+            model.startsWith('motif') ||
+            model.startsWith('qwen'))
+    )
+        return true
+    if (
+        (normalized === 'aki' || normalized === 'aki-io' || normalized === 'akiio') &&
+        (model.includes('/') ||
+            model.startsWith('deepseek') ||
+            model.startsWith('glm') ||
+            model.startsWith('gemma') ||
+            model.startsWith('gpt') ||
+            model.startsWith('mistral') ||
+            model.startsWith('qwen'))
+    )
+        return true
+    if (
+        normalized === 'ambient' &&
+        (model.includes('/') ||
+            model.startsWith('deepseek') ||
+            model.startsWith('ambient') ||
+            model.startsWith('glm') ||
+            model.startsWith('kimi') ||
+            model.startsWith('mimo') ||
+            model.startsWith('step'))
     )
         return true
     if (normalized === 'poolside' && (model.includes('/') || model.startsWith('laguna')))

@@ -243,6 +243,153 @@ export const OFFICIAL_MODEL_RATES: Record<string, ModelRate> = {
         outputRate: 0.3,
     },
 
+    // AI Router
+    'gpt-5.6-luna': { name: 'gpt-5.6-luna', inputRate: 1.0, outputRate: 6.0 },
+    'gpt-5.6-terra': { name: 'gpt-5.6-terra', inputRate: 2.5, outputRate: 15.0 },
+    'gpt-5.6-sol': { name: 'gpt-5.6-sol', inputRate: 5.0, outputRate: 30.0 },
+    'gpt-5.4': { name: 'gpt-5.4', inputRate: 2.5, outputRate: 15.0 },
+    'gpt-5.5': { name: 'gpt-5.5', inputRate: 5.0, outputRate: 30.0 },
+    'airouter/gpt-5.6-luna': { name: 'airouter/gpt-5.6-luna', inputRate: 1.0, outputRate: 6.0 },
+    'airouter/gpt-5.6-terra': { name: 'airouter/gpt-5.6-terra', inputRate: 2.5, outputRate: 15.0 },
+    'airouter/gpt-5.6-sol': { name: 'airouter/gpt-5.6-sol', inputRate: 5.0, outputRate: 30.0 },
+    'airouter/gpt-5.4': { name: 'airouter/gpt-5.4', inputRate: 2.5, outputRate: 15.0 },
+    'airouter/gpt-5.5': { name: 'airouter/gpt-5.5', inputRate: 5.0, outputRate: 30.0 },
+
+    // AI&
+    'deepseek-ai/deepseek-v4-flash': {
+        name: 'deepseek-ai/deepseek-v4-flash',
+        inputRate: 0.15,
+        outputRate: 0.25,
+    },
+    'deepseek-ai/deepseek-v4-pro': {
+        name: 'deepseek-ai/deepseek-v4-pro',
+        inputRate: 1.0,
+        outputRate: 2.5,
+    },
+    'zai-org/glm-5.3': { name: 'zai-org/glm-5.3', inputRate: 1.0, outputRate: 4.0 },
+    'zai-org/glm-5.2': { name: 'zai-org/glm-5.2', inputRate: 1.0, outputRate: 4.0 },
+    'moonshotai/kimi-k2.7-code': {
+        name: 'moonshotai/kimi-k2.7-code',
+        inputRate: 0.75,
+        outputRate: 3.5,
+    },
+    'moonshotai/kimi-k3': { name: 'moonshotai/kimi-k3', inputRate: 3.0, outputRate: 12.5 },
+    'google/gemma-4-31b-it': { name: 'google/gemma-4-31b-it', inputRate: 0.2, outputRate: 0.5 },
+    'openai/gpt-oss-120b': { name: 'openai/gpt-oss-120b', inputRate: 0.15, outputRate: 0.6 },
+    'motif-technologies/motif-3': {
+        name: 'motif-technologies/motif-3',
+        inputRate: 0.5,
+        outputRate: 2.0,
+    },
+    'qwen/qwen3.8-27b': { name: 'qwen/qwen3.8-27b', inputRate: 0.4, outputRate: 3.0 },
+    'aiand/deepseek-ai/deepseek-v4-flash': {
+        name: 'aiand/deepseek-ai/deepseek-v4-flash',
+        inputRate: 0.15,
+        outputRate: 0.25,
+    },
+    'aiand/deepseek-ai/deepseek-v4-pro': {
+        name: 'aiand/deepseek-ai/deepseek-v4-pro',
+        inputRate: 1.0,
+        outputRate: 2.5,
+    },
+    'aiand/zai-org/glm-5.3': { name: 'aiand/zai-org/glm-5.3', inputRate: 1.0, outputRate: 4.0 },
+    'aiand/zai-org/glm-5.2': { name: 'aiand/zai-org/glm-5.2', inputRate: 1.0, outputRate: 4.0 },
+    'aiand/moonshotai/kimi-k2.7-code': {
+        name: 'aiand/moonshotai/kimi-k2.7-code',
+        inputRate: 0.75,
+        outputRate: 3.5,
+    },
+    'aiand/moonshotai/kimi-k3': {
+        name: 'aiand/moonshotai/kimi-k3',
+        inputRate: 3.0,
+        outputRate: 12.5,
+    },
+    'aiand/google/gemma-4-31b-it': {
+        name: 'aiand/google/gemma-4-31b-it',
+        inputRate: 0.2,
+        outputRate: 0.5,
+    },
+    'aiand/openai/gpt-oss-120b': {
+        name: 'aiand/openai/gpt-oss-120b',
+        inputRate: 0.15,
+        outputRate: 0.6,
+    },
+    'aiand/motif-technologies/motif-3': {
+        name: 'aiand/motif-technologies/motif-3',
+        inputRate: 0.5,
+        outputRate: 2.0,
+    },
+    'aiand/qwen/qwen3.8-27b': { name: 'aiand/qwen/qwen3.8-27b', inputRate: 0.4, outputRate: 3.0 },
+
+    // AKI.IO
+    'deepseek-v4-flash-0731-284b': {
+        name: 'deepseek-v4-flash-0731-284b',
+        inputRate: 0.2,
+        outputRate: 0.5,
+    },
+    'glm5.3-754b': { name: 'glm5.3-754b', inputRate: 1.0, outputRate: 3.5 },
+    'gemma4-26b': { name: 'gemma4-26b', inputRate: 0.1, outputRate: 0.5 },
+    'gpt-oss-120b': { name: 'gpt-oss-120b', inputRate: 0.15, outputRate: 0.55 },
+    'mistral4-119b': { name: 'mistral4-119b', inputRate: 0.2, outputRate: 0.6 },
+    'qwen3.8-27b': { name: 'qwen3.8-27b', inputRate: 0.3, outputRate: 2.2 },
+    'qwen3.6-35b': { name: 'qwen3.6-35b', inputRate: 0.15, outputRate: 0.5 },
+    'aki/deepseek-v4-flash-0731-284b': {
+        name: 'aki/deepseek-v4-flash-0731-284b',
+        inputRate: 0.2,
+        outputRate: 0.5,
+    },
+    'aki/glm5.3-754b': { name: 'aki/glm5.3-754b', inputRate: 1.0, outputRate: 3.5 },
+    'aki/gemma4-26b': { name: 'aki/gemma4-26b', inputRate: 0.1, outputRate: 0.5 },
+    'aki/gpt-oss-120b': { name: 'aki/gpt-oss-120b', inputRate: 0.15, outputRate: 0.55 },
+    'aki/mistral4-119b': { name: 'aki/mistral4-119b', inputRate: 0.2, outputRate: 0.6 },
+    'aki/qwen3.8-27b': { name: 'aki/qwen3.8-27b', inputRate: 0.3, outputRate: 2.2 },
+    'aki/qwen3.6-35b': { name: 'aki/qwen3.6-35b', inputRate: 0.15, outputRate: 0.5 },
+
+    // Ambient
+    'deepseek/deepseek-v4-flash': {
+        name: 'deepseek/deepseek-v4-flash',
+        inputRate: 0.14,
+        outputRate: 0.28,
+    },
+    'deepseek/deepseek-v4-flash-0731': {
+        name: 'deepseek/deepseek-v4-flash-0731',
+        inputRate: 0.08,
+        outputRate: 0.18,
+    },
+    'ambient/large': { name: 'ambient/large', inputRate: 0.6, outputRate: 2.0 },
+    'zai-org/GLM-5.2-FP8': { name: 'zai-org/GLM-5.2-FP8', inputRate: 1.2, outputRate: 4.2 },
+    'ambient/deepseek/deepseek-v4-flash': {
+        name: 'ambient/deepseek/deepseek-v4-flash',
+        inputRate: 0.14,
+        outputRate: 0.28,
+    },
+    'ambient/deepseek/deepseek-v4-flash-0731': {
+        name: 'ambient/deepseek/deepseek-v4-flash-0731',
+        inputRate: 0.08,
+        outputRate: 0.18,
+    },
+    'ambient/ambient/large': { name: 'ambient/ambient/large', inputRate: 0.6, outputRate: 2.0 },
+    'ambient/zai-org/GLM-5.2-FP8': {
+        name: 'ambient/zai-org/GLM-5.2-FP8',
+        inputRate: 1.2,
+        outputRate: 4.2,
+    },
+    'ambient/moonshotai/kimi-k2.7-code': {
+        name: 'ambient/moonshotai/kimi-k2.7-code',
+        inputRate: 0.69,
+        outputRate: 3.49,
+    },
+    'ambient/xiaomi/mimo-v2.5': {
+        name: 'ambient/xiaomi/mimo-v2.5',
+        inputRate: 0.4,
+        outputRate: 2.0,
+    },
+    'ambient/stepfun/step-3.7-flash': {
+        name: 'ambient/stepfun/step-3.7-flash',
+        inputRate: 0.19,
+        outputRate: 1.14,
+    },
+
     // Ollama / Local
     ollama: { name: 'ollama', inputRate: 0.0, outputRate: 0.0 },
 }
@@ -377,6 +524,13 @@ export const PROVIDER_BILLING_LINKS: Record<string, string> = {
     agnes: 'https://platform.agnes-ai.com/settings/apiKeys',
     'agnes-ai': 'https://platform.agnes-ai.com/settings/apiKeys',
     agnesai: 'https://platform.agnes-ai.com/settings/apiKeys',
+    airouter: 'https://ai-router.dev/keys',
+    'ai-router': 'https://ai-router.dev/keys',
+    aiand: 'https://console.aiand.com/api-keys',
+    aki: 'https://aki.io/admin/user-dashboard',
+    'aki-io': 'https://aki.io/admin/user-dashboard',
+    akiio: 'https://aki.io/admin/user-dashboard',
+    ambient: 'https://app.ambient.xyz/keys',
     ollama: 'http://localhost:11434',
 }
 
@@ -436,6 +590,13 @@ export const PROVIDER_DISPLAY_NAMES: Record<string, string> = {
     agnes: 'Agnes AI',
     'agnes-ai': 'Agnes AI',
     agnesai: 'Agnes AI',
+    airouter: 'AI Router',
+    'ai-router': 'AI Router',
+    aiand: 'AI&',
+    aki: 'AKI.IO',
+    'aki-io': 'AKI.IO',
+    akiio: 'AKI.IO',
+    ambient: 'Ambient',
     ollama: 'Ollama (Local)',
 }
 
@@ -490,6 +651,14 @@ export function formatInsufficientCreditsNotice(
             normalized = 'abliteration'
         } else if (modelLower.includes('agnes')) {
             normalized = 'agnes'
+        } else if (modelLower.includes('gpt-5.6') || modelLower.includes('airouter')) {
+            normalized = 'airouter'
+        } else if (modelLower.includes('aiand')) {
+            normalized = 'aiand'
+        } else if (modelLower.includes('aki')) {
+            normalized = 'aki'
+        } else if (modelLower.includes('ambient')) {
+            normalized = 'ambient'
         }
     }
 
@@ -530,6 +699,22 @@ export function formatInsufficientCreditsNotice(
 
     if (normalized === 'agnes' || normalized === 'agnes-ai' || normalized === 'agnesai') {
         return 'Insufficient credits in your Agnes AI account. Please add credits or check your account at https://platform.agnes-ai.com/settings/apiKeys'
+    }
+
+    if (normalized === 'airouter' || normalized === 'ai-router') {
+        return 'Insufficient credits in your AI Router account. Please add credits or check your account at https://ai-router.dev/keys'
+    }
+
+    if (normalized === 'aiand') {
+        return 'Insufficient credits in your AI& account. Please add credits or check your account at https://console.aiand.com/api-keys'
+    }
+
+    if (normalized === 'aki' || normalized === 'aki-io' || normalized === 'akiio') {
+        return 'Insufficient credits in your AKI.IO account. Please add credits or check your account at https://aki.io/admin/user-dashboard'
+    }
+
+    if (normalized === 'ambient') {
+        return 'Insufficient credits in your Ambient account. Please add credits or check your account at https://app.ambient.xyz/keys'
     }
 
     const displayName = PROVIDER_DISPLAY_NAMES[normalized] || normalized.toUpperCase()

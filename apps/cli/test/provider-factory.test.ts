@@ -444,6 +444,44 @@ describe('instantiateProvider', () => {
         )
     })
 
+    it('instantiates airouter provider via openai compat', () => {
+        instantiateProvider('airouter', 'key-123')
+        expect(providers.openaiProvider).toHaveBeenCalledWith(
+            'https://api.ai-router.dev/v1',
+            'key-123'
+        )
+
+        instantiateProvider('ai-router', 'key-123')
+        expect(providers.openaiProvider).toHaveBeenCalledWith(
+            'https://api.ai-router.dev/v1',
+            'key-123'
+        )
+    })
+
+    it('instantiates aiand provider via openai compat', () => {
+        instantiateProvider('aiand', 'key-123')
+        expect(providers.openaiProvider).toHaveBeenCalledWith('https://api.aiand.com/v1', 'key-123')
+    })
+
+    it('instantiates aki provider via openai compat', () => {
+        instantiateProvider('aki', 'key-123')
+        expect(providers.openaiProvider).toHaveBeenCalledWith('https://aki.io/v1', 'key-123')
+
+        instantiateProvider('aki-io', 'key-123')
+        expect(providers.openaiProvider).toHaveBeenCalledWith('https://aki.io/v1', 'key-123')
+
+        instantiateProvider('akiio', 'key-123')
+        expect(providers.openaiProvider).toHaveBeenCalledWith('https://aki.io/v1', 'key-123')
+    })
+
+    it('instantiates ambient provider via openai compat', () => {
+        instantiateProvider('ambient', 'key-123')
+        expect(providers.openaiProvider).toHaveBeenCalledWith(
+            'https://api.ambient.xyz/v1',
+            'key-123'
+        )
+    })
+
     it('instantiates ollama provider with default localhost endpoint', () => {
         const p = instantiateProvider('ollama', '')
         expect(p).toBe('mock-ollama')

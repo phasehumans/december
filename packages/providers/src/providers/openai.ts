@@ -54,7 +54,11 @@ export function supportsReasoningEffort(model?: string, baseURL?: string): boole
             baseURL.includes('upstage.ai') ||
             baseURL.includes('abliteration.ai') ||
             baseURL.includes('apihub.agnes-ai.com') ||
-            baseURL.includes('agnes-ai.com'))
+            baseURL.includes('agnes-ai.com') ||
+            baseURL.includes('ai-router.dev') ||
+            baseURL.includes('aiand.com') ||
+            baseURL.includes('aki.io') ||
+            baseURL.includes('ambient.xyz'))
     ) {
         return false
     }

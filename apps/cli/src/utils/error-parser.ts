@@ -424,6 +424,50 @@ export const PROVIDER_CREDIT_RULES: ProviderCreditRule[] = [
         message: 'Insufficient credits in your Agnes AI account.',
         hint: 'Please check your account at https://platform.agnes-ai.com/settings/apiKeys or switch models using /model.',
     },
+    {
+        id: 'airouter',
+        name: 'AI Router',
+        match: (str) =>
+            (str.includes('ai-router') ||
+                str.includes('airouter') ||
+                str.includes('api.ai-router.dev')) &&
+            (isCreditOrBalanceError(str) || str.includes('credits') || str.includes('402')),
+        notice: 'Insufficient credits in your AI Router account. Please check your account at https://ai-router.dev/keys\n',
+        message: 'Insufficient credits in your AI Router account.',
+        hint: 'Please check your account at https://ai-router.dev/keys or switch models using /model.',
+    },
+    {
+        id: 'aiand',
+        name: 'AI&',
+        match: (str) =>
+            (str.includes('aiand') ||
+                str.includes('api.aiand.com') ||
+                str.includes('console.aiand.com')) &&
+            (isCreditOrBalanceError(str) || str.includes('credits') || str.includes('402')),
+        notice: 'Insufficient credits in your AI& account. Please check your account at https://console.aiand.com/api-keys\n',
+        message: 'Insufficient credits in your AI& account.',
+        hint: 'Please check your account at https://console.aiand.com/api-keys or switch models using /model.',
+    },
+    {
+        id: 'aki',
+        name: 'AKI.IO',
+        match: (str) =>
+            (str.includes('aki.io') || str.includes('aki-io') || str.includes(' aki ')) &&
+            (isCreditOrBalanceError(str) || str.includes('credits') || str.includes('402')),
+        notice: 'Insufficient credits in your AKI.IO account. Please check your account at https://aki.io/admin/user-dashboard\n',
+        message: 'Insufficient credits in your AKI.IO account.',
+        hint: 'Please check your account at https://aki.io/admin/user-dashboard or switch models using /model.',
+    },
+    {
+        id: 'ambient',
+        name: 'Ambient',
+        match: (str) =>
+            (str.includes('ambient.xyz') || str.includes('api.ambient.xyz')) &&
+            (isCreditOrBalanceError(str) || str.includes('credits') || str.includes('402')),
+        notice: 'Insufficient credits in your Ambient account. Please check your account at https://app.ambient.xyz/keys\n',
+        message: 'Insufficient credits in your Ambient account.',
+        hint: 'Please check your account at https://app.ambient.xyz/keys or switch models using /model.',
+    },
 ]
 
 export const PROVIDER_BILLING_URLS: Record<string, string> = {
@@ -468,6 +512,13 @@ export const PROVIDER_BILLING_URLS: Record<string, string> = {
     agnes: 'https://platform.agnes-ai.com/settings/apiKeys',
     'agnes-ai': 'https://platform.agnes-ai.com/settings/apiKeys',
     agnesai: 'https://platform.agnes-ai.com/settings/apiKeys',
+    airouter: 'https://ai-router.dev/keys',
+    'ai-router': 'https://ai-router.dev/keys',
+    aiand: 'https://console.aiand.com/api-keys',
+    aki: 'https://aki.io/admin/user-dashboard',
+    'aki-io': 'https://aki.io/admin/user-dashboard',
+    akiio: 'https://aki.io/admin/user-dashboard',
+    ambient: 'https://app.ambient.xyz/keys',
 }
 
 export const PROVIDER_CREDIT_DISPLAY_NAMES: Record<string, string> = {
@@ -512,6 +563,13 @@ export const PROVIDER_CREDIT_DISPLAY_NAMES: Record<string, string> = {
     agnes: 'Agnes AI',
     'agnes-ai': 'Agnes AI',
     agnesai: 'Agnes AI',
+    airouter: 'AI Router',
+    'ai-router': 'AI Router',
+    aiand: 'AI&',
+    aki: 'AKI.IO',
+    'aki-io': 'AKI.IO',
+    akiio: 'AKI.IO',
+    ambient: 'Ambient',
 }
 
 export function normalizeProviderAlias(provider?: string): string {
@@ -538,6 +596,17 @@ export function normalizeProviderAlias(provider?: string): string {
         case 'agnes-ai':
         case 'agnes':
             return 'agnes'
+        case 'ai-router':
+        case 'airouter':
+            return 'airouter'
+        case 'aiand':
+            return 'aiand'
+        case 'aki-io':
+        case 'akiio':
+        case 'aki':
+            return 'aki'
+        case 'ambient':
+            return 'ambient'
         case 'arceeai':
         case 'arcee-ai':
         case 'arcee':
@@ -618,6 +687,15 @@ export function detectProviderFromText(str: string): string | null {
         lower.includes('agnes-ai.com')
     )
         return 'agnes'
+    if (
+        lower.includes('ai-router') ||
+        lower.includes('airouter') ||
+        lower.includes('api.ai-router.dev')
+    )
+        return 'airouter'
+    if (lower.includes('aiand') || lower.includes('api.aiand.com')) return 'aiand'
+    if (lower.includes('aki.io') || lower.includes('aki-io')) return 'aki'
+    if (lower.includes('ambient.xyz') || lower.includes('api.ambient.xyz')) return 'ambient'
     if (lower.includes('arcee') || lower.includes('trinity') || lower.includes('api.arcee.ai'))
         return 'arcee'
     if (lower.includes('sarvam') || lower.includes('indus.sarvam.ai')) return 'sarvam'
