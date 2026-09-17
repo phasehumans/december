@@ -52,7 +52,9 @@ export function supportsReasoningEffort(model?: string, baseURL?: string): boole
             baseURL.includes('sarvam.ai') ||
             baseURL.includes('stepfun.ai') ||
             baseURL.includes('upstage.ai') ||
-            baseURL.includes('abliteration.ai'))
+            baseURL.includes('abliteration.ai') ||
+            baseURL.includes('apihub.agnes-ai.com') ||
+            baseURL.includes('agnes-ai.com'))
     ) {
         return false
     }

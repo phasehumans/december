@@ -43,6 +43,9 @@ export interface ProviderConfig {
         | 'abliteration'
         | 'abliterationai'
         | 'abliteration-ai'
+        | 'agnes'
+        | 'agnesai'
+        | 'agnes-ai'
         | 'nvidia'
         | 'sambanova'
         | 'cerebras'
@@ -525,6 +528,10 @@ export function formatProviderName(provider: string): string {
         case 'abliterationai':
         case 'abliteration-ai':
             return 'Abliteration AI'
+        case 'agnes':
+        case 'agnesai':
+        case 'agnes-ai':
+            return 'Agnes AI'
         case 'claude':
             return 'Claude'
         case 'copilot':
@@ -835,6 +842,13 @@ export function resolveSwitchTarget(
                 provider: 'abliteration',
                 authPriority: 'byok',
                 model: getTargetModelForProvider(config, 'abliteration'),
+            }
+        }
+        if (['agnesai', 'agnes-ai'].includes(q) && config.providers['agnes']) {
+            return {
+                provider: 'agnes',
+                authPriority: 'byok',
+                model: getTargetModelForProvider(config, 'agnes'),
             }
         }
     }

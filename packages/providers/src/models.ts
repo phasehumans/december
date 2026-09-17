@@ -179,6 +179,16 @@ export const MODEL_CONTEXT_WINDOWS: Record<string, number> = {
     'abliteration/abliterated-model': 262144,
     'abliteration/abliterated-model-large': 1000000,
     'abliteration/abliterated-model-large-v2': 1000000,
+
+    // Agnes AI
+    'agnes-3.0-flash': 512000,
+    'agnes-2.5-pro': 1000000,
+    'agnes-2.5-flash': 512000,
+    'agnes-2.5-pro-beta': 1000000,
+    'agnes/agnes-3.0-flash': 512000,
+    'agnes/agnes-2.5-pro': 1000000,
+    'agnes/agnes-2.5-flash': 512000,
+    'agnes/agnes-2.5-pro-beta': 1000000,
 }
 
 export function getModelContextWindow(value: string): number {
@@ -210,6 +220,9 @@ export function getModelContextWindow(value: string): number {
     if (lower.includes('mimo')) return 1048576
     if (lower.includes('abliterated-model-large')) return 1000000
     if (lower.includes('abliterated-model')) return 262144
+    if (lower.includes('agnes-2.5-pro') || lower.includes('agnes-2.5-pro-beta')) return 1000000
+    if (lower.includes('agnes-3.0-flash') || lower.includes('agnes-2.5-flash')) return 512000
+    if (lower.startsWith('agnes-') || lower.startsWith('agnes/')) return 512000
 
     if (
         lower.includes('codestral') ||

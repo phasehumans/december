@@ -273,6 +273,20 @@ export function instantiateProvider(
                 openaiProvider('https://api.abliteration.ai/v1', apiKey),
                 'abliteration'
             )
+        case 'agnes':
+        case 'agnesai':
+        case 'agnes-ai':
+            if (options?.baseURL || options?.headers) {
+                return withProviderId(
+                    openaiProvider(
+                        options?.baseURL || 'https://apihub.agnes-ai.com/v1',
+                        apiKey,
+                        options?.headers
+                    ),
+                    'agnes'
+                )
+            }
+            return withProviderId(openaiProvider('https://apihub.agnes-ai.com/v1', apiKey), 'agnes')
         case 'thinkingmachines':
         case 'tinker':
         case 'inkling':

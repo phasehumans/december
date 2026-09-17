@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test'
 
 import { AbliterationProvider } from '../../src/providers/abliteration'
 import { AgentRouterProvider } from '../../src/providers/agentrouter'
+import { AgnesProvider } from '../../src/providers/agnes'
 import { ArceeProvider } from '../../src/providers/arcee'
 import { CerebrasProvider } from '../../src/providers/cerebras'
 import { CohereProvider } from '../../src/providers/cohere'
@@ -193,5 +194,10 @@ describe('OpenAI-compatible Subproviders (Unit)', () => {
     test('instantiates AbliterationProvider with correct ID', () => {
         const provider = new AbliterationProvider('dummy-key')
         expect(provider.id).toBe('abliteration')
+    })
+
+    test('instantiates AgnesProvider with correct ID', () => {
+        const provider = new AgnesProvider('dummy-key')
+        expect(provider.id).toBe('agnes')
     })
 })

@@ -358,6 +358,13 @@ describe('error-parser', () => {
             expect(parsed.hint).toContain('https://abliteration.ai/console')
         })
 
+        test('attaches custom notice for Agnes AI credit exhaustion', () => {
+            const rawErr = '402 Insufficient credits. apihub.agnes-ai.com account empty'
+            const parsed = parseError(rawErr)
+            expect(parsed.message).toBe('Insufficient credits in your Agnes AI account.')
+            expect(parsed.hint).toContain('https://platform.agnes-ai.com/settings/apiKeys')
+        })
+
         test('dynamically resolves provider from context provider alias when error text lacks provider name', () => {
             const rawErr = '402 Payment Required: account balance is 0'
             const parsed = parseError(rawErr, { provider: 'sarvamai' })

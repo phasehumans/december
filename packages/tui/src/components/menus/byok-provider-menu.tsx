@@ -11,6 +11,7 @@ const WINDOW_SIZE = 7
 export const PROVIDER_MENU_ITEMS = [
     { label: 'Abliteration AI', value: 'abliteration' },
     { label: 'AgentRouter', value: 'agentrouter' },
+    { label: 'Agnes AI', value: 'agnes' },
     { label: 'Anthropic', value: 'anthropic' },
     { label: 'Arcee AI', value: 'arcee' },
     { label: 'Cerebras', value: 'cerebras' },

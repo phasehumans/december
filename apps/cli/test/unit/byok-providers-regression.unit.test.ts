@@ -8,6 +8,7 @@ import {
     XiaomiProvider,
     ZhipuAIProvider,
     AbliterationProvider,
+    AgnesProvider,
 } from '@december/providers'
 import { describe, expect, it } from 'bun:test'
 
@@ -71,6 +72,11 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
             const provider = new AbliterationProvider('test-abliteration-key')
             expect(provider.id).toBe('abliteration')
         })
+
+        it('instantiates AgnesProvider with proper OpenAI endpoint and credentials', () => {
+            const provider = new AgnesProvider('test-agnes-key')
+            expect(provider.id).toBe('agnes')
+        })
     })
 
     describe('Model Context Windows', () => {
@@ -92,6 +98,10 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
             expect(getModelContextWindow('abliterated-model-large-v2')).toBe(1000000)
             expect(getModelContextWindow('abliterated-model-large')).toBe(1000000)
             expect(getModelContextWindow('abliterated-model')).toBe(262144)
+            expect(getModelContextWindow('agnes-3.0-flash')).toBe(512000)
+            expect(getModelContextWindow('agnes-2.5-pro')).toBe(1000000)
+            expect(getModelContextWindow('agnes-2.5-flash')).toBe(512000)
+            expect(getModelContextWindow('agnes-2.5-pro-beta')).toBe(1000000)
         })
     })
 
@@ -145,6 +155,16 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
             ])
             expect(getProviderModels('abliterationai')).toEqual(abliterationModels)
             expect(getProviderModels('abliteration-ai')).toEqual(abliterationModels)
+
+            const agnesModels = getProviderModels('agnes')
+            expect(agnesModels.map((m) => m.value)).toEqual([
+                'agnes-3.0-flash',
+                'agnes-2.5-pro',
+                'agnes-2.5-flash',
+                'agnes-2.5-pro-beta',
+            ])
+            expect(getProviderModels('agnesai')).toEqual(agnesModels)
+            expect(getProviderModels('agnes-ai')).toEqual(agnesModels)
         })
 
         it('returns correct default models for providers', () => {
@@ -161,6 +181,9 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
             expect(getDefaultModelForProvider('abliteration')).toBe('abliterated-model-large-v2')
             expect(getDefaultModelForProvider('abliterationai')).toBe('abliterated-model-large-v2')
             expect(getDefaultModelForProvider('abliteration-ai')).toBe('abliterated-model-large-v2')
+            expect(getDefaultModelForProvider('agnes')).toBe('agnes-3.0-flash')
+            expect(getDefaultModelForProvider('agnesai')).toBe('agnes-3.0-flash')
+            expect(getDefaultModelForProvider('agnes-ai')).toBe('agnes-3.0-flash')
         })
 
         it('validates and normalizes models correctly', () => {
@@ -177,6 +200,8 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
             expect(isValidModelForProvider('zhipuai', 'glm-5.3-flash')).toBe(true)
             expect(isValidModelForProvider('abliteration', 'abliterated-model-large-v2')).toBe(true)
             expect(isValidModelForProvider('abliterationai', 'abliterated-model')).toBe(true)
+            expect(isValidModelForProvider('agnes', 'agnes-3.0-flash')).toBe(true)
+            expect(isValidModelForProvider('agnesai', 'agnes-2.5-pro')).toBe(true)
 
             expect(ensureValidModelForProvider('thinkingmachines', 'inkling')).toBe(
                 'thinkingmachines/Inkling'
@@ -190,6 +215,7 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
             expect(ensureValidModelForProvider('abliteration', 'abliterated-model-large-v2')).toBe(
                 'abliterated-model-large-v2'
             )
+            expect(ensureValidModelForProvider('agnes', 'agnes-3.0-flash')).toBe('agnes-3.0-flash')
         })
     })
 
@@ -212,6 +238,9 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
             expect(formatProviderName('abliteration')).toBe('Abliteration AI')
             expect(formatProviderName('abliterationai')).toBe('Abliteration AI')
             expect(formatProviderName('abliteration-ai')).toBe('Abliteration AI')
+            expect(formatProviderName('agnes')).toBe('Agnes AI')
+            expect(formatProviderName('agnesai')).toBe('Agnes AI')
+            expect(formatProviderName('agnes-ai')).toBe('Agnes AI')
         })
     })
 
@@ -256,6 +285,14 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
             })
             // 100k * 5.0/1M = $0.50, 100k * 5.0/1M = $0.50 => total $1.00
             expect(abliterationCost.totalCost).toBeCloseTo(1.0, 2)
+
+            const agnesCost = calculateUsageCost({
+                model: 'agnes-2.5-pro',
+                promptTokens: 1_000_000,
+                completionTokens: 1_000_000,
+            })
+            // 1M * 0.45 = $0.45, 1M * 0.90 = $0.90 => total $1.35
+            expect(agnesCost.totalCost).toBeCloseTo(1.35, 2)
         })
 
         it('infers providers from models correctly', () => {
@@ -267,6 +304,8 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
             )
             expect(inferProviderFromModel('abliterated-model-large-v2')).toBe('abliteration')
             expect(inferProviderFromModel('abliteration/abliterated-model')).toBe('abliteration')
+            expect(inferProviderFromModel('agnes-3.0-flash')).toBe('agnes')
+            expect(inferProviderFromModel('agnes/agnes-2.5-pro')).toBe('agnes')
         })
 
         it('generates usage cards with legitimate console/portal URLs', () => {
@@ -309,6 +348,14 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
                 isAuthenticated: true,
             })
             expect(abliterationCard).toContain('https://abliteration.ai/console')
+
+            const agnesCard = formatUsageCard({
+                model: 'agnes-3.0-flash',
+                authMethod: 'byok',
+                provider: 'agnes',
+                isAuthenticated: true,
+            })
+            expect(agnesCard).toContain('https://platform.agnes-ai.com/settings/apiKeys')
         })
     })
 
@@ -324,6 +371,7 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
                     upstage: 'sk-upstage-live',
                     thinkingmachines: 'sk-tinker-live',
                     abliteration: 'sk-abliteration-live',
+                    agnes: 'sk-agnes-live',
                 },
             }
 
@@ -333,6 +381,7 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
             expect(configured.some((p) => p.value === 'provider:upstage')).toBe(true)
             expect(configured.some((p) => p.value === 'provider:thinkingmachines')).toBe(true)
             expect(configured.some((p) => p.value === 'provider:abliteration')).toBe(true)
+            expect(configured.some((p) => p.value === 'provider:agnes')).toBe(true)
 
             // Switch: sarvam -> stepfun
             const targetStepfun = resolveSwitchTarget(initialConfig, 'stepfun')
@@ -362,12 +411,19 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
             expect(switched4.config.activeProvider).toBe('abliteration')
             expect(switched4.config.activeModel).toBe('abliterated-model-large-v2')
 
-            // Switch: abliteration -> sarvam
-            const targetSarvam = resolveSwitchTarget(switched4.config, 'sarvam')
+            // Switch: abliteration -> agnes via alias agnes-ai
+            const targetAgnes = resolveSwitchTarget(switched4.config, 'agnes-ai')
+            expect(targetAgnes).toBeDefined()
+            const switched5 = applyProviderSwitch(switched4.config, targetAgnes!)
+            expect(switched5.config.activeProvider).toBe('agnes')
+            expect(switched5.config.activeModel).toBe('agnes-3.0-flash')
+
+            // Switch: agnes -> sarvam
+            const targetSarvam = resolveSwitchTarget(switched5.config, 'sarvam')
             expect(targetSarvam).toBeDefined()
-            const switched5 = applyProviderSwitch(switched4.config, targetSarvam!)
-            expect(switched5.config.activeProvider).toBe('sarvam')
-            expect(switched5.config.activeModel).toBe('sarvam-105b')
+            const switched6 = applyProviderSwitch(switched5.config, targetSarvam!)
+            expect(switched6.config.activeProvider).toBe('sarvam')
+            expect(switched6.config.activeModel).toBe('sarvam-105b')
         })
     })
 })

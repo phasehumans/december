@@ -424,6 +424,26 @@ describe('instantiateProvider', () => {
         )
     })
 
+    it('instantiates agnes provider via openai compat', () => {
+        instantiateProvider('agnes', 'key-123')
+        expect(providers.openaiProvider).toHaveBeenCalledWith(
+            'https://apihub.agnes-ai.com/v1',
+            'key-123'
+        )
+
+        instantiateProvider('agnesai', 'key-123')
+        expect(providers.openaiProvider).toHaveBeenCalledWith(
+            'https://apihub.agnes-ai.com/v1',
+            'key-123'
+        )
+
+        instantiateProvider('agnes-ai', 'key-123')
+        expect(providers.openaiProvider).toHaveBeenCalledWith(
+            'https://apihub.agnes-ai.com/v1',
+            'key-123'
+        )
+    })
+
     it('instantiates ollama provider with default localhost endpoint', () => {
         const p = instantiateProvider('ollama', '')
         expect(p).toBe('mock-ollama')

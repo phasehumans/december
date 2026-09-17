@@ -412,6 +412,18 @@ export const PROVIDER_CREDIT_RULES: ProviderCreditRule[] = [
         message: 'Insufficient credits in your Abliteration AI account.',
         hint: 'Please check your billing at https://abliteration.ai/console or switch models using /model.',
     },
+    {
+        id: 'agnes',
+        name: 'Agnes AI',
+        match: (str) =>
+            (str.includes('agnes') ||
+                str.includes('apihub.agnes-ai.com') ||
+                str.includes('agnes-ai.com')) &&
+            (isCreditOrBalanceError(str) || str.includes('credits') || str.includes('402')),
+        notice: 'Insufficient credits in your Agnes AI account. Please check your account at https://platform.agnes-ai.com/settings/apiKeys\n',
+        message: 'Insufficient credits in your Agnes AI account.',
+        hint: 'Please check your account at https://platform.agnes-ai.com/settings/apiKeys or switch models using /model.',
+    },
 ]
 
 export const PROVIDER_BILLING_URLS: Record<string, string> = {
@@ -453,6 +465,9 @@ export const PROVIDER_BILLING_URLS: Record<string, string> = {
     abliteration: 'https://abliteration.ai/console',
     'abliteration-ai': 'https://abliteration.ai/console',
     abliterationai: 'https://abliteration.ai/console',
+    agnes: 'https://platform.agnes-ai.com/settings/apiKeys',
+    'agnes-ai': 'https://platform.agnes-ai.com/settings/apiKeys',
+    agnesai: 'https://platform.agnes-ai.com/settings/apiKeys',
 }
 
 export const PROVIDER_CREDIT_DISPLAY_NAMES: Record<string, string> = {
@@ -494,6 +509,9 @@ export const PROVIDER_CREDIT_DISPLAY_NAMES: Record<string, string> = {
     abliteration: 'Abliteration AI',
     'abliteration-ai': 'Abliteration AI',
     abliterationai: 'Abliteration AI',
+    agnes: 'Agnes AI',
+    'agnes-ai': 'Agnes AI',
+    agnesai: 'Agnes AI',
 }
 
 export function normalizeProviderAlias(provider?: string): string {
@@ -516,6 +534,10 @@ export function normalizeProviderAlias(provider?: string): string {
         case 'abliteration-ai':
         case 'abliteration':
             return 'abliteration'
+        case 'agnesai':
+        case 'agnes-ai':
+        case 'agnes':
+            return 'agnes'
         case 'arceeai':
         case 'arcee-ai':
         case 'arcee':
@@ -590,6 +612,12 @@ export function detectProviderFromText(str: string): string | null {
         lower.includes('api.abliteration.ai')
     )
         return 'abliteration'
+    if (
+        lower.includes('agnes') ||
+        lower.includes('apihub.agnes-ai.com') ||
+        lower.includes('agnes-ai.com')
+    )
+        return 'agnes'
     if (lower.includes('arcee') || lower.includes('trinity') || lower.includes('api.arcee.ai'))
         return 'arcee'
     if (lower.includes('sarvam') || lower.includes('indus.sarvam.ai')) return 'sarvam'

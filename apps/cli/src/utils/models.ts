@@ -514,6 +514,21 @@ export const getCuratedProviderModels = (provider: string) => {
                 },
                 { label: 'Abliterated Model (Multimodal)', value: 'abliterated-model' },
             ]
+        case 'agnes':
+        case 'agnesai':
+        case 'agnes-ai':
+            return [
+                {
+                    label: 'Agnes 3.0 Flash (Fast Agentic)',
+                    value: 'agnes-3.0-flash',
+                },
+                {
+                    label: 'Agnes 2.5 Pro (Flagship Reasoning)',
+                    value: 'agnes-2.5-pro',
+                },
+                { label: 'Agnes 2.5 Flash', value: 'agnes-2.5-flash' },
+                { label: 'Agnes 2.5 Pro Beta', value: 'agnes-2.5-pro-beta' },
+            ]
         case 'dashscope':
         case 'qwen':
             return [
@@ -948,6 +963,13 @@ export async function fetchLiveProviderModels(
                         ? `${baseUrl.replace(/\/+$/, '')}/models`
                         : 'https://api.abliteration.ai/v1/models'
                     break
+                case 'agnes':
+                case 'agnesai':
+                case 'agnes-ai':
+                    endpoint = baseUrl
+                        ? `${baseUrl.replace(/\/+$/, '')}/models`
+                        : 'https://apihub.agnes-ai.com/v1/models'
+                    break
                 case 'december':
                 case 'december_proxy': {
                     const serverUrl = process.env.SERVER_URL || 'https://api.trydecember.com'
@@ -1104,6 +1126,7 @@ export const getModelLabel = (value: string) => {
         'upstage',
         'thinkingmachines',
         'abliteration',
+        'agnes',
         'december_proxy',
     ]
     for (const p of allProviders) {
@@ -1136,6 +1159,11 @@ export const isValidModelForProvider = (provider: string, model?: string): boole
             normalized === 'abliterationai' ||
             normalized === 'abliteration-ai') &&
         (model.includes('/') || model.startsWith('abliterated'))
+    )
+        return true
+    if (
+        (normalized === 'agnes' || normalized === 'agnesai' || normalized === 'agnes-ai') &&
+        (model.includes('/') || model.startsWith('agnes'))
     )
         return true
     if (normalized === 'poolside' && (model.includes('/') || model.startsWith('laguna')))

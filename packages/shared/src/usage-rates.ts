@@ -229,6 +229,20 @@ export const OFFICIAL_MODEL_RATES: Record<string, ModelRate> = {
         outputRate: 5.0,
     },
 
+    // Agnes AI
+    'agnes-3.0-flash': { name: 'agnes-3.0-flash', inputRate: 0.05, outputRate: 0.15 },
+    'agnes-2.5-pro': { name: 'agnes-2.5-pro', inputRate: 0.45, outputRate: 0.9 },
+    'agnes-2.5-flash': { name: 'agnes-2.5-flash', inputRate: 0.05, outputRate: 0.15 },
+    'agnes-2.5-pro-beta': { name: 'agnes-2.5-pro-beta', inputRate: 0.1, outputRate: 0.3 },
+    'agnes/agnes-3.0-flash': { name: 'agnes/agnes-3.0-flash', inputRate: 0.05, outputRate: 0.15 },
+    'agnes/agnes-2.5-pro': { name: 'agnes/agnes-2.5-pro', inputRate: 0.45, outputRate: 0.9 },
+    'agnes/agnes-2.5-flash': { name: 'agnes/agnes-2.5-flash', inputRate: 0.05, outputRate: 0.15 },
+    'agnes/agnes-2.5-pro-beta': {
+        name: 'agnes/agnes-2.5-pro-beta',
+        inputRate: 0.1,
+        outputRate: 0.3,
+    },
+
     // Ollama / Local
     ollama: { name: 'ollama', inputRate: 0.0, outputRate: 0.0 },
 }
@@ -360,6 +374,9 @@ export const PROVIDER_BILLING_LINKS: Record<string, string> = {
     abliteration: 'https://abliteration.ai/console',
     'abliteration-ai': 'https://abliteration.ai/console',
     abliterationai: 'https://abliteration.ai/console',
+    agnes: 'https://platform.agnes-ai.com/settings/apiKeys',
+    'agnes-ai': 'https://platform.agnes-ai.com/settings/apiKeys',
+    agnesai: 'https://platform.agnes-ai.com/settings/apiKeys',
     ollama: 'http://localhost:11434',
 }
 
@@ -416,6 +433,9 @@ export const PROVIDER_DISPLAY_NAMES: Record<string, string> = {
     abliteration: 'Abliteration AI',
     'abliteration-ai': 'Abliteration AI',
     abliterationai: 'Abliteration AI',
+    agnes: 'Agnes AI',
+    'agnes-ai': 'Agnes AI',
+    agnesai: 'Agnes AI',
     ollama: 'Ollama (Local)',
 }
 
@@ -468,6 +488,8 @@ export function formatInsufficientCreditsNotice(
             normalized = 'xiaomi'
         } else if (modelLower.includes('abliterated')) {
             normalized = 'abliteration'
+        } else if (modelLower.includes('agnes')) {
+            normalized = 'agnes'
         }
     }
 
@@ -504,6 +526,10 @@ export function formatInsufficientCreditsNotice(
         normalized === 'abliterationai'
     ) {
         return 'Insufficient credits in your Abliteration AI account. Please add credits or check your account at https://abliteration.ai/console'
+    }
+
+    if (normalized === 'agnes' || normalized === 'agnes-ai' || normalized === 'agnesai') {
+        return 'Insufficient credits in your Agnes AI account. Please add credits or check your account at https://platform.agnes-ai.com/settings/apiKeys'
     }
 
     const displayName = PROVIDER_DISPLAY_NAMES[normalized] || normalized.toUpperCase()

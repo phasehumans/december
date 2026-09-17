@@ -8,8 +8,8 @@ import {
 import { PROVIDER_MENU_ITEMS } from '../../src/components/menus/byok-provider-menu'
 
 describe('BYOK Provider URLs & Names Audit (Unit)', () => {
-    it('ensures all 37 BYOK providers have corresponding key URLs starting with https://', () => {
-        expect(PROVIDER_MENU_ITEMS.length).toBe(37)
+    it('ensures all 38 BYOK providers have corresponding key URLs starting with https://', () => {
+        expect(PROVIDER_MENU_ITEMS.length).toBe(38)
 
         for (const item of PROVIDER_MENU_ITEMS) {
             const url = PROVIDER_KEY_URLS[item.value]
@@ -19,7 +19,7 @@ describe('BYOK Provider URLs & Names Audit (Unit)', () => {
         }
     })
 
-    it('ensures all 37 BYOK providers have a display name defined in PROVIDER_NAMES', () => {
+    it('ensures all 38 BYOK providers have a display name defined in PROVIDER_NAMES', () => {
         for (const item of PROVIDER_MENU_ITEMS) {
             const name = PROVIDER_NAMES[item.value]
             expect(name).toBeDefined()
@@ -31,6 +31,7 @@ describe('BYOK Provider URLs & Names Audit (Unit)', () => {
 
     it('validates specific exact destination URLs for major providers', () => {
         expect(PROVIDER_KEY_URLS['abliteration']).toBe('https://abliteration.ai/console')
+        expect(PROVIDER_KEY_URLS['agnes']).toBe('https://platform.agnes-ai.com/settings/apiKeys')
         expect(PROVIDER_KEY_URLS['anthropic']).toBe('https://console.anthropic.com/settings/keys')
         expect(PROVIDER_KEY_URLS['arcee']).toBe('https://platform.arcee.ai/api/api-keys')
         expect(PROVIDER_KEY_URLS['meta']).toBe('https://dev.meta.ai/')
