@@ -126,7 +126,6 @@ export function CollapsibleThought({
     if (!formatted && !isStreaming) return null
 
     const words = formatted.trim() ? formatted.trim().split(/\s+/).length : 0
-    const tokenCount = Math.max(1, Math.round(words * 1.33))
 
     const displayDuration =
         durationMs !== undefined
@@ -137,23 +136,19 @@ export function CollapsibleThought({
                 ? elapsedSeconds.toFixed(1)
                 : Math.max(0.5, Math.round((words / 25) * 10) / 10).toFixed(1)
 
-    // Option A: December Brand Star ✱
-    // While streaming: ✱ Thinking (3.4s)...
+    // While streaming: ⠹ Thinking...
     if (isStreaming) {
         return (
             <Box flexDirection="row" marginY={0} gap={1} alignItems="center">
-                <Text color={THEME.colors.brand} bold>
-                    ✱
-                </Text>
-                <Text color={THEME.colors.text}>Thinking</Text>
-                <Text color={THEME.colors.muted}>({displayDuration}s)...</Text>
+                <Spinner />
+                <Text color={THEME.colors.muted}>Thinking...</Text>
             </Box>
         )
     }
 
     // When done:
-    // Collapsed: ✱ Thought for 3.4s (412 tokens)  ·  ctrl+o to view
-    // Expanded:  ✱ Thought for 3.4s (412 tokens)  ·  ctrl+o to collapse
+    // Collapsed: ● Thought for 0.7s (ctrl+o to view)
+    // Expanded:  ● Thought for 0.7s (ctrl+o to collapse)
     //            actual thoughts shown here in gray text (paddingLeft={2}, no left side dash)
     const isExpanded = forceExpanded ?? false
     const formattedLines = formatted.split(/\r?\n/).filter((l) => l.trim() !== '')
@@ -161,12 +156,14 @@ export function CollapsibleThought({
     return (
         <Box flexDirection="column" marginY={0}>
             <Box flexDirection="row" gap={1} alignItems="center">
-                <Text color={THEME.colors.muted}>✱</Text>
-                <Text color={THEME.colors.muted}>
-                    Thought for {displayDuration}s ({tokenCount} tokens)
+                <Text>
+                    <Text color={THEME.colors.warning}>{`${THEME.glyphs.status} `}</Text>
+                    <Text color={THEME.colors.warning} bold>
+                        Thought for {displayDuration}s
+                    </Text>
                 </Text>
                 <Text color={THEME.colors.muted}>
-                    · ctrl+o to {isExpanded ? 'collapse' : 'view'}
+                    ({isExpanded ? 'ctrl+o to collapse' : 'ctrl+o to view'})
                 </Text>
             </Box>
             {isExpanded && formattedLines.length > 0 && (
@@ -316,6 +313,7 @@ export const BotMessage = React.memo(function BotMessage({ blocks, usage, expand
                             block.content === 'Thinking...' ||
                             block.content === 'Searching...' ||
                             block.content === 'Reading...' ||
+                            block.content === 'Writing...' ||
                             block.content === 'Planning...' ||
                             block.content === 'Coding...' ||
                             block.content === 'Executing...' ||
@@ -330,7 +328,17 @@ export const BotMessage = React.memo(function BotMessage({ blocks, usage, expand
                             block.content === 'Analyzing...' ||
                             block.content === 'Analyzing prompt...' ||
                             block.content === 'Generating questions...' ||
-                            block.content === 'Understanding...'
+                            block.content === 'Understanding...' ||
+                            block.content === 'Searching web...' ||
+                            block.content === 'Searching codebase...' ||
+                            block.content === 'Listing directory...' ||
+                            block.content === 'Modifying...' ||
+                            block.content === 'Asking question...' ||
+                            block.content === 'Managing tasks...' ||
+                            block.content === 'Checking permissions...' ||
+                            block.content === 'Generating image...' ||
+                            block.content === 'Sending message...' ||
+                            block.content === 'Scheduling timer...'
                         if (isThinking) {
                             if (idx !== blocks.length - 1) return null
                             return (

@@ -408,6 +408,30 @@ async function runInnerLoop(
     }
 }
 
+function getToolStatusMessage(toolName: string): string {
+    if (toolName === 'read_file' || toolName === 'view_file') return 'Reading...'
+    if (toolName === 'write_file' || toolName === 'write_to_file') return 'Writing...'
+    if (
+        toolName === 'edit_file' ||
+        toolName === 'edit_diff' ||
+        toolName === 'replace_file_content' ||
+        toolName === 'multi_replace_file_content'
+    )
+        return 'Modifying...'
+    if (toolName === 'run_command' || toolName === 'bash') return 'Executing...'
+    if (toolName === 'search_web') return 'Searching web...'
+    if (toolName === 'list_dir') return 'Listing directory...'
+    if (toolName === 'find_files' || toolName === 'grep_search') return 'Searching codebase...'
+    if (toolName === 'ask_question') return 'Asking question...'
+    if (toolName === 'manage_task') return 'Managing tasks...'
+    if (toolName === 'list_permissions' || toolName === 'ask_permission')
+        return 'Checking permissions...'
+    if (toolName === 'generate_image') return 'Generating image...'
+    if (toolName === 'send_message') return 'Sending message...'
+    if (toolName === 'schedule') return 'Scheduling timer...'
+    return 'Working...'
+}
+
 async function streamAssistantResponse(
     agent: Agent,
     eventQueue: AsyncQueue<AgentEvent>,
@@ -503,7 +527,7 @@ async function streamAssistantResponse(
                 loggedMessages = providerMessages
                 loggedModel = (providerModelOptions as any).model || agent.modelOptions?.model
 
-                eventQueue.push({ type: 'AgentStatus', message: 'Thinking...' })
+                eventQueue.push({ type: 'AgentStatus', message: 'Working...' })
 
                 const generator = agent.llm.stream(
                     providerMessages,
@@ -537,12 +561,22 @@ async function streamAssistantResponse(
                         const tc = activeToolCalls.get(chunk.id)!
                         if (chunk.name && !tc.name) {
                             tc.name = chunk.name
+                            eventQueue.push({
+                                type: 'AgentStatus',
+                                message: getToolStatusMessage(chunk.name),
+                            })
                         }
                         if (chunk.inputDelta) {
                             tc.input += chunk.inputDelta
                         }
                     } else if (chunk.type === 'tool_call') {
                         activeToolCalls.set(chunk.toolCall.id, chunk.toolCall)
+                        if (chunk.toolCall.name) {
+                            eventQueue.push({
+                                type: 'AgentStatus',
+                                message: getToolStatusMessage(chunk.toolCall.name),
+                            })
+                        }
                     } else if (chunk.type === 'usage') {
                         lastUsage = {
                             promptTokens: chunk.promptTokens,

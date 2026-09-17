@@ -25,7 +25,7 @@ describe('BotMessage Component (Unit)', () => {
             />
         )
         let frame = lastFrame() || ''
-        expect(frame).toContain('✱')
+        expect(frame).toContain('●')
         expect(frame).toContain('Thought for')
         expect(frame).toContain('ctrl+o to view')
         expect(frame).not.toContain('Line 1: Planning search')
@@ -43,7 +43,7 @@ describe('BotMessage Component (Unit)', () => {
         )
 
         frame = lastFrame() || ''
-        expect(frame).toContain('✱')
+        expect(frame).toContain('●')
         expect(frame).toContain('Thought for')
         expect(frame).toContain('ctrl+o to collapse')
         expect(frame).toContain('Line 1: Planning search')
@@ -66,7 +66,7 @@ describe('BotMessage Component (Unit)', () => {
             />
         )
         let frame = lastFrame() || ''
-        expect(frame).toContain('✱')
+        expect(frame).toContain('●')
         expect(frame).toContain('Thought for')
         expect(frame).toContain('ctrl+o to view')
         expect(frame).toContain('First response part')
@@ -94,7 +94,7 @@ describe('BotMessage Component (Unit)', () => {
         expect(frame).toContain('Reasoning with DeepSeek R1')
     })
 
-    it('renders active streaming thought blocks cleanly with timer and brand star icon', () => {
+    it('renders active streaming thought blocks cleanly with dots spinner and Thinking... label', () => {
         const thoughtContent =
             'Line 1: Planning search\nLine 2: Locating files\nLine 3: Reading contents\nLine 4: Still thinking'
         const { lastFrame } = render(
@@ -103,8 +103,7 @@ describe('BotMessage Component (Unit)', () => {
             />
         )
         const frame = lastFrame() || ''
-        expect(frame).toContain('✱')
-        expect(frame).toContain('Thinking')
+        expect(frame).toContain('Thinking...')
         expect(frame).not.toContain('Line 4: Still thinking')
     })
 
@@ -121,7 +120,7 @@ describe('BotMessage Component (Unit)', () => {
             />
         )
         const frame = lastFrame() || ''
-        expect(frame).toContain('✱')
+        expect(frame).toContain('●')
         expect(frame).toContain('Thought for 4.2s')
         expect(frame).toContain('ctrl+o to view')
     })

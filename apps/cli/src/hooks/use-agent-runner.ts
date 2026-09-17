@@ -85,6 +85,7 @@ const isStatusMessage = (content: string) =>
     content === 'Thinking...' ||
     content === 'Searching...' ||
     content === 'Reading...' ||
+    content === 'Writing...' ||
     content === 'Planning...' ||
     content === 'Coding...' ||
     content === 'Executing...' ||
@@ -100,6 +101,16 @@ const isStatusMessage = (content: string) =>
     content === 'Analyzing prompt...' ||
     content === 'Generating questions...' ||
     content === 'Understanding...' ||
+    content === 'Searching web...' ||
+    content === 'Searching codebase...' ||
+    content === 'Listing directory...' ||
+    content === 'Modifying...' ||
+    content === 'Asking question...' ||
+    content === 'Managing tasks...' ||
+    content === 'Checking permissions...' ||
+    content === 'Generating image...' ||
+    content === 'Sending message...' ||
+    content === 'Scheduling timer...' ||
     content.startsWith('Preparing') ||
     content.startsWith('Rate limit') ||
     content.startsWith('High demand') ||
@@ -151,7 +162,7 @@ export async function processAgentStream({
                 for (const event of eventsToProcess) {
                     switch (event.type) {
                         case 'TurnStart':
-                            blocks.push({ type: 'text', content: 'Thinking...' })
+                            blocks.push({ type: 'text', content: 'Working...' })
                             break
                         case 'AgentError': {
                             finalizeThinking(blocks)
