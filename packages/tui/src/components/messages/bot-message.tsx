@@ -2,7 +2,7 @@ import { Box, Text } from 'ink'
 import React from 'react'
 
 import { THEME } from '../../theme'
-import { fileLink } from '../../utils/terminal-link'
+import { fileLink, toRelativePath } from '../../utils/terminal-link'
 import { DiffGutterView } from '../diff-gutter'
 import { Spinner } from '../spinner'
 
@@ -152,8 +152,13 @@ function StyledCommand({ command, truncate = true }: { command: string; truncate
         if (truncate && displayArgs.length > 80) {
             displayArgs = displayArgs.substring(0, 80) + '...'
         }
-        if ((toolName === 'read_file' || toolName === 'view_file') && args && !args.includes(' ')) {
-            displayArgs = fileLink(displayArgs, args)
+        if (
+            (toolName === 'read_file' || toolName === 'view_file' || toolName === 'Read') &&
+            args &&
+            !args.includes(' ')
+        ) {
+            const rel = toRelativePath(displayArgs)
+            displayArgs = fileLink(rel, args)
         }
         const cmdColor = THEME.colors.warning
 
@@ -242,7 +247,145 @@ function CollapsibleCommandOutput({
     )
 }
 
+type CommandBlock = Extract<MessageBlock, { type: 'command' }>
+
+function getReadBlockPath(block: CommandBlock): { display: string; target: string } {
+    let rawPath = ''
+    try {
+        const parsed = JSON.parse(block.toolInput || '{}')
+        rawPath =
+            parsed.AbsolutePath ??
+            parsed.TargetFile ??
+            parsed.filePath ??
+            parsed.filepath ??
+            parsed.path ??
+            parsed.file ??
+            ''
+    } catch {
+        // Intentionally swallowed: fallback to parsing block.command
+    }
+    if (!rawPath && block.command) {
+        const match = block.command.match(/^([A-Za-z_]+)\(([\s\S]*)\)$/)
+        if (match) {
+            rawPath = match[2].trim()
+        }
+    }
+    const rel = toRelativePath(rawPath)
+    return { display: rel || rawPath, target: rawPath }
+}
+
+export function ConsolidatedReadsView({
+    blocks,
+    forceExpanded,
+}: {
+    blocks: CommandBlock[]
+    forceExpanded?: boolean
+}) {
+    const isExpanded = forceExpanded ?? false
+    const paths = blocks.map(getReadBlockPath)
+    const count = paths.length
+
+    let inlineArgs = ''
+    if (count === 2) {
+        inlineArgs = `${fileLink(paths[0]!.display, paths[0]!.target)}, ${fileLink(paths[1]!.display, paths[1]!.target)}`
+    } else if (count > 2) {
+        inlineArgs = `${fileLink(paths[0]!.display, paths[0]!.target)}, ${fileLink(paths[1]!.display, paths[1]!.target)}, +${count - 2} more`
+    } else if (count === 1) {
+        inlineArgs = fileLink(paths[0]!.display, paths[0]!.target)
+    }
+
+    const cmdColor = THEME.colors.warning
+
+    return (
+        <Box flexDirection="column" marginY={0}>
+            <Box alignItems="center" gap={1}>
+                <Text>
+                    <Text color={cmdColor}>{`${THEME.glyphs.status} `}</Text>
+                    <Text color={cmdColor} bold>
+                        Read
+                    </Text>
+                    <Text color={THEME.colors.muted}>
+                        ({isExpanded ? `${count} files` : inlineArgs})
+                    </Text>
+                </Text>
+                <Text color={THEME.colors.muted}>
+                    ({isExpanded ? 'ctrl+o to collapse' : 'ctrl+o to expand'})
+                </Text>
+            </Box>
+            {isExpanded && (
+                <Box flexDirection="column" paddingLeft={2} marginTop={0}>
+                    {paths.map((p, pidx) => (
+                        <Box key={pidx} alignItems="center" gap={1}>
+                            <Text>
+                                <Text color={cmdColor}>{`${THEME.glyphs.status} `}</Text>
+                                <Text color={THEME.colors.muted}>
+                                    {fileLink(p.display, p.target)}
+                                </Text>
+                            </Text>
+                        </Box>
+                    ))}
+                </Box>
+            )}
+        </Box>
+    )
+}
+
+type RenderItem =
+    | { kind: 'single'; block: MessageBlock; originalIdx: number }
+    | { kind: 'consolidated_reads'; blocks: CommandBlock[]; originalIdx: number }
+
+function isReadCommandBlock(block: MessageBlock): block is CommandBlock {
+    if (block.type !== 'command') return false
+    if (block.toolName === 'read_file' || block.toolName === 'view_file') return true
+    if (block.command?.startsWith('Read(')) return true
+    return false
+}
+
+function groupBlocks(blocks: MessageBlock[]): RenderItem[] {
+    const items: RenderItem[] = []
+    let i = 0
+
+    while (i < blocks.length) {
+        const block = blocks[i]
+        if (!block) {
+            i++
+            continue
+        }
+
+        if (isReadCommandBlock(block)) {
+            const readGroup: CommandBlock[] = [block]
+            let j = i + 1
+            while (j < blocks.length) {
+                const nextBlock = blocks[j]
+                if (nextBlock && isReadCommandBlock(nextBlock)) {
+                    readGroup.push(nextBlock)
+                    j++
+                } else {
+                    break
+                }
+            }
+
+            if (readGroup.length > 1) {
+                items.push({
+                    kind: 'consolidated_reads',
+                    blocks: readGroup,
+                    originalIdx: i,
+                })
+                i = j
+                continue
+            }
+        }
+
+        items.push({ kind: 'single', block, originalIdx: i })
+        i++
+    }
+
+    return items
+}
+
 export const BotMessage = React.memo(function BotMessage({ blocks, usage, expandCommands }: Props) {
+    const groupedItems = groupBlocks(blocks)
+
     return (
         <Box
             flexDirection="column"
@@ -252,7 +395,19 @@ export const BotMessage = React.memo(function BotMessage({ blocks, usage, expand
             gap={0}
             marginTop={0}
         >
-            {blocks.map((block, idx) => {
+            {groupedItems.map((item) => {
+                if (item.kind === 'consolidated_reads') {
+                    return (
+                        <ConsolidatedReadsView
+                            key={item.originalIdx}
+                            blocks={item.blocks}
+                            forceExpanded={expandCommands}
+                        />
+                    )
+                }
+
+                const block = item.block
+                const idx = item.originalIdx
                 let prevBlock: MessageBlock | null = null
                 for (let i = idx - 1; i >= 0; i--) {
                     const b = blocks[i]
@@ -314,6 +469,29 @@ export const BotMessage = React.memo(function BotMessage({ blocks, usage, expand
                                     <Box gap={1} alignItems="center">
                                         <Spinner />
                                         <Text color={THEME.colors.muted}>{block.content}</Text>
+                                    </Box>
+                                </Box>
+                            )
+                        }
+
+                        const isRetryStatus =
+                            block.content.includes('rate limit hit') ||
+                            block.content.includes('high demand hit') ||
+                            (block.content.includes('Retrying in') &&
+                                block.content.includes('attempt')) ||
+                            block.content.startsWith('Rate limit') ||
+                            block.content.startsWith('High demand') ||
+                            block.content.startsWith('LLM Provider')
+                        if (isRetryStatus) {
+                            if (idx !== blocks.length - 1) return null
+                            return (
+                                <Box key={idx} flexDirection="column">
+                                    {needsTopMargin && <Text> </Text>}
+                                    <Box gap={1} alignItems="center">
+                                        <Spinner />
+                                        <Text color={THEME.colors.muted}>
+                                            {block.content.trim()}
+                                        </Text>
                                     </Box>
                                 </Box>
                             )

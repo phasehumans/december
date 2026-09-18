@@ -28,3 +28,18 @@ export function fileLink(
     const uri = `file://${absPath}${lineFragment}`
     return terminalLink(displayPath, uri)
 }
+
+/**
+ * Converts an absolute or messy path to a clean relative path from cwd.
+ * If the path is outside cwd or invalid, returns the original path.
+ */
+export function toRelativePath(filePath: string, cwd: string = process.cwd()): string {
+    if (!filePath) return ''
+    const trimmed = filePath.trim()
+    if (!path.isAbsolute(trimmed)) return trimmed
+    const rel = path.relative(cwd, trimmed)
+    if (!rel || rel.startsWith('..')) {
+        return trimmed
+    }
+    return rel
+}

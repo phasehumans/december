@@ -11,6 +11,10 @@ describe('formatters', () => {
             expect(getToolSummary('read_file', JSON.stringify({ path: 'bar.ts' }))).toBe(
                 'Read(bar.ts)'
             )
+            const absPath = `${process.cwd()}/apps/cli/src/index.ts`
+            expect(getToolSummary('read_file', JSON.stringify({ AbsolutePath: absPath }))).toBe(
+                'Read(apps/cli/src/index.ts)'
+            )
         })
 
         test('formats write_file', () => {

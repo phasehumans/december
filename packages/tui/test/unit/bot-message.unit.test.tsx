@@ -462,4 +462,194 @@ describe('BotMessage Component (Unit)', () => {
         expect(frame).not.toContain('Analysis:')
         expect(frame).not.toContain('**')
     })
+
+    it('renders retry status messages with muted spinner and formatted provider and attempt count', () => {
+        const { lastFrame } = render(
+            <BotMessage
+                blocks={[
+                    {
+                        type: 'text',
+                        content: 'Agnes AI rate limit hit. Retrying in 4s... (attempt 1/3)',
+                    },
+                ]}
+            />
+        )
+        const frame = lastFrame() || ''
+        expect(frame).toContain('Agnes AI rate limit hit.')
+        expect(frame).toContain('Retrying in 4s...')
+        expect(frame).toContain('(attempt 1/3)')
+    })
+
+    it('renders high demand retry status messages with muted spinner', () => {
+        const { lastFrame } = render(
+            <BotMessage
+                blocks={[
+                    {
+                        type: 'text',
+                        content: 'Anthropic high demand hit. Retrying in 2s... (attempt 1/5)',
+                    },
+                ]}
+            />
+        )
+        const frame = lastFrame() || ''
+        expect(frame).toContain('Anthropic high demand hit.')
+        expect(frame).toContain('Retrying in 2s...')
+        expect(frame).toContain('(attempt 1/5)')
+    })
+
+    it('consolidates parallel read tool calls into a single line with +N more and ctrl+o to expand', () => {
+        const { lastFrame } = render(
+            <BotMessage
+                blocks={[
+                    {
+                        type: 'command',
+                        toolName: 'read_file',
+                        command: 'Read(/home/user/code/apps/cli/src/index.ts)',
+                        toolInput: JSON.stringify({
+                            AbsolutePath: '/home/user/code/apps/cli/src/index.ts',
+                        }),
+                        status: 'success',
+                    },
+                    {
+                        type: 'command',
+                        toolName: 'read_file',
+                        command: 'Read(/home/user/code/apps/cli/src/local-operations.ts)',
+                        toolInput: JSON.stringify({
+                            AbsolutePath: '/home/user/code/apps/cli/src/local-operations.ts',
+                        }),
+                        status: 'success',
+                    },
+                    {
+                        type: 'command',
+                        toolName: 'read_file',
+                        command: 'Read(/home/user/code/packages/agent/src/agent.ts)',
+                        toolInput: JSON.stringify({
+                            AbsolutePath: '/home/user/code/packages/agent/src/agent.ts',
+                        }),
+                        status: 'success',
+                    },
+                    {
+                        type: 'command',
+                        toolName: 'read_file',
+                        command: 'Read(/home/user/code/packages/agent/src/agent-loop.ts)',
+                        toolInput: JSON.stringify({
+                            AbsolutePath: '/home/user/code/packages/agent/src/agent-loop.ts',
+                        }),
+                        status: 'success',
+                    },
+                ]}
+            />
+        )
+        const frame = lastFrame() || ''
+        expect(frame).toContain('Read')
+        expect(frame).toContain('+2 more')
+        expect(frame).toContain('(ctrl+o to expand)')
+        expect(frame).not.toContain('✔')
+    })
+
+    it('expands consolidated parallel reads when expandCommands is true', () => {
+        const { lastFrame } = render(
+            <BotMessage
+                expandCommands={true}
+                blocks={[
+                    {
+                        type: 'command',
+                        toolName: 'read_file',
+                        command: 'Read(apps/cli/src/index.ts)',
+                        toolInput: JSON.stringify({ filePath: 'apps/cli/src/index.ts' }),
+                        status: 'success',
+                    },
+                    {
+                        type: 'command',
+                        toolName: 'read_file',
+                        command: 'Read(apps/cli/src/local-operations.ts)',
+                        toolInput: JSON.stringify({ filePath: 'apps/cli/src/local-operations.ts' }),
+                        status: 'success',
+                    },
+                    {
+                        type: 'command',
+                        toolName: 'read_file',
+                        command: 'Read(packages/agent/src/agent.ts)',
+                        toolInput: JSON.stringify({ filePath: 'packages/agent/src/agent.ts' }),
+                        status: 'success',
+                    },
+                ]}
+            />
+        )
+        const frame = lastFrame() || ''
+        expect(frame).toContain('Read(3 files)')
+        expect(frame).toContain('(ctrl+o to collapse)')
+        expect(frame).toContain('apps/cli/src/index.ts')
+        expect(frame).toContain('apps/cli/src/local-operations.ts')
+        expect(frame).toContain('packages/agent/src/agent.ts')
+        expect(frame).not.toContain('✔')
+    })
+
+    it('renders a single read tool call standalone without consolidation or +N more', () => {
+        const { lastFrame } = render(
+            <BotMessage
+                blocks={[
+                    {
+                        type: 'command',
+                        toolName: 'read_file',
+                        command: 'Read(apps/cli/src/index.ts)',
+                        toolInput: JSON.stringify({ filePath: 'apps/cli/src/index.ts' }),
+                        status: 'success',
+                    },
+                ]}
+            />
+        )
+        const frame = lastFrame() || ''
+        expect(frame).toContain('Read')
+        expect(frame).toContain('apps/cli/src/index.ts')
+        expect(frame).not.toContain('+')
+        expect(frame).not.toContain('ctrl+o')
+        expect(frame).not.toContain('✔')
+    })
+
+    it('preserves other tool calls separately between consolidated read blocks', () => {
+        const { lastFrame } = render(
+            <BotMessage
+                blocks={[
+                    {
+                        type: 'command',
+                        toolName: 'read_file',
+                        command: 'Read(file1.ts)',
+                        status: 'success',
+                    },
+                    {
+                        type: 'command',
+                        toolName: 'read_file',
+                        command: 'Read(file2.ts)',
+                        status: 'success',
+                    },
+                    {
+                        type: 'command',
+                        toolName: 'grep_search',
+                        command: 'Search(prisma)',
+                        status: 'success',
+                    },
+                    {
+                        type: 'command',
+                        toolName: 'read_file',
+                        command: 'Read(file3.ts)',
+                        status: 'success',
+                    },
+                    {
+                        type: 'command',
+                        toolName: 'read_file',
+                        command: 'Read(file4.ts)',
+                        status: 'success',
+                    },
+                ]}
+            />
+        )
+        const frame = lastFrame() || ''
+        expect(frame).toContain('Search(prisma)')
+        expect(frame).toContain('file1.ts')
+        expect(frame).toContain('file2.ts')
+        expect(frame).toContain('file3.ts')
+        expect(frame).toContain('file4.ts')
+        expect(frame).not.toContain('✔')
+    })
 })
