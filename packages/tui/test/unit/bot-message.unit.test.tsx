@@ -26,7 +26,8 @@ describe('BotMessage Component (Unit)', () => {
         )
         let frame = lastFrame() || ''
         expect(frame).toContain('●')
-        expect(frame).toContain('Thought for')
+        expect(frame).toContain('Thought')
+        expect(frame).not.toContain('Thought for')
         expect(frame).toContain('ctrl+o to view')
         expect(frame).not.toContain('Line 1: Planning search')
         expect(frame).toContain('Final answer')
@@ -44,7 +45,8 @@ describe('BotMessage Component (Unit)', () => {
 
         frame = lastFrame() || ''
         expect(frame).toContain('●')
-        expect(frame).toContain('Thought for')
+        expect(frame).toContain('Thought')
+        expect(frame).not.toContain('Thought for')
         expect(frame).toContain('ctrl+o to collapse')
         expect(frame).toContain('Line 1: Planning search')
         expect(frame).toContain('Line 4: Done')
@@ -67,7 +69,8 @@ describe('BotMessage Component (Unit)', () => {
         )
         let frame = lastFrame() || ''
         expect(frame).toContain('●')
-        expect(frame).toContain('Thought for')
+        expect(frame).toContain('Thought')
+        expect(frame).not.toContain('Thought for')
         expect(frame).toContain('ctrl+o to view')
         expect(frame).toContain('First response part')
         expect(frame).toContain('Final response part')
@@ -107,7 +110,7 @@ describe('BotMessage Component (Unit)', () => {
         expect(frame).not.toContain('Line 4: Still thinking')
     })
 
-    it('renders exact measured duration from durationMs prop on thinking blocks', () => {
+    it('renders clean thought header without duration on thinking blocks', () => {
         const { lastFrame } = render(
             <BotMessage
                 blocks={[
@@ -121,7 +124,8 @@ describe('BotMessage Component (Unit)', () => {
         )
         const frame = lastFrame() || ''
         expect(frame).toContain('●')
-        expect(frame).toContain('Thought for 4.2s')
+        expect(frame).toContain('Thought')
+        expect(frame).not.toContain('Thought for')
         expect(frame).toContain('ctrl+o to view')
     })
 
@@ -342,7 +346,7 @@ describe('BotMessage Component (Unit)', () => {
         const frame = lastFrame() || ''
         const rawLines = frame.split('\n')
         const thoughtIdx = rawLines.findIndex(
-            (l) => l.includes('Thought for') || l.includes('Planning next steps')
+            (l) => l.includes('Thought') || l.includes('Planning next steps')
         )
         const cmdIdx = rawLines.findIndex((l) => l.includes('ListDir'))
         // 0 blank lines: cmdIdx is directly thoughtIdx + 1
@@ -364,7 +368,7 @@ describe('BotMessage Component (Unit)', () => {
         const frame = lastFrame() || ''
         const rawLines = frame.split('\n')
         const thoughtIdx = rawLines.findIndex(
-            (l) => l.includes('Thought for') || l.includes('Planning next steps')
+            (l) => l.includes('Thought') || l.includes('Planning next steps')
         )
         const textIdx = rawLines.findIndex((l) => l.includes('Here is the answer'))
         // Exactly 1 blank line between thoughts summary and text response

@@ -846,6 +846,59 @@ export function resolveDynamicCreditRule(
     return null
 }
 
+export function resolveRateLimitDetails(
+    combined: string,
+    context?: ErrorParseContext
+): { message: string; hint: string; notice: string } {
+    let candidate = (context?.provider || '').trim().toLowerCase()
+    if (!candidate && context?.model) {
+        const inferred = inferProviderFromModel(context.model)
+        if (inferred && inferred !== 'openrouter') {
+            candidate = inferred
+        }
+    }
+    if (!candidate) {
+        const cleaned = combined
+            .replace(/rate limit or quota exhausted from llm provider.*/gi, '')
+            .replace(/\(openai, anthropic, gemini\)/gi, '')
+            .replace(/trydecember\.com/gi, '')
+        const detected = detectProviderFromText(cleaned)
+        if (detected && detected !== 'google') {
+            candidate = detected
+        }
+    }
+
+    const normalized = normalizeProviderAlias(candidate)
+    if (
+        normalized &&
+        (normalized === 'agnes' || normalized === 'agnes-ai' || normalized === 'agnesai')
+    ) {
+        return {
+            message: 'Rate limit or quota exhausted from Agnes AI.',
+            hint: 'Please check your account limits at https://platform.agnes-ai.com/settings/apiKeys or switch models using /model.',
+            notice: 'Rate limit or quota exhausted from Agnes AI. Please check your account limits at https://platform.agnes-ai.com/settings/apiKeys or switch models using /model.\n',
+        }
+    }
+
+    if (normalized && PROVIDER_BILLING_URLS[normalized]) {
+        const displayName =
+            PROVIDER_CREDIT_DISPLAY_NAMES[normalized] ||
+            normalized.charAt(0).toUpperCase() + normalized.slice(1)
+        const billingUrl = PROVIDER_BILLING_URLS[normalized]
+        return {
+            message: `Rate limit or quota exhausted from ${displayName}.`,
+            hint: `Please check your account limits at ${billingUrl} or switch models using /model.`,
+            notice: `Rate limit or quota exhausted from ${displayName}. Please check your account limits at ${billingUrl} or switch models using /model.\n`,
+        }
+    }
+
+    return {
+        message: 'Rate limit or quota exhausted from LLM provider.',
+        hint: 'Please upgrade your API key tier with your provider (OpenAI, Anthropic, Gemini) or switch to December Cloud Subscription at https://trydecember.com/pricing',
+        notice: 'Rate limit or quota exhausted from LLM provider. Please upgrade your API key tier with your provider (OpenAI, Anthropic, Gemini) or switch to December Cloud Subscription at https://trydecember.com/pricing\n',
+    }
+}
+
 export const UNIVERSAL_CREDIT_FALLBACK: ProviderCreditRule = {
     id: 'universal_fallback',
     name: 'LLM Provider',
@@ -993,9 +1046,6 @@ export function parseErrorMessage(err: any, context?: ErrorParseContext): string
         }
     }
 
-    const rateLimitNotice =
-        'Rate limit or quota exhausted from LLM provider. Please upgrade your API key tier with your provider (OpenAI, Anthropic, Gemini) or switch to December Cloud Subscription at https://trydecember.com/pricing\n'
-
     const contextStr = `${context?.provider || ''} ${context?.model || ''}`.toLowerCase().trim()
     const lowerStr = (
         errMsg +
@@ -1011,8 +1061,9 @@ export function parseErrorMessage(err: any, context?: ErrorParseContext): string
         lowerStr.includes('resource_exhausted') ||
         lowerStr.includes('generativelanguage.googleapis.com')
 
-    if (isRateLimit && !finalResult.includes('Rate limit or quota exhausted from LLM provider')) {
-        return rateLimitNotice + finalResult
+    if (isRateLimit && !finalResult.includes('Rate limit or quota exhausted')) {
+        const rateDetails = resolveRateLimitDetails(lowerStr, context)
+        return rateDetails.notice + finalResult
     }
 
     const isDecemberCredits =
@@ -1117,13 +1168,14 @@ export function parseError(err: any, context?: ErrorParseContext): ParsedErrorDe
         const parts = fullMessage.split('\n')
         const cause =
             explicitCause || (parts.length > 1 ? parts.slice(1).join('\n').trim() : fullMessage)
+        const rateDetails = resolveRateLimitDetails(combined, context)
         return {
-            message: 'Rate limit or quota exhausted from LLM provider.',
+            message: rateDetails.message,
             cause:
                 cause && !cause.startsWith('Rate limit or quota exhausted')
                     ? cause
                     : explicitCause || parts[0],
-            hint: 'Please upgrade your API key tier with your provider (OpenAI, Anthropic, Gemini) or switch to December Cloud Subscription at https://trydecember.com/pricing',
+            hint: rateDetails.hint,
         }
     }
 

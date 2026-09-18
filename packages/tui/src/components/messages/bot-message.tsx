@@ -1,5 +1,5 @@
 import { Box, Text } from 'ink'
-import React, { useState, useRef, useEffect } from 'react'
+import React from 'react'
 
 import { THEME } from '../../theme'
 import { fileLink } from '../../utils/terminal-link'
@@ -89,54 +89,14 @@ export function CollapsibleThought({
     content,
     isStreaming,
     forceExpanded,
-    durationMs,
 }: {
     content: string
     isStreaming?: boolean
     forceExpanded?: boolean
     durationMs?: number
 }) {
-    const [elapsedSeconds, setElapsedSeconds] = useState(0)
-    const startTimeRef = useRef<number | null>(null)
-    const finalDurationRef = useRef<number | null>(null)
-
-    useEffect(() => {
-        // explicitly documented ref: startTimeRef and finalDurationRef are mutable refs to track live and completed thought duration
-        if (!isStreaming) {
-            if (startTimeRef.current) {
-                const totalElapsed = (Date.now() - startTimeRef.current) / 1000
-                const finalSec = Math.round(totalElapsed * 10) / 10
-                finalDurationRef.current = Math.max(0.1, finalSec)
-                setElapsedSeconds(finalSec)
-                startTimeRef.current = null
-            }
-            return
-        }
-        if (!startTimeRef.current) {
-            startTimeRef.current = Date.now()
-        }
-        const timer = setInterval(() => {
-            if (startTimeRef.current) {
-                const diff = (Date.now() - startTimeRef.current) / 1000
-                setElapsedSeconds(Math.round(diff * 10) / 10)
-            }
-        }, 100)
-        return () => clearInterval(timer)
-    }, [isStreaming])
-
     const formatted = formatThought(content)
     if (!formatted && !isStreaming) return null
-
-    const words = formatted.trim() ? formatted.trim().split(/\s+/).length : 0
-
-    const displayDuration =
-        durationMs !== undefined
-            ? (durationMs / 1000).toFixed(1)
-            : finalDurationRef.current !== null && finalDurationRef.current > 0
-              ? finalDurationRef.current.toFixed(1)
-              : elapsedSeconds > 0
-                ? elapsedSeconds.toFixed(1)
-                : Math.max(0.5, Math.round((words / 25) * 10) / 10).toFixed(1)
 
     // While streaming: ⠹ Thinking...
     if (isStreaming) {
@@ -149,8 +109,8 @@ export function CollapsibleThought({
     }
 
     // When done:
-    // Collapsed: ● Thought for 0.7s (ctrl+o to view)
-    // Expanded:  ● Thought for 0.7s (ctrl+o to collapse)
+    // Collapsed: ● Thought (ctrl+o to view)
+    // Expanded:  ● Thought (ctrl+o to collapse)
     //            actual thoughts shown here in gray text (paddingLeft={2}, no left side dash)
     const isExpanded = forceExpanded ?? false
     const formattedLines = formatted.split(/\r?\n/).filter((l) => l.trim() !== '')
@@ -161,7 +121,7 @@ export function CollapsibleThought({
                 <Text>
                     <Text color={THEME.colors.warning}>{`${THEME.glyphs.status} `}</Text>
                     <Text color={THEME.colors.warning} bold>
-                        Thought for {displayDuration}s
+                        Thought
                     </Text>
                 </Text>
                 <Text color={THEME.colors.muted}>

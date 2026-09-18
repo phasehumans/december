@@ -34,14 +34,14 @@ export function parseTuiError(message: string, cause?: string, hint?: string): F
         const rest = cleanCause(lines.slice(1).join('\n'))
 
         if (firstLine.includes('Rate limit or quota exhausted')) {
-            const hintMatch = firstLine.match(/Please upgrade.*$/i)
-            const summary = firstLine.replace(/Please upgrade.*$/i, '').trim()
+            const hintMatch = firstLine.match(/Please.*$/i)
+            const summary = firstLine.replace(/Please.*$/i, '').trim()
             return {
                 message: summary || 'Rate limit or quota exhausted from LLM provider.',
                 cause: rest,
                 hint: hintMatch
                     ? hintMatch[0]
-                    : 'Please upgrade your API key tier with your provider or switch to December Cloud Subscription.',
+                    : 'Please check your account limits or switch models using /model.',
             }
         }
         if (firstLine.includes('OpenRouter credits exhausted')) {

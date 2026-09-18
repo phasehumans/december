@@ -724,3 +724,79 @@ export function formatInsufficientCreditsNotice(
 
     return `Insufficient credits in your ${displayName} account. Please add credits or check your account billing status with your provider.`
 }
+
+export function formatRateLimitNotice(
+    provider?: string,
+    model?: string,
+    rawError?: string
+): string {
+    const rawLower = (rawError || '').toLowerCase()
+    let normalized = (provider || '').toLowerCase().trim()
+
+    if (!normalized && model) {
+        const modelLower = model.toLowerCase()
+        if (modelLower.startsWith('agnes') || modelLower.includes('/agnes')) normalized = 'agnes'
+        else if (modelLower.startsWith('claude') || modelLower.includes('/claude'))
+            normalized = 'anthropic'
+        else if (
+            modelLower.startsWith('gpt') ||
+            modelLower.startsWith('o1') ||
+            modelLower.startsWith('o3')
+        )
+            normalized = 'openai'
+        else if (modelLower.startsWith('gemini') || modelLower.includes('/gemini'))
+            normalized = 'gemini'
+        else if (modelLower.startsWith('deepseek') || modelLower.includes('/deepseek'))
+            normalized = 'deepseek'
+        else if (modelLower.startsWith('groq') || modelLower.includes('/groq')) normalized = 'groq'
+        else if (
+            modelLower.startsWith('mistral') ||
+            modelLower.includes('/mistral') ||
+            modelLower.startsWith('codestral')
+        )
+            normalized = 'mistral'
+        else if (modelLower.startsWith('qwen') || modelLower.includes('/qwen'))
+            normalized = 'dashscope'
+        else if (modelLower.startsWith('sarvam') || modelLower.includes('/sarvam'))
+            normalized = 'sarvam'
+        else if (modelLower.startsWith('minimax') || modelLower.includes('/minimax'))
+            normalized = 'minimax'
+    }
+
+    if (!normalized && rawLower) {
+        if (
+            rawLower.includes('agnes') ||
+            rawLower.includes('agnes-ai') ||
+            rawLower.includes('apihub.agnes-ai.com')
+        )
+            normalized = 'agnes'
+        else if (rawLower.includes('anthropic') || rawLower.includes('claude'))
+            normalized = 'anthropic'
+        else if (rawLower.includes('openai') || rawLower.includes('api.openai.com'))
+            normalized = 'openai'
+        else if (rawLower.includes('deepseek') || rawLower.includes('api.deepseek.com'))
+            normalized = 'deepseek'
+        else if (rawLower.includes('groq') || rawLower.includes('console.groq.com'))
+            normalized = 'groq'
+        else if (rawLower.includes('openrouter') || rawLower.includes('openrouter.ai'))
+            normalized = 'openrouter'
+        else if (
+            rawLower.includes('generativelanguage.googleapis.com') ||
+            rawLower.includes('ai.google.dev')
+        )
+            normalized = 'gemini'
+    }
+
+    if (normalized === 'agnes' || normalized === 'agnes-ai' || normalized === 'agnesai') {
+        return 'Rate limit or quota exhausted from Agnes AI. Please check your account limits at https://platform.agnes-ai.com/settings/apiKeys or switch models using /model.'
+    }
+
+    const displayName = PROVIDER_DISPLAY_NAMES[normalized]
+    const billingLink = PROVIDER_BILLING_LINKS[normalized]
+
+    if (displayName && billingLink) {
+        return `Rate limit or quota exhausted from ${displayName}. Please check your account limits at ${billingLink} or switch models using /model.`
+    }
+
+    return 'Rate limit or quota exhausted from LLM provider. Please upgrade your API key tier with your provider (OpenAI, Anthropic, Gemini) or switch to December Cloud Subscription at https://trydecember.com/pricing'
+}

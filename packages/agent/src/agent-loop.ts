@@ -1,7 +1,11 @@
 import util from 'util'
 
 import { supportsModelThinking } from '@december/providers'
-import { safeParseJson, formatInsufficientCreditsNotice } from '@december/shared'
+import {
+    safeParseJson,
+    formatInsufficientCreditsNotice,
+    formatRateLimitNotice,
+} from '@december/shared'
 import pRetry, { AbortError } from 'p-retry'
 
 import { Agent } from './agent'
@@ -790,9 +794,12 @@ async function streamAssistantResponse(
             errorMsg.toLowerCase().includes('quota') ||
             errorMsg.toLowerCase().includes('rate limit')
         ) {
-            errorMsg =
-                'Rate limit or quota exhausted from LLM provider. Please upgrade your API key tier with your provider (OpenAI, Anthropic, Gemini) or switch to December Cloud Subscription at https://trydecember.com/pricing\n' +
-                errorMsg
+            const providerId = (agent.llm?.id || '').toLowerCase().trim()
+            const model = agent.modelOptions?.model
+            const notice = formatRateLimitNotice(providerId, model, errorMsg)
+            if (!errorMsg.includes(notice)) {
+                errorMsg = `${notice}\n${errorMsg}`
+            }
         } else if (
             errorMsg.includes('503') ||
             errorMsg.includes('529') ||

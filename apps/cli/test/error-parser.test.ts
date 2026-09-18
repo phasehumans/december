@@ -442,5 +442,24 @@ describe('error-parser', () => {
             expect(parsed.message).toBe('No active GitHub Copilot subscription found.')
             expect(parsed.cause).toContain('octocat')
         })
+
+        test('extracts provider-specific rate limit message and dashboard link for Agnes AI', () => {
+            const rawErr = '429 Too Many Requests: Rate limit reached on Agnes AI apihub'
+            const parsed = parseError(rawErr, { provider: 'agnes', model: 'agnes-2.5-pro' })
+            expect(parsed.message).toBe('Rate limit or quota exhausted from Agnes AI.')
+            expect(parsed.hint).toBe(
+                'Please check your account limits at https://platform.agnes-ai.com/settings/apiKeys or switch models using /model.'
+            )
+            expect(parsed.hint).not.toContain('OpenAI, Anthropic, Gemini')
+            expect(parsed.hint).not.toContain('https://trydecember.com/pricing')
+        })
+
+        test('extracts provider-specific rate limit message and dashboard link for DeepSeek', () => {
+            const rawErr = '429 rate limit exceeded'
+            const parsed = parseError(rawErr, { provider: 'deepseek', model: 'deepseek-chat' })
+            expect(parsed.message).toBe('Rate limit or quota exhausted from DeepSeek.')
+            expect(parsed.hint).toContain('https://platform.deepseek.com/top_up')
+            expect(parsed.hint).not.toContain('OpenAI, Anthropic, Gemini')
+        })
     })
 })

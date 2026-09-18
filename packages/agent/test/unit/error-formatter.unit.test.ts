@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'bun:test'
+import { AbortError } from 'p-retry'
 
 import { Agent } from '../../src/agent'
 import { runAgentLoop } from '../../src/agent-loop'
@@ -212,5 +213,34 @@ describe('Agent Error Formatter & Edge Cases (Unit)', () => {
         expect(errorEvent.error).toContain('Insufficient credits in December Wallet')
         expect(errorEvent.error).toContain('https://trydecember.com/settings/billing')
         expect(errorEvent.error).toContain('Bring Your Own Key (BYOK)')
+    })
+
+    it('formats Agnes AI rate limit notice with account link and no OpenAI/Anthropic advice', async () => {
+        const mockAgnesLlm: LLMProvider = {
+            id: 'agnes',
+            stream: async function* () {
+                yield { type: 'text', text: '' }
+                throw new AbortError('Rate limit reached: 429 Too Many Requests')
+            },
+        }
+
+        const agent = new Agent({
+            llm: mockAgnesLlm,
+            tools: [],
+            operations: {} as any,
+            modelOptions: { model: 'agnes-2.5-pro' },
+        })
+
+        const events: any[] = []
+        for await (const event of runAgentLoop(agent, 'hi')) {
+            events.push(event)
+        }
+
+        const errorEvent = events.find((e) => e.type === 'AgentError')
+        expect(errorEvent).toBeDefined()
+        expect(errorEvent.error).toContain('Rate limit or quota exhausted from Agnes AI.')
+        expect(errorEvent.error).toContain('https://platform.agnes-ai.com/settings/apiKeys')
+        expect(errorEvent.error).not.toContain('OpenAI, Anthropic, Gemini')
+        expect(errorEvent.error).not.toContain('https://trydecember.com/pricing')
     })
 })
