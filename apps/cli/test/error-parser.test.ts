@@ -393,6 +393,20 @@ describe('error-parser', () => {
             expect(parsed.hint).toContain('https://app.ambient.xyz/keys')
         })
 
+        test('attaches custom notice for Auriko credit exhaustion', () => {
+            const rawErr = '402 Insufficient credits. api.auriko.ai account empty'
+            const parsed = parseError(rawErr)
+            expect(parsed.message).toBe('Insufficient credits in your Auriko account.')
+            expect(parsed.hint).toContain('https://www.auriko.ai/dashboard')
+        })
+
+        test('attaches custom notice for Baseten credit exhaustion', () => {
+            const rawErr = '402 Insufficient credits. inference.baseten.co account empty'
+            const parsed = parseError(rawErr)
+            expect(parsed.message).toBe('Insufficient credits in your Baseten account.')
+            expect(parsed.hint).toContain('https://app.baseten.co/settings/api_keys')
+        })
+
         test('dynamically resolves provider from context provider alias when error text lacks provider name', () => {
             const rawErr = '402 Payment Required: account balance is 0'
             const parsed = parseError(rawErr, { provider: 'sarvamai' })

@@ -50,6 +50,10 @@ export const SENSITIVE_LLM_ENV_KEYS: readonly string[] = [
     'AKI_API_KEY',
     'AKI_IO_KEY',
     'AMBIENT_API_KEY',
+    'AURIKO_API_KEY',
+    'AURIKO_AI_KEY',
+    'BASETEN_API_KEY',
+    'BASETEN_CO_KEY',
 
     'AGENTROUTER_API_KEY',
     'ARCEE_API_KEY',

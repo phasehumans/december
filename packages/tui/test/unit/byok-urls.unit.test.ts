@@ -8,8 +8,8 @@ import {
 import { PROVIDER_MENU_ITEMS } from '../../src/components/menus/byok-provider-menu'
 
 describe('BYOK Provider URLs & Names Audit (Unit)', () => {
-    it('ensures all 42 BYOK providers have corresponding key URLs starting with https://', () => {
-        expect(PROVIDER_MENU_ITEMS.length).toBe(42)
+    it('ensures all 44 BYOK providers have corresponding key URLs starting with https://', () => {
+        expect(PROVIDER_MENU_ITEMS.length).toBe(44)
 
         for (const item of PROVIDER_MENU_ITEMS) {
             const url = PROVIDER_KEY_URLS[item.value]
@@ -19,7 +19,7 @@ describe('BYOK Provider URLs & Names Audit (Unit)', () => {
         }
     })
 
-    it('ensures all 42 BYOK providers have a display name defined in PROVIDER_NAMES', () => {
+    it('ensures all 44 BYOK providers have a display name defined in PROVIDER_NAMES', () => {
         for (const item of PROVIDER_MENU_ITEMS) {
             const name = PROVIDER_NAMES[item.value]
             expect(name).toBeDefined()
@@ -38,6 +38,8 @@ describe('BYOK Provider URLs & Names Audit (Unit)', () => {
         expect(PROVIDER_KEY_URLS['ambient']).toBe('https://app.ambient.xyz/keys')
         expect(PROVIDER_KEY_URLS['anthropic']).toBe('https://console.anthropic.com/settings/keys')
         expect(PROVIDER_KEY_URLS['arcee']).toBe('https://platform.arcee.ai/api/api-keys')
+        expect(PROVIDER_KEY_URLS['auriko']).toBe('https://www.auriko.ai/dashboard')
+        expect(PROVIDER_KEY_URLS['baseten']).toBe('https://app.baseten.co/settings/api_keys')
         expect(PROVIDER_KEY_URLS['meta']).toBe('https://dev.meta.ai/')
         expect(PROVIDER_KEY_URLS['mistral']).toBe('https://console.mistral.ai/api-keys/')
         expect(PROVIDER_KEY_URLS['moonshot']).toBe('https://platform.moonshot.ai/console/api-keys')

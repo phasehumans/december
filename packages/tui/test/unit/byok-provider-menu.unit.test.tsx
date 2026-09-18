@@ -9,8 +9,8 @@ import {
 import { KeyboardLayerProvider } from '../../src/providers/keyboard-layer'
 
 describe('ByokProviderMenu Component (Unit)', () => {
-    it('has 42 total API key and local provider items without subscriptions', () => {
-        expect(PROVIDER_MENU_ITEMS.length).toBe(42)
+    it('has 44 total API key and local provider items without subscriptions', () => {
+        expect(PROVIDER_MENU_ITEMS.length).toBe(44)
         expect(PROVIDER_MENU_ITEMS[0].value).toBe('abliteration')
         expect(PROVIDER_MENU_ITEMS[1].value).toBe('agentrouter')
         expect(PROVIDER_MENU_ITEMS[2].value).toBe('agnes')
@@ -19,6 +19,9 @@ describe('ByokProviderMenu Component (Unit)', () => {
         expect(PROVIDER_MENU_ITEMS[5].value).toBe('aki')
         expect(PROVIDER_MENU_ITEMS[6].value).toBe('ambient')
         expect(PROVIDER_MENU_ITEMS[7].value).toBe('anthropic')
+        expect(PROVIDER_MENU_ITEMS[8].value).toBe('arcee')
+        expect(PROVIDER_MENU_ITEMS[9].value).toBe('auriko')
+        expect(PROVIDER_MENU_ITEMS[10].value).toBe('baseten')
     })
 
     it('renders 7 visible items with down more indicator initially', () => {
@@ -38,7 +41,7 @@ describe('ByokProviderMenu Component (Unit)', () => {
         expect(frame).toContain('AI&')
         expect(frame).toContain('AKI.IO')
         expect(frame).toContain('Ambient')
-        expect(frame).toContain('↓ 35 more')
+        expect(frame).toContain('↓ 37 more')
     })
 
     it('navigates through items with arrow keys and updates more indicators', async () => {
@@ -63,7 +66,7 @@ describe('ByokProviderMenu Component (Unit)', () => {
 
         const frameAfterScroll = lastFrame() || ''
         expect(frameAfterScroll).toContain('↑ 1 more')
-        expect(frameAfterScroll).toContain('↓ 34 more')
+        expect(frameAfterScroll).toContain('↓ 36 more')
 
         // Press Enter to select current item (Anthropic)
         stdin.write('\r')
@@ -573,6 +576,58 @@ describe('ByokProviderMenu Component (Unit)', () => {
         expect(selectedItem).toBeDefined()
         expect(selectedItem?.value).toBe('ambient')
         expect(selectedItem?.label).toBe('Ambient')
+    })
+
+    it('selects Auriko provider on enter after searching', async () => {
+        let selectedItem: any = null
+        const handleSelect = (item: any) => {
+            selectedItem = item
+        }
+
+        const { stdin } = render(
+            <KeyboardLayerProvider>
+                <ByokProviderMenu handleProviderSelect={handleSelect} />
+            </KeyboardLayerProvider>
+        )
+
+        stdin.write('/')
+        await new Promise((r) => setTimeout(r, 50))
+        stdin.write('auriko')
+        await new Promise((r) => setTimeout(r, 50))
+        stdin.write('\r')
+        await new Promise((r) => setTimeout(r, 50))
+        stdin.write('\r')
+        await new Promise((r) => setTimeout(r, 50))
+
+        expect(selectedItem).toBeDefined()
+        expect(selectedItem?.value).toBe('auriko')
+        expect(selectedItem?.label).toBe('Auriko')
+    })
+
+    it('selects Baseten provider on enter after searching', async () => {
+        let selectedItem: any = null
+        const handleSelect = (item: any) => {
+            selectedItem = item
+        }
+
+        const { stdin } = render(
+            <KeyboardLayerProvider>
+                <ByokProviderMenu handleProviderSelect={handleSelect} />
+            </KeyboardLayerProvider>
+        )
+
+        stdin.write('/')
+        await new Promise((r) => setTimeout(r, 50))
+        stdin.write('baseten')
+        await new Promise((r) => setTimeout(r, 50))
+        stdin.write('\r')
+        await new Promise((r) => setTimeout(r, 50))
+        stdin.write('\r')
+        await new Promise((r) => setTimeout(r, 50))
+
+        expect(selectedItem).toBeDefined()
+        expect(selectedItem?.value).toBe('baseten')
+        expect(selectedItem?.label).toBe('Baseten')
     })
 
     it('renders "No providers found." when filter matches nothing', async () => {

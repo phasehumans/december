@@ -388,6 +388,131 @@ export const OFFICIAL_MODEL_RATES: Record<string, ModelRate> = {
         outputRate: 1.14,
     },
 
+    // Auriko
+    'auriko/claude-sonnet-4-6': {
+        name: 'auriko/claude-sonnet-4-6',
+        inputRate: 3.0,
+        outputRate: 15.0,
+    },
+    'auriko/claude-opus-4-6': { name: 'auriko/claude-opus-4-6', inputRate: 5.0, outputRate: 25.0 },
+    'auriko/claude-opus-4-7': { name: 'auriko/claude-opus-4-7', inputRate: 5.0, outputRate: 25.0 },
+    'auriko/deepseek-v4-flash': {
+        name: 'auriko/deepseek-v4-flash',
+        inputRate: 0.14,
+        outputRate: 0.28,
+    },
+    'auriko/deepseek-v4-pro': { name: 'auriko/deepseek-v4-pro', inputRate: 0.43, outputRate: 0.87 },
+    'auriko/gemini-2.5-flash': { name: 'auriko/gemini-2.5-flash', inputRate: 0.3, outputRate: 2.5 },
+    'auriko/gemini-2.5-pro': { name: 'auriko/gemini-2.5-pro', inputRate: 1.25, outputRate: 10.0 },
+    'auriko/gemini-3.1-pro-preview': {
+        name: 'auriko/gemini-3.1-pro-preview',
+        inputRate: 2.0,
+        outputRate: 12.0,
+    },
+    'auriko/glm-5.1': { name: 'auriko/glm-5.1', inputRate: 1.4, outputRate: 4.4 },
+    'auriko/grok-4.3': { name: 'auriko/grok-4.3', inputRate: 1.25, outputRate: 2.5 },
+    'auriko/kimi-k2.5': { name: 'auriko/kimi-k2.5', inputRate: 0.5, outputRate: 2.8 },
+    'auriko/kimi-k2.6': { name: 'auriko/kimi-k2.6', inputRate: 0.95, outputRate: 4.0 },
+    'auriko/minimax-m2-7': { name: 'auriko/minimax-m2-7', inputRate: 0.3, outputRate: 1.2 },
+    'auriko/minimax-m2-7-highspeed': {
+        name: 'auriko/minimax-m2-7-highspeed',
+        inputRate: 0.6,
+        outputRate: 2.4,
+    },
+    'auriko/qwen-3.6-plus': { name: 'auriko/qwen-3.6-plus', inputRate: 0.5, outputRate: 3.0 },
+
+    // Baseten
+    'baseten/deepseek-ai/deepseek-v4.1-flash': {
+        name: 'baseten/deepseek-ai/deepseek-v4.1-flash',
+        inputRate: 0.3,
+        outputRate: 1.2,
+    },
+    'baseten/deepseek-ai/deepseek-v4-flash-0731': {
+        name: 'baseten/deepseek-ai/deepseek-v4-flash-0731',
+        inputRate: 0.13,
+        outputRate: 0.26,
+    },
+    'baseten/deepseek-ai/deepseek-v4-pro': {
+        name: 'baseten/deepseek-ai/deepseek-v4-pro',
+        inputRate: 1.74,
+        outputRate: 3.48,
+    },
+    'baseten/deepseek-ai/deepseek-v4-pro-0813': {
+        name: 'baseten/deepseek-ai/deepseek-v4-pro-0813',
+        inputRate: 1.32,
+        outputRate: 3.96,
+    },
+    'baseten/deepseek-ai/deepseek-v3.1': {
+        name: 'baseten/deepseek-ai/deepseek-v3.1',
+        inputRate: 0.5,
+        outputRate: 1.5,
+    },
+    'baseten/zai-org/glm-5.3': { name: 'baseten/zai-org/glm-5.3', inputRate: 1.4, outputRate: 4.4 },
+    'baseten/zai-org/glm-5.3-fast': {
+        name: 'baseten/zai-org/glm-5.3-fast',
+        inputRate: 2.1,
+        outputRate: 6.6,
+    },
+    'baseten/zai-org/glm-5.3-flash': {
+        name: 'baseten/zai-org/glm-5.3-flash',
+        inputRate: 0.15,
+        outputRate: 0.5,
+    },
+    'baseten/zai-org/glm-5.2': { name: 'baseten/zai-org/glm-5.2', inputRate: 1.4, outputRate: 4.4 },
+    'baseten/zai-org/glm-5.2-fast': {
+        name: 'baseten/zai-org/glm-5.2-fast',
+        inputRate: 2.1,
+        outputRate: 6.6,
+    },
+    'baseten/zai-org/glm-5.1': { name: 'baseten/zai-org/glm-5.1', inputRate: 1.3, outputRate: 4.3 },
+    'baseten/zai-org/glm-5': { name: 'baseten/zai-org/glm-5', inputRate: 0.95, outputRate: 3.15 },
+    'baseten/zai-org/glm-4.7': { name: 'baseten/zai-org/glm-4.7', inputRate: 0.6, outputRate: 2.2 },
+    'baseten/moonshotai/kimi-k2.7-code': {
+        name: 'baseten/moonshotai/kimi-k2.7-code',
+        inputRate: 0.95,
+        outputRate: 4.0,
+    },
+    'baseten/moonshotai/kimi-k3': {
+        name: 'baseten/moonshotai/kimi-k3',
+        inputRate: 3.0,
+        outputRate: 15.0,
+    },
+    'baseten/moonshotai/kimi-k2.6': {
+        name: 'baseten/moonshotai/kimi-k2.6',
+        inputRate: 0.95,
+        outputRate: 4.0,
+    },
+    'baseten/moonshotai/kimi-k2.5': {
+        name: 'baseten/moonshotai/kimi-k2.5',
+        inputRate: 0.6,
+        outputRate: 3.0,
+    },
+    'baseten/thinkingmachines/inkling': {
+        name: 'baseten/thinkingmachines/inkling',
+        inputRate: 1.0,
+        outputRate: 4.05,
+    },
+    'baseten/thinkingmachines/inkling-small': {
+        name: 'baseten/thinkingmachines/inkling-small',
+        inputRate: 0.5,
+        outputRate: 1.2,
+    },
+    'baseten/nvidia/nemotron-120b-a12b': {
+        name: 'baseten/nvidia/nemotron-120b-a12b',
+        inputRate: 0.3,
+        outputRate: 0.75,
+    },
+    'baseten/nvidia/nvidia-nemotron-3-ultra-550b-a55b': {
+        name: 'baseten/nvidia/nvidia-nemotron-3-ultra-550b-a55b',
+        inputRate: 0.6,
+        outputRate: 2.4,
+    },
+    'baseten/openai/gpt-oss-120b': {
+        name: 'baseten/openai/gpt-oss-120b',
+        inputRate: 0.1,
+        outputRate: 0.5,
+    },
+
     // Ollama / Local
     ollama: { name: 'ollama', inputRate: 0.0, outputRate: 0.0 },
 }
@@ -529,6 +654,8 @@ export const PROVIDER_BILLING_LINKS: Record<string, string> = {
     'aki-io': 'https://aki.io/admin/user-dashboard',
     akiio: 'https://aki.io/admin/user-dashboard',
     ambient: 'https://app.ambient.xyz/keys',
+    auriko: 'https://www.auriko.ai/dashboard',
+    baseten: 'https://app.baseten.co/settings/api_keys',
     ollama: 'http://localhost:11434',
 }
 
@@ -595,6 +722,8 @@ export const PROVIDER_DISPLAY_NAMES: Record<string, string> = {
     'aki-io': 'AKI.IO',
     akiio: 'AKI.IO',
     ambient: 'Ambient',
+    auriko: 'Auriko',
+    baseten: 'Baseten',
     ollama: 'Ollama (Local)',
 }
 
@@ -657,6 +786,10 @@ export function formatInsufficientCreditsNotice(
             normalized = 'aki'
         } else if (modelLower.includes('ambient')) {
             normalized = 'ambient'
+        } else if (modelLower.includes('auriko')) {
+            normalized = 'auriko'
+        } else if (modelLower.includes('baseten')) {
+            normalized = 'baseten'
         }
     }
 
@@ -713,6 +846,14 @@ export function formatInsufficientCreditsNotice(
 
     if (normalized === 'ambient') {
         return 'Insufficient credits in your Ambient account. Please add credits or check your account at https://app.ambient.xyz/keys'
+    }
+
+    if (normalized === 'auriko') {
+        return 'Insufficient credits in your Auriko account. Please add credits or check your account at https://www.auriko.ai/dashboard'
+    }
+
+    if (normalized === 'baseten') {
+        return 'Insufficient credits in your Baseten account. Please add credits or check your account at https://app.baseten.co/settings/api_keys'
     }
 
     const displayName = PROVIDER_DISPLAY_NAMES[normalized] || normalized.toUpperCase()
@@ -799,4 +940,83 @@ export function formatRateLimitNotice(
     }
 
     return 'Rate limit or quota exhausted from LLM provider. Please upgrade your API key tier with your provider (OpenAI, Anthropic, Gemini) or switch to December Cloud Subscription at https://trydecember.com/pricing'
+}
+
+export function getCleanProviderDisplayName(providerId?: string, model?: string): string {
+    const id = (providerId || '').toLowerCase().trim()
+    if (!id || id === 'mock' || id.startsWith('mock')) {
+        return 'LLM Provider'
+    }
+
+    const cleanMap: Record<string, string> = {
+        agnes: 'Agnes AI',
+        'agnes-ai': 'Agnes AI',
+        agnesai: 'Agnes AI',
+        anthropic: 'Anthropic',
+        claude: 'Anthropic',
+        openai: 'OpenAI',
+        chatgpt: 'OpenAI',
+        codex: 'OpenAI',
+        google: 'Google Gemini',
+        gemini: 'Google Gemini',
+        deepseek: 'DeepSeek',
+        groq: 'Groq',
+        mistral: 'Mistral AI',
+        meta: 'Meta',
+        minimax: 'MiniMax',
+        moonshot: 'Moonshot AI',
+        kimi: 'Moonshot AI',
+        cohere: 'Cohere',
+        perplexity: 'Perplexity',
+        openrouter: 'OpenRouter',
+        together: 'Together AI',
+        fireworks: 'Fireworks AI',
+        xai: 'xAI',
+        zai: 'Zhipu AI',
+        zhipu: 'Zhipu AI',
+        zhipuai: 'Zhipu AI',
+        cerebras: 'Cerebras',
+        sambanova: 'SambaNova',
+        upstage: 'Upstage Solar',
+        arcee: 'Arcee AI',
+        sakana: 'Sakana AI',
+        poolside: 'Poolside',
+        sarvam: 'Sarvam AI',
+        stepfun: 'StepFun',
+        thinkingmachines: 'Thinking Machines',
+        xiaomi: 'Xiaomi',
+        mimo: 'Xiaomi',
+        abliteration: 'Abliteration AI',
+        'abliteration-ai': 'Abliteration AI',
+        airouter: 'AI Router',
+        'ai-router': 'AI Router',
+        aiand: 'AI&',
+        aki: 'AKI.IO',
+        'aki-io': 'AKI.IO',
+        ambient: 'Ambient',
+        auriko: 'Auriko',
+        baseten: 'Baseten',
+        ollama: 'Ollama',
+    }
+
+    if (cleanMap[id]) return cleanMap[id]
+
+    if (model) {
+        const m = model.toLowerCase()
+        if (m.includes('agnes')) return 'Agnes AI'
+        if (m.includes('claude')) return 'Anthropic'
+        if (m.includes('gpt') || m.includes('o1') || m.includes('o3')) return 'OpenAI'
+        if (m.includes('gemini')) return 'Google Gemini'
+        if (m.includes('deepseek')) return 'DeepSeek'
+    }
+
+    const existing = PROVIDER_DISPLAY_NAMES[id]
+    if (existing) {
+        return existing.replace(
+            / (Console|Platform|Cloud|Settings|Dashboard|Token Console|\(Global\)|\(Local\)|\(Tinker\))$/i,
+            ''
+        )
+    }
+
+    return id.charAt(0).toUpperCase() + id.slice(1)
 }

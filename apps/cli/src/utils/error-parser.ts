@@ -468,6 +468,30 @@ export const PROVIDER_CREDIT_RULES: ProviderCreditRule[] = [
         message: 'Insufficient credits in your Ambient account.',
         hint: 'Please check your account at https://app.ambient.xyz/keys or switch models using /model.',
     },
+    {
+        id: 'auriko',
+        name: 'Auriko',
+        match: (str) =>
+            (str.includes('auriko.ai') ||
+                str.includes('api.auriko.ai') ||
+                str.includes('auriko')) &&
+            (isCreditOrBalanceError(str) || str.includes('credits') || str.includes('402')),
+        notice: 'Insufficient credits in your Auriko account. Please check your account at https://www.auriko.ai/dashboard\n',
+        message: 'Insufficient credits in your Auriko account.',
+        hint: 'Please check your account at https://www.auriko.ai/dashboard or switch models using /model.',
+    },
+    {
+        id: 'baseten',
+        name: 'Baseten',
+        match: (str) =>
+            (str.includes('baseten.co') ||
+                str.includes('inference.baseten.co') ||
+                str.includes('baseten')) &&
+            (isCreditOrBalanceError(str) || str.includes('credits') || str.includes('402')),
+        notice: 'Insufficient credits in your Baseten account. Please check your account at https://app.baseten.co/settings/api_keys\n',
+        message: 'Insufficient credits in your Baseten account.',
+        hint: 'Please check your account at https://app.baseten.co/settings/api_keys or switch models using /model.',
+    },
 ]
 
 export const PROVIDER_BILLING_URLS: Record<string, string> = {
@@ -519,6 +543,12 @@ export const PROVIDER_BILLING_URLS: Record<string, string> = {
     'aki-io': 'https://aki.io/admin/user-dashboard',
     akiio: 'https://aki.io/admin/user-dashboard',
     ambient: 'https://app.ambient.xyz/keys',
+    auriko: 'https://www.auriko.ai/dashboard',
+    aurikoai: 'https://www.auriko.ai/dashboard',
+    'auriko-ai': 'https://www.auriko.ai/dashboard',
+    baseten: 'https://app.baseten.co/settings/api_keys',
+    basetenco: 'https://app.baseten.co/settings/api_keys',
+    'baseten-co': 'https://app.baseten.co/settings/api_keys',
 }
 
 export const PROVIDER_CREDIT_DISPLAY_NAMES: Record<string, string> = {
@@ -545,11 +575,11 @@ export const PROVIDER_CREDIT_DISPLAY_NAMES: Record<string, string> = {
     perplexity: 'Perplexity',
     poolside: 'Poolside',
     sakana: 'Sakana AI',
-    sambanova: 'SambaNova',
+    sambanova: 'SambaNova Cloud',
     sarvam: 'Sarvam AI',
     siliconflow: 'SiliconFlow',
-    stepfun: 'StepFun',
-    thinkingmachines: 'Thinking Machines',
+    stepfun: 'StepFun (Global)',
+    thinkingmachines: 'Thinking Machines (Tinker)',
     together: 'Together AI',
     upstage: 'Upstage Solar',
     xai: 'xAI',
@@ -570,6 +600,12 @@ export const PROVIDER_CREDIT_DISPLAY_NAMES: Record<string, string> = {
     'aki-io': 'AKI.IO',
     akiio: 'AKI.IO',
     ambient: 'Ambient',
+    auriko: 'Auriko',
+    aurikoai: 'Auriko',
+    'auriko-ai': 'Auriko',
+    baseten: 'Baseten',
+    basetenco: 'Baseten',
+    'baseten-co': 'Baseten',
 }
 
 export function normalizeProviderAlias(provider?: string): string {
@@ -607,6 +643,14 @@ export function normalizeProviderAlias(provider?: string): string {
             return 'aki'
         case 'ambient':
             return 'ambient'
+        case 'auriko':
+        case 'aurikoai':
+        case 'auriko-ai':
+            return 'auriko'
+        case 'baseten':
+        case 'basetenco':
+        case 'baseten-co':
+            return 'baseten'
         case 'arceeai':
         case 'arcee-ai':
         case 'arcee':
@@ -696,6 +740,14 @@ export function detectProviderFromText(str: string): string | null {
     if (lower.includes('aiand') || lower.includes('api.aiand.com')) return 'aiand'
     if (lower.includes('aki.io') || lower.includes('aki-io')) return 'aki'
     if (lower.includes('ambient.xyz') || lower.includes('api.ambient.xyz')) return 'ambient'
+    if (lower.includes('auriko.ai') || lower.includes('api.auriko.ai') || lower.includes('auriko'))
+        return 'auriko'
+    if (
+        lower.includes('baseten.co') ||
+        lower.includes('inference.baseten.co') ||
+        lower.includes('baseten')
+    )
+        return 'baseten'
     if (lower.includes('arcee') || lower.includes('trinity') || lower.includes('api.arcee.ai'))
         return 'arcee'
     if (lower.includes('sarvam') || lower.includes('indus.sarvam.ai')) return 'sarvam'

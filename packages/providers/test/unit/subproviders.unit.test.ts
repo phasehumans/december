@@ -8,6 +8,8 @@ import { AIRouterProvider } from '../../src/providers/airouter'
 import { AKIProvider } from '../../src/providers/aki'
 import { AmbientProvider } from '../../src/providers/ambient'
 import { ArceeProvider } from '../../src/providers/arcee'
+import { AurikoProvider } from '../../src/providers/auriko'
+import { BasetenProvider } from '../../src/providers/baseten'
 import { CerebrasProvider } from '../../src/providers/cerebras'
 import { CohereProvider } from '../../src/providers/cohere'
 import { DashScopeProvider } from '../../src/providers/dashscope'
@@ -223,5 +225,15 @@ describe('OpenAI-compatible Subproviders (Unit)', () => {
     test('instantiates AmbientProvider with correct ID', () => {
         const provider = new AmbientProvider('dummy-key')
         expect(provider.id).toBe('ambient')
+    })
+
+    test('instantiates AurikoProvider with correct ID', () => {
+        const provider = new AurikoProvider('dummy-key')
+        expect(provider.id).toBe('auriko')
+    })
+
+    test('instantiates BasetenProvider with correct ID', () => {
+        const provider = new BasetenProvider('dummy-key')
+        expect(provider.id).toBe('baseten')
     })
 })

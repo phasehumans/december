@@ -341,6 +341,37 @@ export function instantiateProvider(
                 )
             }
             return withProviderId(openaiProvider('https://api.ambient.xyz/v1', apiKey), 'ambient')
+        case 'auriko':
+        case 'aurikoai':
+        case 'auriko-ai':
+            if (options?.baseURL || options?.headers) {
+                return withProviderId(
+                    openaiProvider(
+                        options?.baseURL || 'https://api.auriko.ai/v1',
+                        apiKey,
+                        options?.headers
+                    ),
+                    'auriko'
+                )
+            }
+            return withProviderId(openaiProvider('https://api.auriko.ai/v1', apiKey), 'auriko')
+        case 'baseten':
+        case 'basetenco':
+        case 'baseten-co':
+            if (options?.baseURL || options?.headers) {
+                return withProviderId(
+                    openaiProvider(
+                        options?.baseURL || 'https://inference.baseten.co/v1',
+                        apiKey,
+                        options?.headers
+                    ),
+                    'baseten'
+                )
+            }
+            return withProviderId(
+                openaiProvider('https://inference.baseten.co/v1', apiKey),
+                'baseten'
+            )
         case 'thinkingmachines':
         case 'tinker':
         case 'inkling':

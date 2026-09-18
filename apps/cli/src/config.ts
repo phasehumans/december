@@ -53,6 +53,12 @@ export interface ProviderConfig {
         | 'aki-io'
         | 'akiio'
         | 'ambient'
+        | 'auriko'
+        | 'aurikoai'
+        | 'auriko-ai'
+        | 'baseten'
+        | 'basetenco'
+        | 'baseten-co'
         | 'nvidia'
         | 'sambanova'
         | 'cerebras'
@@ -550,6 +556,14 @@ export function formatProviderName(provider: string): string {
             return 'AKI.IO'
         case 'ambient':
             return 'Ambient'
+        case 'auriko':
+        case 'aurikoai':
+        case 'auriko-ai':
+            return 'Auriko'
+        case 'baseten':
+        case 'basetenco':
+        case 'baseten-co':
+            return 'Baseten'
         case 'claude':
             return 'Claude'
         case 'copilot':
@@ -895,6 +909,34 @@ export function resolveSwitchTarget(
                 provider: 'aki-io',
                 authPriority: 'byok',
                 model: getTargetModelForProvider(config, 'aki-io'),
+            }
+        }
+        if (['aurikoai', 'auriko-ai'].includes(q) && config.providers['auriko']) {
+            return {
+                provider: 'auriko',
+                authPriority: 'byok',
+                model: getTargetModelForProvider(config, 'auriko'),
+            }
+        }
+        if (['auriko'].includes(q) && config.providers['aurikoai']) {
+            return {
+                provider: 'aurikoai',
+                authPriority: 'byok',
+                model: getTargetModelForProvider(config, 'aurikoai'),
+            }
+        }
+        if (['basetenco', 'baseten-co'].includes(q) && config.providers['baseten']) {
+            return {
+                provider: 'baseten',
+                authPriority: 'byok',
+                model: getTargetModelForProvider(config, 'baseten'),
+            }
+        }
+        if (['baseten'].includes(q) && config.providers['basetenco']) {
+            return {
+                provider: 'basetenco',
+                authPriority: 'byok',
+                model: getTargetModelForProvider(config, 'basetenco'),
             }
         }
     }

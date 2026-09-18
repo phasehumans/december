@@ -13,6 +13,8 @@ import {
     AIAndProvider,
     AKIProvider,
     AmbientProvider,
+    AurikoProvider,
+    BasetenProvider,
 } from '@december/providers'
 import { describe, expect, it } from 'bun:test'
 
@@ -101,6 +103,16 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
             const provider = new AmbientProvider('test-ambient-key')
             expect(provider.id).toBe('ambient')
         })
+
+        it('instantiates AurikoProvider with proper OpenAI endpoint and credentials', () => {
+            const provider = new AurikoProvider('test-auriko-key')
+            expect(provider.id).toBe('auriko')
+        })
+
+        it('instantiates BasetenProvider with proper OpenAI endpoint and credentials', () => {
+            const provider = new BasetenProvider('test-baseten-key')
+            expect(provider.id).toBe('baseten')
+        })
     })
 
     describe('Model Context Windows', () => {
@@ -134,6 +146,10 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
             expect(getModelContextWindow('aki/deepseek-v4-flash-0731-284b')).toBe(1050000)
             expect(getModelContextWindow('ambient/large')).toBe(202000)
             expect(getModelContextWindow('ambient/deepseek/deepseek-v4-flash')).toBe(1050000)
+            expect(getModelContextWindow('auriko/claude-sonnet-4-6')).toBe(1000000)
+            expect(getModelContextWindow('auriko/deepseek-v4-flash')).toBe(1000000)
+            expect(getModelContextWindow('baseten/deepseek-ai/DeepSeek-V4.1-Flash')).toBe(1048576)
+            expect(getModelContextWindow('baseten/zai-org/GLM-5.3')).toBe(1048576)
         })
     })
 
@@ -245,6 +261,55 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
                 'xiaomi/mimo-v2.5',
                 'stepfun/step-3.7-flash',
             ])
+
+            const aurikoModels = getProviderModels('auriko')
+            expect(aurikoModels.map((m) => m.value)).toEqual([
+                'claude-sonnet-4-6',
+                'claude-opus-4-6',
+                'claude-opus-4-7',
+                'deepseek-v4-flash',
+                'deepseek-v4-pro',
+                'gemini-2.5-flash',
+                'gemini-2.5-pro',
+                'gemini-3.1-pro-preview',
+                'glm-5.1',
+                'grok-4.3',
+                'kimi-k2.5',
+                'kimi-k2.6',
+                'minimax-m2-7',
+                'minimax-m2-7-highspeed',
+                'qwen-3.6-plus',
+            ])
+            expect(getProviderModels('aurikoai')).toEqual(aurikoModels)
+            expect(getProviderModels('auriko-ai')).toEqual(aurikoModels)
+
+            const basetenModels = getProviderModels('baseten')
+            expect(basetenModels.map((m) => m.value)).toEqual([
+                'deepseek-ai/DeepSeek-V4.1-Flash',
+                'deepseek-ai/DeepSeek-V4-Flash-0731',
+                'deepseek-ai/DeepSeek-V4-Pro',
+                'deepseek-ai/DeepSeek-V4-Pro-0813',
+                'deepseek-ai/DeepSeek-V3.1',
+                'zai-org/GLM-5.3',
+                'zai-org/GLM-5.3-Fast',
+                'zai-org/GLM-5.3-Flash',
+                'zai-org/GLM-5.2',
+                'zai-org/GLM-5.2-Fast',
+                'zai-org/GLM-5.1',
+                'zai-org/GLM-5',
+                'zai-org/GLM-4.7',
+                'moonshotai/Kimi-K2.7-Code',
+                'moonshotai/Kimi-K3',
+                'moonshotai/Kimi-K2.6',
+                'moonshotai/Kimi-K2.5',
+                'thinkingmachines/inkling',
+                'thinkingmachines/inkling-small',
+                'nvidia/Nemotron-120B-A12B',
+                'nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B',
+                'openai/gpt-oss-120b',
+            ])
+            expect(getProviderModels('basetenco')).toEqual(basetenModels)
+            expect(getProviderModels('baseten-co')).toEqual(basetenModels)
         })
 
         it('returns correct default models for providers', () => {
@@ -270,6 +335,12 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
             expect(getDefaultModelForProvider('aki')).toBe('deepseek-v4-flash-0731-284b')
             expect(getDefaultModelForProvider('aki-io')).toBe('deepseek-v4-flash-0731-284b')
             expect(getDefaultModelForProvider('ambient')).toBe('deepseek/deepseek-v4-flash')
+            expect(getDefaultModelForProvider('auriko')).toBe('claude-sonnet-4-6')
+            expect(getDefaultModelForProvider('aurikoai')).toBe('claude-sonnet-4-6')
+            expect(getDefaultModelForProvider('auriko-ai')).toBe('claude-sonnet-4-6')
+            expect(getDefaultModelForProvider('baseten')).toBe('deepseek-ai/DeepSeek-V4.1-Flash')
+            expect(getDefaultModelForProvider('basetenco')).toBe('deepseek-ai/DeepSeek-V4.1-Flash')
+            expect(getDefaultModelForProvider('baseten-co')).toBe('deepseek-ai/DeepSeek-V4.1-Flash')
         })
 
         it('validates and normalizes models correctly', () => {
@@ -294,6 +365,10 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
             expect(isValidModelForProvider('aki', 'deepseek-v4-flash-0731-284b')).toBe(true)
             expect(isValidModelForProvider('aki-io', 'glm5.3-754b')).toBe(true)
             expect(isValidModelForProvider('ambient', 'deepseek/deepseek-v4-flash')).toBe(true)
+            expect(isValidModelForProvider('auriko', 'claude-sonnet-4-6')).toBe(true)
+            expect(isValidModelForProvider('aurikoai', 'deepseek-v4-flash')).toBe(true)
+            expect(isValidModelForProvider('baseten', 'deepseek-ai/DeepSeek-V4.1-Flash')).toBe(true)
+            expect(isValidModelForProvider('basetenco', 'zai-org/GLM-5.3')).toBe(true)
 
             expect(ensureValidModelForProvider('thinkingmachines', 'inkling')).toBe(
                 'thinkingmachines/Inkling'
@@ -317,6 +392,12 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
             )
             expect(ensureValidModelForProvider('ambient', 'deepseek/deepseek-v4-flash')).toBe(
                 'deepseek/deepseek-v4-flash'
+            )
+            expect(ensureValidModelForProvider('auriko', 'claude-sonnet-4-6')).toBe(
+                'claude-sonnet-4-6'
+            )
+            expect(ensureValidModelForProvider('baseten', 'deepseek-ai/DeepSeek-V4.1-Flash')).toBe(
+                'deepseek-ai/DeepSeek-V4.1-Flash'
             )
         })
     })
@@ -350,6 +431,12 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
             expect(formatProviderName('aki-io')).toBe('AKI.IO')
             expect(formatProviderName('akiio')).toBe('AKI.IO')
             expect(formatProviderName('ambient')).toBe('Ambient')
+            expect(formatProviderName('auriko')).toBe('Auriko')
+            expect(formatProviderName('aurikoai')).toBe('Auriko')
+            expect(formatProviderName('auriko-ai')).toBe('Auriko')
+            expect(formatProviderName('baseten')).toBe('Baseten')
+            expect(formatProviderName('basetenco')).toBe('Baseten')
+            expect(formatProviderName('baseten-co')).toBe('Baseten')
         })
     })
 
@@ -404,7 +491,7 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
             expect(agnesCost.totalCost).toBeCloseTo(1.35, 2)
 
             const airouterCost = calculateUsageCost({
-                model: 'gpt-5.6-luna',
+                model: 'airouter/gpt-5.6-luna',
                 promptTokens: 1_000_000,
                 completionTokens: 500_000,
             })
@@ -434,6 +521,22 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
             })
             // 1M * 0.60 = $0.60, 500k * 2.0 = $1.00 => total $1.60
             expect(ambientCost.totalCost).toBeCloseTo(1.6, 2)
+
+            const aurikoCost = calculateUsageCost({
+                model: 'auriko/claude-sonnet-4-6',
+                promptTokens: 100_000,
+                completionTokens: 100_000,
+            })
+            // 100k * 3.0/1M = $0.30, 100k * 15.0/1M = $1.50 => total $1.80
+            expect(aurikoCost.totalCost).toBeCloseTo(1.8, 2)
+
+            const basetenCost = calculateUsageCost({
+                model: 'baseten/deepseek-ai/DeepSeek-V4.1-Flash',
+                promptTokens: 1_000_000,
+                completionTokens: 500_000,
+            })
+            // 1M * 0.30 = $0.30, 500k * 1.20 = $0.60 => total $0.90
+            expect(basetenCost.totalCost).toBeCloseTo(0.9, 2)
         })
 
         it('infers providers from models correctly', () => {
@@ -452,6 +555,10 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
             expect(inferProviderFromModel('aiand/deepseek-ai/deepseek-v4-flash')).toBe('aiand')
             expect(inferProviderFromModel('aki/glm5.3-754b')).toBe('aki')
             expect(inferProviderFromModel('ambient/large')).toBe('ambient')
+            expect(inferProviderFromModel('auriko/claude-sonnet-4-6')).toBe('auriko')
+            expect(inferProviderFromModel('baseten/deepseek-ai/DeepSeek-V4.1-Flash')).toBe(
+                'baseten'
+            )
         })
 
         it('generates usage cards with legitimate console/portal URLs', () => {
@@ -534,6 +641,22 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
                 isAuthenticated: true,
             })
             expect(ambientCard).toContain('https://app.ambient.xyz/keys')
+
+            const aurikoCard = formatUsageCard({
+                model: 'claude-sonnet-4-6',
+                authMethod: 'byok',
+                provider: 'auriko',
+                isAuthenticated: true,
+            })
+            expect(aurikoCard).toContain('https://www.auriko.ai/dashboard')
+
+            const basetenCard = formatUsageCard({
+                model: 'deepseek-ai/DeepSeek-V4.1-Flash',
+                authMethod: 'byok',
+                provider: 'baseten',
+                isAuthenticated: true,
+            })
+            expect(basetenCard).toContain('https://app.baseten.co/settings/api_keys')
         })
     })
 
@@ -554,6 +677,8 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
                     aiand: 'sk-aiand-live',
                     aki: 'sk-aki-live',
                     ambient: 'sk-ambient-live',
+                    auriko: 'sk-auriko-live',
+                    baseten: 'sk-baseten-live',
                 },
             }
 
@@ -568,6 +693,8 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
             expect(configured.some((p) => p.value === 'provider:aiand')).toBe(true)
             expect(configured.some((p) => p.value === 'provider:aki')).toBe(true)
             expect(configured.some((p) => p.value === 'provider:ambient')).toBe(true)
+            expect(configured.some((p) => p.value === 'provider:auriko')).toBe(true)
+            expect(configured.some((p) => p.value === 'provider:baseten')).toBe(true)
 
             // Switch: sarvam -> stepfun
             const targetStepfun = resolveSwitchTarget(initialConfig, 'stepfun')
@@ -632,12 +759,26 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
             expect(switched9.config.activeProvider).toBe('ambient')
             expect(switched9.config.activeModel).toBe('deepseek/deepseek-v4-flash')
 
-            // Switch: ambient -> sarvam
-            const targetSarvam = resolveSwitchTarget(switched9.config, 'sarvam')
+            // Switch: ambient -> auriko via alias auriko-ai
+            const targetAuriko = resolveSwitchTarget(switched9.config, 'auriko-ai')
+            expect(targetAuriko).toBeDefined()
+            const switched10 = applyProviderSwitch(switched9.config, targetAuriko!)
+            expect(switched10.config.activeProvider).toBe('auriko')
+            expect(switched10.config.activeModel).toBe('claude-sonnet-4-6')
+
+            // Switch: auriko -> baseten via alias baseten-co
+            const targetBaseten = resolveSwitchTarget(switched10.config, 'baseten-co')
+            expect(targetBaseten).toBeDefined()
+            const switched11 = applyProviderSwitch(switched10.config, targetBaseten!)
+            expect(switched11.config.activeProvider).toBe('baseten')
+            expect(switched11.config.activeModel).toBe('deepseek-ai/DeepSeek-V4.1-Flash')
+
+            // Switch: baseten -> sarvam
+            const targetSarvam = resolveSwitchTarget(switched11.config, 'sarvam')
             expect(targetSarvam).toBeDefined()
-            const switched10 = applyProviderSwitch(switched9.config, targetSarvam!)
-            expect(switched10.config.activeProvider).toBe('sarvam')
-            expect(switched10.config.activeModel).toBe('sarvam-105b')
+            const switched12 = applyProviderSwitch(switched11.config, targetSarvam!)
+            expect(switched12.config.activeProvider).toBe('sarvam')
+            expect(switched12.config.activeModel).toBe('sarvam-105b')
         })
     })
 })

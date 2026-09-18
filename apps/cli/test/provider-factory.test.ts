@@ -482,6 +482,37 @@ describe('instantiateProvider', () => {
         )
     })
 
+    it('instantiates auriko provider via openai compat', () => {
+        instantiateProvider('auriko', 'key-123')
+        expect(providers.openaiProvider).toHaveBeenCalledWith('https://api.auriko.ai/v1', 'key-123')
+
+        instantiateProvider('aurikoai', 'key-123')
+        expect(providers.openaiProvider).toHaveBeenCalledWith('https://api.auriko.ai/v1', 'key-123')
+
+        instantiateProvider('auriko-ai', 'key-123')
+        expect(providers.openaiProvider).toHaveBeenCalledWith('https://api.auriko.ai/v1', 'key-123')
+    })
+
+    it('instantiates baseten provider via openai compat', () => {
+        instantiateProvider('baseten', 'key-123')
+        expect(providers.openaiProvider).toHaveBeenCalledWith(
+            'https://inference.baseten.co/v1',
+            'key-123'
+        )
+
+        instantiateProvider('basetenco', 'key-123')
+        expect(providers.openaiProvider).toHaveBeenCalledWith(
+            'https://inference.baseten.co/v1',
+            'key-123'
+        )
+
+        instantiateProvider('baseten-co', 'key-123')
+        expect(providers.openaiProvider).toHaveBeenCalledWith(
+            'https://inference.baseten.co/v1',
+            'key-123'
+        )
+    })
+
     it('instantiates ollama provider with default localhost endpoint', () => {
         const p = instantiateProvider('ollama', '')
         expect(p).toBe('mock-ollama')

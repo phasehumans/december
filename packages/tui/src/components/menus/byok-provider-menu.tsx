@@ -18,6 +18,8 @@ export const PROVIDER_MENU_ITEMS = [
     { label: 'Ambient', value: 'ambient' },
     { label: 'Anthropic', value: 'anthropic' },
     { label: 'Arcee AI', value: 'arcee' },
+    { label: 'Auriko', value: 'auriko' },
+    { label: 'Baseten', value: 'baseten' },
     { label: 'Cerebras', value: 'cerebras' },
     { label: 'Cohere', value: 'cohere' },
     { label: 'DeepSeek', value: 'deepseek' },

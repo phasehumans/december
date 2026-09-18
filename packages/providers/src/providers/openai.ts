@@ -58,7 +58,9 @@ export function supportsReasoningEffort(model?: string, baseURL?: string): boole
             baseURL.includes('ai-router.dev') ||
             baseURL.includes('aiand.com') ||
             baseURL.includes('aki.io') ||
-            baseURL.includes('ambient.xyz'))
+            baseURL.includes('ambient.xyz') ||
+            baseURL.includes('auriko.ai') ||
+            baseURL.includes('baseten.co'))
     ) {
         return false
     }

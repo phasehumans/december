@@ -660,6 +660,164 @@ export const getCuratedProviderModels = (provider: string) => {
                     value: 'stepfun/step-3.7-flash',
                 },
             ]
+        case 'auriko':
+        case 'aurikoai':
+        case 'auriko-ai':
+            return [
+                {
+                    label: 'Claude Sonnet 4.6',
+                    value: 'claude-sonnet-4-6',
+                },
+                {
+                    label: 'Claude Opus 4.6',
+                    value: 'claude-opus-4-6',
+                },
+                {
+                    label: 'Claude Opus 4.7',
+                    value: 'claude-opus-4-7',
+                },
+                {
+                    label: 'DeepSeek V4 Flash',
+                    value: 'deepseek-v4-flash',
+                },
+                {
+                    label: 'DeepSeek V4 Pro',
+                    value: 'deepseek-v4-pro',
+                },
+                {
+                    label: 'Gemini 2.5 Flash',
+                    value: 'gemini-2.5-flash',
+                },
+                {
+                    label: 'Gemini 2.5 Pro',
+                    value: 'gemini-2.5-pro',
+                },
+                {
+                    label: 'Gemini 3.1 Pro Preview',
+                    value: 'gemini-3.1-pro-preview',
+                },
+                {
+                    label: 'GLM 5.1',
+                    value: 'glm-5.1',
+                },
+                {
+                    label: 'Grok 4.3',
+                    value: 'grok-4.3',
+                },
+                {
+                    label: 'Kimi K2.5',
+                    value: 'kimi-k2.5',
+                },
+                {
+                    label: 'Kimi K2.6',
+                    value: 'kimi-k2.6',
+                },
+                {
+                    label: 'MiniMax M2.7',
+                    value: 'minimax-m2-7',
+                },
+                {
+                    label: 'MiniMax M2.7 Highspeed',
+                    value: 'minimax-m2-7-highspeed',
+                },
+                {
+                    label: 'Qwen 3.6 Plus',
+                    value: 'qwen-3.6-plus',
+                },
+            ]
+        case 'baseten':
+        case 'basetenco':
+        case 'baseten-co':
+            return [
+                {
+                    label: 'DeepSeek V4.1 Flash',
+                    value: 'deepseek-ai/DeepSeek-V4.1-Flash',
+                },
+                {
+                    label: 'DeepSeek V4 Flash 0731',
+                    value: 'deepseek-ai/DeepSeek-V4-Flash-0731',
+                },
+                {
+                    label: 'DeepSeek V4 Pro',
+                    value: 'deepseek-ai/DeepSeek-V4-Pro',
+                },
+                {
+                    label: 'DeepSeek V4 Pro 0813',
+                    value: 'deepseek-ai/DeepSeek-V4-Pro-0813',
+                },
+                {
+                    label: 'DeepSeek V3.1',
+                    value: 'deepseek-ai/DeepSeek-V3.1',
+                },
+                {
+                    label: 'GLM 5.3',
+                    value: 'zai-org/GLM-5.3',
+                },
+                {
+                    label: 'GLM 5.3 Fast',
+                    value: 'zai-org/GLM-5.3-Fast',
+                },
+                {
+                    label: 'GLM 5.3 Flash',
+                    value: 'zai-org/GLM-5.3-Flash',
+                },
+                {
+                    label: 'GLM 5.2',
+                    value: 'zai-org/GLM-5.2',
+                },
+                {
+                    label: 'GLM 5.2 Fast',
+                    value: 'zai-org/GLM-5.2-Fast',
+                },
+                {
+                    label: 'GLM 5.1',
+                    value: 'zai-org/GLM-5.1',
+                },
+                {
+                    label: 'GLM 5',
+                    value: 'zai-org/GLM-5',
+                },
+                {
+                    label: 'GLM 4.7',
+                    value: 'zai-org/GLM-4.7',
+                },
+                {
+                    label: 'Kimi K2.7 Code',
+                    value: 'moonshotai/Kimi-K2.7-Code',
+                },
+                {
+                    label: 'Kimi K3',
+                    value: 'moonshotai/Kimi-K3',
+                },
+                {
+                    label: 'Kimi K2.6',
+                    value: 'moonshotai/Kimi-K2.6',
+                },
+                {
+                    label: 'Kimi K2.5',
+                    value: 'moonshotai/Kimi-K2.5',
+                },
+                {
+                    label: 'Thinking Machines Inkling',
+                    value: 'thinkingmachines/inkling',
+                },
+                {
+                    label: 'Thinking Machines Inkling Small',
+                    value: 'thinkingmachines/inkling-small',
+                },
+                {
+                    label: 'Nemotron 3 Super 120B',
+                    value: 'nvidia/Nemotron-120B-A12B',
+                },
+                {
+                    label: 'Nemotron 3 Ultra 550B',
+                    value: 'nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B',
+                },
+                {
+                    label: 'GPT OSS 120B',
+                    value: 'openai/gpt-oss-120b',
+                },
+            ]
         case 'dashscope':
         case 'qwen':
             return [
@@ -1124,6 +1282,20 @@ export async function fetchLiveProviderModels(
                         ? `${baseUrl.replace(/\/+$/, '')}/models`
                         : 'https://api.ambient.xyz/v1/models'
                     break
+                case 'auriko':
+                case 'aurikoai':
+                case 'auriko-ai':
+                    endpoint = baseUrl
+                        ? `${baseUrl.replace(/\/+$/, '')}/models`
+                        : 'https://api.auriko.ai/v1/models'
+                    break
+                case 'baseten':
+                case 'basetenco':
+                case 'baseten-co':
+                    endpoint = baseUrl
+                        ? `${baseUrl.replace(/\/+$/, '')}/models`
+                        : 'https://inference.baseten.co/v1/models'
+                    break
                 case 'december':
                 case 'december_proxy': {
                     const serverUrl = process.env.SERVER_URL || 'https://api.trydecember.com'
@@ -1285,6 +1457,8 @@ export const getModelLabel = (value: string) => {
         'aiand',
         'aki',
         'ambient',
+        'auriko',
+        'baseten',
         'december_proxy',
     ]
     for (const p of allProviders) {
@@ -1361,6 +1535,34 @@ export const isValidModelForProvider = (provider: string, model?: string): boole
             model.startsWith('kimi') ||
             model.startsWith('mimo') ||
             model.startsWith('step'))
+    )
+        return true
+    if (
+        (normalized === 'auriko' || normalized === 'aurikoai' || normalized === 'auriko-ai') &&
+        (model.includes('/') ||
+            model.startsWith('claude') ||
+            model.startsWith('deepseek') ||
+            model.startsWith('gemini') ||
+            model.startsWith('glm') ||
+            model.startsWith('grok') ||
+            model.startsWith('kimi') ||
+            model.startsWith('minimax') ||
+            model.startsWith('qwen'))
+    )
+        return true
+    if (
+        (normalized === 'baseten' || normalized === 'basetenco' || normalized === 'baseten-co') &&
+        (model.includes('/') ||
+            model.startsWith('deepseek') ||
+            model.startsWith('zai') ||
+            model.startsWith('glm') ||
+            model.startsWith('moonshot') ||
+            model.startsWith('kimi') ||
+            model.startsWith('thinkingmachines') ||
+            model.startsWith('inkling') ||
+            model.startsWith('nvidia') ||
+            model.startsWith('nemotron') ||
+            model.startsWith('gpt'))
     )
         return true
     if (normalized === 'poolside' && (model.includes('/') || model.startsWith('laguna')))
