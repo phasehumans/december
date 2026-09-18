@@ -11,9 +11,12 @@ export * from './components/menus/auth-menus'
 export * from './components/menus/ask-question-menu'
 
 export { Spinner } from './components/spinner'
+export { InlineTip } from './components/inline-tip'
 export { Pill } from './components/pill'
 export { TaskTree } from './components/task-tree'
 export type { TaskItem } from './components/task-tree'
+export * from './hooks/use-delayed-tip'
+export * from './constants/tips'
 
 export * from './components/menus/menu-menu'
 export * from './components/menus/subscription-select-menu'

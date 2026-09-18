@@ -4,6 +4,7 @@ import React from 'react'
 import { THEME } from '../../theme'
 import { fileLink, toRelativePath } from '../../utils/terminal-link'
 import { DiffGutterView } from '../diff-gutter'
+import { InlineTip } from '../inline-tip'
 import { Spinner } from '../spinner'
 
 import { parseTuiError, FormattedErrorText } from './error-message'
@@ -104,6 +105,7 @@ export function CollapsibleThought({
             <Box flexDirection="row" marginY={0} gap={1} alignItems="center">
                 <Spinner />
                 <Text color={THEME.colors.muted}>Thinking...</Text>
+                <InlineTip active={Boolean(isStreaming)} />
             </Box>
         )
     }
@@ -469,6 +471,7 @@ export const BotMessage = React.memo(function BotMessage({ blocks, usage, expand
                                     <Box gap={1} alignItems="center">
                                         <Spinner />
                                         <Text color={THEME.colors.muted}>{block.content}</Text>
+                                        <InlineTip active={true} />
                                     </Box>
                                 </Box>
                             )
@@ -779,6 +782,7 @@ export const BotMessage = React.memo(function BotMessage({ blocks, usage, expand
                                 <Box gap={1} alignItems="center">
                                     <Spinner />
                                     <Text color={THEME.colors.muted}>{statusLabel}</Text>
+                                    <InlineTip active={true} />
                                 </Box>
                                 {block.output && (
                                     <Box
