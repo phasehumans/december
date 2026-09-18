@@ -358,7 +358,7 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
                                                     {isFileBuilding ? (
                                                         <Loader2
                                                             size={12}
-                                                            className="text-[#91908F] animate-spin"
+                                                            className="text-[#87B2F4] animate-spin"
                                                         />
                                                     ) : (
                                                         <CheckCircle2

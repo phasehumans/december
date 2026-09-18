@@ -243,4 +243,41 @@ describe('Agent Error Formatter & Edge Cases (Unit)', () => {
         expect(errorEvent.error).not.toContain('OpenAI, Anthropic, Gemini')
         expect(errorEvent.error).not.toContain('https://trydecember.com/pricing')
     })
+
+    it('emits Agnes AI rate limit retry status with clean provider name, countdown delay, and attempt count', async () => {
+        let attempts = 0
+        const mockAgnesLlm: LLMProvider = {
+            id: 'agnes',
+            stream: async function* () {
+                attempts++
+                yield { type: 'text', text: '' }
+                if (attempts === 1) {
+                    const err: any = new Error('Rate limit 429')
+                    err.status = 429
+                    throw err
+                }
+                yield { type: 'text', text: 'Success on retry' }
+            },
+        }
+
+        const agent = new Agent({
+            llm: mockAgnesLlm,
+            tools: [],
+            operations: {} as any,
+            modelOptions: { model: 'agnes-2.5-pro' },
+        })
+
+        const events: any[] = []
+        for await (const event of runAgentLoop(agent, 'hi')) {
+            events.push(event)
+        }
+
+        const statusEvent = events.find(
+            (e) => e.type === 'AgentStatus' && e.message?.includes('Agnes AI rate limit hit.')
+        )
+        expect(statusEvent).toBeDefined()
+        expect((statusEvent as any).message).toContain(
+            'Agnes AI rate limit hit. Retrying in 2s... (attempt 1/6)'
+        )
+    })
 })

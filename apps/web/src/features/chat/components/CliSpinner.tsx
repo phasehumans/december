@@ -12,7 +12,7 @@ interface CliSpinnerProps {
 export const CliSpinner: React.FC<CliSpinnerProps> = ({
     label = 'Thinking...',
     className = '',
-    spinnerColor = 'text-[#8E8D8C]',
+    spinnerColor = 'text-[#87B2F4]',
     labelColor = 'text-[#8E8D8C]',
 }) => {
     const [frameIdx, setFrameIdx] = useState(0)

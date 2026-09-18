@@ -314,7 +314,7 @@ export const SearchStreamingCursor: React.FC<{ className?: string }> = ({ classN
 
 export const SearchThinkingLoader: React.FC<{ label?: string }> = ({ label = 'Thinking...' }) => (
     <div className="py-1 flex items-center select-none font-sans">
-        <CliSpinner label={label} spinnerColor="text-[#8E8D8C]" labelColor="text-[#8E8D8C]" />
+        <CliSpinner label={label} />
     </div>
 )
 
@@ -347,9 +347,7 @@ export const SearchThoughtsAccordion: React.FC<SearchThoughtsProps> = ({
                     )}
                 />
                 <span>Thoughts</span>
-                {isStreaming && (
-                    <CliSpinner label="" className="ml-0.5" spinnerColor="text-[#8E8D8C]" />
-                )}
+                {isStreaming && <CliSpinner label="" className="ml-0.5" />}
             </button>
 
             <AnimatePresence initial={false}>

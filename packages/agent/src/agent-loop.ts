@@ -5,6 +5,7 @@ import {
     safeParseJson,
     formatInsufficientCreditsNotice,
     formatRateLimitNotice,
+    getCleanProviderDisplayName,
 } from '@december/shared'
 import pRetry, { AbortError } from 'p-retry'
 
@@ -635,12 +636,15 @@ async function streamAssistantResponse(
 
                     if (isHighDemand || isRateLimit) {
                         const delaySeconds = Math.round(Math.pow(2, error.attemptNumber - 1) * 2)
-                        const hitType = isHighDemand
-                            ? 'LLM Provider high demand'
-                            : 'LLM Provider rate limit'
+                        const providerName = getCleanProviderDisplayName(
+                            agent.llm?.id,
+                            (agent.modelOptions as any)?.model
+                        )
+                        const hitType = isHighDemand ? 'high demand' : 'rate limit'
+                        const maxAttempts = error.attemptNumber + error.retriesLeft
                         eventQueue.push({
                             type: 'AgentStatus',
-                            message: `${hitType} hit. Retrying in ~${delaySeconds}s... (${error.retriesLeft} retries left)\n`,
+                            message: `${providerName} ${hitType} hit. Retrying in ${delaySeconds}s... (attempt ${error.attemptNumber}/${maxAttempts})\n`,
                         })
                     } else {
                         const errStr = formatError(error)

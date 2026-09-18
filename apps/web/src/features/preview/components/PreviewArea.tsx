@@ -124,7 +124,7 @@ export const PreviewArea: React.FC<PreviewAreaProps> = ({
                                                 </span>
                                             ) : isActive ? (
                                                 <div className="w-5 h-5 flex items-center justify-center shrink-0 relative">
-                                                    <div className="w-3.5 h-3.5 border border-t-transparent border-white rounded-full animate-spin" />
+                                                    <div className="w-3.5 h-3.5 border border-t-transparent border-[#87B2F4] rounded-full animate-spin" />
                                                 </div>
                                             ) : (
                                                 <span className="text-[#8E8D8C]/20 text-[16px] w-5 h-5 flex items-center justify-center shrink-0 select-none">

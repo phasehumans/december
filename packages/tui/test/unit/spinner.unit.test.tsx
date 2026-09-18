@@ -9,4 +9,9 @@ describe('Spinner Component (Unit)', () => {
         const { lastFrame } = render(<Spinner label="Loading..." />)
         expect(lastFrame()).toContain('Loading...')
     })
+
+    it('renders with custom color', () => {
+        const { lastFrame } = render(<Spinner color="#FDD663" label="Retrying..." />)
+        expect(lastFrame()).toContain('Retrying...')
+    })
 })
