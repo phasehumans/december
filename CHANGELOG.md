@@ -2,6 +2,27 @@
 
 ### Features
 
+- _(providers)_ Add abliteration.ai as byok provider
+- _(providers)_ Add agnes ai as byok provider
+- _(providers)_ Add airouter, aiand, aki, and ambient as byok providers
+- _(tui)_ Align thought loader with dots spinner and tool-styled completed state
+- _(agent)_ Prevent forcing non-reasoning models to think
+- _(tui)_ Add paste folding, osc 8 links, diff gutters, task tree
+- _(tui)_ Make header link clickable, add context usage to status bar, and fix multiline paste
+- _(tui)_ Consolidate parallel read tool calls with relative paths and osc 8 links
+- _(cli)_ Add in-session token tracking and weekly ledger to /usage
+- _(tui)_ Add subtle delayed inline tips to spinner loaders
+- _(providers)_ Add auriko and baseten byok providers
+- _(ui)_ Update spinner colors and rate limit retry formatting
+
+### Bug Fixes
+
+- _(cli)_ Provide dynamic provider-aware rate limit notices and simplify thought display
+
+## [0.3.29] - 2026-09-17
+
+### Features
+
 - _(tui,agent)_ Add collapsible reasoning and stop forcing thoughts
 - _(cli)_ Add /ask command and december ask headless mode
 - _(tui)_ Place /ask command before /clear in command menu
@@ -13,6 +34,10 @@
 - _(cli)_ Handle copilot 403 no_copilot_access with clean human error message
 - _(tui)_ Render entire collapsed thought line in uniform grey
 - _(tui,cli)_ Preserve actual measured thought duration on completion
+
+### Miscellaneous Tasks
+
+- _(release)_ V0.3.29
 
 ## [0.3.28] - 2026-09-12
 
