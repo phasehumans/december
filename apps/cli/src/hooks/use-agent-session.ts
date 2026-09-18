@@ -33,8 +33,10 @@ import { extractJsonArray } from '../utils/json-parser'
 import { getProviderModels } from '../utils/models'
 import { fetchOpenRouterModels } from '../utils/openrouter-models'
 import { getProjectContext } from '../utils/project-context'
+import { fetchProviderBalance } from '../utils/provider-balance'
 import { instantiateProvider } from '../utils/provider-factory'
 import { formatUsageCard } from '../utils/usage-rates'
+import { getWeeklyUsageSummary } from '../utils/usage-tracker'
 
 import {
     getNextMsgId,
@@ -1948,11 +1950,83 @@ ${decStatus}
                 const rawProvider = selectedProvider || (agent.llm as any)?.id || ''
                 const provider = rawProvider || (authMethod === 'december' ? 'december' : undefined)
 
+                // 1. Calculate session usage from current messages
+                const allMsgs = [
+                    ...useCliStore.getState().staticMessages,
+                    ...useCliStore.getState().activeMessages,
+                ]
+                let sessionInputTokens = 0
+                let sessionOutputTokens = 0
+                let sessionCacheTokens = 0
+                let sessionRequests = 0
+
+                for (const msg of allMsgs) {
+                    if (msg.usage) {
+                        sessionInputTokens += msg.usage.promptTokens || 0
+                        sessionOutputTokens += msg.usage.completionTokens || 0
+                        sessionCacheTokens += (msg.usage as any).cacheReadInputTokens || 0
+                        sessionRequests++
+                    }
+                }
+
+                // 2. Fetch rolling weekly summary from local ledger
+                let weeklyStats: any
+                try {
+                    weeklyStats = await getWeeklyUsageSummary()
+                } catch {
+                    // Intentionally swallowed: local usage summary fetch fallback
+                }
+
+                // 3. Fetch provider balance if supported / applicable
+                let balanceInfo: any
+                const config = await loadConfig()
+                if (authMethod === 'december' && config.decemberToken) {
+                    try {
+                        const serverUrl = process.env.SERVER_URL || 'https://api.trydecember.com'
+                        const overviewRes = await fetch(`${serverUrl}/api/v1/billing/overview`, {
+                            headers: { Authorization: `Bearer ${config.decemberToken}` },
+                            signal: AbortSignal.timeout(2000),
+                        })
+                        if (overviewRes.ok) {
+                            const overviewJson = (await overviewRes.json()) as any
+                            const balanceCents = overviewJson.data?.creditBalance ?? 0
+                            balanceInfo = {
+                                supported: true,
+                                balance: `$${(balanceCents / 100).toFixed(2)}`,
+                                currency: 'USD',
+                            }
+                        }
+                    } catch {
+                        // Intentionally swallowed: network error fetching december wallet balance
+                    }
+                } else if (authMethod === 'byok' || !authMethod) {
+                    const activeKey =
+                        apiKey ||
+                        config.providers?.[provider || ''] ||
+                        (provider ? process.env[`${provider.toUpperCase()}_API_KEY`] : undefined)
+                    if (activeKey) {
+                        try {
+                            balanceInfo = await fetchProviderBalance(provider, activeKey, 2000)
+                        } catch {
+                            // Intentionally swallowed: live balance fetch failure
+                        }
+                    }
+                }
+
                 const card = formatUsageCard({
                     model: currentModel,
                     authMethod,
                     provider,
                     isAuthenticated,
+                    sessionStats: {
+                        requests: sessionRequests,
+                        inputTokens: sessionInputTokens,
+                        outputTokens: sessionOutputTokens,
+                        cacheReadTokens: sessionCacheTokens,
+                        totalTokens: sessionInputTokens + sessionOutputTokens,
+                    },
+                    weeklyStats,
+                    balance: balanceInfo,
                 })
 
                 setActiveMessages((prev) => [

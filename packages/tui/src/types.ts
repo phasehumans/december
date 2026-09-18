@@ -6,7 +6,12 @@ export type Message = {
     hint?: string
     displayText?: string
     blocks?: any[]
-    usage?: { promptTokens: number; completionTokens: number }
+    usage?: {
+        promptTokens: number
+        completionTokens: number
+        cacheReadInputTokens?: number
+        cacheCreationInputTokens?: number
+    }
 }
 
 export type AuthMode =

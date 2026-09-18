@@ -1,5 +1,7 @@
 import { AUTH_REQUIRED_NOTICE } from '../constants/messages'
 
+import { formatNumberWithCommas } from './usage-tracker'
+
 export interface ModelRate {
     name: string
     inputRate: number // $ per 1M tokens
@@ -663,18 +665,130 @@ export function calculateUsageCost({
     }
 }
 
+export interface SessionUsageStats {
+    requests: number
+    inputTokens: number
+    outputTokens: number
+    cacheReadTokens?: number
+    totalTokens?: number
+}
+
+export interface WeeklyUsageStats {
+    totalTokens: number
+    inputTokens: number
+    outputTokens: number
+    cacheReadTokens?: number
+    requests: number
+    activeDays: number
+    topModels?: { model: string; totalTokens: number; percentage: number }[]
+}
+
+export interface ProviderBalanceDisplay {
+    supported: boolean
+    balance?: string
+    currency?: string
+    error?: string
+}
+
 export interface FormatUsageCardParams {
     model: string
-    authMethod?: 'byok' | 'december' | 'env' | string
+    authMethod?: 'byok' | 'december' | 'env' | 'subscription' | string
     provider?: string
     isAuthenticated?: boolean
     promptTokens?: number
     completionTokens?: number
     cachedPromptTokens?: number
+    sessionStats?: SessionUsageStats
+    weeklyStats?: WeeklyUsageStats
+    balance?: ProviderBalanceDisplay
+}
+
+function formatStatsSection(
+    sessionStats?: SessionUsageStats,
+    weeklyStats?: WeeklyUsageStats,
+    balance?: ProviderBalanceDisplay,
+    providerName?: string
+): string[] {
+    const lines: string[] = []
+
+    // 1. Account Balance
+    if (balance?.supported) {
+        if (balance.balance) {
+            lines.push('')
+            lines.push('Account Balance:')
+            lines.push(`  Remaining: ${balance.balance} (Live from ${providerName || 'Provider'})`)
+        } else if (balance.error) {
+            lines.push('')
+            lines.push('Account Balance:')
+            lines.push(`  Live balance check unavailable (${balance.error})`)
+        }
+    }
+
+    // 2. This Session
+    if (sessionStats) {
+        lines.push('')
+        lines.push('This Session:')
+        if (sessionStats.requests === 0 && (sessionStats.totalTokens || 0) === 0) {
+            lines.push('  No requests recorded yet in this session.')
+        } else {
+            const reqStr =
+                sessionStats.requests === 1 ? '1 request' : `${sessionStats.requests} requests`
+            const total =
+                sessionStats.totalTokens ??
+                (sessionStats.inputTokens || 0) + (sessionStats.outputTokens || 0)
+            const cacheSuffix = sessionStats.cacheReadTokens
+                ? ` (incl. ${formatNumberWithCommas(sessionStats.cacheReadTokens)} cached)`
+                : ''
+            lines.push(`  Requests:     ${reqStr}`)
+            lines.push(
+                `  Input:        ${formatNumberWithCommas(sessionStats.inputTokens)} tokens${cacheSuffix}`
+            )
+            lines.push(
+                `  Output:       ${formatNumberWithCommas(sessionStats.outputTokens)} tokens`
+            )
+            lines.push(`  Total:        ${formatNumberWithCommas(total)} tokens`)
+        }
+    }
+
+    // 3. Past 7 Days (Weekly Context)
+    if (weeklyStats) {
+        lines.push('')
+        lines.push('Past 7 Days (Overall):')
+        if (weeklyStats.requests === 0 && weeklyStats.totalTokens === 0) {
+            lines.push('  No token activity recorded in the last 7 days.')
+        } else {
+            const daysStr =
+                weeklyStats.activeDays === 1
+                    ? '1 active day'
+                    : `${weeklyStats.activeDays} active days`
+            const reqStr =
+                weeklyStats.requests === 1 ? '1 request' : `${weeklyStats.requests} requests`
+            lines.push(`  Activity:     ${reqStr} across ${daysStr}`)
+            lines.push(`  Input:        ${formatNumberWithCommas(weeklyStats.inputTokens)} tokens`)
+            lines.push(`  Output:       ${formatNumberWithCommas(weeklyStats.outputTokens)} tokens`)
+            lines.push(`  Total:        ${formatNumberWithCommas(weeklyStats.totalTokens)} tokens`)
+            if (weeklyStats.topModels && weeklyStats.topModels.length > 0) {
+                const modelSummaries = weeklyStats.topModels
+                    .slice(0, 3)
+                    .map((m) => `${m.model} (${m.percentage}%)`)
+                    .join(', ')
+                lines.push(`  Top Models:   ${modelSummaries}`)
+            }
+        }
+    }
+
+    return lines
 }
 
 export function formatUsageCard(params: FormatUsageCardParams): string {
-    const { model, authMethod = 'byok', isAuthenticated = true } = params
+    const {
+        model,
+        authMethod = 'byok',
+        isAuthenticated = true,
+        sessionStats,
+        weeklyStats,
+        balance,
+    } = params
     let providerKey = (params.provider || '').toLowerCase()
 
     if (!isAuthenticated) {
@@ -683,10 +797,11 @@ export function formatUsageCard(params: FormatUsageCardParams): string {
 
     if (authMethod === 'december') {
         const billingLink = PROVIDER_BILLING_LINKS.december
+        const middle = formatStatsSection(sessionStats, weeklyStats, balance, 'December Cloud')
+        const middleStr = middle.length > 0 ? `${middle.join('\n')}\n\n` : '\n'
         return `Active Model: \`${model}\` (December Wallet)
 Provider: December Cloud
-
-*Usage is deducted directly from your December account credits. Request telemetry, token consumption, and monthly invoices are tracked at [${billingLink}](${billingLink})*`
+${middleStr}*Usage is deducted directly from your December account credits. Request telemetry, token consumption, and monthly invoices are tracked at [${billingLink}](${billingLink})*`
     }
 
     if (authMethod === 'subscription') {
@@ -703,10 +818,11 @@ Provider: December Cloud
                       ? 'Google One AI Premium (Gemini/Antigravity)'
                       : `${providerKey.toUpperCase()} Subscription`
 
+        const middle = formatStatsSection(sessionStats, weeklyStats, balance, subDisplayName)
+        const middleStr = middle.length > 0 ? `${middle.join('\n')}\n\n` : '\n'
         return `Active Model: \`${model}\` (Subscription)
 Provider: ${subDisplayName}
-
-*Usage is covered by your active ${subDisplayName} monthly subscription quota. Prompts route directly from your machine with OAuth authentication; no per-token charges or December proxy fees apply.*`
+${middleStr}*Usage is covered by your active ${subDisplayName} monthly subscription quota. Prompts route directly from your machine with OAuth authentication; no per-token charges or December proxy fees apply.*`
     }
 
     if (!providerKey || providerKey === 'december_proxy') {
@@ -715,17 +831,19 @@ Provider: ${subDisplayName}
 
     if (providerKey === 'ollama' || model.toLowerCase().includes('ollama')) {
         const link = PROVIDER_BILLING_LINKS.ollama
+        const middle = formatStatsSection(sessionStats, weeklyStats, balance, 'Ollama (Local)')
+        const middleStr = middle.length > 0 ? `${middle.join('\n')}\n\n` : '\n'
         return `Active Model: \`${model}\` (Local)
 Provider: Ollama (Local)
-
-*Running completely locally on your hardware with no API keys, no external network calls, and no usage fees. View status and local models at [${link}](${link})*`
+${middleStr}*Running completely locally on your hardware with no API keys, no external network calls, and no usage fees. View status and local models at [${link}](${link})*`
     }
 
     const displayName = PROVIDER_DISPLAY_NAMES[providerKey] || providerKey.toUpperCase()
     const billingLink = PROVIDER_BILLING_LINKS[providerKey] || `https://openrouter.ai/activity`
+    const middle = formatStatsSection(sessionStats, weeklyStats, balance, displayName)
+    const middleStr = middle.length > 0 ? `${middle.join('\n')}\n\n` : '\n'
 
     return `Active Model: \`${model}\` (BYOK)
 Provider: ${displayName}
-
-*Prompts go directly to the provider API; December servers do not track, log, or bill this usage. Token consumption, quotas, and billing are managed in your ${displayName} account at [${billingLink}](${billingLink})*`
+${middleStr}*Prompts go directly to the provider API; December servers do not track, log, or bill this usage. Token consumption, quotas, and billing are managed in your ${displayName} account at [${billingLink}](${billingLink})*`
 }

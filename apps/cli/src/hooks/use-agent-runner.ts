@@ -1,5 +1,8 @@
+import { THEME } from '@december/tui'
+
 import { parseError, ErrorParseContext } from '../utils/error-parser'
 import { getToolSummary } from '../utils/formatters'
+import { recordUsageTurn } from '../utils/usage-tracker'
 
 import type { Message, MessageBlock } from '@december/tui'
 
@@ -115,7 +118,10 @@ const isStatusMessage = (content: string) =>
     content.startsWith('Rate limit') ||
     content.startsWith('High demand') ||
     content.startsWith('LLM Provider rate limit') ||
-    content.startsWith('LLM Provider high demand')
+    content.startsWith('LLM Provider high demand') ||
+    content.includes('rate limit hit') ||
+    content.includes('high demand hit') ||
+    (content.includes('Retrying in') && content.includes('attempt'))
 
 export async function processAgentStream({
     stream,
@@ -199,10 +205,14 @@ export async function processAgentStream({
                         }
                         case 'AgentStatus': {
                             const isRetryStatus =
+                                event.message?.includes('rate limit hit') ||
+                                event.message?.includes('high demand hit') ||
+                                (event.message?.includes('Retrying in') &&
+                                    event.message?.includes('attempt')) ||
                                 event.message?.startsWith('LLM Provider') ||
                                 event.message?.startsWith('Rate limit') ||
                                 event.message?.startsWith('High demand')
-                            const color = isRetryStatus ? '#FCA5A5' : undefined
+                            const color = isRetryStatus ? THEME.colors.muted : undefined
 
                             const statusBlock = blocks[blocks.length - 1]
                             if (
@@ -302,13 +312,25 @@ export async function processAgentStream({
                             break
                         }
                         case 'AgentUsage': {
+                            const usageEvt = event as any
                             finalMsg = {
                                 ...finalMsg,
                                 usage: {
-                                    promptTokens: (event as any).promptTokens,
-                                    completionTokens: (event as any).completionTokens,
+                                    promptTokens: usageEvt.promptTokens,
+                                    completionTokens: usageEvt.completionTokens,
+                                    cacheReadInputTokens: usageEvt.cacheReadInputTokens,
+                                    cacheCreationInputTokens: usageEvt.cacheCreationInputTokens,
                                 },
                             } as any
+                            recordUsageTurn({
+                                model: usageEvt.model || '',
+                                promptTokens: usageEvt.promptTokens || 0,
+                                completionTokens: usageEvt.completionTokens || 0,
+                                cacheReadTokens: usageEvt.cacheReadInputTokens || 0,
+                                cacheWriteTokens: usageEvt.cacheCreationInputTokens || 0,
+                            }).catch(() => {
+                                // Intentionally swallowed: background usage tracking failure
+                            })
                             break
                         }
                     }

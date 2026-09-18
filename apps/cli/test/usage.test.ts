@@ -288,4 +288,116 @@ describe('CLI In-Terminal Usage & Rates (Unit)', () => {
         expect(text).not.toContain('>')
         expect(/[\u{1F300}-\u{1F9FF}]/u.test(text)).toBe(false)
     })
+
+    it('formats usage card with session and weekly stats cleanly', () => {
+        const text = formatUsageCard({
+            model: 'claude-3-7-sonnet',
+            authMethod: 'byok',
+            provider: 'anthropic',
+            isAuthenticated: true,
+            sessionStats: {
+                requests: 8,
+                inputTokens: 42100,
+                outputTokens: 3200,
+                cacheReadTokens: 31000,
+                totalTokens: 45300,
+            },
+            weeklyStats: {
+                requests: 84,
+                inputTokens: 1280000,
+                outputTokens: 95000,
+                totalTokens: 1375000,
+                activeDays: 5,
+                topModels: [
+                    { model: 'claude-3-7-sonnet', totalTokens: 1072500, percentage: 78 },
+                    { model: 'deepseek-chat', totalTokens: 302500, percentage: 22 },
+                ],
+            },
+        })
+
+        expect(text).toContain('Active Model: `claude-3-7-sonnet` (BYOK)')
+        expect(text).toContain('Provider: Anthropic Console')
+        expect(text).toContain('This Session:')
+        expect(text).toContain('Requests:     8 requests')
+        expect(text).toContain('Input:        42,100 tokens (incl. 31,000 cached)')
+        expect(text).toContain('Output:       3,200 tokens')
+        expect(text).toContain('Total:        45,300 tokens')
+
+        expect(text).toContain('Past 7 Days (Overall):')
+        expect(text).toContain('Activity:     84 requests across 5 active days')
+        expect(text).toContain('Input:        1,280,000 tokens')
+        expect(text).toContain('Output:       95,000 tokens')
+        expect(text).toContain('Total:        1,375,000 tokens')
+        expect(text).toContain('Top Models:   claude-3-7-sonnet (78%), deepseek-chat (22%)')
+
+        expect(text).not.toContain('**')
+        expect(text).not.toContain('>')
+        expect(text).not.toContain('###')
+        expect(text).not.toContain('•')
+        expect(/[\u{1F300}-\u{1F9FF}]/u.test(text)).toBe(false)
+    })
+
+    it('formats usage card with live balance from provider', () => {
+        const text = formatUsageCard({
+            model: 'deepseek-chat',
+            authMethod: 'byok',
+            provider: 'deepseek',
+            isAuthenticated: true,
+            balance: {
+                supported: true,
+                balance: '48.50 CNY',
+                currency: 'CNY',
+            },
+        })
+
+        expect(text).toContain('Account Balance:')
+        expect(text).toContain('Remaining: 48.50 CNY (Live from DeepSeek Platform)')
+        expect(text).not.toContain('**')
+        expect(text).not.toContain('>')
+        expect(text).not.toContain('•')
+        expect(/[\u{1F300}-\u{1F9FF}]/u.test(text)).toBe(false)
+    })
+
+    it('formats usage card with live balance error fallback', () => {
+        const text = formatUsageCard({
+            model: 'openrouter/anthropic/claude-3-7-sonnet',
+            authMethod: 'byok',
+            provider: 'openrouter',
+            isAuthenticated: true,
+            balance: {
+                supported: true,
+                error: 'Request timed out',
+            },
+        })
+
+        expect(text).toContain('Account Balance:')
+        expect(text).toContain('Live balance check unavailable (Request timed out)')
+    })
+
+    it('formats empty session and empty weekly stats cleanly without crashing', () => {
+        const text = formatUsageCard({
+            model: 'claude-3-7-sonnet',
+            authMethod: 'byok',
+            provider: 'anthropic',
+            isAuthenticated: true,
+            sessionStats: {
+                requests: 0,
+                inputTokens: 0,
+                outputTokens: 0,
+                totalTokens: 0,
+            },
+            weeklyStats: {
+                requests: 0,
+                inputTokens: 0,
+                outputTokens: 0,
+                totalTokens: 0,
+                activeDays: 0,
+            },
+        })
+
+        expect(text).toContain('This Session:')
+        expect(text).toContain('No requests recorded yet in this session.')
+        expect(text).toContain('Past 7 Days (Overall):')
+        expect(text).toContain('No token activity recorded in the last 7 days.')
+    })
 })
