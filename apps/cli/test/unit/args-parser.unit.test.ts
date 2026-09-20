@@ -28,7 +28,7 @@ describe('CLI Args Parser (Unit)', () => {
     it('parses standalone subcommands', () => {
         expect(parseCliArgs(['login']).command).toBe('login')
         expect(parseCliArgs(['logout']).command).toBe('logout')
-        expect(parseCliArgs(['init']).command).toBe('init')
+        expect(parseCliArgs(['ask']).command).toBe('ask')
         expect(parseCliArgs(['update']).command).toBe('update')
         expect(parseCliArgs(['doctor']).command).toBe('doctor')
         expect(parseCliArgs(['auth']).command).toBe('auth')
@@ -46,7 +46,7 @@ describe('CLI Args Parser (Unit)', () => {
     it('formats help text containing version number', () => {
         const help = getHelpText('0.3.9')
         expect(help).toContain('December CLI v0.3.9')
-        expect(help).toContain('december init')
+        expect(help).toContain('december ask')
         expect(help).toContain('december login')
         expect(help).toContain('december update')
     })

@@ -34,9 +34,9 @@ describe('parseCliArgs', () => {
         expect(parsed.command).toBeUndefined()
     })
 
-    it('identifies known commands like login, init, doctor, and resume, while handoff is treated as a prompt', () => {
+    it('identifies known commands like login, ask, doctor, and resume, while handoff is treated as a prompt', () => {
         expect(parseCliArgs(['login']).command).toBe('login')
-        expect(parseCliArgs(['init']).command).toBe('init')
+        expect(parseCliArgs(['ask']).command).toBe('ask')
         expect(parseCliArgs(['doctor']).command).toBe('doctor')
         expect(parseCliArgs(['doctor', '--fix']).fix).toBe(true)
         expect(parseCliArgs(['resume']).command).toBe('resume')

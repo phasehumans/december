@@ -17,11 +17,9 @@ December is an coding agent that lives in your terminal. It understands your cod
 1. Install December:
 
 ```bash
-curl -fsSL https://trydecember.com/install.sh | bash
-```
-
-```bash
 npm install -g @trydecember/cli
+# or run instantly without install
+npx @trydecember/cli
 ```
 
 2. Navigate to your project directory and run `december`.

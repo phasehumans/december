@@ -66,20 +66,20 @@ export const DocsQuickStart: React.FC = () => {
                     </h2>
                     <p className="text-[13.5px] text-[#9A9998] leading-relaxed">
                         December can also run natively in your local terminal environment. Install
-                        the CLI globally using either npm or curl:
+                        the CLI globally using your favorite package manager:
                     </p>
 
                     <div className="space-y-2 pt-1">
-                        <p className="text-[13px] text-[#EDEDEF] font-medium">Using npm:</p>
+                        <p className="text-[13px] text-[#EDEDEF] font-medium">Install globally:</p>
                         <div className="bg-[#111111] border border-[#242323] rounded-md px-3 py-2 font-mono text-[12.5px] text-[#7FD6B0] select-all">
                             npm install -g @trydecember/cli
                         </div>
 
                         <p className="text-[13px] text-[#EDEDEF] font-medium pt-1">
-                            Using curl (standalone installer):
+                            Instant run (no install required):
                         </p>
                         <div className="bg-[#111111] border border-[#242323] rounded-md px-3 py-2 font-mono text-[12.5px] text-[#7FD6B0] select-all">
-                            curl -fsSL https://trydecember.com/install.sh | bash
+                            npx @trydecember/cli
                         </div>
                     </div>
 

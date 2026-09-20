@@ -26,7 +26,7 @@ function isPermissionDeniedError(errMsg: string): boolean {
     )
 }
 
-export type InstallMethod = 'npm' | 'bun' | 'pnpm' | 'npx' | 'curl' | 'source'
+export type InstallMethod = 'npm' | 'bun' | 'pnpm' | 'npx' | 'source'
 
 export interface UpdateCommandInfo {
     command: string
@@ -65,7 +65,7 @@ export interface DetectOptions {
 
 export function detectInstallMethod(options?: DetectOptions): InstallMethod {
     const configMethod = options?.configInstallMethod
-    const validMethods: InstallMethod[] = ['npm', 'bun', 'pnpm', 'npx', 'curl', 'source']
+    const validMethods: InstallMethod[] = ['npm', 'bun', 'pnpm', 'npx', 'source']
     if (configMethod && validMethods.includes(configMethod as InstallMethod)) {
         return configMethod as InstallMethod
     }
@@ -105,22 +105,7 @@ export function detectInstallMethod(options?: DetectOptions): InstallMethod {
         return 'npx'
     }
 
-    // 3. Standalone binary / curl installer
-    // e.g. ~/.december/bin/december, ~/.local/bin/december or running binary directly outside node/bun runtime
-    if (
-        execPath.includes('.december/bin') ||
-        combined.includes('.december/bin') ||
-        execPath.includes('.local/bin/december') ||
-        combined.includes('.local/bin/december') ||
-        (execPath.endsWith('/december') &&
-            !execPath.includes('node_modules') &&
-            !execPath.includes('.bun') &&
-            !execPath.includes('/node'))
-    ) {
-        return 'curl'
-    }
-
-    // 4. Bun global
+    // 3. Bun global
     if (
         combined.includes('.bun/bin') ||
         combined.includes('/.bun/') ||
@@ -129,7 +114,7 @@ export function detectInstallMethod(options?: DetectOptions): InstallMethod {
         return 'bun'
     }
 
-    // 5. PNPM global
+    // 4. PNPM global
     if (
         combined.includes('pnpm') ||
         combined.includes('.pnpm') ||
@@ -138,7 +123,7 @@ export function detectInstallMethod(options?: DetectOptions): InstallMethod {
         return 'pnpm'
     }
 
-    // 6. NPM global (default)
+    // 5. NPM global (default)
     return 'npm'
 }
 
@@ -147,13 +132,6 @@ export function getUpdateCommand(
     _platform: string = process.platform
 ): UpdateCommandInfo {
     switch (method) {
-        case 'curl': {
-            return {
-                command: 'curl -fsSL https://trydecember.com/install.sh | bash',
-                manualCmd: 'curl -fsSL https://trydecember.com/install.sh | bash',
-                description: 'Standalone binary via curl installer',
-            }
-        }
         case 'bun': {
             return {
                 command: 'bun add -g @trydecember/cli@latest',
@@ -256,7 +234,6 @@ export async function performCliUpdate(options?: PerformUpdateOptions): Promise<
             activeMgr === 'bun' ||
             activeMgr === 'npm' ||
             activeMgr === 'pnpm' ||
-            activeMgr === 'curl' ||
             activeMgr === 'source'
         ) {
             detectedMethod = activeMgr

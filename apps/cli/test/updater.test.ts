@@ -9,24 +9,33 @@ describe('CLI Updater & Install Method Detection (Unit)', () => {
             expect(detectInstallMethod({ configInstallMethod: 'pnpm' })).toBe('pnpm')
             expect(detectInstallMethod({ configInstallMethod: 'npm' })).toBe('npm')
             expect(detectInstallMethod({ configInstallMethod: 'npx' })).toBe('npx')
-            expect(detectInstallMethod({ configInstallMethod: 'curl' })).toBe('curl')
             expect(detectInstallMethod({ configInstallMethod: 'source' })).toBe('source')
         })
 
-        test('detects curl standalone binary installation', () => {
+        test('falls back to npm for legacy curl config', () => {
+            expect(
+                detectInstallMethod({
+                    configInstallMethod: 'curl',
+                    execPath: '/usr/local/bin/node',
+                    argv1: '/usr/local/lib/node_modules/@trydecember/cli/dist/december.js',
+                })
+            ).toBe('npm')
+        })
+
+        test('falls back to npm for standalone binary installation', () => {
             const method = detectInstallMethod({
                 execPath: '/home/user/.local/bin/december',
                 argv1: '/home/user/.local/bin/december',
             })
-            expect(method).toBe('curl')
+            expect(method).toBe('npm')
         })
 
-        test('detects curl standalone binary installation in ~/.december/bin', () => {
+        test('falls back to npm for legacy binary in ~/.december/bin', () => {
             const method = detectInstallMethod({
                 execPath: '/home/user/.december/bin/december',
                 argv1: '/home/user/.december/bin/december',
             })
-            expect(method).toBe('curl')
+            expect(method).toBe('npm')
         })
 
         test('detects bun global installation', () => {
@@ -71,13 +80,6 @@ describe('CLI Updater & Install Method Detection (Unit)', () => {
     })
 
     describe('getUpdateCommand', () => {
-        test('returns curl update command', () => {
-            const info = getUpdateCommand('curl')
-            expect(info.command).toBe('curl -fsSL https://trydecember.com/install.sh | bash')
-            expect(info.manualCmd).toBe('curl -fsSL https://trydecember.com/install.sh | bash')
-            expect(info.description).toContain('curl')
-        })
-
         test('returns bun update command', () => {
             const info = getUpdateCommand('bun')
             expect(info.command).toBe('bun add -g @trydecember/cli@latest')

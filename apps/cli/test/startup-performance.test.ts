@@ -28,7 +28,7 @@ describe('CLI Startup & Fast-Path Flag Performance', () => {
         const help = getHelpText('1.0.0')
         expect(help).toContain('December CLI v1.0.0')
         expect(help).toContain('december login')
-        expect(help).toContain('december init')
+        expect(help).toContain('december ask')
         expect(help).toContain('december update')
         expect(help).toContain('--help')
         expect(help).toContain('--version')

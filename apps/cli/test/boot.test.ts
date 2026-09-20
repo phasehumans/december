@@ -25,9 +25,9 @@ describe('CLI Boot & Fast Flag Handler', () => {
         expect(elapsed).toBeLessThan(20)
     })
 
-    it('should parse subcommands like init and logout without initializing heavy session state', () => {
-        const parsedInit = parseCliArgs(['init'])
-        expect(parsedInit.command).toBe('init')
+    it('should parse subcommands like ask and logout without initializing heavy session state', () => {
+        const parsedAsk = parseCliArgs(['ask'])
+        expect(parsedAsk.command).toBe('ask')
 
         const parsedLogout = parseCliArgs(['logout'])
         expect(parsedLogout.command).toBe('logout')

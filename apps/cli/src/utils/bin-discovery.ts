@@ -4,7 +4,15 @@ import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 
-export type BinaryManager = 'bun' | 'npm' | 'pnpm' | 'yarn' | 'brew' | 'curl' | 'source' | 'unknown'
+export type BinaryManager =
+    | 'bun'
+    | 'npm'
+    | 'pnpm'
+    | 'yarn'
+    | 'brew'
+    | 'standalone'
+    | 'source'
+    | 'unknown'
 
 export interface DecemberBinaryInfo {
     path: string
@@ -73,7 +81,7 @@ export function inferManagerFromPath(filePath: string, realPath: string): Binary
         normalized.includes('/.local/bin/december') ||
         normalized.includes('/.local/bin/')
     ) {
-        return 'curl'
+        return 'standalone'
     }
     return 'unknown'
 }
