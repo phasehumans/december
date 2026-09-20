@@ -17,136 +17,241 @@ const title = frontmatter?.title || Astro.props.title || 'Documentation';
 const description = frontmatter?.description || Astro.props.description;
 const currentSlug = frontmatter?.currentSlug !== undefined ? frontmatter.currentSlug : (Astro.props.currentSlug ?? '');
 
-const docSections = [
+const isIndex = !currentSlug || currentSlug === 'index';
+
+const docCategories = [
   {
     category: 'Getting Started',
     items: [
-      { slug: '', label: 'Overview' },
-      { slug: 'quickstart', label: 'Quickstart (60s)' },
+      {
+        slug: 'quickstart',
+        label: 'Quickstart (60s)',
+        desc: 'Install the CLI or launch a cloud workspace in under a minute.',
+      },
     ],
   },
   {
     category: 'Core Concepts',
     items: [
-      { slug: 'architecture', label: 'System Architecture' },
-      { slug: 'agent-loop', label: 'Agent Reasoning Loop' },
-      { slug: 'checkpoints', label: 'Git Checkpoints' },
-      { slug: 'previews', label: 'Live Sandboxed Previews' },
+      {
+        slug: 'architecture',
+        label: 'System Architecture',
+        desc: 'Terminal-native execution with seamless cloud micro-VM handoff.',
+      },
+      {
+        slug: 'agent-loop',
+        label: 'Agent Reasoning Loop',
+        desc: 'Deterministic inspect-plan-execute-verify cycle for safe edits.',
+      },
+      {
+        slug: 'checkpoints',
+        label: 'Git Checkpoints',
+        desc: 'Point-in-time versioning and rollback safety for local work trees.',
+      },
+      {
+        slug: 'previews',
+        label: 'Live Sandboxed Previews',
+        desc: 'Isolated Linux sandboxes with dev server provisioning and HMR.',
+      },
     ],
   },
   {
     category: 'Interfaces & CLI',
     items: [
-      { slug: 'cli', label: 'CLI Reference' },
-      { slug: 'slash-commands', label: 'Slash Commands' },
-      { slug: 'prompting', label: 'Prompting Guide' },
+      {
+        slug: 'cli',
+        label: 'CLI Reference',
+        desc: 'Complete command flags, options, and shell environment configuration.',
+      },
+      {
+        slug: 'slash-commands',
+        label: 'Slash Commands',
+        desc: 'Interactive commands like /handoff, /undo, /model, and /login.',
+      },
+      {
+        slug: 'prompting',
+        label: 'Prompting Guide',
+        desc: 'Best practices for providing context and directing the agent.',
+      },
     ],
   },
   {
     category: 'Ecosystem & Safety',
     items: [
-      { slug: 'integrations', label: 'Model Providers & BYOK' },
-      { slug: 'security', label: 'Security & Isolation' },
+      {
+        slug: 'integrations',
+        label: 'Model Providers & BYOK',
+        desc: 'Bring your own API keys for Anthropic, OpenAI, Gemini, and Ollama.',
+      },
+      {
+        slug: 'security',
+        label: 'Security & Isolation',
+        desc: 'Container sandboxing, secret redaction, and execution boundaries.',
+      },
     ],
   },
 ];
+
+const allSubpages = docCategories.flatMap((c) => c.items);
+const currentIdx = allSubpages.findIndex((item) => item.slug === currentSlug);
+const prevItem = currentIdx > 0 ? allSubpages[currentIdx - 1] : null;
+const nextItem = currentIdx >= 0 && currentIdx < allSubpages.length - 1 ? allSubpages[currentIdx + 1] : null;
 ---
 
 <BaseLayout
   title={`${title} — December Documentation`}
   description={description}
-  activePath={`/docs/${currentSlug}`}
+  activePath="/docs"
+  hideFooter={true}
 >
-  <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 md:py-12">
-    <div class="flex flex-col lg:flex-row gap-10">
-      <!-- Left Sidebar Navigation -->
-      <aside class="w-full lg:w-64 shrink-0">
-        <div class="sticky top-20 flex flex-col gap-6 max-h-[calc(100vh-6rem)] overflow-y-auto pr-2">
-          <div class="pb-2 border-b border-[#222222]">
-            <a href="/docs" class="text-sm font-mono text-[#888888] hover:text-white transition-colors flex items-center gap-1.5">
-              <span>← Back to Overview</span>
-            </a>
+  <!-- Main Container: Identical horizontal gap/margins to landing page and header -->
+  <div class="mx-auto max-w-[940px] px-6 sm:px-8 md:px-10 lg:px-12 pt-4 pb-16 sm:pt-6 sm:pb-24">
+    
+    <!-- Breadcrumb Navigation Bar -->
+    <nav class="flex items-center justify-between font-mono text-xs text-[#64748b] mb-8 pb-3 border-b border-[#f1f5f9]">
+      <div class="flex items-center gap-2">
+        <a href="/" class="hover:text-[#090a0f] transition-colors">home</a>
+        <span class="text-[#cbd5e1]">/</span>
+        {isIndex ? (
+          <span class="text-[#090a0f] font-medium">[docs]</span>
+        ) : (
+          <>
+            <a href="/docs" class="text-[#87b2f4] hover:underline font-medium">[docs]</a>
+            <span class="text-[#cbd5e1]">/</span>
+            <span class="text-[#090a0f] font-medium">{currentSlug}</span>
+          </>
+        )}
+      </div>
+
+      {!isIndex && (
+        <a
+          href="/docs"
+          class="inline-flex items-center gap-1.5 text-[#64748b] hover:text-[#090a0f] transition-colors"
+        >
+          <span>← Back to Docs</span>
+        </a>
+      )}
+    </nav>
+
+    <!-- Compact Article Layout (No Sidebar) -->
+    <article class="max-w-3xl">
+      <!-- Document Header -->
+      <header class="mb-10 pb-6 border-b border-[#f1f5f9]">
+        <h1 class="text-3xl sm:text-4xl font-medium tracking-tight text-[#090a0f] leading-snug">
+          {title}
+        </h1>
+        {description && (
+          <p class="mt-3 text-sm sm:text-base text-[#52525b] leading-relaxed">
+            {description}
+          </p>
+        )}
+      </header>
+
+      <!-- Markdown / MDX Slot Content -->
+      <div class="docs-prose text-[#334155] text-[15px] leading-relaxed">
+        <slot />
+      </div>
+
+      <!-- Overview Page: Documentation Directory Grid with all subpage links -->
+      {isIndex && (
+        <section class="mt-14 pt-8 border-t border-[#f1f5f9] space-y-10">
+          <div>
+            <h2 class="text-xl font-medium text-[#090a0f] tracking-tight mb-2">
+              Documentation Directory
+            </h2>
+            <p class="text-sm text-[#64748b]">
+              Explore guides, architecture deep-dives, CLI references, and integrations.
+            </p>
           </div>
 
-          <nav class="space-y-6">
-            {docSections.map((section) => (
+          <div class="space-y-8">
+            {docCategories.map((section) => (
               <div>
-                <h4 class="text-[11px] font-mono uppercase tracking-wider text-[#666666] mb-2 px-2">
+                <h3 class="font-mono text-xs uppercase tracking-wider text-[#87b2f4] font-medium mb-3">
                   {section.category}
-                </h4>
-                <ul class="space-y-1">
-                  {section.items.map((item) => {
-                    const href = item.slug ? `/docs/${item.slug}` : '/docs';
-                    const isActive = currentSlug === item.slug;
-                    return (
-                      <li>
-                        <a
-                          href={href}
-                          class={`block px-2.5 py-1.5 rounded-md text-[13px] transition-colors ${
-                            isActive
-                              ? 'bg-[#1e1e1e] text-white font-medium border border-[#333333]'
-                              : 'text-[#999999] hover:bg-[#151515] hover:text-[#dddddd]'
-                          }`}
-                        >
-                          {item.label}
-                        </a>
-                      </li>
-                    );
-                  })}
-                </ul>
+                </h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {section.items.map((item) => (
+                    <a
+                      href={`/docs/${item.slug}`}
+                      class="group block p-4 border border-[#e2e8f0] bg-white hover:border-[#87b2f4] hover:shadow-xs transition-all"
+                    >
+                      <div class="flex items-center justify-between font-mono text-xs text-[#090a0f] font-medium">
+                        <span>{item.label}</span>
+                        <span class="text-[#94a3b8] transition-transform group-hover:translate-x-1 group-hover:text-[#87b2f4]">
+                          →
+                        </span>
+                      </div>
+                      <p class="mt-1.5 text-xs text-[#64748b] leading-relaxed">
+                        {item.desc}
+                      </p>
+                    </a>
+                  ))}
+                </div>
               </div>
             ))}
-          </nav>
-        </div>
-      </aside>
+          </div>
+        </section>
+      )}
 
-      <!-- Center Content Area -->
-      <article class="flex-1 min-w-0 max-w-3xl pb-16">
-        <!-- Breadcrumbs -->
-        <div class="flex items-center gap-2 text-[12px] font-mono text-[#666666] mb-6">
-          <a href="/" class="hover:text-white transition-colors">home</a>
-          <span>/</span>
-          <a href="/docs" class="hover:text-white transition-colors">docs</a>
-          {currentSlug && (
-            <>
-              <span>/</span>
-              <span class="text-[#aaaaaa]">{currentSlug}</span>
-            </>
+      <!-- Subpages: Linear Previous / Next Navigation -->
+      {!isIndex && (
+        <div class="mt-16 pt-8 border-t border-[#f1f5f9] flex flex-col sm:flex-row items-center justify-between gap-4 font-mono text-xs">
+          {prevItem ? (
+            <a
+              href={`/docs/${prevItem.slug}`}
+              class="group inline-flex items-center gap-2 p-3 border border-[#e2e8f0] bg-white hover:border-[#87b2f4] text-[#475569] hover:text-[#090a0f] transition-all w-full sm:w-auto"
+            >
+              <span class="text-[#94a3b8] group-hover:text-[#87b2f4]">←</span>
+              <span>{prevItem.label}</span>
+            </a>
+          ) : (
+            <a
+              href="/docs"
+              class="inline-flex items-center gap-2 p-3 border border-[#e2e8f0] bg-white hover:border-[#87b2f4] text-[#475569] hover:text-[#090a0f] transition-all w-full sm:w-auto"
+            >
+              <span>← Docs Overview</span>
+            </a>
+          )}
+
+          {nextItem ? (
+            <a
+              href={`/docs/${nextItem.slug}`}
+              class="group inline-flex items-center justify-end gap-2 p-3 border border-[#e2e8f0] bg-white hover:border-[#87b2f4] text-[#475569] hover:text-[#090a0f] transition-all w-full sm:w-auto sm:ml-auto"
+            >
+              <span>{nextItem.label}</span>
+              <span class="text-[#94a3b8] group-hover:text-[#87b2f4]">→</span>
+            </a>
+          ) : (
+            <a
+              href="/docs"
+              class="inline-flex items-center gap-2 p-3 border border-[#e2e8f0] bg-white hover:border-[#87b2f4] text-[#475569] hover:text-[#090a0f] transition-all w-full sm:w-auto sm:ml-auto"
+            >
+              <span>Back to Overview ↑</span>
+            </a>
           )}
         </div>
-
-        <header class="mb-8 border-b border-[#222222] pb-6">
-          <h1 class="text-3xl sm:text-4xl font-semibold tracking-tight text-white">{title}</h1>
-          {description && (
-            <p class="mt-3 text-base text-[#999999] leading-relaxed">{description}</p>
-          )}
-        </header>
-
-        <!-- Markdown / MDX Content Slot -->
-        <div class="docs-prose text-[#cccccc] text-[15px] leading-relaxed space-y-6">
-          <slot />
-        </div>
-      </article>
-    </div>
+      )}
+    </article>
   </div>
 </BaseLayout>
 
 <style is:global>
   .docs-prose h2 {
-    font-size: 1.5rem;
+    font-size: 1.35rem;
     font-weight: 600;
-    color: #ffffff;
+    color: #090a0f;
     margin-top: 2.25rem;
     margin-bottom: 0.75rem;
     letter-spacing: -0.02em;
-    border-bottom: 1px solid #222222;
+    border-bottom: 1px solid #f1f5f9;
     padding-bottom: 0.5rem;
   }
 
   .docs-prose h3 {
-    font-size: 1.2rem;
+    font-size: 1.1rem;
     font-weight: 500;
-    color: #eeeeee;
+    color: #0f172a;
     margin-top: 1.75rem;
     margin-bottom: 0.5rem;
     letter-spacing: -0.01em;
@@ -154,7 +259,7 @@ const docSections = [
 
   .docs-prose p {
     margin-bottom: 1.25rem;
-    color: #bbbbba;
+    color: #475569;
     line-height: 1.7;
   }
 
@@ -162,7 +267,14 @@ const docSections = [
     list-style-type: disc;
     padding-left: 1.5rem;
     margin-bottom: 1.25rem;
-    color: #bbbbba;
+    color: #475569;
+  }
+
+  .docs-prose ol {
+    list-style-type: decimal;
+    padding-left: 1.5rem;
+    margin-bottom: 1.25rem;
+    color: #475569;
   }
 
   .docs-prose li {
@@ -170,18 +282,18 @@ const docSections = [
   }
 
   .docs-prose code {
-    font-family: var(--font-mono);
+    font-family: var(--font-mono, monospace);
     font-size: 0.85em;
-    background-color: #1a1a1a;
-    color: #e5e5e5;
+    background-color: #f8fafc;
+    color: #090a0f;
     padding: 0.15rem 0.35rem;
     border-radius: 0.25rem;
-    border: 1px solid #292929;
+    border: 1px solid #e2e8f0;
   }
 
   .docs-prose pre {
-    background-color: #111111 !important;
-    border: 1px solid #242424;
+    background-color: #0c1017 !important;
+    border: 1px solid #1e293b;
     border-radius: 0.5rem;
     padding: 1rem;
     overflow-x: auto;
@@ -193,25 +305,32 @@ const docSections = [
     padding: 0;
     border: none;
     font-size: 0.85rem;
-    color: #dddddd;
+    color: #e2e8f0;
   }
 
   .docs-prose blockquote {
-    border-left: 3px solid #3b82f6;
-    background-color: rgba(59, 130, 246, 0.05);
+    border-left: 3px solid #87b2f4;
+    background-color: #f8fafc;
     padding: 0.75rem 1rem;
     margin: 1.25rem 0;
     border-radius: 0 0.375rem 0.375rem 0;
+    color: #475569;
   }
 
   .docs-prose strong {
-    color: #ffffff;
+    color: #090a0f;
     font-weight: 600;
   }
 
   .docs-prose a {
-    color: #60a5fa;
+    color: #2563eb;
     text-decoration: underline;
     text-underline-offset: 2px;
+  }
+
+  .docs-prose hr {
+    border: 0;
+    border-top: 1px solid #f1f5f9;
+    margin: 2rem 0;
   }
 </style>

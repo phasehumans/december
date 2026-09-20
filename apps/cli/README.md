@@ -1,6 +1,6 @@
 # December
 
-December is an coding agent that lives in your terminal. It understands your codebase and helps you build faster by writing code, fixing bugs, and running commands. Use it directly in your terminal or alongside your favorite IDE.
+December is a coding agent that lives in your terminal. It understands your codebase and helps you build faster by writing code, fixing bugs, and running commands. Use it directly in your terminal or alongside your favorite IDE.
 
 **Also available on the web at <a href="https://app.trydecember.com" target="_blank">app.trydecember.com</a>**
 

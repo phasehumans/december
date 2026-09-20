@@ -1,17 +1,18 @@
 @import 'tailwindcss';
 
 @theme {
-    --color-background: #0d0d0d;
-    --color-surface: #141414;
-    --color-surface-hover: #1c1c1c;
-    --color-surface-active: #242424;
-    --color-border: #262626;
-    --color-border-subtle: #1e1e1e;
-    --color-text-main: #f2f2f0;
-    --color-text-muted: #8c8c89;
-    --color-text-dim: #5a5a58;
-    --color-accent: #ffffff;
-    --color-accent-blue: #3b82f6;
+    --color-background: #ffffff;
+    --color-surface: #f9fafb;
+    --color-surface-hover: #f3f4f6;
+    --color-surface-active: #e5e7eb;
+    --color-border: #e5e7eb;
+    --color-border-subtle: #f0f2f5;
+    --color-text-main: #090a0f;
+    --color-text-muted: #52525b;
+    --color-text-dim: #94a3b8;
+    --color-brand: #87b2f4;
+    --color-brand-hover: #6fa2ee;
+    --color-brand-light: rgba(135, 178, 244, 0.15);
     --color-accent-green: #10b981;
 
     --font-sans:
@@ -22,33 +23,122 @@
 @layer base {
     html {
         scroll-behavior: smooth;
-        color-scheme: dark;
+        color-scheme: light;
+        background-color: #ffffff;
     }
 
     body {
-        background-color: var(--color-background);
+        background-color: #ffffff;
         color: var(--color-text-main);
         font-family: var(--font-sans);
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
-        selection-background-color: #333333;
-        selection-color: #ffffff;
+        selection-background-color: #87b2f4;
+        selection-color: #0a1128;
+    }
+
+    ::selection {
+        background-color: #87b2f4;
+        color: #0a1128;
+    }
+
+    /* Minimal custom scrollbar for desktop */
+    @media (min-width: 768px) {
+        html {
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+        html::-webkit-scrollbar {
+            display: none;
+        }
+    }
+
+    /* Minimalist inner scrollbars for code blocks, sidebars, tables */
+    *::-webkit-scrollbar {
+        width: 4px;
+        height: 4px;
+    }
+    *::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    *::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 9999px;
+    }
+    *::-webkit-scrollbar-thumb:hover {
+        background: #87b2f4;
     }
 }
 
-/* Custom terminal and glass aesthetics */
-.glass-panel {
-    background: rgba(20, 20, 20, 0.7);
-    backdrop-filter: blur(12px);
-    border: 1px solid var(--color-border);
+/* Supermemory / Hermes Corner Bracket Widget */
+.corner-brackets {
+    position: relative;
 }
 
-.terminal-window {
-    background: #111111;
-    border: 1px solid #222222;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+.corner-brackets::before,
+.corner-brackets::after {
+    content: '';
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    pointer-events: none;
+    transition: all 0.2s ease;
 }
 
-.subtle-gradient {
-    background: radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.05) 0%, transparent 70%);
+.corner-brackets::before {
+    top: -1px;
+    left: -1px;
+    border-top: 1.5px solid #87b2f4;
+    border-left: 1.5px solid #87b2f4;
+}
+
+.corner-brackets::after {
+    bottom: -1px;
+    right: -1px;
+    border-bottom: 1.5px solid #87b2f4;
+    border-right: 1.5px solid #87b2f4;
+}
+
+.corner-brackets-tr,
+.corner-brackets-bl {
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    pointer-events: none;
+}
+
+.corner-brackets-tr {
+    top: -1px;
+    right: -1px;
+    border-top: 1.5px solid #87b2f4;
+    border-right: 1.5px solid #87b2f4;
+}
+
+.corner-brackets-bl {
+    bottom: -1px;
+    left: -1px;
+    border-bottom: 1.5px solid #87b2f4;
+    border-left: 1.5px solid #87b2f4;
+}
+
+/* Supermemory diagonal hatching pattern */
+.hatch-pattern {
+    background: repeating-linear-gradient(45deg, #f5f7fa, #f5f7fa 5px, #ffffff 5px, #ffffff 10px);
+}
+
+/* Glass and subtle card utilities */
+.card-clean {
+    background: #ffffff;
+    border: 1px solid #e8ecf2;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.card-clean:hover {
+    border-color: #87b2f4;
+    box-shadow: 0 12px 32px -8px rgba(135, 178, 244, 0.18);
+}
+
+/* Glow effects */
+.brand-glow {
+    box-shadow: 0 0 35px -5px rgba(135, 178, 244, 0.35);
 }

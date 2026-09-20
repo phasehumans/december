@@ -1,4 +1,6 @@
 ---
+import { version } from '../lib/version';
+
 interface Props {
   activePath?: string;
 }
@@ -7,74 +9,34 @@ const { activePath = '/' } = Astro.props;
 const webUrl = import.meta.env.PUBLIC_WEB_URL || (import.meta.env.DEV ? 'http://localhost:3000' : 'https://app.trydecember.com');
 ---
 
-<header class="sticky top-0 z-50 w-full border-b border-[#222222] bg-[#0d0d0d]/80 backdrop-blur-md">
-  <div class="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-    <!-- Brand -->
-    <div class="flex items-center gap-8">
-      <a href="/" class="flex items-center gap-2.5 group transition-opacity hover:opacity-90">
-        <img src="/logo.svg" alt="December" width="22" height="22" class="opacity-90 transition-transform group-hover:scale-105" />
-        <span class="font-mono text-[15px] font-medium tracking-tight text-white">december</span>
-      </a>
+<header class="w-full bg-white pt-4 sm:pt-6">
+  <div class="mx-auto flex h-14 sm:h-16 max-w-[940px] items-center justify-between px-6 sm:px-8 md:px-10 lg:px-12">
+    <!-- Brand (Left): ✱ December [version] -->
+    <a href="/" class="flex items-center gap-2 group transition-opacity hover:opacity-85 font-mono">
+      <span class="text-[#87b2f4] text-[15px] sm:text-[16px] select-none leading-none">✱</span>
+      <span class="font-medium text-sm sm:text-[15px] tracking-tight text-[#090a0f]">December</span>
+      <span class="text-xs text-[#64748b]">{version}</span>
+    </a>
 
-      <!-- Desktop Nav -->
-      <nav class="hidden md:flex items-center gap-6 text-[13px] text-[#999999]">
-        <a 
-          href="/#cli" 
-          class="transition-colors hover:text-white"
-        >
-          CLI
-        </a>
-        <a 
-          href="/docs" 
-          class={`transition-colors hover:text-white ${activePath.startsWith('/docs') ? 'text-white font-medium' : ''}`}
-        >
-          Documentation
-        </a>
-        <a 
-          href="/#architecture" 
-          class="transition-colors hover:text-white"
-        >
-          Architecture
-        </a>
-        <a 
-          href="/#pricing" 
-          class="transition-colors hover:text-white"
-        >
-          Pricing
-        </a>
-      </nav>
-    </div>
+    <!-- Nav Items (Right): [github], [docs], and [login] -->
+    <div class="flex items-center gap-1.5 sm:gap-2.5 font-mono text-xs sm:text-sm">
 
-    <!-- Actions -->
-    <div class="flex items-center gap-3">
-      <a
-        href="https://github.com/phasehumans/december"
-        target="_blank"
-        rel="noopener noreferrer"
-        class="hidden sm:inline-flex items-center gap-1.5 rounded-md border border-[#2a2a2a] bg-[#161616] px-2.5 py-1 text-[12px] font-mono text-[#cccccc] hover:border-[#3a3a3a] hover:text-white transition-colors"
-        aria-label="GitHub Repository"
+      <!-- [docs] in bracket format -->
+      <a 
+        href="/docs" 
+        class={`transition-colors py-1 px-1 ${
+          activePath.startsWith('/docs') ? 'text-[#090a0f] font-semibold' : 'text-[#475569] hover:text-[#090a0f]'
+        }`}
       >
-        <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
-          <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
-        </svg>
-        <span>Star</span>
+        [docs]
       </a>
 
+      <!-- [login] in bracket format -->
       <a
         href={`${webUrl}/login`}
-        class="inline-flex items-center text-[13px] font-medium text-[#aaaaaa] hover:text-white px-2 py-1 transition-colors"
+        class="transition-colors py-1 px-1 text-[#475569] hover:text-[#090a0f]"
       >
-        Log in
-      </a>
-
-      <a
-        href={webUrl}
-        class="inline-flex items-center justify-center gap-1 rounded-md bg-white px-3 py-1.5 text-[13px] font-medium text-black transition-transform hover:bg-[#eaeaea] active:scale-95"
-      >
-        <span>Launch App</span>
-        <svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M7 17l9.2-9.2M17 17V7.8H7.8"/>
-        </svg>
+        [login]
       </a>
     </div>
   </div>

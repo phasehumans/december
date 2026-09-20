@@ -1,299 +1,994 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import { version } from '../lib/version';
 
 const webUrl = import.meta.env.PUBLIC_WEB_URL || (import.meta.env.DEV ? 'http://localhost:3000' : 'https://app.trydecember.com');
 ---
 
 <BaseLayout
-  title="December — Autonomous coding agent in your terminal"
-  description="December is an autonomous coding agent that lives in your terminal. It understands your codebase, runs bash commands, fixes bugs, and offers seamless cloud handoff."
+  title="December | A Coding Agent for Terminal and Cloud"
+  description="December is an open-source coding agent for terminal and cloud. It writes code, fixes bugs, and runs commands with seamless terminal-to-cloud handoff."
   canonicalUrl="https://trydecember.com"
+  hideHeader={false}
+  hideFooter={false}
 >
-  <!-- Hero Section -->
-  <section class="relative overflow-hidden pt-16 pb-20 sm:pt-24 sm:pb-28">
-    <div class="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top,_var(--tw-gradient-stops))] from-white/5 via-transparent to-transparent"></div>
-
-    <div class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 text-center">
-      <!-- Release Badge -->
-      <div class="inline-flex items-center gap-2 rounded-full border border-[#2a2a2a] bg-[#141414] px-3.5 py-1 text-xs font-mono text-[#aaaaaa] mb-6">
-        <span class="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-        <span>december v0.3 is live</span>
-        <span class="text-[#555555]">·</span>
-        <a href="/docs/quickstart" class="text-white hover:underline">Read the quickstart →</a>
-      </div>
+  <!-- Page Container: Generous left & right margins with compact vertical rhythm -->
+  <div class="mx-auto max-w-[940px] px-6 sm:px-8 md:px-10 lg:px-12 pt-8 pb-16 sm:pt-12 sm:pb-20">
+    
+    <!-- Hero Section -->
+    <section class="mb-16 sm:mb-20">
 
       <!-- Headline -->
-      <h1 class="text-4xl sm:text-6xl lg:text-7xl font-semibold tracking-tight text-white leading-[1.08]">
-        The coding agent in your terminal.<br class="hidden sm:inline" />
-        <span class="text-[#888888]">Cloud handoff when you need the web.</span>
+      <h1 class="text-3xl sm:text-4xl md:text-5xl lg:text-[52px] font-medium tracking-[-0.035em] text-[#090a0f] leading-[1.1] max-w-3xl">
+        december, a coding agent<br class="hidden sm:inline" /> for terminal and cloud.
       </h1>
 
-      <p class="mx-auto mt-6 max-w-2xl text-base sm:text-lg text-[#999999] leading-relaxed">
-        December understands your entire codebase, writes code, runs terminal commands, and fixes failing tests. Work in your local shell with zero latency, or type <code class="text-white bg-[#1a1a1a] px-1.5 py-0.5 rounded border border-[#2c2c2c]">/handoff</code> to continue in the cloud.
+      <!-- Subtitle (simple & compact) -->
+      <p class="mt-3 text-sm sm:text-base text-[#52525b] font-normal leading-relaxed max-w-2xl">
+        Lives in your shell to write code, fix bugs, and execute commands with zero latency—with instant cloud sandboxes whenever you need them.
       </p>
 
-      <!-- Terminal Install Widget (Hermes Style) -->
-      <div id="cli" class="mx-auto mt-10 max-w-lg">
-        <div class="flex flex-col rounded-xl border border-[#262626] bg-[#111111] p-2 shadow-2xl">
-          <!-- Package Manager Tabs -->
-          <div class="flex items-center justify-between border-b border-[#1f1f1f] pb-2 px-2 text-[12px] font-mono text-[#777777]">
-            <div class="flex items-center gap-3">
-              <span class="text-white font-medium">install</span>
-              <button type="button" class="pm-tab text-[#888] hover:text-white" data-cmd="npm install -g @trydecember/cli">npm</button>
-              <button type="button" class="pm-tab text-[#888] hover:text-white" data-cmd="bun add -g @trydecember/cli">bun</button>
-              <button type="button" class="pm-tab text-[#888] hover:text-white" data-cmd="pnpm add -g @trydecember/cli">pnpm</button>
-              <button type="button" class="pm-tab text-[#888] hover:text-white" data-cmd="npx @trydecember/cli">npx</button>
+      <!-- Action Buttons & Setup Prompt Group -->
+      <div class="mt-7 max-w-xl">
+        <!-- Dual Buttons Row (Supermemory Reference) -->
+        <div class="flex flex-wrap items-center gap-3">
+          <!-- Primary: Build with December -->
+          <a
+            href={webUrl}
+            class="group inline-flex items-center rounded-none bg-[#87b2f4] text-[#071326] font-mono text-xs uppercase tracking-wider font-semibold transition-all hover:bg-[#72a4ee] active:scale-[0.98] shadow-xs overflow-hidden"
+          >
+            <!-- Logo Icon Tile Slot -->
+            <span class="flex items-center justify-center bg-[#6fa2ee] px-3 py-2.5 border-r border-[#5b94e8] transition-colors group-hover:bg-[#5b94e8]">
+              <svg viewBox="0 0 32 32" class="w-3.5 h-3.5 text-[#071326]" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="16" y1="16" x2="16" y2="6" />
+                <line x1="16" y1="9" x2="19" y2="7.5" />
+                <line x1="16" y1="9" x2="13" y2="7.5" />
+                <line x1="16" y1="16" x2="25" y2="21" />
+                <line x1="22" y1="19.5" x2="25" y2="17" />
+                <line x1="22" y1="19.5" x2="22" y2="23" />
+                <line x1="16" y1="16" x2="7" y2="21" />
+                <line x1="10" y1="19.5" x2="10" y2="23" />
+                <line x1="10" y1="19.5" x2="7" y2="17" />
+              </svg>
+            </span>
+            <span class="px-4 py-2.5">Build with December</span>
+          </a>
+
+          <!-- Secondary: Get Started (Login / Signup) -->
+          <a
+            href={`${webUrl}/login`}
+            class="corner-brackets relative inline-flex items-center gap-2 border border-[#e2e8f0] bg-white px-4 py-2.5 font-mono text-xs uppercase tracking-wider text-[#1e293b] font-medium hover:border-[#87b2f4] hover:text-[#090a0f] transition-all active:scale-[0.98]"
+          >
+            <span class="corner-brackets-tr"></span>
+            <span class="corner-brackets-bl"></span>
+            <span>Get Started</span>
+            <svg class="w-3.5 h-3.5 text-[#64748b]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square">
+              <path d="M7 17L17 7M17 7H7M17 7V17" />
+            </svg>
+          </a>
+        </div>
+
+        <!-- Hatch-Pattern Command Bar with Package Manager Dropdown -->
+        <div class="mt-3 relative" id="hero-install-container">
+          <div class="hatch-pattern flex items-center justify-between border border-[#e2e8f0] rounded-none px-3.5 py-2 shadow-xs transition-all hover:border-[#cbd5e1]">
+            <!-- Command Text button -->
+            <button
+              id="hero-copy-cmd-btn"
+              type="button"
+              class="flex-1 flex items-center gap-2 font-mono text-xs sm:text-[13px] text-[#1e293b] text-left cursor-pointer focus:outline-none"
+              title="Click to copy command"
+            >
+              <span class="text-[#87b2f4] select-none font-semibold">$</span>
+              <span id="hero-display-cmd" class="font-normal text-[#0f172a]">npm install -g @trydecember/cli</span>
+            </button>
+
+            <!-- Actions: Copy Button + Dropdown Toggle -->
+            <div class="flex items-center gap-1 ml-2">
+              <!-- Copy Button with Tooltip Feedback -->
+              <button
+                id="hero-copy-icon-btn"
+                type="button"
+                class="relative p-1 text-[#64748b] hover:text-[#090a0f] transition-colors cursor-pointer focus:outline-none"
+                title="Copy command"
+              >
+                <svg id="hero-copy-icon" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+                <span id="hero-copy-feedback" class="hidden absolute -top-7 right-0 bg-[#090a0f] text-white text-[10px] font-mono py-0.5 px-1.5 rounded shadow-sm whitespace-nowrap">Copied!</span>
+              </button>
+
+              <!-- Dropdown Toggle Button (Matching Reference) -->
+              <button
+                id="pm-dropdown-toggle"
+                type="button"
+                class="p-1 border-l border-[#e2e8f0] text-[#64748b] hover:text-[#090a0f] transition-colors focus:outline-none cursor-pointer"
+                aria-expanded="false"
+                aria-haspopup="true"
+                title="Select package manager"
+              >
+                <svg id="pm-dropdown-chevron" class="w-3.5 h-3.5 transition-transform duration-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M6 9l6 6 6-6" />
+                </svg>
+              </button>
             </div>
-            <span class="text-[11px] text-[#555]">v0.3.30</span>
           </div>
 
-          <!-- Command row with copy button -->
-          <div class="flex items-center justify-between pt-2.5 px-3">
-            <div class="flex items-center gap-2 overflow-x-auto text-left font-mono text-sm text-[#e5e5e5]">
-              <span class="text-[#666666] select-none">$</span>
-              <span id="install-command">npm install -g @trydecember/cli</span>
+          <!-- Dropdown Menu (npm, bun, pnpm with Logos) -->
+          <div
+            id="pm-dropdown-menu"
+            class="hidden absolute right-0 top-full mt-1.5 z-40 w-52 border border-[#e2e8f0] bg-white p-1.5 shadow-xl font-mono text-xs rounded-none"
+          >
+            <div class="px-2.5 py-1 text-[10px] uppercase tracking-wider text-[#94a3b8] font-semibold">
+              Install via
             </div>
+
+            <!-- npm option -->
             <button
-              id="copy-btn"
               type="button"
-              class="shrink-0 ml-3 inline-flex items-center gap-1.5 rounded-md border border-[#333333] bg-[#1a1a1a] px-2.5 py-1 text-xs font-mono text-[#dddddd] hover:bg-[#252525] hover:text-white transition-colors"
-              title="Copy to clipboard"
+              class="pm-option w-full flex items-center justify-between px-2.5 py-2 text-[#1e293b] hover:bg-[#f8fafc] hover:text-[#090a0f] transition-colors cursor-pointer text-left rounded-[2px]"
+              data-pm="npm"
+              data-cmd="npm install -g @trydecember/cli"
             >
-              <svg id="copy-icon" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-              </svg>
-              <span id="copy-text">Copy</span>
+              <div class="flex items-center gap-2.5">
+                <svg class="w-4 h-4 text-[#cb3837]" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M1.763 0C.786 0 0 .786 0 1.763v20.474C0 23.214.786 24 1.763 24h20.474c.977 0 1.763-.786 1.763-1.763V1.763C24 .786 23.214 0 22.237 0zM5.13 5.323l13.837.019-.009 13.836h-3.464l.01-10.382h-3.456L12.04 19.17H5.113z"/>
+                </svg>
+                <span class="font-medium">npm</span>
+              </div>
+              <span class="pm-check text-[#87b2f4] text-xs">✓</span>
+            </button>
+
+            <!-- bun option -->
+            <button
+              type="button"
+              class="pm-option w-full flex items-center justify-between px-2.5 py-2 text-[#1e293b] hover:bg-[#f8fafc] hover:text-[#090a0f] transition-colors cursor-pointer text-left rounded-[2px]"
+              data-pm="bun"
+              data-cmd="bun add -g @trydecember/cli"
+            >
+              <div class="flex items-center gap-2.5">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none">
+                  <path d="M19.98 14.86c-.16-1.57-.9-3.03-2.1-4.14.76-1.04 1.15-2.3 1.1-3.6-.1-2.45-1.9-4.52-4.32-4.96C11.53 1.6 8.35 3.52 7.57 6.46c-.34 1.28-.2 2.65.4 3.8-1.5 1.18-2.38 2.94-2.44 4.88-.08 2.62 1.5 5.02 3.94 6 1.6.64 3.37.76 5.04.35 2.58-.63 4.67-2.6 5.33-5.18.09-.48.14-.98.14-1.45z" fill="#fbf0df" stroke="#d4956a" stroke-width="1.2"/>
+                  <circle cx="9.5" cy="11" r="1" fill="#333"/>
+                  <circle cx="14.5" cy="11" r="1" fill="#333"/>
+                  <path d="M11 13.5c.6.4 1.4.4 2 0" stroke="#333" stroke-width="1" stroke-linecap="round"/>
+                </svg>
+                <span class="font-medium">bun</span>
+              </div>
+              <span class="pm-check hidden text-[#87b2f4] text-xs">✓</span>
+            </button>
+
+            <!-- pnpm option -->
+            <button
+              type="button"
+              class="pm-option w-full flex items-center justify-between px-2.5 py-2 text-[#1e293b] hover:bg-[#f8fafc] hover:text-[#090a0f] transition-colors cursor-pointer text-left rounded-[2px]"
+              data-pm="pnpm"
+              data-cmd="pnpm add -g @trydecember/cli"
+            >
+              <div class="flex items-center gap-2.5">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none">
+                  <rect x="2" y="2" width="5.5" height="5.5" fill="#f69220" rx="1"/>
+                  <rect x="9.25" y="2" width="5.5" height="5.5" fill="#f69220" rx="1"/>
+                  <rect x="16.5" y="2" width="5.5" height="5.5" fill="#f69220" rx="1"/>
+                  <rect x="9.25" y="9.25" width="5.5" height="5.5" fill="#f69220" rx="1"/>
+                  <rect x="16.5" y="9.25" width="5.5" height="5.5" fill="#f69220" rx="1"/>
+                  <rect x="2" y="16.5" width="5.5" height="5.5" fill="#4a4a4a" rx="1"/>
+                  <rect x="9.25" y="16.5" width="5.5" height="5.5" fill="#4a4a4a" rx="1"/>
+                  <rect x="16.5" y="16.5" width="5.5" height="5.5" fill="#4a4a4a" rx="1"/>
+                </svg>
+                <span class="font-medium">pnpm</span>
+              </div>
+              <span class="pm-check hidden text-[#87b2f4] text-xs">✓</span>
             </button>
           </div>
         </div>
 
-        <!-- Action Buttons -->
-        <div class="mt-6 flex flex-wrap items-center justify-center gap-4">
+        <!-- "CLI SUPPORTS PROVIDERS" Strip -->
+        <div class="mt-6 flex flex-wrap items-center gap-3.5">
+          <span class="font-mono text-xs text-[#64748b] font-medium">CLI supports providers:</span>
+          <div class="flex items-center gap-3 text-[#475569]">
+            <!-- OpenAI -->
+            <span title="OpenAI" class="hover:text-[#090a0f] transition-colors cursor-pointer inline-flex items-center">
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M22.282 9.821a5.985 5.985 0 0 0-.516-4.91 6.046 6.046 0 0 0-6.51-2.9A6.065 6.065 0 0 0 4.981 4.18a5.985 5.985 0 0 0-3.998 2.9 6.046 6.046 0 0 0 .743 7.097 5.98 5.98 0 0 0 .51 4.911 6.051 6.051 0 0 0 6.515 2.9A5.985 5.985 0 0 0 13.26 24a6.056 6.056 0 0 0 5.772-4.206 5.99 5.99 0 0 0 3.997-2.9 6.056 6.056 0 0 0-.747-7.073zM13.26 22.43a4.476 4.476 0 0 1-2.876-1.04l.141-.081 4.779-2.758a.795.795 0 0 0 .392-.681v-6.737l2.02 1.168a.071.071 0 0 1 .038.052v5.583a4.504 4.504 0 0 1-4.494 4.494zM3.6 18.304a4.47 4.47 0 0 1-.535-3.014l.142.085 4.783 2.759a.771.771 0 0 0 .78 0l5.843-3.369v2.332a.08.08 0 0 1-.033.062L9.74 19.95a4.5 4.5 0 0 1-6.14-1.646zM2.34 8.946a4.485 4.485 0 0 1 2.366-1.973V12.6a.766.766 0 0 0 .388.677l5.815 3.355-2.02 1.168a.076.076 0 0 1-.071 0l-4.83-2.786A4.504 4.504 0 0 1 2.34 8.946zm16.799 3.014l-5.843-3.37v-2.33a.08.08 0 0 1 .033-.062l4.84-2.796a4.499 4.499 0 0 1 6.674 4.66l-.141-.085-4.784-2.759a.775.775 0 0 0-.779 0zm2.522-3.014a4.476 4.476 0 0 1-2.366 1.973V5.3a.766.766 0 0 0-.388-.677L13.092 1.27l2.02-1.168a.076.076 0 0 1 .071 0l4.83 2.786a4.504 4.504 0 0 1 1.646 6.046zM10.855 8.16l2.385-1.378 2.385 1.378v2.755l-2.385 1.378-2.385-1.378z"/>
+              </svg>
+            </span>
+
+            <!-- Anthropic -->
+            <span title="Anthropic" class="hover:text-[#090a0f] transition-colors cursor-pointer inline-flex items-center">
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M13.827 3.52h3.603L24 20h-3.603l-6.57-16.48zm-7.258 0h3.767L16.906 20h-3.674l-1.343-3.461H5.017l-1.344 3.46H0L6.57 3.522zm4.132 9.959L8.453 7.687 6.205 13.48H10.7z"/>
+              </svg>
+            </span>
+
+            <!-- Google Gemini -->
+            <span title="Google Gemini" class="hover:text-[#090a0f] transition-colors cursor-pointer inline-flex items-center">
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M11.04 19.32Q12 21.51 12 24q0-2.49.93-4.68.96-2.19 2.58-3.81t3.81-2.55Q21.51 12 24 12q-2.49 0-4.68-.93a12.3 12.3 0 0 1-3.81-2.58 12.3 12.3 0 0 1-2.58-3.81Q12 2.49 12 0q0 2.49-.96 4.68-.93 2.19-2.55 3.81a12.3 12.3 0 0 1-3.81 2.58Q2.49 12 0 12q2.49 0 4.68.96 2.19.93 3.81 2.55t2.55 3.81z"/>
+              </svg>
+            </span>
+
+            <!-- Mistral AI -->
+            <span title="Mistral AI" class="hover:text-[#090a0f] transition-colors cursor-pointer inline-flex items-center">
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M17.143 3.429v3.428h-3.429v3.429h-3.428V6.857H6.857V3.43H3.43v13.714H0v3.428h10.286v-3.428H6.857v-3.429h3.429v3.429h3.429v-3.429h3.428v3.429h-3.428v3.428H24v-3.428h-3.43V3.429z"/>
+              </svg>
+            </span>
+
+            <!-- Z.AI -->
+            <span title="Z.ai" class="hover:text-[#090a0f] transition-colors cursor-pointer inline-flex items-center">
+              <svg class="w-4 h-4" viewBox="0 0 30 30" fill="currentColor">
+                <path d="M24.51 28.51H5.49c-2.21 0-4-1.79-4-4V5.49c0-2.21 1.79-4 4-4h19.03c2.21 0 4 1.79 4 4v19.03c0 2.2-1.79 3.99-4 3.99z" fill="none" stroke="currentColor" stroke-width="1.8" rx="4"/>
+                <path d="M15.47 7.1l-1.3 1.85c-.2.29-.54.47-.9.47h-7.1V7.09h9.3z"/>
+                <polygon points="24.3,7.1 13.14,22.91 5.7,22.91 16.86,7.1"/>
+                <path d="M14.53 22.91l1.31-1.86c.2-.29.54-.47.9-.47h7.09v2.33H14.53z"/>
+              </svg>
+            </span>
+
+            <!-- Meta Muse -->
+            <span title="Meta Muse" class="hover:text-[#090a0f] transition-colors cursor-pointer inline-flex items-center">
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 15.657C10.74 17.065 9.074 18 7.218 18 3.79 18 1 14.939 1 11.144 1 7.348 3.79 4.288 7.218 4.288c1.856 0 3.522.934 4.782 2.343 1.26-1.409 2.926-2.343 4.782-2.343C20.21 4.288 23 7.348 23 11.144c0 3.795-2.79 6.856-6.218 6.856-1.856 0-3.522-.935-4.782-2.343zm-2.074-4.513C9.404 8.783 8.375 7.288 7.218 7.288 5.257 7.288 3.666 9.014 3.666 11.144c0 2.13 1.591 3.856 3.552 3.856 1.157 0 2.186-1.495 2.708-3.856zm4.148 0c.522 2.36 1.551 3.856 2.708 3.856 1.961 0 3.552-1.726 3.552-3.856 0-2.13-1.591-3.856-3.552-3.856-1.157 0-2.186 1.495-2.708 3.856z"/>
+              </svg>
+            </span>
+          </div>
+
+          <!-- 50+ more providers -->
           <a
-            href={webUrl}
-            class="inline-flex items-center justify-center gap-2 rounded-lg bg-white px-5 py-2.5 text-sm font-semibold text-black transition-all hover:bg-[#e8e8e8] active:scale-95 shadow-lg"
+            href="/docs/integrations"
+            class="font-mono text-xs text-[#64748b] hover:text-[#090a0f] transition-colors flex items-center gap-1 group ml-1"
           >
-            <span>Launch Web Workspace</span>
-            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M7 17l9.2-9.2M17 17V7.8H7.8"/>
-            </svg>
-          </a>
-          <a
-            href="/docs"
-            class="inline-flex items-center justify-center gap-2 rounded-lg border border-[#2b2b2b] bg-[#141414] px-5 py-2.5 text-sm font-medium text-[#cccccc] transition-colors hover:border-[#3b3b3b] hover:text-white"
-          >
-            <span>Read Documentation</span>
+            <span>50+ more providers</span>
+            <span class="text-[#94a3b8] transition-transform group-hover:translate-x-0.5">→</span>
           </a>
         </div>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <!-- Interactive Terminal Showcase (Devin Style) -->
-  <section class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-12">
-    <div class="rounded-xl border border-[#222222] bg-[#0f0f0f] shadow-2xl overflow-hidden font-mono text-xs sm:text-sm">
-      <!-- Window Titlebar -->
-      <div class="flex items-center justify-between border-b border-[#222222] bg-[#141414] px-4 py-2.5 text-[#666666]">
-        <div class="flex items-center gap-2">
-          <span class="h-2.5 w-2.5 rounded-full bg-[#333333]"></span>
-          <span class="h-2.5 w-2.5 rounded-full bg-[#333333]"></span>
-          <span class="h-2.5 w-2.5 rounded-full bg-[#333333]"></span>
-          <span class="ml-2 text-xs text-[#888888]">~/code/december (terminal session)</span>
-        </div>
-        <span class="text-xs text-emerald-400/80 flex items-center gap-1.5">
-          <span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span> active
-        </span>
-      </div>
-
-      <!-- Terminal Body -->
-      <div class="p-5 space-y-4 text-[#cccccc] leading-relaxed">
-        <div class="flex items-center gap-2 text-white">
-          <span class="text-emerald-400">❯</span>
-          <span class="text-[#888888]">december</span>
-          <span>"Fix failing rate-limiting integration test in auth.routes.ts"</span>
-        </div>
-
-        <div class="text-[#888888] space-y-1 pl-4 border-l border-[#242424]">
-          <p>→ Analyzing project workspace: <span class="text-[#aaaaaa]">packages/server</span></p>
-          <p>→ Found 1 relevant test: <span class="text-[#aaaaaa]">test/integration/auth.rate-limit.test.ts</span></p>
-          <p>→ Executed: <code class="text-white">bun test test/integration/auth.rate-limit.test.ts</code> (1 failure: expected 429)</p>
-          <p>→ Inspected: <span class="text-[#aaaaaa]">src/modules/auth/auth.routes.ts</span></p>
-          <p class="text-emerald-400">✓ Applied atomic replacement chunk in auth.routes.ts (added authRateLimiter middleware)</p>
-          <p>→ Re-executed: <code class="text-white">bun test test/integration/auth.rate-limit.test.ts</code></p>
-          <p class="text-emerald-400 font-semibold">✓ 12 pass, 0 fail (all tests passing)</p>
-        </div>
-
-        <div class="pt-2 flex items-center gap-2 text-white">
-          <span class="text-emerald-400">❯</span>
-          <span class="text-blue-400">/handoff</span>
-        </div>
-
-        <div class="text-[#999999] pl-4 border-l border-[#242424] space-y-1">
-          <p>→ Syncing local repository diffs and session history to December Cloud...</p>
-          <p class="text-white">✓ Cloud sandbox provisioned: <a href="https://app.trydecember.com" class="text-blue-400 hover:underline">https://app.trydecember.com/s/sess_8912</a></p>
-          <p class="text-xs text-[#666666]">Opening web workspace in your default browser...</p>
+    <!-- Video Player Showcase (Hero Demo) -->
+    <section class="mb-20 sm:mb-24">
+      <div class="relative w-full mx-auto">
+        <!-- Video Container with 16:9 Aspect Ratio (Sharp edges, no curve radius) -->
+        <div
+          id="hero-video-container"
+          class="relative w-full aspect-video rounded-none border border-[#e2e8f0] bg-black shadow-xl overflow-hidden"
+        >
+          <iframe
+            src="https://www.youtube.com/embed/dQw4w9WgXcQ"
+            title="December Demo Video"
+            class="w-full h-full border-0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            allowfullscreen
+          ></iframe>
         </div>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <!-- Architecture Flow Diagram (Supermemory Style) -->
-  <section id="architecture" class="border-t border-[#1e1e1e] bg-[#0b0b0b] py-20">
-    <div class="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-      <div class="text-center max-w-2xl mx-auto mb-14">
-        <h2 class="text-xs font-mono uppercase tracking-wider text-blue-400 mb-2">How it works</h2>
-        <h3 class="text-3xl sm:text-4xl font-semibold tracking-tight text-white">
-          The Terminal & Cloud Synergy
-        </h3>
-        <p class="mt-3 text-sm sm:text-base text-[#888888]">
-          Local filesystem speed when you want it. Cloud hardware isolation when you need it.
+    <!-- Editorial & What We Do Section (Supermemory Style) -->
+    <section class="mb-20 sm:mb-24">
+      <!-- Editorial Narrative Paragraph (Image 1 reference) -->
+      <div class="max-w-3xl mb-12 sm:mb-16">
+        <p class="text-lg sm:text-xl md:text-[22px] font-normal text-[#1e293b] leading-[1.65] tracking-tight">
+          December is an coding agent that lives in your terminal. It understands your codebase and helps you build faster by writing code, fixing bugs, and running commands. Use it directly in your terminal or alongside your favorite IDE.
         </p>
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <!-- Step 1 -->
-        <div class="rounded-xl border border-[#202020] bg-[#121212] p-6 flex flex-col justify-between">
-          <div>
-            <div class="h-8 w-8 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center font-mono text-sm font-semibold mb-4">
-              01
-            </div>
-            <h4 class="text-base font-semibold text-white mb-2">Local Terminal Native</h4>
-            <p class="text-xs sm:text-sm text-[#888888] leading-relaxed">
-              December lives directly in your shell. It uses native filesystem I/O to read project context, format source files, execute test runners, and inspect git history with 0 network latency.
-            </p>
-          </div>
-          <div class="mt-6 pt-4 border-t border-[#1e1e1e] font-mono text-xs text-[#666666]">
-            $ npm install -g @trydecember/cli
-          </div>
-        </div>
+      <!-- What We Do Feature List (Image 2 reference) -->
+      <div class="max-w-3xl">
+        <h2 class="text-2xl sm:text-3xl font-medium tracking-tight text-[#090a0f] mb-8 sm:mb-10">
+          What we do
+        </h2>
 
-        <!-- Step 2 -->
-        <div class="rounded-xl border border-[#202020] bg-[#121212] p-6 flex flex-col justify-between">
-          <div>
-            <div class="h-8 w-8 rounded-lg bg-purple-500/10 border border-purple-500/20 text-purple-400 flex items-center justify-center font-mono text-sm font-semibold mb-4">
-              02
+        <div class="space-y-8 sm:space-y-10">
+          <!-- 1. Writes code & runs commands -->
+          <div class="flex items-start gap-4 sm:gap-6">
+            <div class="w-14 h-14 sm:w-16 sm:h-16 shrink-0 rounded-2xl bg-[#0462ee] flex items-center justify-center shadow-sm relative overflow-hidden">
+              <svg class="absolute inset-0 w-full h-full opacity-20" viewBox="0 0 100 100" fill="none" stroke="white" stroke-width="0.8">
+                <circle cx="50" cy="50" r="42" stroke-dasharray="2 2" />
+                <circle cx="50" cy="50" r="26" />
+                <line x1="10" y1="50" x2="90" y2="50" />
+              </svg>
+              <svg class="w-6 h-6 sm:w-7 sm:h-7 text-white relative z-10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="4 17 10 11 4 5"></polyline>
+                <line x1="12" y1="19" x2="20" y2="19"></line>
+              </svg>
             </div>
-            <h4 class="text-base font-semibold text-white mb-2">Cloud Handoff (/handoff)</h4>
-            <p class="text-xs sm:text-sm text-[#888888] leading-relaxed">
-              Typing <code class="text-white">/handoff</code> packages your active session state, uncommitted changes, and memory transcript, migrating execution instantaneously to an ephemeral cloud micro-VM.
-            </p>
+            <div class="flex-1 pt-0.5 sm:pt-1">
+              <h3 class="text-base sm:text-lg font-semibold text-[#090a0f] tracking-tight">
+                Writes code & runs commands:
+              </h3>
+              <p class="mt-1 text-sm sm:text-base text-[#52525b] leading-relaxed">
+                Ask it to build features, fix bugs, or run tests. It does the work for you.
+              </p>
+            </div>
           </div>
-          <div class="mt-6 pt-4 border-t border-[#1e1e1e] font-mono text-xs text-[#666666]">
-            ❯ /handoff → app.trydecember.com
-          </div>
-        </div>
 
-        <!-- Step 3 -->
-        <div class="rounded-xl border border-[#202020] bg-[#121212] p-6 flex flex-col justify-between">
-          <div>
-            <div class="h-8 w-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center font-mono text-sm font-semibold mb-4">
-              03
+          <!-- 2. Cloud Handoff -->
+          <div class="flex items-start gap-4 sm:gap-6">
+            <div class="w-14 h-14 sm:w-16 sm:h-16 shrink-0 rounded-2xl bg-[#0462ee] flex items-center justify-center shadow-sm relative overflow-hidden">
+              <svg class="absolute inset-0 w-full h-full opacity-20" viewBox="0 0 100 100" fill="none" stroke="white" stroke-width="0.8">
+                <ellipse cx="50" cy="50" rx="42" ry="20" />
+                <ellipse cx="50" cy="50" rx="20" ry="42" />
+              </svg>
+              <svg class="w-6 h-6 sm:w-7 sm:h-7 text-white relative z-10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"></path>
+                <polyline points="13 11 16 8 19 11"></polyline>
+                <line x1="16" y1="8" x2="16" y2="15"></line>
+              </svg>
             </div>
-            <h4 class="text-base font-semibold text-white mb-2">Live Web Sandboxes</h4>
-            <p class="text-xs sm:text-sm text-[#888888] leading-relaxed">
-              Test full-stack web applications with hot-reloading dev servers (Vite, Next.js, Node). Share live preview links with teammates without setting up local tunnels or mock services.
-            </p>
+            <div class="flex-1 pt-0.5 sm:pt-1">
+              <h3 class="text-base sm:text-lg font-semibold text-[#090a0f] tracking-tight">
+                Cloud Handoff:
+              </h3>
+              <p class="mt-1 text-sm sm:text-base text-[#52525b] leading-relaxed">
+                Use <code class="font-mono text-xs bg-[#f1f5f9] text-[#090a0f] px-1.5 py-0.5 rounded border border-[#e2e8f0]">/handoff</code> to continue your session on <a href="https://trydecember.com/" target="_blank" rel="noopener noreferrer" class="text-[#0462ee] hover:underline font-medium">trydecember.com</a>
+              </p>
+            </div>
           </div>
-          <div class="mt-6 pt-4 border-t border-[#1e1e1e] font-mono text-xs text-[#666666]">
-            ✓ Hardware-isolated Linux VM
+
+          <!-- 3. Bring your own AI -->
+          <div class="flex items-start gap-4 sm:gap-6">
+            <div class="w-14 h-14 sm:w-16 sm:h-16 shrink-0 rounded-2xl bg-[#0462ee] flex items-center justify-center shadow-sm relative overflow-hidden">
+              <svg class="absolute inset-0 w-full h-full opacity-20" viewBox="0 0 100 100" fill="none" stroke="white" stroke-width="0.8">
+                <polygon points="50,10 90,90 10,90" />
+                <polygon points="50,90 90,10 10,10" />
+              </svg>
+              <svg class="w-6 h-6 sm:w-7 sm:h-7 text-white relative z-10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="3"></circle>
+                <path d="M12 3v3m0 12v3M3 12h3m12 0h3m-3.5-6.5l-2 2m-7 7l-2 2m0-11l2 2m7 7l2 2"></path>
+              </svg>
+            </div>
+            <div class="flex-1 pt-0.5 sm:pt-1">
+              <h3 class="text-base sm:text-lg font-semibold text-[#090a0f] tracking-tight">
+                Bring your own AI:
+              </h3>
+              <p class="mt-1 text-sm sm:text-base text-[#52525b] leading-relaxed">
+                Use API keys for OpenAI, Anthropic, Gemini, and 20+ others, or log in via December to use December credits.
+              </p>
+            </div>
           </div>
         </div>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <!-- Capability Highlights Grid (Hermes Style) -->
-  <section class="py-20 border-t border-[#1e1e1e]">
-    <div class="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-      <div class="text-center max-w-2xl mx-auto mb-14">
-        <h2 class="text-xs font-mono uppercase tracking-wider text-emerald-400 mb-2">Features</h2>
-        <h3 class="text-3xl sm:text-4xl font-semibold tracking-tight text-white">
-          Built for Serious Software Engineers
+    <!-- Performance & Production Benchmarks Section -->
+    <section class="mb-16 sm:mb-20">
+      <div class="max-w-2xl mb-6 sm:mb-8">
+        <h2 class="font-mono text-xs uppercase tracking-wider text-[#87b2f4] font-medium mb-1.5">
+          In Production
+        </h2>
+        <h3 class="text-xl sm:text-2xl font-medium tracking-tight text-[#090a0f] leading-snug">
+          Our <span class="font-semibold text-[#090a0f]">promise</span> is the fastest execution for agents: the kind people <span class="font-semibold text-[#090a0f]">feel</span>, not just the kind that tops a benchmark.
         </h3>
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <div class="p-6 rounded-xl border border-[#222222] bg-[#121212]">
-          <h4 class="text-base font-semibold text-white mb-2">Bring Your Own Key (BYOK)</h4>
-          <p class="text-xs sm:text-sm text-[#888888] leading-relaxed">
-            Connect keys from OpenAI, Anthropic, Google Gemini, DeepSeek, or OpenRouter with 0% token markup. Or run completely private, offline models with local Ollama.
+      <!-- Top Grid: Left Stacked Cards + Right Benchmark Card -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5 mt-6 sm:mt-8">
+        <!-- Left Column: Latency, Tokens, Organizations (5 cols) -->
+        <div class="lg:col-span-5 flex flex-col gap-4 sm:gap-5">
+          <!-- Card 1: Recall / Execution Latency -->
+          <div class="card-clean rounded-xl p-4 sm:p-5 border border-[#e2e8f0] bg-white">
+            <h4 class="text-sm font-semibold text-[#090a0f]">Recall latency</h4>
+            <p class="font-mono text-[10px] uppercase tracking-wider text-[#64748b] mt-0.5">
+              PER QUERY, ON PRODUCTION TRAFFIC
+            </p>
+
+            <div class="mt-4 space-y-3">
+              <div class="grid grid-cols-3 text-right font-mono text-[10px] text-[#64748b] uppercase tracking-wider">
+                <span></span>
+                <span>SERVER</span>
+                <span>END TO END</span>
+              </div>
+              <div class="grid grid-cols-3 items-baseline border-t border-[#f1f5f9] pt-2.5">
+                <span class="font-mono text-xs font-semibold text-[#090a0f] tracking-wide">SEARCH</span>
+                <div class="text-right">
+                  <span class="text-xl sm:text-2xl font-mono font-semibold text-[#090a0f] tracking-tight">187</span>
+                  <span class="text-[10px] font-mono text-[#64748b] ml-0.5">ms</span>
+                </div>
+                <div class="text-right">
+                  <span class="text-xl sm:text-2xl font-mono font-semibold text-[#090a0f] tracking-tight">356</span>
+                  <span class="text-[10px] font-mono text-[#64748b] ml-0.5">ms</span>
+                </div>
+              </div>
+              <div class="grid grid-cols-3 items-baseline border-t border-[#f1f5f9] pt-2.5">
+                <span class="font-mono text-xs font-semibold text-[#090a0f] tracking-wide">PROFILE</span>
+                <div class="text-right">
+                  <span class="text-xl sm:text-2xl font-mono font-semibold text-[#090a0f] tracking-tight">166</span>
+                  <span class="text-[10px] font-mono text-[#64748b] ml-0.5">ms</span>
+                </div>
+                <div class="text-right">
+                  <span class="text-xl sm:text-2xl font-mono font-semibold text-[#090a0f] tracking-tight">248</span>
+                  <span class="text-[10px] font-mono text-[#64748b] ml-0.5">ms</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 2: Tokens processed -->
+          <div class="card-clean rounded-xl p-4 sm:p-5 border border-[#e2e8f0] bg-white">
+            <h4 class="text-sm font-semibold text-[#090a0f]">Tokens processed</h4>
+            <p class="font-mono text-[10px] uppercase tracking-wider text-[#64748b] mt-0.5">
+              PER MONTH
+            </p>
+            <div class="mt-2 text-2xl sm:text-3xl font-mono font-semibold text-[#090a0f] tracking-tight">
+              1T+
+            </div>
+
+            <!-- Equalizer / Activity Matrix Heatmap -->
+            <div class="mt-3 pt-1">
+              <svg class="w-full h-8" viewBox="0 0 240 38" fill="none">
+                {(() => {
+                  const activityHeights = [1, 3, 3, 1, 4, 2, 2, 2, 1, 1, 1, 2, 2, 1, 3, 2, 2, 3, 3, 2, 2, 2, 2, 1];
+                  return activityHeights.map((h, c) => (
+                    <g transform={`translate(${c * 10}, 0)`}>
+                      {[0, 1, 2, 3, 4].map((r) => (
+                        <rect
+                          x="0"
+                          y={30 - r * 7.5}
+                          width="7"
+                          height="6"
+                          rx="1"
+                          fill={r < h ? '#0462ee' : '#f1f5f9'}
+                        />
+                      ))}
+                    </g>
+                  ));
+                })()}
+              </svg>
+            </div>
+          </div>
+
+          <!-- Card 3: Organizations -->
+          <div class="card-clean rounded-xl p-4 sm:p-5 border border-[#e2e8f0] bg-white">
+            <h4 class="text-sm font-semibold text-[#090a0f]">Organizations</h4>
+            <p class="font-mono text-[10px] uppercase tracking-wider text-[#64748b] mt-0.5">
+              TENS OF MILLIONS OF END USERS
+            </p>
+            <div class="mt-2 text-2xl sm:text-3xl font-mono font-semibold text-[#090a0f] tracking-tight">
+              100k+
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Column: Benchmarks Card (7 cols) -->
+        <div class="lg:col-span-7 card-clean rounded-xl p-4 sm:p-5 border border-[#e2e8f0] bg-white flex flex-col justify-between">
+          <div>
+            <h4 class="text-sm font-semibold text-[#090a0f]">Independent benchmarks</h4>
+            <p class="font-mono text-[10px] uppercase tracking-wider text-[#64748b] mt-0.5">
+              SWE-CONTEXTBENCH, FEBRUARY 2026
+            </p>
+            <p class="mt-3 text-xs sm:text-sm text-[#334155] leading-relaxed">
+              “December <span class="bg-[#0462ee]/10 text-[#0462ee] px-1 py-0.5 rounded font-medium">performs best overall</span>, achieving FAIL_TO_PASS test rate of <span class="font-semibold text-[#090a0f]">55.95%</span> and highest resolution rate of <span class="font-semibold text-[#090a0f]">30.30%</span>.”
+            </p>
+            <div class="mt-2.5">
+              <a
+                href="https://github.com/phasehumans/december"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="inline-flex items-center gap-1 text-xs font-mono font-medium text-[#090a0f] hover:text-[#0462ee] transition-colors"
+              >
+                Read the paper ↗
+              </a>
+            </div>
+
+            <div class="my-5 border-t border-[#e2e8f0]"></div>
+
+            <h4 class="text-sm font-semibold text-[#090a0f]">Public benchmarks</h4>
+            <p class="font-mono text-[10px] uppercase tracking-wider text-[#64748b] mt-0.5">
+              STATE OF THE ART ON SWE-BENCH, HUMAN-EVAL AND TERMINAL-BENCH
+            </p>
+            <div class="mt-2 text-3xl sm:text-4xl font-mono font-semibold text-[#090a0f] tracking-tight">
+              #1
+            </div>
+          </div>
+
+          <!-- Bar Chart with Highlighted #1 Tower -->
+          <div class="mt-4 pt-1">
+            <div class="relative w-full h-28">
+              <svg class="w-full h-full" viewBox="0 0 280 110" fill="none" preserveAspectRatio="none">
+                <!-- Gridlines -->
+                <line x1="0" y1="28" x2="280" y2="28" stroke="#f1f5f9" stroke-width="1" />
+                <line x1="0" y1="55" x2="280" y2="55" stroke="#f1f5f9" stroke-width="1" />
+                <line x1="0" y1="82" x2="280" y2="82" stroke="#f1f5f9" stroke-width="1" />
+                <line x1="0" y1="110" x2="280" y2="110" stroke="#e2e8f0" stroke-width="1" />
+
+                <!-- Comparative Bars -->
+                <rect x="12" y="88" width="24" height="22" rx="2" fill="#f1f5f9" />
+                <rect x="50" y="72" width="24" height="38" rx="2" fill="#f1f5f9" />
+                <rect x="88" y="52" width="24" height="58" rx="2" fill="#f1f5f9" />
+                <rect x="126" y="36" width="24" height="74" rx="2" fill="#f1f5f9" />
+
+                <!-- December Leading Bar with Asterisk -->
+                <rect x="164" y="4" width="24" height="106" rx="2" fill="#0462ee" />
+                <text x="176" y="24" font-family="var(--font-sans)" font-size="16" font-weight="700" fill="#ffffff" text-anchor="middle">✱</text>
+
+                <!-- Additional Bars -->
+                <rect x="202" y="52" width="24" height="58" rx="2" fill="#f1f5f9" />
+                <rect x="240" y="76" width="24" height="34" rx="2" fill="#f1f5f9" />
+              </svg>
+            </div>
+
+            <div class="mt-3">
+              <a
+                href="https://github.com/phasehumans/december"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="inline-flex items-center gap-1 text-xs font-mono font-medium text-[#090a0f] hover:text-[#0462ee] transition-colors"
+              >
+                See the research ↗
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Full-Width Card: Our benchmarks Line Graph -->
+      <div class="card-clean rounded-xl p-4 sm:p-5 border border-[#e2e8f0] bg-white mt-4 sm:mt-5">
+        <h4 class="text-sm font-semibold text-[#090a0f]">Our benchmarks</h4>
+
+        <div class="mt-4 flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-[#f1f5f9]">
+          <!-- Stats Left -->
+          <div class="flex items-stretch gap-6 sm:gap-8">
+            <div>
+              <div class="font-mono text-[10px] uppercase tracking-wider text-[#64748b]">
+                COST PER QUESTION
+              </div>
+              <div class="text-2xl sm:text-3xl font-mono font-semibold text-[#090a0f] tracking-tight mt-0.5">
+                $7.79
+              </div>
+              <div class="text-[11px] font-medium text-[#0462ee] mt-0.5">
+                64% less than $21.69
+              </div>
+            </div>
+
+            <div class="w-px bg-[#e2e8f0]"></div>
+
+            <div>
+              <div class="font-mono text-[10px] uppercase tracking-wider text-[#64748b]">
+                QUESTIONS ANSWERED
+              </div>
+              <div class="text-2xl sm:text-3xl font-mono font-semibold text-[#090a0f] tracking-tight mt-0.5">
+                81%
+              </div>
+              <div class="text-[11px] font-medium text-[#0462ee] mt-0.5">
+                up from 69%
+              </div>
+            </div>
+          </div>
+
+          <!-- Controls Right: Legend + Filter Pills -->
+          <div class="flex flex-wrap items-center gap-3 sm:gap-4">
+            <div class="flex items-center gap-3 text-xs text-[#52525b]">
+              <div class="flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-[#94a3b8]"></span>
+                <span class="text-xs">Markdown memory</span>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-xs bg-[#0462ee]"></span>
+                <span class="text-xs font-medium text-[#090a0f]">december</span>
+              </div>
+            </div>
+
+            <div class="inline-flex items-center p-0.5 rounded-lg border border-[#e2e8f0] bg-[#f8fafc] text-xs font-mono">
+              <button type="button" class="bench-filter px-2.5 py-0.5 rounded-md bg-white text-[#090a0f] font-medium shadow-xs text-xs">
+                All
+              </button>
+              <button type="button" class="bench-filter px-2.5 py-0.5 rounded-md text-[#64748b] hover:text-[#090a0f] transition-colors text-xs">
+                Claude Code
+              </button>
+              <button type="button" class="bench-filter px-2.5 py-0.5 rounded-md text-[#64748b] hover:text-[#090a0f] transition-colors text-xs">
+                Codex
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- SVG Line Graph (Compact) -->
+        <div class="mt-4 overflow-x-auto">
+          <div class="min-w-[620px]">
+            <svg class="w-full h-auto" viewBox="0 0 800 215" fill="none">
+              <!-- Y Axis Rotated Label -->
+              <text x="14" y="95" font-family="var(--font-mono)" font-size="9" fill="#64748b" transform="rotate(-90 14 95)" text-anchor="middle" letter-spacing="0.05em">
+                AVG TOKENS PER QUESTION
+              </text>
+
+              <!-- Y Axis Ticks & Grid Lines -->
+              <text x="48" y="23" font-family="var(--font-mono)" font-size="9" fill="#94a3b8" text-anchor="end">2M</text>
+              <line x1="58" y1="20" x2="780" y2="20" stroke="#f1f5f9" stroke-width="1" />
+
+              <text x="48" y="63" font-family="var(--font-mono)" font-size="9" fill="#94a3b8" text-anchor="end">1.5M</text>
+              <line x1="58" y1="60" x2="780" y2="60" stroke="#f1f5f9" stroke-width="1" />
+
+              <text x="48" y="103" font-family="var(--font-mono)" font-size="9" fill="#94a3b8" text-anchor="end">1M</text>
+              <line x1="58" y1="100" x2="780" y2="100" stroke="#f1f5f9" stroke-width="1" />
+
+              <text x="48" y="143" font-family="var(--font-mono)" font-size="9" fill="#94a3b8" text-anchor="end">0.5M</text>
+              <line x1="58" y1="140" x2="780" y2="140" stroke="#f1f5f9" stroke-width="1" />
+
+              <text x="48" y="183" font-family="var(--font-mono)" font-size="9" fill="#94a3b8" text-anchor="end">0</text>
+              <line x1="58" y1="180" x2="780" y2="180" stroke="#e2e8f0" stroke-width="1" />
+
+              <!-- X Axis Ticks & Baseline -->
+              {(() => {
+                const xLabels = ['5', '10', '20', '30', '50', '100', '200', '299', '480', '991', '1,998', '4,998', '9,988'];
+                return xLabels.map((lbl, idx) => {
+                  const x = 68 + idx * 58;
+                  return (
+                    <g>
+                      <line x1={x} y1="180" x2={x} y2="184" stroke="#94a3b8" stroke-width="1" />
+                      <text x={x} y="196" font-family="var(--font-mono)" font-size="8.5" fill="#64748b" text-anchor="middle">
+                        {lbl}
+                      </text>
+                    </g>
+                  );
+                });
+              })()}
+
+              <!-- X Axis Caption -->
+              <text x="416" y="212" font-family="var(--font-mono)" font-size="9" fill="#64748b" text-anchor="middle" letter-spacing="0.06em">
+                FILES IN MEMORY (LOG SCALE)
+              </text>
+
+              <!-- Gray Line (Markdown Memory) -->
+              <path
+                d="M 68 165 L 126 157 L 184 160 L 242 160 L 300 154 L 358 163 L 416 144 L 474 56 L 532 114 L 590 85 L 648 112 L 706 87 L 764 53"
+                fill="none"
+                stroke="#94a3b8"
+                stroke-width="1.5"
+                stroke-linejoin="round"
+              />
+              <!-- Gray Dots -->
+              {[
+                [68, 165], [126, 157], [184, 160], [242, 160],
+                [300, 154], [358, 163], [416, 144], [474, 56],
+                [532, 114], [590, 85], [648, 112], [706, 87], [764, 53]
+              ].map(([cx, cy]) => (
+                <circle cx={cx} cy={cy} r="3" fill="#64748b" stroke="#ffffff" stroke-width="1" />
+              ))}
+
+              <!-- Blue Line (December) -->
+              <path
+                d="M 68 172 L 126 172 L 184 168 L 242 168 L 300 168 L 358 169 L 416 157 L 474 156 L 532 138 L 590 128 L 648 159 L 706 144 L 764 136"
+                fill="none"
+                stroke="#0462ee"
+                stroke-width="2"
+                stroke-linejoin="round"
+              />
+              <!-- Blue Squares -->
+              {[
+                [68, 172], [126, 172], [184, 168], [242, 168],
+                [300, 168], [358, 169], [416, 157], [474, 156],
+                [532, 138], [590, 128], [648, 159], [706, 144], [764, 136]
+              ].map(([cx, cy]) => (
+                <rect x={cx - 2.5} y={cy - 2.5} width="5" height="5" fill="#0462ee" />
+              ))}
+            </svg>
+          </div>
+        </div>
+
+        <div class="mt-4">
+          <a
+            href="https://github.com/phasehumans/december"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="inline-flex items-center gap-1 text-xs font-mono font-medium text-[#090a0f] hover:text-[#0462ee] transition-colors"
+          >
+            The research runs ↗
+          </a>
+        </div>
+      </div>
+
+      <!-- Testimonial Quote Callout with Electric Blue Border (Compact) -->
+      <div class="mt-6 sm:mt-8 pl-4 border-l-2 border-[#0462ee] py-0.5">
+        <blockquote class="text-base sm:text-lg text-[#090a0f] font-normal leading-snug tracking-tight">
+          “Reduced avg response time from <span class="font-semibold text-[#090a0f]">40s &rarr; 12s</span>. Using about <span class="font-semibold text-[#090a0f]">40–50% fewer tokens</span>.”
+        </blockquote>
+        <div class="mt-1.5 text-xs text-[#64748b]">
+          Founder, Chatarmin · <a href="https://x.com" target="_blank" rel="noopener noreferrer" class="hover:text-[#090a0f] transition-colors">on X ↗</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Runs Everywhere / Deployment Section (Compact) -->
+    <section class="mb-16 sm:mb-20">
+      <div class="max-w-2xl mb-6">
+        <h2 class="font-mono text-xs uppercase tracking-wider text-[#87b2f4] font-medium mb-1.5">
+          Deployment
+        </h2>
+        <h3 class="text-xl sm:text-2xl font-medium tracking-tight text-[#090a0f] leading-snug">
+          december runs everywhere, even in air-gapped environments.
+        </h3>
+        <p class="mt-2 text-xs sm:text-sm text-[#52525b] leading-relaxed">
+          We build all the critical infrastructure ourselves. Which means we can deploy it wherever your data lives.
+        </p>
+        <div class="mt-2">
+          <a
+            href="mailto:deploy@trydecember.com"
+            class="inline-flex items-center gap-1 text-xs font-mono font-medium text-[#090a0f] hover:text-[#0462ee] transition-colors"
+          >
+            Talk to us for your deployment requirements ↗
+          </a>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-5 mt-6">
+        <!-- 001 In your data center -->
+        <div class="card-clean rounded-xl p-4 sm:p-5 flex flex-col justify-between h-[210px] sm:h-[230px] border border-[#e2e8f0] bg-white group">
+          <div class="flex items-start justify-between">
+            <h4 class="text-sm font-semibold text-[#090a0f] leading-snug">
+              In your data center
+            </h4>
+            <span class="font-mono text-xs text-[#94a3b8]">001</span>
+          </div>
+
+          <div class="relative flex-1 my-2 flex items-center justify-center min-h-[120px]">
+            <span class="absolute top-0 left-0 w-2 h-2 border-t border-l border-[#cbd5e1]"></span>
+            <span class="absolute top-0 right-0 w-2 h-2 border-t border-r border-[#cbd5e1]"></span>
+            <span class="absolute bottom-0 left-0 w-2 h-2 border-b border-l border-[#cbd5e1]"></span>
+            <span class="absolute bottom-0 right-0 w-2 h-2 border-b border-r border-[#cbd5e1]"></span>
+
+            <img
+              src="/illustrations/datacenter.png"
+              alt="In your data center"
+              class="w-20 h-20 sm:w-24 sm:h-24 object-contain group-hover:scale-105 transition-transform duration-300"
+              loading="lazy"
+            />
+          </div>
+        </div>
+
+        <!-- 002 In your VPC -->
+        <div class="card-clean rounded-xl p-4 sm:p-5 flex flex-col justify-between h-[210px] sm:h-[230px] border border-[#e2e8f0] bg-white group">
+          <div class="flex items-start justify-between">
+            <h4 class="text-sm font-semibold text-[#090a0f] leading-snug">
+              In your VPC
+            </h4>
+            <span class="font-mono text-xs text-[#94a3b8]">002</span>
+          </div>
+
+          <div class="relative flex-1 my-2 flex items-center justify-center min-h-[120px]">
+            <span class="absolute top-0 left-0 w-2 h-2 border-t border-l border-[#cbd5e1]"></span>
+            <span class="absolute top-0 right-0 w-2 h-2 border-t border-r border-[#cbd5e1]"></span>
+            <span class="absolute bottom-0 left-0 w-2 h-2 border-b border-l border-[#cbd5e1]"></span>
+            <span class="absolute bottom-0 right-0 w-2 h-2 border-b border-r border-[#cbd5e1]"></span>
+
+            <img
+              src="/illustrations/vpc.png"
+              alt="In your VPC"
+              class="w-20 h-20 sm:w-24 sm:h-24 object-contain group-hover:scale-105 transition-transform duration-300"
+              loading="lazy"
+            />
+          </div>
+        </div>
+
+        <!-- 003 On your laptop -->
+        <div class="card-clean rounded-xl p-4 sm:p-5 flex flex-col justify-between h-[210px] sm:h-[230px] border border-[#e2e8f0] bg-white group">
+          <div class="flex items-start justify-between">
+            <h4 class="text-sm font-semibold text-[#090a0f] leading-snug">
+              On your laptop
+            </h4>
+            <span class="font-mono text-xs text-[#94a3b8]">003</span>
+          </div>
+
+          <div class="relative flex-1 my-2 flex items-center justify-center min-h-[120px]">
+            <span class="absolute top-0 left-0 w-2 h-2 border-t border-l border-[#cbd5e1]"></span>
+            <span class="absolute top-0 right-0 w-2 h-2 border-t border-r border-[#cbd5e1]"></span>
+            <span class="absolute bottom-0 left-0 w-2 h-2 border-b border-l border-[#cbd5e1]"></span>
+            <span class="absolute bottom-0 right-0 w-2 h-2 border-b border-r border-[#cbd5e1]"></span>
+
+            <img
+              src="/illustrations/laptop.png"
+              alt="On your laptop"
+              class="w-20 h-20 sm:w-24 sm:h-24 object-contain group-hover:scale-105 transition-transform duration-300"
+              loading="lazy"
+            />
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Editorial Statement & Synergy Section -->
+    <section class="mb-16 sm:mb-20">
+      <div class="max-w-2xl space-y-2.5 sm:space-y-3">
+        <h2 class="font-mono text-xs uppercase tracking-wider text-[#87b2f4] font-medium">
+          The Architecture
+        </h2>
+        <h3 class="text-xl sm:text-2xl font-medium tracking-tight text-[#090a0f] leading-snug">
+          Local filesystem speed when you write code. Cloud isolation when you need preview servers.
+        </h3>
+        <p class="text-xs sm:text-sm text-[#52525b] leading-relaxed">
+          December bridges the gap between terminal-native execution and collaborative cloud infrastructure. It operates with zero latency inside your existing shell, inspecting git trees and running native test runners directly. When a task requires full-stack web previews or sharing with a team, typing <code class="font-mono text-xs bg-[#f1f5f9] text-[#090a0f] px-1.5 py-0.5 rounded border border-[#e2e8f0]">/handoff</code> seamlessly shifts execution to cloud micro-VMs.
+        </p>
+      </div>
+
+      <!-- Autonomous Loop Flow Diagram (SVG) -->
+      <div class="mt-6 p-4 sm:p-5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0]">
+        <div class="flex items-center justify-between mb-4">
+          <span class="font-mono text-xs uppercase tracking-wider text-[#64748b]">Continuous Terminal Loop</span>
+          <span class="font-mono text-xs text-[#87b2f4] flex items-center gap-1.5">
+            <span class="h-1.5 w-1.5 rounded-full bg-[#87b2f4] animate-pulse"></span>
+            autonomous verification
+          </span>
+        </div>
+
+        <svg class="w-full h-auto text-[#090a0f]" viewBox="0 0 740 100" fill="none">
+          <!-- Connectors -->
+          <line x1="120" y1="50" x2="160" y2="50" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="3 3"/>
+          <line x1="260" y1="50" x2="300" y2="50" stroke="#87b2f4" stroke-width="2"/>
+          <line x1="400" y1="50" x2="440" y2="50" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="3 3"/>
+          <line x1="540" y1="50" x2="580" y2="50" stroke="#87b2f4" stroke-width="2"/>
+
+          <!-- Stage 1 -->
+          <rect x="10" y="24" width="110" height="52" rx="6" fill="#ffffff" stroke="#e2e8f0"/>
+          <text x="65" y="46" font-family="var(--font-mono)" font-size="11" fill="#090a0f" font-weight="600" text-anchor="middle">Local Shell</text>
+          <text x="65" y="62" font-family="var(--font-mono)" font-size="9" fill="#64748b" text-anchor="middle">0ms Latency</text>
+
+          <!-- Stage 2 -->
+          <rect x="160" y="24" width="100" height="52" rx="6" fill="#ffffff" stroke="#e2e8f0"/>
+          <text x="210" y="46" font-family="var(--font-mono)" font-size="11" fill="#090a0f" font-weight="600" text-anchor="middle">Context Map</text>
+          <text x="210" y="62" font-family="var(--font-mono)" font-size="9" fill="#64748b" text-anchor="middle">AST & Git Diffs</text>
+
+          <!-- Stage 3 (Highlighted Brand Blue) -->
+          <rect x="300" y="20" width="100" height="60" rx="6" fill="#87b2f4" fill-opacity="0.18" stroke="#87b2f4" stroke-width="1.5"/>
+          <text x="350" y="46" font-family="var(--font-mono)" font-size="11" fill="#071326" font-weight="700" text-anchor="middle">Agent Loop</text>
+          <text x="350" y="62" font-family="var(--font-mono)" font-size="9" fill="#071326" text-anchor="middle">Bash & Tools</text>
+
+          <!-- Stage 4 -->
+          <rect x="440" y="24" width="100" height="52" rx="6" fill="#ffffff" stroke="#e2e8f0"/>
+          <text x="490" y="46" font-family="var(--font-mono)" font-size="11" fill="#090a0f" font-weight="600" text-anchor="middle">Test Runner</text>
+          <text x="490" y="62" font-family="var(--font-mono)" font-size="9" fill="#64748b" text-anchor="middle">Green Self-Heal</text>
+
+          <!-- Stage 5 -->
+          <rect x="580" y="24" width="130" height="52" rx="6" fill="#ffffff" stroke="#e2e8f0"/>
+          <text x="645" y="46" font-family="var(--font-mono)" font-size="11" fill="#090a0f" font-weight="600" text-anchor="middle">Cloud Handoff</text>
+          <text x="645" y="62" font-family="var(--font-mono)" font-size="9" fill="#64748b" text-anchor="middle">/handoff Web VM</text>
+        </svg>
+      </div>
+    </section>
+
+    <!-- Feature Grid Section -->
+    <section class="mb-16 sm:mb-20">
+      <div class="max-w-2xl mb-6">
+        <h2 class="font-mono text-xs uppercase tracking-wider text-[#87b2f4] font-medium mb-1.5">
+          Features
+        </h2>
+        <h3 class="text-xl sm:text-2xl font-medium tracking-tight text-[#090a0f]">
+          Engineered for Developer Velocity
+        </h3>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+        <div class="card-clean rounded-xl p-4 sm:p-5">
+          <h4 class="text-sm font-semibold text-[#090a0f] mb-1.5">Bring Your Own Key (BYOK)</h4>
+          <p class="text-xs text-[#52525b] leading-relaxed">
+            Use Claude 3.7, GPT-4o, Gemini 2.5, DeepSeek, or private offline Ollama models. Free forever with 0% token markup.
           </p>
         </div>
 
-        <div class="p-6 rounded-xl border border-[#222222] bg-[#121212]">
-          <h4 class="text-base font-semibold text-white mb-2">Git Checkpoints & Diffs</h4>
-          <p class="text-xs sm:text-sm text-[#888888] leading-relaxed">
-            Every file alteration is automatically versioned. Inspect line-by-line diffs before committing or rollback to any prior point-in-time snapshot with a single command.
+        <div class="card-clean rounded-xl p-4 sm:p-5">
+          <h4 class="text-sm font-semibold text-[#090a0f] mb-1.5">Git Checkpoints & Diffs</h4>
+          <p class="text-xs text-[#52525b] leading-relaxed">
+            Every file edit is versioned. Inspect line-by-line diffs before committing or rollback instantaneously to any prior point in time.
           </p>
         </div>
 
-        <div class="p-6 rounded-xl border border-[#222222] bg-[#121212]">
-          <h4 class="text-base font-semibold text-white mb-2">Deterministic Test Verification</h4>
-          <p class="text-xs sm:text-sm text-[#888888] leading-relaxed">
-            December doesn't guess if code works. It executes your test runner (`bun test`, `npm test`, `pytest`, `cargo test`) and iterates autonomously until all assertions pass.
+        <div class="card-clean rounded-xl p-4 sm:p-5">
+          <h4 class="text-sm font-semibold text-[#090a0f] mb-1.5">Parallel Subagents</h4>
+          <p class="text-xs text-[#52525b] leading-relaxed">
+            Dispatch autonomous background agents to survey large repos, read API documentation, and execute parallel code tasks.
           </p>
         </div>
 
-        <div class="p-6 rounded-xl border border-[#222222] bg-[#121212]">
-          <h4 class="text-base font-semibold text-white mb-2">Subagent Workflows</h4>
-          <p class="text-xs sm:text-sm text-[#888888] leading-relaxed">
-            Dispatch specialized background subagents to survey large repositories, research external API documentation, and execute parallel code modifications.
+        <div class="card-clean rounded-xl p-4 sm:p-5">
+          <h4 class="text-sm font-semibold text-[#090a0f] mb-1.5">Custom Skills & AGENTS.md</h4>
+          <p class="text-xs text-[#52525b] leading-relaxed">
+            Teach December your team's code conventions, architecture principles, and custom slash commands via repository rules.
           </p>
         </div>
 
-        <div class="p-6 rounded-xl border border-[#222222] bg-[#121212]">
-          <h4 class="text-base font-semibold text-white mb-2">Custom Skills & Slash Commands</h4>
-          <p class="text-xs sm:text-sm text-[#888888] leading-relaxed">
-            Extend December with project-level rules (`AGENTS.md`) and custom skills. Teach the agent your team's code conventions, architecture patterns, and lint requirements.
+        <div class="card-clean rounded-xl p-4 sm:p-5">
+          <h4 class="text-sm font-semibold text-[#090a0f] mb-1.5">Live Web Sandboxes</h4>
+          <p class="text-xs text-[#52525b] leading-relaxed">
+            Spin up full-stack dev servers (Next.js, Vite, Node) with public preview URLs to share with colleagues without local tunnels.
           </p>
         </div>
 
-        <div class="p-6 rounded-xl border border-[#222222] bg-[#121212]">
-          <h4 class="text-base font-semibold text-white mb-2">Zero-Config Web Workspace</h4>
-          <p class="text-xs sm:text-sm text-[#888888] leading-relaxed">
-            Prefer the browser? Launch straight into `app.trydecember.com` for complete code navigation, live previews, terminal runners, and session history management.
+        <div class="card-clean rounded-xl p-4 sm:p-5">
+          <h4 class="text-sm font-semibold text-[#090a0f] mb-1.5">Zero-Config Browser App</h4>
+          <p class="text-xs text-[#52525b] leading-relaxed">
+            Prefer the browser? Launch <code class="font-mono text-xs">app.trydecember.com</code> for a complete cloud IDE with live previews and full shell access.
           </p>
         </div>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <!-- Pricing & BYOK Section -->
-  <section id="pricing" class="border-t border-[#1e1e1e] bg-[#0c0c0c] py-20">
-    <div class="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 text-center">
-      <h2 class="text-xs font-mono uppercase tracking-wider text-purple-400 mb-2">Pricing</h2>
-      <h3 class="text-3xl sm:text-4xl font-semibold tracking-tight text-white mb-4">
-        Transparent, Developer-Friendly Pricing
-      </h3>
-      <p class="text-sm sm:text-base text-[#888888] mb-12">
-        Free forever with your own API keys, or use December Cloud credits for zero-setup execution.
-      </p>
+    <!-- Terminal Install Switcher (Hermes Agent Style) -->
+    <section id="cli" class="mb-16 sm:mb-20">
+      <div class="max-w-2xl mb-6">
+        <h2 class="font-mono text-xs uppercase tracking-wider text-[#87b2f4] font-medium mb-1.5">
+          Installation
+        </h2>
+        <h3 class="text-xl sm:text-2xl font-medium tracking-tight text-[#090a0f]">
+          Install via Terminal
+        </h3>
+      </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-8 text-left">
+      <div class="card-clean rounded-xl p-4 sm:p-5 bg-[#f8fafc] border border-[#e2e8f0]">
+        <!-- Package Manager Tab Switcher -->
+        <div class="flex items-center justify-between border-b border-[#e2e8f0] pb-2.5 text-xs font-mono text-[#64748b]">
+          <div class="flex items-center gap-3">
+            <span class="text-[#090a0f] font-semibold">package manager</span>
+            <button type="button" class="pm-tab text-[#090a0f] font-semibold cursor-pointer" data-cmd="npm install -g @trydecember/cli">npm</button>
+            <button type="button" class="pm-tab text-[#64748b] hover:text-[#090a0f] cursor-pointer" data-cmd="bun add -g @trydecember/cli">bun</button>
+            <button type="button" class="pm-tab text-[#64748b] hover:text-[#090a0f] cursor-pointer" data-cmd="pnpm add -g @trydecember/cli">pnpm</button>
+            <button type="button" class="pm-tab text-[#64748b] hover:text-[#090a0f] cursor-pointer" data-cmd="npx @trydecember/cli">npx</button>
+            <button type="button" class="pm-tab text-[#64748b] hover:text-[#090a0f] cursor-pointer" data-cmd="curl -fsSL https://trydecember.com/install.sh | bash">curl</button>
+          </div>
+          <span class="text-[11px] text-[#94a3b8]">{version}</span>
+        </div>
+
+        <!-- Command Row with Copy Button -->
+        <div class="mt-3.5 flex items-center justify-between">
+          <div class="flex items-center gap-2 overflow-x-auto font-mono text-xs sm:text-sm text-[#090a0f]">
+            <span class="text-[#94a3b8] select-none">$</span>
+            <span id="install-command">npm install -g @trydecember/cli</span>
+          </div>
+
+          <button
+            id="copy-btn"
+            type="button"
+            class="ml-3 shrink-0 inline-flex items-center gap-1.5 rounded-md border border-[#cbd5e1] bg-white px-2.5 py-1 text-xs font-mono font-medium text-[#1e293b] hover:border-[#87b2f4] hover:bg-[#f1f5f9] transition-all cursor-pointer"
+            title="Copy command to clipboard"
+          >
+            <svg id="copy-icon" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
+            <span id="copy-text">Copy</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Pricing Section: Clean Minimalist White Cards -->
+    <section id="pricing" class="mb-16 sm:mb-20">
+      <div class="max-w-2xl mb-6">
+        <h2 class="font-mono text-xs uppercase tracking-wider text-[#87b2f4] font-medium mb-1.5">
+          Pricing
+        </h2>
+        <h3 class="text-xl sm:text-2xl font-medium tracking-tight text-[#090a0f]">
+          Developer-Friendly & Transparent
+        </h3>
+        <p class="mt-1 text-xs text-[#52525b]">
+          Free forever with your own API keys. Or upgrade to December Cloud for zero-setup VMs.
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
         <!-- BYOK Plan -->
-        <div class="rounded-xl border border-[#222222] bg-[#141414] p-8 flex flex-col justify-between">
+        <div class="card-clean rounded-xl p-4 sm:p-5 flex flex-col justify-between">
           <div>
-            <span class="inline-flex px-2.5 py-0.5 rounded text-[11px] font-mono bg-[#222] text-[#bbb]">Developer / BYOK</span>
-            <div class="mt-4 flex items-baseline gap-2">
-              <span class="text-4xl font-bold text-white">$0</span>
-              <span class="text-sm text-[#777]">/ month</span>
+            <span class="inline-flex px-2 py-0.5 rounded text-[11px] font-mono bg-[#f1f5f9] text-[#475569] font-medium">
+              Developer / BYOK
+            </span>
+            <div class="mt-3 flex items-baseline gap-1.5">
+              <span class="text-2xl sm:text-3xl font-bold text-[#090a0f]">$0</span>
+              <span class="text-xs text-[#64748b]">/ forever</span>
             </div>
-            <p class="mt-3 text-xs sm:text-sm text-[#999]">Bring your own API keys. 0% markup on model tokens.</p>
+            <p class="mt-1.5 text-xs text-[#64748b]">Bring your own API keys. 0% token markup.</p>
 
-            <ul class="mt-6 space-y-3 text-xs sm:text-sm text-[#ccc]">
+            <ul class="mt-4 space-y-2 text-xs text-[#334155]">
               <li class="flex items-center gap-2">✓ Full CLI access in your local terminal</li>
               <li class="flex items-center gap-2">✓ Use Claude 3.7, GPT-4o, Gemini 2.5, DeepSeek</li>
               <li class="flex items-center gap-2">✓ Offline local Ollama models support</li>
-              <li class="flex items-center gap-2">✓ Git checkpoints & diff inspection</li>
+              <li class="flex items-center gap-2">✓ Git checkpoints & diff rollback safety</li>
               <li class="flex items-center gap-2">✓ Unlimited local code generation runs</li>
             </ul>
           </div>
 
-          <div class="mt-8 pt-6 border-t border-[#222]">
+          <div class="mt-6">
             <a
               href="#cli"
-              class="block w-full py-2.5 text-center text-xs font-semibold rounded-lg border border-[#333] bg-[#1a1a1a] text-white hover:bg-[#252525] transition-colors"
+              class="block w-full py-2 text-center text-xs font-mono uppercase tracking-wider font-semibold rounded-[4px] border border-[#cbd5e1] bg-white text-[#090a0f] hover:border-[#87b2f4] hover:bg-[#f8fafc] transition-all"
             >
               Install CLI Free
             </a>
@@ -301,20 +996,22 @@ const webUrl = import.meta.env.PUBLIC_WEB_URL || (import.meta.env.DEV ? 'http://
         </div>
 
         <!-- December Cloud Plan -->
-        <div class="rounded-xl border border-blue-500/30 bg-[#141414] p-8 flex flex-col justify-between relative shadow-xl">
-          <div class="absolute -top-3 right-6 bg-blue-500 text-black text-[11px] font-mono font-bold px-2.5 py-0.5 rounded-full">
+        <div class="card-clean rounded-xl p-4 sm:p-5 flex flex-col justify-between border-[#87b2f4] relative shadow-xs">
+          <div class="absolute -top-2.5 right-5 bg-[#87b2f4] text-[#071326] text-[10px] font-mono font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
             Recommended
           </div>
 
           <div>
-            <span class="inline-flex px-2.5 py-0.5 rounded text-[11px] font-mono bg-blue-500/10 text-blue-400 border border-blue-500/20">December Cloud</span>
-            <div class="mt-4 flex items-baseline gap-2">
-              <span class="text-4xl font-bold text-white">$20</span>
-              <span class="text-sm text-[#777]">/ month</span>
+            <span class="inline-flex px-2 py-0.5 rounded text-[11px] font-mono bg-[#87b2f4]/15 text-[#1e3a68] font-medium border border-[#87b2f4]/30">
+              December Cloud
+            </span>
+            <div class="mt-3 flex items-baseline gap-1.5">
+              <span class="text-2xl sm:text-3xl font-bold text-[#090a0f]">$20</span>
+              <span class="text-xs text-[#64748b]">/ month</span>
             </div>
-            <p class="mt-3 text-xs sm:text-sm text-[#999]">Everything in BYOK, plus managed cloud VMs and shared wallet.</p>
+            <p class="mt-1.5 text-xs text-[#64748b]">Everything in BYOK, plus managed cloud VMs and shared wallet.</p>
 
-            <ul class="mt-6 space-y-3 text-xs sm:text-sm text-[#ccc]">
+            <ul class="mt-4 space-y-2 text-xs text-[#334155]">
               <li class="flex items-center gap-2">✓ Everything in BYOK tier</li>
               <li class="flex items-center gap-2">✓ $22.00 monthly LLM wallet credits</li>
               <li class="flex items-center gap-2">✓ One-click /handoff to cloud workspace</li>
@@ -323,49 +1020,131 @@ const webUrl = import.meta.env.PUBLIC_WEB_URL || (import.meta.env.DEV ? 'http://
             </ul>
           </div>
 
-          <div class="mt-8 pt-6 border-t border-[#222]">
+          <div class="mt-6">
             <a
               href={webUrl}
-              class="block w-full py-2.5 text-center text-xs font-semibold rounded-lg bg-white text-black hover:bg-[#e8e8e8] transition-colors"
+              class="block w-full py-2 text-center text-xs font-mono uppercase tracking-wider font-semibold rounded-[4px] bg-[#87b2f4] text-[#071326] hover:bg-[#72a4ee] transition-all"
             >
-              Get Started with Cloud
+              Launch Cloud Workspace
             </a>
           </div>
         </div>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <!-- CTA Strip -->
-  <section class="py-20 border-t border-[#1e1e1e] text-center">
-    <div class="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
-      <h2 class="text-3xl sm:text-4xl font-semibold tracking-tight text-white mb-4">
-        Start coding with December in 10 seconds.
-      </h2>
-      <p class="text-sm sm:text-base text-[#888888] mb-8">
-        No credit card required. Works across macOS, Linux, and Windows.
-      </p>
-
-      <div class="flex flex-wrap items-center justify-center gap-4">
-        <a
-          href="#cli"
-          class="rounded-lg bg-white px-5 py-2.5 text-sm font-semibold text-black hover:bg-[#e8e8e8] transition-all"
-        >
-          $ npm install -g @trydecember/cli
-        </a>
-        <a
-          href={webUrl}
-          class="rounded-lg border border-[#2b2b2b] bg-[#141414] px-5 py-2.5 text-sm font-medium text-white hover:border-[#3b3b3b] transition-colors"
-        >
-          Open Web App →
-        </a>
+    <!-- FAQ Section (OpenCode Minimalist Monospace Style - No Background) -->
+    <section id="faq" class="mb-16 sm:mb-20">
+      <div class="max-w-2xl mb-6">
+        <h2 class="font-mono text-xs uppercase tracking-wider text-[#87b2f4] font-medium mb-1.5">
+          FAQ
+        </h2>
+        <h3 class="text-xl sm:text-2xl font-medium tracking-tight text-[#090a0f]">
+          Frequently Asked Questions
+        </h3>
       </div>
-    </div>
-  </section>
+
+      <div id="faq-list" class="space-y-3 sm:space-y-3.5 font-mono">
+        <!-- Question 1 -->
+        <div class="faq-item">
+          <button
+            type="button"
+            class="faq-toggle flex items-start gap-2.5 w-full text-left group cursor-pointer py-1"
+            aria-expanded="false"
+          >
+            <span class="faq-icon text-[#64748b] group-hover:text-[#0462ee] text-sm select-none w-3 shrink-0 transition-colors font-bold">
+              +
+            </span>
+            <span class="text-xs sm:text-sm font-semibold text-[#090a0f] group-hover:text-[#0462ee] transition-colors">
+              What is December?
+            </span>
+          </button>
+          <div class="faq-content hidden mt-1.5 pl-5.5 text-xs text-[#52525b] leading-relaxed font-mono">
+            December is an autonomous coding agent that lives directly in your terminal. It understands your codebase, plans multi-file edits, runs native commands and tests, and fixes bugs with zero latency.
+          </div>
+        </div>
+
+        <!-- Question 2 -->
+        <div class="faq-item">
+          <button
+            type="button"
+            class="faq-toggle flex items-start gap-2.5 w-full text-left group cursor-pointer py-1"
+            aria-expanded="false"
+          >
+            <span class="faq-icon text-[#64748b] group-hover:text-[#0462ee] text-sm select-none w-3 shrink-0 transition-colors font-bold">
+              +
+            </span>
+            <span class="text-xs sm:text-sm font-semibold text-[#090a0f] group-hover:text-[#0462ee] transition-colors">
+              How do I get started with December?
+            </span>
+          </button>
+          <div class="faq-content hidden mt-1.5 pl-5.5 text-xs text-[#52525b] leading-relaxed font-mono">
+            Install December globally using <code class="bg-[#f1f5f9] text-[#090a0f] px-1 py-0.5 rounded border border-[#e2e8f0]">npm install -g @trydecember/cli</code>, navigate to any git repository in your shell, and run <code class="bg-[#f1f5f9] text-[#090a0f] px-1 py-0.5 rounded border border-[#e2e8f0]">december</code>. You can prompt in plain English or use slash commands like <code class="bg-[#f1f5f9] text-[#090a0f] px-1 py-0.5 rounded border border-[#e2e8f0]">/handoff</code>.
+          </div>
+        </div>
+
+        <!-- Question 3 -->
+        <div class="faq-item">
+          <button
+            type="button"
+            class="faq-toggle flex items-start gap-2.5 w-full text-left group cursor-pointer py-1"
+            aria-expanded="false"
+          >
+            <span class="faq-icon text-[#64748b] group-hover:text-[#0462ee] text-sm select-none w-3 shrink-0 transition-colors font-bold">
+              +
+            </span>
+            <span class="text-xs sm:text-sm font-semibold text-[#090a0f] group-hover:text-[#0462ee] transition-colors">
+              Do I need extra AI subscriptions to use December?
+            </span>
+          </button>
+          <div class="faq-content hidden mt-1.5 pl-5.5 text-xs text-[#52525b] leading-relaxed font-mono">
+            No! You can bring your own API keys for Claude 3.7, OpenAI, Gemini 2.5, DeepSeek, or run local offline models with Ollama with 0% token markup. If you prefer zero configuration, you can also sign in to December Cloud to use bundled monthly credits.
+          </div>
+        </div>
+
+        <!-- Question 4 -->
+        <div class="faq-item">
+          <button
+            type="button"
+            class="faq-toggle flex items-start gap-2.5 w-full text-left group cursor-pointer py-1"
+            aria-expanded="false"
+          >
+            <span class="faq-icon text-[#64748b] group-hover:text-[#0462ee] text-sm select-none w-3 shrink-0 transition-colors font-bold">
+              +
+            </span>
+            <span class="text-xs sm:text-sm font-semibold text-[#090a0f] group-hover:text-[#0462ee] transition-colors">
+              Can I only use December in the terminal?
+            </span>
+          </button>
+          <div class="faq-content hidden mt-1.5 pl-5.5 text-xs text-[#52525b] leading-relaxed font-mono">
+            Not anymore! December is available in your terminal, as a companion in your IDE, and on the <a href="https://trydecember.com" target="_blank" rel="noopener noreferrer" class="underline text-[#090a0f] hover:text-[#0462ee] transition-colors">web</a> with live cloud preview environments!
+          </div>
+        </div>
+
+        <!-- Question 5 -->
+        <div class="faq-item">
+          <button
+            type="button"
+            class="faq-toggle flex items-start gap-2.5 w-full text-left group cursor-pointer py-1"
+            aria-expanded="false"
+          >
+            <span class="faq-icon text-[#64748b] group-hover:text-[#0462ee] text-sm select-none w-3 shrink-0 transition-colors font-bold">
+              +
+            </span>
+            <span class="text-xs sm:text-sm font-semibold text-[#090a0f] group-hover:text-[#0462ee] transition-colors">
+              What about data and privacy?
+            </span>
+          </button>
+          <div class="faq-content hidden mt-1.5 pl-5.5 text-xs text-[#52525b] leading-relaxed font-mono">
+            December operates locally on your machine. Your codebase and files never leave your system, and requests travel directly to your configured LLM endpoint (or stay completely offline when using Ollama). Only when you explicitly run <code class="bg-[#f1f5f9] text-[#090a0f] px-1 py-0.5 rounded border border-[#e2e8f0]">/handoff</code> is code synced to secure cloud micro-VMs.
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
 </BaseLayout>
 
 <script>
-  // Package manager switcher & copy button script
+  // Package Manager Switcher & Copy Script
   const installCommand = document.getElementById('install-command');
   const copyBtn = document.getElementById('copy-btn');
   const copyText = document.getElementById('copy-text');
@@ -376,8 +1155,12 @@ const webUrl = import.meta.env.PUBLIC_WEB_URL || (import.meta.env.DEV ? 'http://
       const cmd = tab.getAttribute('data-cmd');
       if (cmd && installCommand) {
         installCommand.textContent = cmd;
-        tabs.forEach((t) => t.classList.remove('text-white', 'font-medium'));
-        tab.classList.add('text-white', 'font-medium');
+        tabs.forEach((t) => {
+          t.classList.remove('text-[#090a0f]', 'font-semibold');
+          t.classList.add('text-[#64748b]');
+        });
+        tab.classList.remove('text-[#64748b]');
+        tab.classList.add('text-[#090a0f]', 'font-semibold');
       }
     });
   });
@@ -391,8 +1174,135 @@ const webUrl = import.meta.env.PUBLIC_WEB_URL || (import.meta.env.DEV ? 'http://
           if (copyText) copyText.textContent = 'Copy';
         }, 2000);
       } catch {
-        // Intentionally swallowed: clipboard fallback
+        // Fallback for non-secure contexts
       }
     });
   }
+
+  // Hero Command Bar & Package Manager Dropdown Script
+  const heroDisplayCmd = document.getElementById('hero-display-cmd');
+  const heroCopyCmdBtn = document.getElementById('hero-copy-cmd-btn');
+  const heroCopyIconBtn = document.getElementById('hero-copy-icon-btn');
+  const heroCopyFeedback = document.getElementById('hero-copy-feedback');
+  const pmDropdownToggle = document.getElementById('pm-dropdown-toggle');
+  const pmDropdownChevron = document.getElementById('pm-dropdown-chevron');
+  const pmDropdownMenu = document.getElementById('pm-dropdown-menu');
+  const pmOptions = document.querySelectorAll('.pm-option');
+
+  let currentHeroCmd = "npm install -g @trydecember/cli";
+
+  const triggerHeroCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(currentHeroCmd);
+      if (heroCopyFeedback) {
+        heroCopyFeedback.classList.remove('hidden');
+        setTimeout(() => {
+          heroCopyFeedback.classList.add('hidden');
+        }, 1800);
+      }
+    } catch {
+      // Fallback
+    }
+  };
+
+  if (heroCopyCmdBtn) heroCopyCmdBtn.addEventListener('click', triggerHeroCopy);
+  if (heroCopyIconBtn) heroCopyIconBtn.addEventListener('click', triggerHeroCopy);
+
+  if (pmDropdownToggle && pmDropdownMenu) {
+    pmDropdownToggle.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isHidden = pmDropdownMenu.classList.contains('hidden');
+      pmDropdownMenu.classList.toggle('hidden');
+      pmDropdownToggle.setAttribute('aria-expanded', String(isHidden));
+      if (pmDropdownChevron) {
+        pmDropdownChevron.classList.toggle('rotate-180', isHidden);
+      }
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!pmDropdownMenu.contains(e.target as Node) && !pmDropdownToggle.contains(e.target as Node)) {
+        pmDropdownMenu.classList.add('hidden');
+        pmDropdownToggle.setAttribute('aria-expanded', 'false');
+        if (pmDropdownChevron) {
+          pmDropdownChevron.classList.remove('rotate-180');
+        }
+      }
+    });
+
+    pmOptions.forEach((option) => {
+      option.addEventListener('click', () => {
+        const cmd = option.getAttribute('data-cmd');
+        if (cmd && heroDisplayCmd) {
+          currentHeroCmd = cmd;
+          heroDisplayCmd.textContent = cmd;
+
+          // Update checkmarks
+          pmOptions.forEach((opt) => {
+            const check = opt.querySelector('.pm-check');
+            if (check) check.classList.add('hidden');
+          });
+          const activeCheck = option.querySelector('.pm-check');
+          if (activeCheck) activeCheck.classList.remove('hidden');
+
+          // Close dropdown & copy selected command
+          pmDropdownMenu.classList.add('hidden');
+          pmDropdownToggle.setAttribute('aria-expanded', 'false');
+          if (pmDropdownChevron) {
+            pmDropdownChevron.classList.remove('rotate-180');
+          }
+          triggerHeroCopy();
+        }
+      });
+    });
+  }
+
+  // Benchmark Filter Tabs
+  const benchFilters = document.querySelectorAll('.bench-filter');
+  benchFilters.forEach((filter) => {
+    filter.addEventListener('click', () => {
+      benchFilters.forEach((f) => {
+        f.classList.remove('bg-white', 'text-[#090a0f]', 'font-medium', 'shadow-xs');
+        f.classList.add('text-[#64748b]');
+      });
+      filter.classList.remove('text-[#64748b]');
+      filter.classList.add('bg-white', 'text-[#090a0f]', 'font-medium', 'shadow-xs');
+    });
+  });
+
+  // FAQ Accordion Toggle Script
+  function initFaq() {
+    const faqList = document.getElementById('faq-list');
+    if (!faqList || faqList.dataset.faqInitialized === 'true') return;
+    faqList.dataset.faqInitialized = 'true';
+
+    faqList.addEventListener('click', (e) => {
+      const target = e.target;
+      if (!(target instanceof HTMLElement)) return;
+
+      const toggleBtn = target.closest('.faq-toggle');
+      if (!toggleBtn || !faqList.contains(toggleBtn)) return;
+
+      const item = toggleBtn.closest('.faq-item');
+      if (!item) return;
+
+      const content = item.querySelector('.faq-content');
+      const icon = item.querySelector('.faq-icon');
+      if (!content || !icon) return;
+
+      const isHidden = content.classList.contains('hidden');
+      if (isHidden) {
+        content.classList.remove('hidden');
+        icon.textContent = '—';
+        toggleBtn.setAttribute('aria-expanded', 'true');
+      } else {
+        content.classList.add('hidden');
+        icon.textContent = '+';
+        toggleBtn.setAttribute('aria-expanded', 'false');
+      }
+    });
+  }
+
+  initFaq();
+  document.addEventListener('astro:page-load', initFaq);
 </script>
+

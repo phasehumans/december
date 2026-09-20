@@ -1,0 +1,210 @@
+---
+// Custom Minimalist Notched Ruler Scrollbar
+// Reference: media_1789917072425.png
+---
+
+<div
+  id="custom-scrollbar-root"
+  class="fixed right-1.5 top-0 bottom-0 z-50 hidden md:flex items-center justify-center pointer-events-none select-none"
+  aria-hidden="true"
+>
+  <!-- Scrollbar Track & Ruler Notches (Stepped / Discrete Significant States Only) -->
+  <div
+    id="custom-scrollbar-track"
+    class="pointer-events-auto cursor-pointer relative py-3 px-1 flex flex-col items-end justify-between h-[155px] sm:h-[175px] w-5 group opacity-60 hover:opacity-100 transition-opacity duration-200"
+    title="Ruler navigation"
+  >
+    <!-- Ruler Notches (No floating needle: the active notch itself is the clean indicator) -->
+    {(() => {
+      // 17 ruler notches following minimalist cadence
+      const ticks = [
+        { w: 10, major: true },
+        { w: 6, major: false },
+        { w: 4, major: false },
+        { w: 8, major: true },
+        { w: 4, major: false },
+        { w: 4, major: false },
+        { w: 8, major: true },
+        { w: 4, major: false },
+        { w: 4, major: false },
+        { w: 11, major: true },
+        { w: 4, major: false },
+        { w: 4, major: false },
+        { w: 8, major: true },
+        { w: 4, major: false },
+        { w: 4, major: false },
+        { w: 6, major: false },
+        { w: 10, major: true },
+      ];
+      return ticks.map((t, i) => (
+        <div
+          class="custom-scroll-tick h-[1px] rounded-xs transition-[width,background-color,height] duration-200 ease-out origin-right cursor-pointer"
+          data-index={i}
+          data-major={t.major ? 'true' : 'false'}
+          data-base-width={t.w}
+          style={{
+            width: `${t.w}px`,
+            backgroundColor: t.major ? '#64748b' : '#94a3b8',
+          }}
+        />
+      ));
+    })()}
+  </div>
+</div>
+
+<script>
+  function setupCustomScrollbar() {
+    const track = document.getElementById('custom-scrollbar-track');
+    const ticks = document.querySelectorAll<HTMLElement>('.custom-scroll-tick');
+
+    if (!track || ticks.length === 0) return;
+
+    if (track.dataset.bound === 'true') return;
+    track.dataset.bound = 'true';
+
+    let currentActiveIndex = -1;
+    let isDragging = false;
+    let rafId: number | null = null;
+
+    /**
+     * Stepped index calculation with hysteresis (deadband buffer).
+     * Prevents micro-oscillations and boundary flickering when scrolling slowly
+     * or stopping near notch thresholds. Only changes state when movement is significant.
+     */
+    function calculateSteppedIndex(progress: number, prevIndex: number, total: number): number {
+      if (progress <= 0.015) return 0;
+      if (progress >= 0.985) return total - 1;
+
+      const maxIdx = total - 1;
+      const rawIdx = progress * maxIdx;
+
+      if (prevIndex === -1) {
+        return Math.min(Math.max(Math.round(rawIdx), 0), maxIdx);
+      }
+
+      // Deadband margin (0.25 of a step) to eliminate boundary jitter
+      const deadband = 0.25;
+
+      // Only advance to next notch if user crosses past threshold + deadband
+      if (rawIdx > prevIndex + 0.5 + deadband) {
+        const next = Math.floor(rawIdx - deadband + 0.5);
+        return Math.min(Math.max(next, 0), maxIdx);
+      }
+      // Only retreat to previous notch if user crosses below threshold - deadband
+      if (rawIdx < prevIndex - 0.5 - deadband) {
+        const prev = Math.ceil(rawIdx + deadband - 0.5);
+        return Math.min(Math.max(prev, 0), maxIdx);
+      }
+
+      // State remains constant within the deadband
+      return prevIndex;
+    }
+
+    /**
+     * Apply active state ONLY when the discrete step actually changes.
+     * Zero DOM writes / repaints when scrolling within the same content stage.
+     */
+    function setActiveTick(newIndex: number) {
+      if (newIndex === currentActiveIndex) return; // Significant change check: ignore minute changes
+
+      // Reset previous active tick to its resting dimensions & color
+      if (currentActiveIndex >= 0 && currentActiveIndex < ticks.length) {
+        const prevEl = ticks[currentActiveIndex];
+        const isMajor = prevEl.getAttribute('data-major') === 'true';
+        const baseWidth = prevEl.getAttribute('data-base-width') || (isMajor ? '8' : '4');
+        prevEl.style.width = `${baseWidth}px`;
+        prevEl.style.height = '1px';
+        prevEl.style.backgroundColor = isMajor ? '#64748b' : '#94a3b8';
+      }
+
+      // Activate new tick: widen to prominent bar with clean accent color
+      if (newIndex >= 0 && newIndex < ticks.length) {
+        const nextEl = ticks[newIndex];
+        nextEl.style.width = '15px';
+        nextEl.style.height = '2px';
+        nextEl.style.backgroundColor = '#0462ee';
+      }
+
+      currentActiveIndex = newIndex;
+    }
+
+    function updateState() {
+      const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+      if (docHeight <= 0) {
+        setActiveTick(0);
+        return;
+      }
+
+      const progress = Math.min(Math.max(window.scrollY / docHeight, 0), 1);
+      const nextIndex = calculateSteppedIndex(progress, currentActiveIndex, ticks.length);
+      setActiveTick(nextIndex);
+    }
+
+    function scrollToTick(tickIndex: number, smooth = true) {
+      const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+      if (docHeight <= 0) return;
+      const progress = tickIndex / (ticks.length - 1);
+      window.scrollTo({
+        top: progress * docHeight,
+        behavior: smooth ? 'smooth' : 'auto',
+      });
+    }
+
+    function scrollByPointer(clientY: number) {
+      const trackRect = track!.getBoundingClientRect();
+      const usableHeight = trackRect.height - 16;
+      const relativeY = clientY - trackRect.top - 8;
+      const progress = Math.min(Math.max(relativeY / usableHeight, 0), 1);
+      const targetIndex = Math.min(Math.max(Math.round(progress * (ticks.length - 1)), 0), ticks.length - 1);
+      scrollToTick(targetIndex, !isDragging);
+    }
+
+    // Direct click on individual ticks
+    ticks.forEach((tick, i) => {
+      tick.addEventListener('click', (e) => {
+        e.stopPropagation();
+        scrollToTick(i, true);
+      });
+    });
+
+    track.addEventListener('pointerdown', (e) => {
+      isDragging = true;
+      track.setPointerCapture(e.pointerId);
+      scrollByPointer(e.clientY);
+    });
+
+    track.addEventListener('pointermove', (e) => {
+      if (isDragging) {
+        scrollByPointer(e.clientY);
+      }
+    });
+
+    const stopDragging = (e: PointerEvent) => {
+      if (isDragging) {
+        isDragging = false;
+        try {
+          track.releasePointerCapture(e.pointerId);
+        } catch {}
+      }
+    };
+
+    track.addEventListener('pointerup', stopDragging);
+    track.addEventListener('pointercancel', stopDragging);
+
+    const onScroll = () => {
+      if (rafId !== null) return;
+      rafId = requestAnimationFrame(() => {
+        updateState();
+        rafId = null;
+      });
+    };
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll, { passive: true });
+
+    updateState();
+  }
+
+  setupCustomScrollbar();
+  document.addEventListener('astro:page-load', setupCustomScrollbar);
+</script>
