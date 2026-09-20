@@ -5,6 +5,12 @@ import tailwindcss from '@tailwindcss/vite'
 export default defineConfig({
     site: 'https://trydecember.com',
     output: 'static',
+    server: {
+        port: 2000,
+    },
+    preview: {
+        port: 2000,
+    },
     integrations: [mdx()],
     vite: {
         plugins: [tailwindcss()],

@@ -1,5 +1,7 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+
+const webUrl = import.meta.env.PUBLIC_WEB_URL || (import.meta.env.DEV ? 'http://localhost:3000' : 'https://app.trydecember.com');
 ---
 
 <BaseLayout
@@ -69,7 +71,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
         <!-- Action Buttons -->
         <div class="mt-6 flex flex-wrap items-center justify-center gap-4">
           <a
-            href="https://app.trydecember.com"
+            href={webUrl}
             class="inline-flex items-center justify-center gap-2 rounded-lg bg-white px-5 py-2.5 text-sm font-semibold text-black transition-all hover:bg-[#e8e8e8] active:scale-95 shadow-lg"
           >
             <span>Launch Web Workspace</span>
@@ -323,7 +325,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 
           <div class="mt-8 pt-6 border-t border-[#222]">
             <a
-              href="https://app.trydecember.com"
+              href={webUrl}
               class="block w-full py-2.5 text-center text-xs font-semibold rounded-lg bg-white text-black hover:bg-[#e8e8e8] transition-colors"
             >
               Get Started with Cloud
@@ -352,7 +354,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
           $ npm install -g @trydecember/cli
         </a>
         <a
-          href="https://app.trydecember.com"
+          href={webUrl}
           class="rounded-lg border border-[#2b2b2b] bg-[#141414] px-5 py-2.5 text-sm font-medium text-white hover:border-[#3b3b3b] transition-colors"
         >
           Open Web App →

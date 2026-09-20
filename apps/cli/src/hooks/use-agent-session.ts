@@ -1414,7 +1414,8 @@ ${decStatus}
                 const sectionPath = resolveDocsSectionPath(section)
                 const baseUrl = (
                     process.env.DECEMBER_DOCS_URL ||
-                    process.env.WEB_URL ||
+                    process.env.DOCS_URL ||
+                    process.env.LANDING_URL ||
                     'https://trydecember.com'
                 ).replace(/\/$/, '')
                 const targetUrl = `${baseUrl}/docs${sectionPath}`

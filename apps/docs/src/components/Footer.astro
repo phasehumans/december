@@ -1,4 +1,5 @@
 ---
+const webUrl = import.meta.env.PUBLIC_WEB_URL || (import.meta.env.DEV ? 'http://localhost:3000' : 'https://app.trydecember.com');
 ---
 
 <footer class="border-t border-[#202020] bg-[#0a0a0a] text-[#888888]">
@@ -8,7 +9,7 @@
         <h3 class="text-[12px] font-mono uppercase tracking-wider text-[#dddddd]">Product</h3>
         <ul class="mt-4 space-y-2 text-[13px]">
           <li><a href="/#cli" class="hover:text-white transition-colors">Terminal CLI</a></li>
-          <li><a href="https://app.trydecember.com" class="hover:text-white transition-colors">Cloud Workspace</a></li>
+          <li><a href={webUrl} class="hover:text-white transition-colors">Cloud Workspace</a></li>
           <li><a href="/#architecture" class="hover:text-white transition-colors">Cloud Handoff</a></li>
           <li><a href="/#pricing" class="hover:text-white transition-colors">Pricing & BYOK</a></li>
         </ul>

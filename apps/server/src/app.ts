@@ -40,11 +40,19 @@ app.use(cookieParser())
 app.use(express.urlencoded({ extended: true, limit: '25mb' }))
 const allowedOrigins = [
     env.WEB_URL?.replace(/\/+$/, ''),
+    env.DOCS_URL?.replace(/\/+$/, ''),
+    env.LANDING_URL?.replace(/\/+$/, ''),
     'https://app.trydecember.com',
     'https://trydecember.com',
     'https://www.trydecember.com',
     ...(env.NODE_ENV !== 'production'
-        ? ['http://localhost:3000', 'http://localhost:5173', 'http://127.0.0.1:3000']
+        ? [
+              'http://localhost:3000',
+              'http://localhost:2000',
+              'http://localhost:5173',
+              'http://127.0.0.1:3000',
+              'http://127.0.0.1:2000',
+          ]
         : []),
 ].filter(Boolean) as string[]
 

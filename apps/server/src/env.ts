@@ -22,6 +22,8 @@ const envSchema = z
         PORT: z.coerce.number().default(4000),
         NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
         WEB_URL: z.string().url(),
+        DOCS_URL: emptyAsUndefined,
+        LANDING_URL: emptyAsUndefined,
         SERVER_URL: z.string().url(),
         RESEND_API_KEY: emptyAsUndefined,
         SENDER_EMAIL: z.preprocess(

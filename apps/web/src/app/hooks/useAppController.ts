@@ -112,8 +112,11 @@ export const useAppController = () => {
             hostname === 'app.trydecember.com' ||
             (hostname === 'trydecember.com' && process.env.NODE_ENV === 'production')
 
+        const landingUrl =
+            process.env.DOCS_URL || process.env.LANDING_URL || 'https://trydecember.com'
+
         if (location.pathname === '/' && isAppProduction) {
-            window.location.replace('https://trydecember.com')
+            window.location.replace(landingUrl)
             return
         }
 

@@ -11,7 +11,7 @@ import type { EmailJobData, ProcessEmailJobResult } from './email.types'
 export const processEmailJob = async (job: Job<EmailJobData>): Promise<ProcessEmailJobResult> => {
     const data = job.data
     const fromEmail = env.SENDER_EMAIL || 'onboarding@resend.dev'
-    const webUrl = env.WEB_URL || 'https://trydecember.com'
+    const webUrl = env.WEB_URL || 'https://app.trydecember.com'
 
     if (data.type === 'otp') {
         const { to, otp, otpType = 'verification' } = data
