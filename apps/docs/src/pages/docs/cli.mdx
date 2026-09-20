@@ -1,0 +1,55 @@
+---
+layout: ../../layouts/DocsLayout.astro
+title: CLI Reference & Commands
+description: Complete reference for the December command-line interface, keyboard shortcuts, and flags.
+currentSlug: 'cli'
+---
+
+## Overview
+
+The December CLI (`@trydecember/cli`) runs directly inside your local environment, inspecting local git repositories, running tests, executing compilers, and editing files with atomic precision.
+
+```bash
+# Start December in the current working directory
+december
+
+# Start with a specific instruction prompt
+december "Fix failing unit tests in packages/server"
+
+# Start with a specific model
+december --model claude-3-7-sonnet
+```
+
+---
+
+## Global CLI Commands
+
+| Command                   | Description                                            |
+| :------------------------ | :----------------------------------------------------- |
+| `december`                | Start the interactive conversational session           |
+| `december login`          | Authenticate with December Cloud or configure API keys |
+| `december docs [section]` | Open technical documentation in your default browser   |
+| `december update`         | Check for and install the latest CLI release           |
+| `december version`        | Print current CLI version information                  |
+
+---
+
+## In-Session Keyboard Shortcuts
+
+- `Ctrl + C`: Interrupt current agent generation or abort running process
+- `Ctrl + L`: Clear terminal buffer while preserving session history
+- `Up / Down`: Navigate prompt input history
+- `Esc`: Cancel active modal or menu selection
+
+---
+
+## In-Session Slash Commands
+
+While in an active December session, use slash commands to steer execution:
+
+- `/handoff`: Synchronize local workspace state to `app.trydecember.com`
+- `/login`: Manage provider API keys or switch active authentication mode
+- `/clear`: Clear active chat transcript and reset agent memory
+- `/model`: Switch between supported LLMs (Claude, GPT-4o, Gemini, DeepSeek)
+- `/docs`: Open documentation directly in your browser
+- `/exit` or `/quit`: Terminate the terminal session

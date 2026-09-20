@@ -139,7 +139,7 @@ const result = await Bun.build({
     sourcemap: 'linked',
     define: {
         'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'production'),
-        'process.env.WEB_URL': JSON.stringify(process.env.WEB_URL || 'https://trydecember.com'),
+        'process.env.WEB_URL': JSON.stringify(process.env.WEB_URL || 'https://app.trydecember.com'),
         'process.env.SERVER_URL': JSON.stringify(
             process.env.SERVER_URL || process.env.BASE_URL || 'https://api.trydecember.com'
         ),

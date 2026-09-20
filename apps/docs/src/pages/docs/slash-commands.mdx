@@ -1,0 +1,39 @@
+---
+layout: ../../layouts/DocsLayout.astro
+title: Slash Commands Reference
+description: Guide to available in-session slash commands across the terminal CLI and web workspace.
+currentSlug: 'slash-commands'
+---
+
+## Available Slash Commands
+
+December provides quick-action slash commands directly inside the prompt bar:
+
+### `/handoff`
+
+Synchronizes the active local session, workspace diffs, and conversation history directly to December Cloud (`app.trydecember.com`). A live cloud sandbox URL will be generated and opened in your browser.
+
+### `/login`
+
+Opens the interactive authentication manager. Allows switching between:
+
+- **December Cloud Account**: Unified billing and shared credits.
+- **BYOK (Bring Your Own Key)**: Configure keys for OpenAI, Anthropic, Gemini, OpenRouter, DeepSeek, and local Ollama.
+
+### `/model [model-name]`
+
+Inspects or switches the active intelligence engine:
+
+- `claude-3-7-sonnet`
+- `gpt-4o`
+- `gemini-2.5-pro`
+- `gemini-2.5-flash`
+- `deepseek-r1`
+
+### `/clear`
+
+Resets the conversation context while preserving file modifications. Use this when transitioning to an unrelated task to keep token context concise.
+
+### `/docs [section]`
+
+Opens the official documentation on `trydecember.com/docs` matching the requested section (e.g. `/docs cli`).

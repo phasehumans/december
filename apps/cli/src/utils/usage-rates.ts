@@ -527,7 +527,7 @@ export const OFFICIAL_MODEL_RATES: Record<string, ModelRate> = {
 }
 
 export const PROVIDER_BILLING_LINKS: Record<string, string> = {
-    december: 'https://trydecember.com/settings/usage',
+    december: 'https://app.trydecember.com/settings/usage',
     google: 'https://aistudio.google.com/app/usage',
     gemini: 'https://aistudio.google.com/app/usage',
     anthropic: 'https://console.anthropic.com/settings/billing',

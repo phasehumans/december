@@ -116,6 +116,9 @@ export const getViewForPath = (pathname: string): ViewState => {
 export const isPublicPath = (pathname: string): boolean => {
     return (
         pathname === '/' ||
+        pathname === '/login' ||
+        pathname === '/signup' ||
+        pathname === '/activate' ||
         pathname === '/search' ||
         pathname === '/terms' ||
         pathname === '/privacy' ||
@@ -126,6 +129,7 @@ export const isPublicPath = (pathname: string): boolean => {
         pathname.startsWith('/docs/') ||
         pathname.startsWith('/github/callback') ||
         pathname.startsWith('/cli-login') ||
-        pathname.startsWith('/device/activate')
+        pathname.startsWith('/device/activate') ||
+        pathname.startsWith('/s/')
     )
 }

@@ -1,0 +1,27 @@
+---
+layout: ../../layouts/DocsLayout.astro
+title: Security & Isolation
+description: Overview of December's security architecture, hardware sandboxing, and token protection mechanisms.
+currentSlug: 'security'
+---
+
+## Security Model
+
+Security and data isolation are core engineering priorities across December:
+
+### 1. Local Terminal Sandboxing
+
+- Operates strictly within the current working directory.
+- Never reads files outside project bounds unless explicitly permitted.
+- Prompts for confirmation before executing destructive commands (`rm -rf`, force git pushes).
+
+### 2. Cloud Micro-VM Isolation
+
+- Every remote cloud session runs in a dedicated micro-VM container.
+- Ephemeral instances are destroyed automatically after inactivity.
+- No cross-tenant file sharing or shared kernels.
+
+### 3. API Key & Data Encryption
+
+- User secrets and provider tokens are encrypted at rest using AES-256-GCM.
+- In BYOK mode, requests are sent directly to the model provider with no intermediate storage of proprietary codebase code.

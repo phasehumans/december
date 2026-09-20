@@ -1,0 +1,42 @@
+---
+layout: ../../layouts/DocsLayout.astro
+title: Agent Reasoning Loop
+description: How December plans, verifies, and self-corrects during complex code refactoring and feature implementation.
+currentSlug: 'agent-loop'
+---
+
+## The Four-Phase Execution Loop
+
+Rather than generating speculative code strings in a single pass, December enforces a deterministic four-phase loop:
+
+### 1. Context Gathering & Inspection
+
+Before touching source code, the agent inspects project structure:
+
+- Reads `package.json`, `tsconfig.json`, or relevant build manifests
+- Searches symbols and dependencies using regex and AST indexing
+- Reads git status and existing test suites
+
+### 2. Implementation Planning
+
+For multi-step edits, the agent breaks the problem down into verifiable atomic steps:
+
+- Outlines exact modules that will be modified
+- Identifies potential breaking changes and edge cases
+- Formulates verification tests
+
+### 3. Tool Execution & Mutation
+
+The agent applies code changes using atomic file operations and runs shell commands:
+
+- Edit files with precise line-range diff replacements
+- Install missing dependencies
+- Format code using configured linters (`prettier`, `eslint`)
+
+### 4. Diagnostic Feedback & Self-Correction
+
+If a test or build fails, the error output is piped directly into the agent context:
+
+- Compiler error diagnostics are analyzed
+- Stack traces pinpoint exact failure sites
+- The agent iterates and corrects itself until the test suite passes

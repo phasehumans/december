@@ -1,0 +1,40 @@
+---
+layout: ../../layouts/DocsLayout.astro
+title: System Architecture
+description: Learn how December coordinates between local filesystem operations, cloud execution sandboxes, and distributed language models.
+currentSlug: 'architecture'
+---
+
+## System Overview
+
+December is engineered as a hybrid terminal and cloud software development platform. It consists of four distinct architectural layers:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                       December CLI                          │
+│         Local Filesystem · Native Bash · Git Trees          │
+└──────────────────────────────┬──────────────────────────────┘
+                               │
+                        [/handoff sync]
+                               ▼
+┌─────────────────────────────────────────────────────────────┐
+│                      December Cloud                         │
+│       Session State · Artifact Storage · Auth Cookies       │
+└──────────────────────────────┬──────────────────────────────┘
+                               │
+                 [Zero-Config Sandbox Provisioning]
+                               ▼
+┌─────────────────────────────────────────────────────────────┐
+│                 Isolated Micro-VM Sandboxes                 │
+│      Root Linux Environment · Node / Bun / Python Runtimes  │
+│                  Live Web Preview Ports (Vite)              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## The Dual-Surface Bridge
+
+1. **Local Terminal Agent**: Operates with native file read/write permissions inside your repository clone. When given instructions, it inspects directory structures, analyzes dependency graphs, and runs compilation tests.
+2. **Cloud Handoff (`/handoff`)**: Serializes uncommitted modifications, git state, and conversation traces into an encrypted archive, transferring execution seamlessly to `app.trydecember.com`.
+3. **Web IDE & Sandbox Previews**: Loads code within secure Linux containers where hot-reloading dev servers and browser preview ports are exposed via TLS tunnels.

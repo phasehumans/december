@@ -93,13 +93,13 @@ describe('useCliStore activeMessages handling', () => {
             'Insufficient credits in December Wallet'
         )
         expect(HANDOFF_INSUFFICIENT_CREDITS_NOTICE).toContain(
-            'https://trydecember.com/settings/billing'
+            'https://app.trydecember.com/settings/billing'
         )
         expect(HANDOFF_INSUFFICIENT_CREDITS_NOTICE).toContain('/handoff')
 
         const successNotice = HANDOFF_SUCCESS_NOTICE('test-session-123')
         expect(successNotice).toContain('Workspace handed off successfully!')
-        expect(successNotice).toContain('https://trydecember.com/s/test-session-123')
+        expect(successNotice).toContain('https://app.trydecember.com/s/test-session-123')
     })
 
     it('exports clipboard and handoff utilities from @december/tui for slash command handling', async () => {

@@ -1,0 +1,396 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+
+<BaseLayout
+  title="December — Autonomous coding agent in your terminal"
+  description="December is an autonomous coding agent that lives in your terminal. It understands your codebase, runs bash commands, fixes bugs, and offers seamless cloud handoff."
+  canonicalUrl="https://trydecember.com"
+>
+  <!-- Hero Section -->
+  <section class="relative overflow-hidden pt-16 pb-20 sm:pt-24 sm:pb-28">
+    <div class="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top,_var(--tw-gradient-stops))] from-white/5 via-transparent to-transparent"></div>
+
+    <div class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 text-center">
+      <!-- Release Badge -->
+      <div class="inline-flex items-center gap-2 rounded-full border border-[#2a2a2a] bg-[#141414] px-3.5 py-1 text-xs font-mono text-[#aaaaaa] mb-6">
+        <span class="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+        <span>december v0.3 is live</span>
+        <span class="text-[#555555]">·</span>
+        <a href="/docs/quickstart" class="text-white hover:underline">Read the quickstart →</a>
+      </div>
+
+      <!-- Headline -->
+      <h1 class="text-4xl sm:text-6xl lg:text-7xl font-semibold tracking-tight text-white leading-[1.08]">
+        The coding agent in your terminal.<br class="hidden sm:inline" />
+        <span class="text-[#888888]">Cloud handoff when you need the web.</span>
+      </h1>
+
+      <p class="mx-auto mt-6 max-w-2xl text-base sm:text-lg text-[#999999] leading-relaxed">
+        December understands your entire codebase, writes code, runs terminal commands, and fixes failing tests. Work in your local shell with zero latency, or type <code class="text-white bg-[#1a1a1a] px-1.5 py-0.5 rounded border border-[#2c2c2c]">/handoff</code> to continue in the cloud.
+      </p>
+
+      <!-- Terminal Install Widget (Hermes Style) -->
+      <div id="cli" class="mx-auto mt-10 max-w-lg">
+        <div class="flex flex-col rounded-xl border border-[#262626] bg-[#111111] p-2 shadow-2xl">
+          <!-- Package Manager Tabs -->
+          <div class="flex items-center justify-between border-b border-[#1f1f1f] pb-2 px-2 text-[12px] font-mono text-[#777777]">
+            <div class="flex items-center gap-3">
+              <span class="text-white font-medium">install</span>
+              <button type="button" class="pm-tab text-[#888] hover:text-white" data-cmd="npm install -g @trydecember/cli">npm</button>
+              <button type="button" class="pm-tab text-[#888] hover:text-white" data-cmd="bun add -g @trydecember/cli">bun</button>
+              <button type="button" class="pm-tab text-[#888] hover:text-white" data-cmd="pnpm add -g @trydecember/cli">pnpm</button>
+              <button type="button" class="pm-tab text-[#888] hover:text-white" data-cmd="npx @trydecember/cli">npx</button>
+            </div>
+            <span class="text-[11px] text-[#555]">v0.3.30</span>
+          </div>
+
+          <!-- Command row with copy button -->
+          <div class="flex items-center justify-between pt-2.5 px-3">
+            <div class="flex items-center gap-2 overflow-x-auto text-left font-mono text-sm text-[#e5e5e5]">
+              <span class="text-[#666666] select-none">$</span>
+              <span id="install-command">npm install -g @trydecember/cli</span>
+            </div>
+            <button
+              id="copy-btn"
+              type="button"
+              class="shrink-0 ml-3 inline-flex items-center gap-1.5 rounded-md border border-[#333333] bg-[#1a1a1a] px-2.5 py-1 text-xs font-mono text-[#dddddd] hover:bg-[#252525] hover:text-white transition-colors"
+              title="Copy to clipboard"
+            >
+              <svg id="copy-icon" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+              </svg>
+              <span id="copy-text">Copy</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="mt-6 flex flex-wrap items-center justify-center gap-4">
+          <a
+            href="https://app.trydecember.com"
+            class="inline-flex items-center justify-center gap-2 rounded-lg bg-white px-5 py-2.5 text-sm font-semibold text-black transition-all hover:bg-[#e8e8e8] active:scale-95 shadow-lg"
+          >
+            <span>Launch Web Workspace</span>
+            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M7 17l9.2-9.2M17 17V7.8H7.8"/>
+            </svg>
+          </a>
+          <a
+            href="/docs"
+            class="inline-flex items-center justify-center gap-2 rounded-lg border border-[#2b2b2b] bg-[#141414] px-5 py-2.5 text-sm font-medium text-[#cccccc] transition-colors hover:border-[#3b3b3b] hover:text-white"
+          >
+            <span>Read Documentation</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Interactive Terminal Showcase (Devin Style) -->
+  <section class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-12">
+    <div class="rounded-xl border border-[#222222] bg-[#0f0f0f] shadow-2xl overflow-hidden font-mono text-xs sm:text-sm">
+      <!-- Window Titlebar -->
+      <div class="flex items-center justify-between border-b border-[#222222] bg-[#141414] px-4 py-2.5 text-[#666666]">
+        <div class="flex items-center gap-2">
+          <span class="h-2.5 w-2.5 rounded-full bg-[#333333]"></span>
+          <span class="h-2.5 w-2.5 rounded-full bg-[#333333]"></span>
+          <span class="h-2.5 w-2.5 rounded-full bg-[#333333]"></span>
+          <span class="ml-2 text-xs text-[#888888]">~/code/december (terminal session)</span>
+        </div>
+        <span class="text-xs text-emerald-400/80 flex items-center gap-1.5">
+          <span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span> active
+        </span>
+      </div>
+
+      <!-- Terminal Body -->
+      <div class="p-5 space-y-4 text-[#cccccc] leading-relaxed">
+        <div class="flex items-center gap-2 text-white">
+          <span class="text-emerald-400">❯</span>
+          <span class="text-[#888888]">december</span>
+          <span>"Fix failing rate-limiting integration test in auth.routes.ts"</span>
+        </div>
+
+        <div class="text-[#888888] space-y-1 pl-4 border-l border-[#242424]">
+          <p>→ Analyzing project workspace: <span class="text-[#aaaaaa]">packages/server</span></p>
+          <p>→ Found 1 relevant test: <span class="text-[#aaaaaa]">test/integration/auth.rate-limit.test.ts</span></p>
+          <p>→ Executed: <code class="text-white">bun test test/integration/auth.rate-limit.test.ts</code> (1 failure: expected 429)</p>
+          <p>→ Inspected: <span class="text-[#aaaaaa]">src/modules/auth/auth.routes.ts</span></p>
+          <p class="text-emerald-400">✓ Applied atomic replacement chunk in auth.routes.ts (added authRateLimiter middleware)</p>
+          <p>→ Re-executed: <code class="text-white">bun test test/integration/auth.rate-limit.test.ts</code></p>
+          <p class="text-emerald-400 font-semibold">✓ 12 pass, 0 fail (all tests passing)</p>
+        </div>
+
+        <div class="pt-2 flex items-center gap-2 text-white">
+          <span class="text-emerald-400">❯</span>
+          <span class="text-blue-400">/handoff</span>
+        </div>
+
+        <div class="text-[#999999] pl-4 border-l border-[#242424] space-y-1">
+          <p>→ Syncing local repository diffs and session history to December Cloud...</p>
+          <p class="text-white">✓ Cloud sandbox provisioned: <a href="https://app.trydecember.com" class="text-blue-400 hover:underline">https://app.trydecember.com/s/sess_8912</a></p>
+          <p class="text-xs text-[#666666]">Opening web workspace in your default browser...</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Architecture Flow Diagram (Supermemory Style) -->
+  <section id="architecture" class="border-t border-[#1e1e1e] bg-[#0b0b0b] py-20">
+    <div class="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+      <div class="text-center max-w-2xl mx-auto mb-14">
+        <h2 class="text-xs font-mono uppercase tracking-wider text-blue-400 mb-2">How it works</h2>
+        <h3 class="text-3xl sm:text-4xl font-semibold tracking-tight text-white">
+          The Terminal & Cloud Synergy
+        </h3>
+        <p class="mt-3 text-sm sm:text-base text-[#888888]">
+          Local filesystem speed when you want it. Cloud hardware isolation when you need it.
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- Step 1 -->
+        <div class="rounded-xl border border-[#202020] bg-[#121212] p-6 flex flex-col justify-between">
+          <div>
+            <div class="h-8 w-8 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center font-mono text-sm font-semibold mb-4">
+              01
+            </div>
+            <h4 class="text-base font-semibold text-white mb-2">Local Terminal Native</h4>
+            <p class="text-xs sm:text-sm text-[#888888] leading-relaxed">
+              December lives directly in your shell. It uses native filesystem I/O to read project context, format source files, execute test runners, and inspect git history with 0 network latency.
+            </p>
+          </div>
+          <div class="mt-6 pt-4 border-t border-[#1e1e1e] font-mono text-xs text-[#666666]">
+            $ npm install -g @trydecember/cli
+          </div>
+        </div>
+
+        <!-- Step 2 -->
+        <div class="rounded-xl border border-[#202020] bg-[#121212] p-6 flex flex-col justify-between">
+          <div>
+            <div class="h-8 w-8 rounded-lg bg-purple-500/10 border border-purple-500/20 text-purple-400 flex items-center justify-center font-mono text-sm font-semibold mb-4">
+              02
+            </div>
+            <h4 class="text-base font-semibold text-white mb-2">Cloud Handoff (/handoff)</h4>
+            <p class="text-xs sm:text-sm text-[#888888] leading-relaxed">
+              Typing <code class="text-white">/handoff</code> packages your active session state, uncommitted changes, and memory transcript, migrating execution instantaneously to an ephemeral cloud micro-VM.
+            </p>
+          </div>
+          <div class="mt-6 pt-4 border-t border-[#1e1e1e] font-mono text-xs text-[#666666]">
+            ❯ /handoff → app.trydecember.com
+          </div>
+        </div>
+
+        <!-- Step 3 -->
+        <div class="rounded-xl border border-[#202020] bg-[#121212] p-6 flex flex-col justify-between">
+          <div>
+            <div class="h-8 w-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center font-mono text-sm font-semibold mb-4">
+              03
+            </div>
+            <h4 class="text-base font-semibold text-white mb-2">Live Web Sandboxes</h4>
+            <p class="text-xs sm:text-sm text-[#888888] leading-relaxed">
+              Test full-stack web applications with hot-reloading dev servers (Vite, Next.js, Node). Share live preview links with teammates without setting up local tunnels or mock services.
+            </p>
+          </div>
+          <div class="mt-6 pt-4 border-t border-[#1e1e1e] font-mono text-xs text-[#666666]">
+            ✓ Hardware-isolated Linux VM
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Capability Highlights Grid (Hermes Style) -->
+  <section class="py-20 border-t border-[#1e1e1e]">
+    <div class="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+      <div class="text-center max-w-2xl mx-auto mb-14">
+        <h2 class="text-xs font-mono uppercase tracking-wider text-emerald-400 mb-2">Features</h2>
+        <h3 class="text-3xl sm:text-4xl font-semibold tracking-tight text-white">
+          Built for Serious Software Engineers
+        </h3>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div class="p-6 rounded-xl border border-[#222222] bg-[#121212]">
+          <h4 class="text-base font-semibold text-white mb-2">Bring Your Own Key (BYOK)</h4>
+          <p class="text-xs sm:text-sm text-[#888888] leading-relaxed">
+            Connect keys from OpenAI, Anthropic, Google Gemini, DeepSeek, or OpenRouter with 0% token markup. Or run completely private, offline models with local Ollama.
+          </p>
+        </div>
+
+        <div class="p-6 rounded-xl border border-[#222222] bg-[#121212]">
+          <h4 class="text-base font-semibold text-white mb-2">Git Checkpoints & Diffs</h4>
+          <p class="text-xs sm:text-sm text-[#888888] leading-relaxed">
+            Every file alteration is automatically versioned. Inspect line-by-line diffs before committing or rollback to any prior point-in-time snapshot with a single command.
+          </p>
+        </div>
+
+        <div class="p-6 rounded-xl border border-[#222222] bg-[#121212]">
+          <h4 class="text-base font-semibold text-white mb-2">Deterministic Test Verification</h4>
+          <p class="text-xs sm:text-sm text-[#888888] leading-relaxed">
+            December doesn't guess if code works. It executes your test runner (`bun test`, `npm test`, `pytest`, `cargo test`) and iterates autonomously until all assertions pass.
+          </p>
+        </div>
+
+        <div class="p-6 rounded-xl border border-[#222222] bg-[#121212]">
+          <h4 class="text-base font-semibold text-white mb-2">Subagent Workflows</h4>
+          <p class="text-xs sm:text-sm text-[#888888] leading-relaxed">
+            Dispatch specialized background subagents to survey large repositories, research external API documentation, and execute parallel code modifications.
+          </p>
+        </div>
+
+        <div class="p-6 rounded-xl border border-[#222222] bg-[#121212]">
+          <h4 class="text-base font-semibold text-white mb-2">Custom Skills & Slash Commands</h4>
+          <p class="text-xs sm:text-sm text-[#888888] leading-relaxed">
+            Extend December with project-level rules (`AGENTS.md`) and custom skills. Teach the agent your team's code conventions, architecture patterns, and lint requirements.
+          </p>
+        </div>
+
+        <div class="p-6 rounded-xl border border-[#222222] bg-[#121212]">
+          <h4 class="text-base font-semibold text-white mb-2">Zero-Config Web Workspace</h4>
+          <p class="text-xs sm:text-sm text-[#888888] leading-relaxed">
+            Prefer the browser? Launch straight into `app.trydecember.com` for complete code navigation, live previews, terminal runners, and session history management.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Pricing & BYOK Section -->
+  <section id="pricing" class="border-t border-[#1e1e1e] bg-[#0c0c0c] py-20">
+    <div class="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 text-center">
+      <h2 class="text-xs font-mono uppercase tracking-wider text-purple-400 mb-2">Pricing</h2>
+      <h3 class="text-3xl sm:text-4xl font-semibold tracking-tight text-white mb-4">
+        Transparent, Developer-Friendly Pricing
+      </h3>
+      <p class="text-sm sm:text-base text-[#888888] mb-12">
+        Free forever with your own API keys, or use December Cloud credits for zero-setup execution.
+      </p>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-8 text-left">
+        <!-- BYOK Plan -->
+        <div class="rounded-xl border border-[#222222] bg-[#141414] p-8 flex flex-col justify-between">
+          <div>
+            <span class="inline-flex px-2.5 py-0.5 rounded text-[11px] font-mono bg-[#222] text-[#bbb]">Developer / BYOK</span>
+            <div class="mt-4 flex items-baseline gap-2">
+              <span class="text-4xl font-bold text-white">$0</span>
+              <span class="text-sm text-[#777]">/ month</span>
+            </div>
+            <p class="mt-3 text-xs sm:text-sm text-[#999]">Bring your own API keys. 0% markup on model tokens.</p>
+
+            <ul class="mt-6 space-y-3 text-xs sm:text-sm text-[#ccc]">
+              <li class="flex items-center gap-2">✓ Full CLI access in your local terminal</li>
+              <li class="flex items-center gap-2">✓ Use Claude 3.7, GPT-4o, Gemini 2.5, DeepSeek</li>
+              <li class="flex items-center gap-2">✓ Offline local Ollama models support</li>
+              <li class="flex items-center gap-2">✓ Git checkpoints & diff inspection</li>
+              <li class="flex items-center gap-2">✓ Unlimited local code generation runs</li>
+            </ul>
+          </div>
+
+          <div class="mt-8 pt-6 border-t border-[#222]">
+            <a
+              href="#cli"
+              class="block w-full py-2.5 text-center text-xs font-semibold rounded-lg border border-[#333] bg-[#1a1a1a] text-white hover:bg-[#252525] transition-colors"
+            >
+              Install CLI Free
+            </a>
+          </div>
+        </div>
+
+        <!-- December Cloud Plan -->
+        <div class="rounded-xl border border-blue-500/30 bg-[#141414] p-8 flex flex-col justify-between relative shadow-xl">
+          <div class="absolute -top-3 right-6 bg-blue-500 text-black text-[11px] font-mono font-bold px-2.5 py-0.5 rounded-full">
+            Recommended
+          </div>
+
+          <div>
+            <span class="inline-flex px-2.5 py-0.5 rounded text-[11px] font-mono bg-blue-500/10 text-blue-400 border border-blue-500/20">December Cloud</span>
+            <div class="mt-4 flex items-baseline gap-2">
+              <span class="text-4xl font-bold text-white">$20</span>
+              <span class="text-sm text-[#777]">/ month</span>
+            </div>
+            <p class="mt-3 text-xs sm:text-sm text-[#999]">Everything in BYOK, plus managed cloud VMs and shared wallet.</p>
+
+            <ul class="mt-6 space-y-3 text-xs sm:text-sm text-[#ccc]">
+              <li class="flex items-center gap-2">✓ Everything in BYOK tier</li>
+              <li class="flex items-center gap-2">✓ $22.00 monthly LLM wallet credits</li>
+              <li class="flex items-center gap-2">✓ One-click /handoff to cloud workspace</li>
+              <li class="flex items-center gap-2">✓ Hardware-isolated micro-VM sandboxes</li>
+              <li class="flex items-center gap-2">✓ Live web previews with TLS tunnels</li>
+            </ul>
+          </div>
+
+          <div class="mt-8 pt-6 border-t border-[#222]">
+            <a
+              href="https://app.trydecember.com"
+              class="block w-full py-2.5 text-center text-xs font-semibold rounded-lg bg-white text-black hover:bg-[#e8e8e8] transition-colors"
+            >
+              Get Started with Cloud
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA Strip -->
+  <section class="py-20 border-t border-[#1e1e1e] text-center">
+    <div class="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
+      <h2 class="text-3xl sm:text-4xl font-semibold tracking-tight text-white mb-4">
+        Start coding with December in 10 seconds.
+      </h2>
+      <p class="text-sm sm:text-base text-[#888888] mb-8">
+        No credit card required. Works across macOS, Linux, and Windows.
+      </p>
+
+      <div class="flex flex-wrap items-center justify-center gap-4">
+        <a
+          href="#cli"
+          class="rounded-lg bg-white px-5 py-2.5 text-sm font-semibold text-black hover:bg-[#e8e8e8] transition-all"
+        >
+          $ npm install -g @trydecember/cli
+        </a>
+        <a
+          href="https://app.trydecember.com"
+          class="rounded-lg border border-[#2b2b2b] bg-[#141414] px-5 py-2.5 text-sm font-medium text-white hover:border-[#3b3b3b] transition-colors"
+        >
+          Open Web App →
+        </a>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  // Package manager switcher & copy button script
+  const installCommand = document.getElementById('install-command');
+  const copyBtn = document.getElementById('copy-btn');
+  const copyText = document.getElementById('copy-text');
+  const tabs = document.querySelectorAll('.pm-tab');
+
+  tabs.forEach((tab) => {
+    tab.addEventListener('click', () => {
+      const cmd = tab.getAttribute('data-cmd');
+      if (cmd && installCommand) {
+        installCommand.textContent = cmd;
+        tabs.forEach((t) => t.classList.remove('text-white', 'font-medium'));
+        tab.classList.add('text-white', 'font-medium');
+      }
+    });
+  });
+
+  if (copyBtn && installCommand) {
+    copyBtn.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(installCommand.textContent || '');
+        if (copyText) copyText.textContent = 'Copied!';
+        setTimeout(() => {
+          if (copyText) copyText.textContent = 'Copy';
+        }, 2000);
+      } catch {
+        // Intentionally swallowed: clipboard fallback
+      }
+    });
+  }
+</script>

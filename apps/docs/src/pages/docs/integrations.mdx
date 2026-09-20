@@ -1,0 +1,29 @@
+---
+layout: ../../layouts/DocsLayout.astro
+title: Model Providers & Bring Your Own Key (BYOK)
+description: Connect your own API keys for OpenAI, Anthropic, Google Gemini, OpenRouter, DeepSeek, or local Ollama.
+currentSlug: 'integrations'
+---
+
+## Bring Your Own Key (BYOK)
+
+December is 100% model-agnostic. You can use your own API keys with **zero markup** on token prices:
+
+### Supported Providers
+
+- **Anthropic**: Claude 3.7 Sonnet, Claude 3.5 Sonnet, Claude 3.5 Haiku
+- **OpenAI**: GPT-4o, o1, o3-mini
+- **Google Gemini**: Gemini 2.5 Pro, Gemini 2.5 Flash, Gemini 2.0 Flash
+- **DeepSeek**: DeepSeek R1, DeepSeek V3
+- **OpenRouter**: Access to 100+ open and proprietary models
+- **Ollama**: Local models running on your machine (offline, private, free)
+
+### Configuring Keys
+
+In your terminal, run:
+
+```bash
+december login
+```
+
+Select **Configure Custom API Keys (BYOK)** and paste your key. Keys are securely stored in your local configuration directory (`~/.december/config.json`) and never transmitted to December servers when in local mode.

@@ -33,6 +33,7 @@ let io: Server
 export function initSocket(httpServer: any) {
     const allowedOrigins = [
         env.WEB_URL?.replace(/\/+$/, ''),
+        'https://app.trydecember.com',
         'https://trydecember.com',
         'https://www.trydecember.com',
         ...(env.NODE_ENV !== 'production'

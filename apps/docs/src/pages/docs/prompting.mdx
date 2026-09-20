@@ -1,0 +1,34 @@
+---
+layout: ../../layouts/DocsLayout.astro
+title: Prompting Guide
+description: Best practices for instructing December on complex refactors, test fixes, and full-stack greenfield projects.
+currentSlug: 'prompting'
+---
+
+## Effective Prompting Strategies
+
+December responds best to precise, goal-oriented technical instructions:
+
+### 1. Give Clear Verification Criteria
+
+State what "done" looks like:
+
+```bash
+december "Refactor auth.service.ts to use argon2 instead of bcrypt. Ensure all tests in test/auth pass with bun test."
+```
+
+### 2. Point to Context Files
+
+Mention files or symbols when you know where the issue lives:
+
+```bash
+december "In packages/database/schema.prisma, add a new SessionStatus enum. Generate Prisma client and update session.service.ts."
+```
+
+### 3. Let the Agent Explore First
+
+For unfamiliar bugs, instruct the agent to diagnose before making changes:
+
+```bash
+december "Investigate why integration tests are failing with 401 in test/api. Run the test, inspect the output, and fix the root cause."
+```

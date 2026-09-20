@@ -92,12 +92,33 @@ export const useAppController = () => {
         }
     }, [queryClient, setIsAuthenticated, setIsAuthRestored])
 
-    // Redirect unauthenticated visitors attempting to access protected routes to home
+    // Open auth modal when visiting /login or /signup
+    React.useEffect(() => {
+        if (location.pathname === '/login' || location.pathname === '/signup') {
+            if (isAuthenticated) {
+                navigate('/', { replace: true })
+            } else {
+                setShowAuthModal(true)
+            }
+        }
+    }, [location.pathname, isAuthenticated, navigate, setShowAuthModal])
+
+    // Redirect unauthenticated visitors attempting to access protected routes or root on app domain
     React.useEffect(() => {
         if (!isAuthRestored || isAuthenticated) return
 
+        const hostname = typeof window !== 'undefined' ? window.location.hostname : ''
+        const isAppProduction =
+            hostname === 'app.trydecember.com' ||
+            (hostname === 'trydecember.com' && process.env.NODE_ENV === 'production')
+
+        if (location.pathname === '/' && isAppProduction) {
+            window.location.replace('https://trydecember.com')
+            return
+        }
+
         if (!isPublicPath(location.pathname)) {
-            navigate('/', { replace: true })
+            navigate('/login', { replace: true })
         }
     }, [isAuthRestored, isAuthenticated, location.pathname, navigate])
 

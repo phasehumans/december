@@ -1,0 +1,52 @@
+---
+layout: ../../layouts/DocsLayout.astro
+title: Getting Started with December
+description: Follow this walkthrough to launch your first session in either the cloud workspace or directly inside your local terminal repository.
+currentSlug: 'quickstart'
+---
+
+## 1. Terminal Installation (CLI)
+
+The fastest way to use December is directly inside your existing project repository using the command line:
+
+```bash
+npm install -g @trydecember/cli
+```
+
+_(You can also use `bun add -g @trydecember/cli` or `pnpm add -g @trydecember/cli`)_
+
+Navigate to any codebase directory and launch the agent:
+
+```bash
+cd my-project
+december
+```
+
+### Authentication & Providers
+
+Run `/login` in your terminal to choose your preferred setup:
+
+- **Sign in with December**: Use your December Cloud account and unified wallet credits.
+- **Bring Your Own Key (BYOK)**: Add your own API keys for OpenAI, Anthropic, Google Gemini, OpenRouter, DeepSeek, or local Ollama.
+
+---
+
+## 2. Cloud Workspace Walkthrough
+
+The cloud workspace at [app.trydecember.com](https://app.trydecember.com) provides zero-configuration micro-VM sandboxes with live interactive previews and GitHub synchronization.
+
+1. **Launch a Project**: Visit [app.trydecember.com](https://app.trydecember.com) and describe what you want to build or connect your GitHub repository.
+2. **Observe Real-Time Execution**: The agent provisions an isolated Linux sandbox, plans the architecture, writes source code, and starts dev servers.
+3. **Inspect Live Previews**: Test your full-stack application inside the built-in browser preview with complete console diagnostics.
+
+---
+
+## 3. Terminal-to-Cloud Handoff
+
+When working inside your local terminal, you can instantly synchronize your entire workspace state to the cloud workspace by running:
+
+```bash
+/handoff
+```
+
+December packages your workspace diffs, test state, and conversation transcript, creates an isolated cloud VM on `app.trydecember.com`, and opens the live preview URL in your browser.

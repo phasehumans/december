@@ -40,6 +40,7 @@ app.use(cookieParser())
 app.use(express.urlencoded({ extended: true, limit: '25mb' }))
 const allowedOrigins = [
     env.WEB_URL?.replace(/\/+$/, ''),
+    'https://app.trydecember.com',
     'https://trydecember.com',
     'https://www.trydecember.com',
     ...(env.NODE_ENV !== 'production'

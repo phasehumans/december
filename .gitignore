@@ -18,6 +18,7 @@ env/
 **/.cache/
 **/.vite/
 **/.turbo/
+**/.astro/
 *.tsbuildinfo
 
 # Tool & Linter Caches

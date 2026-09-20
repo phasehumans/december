@@ -150,7 +150,7 @@ describe('CLI In-Terminal Usage & Rates (Unit)', () => {
         expect(text).toContain('Active Model: `gemini-3.6-flash` (December Wallet)')
         expect(text).toContain('Provider: December Cloud')
         expect(text).toContain(
-            '[https://trydecember.com/settings/usage](https://trydecember.com/settings/usage)'
+            '[https://app.trydecember.com/settings/usage](https://app.trydecember.com/settings/usage)'
         )
         // Ensure no bold markers, blockquote prefixes, bullets, or emojis
         expect(text).not.toContain('**')

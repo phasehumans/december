@@ -1,0 +1,14 @@
+---
+layout: ../../layouts/DocsLayout.astro
+title: Live Sandboxed Previews
+description: How December provisions ephemeral Linux micro-VMs to execute code, start servers, and render live browser previews.
+currentSlug: 'previews'
+---
+
+## Hardware-Isolated Sandboxing
+
+When a project is launched or handed off to December Cloud, an isolated Linux micro-VM is provisioned:
+
+- **Isolated Kernel & Filesystem**: Each project runs inside its own hardware-virtualized container with non-root user permissions.
+- **Port Detection & Forwarding**: When your application starts a web server (e.g. Vite on port 5173 or Next.js on port 3000), December automatically detects the listening socket and routes a secure preview tunnel.
+- **Live Terminal & Diagnostics**: Inspect runtime logs, stdout/stderr streams, and server health directly inside the cloud workspace drawer.
