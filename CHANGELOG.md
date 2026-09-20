@@ -2,6 +2,33 @@
 
 ### Features
 
+- _(agent)_ Implement dynamic tool discovery and subagent skill delegation
+- _(tui)_ Remove /grill and /logout, add delete shortcut to /switch menu
+- _(docs)_ Separate landing page and docs to apps/docs and point web app to app.trydecember.com
+- _(docs)_ Redesign landing page and update assets
+
+### Bug Fixes
+
+- _(ci)_ Remove strip from standalone linux binary compilation
+
+### Documentation
+
+- Update root and cli readmes and web documentation
+
+### Performance
+
+- _(agent)_ Optimize input tokens via step pruning and jit skills (#511)
+
+### Miscellaneous Tasks
+
+- Remove docs from git tracking and add to gitignore
+- _(distribution)_ Standardize on npm distribution and remove curl installer
+- _(env)_ Configure web_url, docs_url, landing_url, and local dev port 2000
+
+## [0.3.30] - 2026-09-18
+
+### Features
+
 - _(providers)_ Add abliteration.ai as byok provider
 - _(providers)_ Add agnes ai as byok provider
 - _(providers)_ Add airouter, aiand, aki, and ambient as byok providers
@@ -18,6 +45,10 @@
 ### Bug Fixes
 
 - _(cli)_ Provide dynamic provider-aware rate limit notices and simplify thought display
+
+### Miscellaneous Tasks
+
+- _(release)_ V0.3.30
 
 ## [0.3.29] - 2026-09-17
 

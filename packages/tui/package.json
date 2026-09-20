@@ -34,7 +34,7 @@
         "marked": "18.0.5",
         "react": "^19.2.4"
     },
-    "version": "0.3.30",
+    "version": "0.3.31",
     "author": "Chaitanya Sonawane",
     "license": "MIT"
 }
