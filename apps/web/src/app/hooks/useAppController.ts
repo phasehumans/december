@@ -107,10 +107,17 @@ export const useAppController = () => {
         enabled: isAuthenticated,
     })
 
+    const isNavigatingHomeRef = React.useRef(false)
+
+    React.useEffect(() => {
+        if (location.pathname === '/') {
+            isNavigatingHomeRef.current = false
+        }
+    }, [location.pathname])
+
     const isHome = view === 'chat' && !activeProjectId && !hasMessages
     const showSidebar = view !== 'profile' && view !== 'docs'
-    const { handleNewThread, handleHomeClick, handleNavigate, handleSignOut } =
-        useNavigationController()
+    const { handleNavigate, handleSignOut } = useNavigationController()
 
     const { openProject, handleOpenProject, handleSelectVersion, lastAutoFixSignatureRef } =
         useSessionController(
@@ -141,6 +148,51 @@ export const useAppController = () => {
         outputOriginViewRef,
         lastAutoFixSignatureRef
     )
+
+    const handleNewThread = React.useCallback(() => {
+        isNavigatingHomeRef.current = true
+        generationAbortControllerRef.current?.abort()
+        generationAbortControllerRef.current = null
+        resetGenerationRefs()
+        if (activeProjectId) {
+            void previewAPI.stopPreview(activeProjectId).catch((err) => {
+                console.error('Failed to stop preview on new session:', err)
+            })
+        }
+        const state = useAppStore.getState()
+        state.setIsGenerating(false)
+        state.setActiveProjectId(null)
+        state.setActiveProjectName(null)
+        state.setActiveProjectVersionId(null)
+        state.setProjectVersions([])
+        state.setMessages([])
+        state.setGeneratedFiles({})
+        state.setActiveGeneratedFilePath(null)
+        state.setCurrentGenerationFilePaths([])
+        state.setGenerationPhase(null)
+        state.setActiveOperation(null)
+        state.setImportState({ status: 'idle', message: null })
+        state.setPreviewSession(null)
+        state.setPreviewSessionError(null)
+        state.setProjectLoadError(null)
+        state.setSessionLoadError(null)
+        state.setIsProjectOpening(false)
+        state.setIsSessionOpening(false)
+        state.setIsMobileSidebarOpen(false)
+
+        navigate('/')
+
+        const el = document.getElementById('main-scroll-container')
+        el?.scrollTo({ top: 0, behavior: 'smooth' })
+        window.dispatchEvent(new CustomEvent('december:new-session'))
+        setTimeout(() => {
+            document.getElementById('home-prompt-textarea')?.focus()
+        }, 50)
+    }, [activeProjectId, navigate, resetGenerationRefs])
+
+    const handleHomeClick = React.useCallback(() => {
+        handleNewThread()
+    }, [handleNewThread])
 
     const handleResetImportState = React.useCallback(() => {
         useAppStore.getState().setImportState({ status: 'idle', message: null })
@@ -193,7 +245,8 @@ export const useAppController = () => {
 
     // deep-link resolution
     React.useEffect(() => {
-        if (!isAuthenticated || activeProjectId || isProjectOpening) return
+        if (!isAuthenticated || activeProjectId || isProjectOpening || isNavigatingHomeRef.current)
+            return
 
         if (
             location.pathname.startsWith('/sessions/') ||

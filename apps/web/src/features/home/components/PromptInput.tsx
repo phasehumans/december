@@ -95,6 +95,7 @@ export const PromptInput: React.FC<
 
                     <div className="relative flex-1 min-w-[100px]">
                         <textarea
+                            id="home-prompt-textarea"
                             ref={textareaRef}
                             value={input}
                             onChange={(event) => handleInputChange(event.target.value)}

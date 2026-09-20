@@ -144,6 +144,17 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
         return () => window.removeEventListener('keydown', handleKeyDown)
     }, [])
 
+    useEffect(() => {
+        const handleNewSession = () => {
+            setPrompt('')
+            setChatMode('agent')
+            const textarea = document.getElementById('home-prompt-textarea')
+            textarea?.focus()
+        }
+        window.addEventListener('december:new-session', handleNewSession)
+        return () => window.removeEventListener('december:new-session', handleNewSession)
+    }, [])
+
     return (
         <main
             id="main-scroll-container"

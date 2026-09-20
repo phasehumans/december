@@ -1,40 +1,57 @@
+import { Terminal } from 'lucide-react'
 import React from 'react'
 
-export const DocsCliReference: React.FC = () => {
+import { DocPagination } from '../DocsUI'
+
+import type { DocTab } from '../../types'
+
+interface DocsSectionProps {
+    onNavigate?: (tab: DocTab) => void
+}
+
+export const DocsCliReference: React.FC<DocsSectionProps> = ({ onNavigate }) => {
     return (
-        <div className="flex flex-col w-full max-w-[800px] text-[#D6D5C9]">
+        <div className="flex flex-col w-full max-w-[820px] text-[#D6D5C9]">
             {/* Header */}
-            <div className="flex flex-col mb-6">
-                <h1 className="text-[16px] font-medium text-[#EDEDEF] mb-1">
+            <div className="flex flex-col mb-8">
+                <div className="flex items-center gap-2 mb-2">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                        <Terminal className="w-3 h-3" />
+                        Developer Tooling
+                    </span>
+                    <span className="text-[12px] text-[#71717A]">@trydecember/cli</span>
+                </div>
+                <h1 className="text-2xl sm:text-3xl font-semibold text-[#EDEDEF] tracking-tight mb-2">
                     December CLI Reference
                 </h1>
-                <p className="text-[13.5px] text-[#9A9998]">
-                    Command line arguments, interactive slash commands, and configuration.
+                <p className="text-[14.5px] sm:text-[15px] text-[#9A9998] leading-relaxed">
+                    Command line arguments, authentication workflows, environment variables, and
+                    interactive keyboard shortcuts for the December terminal agent.
                 </p>
             </div>
 
-            <div className="flex flex-col gap-6 border-t border-[#242323] pt-5">
-                {/* 1. Core CLI Commands */}
-                <section className="flex flex-col gap-2">
-                    <h2 className="text-[14px] font-medium text-[#EDEDEF]">
-                        1. Standalone CLI Commands
+            <div className="flex flex-col gap-8 border-t border-[#242323] pt-6">
+                {/* 1. Core Commands */}
+                <section className="flex flex-col gap-4">
+                    <h2 className="text-[16px] font-semibold text-[#EDEDEF] tracking-tight">
+                        Core CLI Commands
                     </h2>
                     <p className="text-[13.5px] text-[#9A9998] leading-relaxed">
-                        These commands can be executed directly from your terminal shell:
+                        Execute these commands from any terminal shell:
                     </p>
 
                     <div className="space-y-3 pt-1 text-[13.5px] text-[#9A9998] leading-relaxed">
-                        <div>
+                        <div className="p-4 rounded-xl border border-[#242323] bg-[#141414] space-y-1">
                             <code className="text-[#87B2F4] font-medium text-[13px] font-mono">
                                 december login
                             </code>
                             <p className="mt-0.5">
                                 Authenticates your terminal device with your December account via an
-                                automated browser handshake and stores the resulting session token.
+                                automated browser handshake and stores your session token locally.
                             </p>
                         </div>
 
-                        <div>
+                        <div className="p-4 rounded-xl border border-[#242323] bg-[#141414] space-y-1">
                             <code className="text-[#87B2F4] font-medium text-[13px] font-mono">
                                 december
                             </code>
@@ -44,7 +61,7 @@ export const DocsCliReference: React.FC = () => {
                             </p>
                         </div>
 
-                        <div>
+                        <div className="p-4 rounded-xl border border-[#242323] bg-[#141414] space-y-1">
                             <code className="text-[#87B2F4] font-medium text-[13px] font-mono">
                                 december docs [section]
                             </code>
@@ -58,7 +75,7 @@ export const DocsCliReference: React.FC = () => {
                             </p>
                         </div>
 
-                        <div>
+                        <div className="p-4 rounded-xl border border-[#242323] bg-[#141414] space-y-1">
                             <code className="text-[#87B2F4] font-medium text-[13px] font-mono">
                                 december update
                             </code>
@@ -67,11 +84,11 @@ export const DocsCliReference: React.FC = () => {
                                 <code className="text-[#EDEDEF] font-mono text-[12px]">
                                     @trydecember/cli
                                 </code>{' '}
-                                on npm and updates the global installation.
+                                on npm and updates your global installation.
                             </p>
                         </div>
 
-                        <div>
+                        <div className="p-4 rounded-xl border border-[#242323] bg-[#141414] space-y-1">
                             <code className="text-[#87B2F4] font-medium text-[13px] font-mono">
                                 december --help
                             </code>
@@ -83,103 +100,93 @@ export const DocsCliReference: React.FC = () => {
                     </div>
                 </section>
 
-                {/* 2. Interactive Slash Commands */}
-                <section className="flex flex-col gap-2">
-                    <h2 className="text-[14px] font-medium text-[#EDEDEF]">
-                        2. Interactive Slash Commands
+                {/* 2. CLI Flags */}
+                <section className="flex flex-col gap-3">
+                    <h2 className="text-[16px] font-semibold text-[#EDEDEF] tracking-tight">
+                        Command Line Flags &amp; Options
                     </h2>
-                    <p className="text-[13.5px] text-[#9A9998] leading-relaxed">
-                        Type a forward slash (
-                        <code className="text-[#EDEDEF] font-mono text-[12px]">/</code>) inside the
-                        TUI input bar to open the command palette:
-                    </p>
-
-                    <ul className="list-disc list-inside space-y-1.5 text-[13.5px] text-[#9A9998] pl-1">
-                        <li>
-                            <strong className="text-[#D6D5C9] font-mono text-[12.5px]">
-                                /docs:
-                            </strong>{' '}
-                            Opens December web documentation in your default browser.
-                        </li>
-                        <li>
-                            <strong className="text-[#D6D5C9] font-mono text-[12.5px]">
-                                /clear:
-                            </strong>{' '}
-                            Clears conversation history and resets active context memory.
-                        </li>
-                        <li>
-                            <strong className="text-[#D6D5C9] font-mono text-[12.5px]">
-                                /handoff:
-                            </strong>{' '}
-                            Archives the local workspace and uploads it to an isolated cloud
-                            micro-VM.
-                        </li>
-                        <li>
-                            <strong className="text-[#D6D5C9] font-mono text-[12.5px]">
-                                /fork:
-                            </strong>{' '}
-                            Branches the current session into a new conversation thread.
-                        </li>
-                        <li>
-                            <strong className="text-[#D6D5C9] font-mono text-[12.5px]">
-                                /copy:
-                            </strong>{' '}
-                            Copies the last agent response to your system clipboard.
-                        </li>
-                        <li>
-                            <strong className="text-[#D6D5C9] font-mono text-[12.5px]">
-                                /grill-me:
-                            </strong>{' '}
-                            Interviews the developer interactively to clarify requirements before
-                            generating code.
-                        </li>
-                        <li>
-                            <strong className="text-[#D6D5C9] font-mono text-[12.5px]">
-                                /exit:
-                            </strong>{' '}
-                            Gracefully closes the terminal session.
-                        </li>
-                    </ul>
+                    <div className="overflow-x-auto rounded-xl border border-[#242323] bg-[#141414]">
+                        <table className="w-full text-left text-[13px]">
+                            <thead className="border-b border-[#242323] text-[#EDEDEF] font-medium bg-[#181818]">
+                                <tr>
+                                    <th className="p-3">Flag</th>
+                                    <th className="p-3">Description</th>
+                                    <th className="p-3">Default</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-[#242323] text-[#9A9998] font-mono text-[12.5px]">
+                                <tr>
+                                    <td className="p-3 text-[#87B2F4]">--model &lt;name&gt;</td>
+                                    <td className="p-3 font-sans">
+                                        Override default LLM provider or model tier
+                                    </td>
+                                    <td className="p-3 text-[#71717A]">auto</td>
+                                </tr>
+                                <tr>
+                                    <td className="p-3 text-[#87B2F4]">--workdir &lt;path&gt;</td>
+                                    <td className="p-3 font-sans">
+                                        Set root working directory for the agent
+                                    </td>
+                                    <td className="p-3 text-[#71717A]">process.cwd()</td>
+                                </tr>
+                                <tr>
+                                    <td className="p-3 text-[#87B2F4]">--verbose</td>
+                                    <td className="p-3 font-sans">
+                                        Enable detailed execution logs &amp; debug traces
+                                    </td>
+                                    <td className="p-3 text-[#71717A]">false</td>
+                                </tr>
+                                <tr>
+                                    <td className="p-3 text-[#87B2F4]">--cloud</td>
+                                    <td className="p-3 font-sans">
+                                        Dispatch task to remote cloud micro-VM instead of local
+                                    </td>
+                                    <td className="p-3 text-[#71717A]">false</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </section>
 
                 {/* 3. Keyboard Shortcuts */}
-                <section className="flex flex-col gap-2">
-                    <h2 className="text-[14px] font-medium text-[#EDEDEF]">
-                        3. Keyboard Shortcuts
-                    </h2>
-                    <ul className="list-disc list-inside space-y-1.5 text-[13.5px] text-[#9A9998] pl-1">
-                        <li>
-                            <strong className="text-[#D6D5C9] font-mono text-[12.5px]">
-                                Ctrl + C:
-                            </strong>{' '}
-                            Cancels active model generation or ongoing tool execution.
-                        </li>
-                        <li>
-                            <strong className="text-[#D6D5C9] font-mono text-[12.5px]">
-                                Ctrl + O:
-                            </strong>{' '}
-                            Toggles display of model thinking traces in the message list.
-                        </li>
-                        <li>
-                            <strong className="text-[#D6D5C9] font-mono text-[12.5px]">Tab:</strong>{' '}
-                            Autocompletes highlighted command or file mention in the prompt bar.
-                        </li>
-                    </ul>
-                </section>
-
-                {/* 4. Configuration Storage */}
-                <section className="flex flex-col gap-2">
-                    <h2 className="text-[14px] font-medium text-[#EDEDEF]">
-                        4. Configuration & Token Storage
+                <section className="flex flex-col gap-3">
+                    <h2 className="text-[16px] font-semibold text-[#EDEDEF] tracking-tight">
+                        Keyboard Shortcuts
                     </h2>
                     <p className="text-[13.5px] text-[#9A9998] leading-relaxed">
-                        The CLI stores user authentication credentials, BYOK API keys, and provider
-                        preferences locally at:
+                        Control the TUI with these convenient keyboard shortcuts:
                     </p>
-                    <div className="bg-[#111111] border border-[#242323] rounded-md px-3 py-2 font-mono text-[12.5px] text-[#D6D5C9] select-all">
-                        ~/.december/config.json
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-[13px]">
+                        <div className="flex items-center justify-between p-3 rounded-lg border border-[#242323] bg-[#141414]">
+                            <span className="text-[#9A9998]">Trigger command palette</span>
+                            <kbd className="px-2 py-0.5 rounded bg-[#202020] text-[#EDEDEF] font-mono text-[12px] border border-[#2D2D2D]">
+                                /
+                            </kbd>
+                        </div>
+                        <div className="flex items-center justify-between p-3 rounded-lg border border-[#242323] bg-[#141414]">
+                            <span className="text-[#9A9998]">Cancel current generation</span>
+                            <kbd className="px-2 py-0.5 rounded bg-[#202020] text-[#EDEDEF] font-mono text-[12px] border border-[#2D2D2D]">
+                                Ctrl + C
+                            </kbd>
+                        </div>
+                        <div className="flex items-center justify-between p-3 rounded-lg border border-[#242323] bg-[#141414]">
+                            <span className="text-[#9A9998]">Clear terminal screen</span>
+                            <kbd className="px-2 py-0.5 rounded bg-[#202020] text-[#EDEDEF] font-mono text-[12px] border border-[#2D2D2D]">
+                                Ctrl + L
+                            </kbd>
+                        </div>
+                        <div className="flex items-center justify-between p-3 rounded-lg border border-[#242323] bg-[#141414]">
+                            <span className="text-[#9A9998]">Cycle prompt history</span>
+                            <kbd className="px-2 py-0.5 rounded bg-[#202020] text-[#EDEDEF] font-mono text-[12px] border border-[#2D2D2D]">
+                                Up / Down
+                            </kbd>
+                        </div>
                     </div>
                 </section>
+
+                {/* Pagination */}
+                {onNavigate && <DocPagination currentTab="CLI Reference" onNavigate={onNavigate} />}
             </div>
         </div>
     )

@@ -1,125 +1,179 @@
+import { Terminal, Rocket } from 'lucide-react'
 import React from 'react'
 
-export const DocsQuickStart: React.FC = () => {
+import { CodeBlock, DocCallout, DocPagination } from '../DocsUI'
+
+import type { DocTab } from '../../types'
+
+interface DocsSectionProps {
+    onNavigate?: (tab: DocTab) => void
+}
+
+export const DocsQuickStart: React.FC<DocsSectionProps> = ({ onNavigate }) => {
     return (
-        <div className="flex flex-col w-full max-w-[800px] text-[#D6D5C9]">
+        <div className="flex flex-col w-full max-w-[820px] text-[#D6D5C9]">
             {/* Header */}
-            <div className="flex flex-col mb-6">
-                <h1 className="text-[16px] font-medium text-[#EDEDEF] mb-1">
+            <div className="flex flex-col mb-8">
+                <div className="flex items-center gap-2 mb-2">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                        <Rocket className="w-3 h-3" />
+                        Getting Started
+                    </span>
+                    <span className="text-[12px] text-[#71717A]">Under 2 minutes</span>
+                </div>
+                <h1 className="text-2xl sm:text-3xl font-semibold text-[#EDEDEF] tracking-tight mb-2">
                     Getting Started with December
                 </h1>
-                <p className="text-[13.5px] text-[#9A9998]">
-                    Step-by-step walkthrough for cloud workspace and terminal CLI.
+                <p className="text-[14.5px] sm:text-[15px] text-[#9A9998] leading-relaxed">
+                    Follow this walkthrough to launch your first session in either the cloud
+                    workspace or directly inside your local terminal repository.
                 </p>
             </div>
 
-            <div className="flex flex-col gap-6 border-t border-[#242323] pt-5">
+            <div className="flex flex-col gap-8 border-t border-[#242323] pt-6">
                 {/* 1. Cloud Workspace Walkthrough */}
-                <section className="flex flex-col gap-2">
-                    <h2 className="text-[14px] font-medium text-[#EDEDEF]">
-                        1. Cloud Workspace Walkthrough
-                    </h2>
-                    <div className="space-y-3 text-[13.5px] text-[#9A9998] leading-relaxed">
-                        <div>
-                            <h3 className="text-[13.5px] font-medium text-[#EDEDEF] mb-0.5">
-                                A. Starting a Session
+                <section className="flex flex-col gap-4">
+                    <div className="flex items-center gap-2">
+                        <span className="w-6 h-6 rounded-full bg-[#1E1E1E] border border-[#2B2B2B] text-[#EDEDEF] text-[12px] font-bold flex items-center justify-center">
+                            1
+                        </span>
+                        <h2 className="text-[16px] font-semibold text-[#EDEDEF] tracking-tight">
+                            Cloud Workspace Walkthrough
+                        </h2>
+                    </div>
+
+                    <p className="text-[13.5px] text-[#9A9998] leading-relaxed">
+                        The cloud workspace offers zero-configuration micro-VM sandboxes with live
+                        interactive previews and GitHub integration.
+                    </p>
+
+                    <div className="space-y-3">
+                        <div className="p-4 rounded-xl border border-[#242323] bg-[#141414] space-y-2">
+                            <h3 className="text-[14px] font-medium text-[#EDEDEF]">
+                                Step A: Launch a New Session
                             </h3>
-                            <p>
-                                Navigate to the home dashboard and enter a natural language prompt
-                                describing what you want to build. You can also pick a starter
-                                template (React, Next.js, Node, Vite) or connect your GitHub account
-                                to import an existing repository.
+                            <p className="text-[13px] text-[#9A9998] leading-relaxed">
+                                Visit{' '}
+                                <a
+                                    href="https://trydecember.com"
+                                    className="text-[#87B2F4] hover:underline"
+                                >
+                                    trydecember.com
+                                </a>{' '}
+                                and type your initial task in the prompt bar. You can choose a
+                                starter template (React, Vite, Next.js, Node) or import an existing
+                                GitHub repository.
                             </p>
                         </div>
-                        <div>
-                            <h3 className="text-[13.5px] font-medium text-[#EDEDEF] mb-0.5">
-                                B. Prompting & Context Mentions
+
+                        <div className="p-4 rounded-xl border border-[#242323] bg-[#141414] space-y-2">
+                            <h3 className="text-[14px] font-medium text-[#EDEDEF]">
+                                Step B: Attach Files &amp; Context with @ Mentions
                             </h3>
-                            <p>
-                                Provide detailed specifications, user stories, or bug reports. Type{' '}
-                                <code className="text-[#EDEDEF] bg-[#1E1E1E] px-1.5 py-0.5 rounded text-[12.5px] font-mono">
+                            <p className="text-[13px] text-[#9A9998] leading-relaxed">
+                                Type{' '}
+                                <code className="text-[#EDEDEF] bg-[#1E1E1E] px-1.5 py-0.5 rounded text-[12px] font-mono">
                                     @
                                 </code>{' '}
-                                in the prompt input to attach repository files, existing sessions,
-                                or stored environment secrets directly into the agent&apos;s
-                                context.
+                                in the prompt bar to attach specific project files, recent sessions,
+                                or environment variables directly into the agent&apos;s working
+                                memory.
                             </p>
                         </div>
-                        <div>
-                            <h3 className="text-[13.5px] font-medium text-[#EDEDEF] mb-0.5">
-                                C. Inspecting Code & Live Previews
+
+                        <div className="p-4 rounded-xl border border-[#242323] bg-[#141414] space-y-2">
+                            <h3 className="text-[14px] font-medium text-[#EDEDEF]">
+                                Step C: Inspect Code &amp; Test Live Previews
                             </h3>
-                            <p>
-                                Once invoked, the agent provisions a micro-VM, boots the development
-                                server, and streams code edits. You can interact with the live
-                                application in the preview window, inspect file changes in the code
-                                viewer, or download the full workspace bundle.
+                            <p className="text-[13px] text-[#9A9998] leading-relaxed">
+                                As December executes, the split-screen view updates with real-time
+                                file diffs, live dev server output, and interactive preview frames.
+                                You can test the application directly in the browser.
                             </p>
                         </div>
                     </div>
                 </section>
 
                 {/* 2. Terminal CLI Installation */}
-                <section className="flex flex-col gap-2">
-                    <h2 className="text-[14px] font-medium text-[#EDEDEF]">
-                        2. Terminal CLI Installation & Setup
-                    </h2>
+                <section className="flex flex-col gap-4">
+                    <div className="flex items-center gap-2">
+                        <span className="w-6 h-6 rounded-full bg-[#1E1E1E] border border-[#2B2B2B] text-[#EDEDEF] text-[12px] font-bold flex items-center justify-center">
+                            2
+                        </span>
+                        <h2 className="text-[16px] font-semibold text-[#EDEDEF] tracking-tight">
+                            Terminal CLI Installation &amp; Setup
+                        </h2>
+                    </div>
+
                     <p className="text-[13.5px] text-[#9A9998] leading-relaxed">
-                        December can also run natively in your local terminal environment. Install
-                        the CLI globally using your favorite package manager:
+                        For local development, the December CLI runs directly in your terminal,
+                        respecting your local Git repository context.
                     </p>
 
-                    <div className="space-y-2 pt-1">
-                        <p className="text-[13px] text-[#EDEDEF] font-medium">Install globally:</p>
-                        <div className="bg-[#111111] border border-[#242323] rounded-md px-3 py-2 font-mono text-[12.5px] text-[#7FD6B0] select-all">
-                            npm install -g @trydecember/cli
+                    <div className="space-y-3">
+                        <div>
+                            <p className="text-[13px] text-[#EDEDEF] font-medium mb-1">
+                                Global installation:
+                            </p>
+                            <CodeBlock
+                                code="npm install -g @trydecember/cli"
+                                language="bash"
+                                filename="Terminal"
+                            />
                         </div>
 
-                        <p className="text-[13px] text-[#EDEDEF] font-medium pt-1">
-                            Instant run (no install required):
-                        </p>
-                        <div className="bg-[#111111] border border-[#242323] rounded-md px-3 py-2 font-mono text-[12.5px] text-[#7FD6B0] select-all">
-                            npx @trydecember/cli
+                        <div>
+                            <p className="text-[13px] text-[#EDEDEF] font-medium mb-1">
+                                Or run instantly with npx (no install needed):
+                            </p>
+                            <CodeBlock code="npx @trydecember/cli" language="bash" />
                         </div>
                     </div>
 
-                    <div className="space-y-2 pt-2 text-[13.5px] text-[#9A9998] leading-relaxed">
-                        <p>
-                            <strong className="text-[#D6D5C9]">Authentication:</strong> Run{' '}
-                            <code className="text-[#EDEDEF] bg-[#1E1E1E] px-1.5 py-0.5 rounded text-[12.5px] font-mono">
-                                december login
-                            </code>{' '}
-                            to link your terminal device to your December account via an automated
-                            browser handshake.
-                        </p>
-                        <p>
-                            <strong className="text-[#D6D5C9]">Launching the Agent:</strong> Run{' '}
-                            <code className="text-[#EDEDEF] bg-[#1E1E1E] px-1.5 py-0.5 rounded text-[12.5px] font-mono">
-                                december
-                            </code>{' '}
-                            in any directory to start an interactive TUI session with Git context
-                            tracking.
-                        </p>
+                    <div className="space-y-3 pt-2">
+                        <div className="p-4 rounded-xl border border-[#242323] bg-[#141414] space-y-1.5">
+                            <h3 className="text-[14px] font-medium text-[#EDEDEF] flex items-center gap-2">
+                                <Terminal className="w-4 h-4 text-[#7FD6B0]" />
+                                Authentication Handshake
+                            </h3>
+                            <p className="text-[13px] text-[#9A9998] leading-relaxed">
+                                Run{' '}
+                                <code className="text-[#EDEDEF] bg-[#1E1E1E] px-1.5 py-0.5 rounded text-[12px] font-mono">
+                                    december login
+                                </code>{' '}
+                                to authorize your CLI session. A browser window opens automatically
+                                to connect your device and store your session credentials securely.
+                            </p>
+                        </div>
+
+                        <div className="p-4 rounded-xl border border-[#242323] bg-[#141414] space-y-1.5">
+                            <h3 className="text-[14px] font-medium text-[#EDEDEF] flex items-center gap-2">
+                                <Rocket className="w-4 h-4 text-[#87B2F4]" />
+                                Launching the Agent
+                            </h3>
+                            <p className="text-[13px] text-[#9A9998] leading-relaxed">
+                                Navigate to any project directory and run{' '}
+                                <code className="text-[#EDEDEF] bg-[#1E1E1E] px-1.5 py-0.5 rounded text-[12px] font-mono">
+                                    december
+                                </code>
+                                . The agent scans your repo, parses Git status, and launches the
+                                interactive TUI.
+                            </p>
+                        </div>
                     </div>
+
+                    <DocCallout type="tip" title="First Session Tip">
+                        Start with a focused task such as{' '}
+                        <span className="text-[#EDEDEF] font-mono text-[12px]">
+                            &quot;Add a search filter bar with debounce to the session list&quot;
+                        </span>
+                        . Small, well-scoped prompts allow you to inspect the agent&apos;s planning
+                        and verification flow.
+                    </DocCallout>
                 </section>
 
-                {/* 3. Starter Templates & Repositories */}
-                <section className="flex flex-col gap-2">
-                    <h2 className="text-[14px] font-medium text-[#EDEDEF]">
-                        3. Repositories & Workspaces
-                    </h2>
-                    <p className="text-[13.5px] text-[#9A9998] leading-relaxed">
-                        To work with your GitHub repositories, connect your account from{' '}
-                        <a
-                            href="https://trydecember.com/settings/connections"
-                            className="text-[#87B2F4] hover:underline"
-                        >
-                            Settings &gt; Connections
-                        </a>
-                        . The December GitHub App requests minimum permissions required to clone,
-                        branch, and open pull requests on the specific repositories you authorize.
-                    </p>
-                </section>
+                {/* Pagination */}
+                {onNavigate && <DocPagination currentTab="Quick Start" onNavigate={onNavigate} />}
             </div>
         </div>
     )

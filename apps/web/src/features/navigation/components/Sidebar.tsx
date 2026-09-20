@@ -232,6 +232,7 @@ const Sidebar: React.FC<
         if (isProjectsActive) activeIndex = 2
         else if (isSettingsActive) activeIndex = 3
         else if (isDocsActive) activeIndex = 4
+        else activeIndex = -1
     } else {
         activeIndex = 0
     }
@@ -248,11 +249,17 @@ const Sidebar: React.FC<
             onClick: () => {
                 if (onNewThread) {
                     onNewThread()
+                } else if (onHomeClick) {
+                    onHomeClick()
                 } else {
-                    const el = document.getElementById('main-scroll-container')
-                    el?.scrollTo({ top: 0, behavior: 'smooth' })
-                    if (onHomeClick) onHomeClick()
+                    navigate('/')
                 }
+                const el = document.getElementById('main-scroll-container')
+                el?.scrollTo({ top: 0, behavior: 'smooth' })
+                window.dispatchEvent(new CustomEvent('december:new-session'))
+                setTimeout(() => {
+                    document.getElementById('home-prompt-textarea')?.focus()
+                }, 50)
             },
         },
         {

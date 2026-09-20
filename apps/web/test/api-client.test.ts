@@ -126,12 +126,17 @@ describe('API Client Base URL and Environment Configuration', () => {
         const originalFetch = globalThis.fetch
         let callCount = 0
 
-        globalThis.fetch = (async (url: string | URL | Request) => {
-            callCount++
-            if (callCount === 1) {
-                return new Response(JSON.stringify({ message: 'Bad Gateway' }), { status: 502 })
+        globalThis.fetch = (async (url: string | URL | Request, init?: any) => {
+            const urlStr =
+                typeof url === 'string' ? url : url instanceof Request ? url.url : url.toString()
+            if (urlStr.includes('/auth/refresh')) {
+                callCount++
+                if (callCount === 1) {
+                    return new Response(JSON.stringify({ message: 'Bad Gateway' }), { status: 502 })
+                }
+                return new Response(JSON.stringify({ success: true }), { status: 200 })
             }
-            return new Response(JSON.stringify({ success: true }), { status: 200 })
+            return originalFetch ? originalFetch(url, init) : new Response('{}', { status: 200 })
         }) as any
 
         try {
@@ -148,9 +153,14 @@ describe('API Client Base URL and Environment Configuration', () => {
         const originalFetch = globalThis.fetch
         let callCount = 0
 
-        globalThis.fetch = (async (url: string | URL | Request) => {
-            callCount++
-            return new Response(JSON.stringify({ message: 'Session expired' }), { status: 401 })
+        globalThis.fetch = (async (url: string | URL | Request, init?: any) => {
+            const urlStr =
+                typeof url === 'string' ? url : url instanceof Request ? url.url : url.toString()
+            if (urlStr.includes('/auth/refresh')) {
+                callCount++
+                return new Response(JSON.stringify({ message: 'Session expired' }), { status: 401 })
+            }
+            return originalFetch ? originalFetch(url, init) : new Response('{}', { status: 200 })
         }) as any
 
         try {

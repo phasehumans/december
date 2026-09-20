@@ -58,39 +58,33 @@ export const useNavigationController = () => {
                 console.error('Failed to stop preview:', err)
             })
         }
-        setMessages([])
-        clearOpenedProject()
-        resetGenerationFlow()
-        setImportState({ status: 'idle', message: null })
+        const state = useAppStore.getState()
+        state.setIsGenerating(false)
+        state.setMessages([])
+        state.setActiveProjectId(null)
+        state.setActiveProjectName(null)
+        state.setActiveProjectVersionId(null)
+        state.setProjectVersions([])
+        state.setGeneratedFiles({})
+        state.setActiveGeneratedFilePath(null)
+        state.setCurrentGenerationFilePaths([])
+        state.setGenerationPhase(null)
+        state.setActiveOperation(null)
+        state.setImportState({ status: 'idle', message: null })
+        state.setPreviewSession(null)
+        state.setPreviewSessionError(null)
+        state.setProjectLoadError(null)
+        state.setSessionLoadError(null)
+        state.setIsProjectOpening(false)
+        state.setIsSessionOpening(false)
+        state.setIsMobileSidebarOpen(false)
+
         navigate('/')
-    }, [
-        activeProjectId,
-        setMessages,
-        clearOpenedProject,
-        resetGenerationFlow,
-        setImportState,
-        navigate,
-    ])
+    }, [activeProjectId, navigate])
 
     const handleHomeClick = React.useCallback(() => {
-        if (activeProjectId) {
-            void previewAPI.stopPreview(activeProjectId).catch((err) => {
-                console.error('Failed to stop preview:', err)
-            })
-        }
-        setMessages([])
-        clearOpenedProject()
-        resetGenerationFlow()
-        setImportState({ status: 'idle', message: null })
-        navigate('/')
-    }, [
-        activeProjectId,
-        setMessages,
-        clearOpenedProject,
-        resetGenerationFlow,
-        setImportState,
-        navigate,
-    ])
+        handleNewThread()
+    }, [handleNewThread])
 
     const handleNavigate = React.useCallback(
         (target: ViewState) => {

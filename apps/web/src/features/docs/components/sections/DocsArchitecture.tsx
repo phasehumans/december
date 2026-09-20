@@ -1,21 +1,40 @@
+import { Server, Shield, Cpu, Network, Lock } from 'lucide-react'
 import React from 'react'
 
-export const DocsArchitecture: React.FC = () => {
+import { DocCallout, DocCard, DocPagination } from '../DocsUI'
+
+import type { DocTab } from '../../types'
+
+interface DocsSectionProps {
+    onNavigate?: (tab: DocTab) => void
+}
+
+export const DocsArchitecture: React.FC<DocsSectionProps> = ({ onNavigate }) => {
     return (
-        <div className="flex flex-col w-full max-w-[800px] text-[#D6D5C9]">
+        <div className="flex flex-col w-full max-w-[820px] text-[#D6D5C9]">
             {/* Header */}
-            <div className="flex flex-col mb-6">
-                <h1 className="text-[16px] font-medium text-[#EDEDEF] mb-1">System Architecture</h1>
-                <p className="text-[13.5px] text-[#9A9998]">
-                    Micro-VM sandboxing, execution loops, and security design.
+            <div className="flex flex-col mb-8">
+                <div className="flex items-center gap-2 mb-2">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                        <Server className="w-3 h-3" />
+                        Infrastructure &amp; Security
+                    </span>
+                    <span className="text-[12px] text-[#71717A]">Hardware-Isolated Linux</span>
+                </div>
+                <h1 className="text-2xl sm:text-3xl font-semibold text-[#EDEDEF] tracking-tight mb-2">
+                    System Architecture
+                </h1>
+                <p className="text-[14.5px] sm:text-[15px] text-[#9A9998] leading-relaxed">
+                    Explore December&apos;s micro-VM sandboxing, execution loops, hardware resource
+                    governance, and reverse WebSocket tunneling architecture.
                 </p>
             </div>
 
-            <div className="flex flex-col gap-6 border-t border-[#242323] pt-5">
+            <div className="flex flex-col gap-8 border-t border-[#242323] pt-6">
                 {/* 1. Micro-VM Sandboxes & Isolation */}
-                <section className="flex flex-col gap-2">
-                    <h2 className="text-[14px] font-medium text-[#EDEDEF]">
-                        1. Micro-VM Sandboxes & Isolation
+                <section className="flex flex-col gap-4">
+                    <h2 className="text-[16px] font-semibold text-[#EDEDEF] tracking-tight">
+                        Micro-VM Sandboxes &amp; Isolation
                     </h2>
                     <p className="text-[13.5px] text-[#9A9998] leading-relaxed">
                         Every cloud session operates in an independent, lightweight Linux container
@@ -23,22 +42,26 @@ export const DocsArchitecture: React.FC = () => {
                         bash executions, dependency installations, and development server ports
                         without sharing memory or runtime space with other tenants.
                     </p>
-                    <div className="space-y-3 text-[13.5px] text-[#9A9998] leading-relaxed">
-                        <div>
-                            <h3 className="text-[13.5px] font-medium text-[#EDEDEF] mb-0.5">
-                                A. Hardware Quotas & Resource Governance
-                            </h3>
-                            <p>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="p-4 rounded-xl border border-[#242323] bg-[#141414] space-y-2">
+                            <div className="flex items-center gap-2 text-[#EDEDEF] font-medium text-[14px]">
+                                <Cpu className="w-4 h-4 text-[#87B2F4]" />
+                                Hardware Quotas &amp; Resource Governance
+                            </div>
+                            <p className="text-[13px] text-[#9A9998] leading-relaxed">
                                 Containers are provisioned with dedicated CPU, memory, and disk
                                 limits via Linux cgroups. Background workers enforce strict timeouts
                                 on command executions to prevent runaway processes.
                             </p>
                         </div>
-                        <div>
-                            <h3 className="text-[13.5px] font-medium text-[#EDEDEF] mb-0.5">
-                                B. Secure Port Forwarding & Live Previews
-                            </h3>
-                            <p>
+
+                        <div className="p-4 rounded-xl border border-[#242323] bg-[#141414] space-y-2">
+                            <div className="flex items-center gap-2 text-[#EDEDEF] font-medium text-[14px]">
+                                <Network className="w-4 h-4 text-[#7FD6B0]" />
+                                Secure Port Forwarding &amp; Live Previews
+                            </div>
+                            <p className="text-[13px] text-[#9A9998] leading-relaxed">
                                 Development servers (such as Vite, Next.js, or Express) running
                                 within the container communicate with the web client through
                                 authenticated reverse WebSocket tunnels, preventing public exposure
@@ -49,75 +72,79 @@ export const DocsArchitecture: React.FC = () => {
                 </section>
 
                 {/* 2. Compiler & Linter Feedback Loop */}
-                <section className="flex flex-col gap-2">
-                    <h2 className="text-[14px] font-medium text-[#EDEDEF]">
-                        2. Compiler & Linter Feedback Loop
+                <section className="flex flex-col gap-4">
+                    <h2 className="text-[16px] font-semibold text-[#EDEDEF] tracking-tight">
+                        Compiler &amp; Linter Feedback Loop
                     </h2>
                     <p className="text-[13.5px] text-[#9A9998] leading-relaxed">
                         Rather than issuing speculative code changes, December relies on a
                         deterministic compiler-in-the-loop validation pipeline:
                     </p>
-                    <ul className="list-disc list-inside space-y-1.5 text-[13.5px] text-[#9A9998] pl-1">
-                        <li>
-                            <strong className="text-[#D6D5C9]">Diagnostic Capture:</strong>{' '}
-                            TypeScript compilation errors, ESLint diagnostics, and package manager
-                            failures are streamed directly into the agent&apos;s active context.
-                        </li>
-                        <li>
-                            <strong className="text-[#D6D5C9]">Autonomous Correction:</strong> When
-                            a type or syntax error is encountered, the agent executes targeted
-                            patches to resolve the diagnostic before releasing output to the user.
-                        </li>
-                        <li>
-                            <strong className="text-[#D6D5C9]">Non-Destructive Diffs:</strong> Code
-                            edits are applied through AST-aware string replacements and Git tree
-                            checkpoints, preventing destructive file truncations.
-                        </li>
-                    </ul>
-                </section>
 
-                {/* 3. Checkpointing & Context Compression */}
-                <section className="flex flex-col gap-2">
-                    <h2 className="text-[14px] font-medium text-[#EDEDEF]">
-                        3. Checkpointing & Context Compression
-                    </h2>
-                    <div className="space-y-3 text-[13.5px] text-[#9A9998] leading-relaxed">
-                        <div>
-                            <h3 className="text-[13.5px] font-medium text-[#EDEDEF] mb-0.5">
-                                Git Checkpointing & Undo System
-                            </h3>
-                            <p>
-                                Every agent turn creates an ephemeral Git commit snapshot.
-                                Developers can step backward through prompt turns or undo specific
-                                refactors with complete fidelity.
-                            </p>
+                    <div className="space-y-2 text-[13.5px] text-[#9A9998]">
+                        <div className="p-3.5 rounded-xl border border-[#242323] bg-[#141414] flex gap-3">
+                            <span className="font-semibold text-[#87B2F4] shrink-0">
+                                Diagnostic Capture:
+                            </span>
+                            <span>
+                                TypeScript compilation errors, ESLint diagnostics, and package
+                                manager failures are streamed directly into the agent&apos;s active
+                                context.
+                            </span>
                         </div>
-                        <div>
-                            <h3 className="text-[13.5px] font-medium text-[#EDEDEF] mb-0.5">
-                                Token Pruning & Prompt Caching
-                            </h3>
-                            <p>
-                                Historical terminal command outputs and repetitive tool payloads are
-                                systematically compressed into concise summaries, keeping
-                                conversations within model attention boundaries while lowering
-                                latency.
-                            </p>
+                        <div className="p-3.5 rounded-xl border border-[#242323] bg-[#141414] flex gap-3">
+                            <span className="font-semibold text-[#7FD6B0] shrink-0">
+                                Autonomous Correction:
+                            </span>
+                            <span>
+                                When a type or syntax error is encountered, the agent executes
+                                targeted patches to resolve the diagnostic before releasing output
+                                to the user.
+                            </span>
+                        </div>
+                        <div className="p-3.5 rounded-xl border border-[#242323] bg-[#141414] flex gap-3">
+                            <span className="font-semibold text-[#E5A93C] shrink-0">
+                                Non-Destructive Diffs:
+                            </span>
+                            <span>
+                                Code edits are applied through AST-aware string replacements and Git
+                                tree checkpoints, preventing destructive file truncations.
+                            </span>
                         </div>
                     </div>
                 </section>
 
-                {/* 4. Security & Tenant Separation */}
-                <section className="flex flex-col gap-2">
-                    <h2 className="text-[14px] font-medium text-[#EDEDEF]">
-                        4. Security & Tenant Separation
+                {/* 3. Security Perimeter */}
+                <section className="flex flex-col gap-3">
+                    <h2 className="text-[16px] font-semibold text-[#EDEDEF] tracking-tight">
+                        Sandbox Security Perimeter
                     </h2>
                     <p className="text-[13.5px] text-[#9A9998] leading-relaxed">
-                        User secrets, API keys, and repository credentials are encrypted at rest
-                        with AES-256 and transmitted exclusively over TLS. Sensitive keys are
-                        stripped from client-facing telemetry and never used to train third-party
-                        foundation models.
+                        The December runtime architecture employs strict defense-in-depth:
                     </p>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <DocCard
+                            icon={Lock}
+                            title="Single-Tenant Isolation"
+                            description="Each session micro-VM is booted on-demand in its own isolated filesystem namespace with non-root default permissions."
+                        />
+                        <DocCard
+                            icon={Shield}
+                            title="Ephemeral Destruction"
+                            description="When a session expires or is terminated, all ephemeral container storage and cached runtime artifacts are purged securely."
+                        />
+                    </div>
+
+                    <DocCallout type="warning" title="Outbound Network Governance">
+                        Micro-VM sandboxes permit outbound network traffic to approved package
+                        registries (npm, PyPI, Crates.io) and public APIs, but enforce strict rate
+                        limits and prevent unauthorized internal network scanning.
+                    </DocCallout>
                 </section>
+
+                {/* Pagination */}
+                {onNavigate && <DocPagination currentTab="Architecture" onNavigate={onNavigate} />}
             </div>
         </div>
     )

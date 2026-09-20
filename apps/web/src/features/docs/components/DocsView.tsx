@@ -1,13 +1,20 @@
-import { ChevronLeft } from 'lucide-react'
-import React, { useEffect, useState } from 'react'
+import { ChevronLeft, Search, X } from 'lucide-react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 
 import { DOCS_NAV_GROUPS, pathToDocTab, docTabToPath, docTabToTitle } from '../types'
 
+import { DocsAgentLoop } from './sections/DocsAgentLoop'
 import { DocsArchitecture } from './sections/DocsArchitecture'
+import { DocsCheckpoints } from './sections/DocsCheckpoints'
 import { DocsCliReference } from './sections/DocsCliReference'
+import { DocsIntegrations } from './sections/DocsIntegrations'
 import { DocsIntroduction } from './sections/DocsIntroduction'
+import { DocsPreviews } from './sections/DocsPreviews'
+import { DocsPrompting } from './sections/DocsPrompting'
 import { DocsQuickStart } from './sections/DocsQuickStart'
+import { DocsSecurity } from './sections/DocsSecurity'
+import { DocsSlashCommands } from './sections/DocsSlashCommands'
 
 import type { DocTab } from '../types'
 
@@ -28,9 +35,9 @@ export const DocsView: React.FC<DocsViewProps> = ({ onBack }) => {
     const normalizedPath = location.pathname.toLowerCase().replace(/\/$/, '') || '/docs'
     const currentTab: DocTab = pathToDocTab[normalizedPath] || 'Introduction'
     const [activeTab, setActiveTab] = useState<DocTab>(currentTab)
+    const [searchQuery, setSearchQuery] = useState('')
 
     const isMobileRoot = location.pathname === '/docs' || location.pathname === '/docs/'
-
     const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(isMobileRoot)
 
     useEffect(() => {
@@ -67,22 +74,51 @@ export const DocsView: React.FC<DocsViewProps> = ({ onBack }) => {
         }
     }
 
+    // Filter groups and items by search query
+    const filteredGroups = useMemo(() => {
+        const trimmed = searchQuery.trim().toLowerCase()
+        if (!trimmed) return DOCS_NAV_GROUPS
+
+        return DOCS_NAV_GROUPS.map((group) => ({
+            ...group,
+            items: group.items.filter(
+                (item) =>
+                    item.label.toLowerCase().includes(trimmed) ||
+                    item.slug.toLowerCase().includes(trimmed)
+            ),
+        })).filter((group) => group.items.length > 0)
+    }, [searchQuery])
+
     const renderTabContent = () => {
         switch (activeTab) {
             case 'Introduction':
-                return <DocsIntroduction />
+                return <DocsIntroduction onNavigate={handleTabChange} />
             case 'Quick Start':
-                return <DocsQuickStart />
+                return <DocsQuickStart onNavigate={handleTabChange} />
+            case 'Prompting Guide':
+                return <DocsPrompting onNavigate={handleTabChange} />
+            case 'Agent Loop':
+                return <DocsAgentLoop onNavigate={handleTabChange} />
+            case 'Git Checkpoints':
+                return <DocsCheckpoints onNavigate={handleTabChange} />
             case 'Architecture':
-                return <DocsArchitecture />
+                return <DocsArchitecture onNavigate={handleTabChange} />
+            case 'Live Previews':
+                return <DocsPreviews onNavigate={handleTabChange} />
             case 'CLI Reference':
-                return <DocsCliReference />
+                return <DocsCliReference onNavigate={handleTabChange} />
+            case 'Slash Commands':
+                return <DocsSlashCommands onNavigate={handleTabChange} />
+            case 'Integrations & MCP':
+                return <DocsIntegrations onNavigate={handleTabChange} />
+            case 'Security & Isolation':
+                return <DocsSecurity onNavigate={handleTabChange} />
             case 'Privacy Policy':
                 return <PrivacyPolicyContent />
             case 'Terms of Service':
                 return <TermsOfServiceContent />
             default:
-                return <DocsIntroduction />
+                return <DocsIntroduction onNavigate={handleTabChange} />
         }
     }
 
@@ -91,7 +127,7 @@ export const DocsView: React.FC<DocsViewProps> = ({ onBack }) => {
             {/* Mobile Drawer Backdrop */}
             <div
                 className={cn(
-                    'fixed inset-0 bg-black/50 z-40 md:hidden transition-opacity duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)]',
+                    'fixed inset-0 bg-black/60 z-40 md:hidden transition-opacity duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)]',
                     isMobileDrawerOpen
                         ? 'opacity-100 pointer-events-auto'
                         : 'opacity-0 pointer-events-none'
@@ -99,10 +135,10 @@ export const DocsView: React.FC<DocsViewProps> = ({ onBack }) => {
                 onClick={() => setIsMobileDrawerOpen(false)}
             />
 
-            {/* Mobile Drawer: Consistent with settings page mobile drawer */}
+            {/* Mobile Drawer */}
             <div
                 className={cn(
-                    'fixed inset-y-0 left-0 w-[240px] bg-sidebar border-r border-white/5 z-[60] md:hidden flex flex-col pt-2 pb-0 transition-transform duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)] will-change-transform font-sans',
+                    'fixed inset-y-0 left-0 w-[260px] bg-[#141414] border-r border-[#242323] z-[60] md:hidden flex flex-col pt-2 pb-0 transition-transform duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)] will-change-transform font-sans',
                     isMobileDrawerOpen
                         ? 'translate-x-0 pointer-events-auto'
                         : '-translate-x-full pointer-events-none'
@@ -110,7 +146,7 @@ export const DocsView: React.FC<DocsViewProps> = ({ onBack }) => {
             >
                 {/* Drawer Header */}
                 <div className="px-3 mb-2 mt-0 z-30 relative">
-                    <div className="flex items-center justify-between px-2 mb-6 mt-4">
+                    <div className="flex items-center justify-between px-2 mb-4 mt-3">
                         <button
                             type="button"
                             onClick={handleHome}
@@ -127,16 +163,38 @@ export const DocsView: React.FC<DocsViewProps> = ({ onBack }) => {
                             <Icons.SidebarToggle className="w-4 h-4" />
                         </div>
                     </div>
+
+                    {/* Mobile Search */}
+                    <div className="relative mb-2">
+                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#71717A] pointer-events-none" />
+                        <input
+                            type="text"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            onInput={(e) => setSearchQuery((e.target as HTMLInputElement).value)}
+                            placeholder="Search documentation..."
+                            className="w-full bg-[#1A1A1A] border border-[#2A2A2A] focus:border-[#3E3E3E] rounded-lg pl-8 pr-7 py-1.5 text-[12.5px] text-[#EDEDEF] placeholder-[#71717A] outline-none"
+                        />
+                        {searchQuery && (
+                            <button
+                                type="button"
+                                onClick={() => setSearchQuery('')}
+                                className="absolute right-2 top-1/2 -translate-y-1/2 text-[#71717A] hover:text-[#EDEDEF]"
+                            >
+                                <X className="w-3 h-3" />
+                            </button>
+                        )}
+                    </div>
                 </div>
 
                 {/* Drawer Nav Items */}
-                <div className="flex-1 flex flex-col gap-[2px] px-3 overflow-y-auto no-scrollbar pb-6">
-                    {DOCS_NAV_GROUPS.map((group, groupIdx) => (
+                <div className="flex-1 flex flex-col gap-1 px-3 overflow-y-auto no-scrollbar pb-6">
+                    {filteredGroups.map((group, groupIdx) => (
                         <React.Fragment key={group.title}>
                             <div
                                 className={cn(
-                                    'px-2.5 py-1.5 text-[12px] font-medium text-[#919191] tracking-tight mb-0.5',
-                                    groupIdx > 0 && 'mt-4'
+                                    'px-2.5 py-1 text-[11px] font-semibold text-[#71717A] uppercase tracking-wider',
+                                    groupIdx > 0 && 'mt-3'
                                 )}
                             >
                                 {group.title}
@@ -149,32 +207,23 @@ export const DocsView: React.FC<DocsViewProps> = ({ onBack }) => {
                                         key={item.slug}
                                         onClick={() => handleTabChange(item.tab)}
                                         className={cn(
-                                            'relative flex items-center justify-between w-full px-2.5 h-[32px] rounded-[10px] transition-all group outline-none cursor-pointer',
-                                            isActive ? 'bg-[#1F1F1F]' : 'hover:bg-[#1C1C1C]'
+                                            'relative flex items-center justify-between w-full px-2.5 h-[34px] rounded-[10px] transition-all group outline-none cursor-pointer',
+                                            isActive
+                                                ? 'bg-[#222222] text-[#EDEDEF] border border-[#2F2F2F]'
+                                                : 'hover:bg-[#1C1C1C] text-[#9A9998] border border-transparent'
                                         )}
                                     >
                                         <div className="flex items-center gap-2.5 min-w-0">
-                                            <div
+                                            <IconComponent
                                                 className={cn(
-                                                    'transition-colors flex items-center justify-center shrink-0',
+                                                    'w-4 h-4 shrink-0 transition-colors',
                                                     isActive
-                                                        ? 'text-[#D6D5D4]'
-                                                        : 'text-[#919191] group-hover:text-[#D6D5D4]'
+                                                        ? 'text-[#EDEDEF]'
+                                                        : 'text-[#71717A] group-hover:text-[#EDEDEF]'
                                                 )}
-                                            >
-                                                <IconComponent
-                                                    className="w-[18px] h-[18px]"
-                                                    strokeWidth={1.5}
-                                                />
-                                            </div>
-                                            <span
-                                                className={cn(
-                                                    'font-medium text-[14px] tracking-wide transition-colors truncate',
-                                                    isActive
-                                                        ? 'text-[#D6D5D4]'
-                                                        : 'text-[#919191] group-hover:text-[#D6D5D4]'
-                                                )}
-                                            >
+                                                strokeWidth={1.5}
+                                            />
+                                            <span className="font-medium text-[13px] truncate">
                                                 {item.label}
                                             </span>
                                         </div>
@@ -186,27 +235,55 @@ export const DocsView: React.FC<DocsViewProps> = ({ onBack }) => {
                 </div>
             </div>
 
-            {/* Main Container */}
+            {/* Main Desktop Container */}
             <div className="flex flex-col md:flex-row w-full h-full bg-[#141414] rounded-none md:rounded-lg border-0 md:border md:border-[#242323] overflow-hidden no-scrollbar [scrollbar-width:none] [-ms-overflow-style:none]">
                 {/* Desktop sidebar: visible only on md: and up */}
-                <div className="hidden md:flex w-[220px] shrink-0 border-r border-[#242323] flex-col py-4 no-scrollbar [scrollbar-width:none] [-ms-overflow-style:none]">
-                    <div className="px-4 mb-6">
+                <div className="hidden md:flex w-[240px] shrink-0 border-r border-[#242323] flex-col py-4 no-scrollbar [scrollbar-width:none] [-ms-overflow-style:none]">
+                    {/* Back button */}
+                    <div className="px-4 mb-3">
                         <button
                             onClick={handleHome}
-                            className="flex items-center text-[#7B7A79] hover:text-[#D6D5D4] hover:bg-[#191919] px-2 py-1 -ml-2 rounded-lg text-[13px] font-medium transition-colors cursor-pointer"
+                            className="flex items-center text-[#8E8D8A] hover:text-[#EDEDEF] hover:bg-[#1A1A1A] px-2 py-1.5 -ml-2 rounded-lg text-[13px] font-medium transition-colors cursor-pointer"
                         >
-                            <ChevronLeft className="w-4 h-4 mr-2" />
-                            Back
+                            <ChevronLeft className="w-4 h-4 mr-1.5" />
+                            Back to App
                         </button>
                     </div>
 
-                    <div className="flex flex-col gap-[2px] px-3 overflow-y-auto no-scrollbar [scrollbar-width:none] [-ms-overflow-style:none]">
-                        {DOCS_NAV_GROUPS.map((group, groupIdx) => (
+                    {/* Search Filter */}
+                    <div className="px-3 mb-3">
+                        <div className="relative">
+                            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#71717A] pointer-events-none" />
+                            <input
+                                type="text"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                onInput={(e) =>
+                                    setSearchQuery((e.target as HTMLInputElement).value)
+                                }
+                                placeholder="Search documentation..."
+                                className="w-full bg-[#171717] border border-[#282828] focus:border-[#3E3E3E] rounded-lg pl-8 pr-7 py-1.5 text-[12.5px] text-[#EDEDEF] placeholder-[#71717A] outline-none transition-colors"
+                            />
+                            {searchQuery && (
+                                <button
+                                    type="button"
+                                    onClick={() => setSearchQuery('')}
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 text-[#71717A] hover:text-[#EDEDEF]"
+                                >
+                                    <X className="w-3.5 h-3.5" />
+                                </button>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Nav Items Grouped */}
+                    <div className="flex-1 flex flex-col gap-1 px-3 overflow-y-auto no-scrollbar [scrollbar-width:none] [-ms-overflow-style:none]">
+                        {filteredGroups.map((group, groupIdx) => (
                             <React.Fragment key={group.title}>
                                 <div
                                     className={cn(
-                                        'px-3 py-2 text-[12px] font-medium text-[#7B7A79] mb-1',
-                                        groupIdx > 0 && 'mt-3'
+                                        'px-2.5 py-1 text-[11px] font-semibold text-[#71717A] uppercase tracking-wider select-none',
+                                        groupIdx > 0 && 'mt-3.5'
                                     )}
                                 >
                                     {group.title}
@@ -219,17 +296,22 @@ export const DocsView: React.FC<DocsViewProps> = ({ onBack }) => {
                                             key={item.slug}
                                             onClick={() => handleTabChange(item.tab)}
                                             className={cn(
-                                                'flex items-center gap-3 px-3 py-1.5 rounded-[10px] text-[13px] font-medium transition-colors whitespace-nowrap shrink-0 cursor-pointer',
+                                                'group flex items-center gap-2.5 px-2.5 py-1.5 rounded-[10px] text-[13px] font-medium transition-all text-left cursor-pointer border',
                                                 isActive
-                                                    ? 'bg-[#242323] text-[#D6D5C9]'
-                                                    : 'text-[#D6D5C9] hover:bg-[#191919]'
+                                                    ? 'bg-[#222222] text-[#EDEDEF] border-[#2E2E2E]'
+                                                    : 'text-[#9A9998] hover:text-[#EDEDEF] hover:bg-[#1A1A1A] border-transparent'
                                             )}
                                         >
                                             <IconComponent
-                                                className="w-[18px] h-[18px]"
+                                                className={cn(
+                                                    'w-4 h-4 shrink-0 transition-colors',
+                                                    isActive
+                                                        ? 'text-[#EDEDEF]'
+                                                        : 'text-[#71717A] group-hover:text-[#EDEDEF]'
+                                                )}
                                                 strokeWidth={1.5}
                                             />
-                                            {item.label}
+                                            <span className="truncate">{item.label}</span>
                                         </button>
                                     )
                                 })}
@@ -238,7 +320,7 @@ export const DocsView: React.FC<DocsViewProps> = ({ onBack }) => {
                     </div>
                 </div>
 
-                {/* Mobile View with top bar and direct subpage content */}
+                {/* Main Content Area */}
                 <div className="flex-1 flex flex-col min-h-0 overflow-y-auto no-scrollbar [scrollbar-width:none] [-ms-overflow-style:none]">
                     {/* Mobile Top Bar */}
                     <MobileBreadcrumbsHeader
@@ -257,12 +339,12 @@ export const DocsView: React.FC<DocsViewProps> = ({ onBack }) => {
                     />
 
                     {/* Mobile Content: Active Tab Content directly rendered */}
-                    <div className="md:hidden flex flex-col p-4 pb-8 w-full no-scrollbar [scrollbar-width:none] [-ms-overflow-style:none]">
+                    <div className="md:hidden flex flex-col p-4 pb-12 w-full no-scrollbar [scrollbar-width:none] [-ms-overflow-style:none]">
                         {renderTabContent()}
                     </div>
 
                     {/* Desktop Content Render: always visible on md: and up */}
-                    <div className="hidden md:flex flex-1 justify-center px-6 md:px-16 pt-8 md:pt-12 pb-6 md:pb-8 relative z-10 no-scrollbar [scrollbar-width:none] [-ms-overflow-style:none]">
+                    <div className="hidden md:flex flex-1 justify-center px-8 lg:px-16 pt-8 md:pt-10 pb-16 relative z-10 no-scrollbar [scrollbar-width:none] [-ms-overflow-style:none]">
                         {renderTabContent()}
                     </div>
                 </div>

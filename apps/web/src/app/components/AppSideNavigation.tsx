@@ -108,6 +108,7 @@ export const AppSideNavigation: React.FC<AppSideNavigationProps> = ({
                 isAuthenticated={isAuthenticated}
                 onOpenAuth={onOpenAuth}
                 onSignOut={onSignOut}
+                onHomeClick={onHomeClick}
             />
         </>
     )
