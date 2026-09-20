@@ -321,7 +321,6 @@ export const InputBar = React.memo(function InputBar({
                 '/grill',
                 '/grill-me',
                 '/login',
-                '/logout',
                 '/exit',
                 '/model',
                 '/plan',

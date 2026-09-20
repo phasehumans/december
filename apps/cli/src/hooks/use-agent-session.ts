@@ -1235,99 +1235,6 @@ ${decStatus}
                 }
             }
 
-            if (text.trim().startsWith('/logout ')) {
-                const targetProvider = text.trim().slice('/logout '.length).trim().toLowerCase()
-                if (targetProvider) {
-                    const config = await loadConfig()
-                    let removed = false
-                    if (config.subscriptions && config.subscriptions[targetProvider]) {
-                        delete config.subscriptions[targetProvider]
-                        removed = true
-                    }
-                    if (config.providers && config.providers[targetProvider]) {
-                        delete config.providers[targetProvider]
-                        removed = true
-                    }
-                    if (targetProvider === 'december' && config.decemberToken) {
-                        delete config.decemberToken
-                        delete config.email
-                        removed = true
-                    }
-                    if (config.activeProvider === targetProvider) {
-                        delete config.activeProvider
-                        delete config.activeModel
-                    }
-                    await saveConfig(config)
-                    const { getProviderConfig, getAuthStatus } = await import('../config')
-                    const providerConfig = await getProviderConfig()
-                    const authStatus = await getAuthStatus()
-
-                    setIsAuthenticated(!!providerConfig)
-                    setHasBothAuth(authStatus.hasByok && authStatus.hasDecember)
-                    setSettingsAuthPriority(authStatus.authPriority)
-
-                    if (providerConfig && agent) {
-                        const llm = instantiateProvider(
-                            providerConfig.provider,
-                            providerConfig.apiKey,
-                            {
-                                authMethod: providerConfig.authMethod,
-                                subscription: providerConfig.subscription,
-                                headers: providerConfig.headers,
-                                baseURL: providerConfig.baseURL,
-                            }
-                        )
-                        agent.setLLM(llm)
-                        agent.modelOptions = { ...agent.modelOptions, model: providerConfig.model }
-                        setActiveModel(providerConfig.model)
-                        setSelectedProvider(providerConfig.provider)
-                        setAuthMethod(providerConfig.authMethod)
-                    } else {
-                        setActiveModel('')
-                        setSelectedProvider(undefined)
-                        setAuthMethod(undefined)
-                    }
-
-                    if (removed) {
-                        addToast(`Logged out of ${targetProvider}.`, 'success')
-                    } else {
-                        addToast(`No active credentials found for ${targetProvider}.`, 'info')
-                    }
-                    return
-                }
-            }
-
-            if (text.trim() === '/logout') {
-                const config = await loadConfig()
-                const items: { label: string; value: string }[] = []
-                if (config.subscriptions) {
-                    for (const sub of Object.keys(config.subscriptions)) {
-                        items.push({
-                            label: `${sub.charAt(0).toUpperCase() + sub.slice(1)} (Subscription)`,
-                            value: `subscription:${sub}`,
-                        })
-                    }
-                }
-                if (config.decemberToken) {
-                    items.push({ label: 'December (Cloud Wallet)', value: 'decemberToken' })
-                }
-                if (config.providers) {
-                    for (const provider of Object.keys(config.providers)) {
-                        items.push({
-                            label: `${provider.charAt(0).toUpperCase() + provider.slice(1)} (API Key)`,
-                            value: `provider:${provider}`,
-                        })
-                    }
-                }
-                if (items.length === 0) {
-                    addToast('No stored credentials to remove.', 'info')
-                } else {
-                    setLogoutItems(items)
-                    setAuthMode('logout_select')
-                }
-                return
-            }
-
             if (text.trim().startsWith('/switch ')) {
                 const targetProvider = text.trim().slice('/switch '.length).trim().toLowerCase()
                 if (targetProvider) {
@@ -2166,7 +2073,6 @@ ${decStatus}
                         'handoff',
                         'init',
                         'login',
-                        'logout',
                         'model',
                         'new',
                         'plan',
@@ -2349,6 +2255,7 @@ ${decStatus}
         handleSubscriptionSelect,
         handleKeySubmit,
         handleLogoutSelect,
+        handleDeleteProvider,
         handleSwitchSelect,
         handleSessionSelect,
         handleOllamaRetry,
@@ -2610,6 +2517,7 @@ ${decStatus}
         handleSubscriptionSelect,
         handleKeySubmit,
         handleLogoutSelect,
+        handleDeleteProvider,
         handleSwitchSelect,
         handleGrillSelect,
         pendingQuestions,

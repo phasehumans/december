@@ -104,14 +104,6 @@ export const COMMANDS: Command[] = [
         },
     },
     {
-        name: 'grill',
-        description: 'Interview me to align on a plan (alias for /grill-me)',
-        value: '/grill',
-        action: (ctx) => {
-            // forwarded to chat screen
-        },
-    },
-    {
         name: 'grill-me',
         description: 'Interview me to align on a plan',
         value: '/grill-me',
@@ -255,14 +247,6 @@ export const COMMANDS: Command[] = [
         description: 'Configure API keys or Connect via December Cloud',
         value: '/login',
         action: () => {},
-    },
-    {
-        name: 'logout',
-        description: 'Clear stored credentials',
-        value: '/logout',
-        action: (ctx) => {
-            ctx.toast.show({ variant: 'success', message: 'Signed out' })
-        },
     },
     {
         name: 'model',

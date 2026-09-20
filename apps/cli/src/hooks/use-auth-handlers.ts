@@ -2,6 +2,7 @@ import {
     loadConfig,
     saveConfig,
     getProviderConfig,
+    getConfiguredProviders,
     resolveSwitchTarget,
     applyProviderSwitch,
     formatProviderName,
@@ -40,6 +41,7 @@ export function useAuthHandlers(
         setAuthError,
         addToast,
         setOllamaStatus,
+        setSwitchItems,
     } = useCliStore.getState()
 
     const handleAuthMenuSelect = async (item: any) => {
@@ -731,7 +733,7 @@ export function useAuthHandlers(
         }
     }
 
-    const handleLogoutSelect = async (value: string) => {
+    const handleDeleteProvider = async (value: string) => {
         const config = await loadConfig()
         let removedName = ''
         if (value === 'decemberToken') {
@@ -739,6 +741,15 @@ export function useAuthHandlers(
             config.email = undefined
             setCurrentEmail(undefined)
             removedName = 'December Cloud Wallet'
+            if (
+                config.activeProvider === 'december' ||
+                config.activeProvider === 'december_proxy'
+            ) {
+                config.activeProvider =
+                    Object.keys(config.subscriptions || {})[0] ||
+                    Object.keys(config.providers || {})[0] ||
+                    undefined
+            }
         } else if (value.startsWith('subscription:')) {
             const provider = value.split(':')[1]
             if (provider && config.subscriptions) {
@@ -748,7 +759,7 @@ export function useAuthHandlers(
                     config.activeProvider =
                         Object.keys(config.subscriptions)[0] ||
                         Object.keys(config.providers || {})[0] ||
-                        undefined
+                        (config.decemberToken ? 'december_proxy' : undefined)
                 }
             }
         } else if (value.startsWith('provider:')) {
@@ -760,12 +771,11 @@ export function useAuthHandlers(
                     config.activeProvider =
                         Object.keys(config.subscriptions || {})[0] ||
                         Object.keys(config.providers)[0] ||
-                        undefined
+                        (config.decemberToken ? 'december_proxy' : undefined)
                 }
             }
         }
         await saveConfig(config)
-        setAuthMode('none')
 
         const providerConfig = await getProviderConfig()
         const { getAuthStatus } = await import('../config')
@@ -795,10 +805,25 @@ export function useAuthHandlers(
             setAuthMethod(undefined)
         }
 
+        const remainingConfigured = getConfiguredProviders(config)
+        const updatedMenuItems = remainingConfigured.map((item) => ({
+            label: item.label,
+            value: item.value,
+            model: item.model,
+            isActive: item.isActive,
+        }))
+        setSwitchItems(updatedMenuItems)
+
+        if (updatedMenuItems.length === 0) {
+            setAuthMode('none')
+        }
+
         setStaticMessages((prev) => [...prev, ...useCliStore.getState().activeMessages])
         setActiveMessages([])
         addToast(`Removed credentials for: ${removedName}`, 'success')
     }
+
+    const handleLogoutSelect = handleDeleteProvider
 
     const handleSwitchSelect = async (value: string) => {
         const config = await loadConfig()
@@ -931,6 +956,7 @@ export function useAuthHandlers(
         handleSubscriptionSelect,
         handleKeySubmit,
         handleLogoutSelect,
+        handleDeleteProvider,
         handleSwitchSelect,
         handleSessionSelect,
         handleOllamaRetry,

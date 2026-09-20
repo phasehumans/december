@@ -88,6 +88,13 @@ describe('/init command', () => {
     })
 })
 
+describe('/logout command', () => {
+    test('is removed and not registered in COMMANDS', () => {
+        const logoutCmd = COMMANDS.find((c) => c.name === 'logout' || c.value === '/logout')
+        expect(logoutCmd).toBeUndefined()
+    })
+})
+
 describe('/switch command', () => {
     test('should define switch command forwarded to chat screen', () => {
         const switchCmd = COMMANDS.find((c) => c.name === 'switch')
@@ -105,13 +112,12 @@ describe('/switch command', () => {
 })
 
 describe('/grill and /plan commands', () => {
-    test('should define /grill and /grill-me commands with alias parity', () => {
+    test('should define /grill-me command and ensure /grill alias is removed', () => {
         const grillMeCmd = COMMANDS.find((c) => c.name === 'grill-me')
         const grillCmd = COMMANDS.find((c) => c.name === 'grill')
         expect(grillMeCmd).toBeDefined()
         expect(grillMeCmd?.value).toBe('/grill-me')
-        expect(grillCmd).toBeDefined()
-        expect(grillCmd?.value).toBe('/grill')
+        expect(grillCmd).toBeUndefined()
     })
 
     test('should define /plan command', () => {

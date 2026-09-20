@@ -77,4 +77,55 @@ describe('SwitchSelectMenu Component (Unit)', () => {
 
         expect(selectedValue).toBe('provider:openai')
     })
+
+    it('triggers delete confirmation with d, cancels with n, and confirms with y', async () => {
+        let deletedValue: string | null = null
+        const handleDelete = (val: string) => {
+            deletedValue = val
+        }
+        const handleSelect = () => {}
+
+        const items = [
+            { label: 'Claude (Subscription)', value: 'subscription:claude' },
+            { label: 'OpenAI', value: 'provider:openai' },
+        ]
+
+        const { stdin, lastFrame } = render(
+            <KeyboardLayerProvider>
+                <SwitchSelectMenu
+                    handleSwitchSelect={handleSelect}
+                    handleDeleteProvider={handleDelete}
+                    switchItems={items}
+                />
+            </KeyboardLayerProvider>
+        )
+
+        // Down arrow to OpenAI
+        stdin.write('\u001B[B')
+        await new Promise((resolve) => setTimeout(resolve, 20))
+        expect(lastFrame()).toContain('❭ OpenAI')
+
+        // Press 'd' to trigger delete confirmation
+        stdin.write('d')
+        await new Promise((resolve) => setTimeout(resolve, 20))
+
+        const deleteFrame = lastFrame() || ''
+        expect(deleteFrame).toContain('[Delete? (y/n)]')
+        expect(deleteFrame).toContain('Confirm')
+
+        // Press 'n' to cancel
+        stdin.write('n')
+        await new Promise((resolve) => setTimeout(resolve, 20))
+        expect(lastFrame()).not.toContain('[Delete? (y/n)]')
+        expect(deletedValue).toBeNull()
+
+        // Press 'd' again and then 'y' to confirm
+        stdin.write('d')
+        await new Promise((resolve) => setTimeout(resolve, 20))
+        expect(lastFrame()).toContain('[Delete? (y/n)]')
+
+        stdin.write('y')
+        await new Promise((resolve) => setTimeout(resolve, 20))
+        expect(deletedValue).toBe('provider:openai')
+    })
 })
