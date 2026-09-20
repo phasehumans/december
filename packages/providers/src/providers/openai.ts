@@ -272,10 +272,14 @@ export function openaiProvider(
 
             for await (const chunk of stream) {
                 if (chunk.usage) {
+                    const cachedTokens = (chunk.usage as any).prompt_tokens_details?.cached_tokens
                     yield {
                         type: 'usage',
                         promptTokens: chunk.usage.prompt_tokens,
                         completionTokens: chunk.usage.completion_tokens,
+                        ...(typeof cachedTokens === 'number' && cachedTokens > 0
+                            ? { cacheReadInputTokens: cachedTokens }
+                            : {}),
                     }
                 }
 

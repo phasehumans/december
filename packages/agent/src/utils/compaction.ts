@@ -6,12 +6,14 @@ import type { Message, AgentMessage } from '@december/shared'
 export const DEFAULT_MAX_TOKENS = 32000 // safe limit
 export const PRUNE_PROTECT_TOKENS = 40_000
 export const PRUNE_MINIMUM_SAVINGS = 15_000
+export const PRUNE_PROTECT_STEPS = 3
 export const PRUNE_PROTECTED_TOOLS = new Set(['skill'])
 
 export interface PruneOptions {
     protectTokens?: number
     minSavings?: number
     protectedTools?: Set<string>
+    protectSteps?: number
 }
 
 export function pruneToolResults(
@@ -24,6 +26,7 @@ export function pruneToolResults(
     const protectTokens = options?.protectTokens ?? PRUNE_PROTECT_TOKENS
     const minSavings = options?.minSavings ?? PRUNE_MINIMUM_SAVINGS
     const protectedTools = options?.protectedTools ?? PRUNE_PROTECTED_TOOLS
+    const protectSteps = options?.protectSteps ?? PRUNE_PROTECT_STEPS
 
     const toolCallMap = new Map<string, string>()
     for (const msg of messages) {
@@ -40,8 +43,9 @@ export function pruneToolResults(
     let tokensToPrune = 0
     const indicesToPrune: number[] = []
 
-    // Scan backwards, protecting recent turns
+    // Scan backwards, protecting recent turns and execution steps
     let userTurns = 0
+    let agentSteps = 0
     for (let i = messages.length - 1; i >= 0; i--) {
         const msg = messages[i]
         if (!msg) continue
@@ -49,8 +53,12 @@ export function pruneToolResults(
         if (msg.role === 'user') {
             userTurns++
         }
-        if (userTurns < 2) {
-            // Preserve last 2 user turns untouched
+        if (msg.role === 'assistant' && (msg.toolCalls?.length || 0) > 0) {
+            agentSteps++
+        }
+
+        if (userTurns < 2 && agentSteps < protectSteps) {
+            // Preserve recent user turns and recent agent steps untouched
             continue
         }
 

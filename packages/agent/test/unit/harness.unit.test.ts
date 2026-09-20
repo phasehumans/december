@@ -132,6 +132,35 @@ description: Forces the laziest solution that actually works.
         expect(dateIndex).toBeGreaterThan(skillsIndex)
     })
 
+    test('formats discovered skills with lightweight 1-line descriptions in system prompt', () => {
+        const skillDir = path.join(tmpDir, '.december', 'skills', 'verbose-skill')
+        fs.mkdirSync(skillDir, { recursive: true })
+        fs.writeFileSync(
+            path.join(skillDir, 'SKILL.md'),
+            `---
+name: verbose-skill
+description: |
+  Summary of verbose skill.
+  Here are paragraphs of additional explanations that would bloat the system prompt.
+  More lines here.
+---
+# Body`
+        )
+
+        const harness = new AgentHarness({
+            llm: new MockLLM(),
+            tools: [],
+            operations: {} as any,
+            workspaceDir: tmpDir,
+            homeDir: path.join(tmpDir, 'mock-home'),
+        })
+
+        const systemPrompt = harness.getAgent().systemPrompt
+        expect(systemPrompt).toContain('- verbose-skill (')
+        expect(systemPrompt).toContain(': Summary of verbose skill.')
+        expect(systemPrompt).not.toContain('Here are paragraphs of additional explanations')
+    })
+
     test('uses DEFAULT_BASE_SYSTEM_PROMPT when baseSystemPrompt is omitted', () => {
         const harness = new AgentHarness({
             llm: new MockLLM(),

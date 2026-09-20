@@ -407,4 +407,43 @@ describe('OpenAI Provider Adapter (Unit)', () => {
         expect(capturedPayload.tools.length).toBe(1)
         expect(capturedPayload.tools[0].function.name).toBe('test_tool')
     })
+
+    it('extracts cached_tokens from prompt_tokens_details into cacheReadInputTokens', async () => {
+        const mockClient: any = {
+            chat: {
+                completions: {
+                    create: async () => {
+                        return (async function* () {
+                            yield {
+                                usage: {
+                                    prompt_tokens: 120,
+                                    completion_tokens: 30,
+                                    prompt_tokens_details: {
+                                        cached_tokens: 80,
+                                    },
+                                },
+                            }
+                            yield {
+                                choices: [{ delta: { content: 'cached response' } }],
+                            }
+                        })()
+                    },
+                },
+            },
+        }
+
+        const provider = openaiProvider(undefined, 'test-key', undefined, mockClient)
+        const stream = provider.stream([{ role: 'user', content: 'test cached' }])
+        const chunks: any[] = []
+        for await (const chunk of stream) {
+            chunks.push(chunk)
+        }
+
+        expect(chunks[0]).toEqual({
+            type: 'usage',
+            promptTokens: 120,
+            completionTokens: 30,
+            cacheReadInputTokens: 80,
+        })
+    })
 })

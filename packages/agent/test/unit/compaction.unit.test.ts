@@ -192,6 +192,63 @@ describe('pruneToolResults (Tier 1)', () => {
         expect(result.pruned).toBe(false)
         expect(messages[2]!.content).toContain('skill output')
     })
+
+    test('prunes tool outputs older than 3 agent execution steps during autonomous multi-turn loops without multiple user turns', () => {
+        const messages: Message[] = [
+            // Single initial user prompt
+            { role: 'user', content: 'Autonomous task' },
+            // Agent step 1 (oldest)
+            {
+                role: 'assistant',
+                content: 'Running step 1',
+                toolCalls: [{ id: 'step_1', name: 'bash', input: '{"cmd":"run 1"}' }],
+            },
+            { role: 'tool', toolCallId: 'step_1', content: 'output 1: '.padEnd(400, 'x') },
+            // Agent step 2
+            {
+                role: 'assistant',
+                content: 'Running step 2',
+                toolCalls: [{ id: 'step_2', name: 'read_file', input: '{"path":"b.ts"}' }],
+            },
+            { role: 'tool', toolCallId: 'step_2', content: 'output 2: '.padEnd(400, 'y') },
+            // Agent step 3 (recent step 3)
+            {
+                role: 'assistant',
+                content: 'Running step 3',
+                toolCalls: [{ id: 'step_3', name: 'bash', input: '{"cmd":"run 3"}' }],
+            },
+            { role: 'tool', toolCallId: 'step_3', content: 'output 3: '.padEnd(400, 'z') },
+            // Agent step 4 (recent step 2)
+            {
+                role: 'assistant',
+                content: 'Running step 4',
+                toolCalls: [{ id: 'step_4', name: 'read_file', input: '{"path":"c.ts"}' }],
+            },
+            { role: 'tool', toolCallId: 'step_4', content: 'output 4: recent' },
+            // Agent step 5 (most recent step 1)
+            {
+                role: 'assistant',
+                content: 'Running step 5',
+                toolCalls: [{ id: 'step_5', name: 'bash', input: '{"cmd":"run 5"}' }],
+            },
+            { role: 'tool', toolCallId: 'step_5', content: 'output 5: latest' },
+        ]
+
+        const result = pruneToolResults(messages, {
+            protectTokens: 50,
+            minSavings: 50,
+            protectSteps: 3,
+        })
+
+        expect(result.pruned).toBe(true)
+        // Step 1 and Step 2 are older than 3 steps back and should be pruned
+        expect(messages[2]!.content).toBe('[Old tool result content cleared]')
+        expect(messages[4]!.content).toBe('[Old tool result content cleared]')
+        // Steps 3, 4, 5 are within the protected 3 steps window and must remain intact
+        expect(messages[6]!.content).toContain('output 3:')
+        expect(messages[8]!.content).toBe('output 4: recent')
+        expect(messages[10]!.content).toBe('output 5: latest')
+    })
 })
 
 describe('extractFileManifests (Tier 2)', () => {

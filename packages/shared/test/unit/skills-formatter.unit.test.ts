@@ -50,4 +50,29 @@ describe('Skills Formatter (Unit)', () => {
             '- ponytail (/workspace/.agents/skills/ponytail/SKILL.md): Forces the laziest solution that works.'
         )
     })
+
+    test('sanitizes multi-paragraph and verbose skill descriptions into clean 1-line representations', () => {
+        const skills: DiscoveredSkill[] = [
+            {
+                name: 'heavy-skill',
+                metadata: {
+                    name: 'heavy-skill',
+                    description:
+                        'Forces the simplest and laziest solution that works.\n\nChannels a senior developer who questions whether code needs to exist at all.\nAlso supports multiple intensity levels and verbose guidelines.',
+                },
+                directoryPath: '/workspace/skills/heavy-skill',
+                entryFilePath: '/workspace/skills/heavy-skill/SKILL.md',
+                origin: 'workspace',
+                scripts: [],
+                references: [],
+            },
+        ]
+
+        const formatted = formatSkillsCatalog(skills)
+        expect(formatted).toContain(
+            '- heavy-skill (/workspace/skills/heavy-skill/SKILL.md): Forces the simplest and laziest solution that works.'
+        )
+        expect(formatted).not.toContain('Channels a senior developer')
+        expect(formatted).not.toContain('Also supports multiple intensity levels')
+    })
 })
