@@ -134,4 +134,20 @@ Disk instructions.`
             fs.rmSync(tmpDir, { recursive: true, force: true })
         }
     })
+
+    test('parses allowed-tools list from frontmatter', () => {
+        const content = `---
+name: scoped-skill
+description: Tests scoped tool parsing
+allowed-tools:
+  - read_file
+  - grep
+  - bash
+---
+Scoped instructions.`
+
+        const result = parseSkillContent(content)
+        expect(result.metadata.name).toBe('scoped-skill')
+        expect(result.metadata.allowedTools).toEqual(['read_file', 'grep', 'bash'])
+    })
 })

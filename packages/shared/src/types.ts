@@ -7,6 +7,9 @@ export interface ToolExecuteContext {
     env: Map<string, string>
     onStream: (chunk: string) => void
     signal?: AbortSignal
+    agent?: any
+    deferredRegistry?: any
+    activateTool?: (toolName: string) => boolean
 }
 export interface Message {
     role: Role

@@ -227,27 +227,16 @@ async function main() {
                   toolsModule.FindFilesTool,
                   toolsModule.GrepSearchTool,
                   toolsModule.AskQuestionTool,
-                  toolsModule.BrowserTool,
-                  toolsModule.WebSearchTool,
+                  toolsModule.SearchToolsTool,
               ]
-            : [
-                  toolsModule.BashTool,
-                  toolsModule.ReadFileTool,
-                  toolsModule.WriteFileTool,
-                  toolsModule.LsTool,
-                  toolsModule.EditFileTool,
-                  toolsModule.EditDiffTool,
-                  toolsModule.FindFilesTool,
-                  toolsModule.GrepSearchTool,
-                  toolsModule.AskQuestionTool,
-                  toolsModule.ManageTaskTool,
-                  toolsModule.BrowserTool,
-                  toolsModule.WebSearchTool,
-              ]
+            : toolsModule.CORE_TOOLS
+
+        const deferredTools = isAskMode ? [] : toolsModule.DEFERRED_TOOLS
 
         const harness = new AgentHarness({
             llm: llm,
             tools: effectiveTools,
+            deferredTools,
             operations: localOperations,
             modelOptions: {
                 model: initialModel,
@@ -376,20 +365,8 @@ async function main() {
 
     const harness = new AgentHarness({
         llm: llm,
-        tools: [
-            toolsModule.BashTool,
-            toolsModule.ReadFileTool,
-            toolsModule.WriteFileTool,
-            toolsModule.LsTool,
-            toolsModule.EditFileTool,
-            toolsModule.EditDiffTool,
-            toolsModule.FindFilesTool,
-            toolsModule.GrepSearchTool,
-            toolsModule.AskQuestionTool,
-            toolsModule.ManageTaskTool,
-            toolsModule.BrowserTool,
-            toolsModule.WebSearchTool,
-        ],
+        tools: toolsModule.CORE_TOOLS,
+        deferredTools: toolsModule.DEFERRED_TOOLS,
         operations: localOperations,
         modelOptions: {
             model: initialModel,

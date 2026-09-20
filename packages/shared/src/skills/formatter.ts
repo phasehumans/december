@@ -17,7 +17,7 @@ export function formatSkillsCatalog(skills: DiscoveredSkill[]): string {
         '- **references/** - Contains additional documentation that agents can read when needed',
         '',
         '',
-        'If a skill seems relevant to your current task, you MUST read its `SKILL.md` instructions using `read_file` before proceeding. You may skip this step only if you are delegating the skill-related task to a subagent that will read and follow the instructions itself.',
+        'If a skill seems relevant to your current task, use the `run_skill` tool to delegate the procedural work to an isolated subagent, or inspect its `SKILL.md` instructions using `read_file` before proceeding. Delegating to `run_skill` keeps the conversation context clean.',
         '',
         'When calling `read_file` on these skill paths, always use the exact path provided in the "Available skills" list below.',
         '',

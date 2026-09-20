@@ -212,6 +212,11 @@ export function parseSkillContent(content: string, filePath?: string): ParsedSki
         disable: Boolean(raw.disable),
         dependencies:
             raw.dependencies && typeof raw.dependencies === 'object' ? raw.dependencies : undefined,
+        allowedTools: Array.isArray(raw['allowed-tools'])
+            ? raw['allowed-tools']
+            : Array.isArray(raw.allowed_tools)
+              ? raw.allowed_tools
+              : undefined,
     }
 
     return {

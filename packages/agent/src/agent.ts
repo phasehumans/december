@@ -1,3 +1,5 @@
+import { DeferredToolRegistry, type DeferredToolMetadata } from '@december/tools'
+
 import { ConversationManager } from './conversation-manager'
 import { createAgentTracer } from './telemetry/tracer.factory'
 import { evaporateStaleToolOutputs } from './utils/evaporation'
@@ -14,6 +16,8 @@ export interface AgentConfig {
     runtime?: 'cloud' | 'cli'
     systemPrompt?: string
     tools: Tool[]
+    deferredTools?: Tool[]
+    deferredRegistry?: DeferredToolRegistry
     llm: LLMProvider
     operations: PlatformAdapter
     modelOptions?: Record<string, any>
@@ -78,6 +82,7 @@ export class Agent {
     public logsDir?: string
     public disableLogging: boolean
     public tracer: AgentTracer
+    public deferredRegistry: DeferredToolRegistry
 
     constructor(config: AgentConfig) {
         this.llm = config.llm
@@ -96,6 +101,7 @@ export class Agent {
         this.workspaceDir = config.workspaceDir
         this.logsDir = config.logsDir
         this.disableLogging = config.disableLogging || false
+        this.deferredRegistry = config.deferredRegistry || new DeferredToolRegistry()
         this.tracer =
             config.tracer ||
             createAgentTracer({
@@ -107,6 +113,12 @@ export class Agent {
 
         for (const tool of config.tools) {
             this.tools.set(tool.name, tool)
+        }
+
+        if (config.deferredTools) {
+            for (const tool of config.deferredTools) {
+                this.deferredRegistry.register(tool)
+            }
         }
 
         this.conversation.addMessage({
@@ -160,6 +172,19 @@ export class Agent {
 
     public unregisterTool(toolName: string): void {
         this.tools.delete(toolName)
+    }
+
+    public registerDeferredTool(tool: Tool, metadata?: DeferredToolMetadata): void {
+        this.deferredRegistry.register(tool, metadata)
+    }
+
+    public activateDeferredTool(toolName: string): boolean {
+        const tool = this.deferredRegistry.get(toolName)
+        if (tool) {
+            this.tools.set(tool.name, tool)
+            return true
+        }
+        return false
     }
 
     public abort() {

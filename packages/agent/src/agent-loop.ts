@@ -942,6 +942,9 @@ async function executeSingleTool(
                 operations: agent.operations as any,
                 env: agent.env,
                 signal,
+                agent,
+                deferredRegistry: agent.deferredRegistry,
+                activateTool: (name: string) => agent.activateDeferredTool(name),
                 onStream: (chunk) => {
                     eventQueue.push({ type: 'ToolExecutionUpdate', toolCallId: toolCall.id, chunk })
                 },

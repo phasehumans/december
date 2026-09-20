@@ -6,6 +6,7 @@ import { supportsModelThinking } from '@december/providers'
 import { SkillDiscoveryEngine, formatSkillsCatalog } from '@december/shared'
 
 import { Agent } from '../agent'
+import { createRunSkillTool } from '../skills/run-skill-tool'
 
 import type { AgentConfig } from '../agent'
 import type { Tool, DiscoveredSkill } from '@december/shared'
@@ -73,6 +74,18 @@ export const DEFAULT_TOOL_PROMPTS: Record<string, { snippet: string; guidelines:
     ls: {
         snippet: 'List directory contents',
         guidelines: ["Use 'ls' to inspect directory contents and structure."],
+    },
+    search_tools: {
+        snippet: 'Search and activate deferred and MCP tools on demand',
+        guidelines: [
+            "Use 'search_tools' to dynamically discover and activate deferred capabilities (e.g. web search, browser, task management, MCP tools) when needed.",
+        ],
+    },
+    run_skill: {
+        snippet: 'Delegate specialized tasks to an isolated skill subagent',
+        guidelines: [
+            "Use 'run_skill' to delegate complex procedural workflows or specialized domain tasks to an isolated subagent, keeping the main conversation context clean.",
+        ],
     },
 }
 
@@ -343,11 +356,16 @@ export class AgentHarness {
         // 2. discover project rules climbing from workspace directory to root
         const rules = discoverProjectRules(config.workspaceDir, config.rootBoundary)
 
+        const effectiveTools =
+            this.skills.length > 0 && !config.tools.some((t) => t.name === 'run_skill')
+                ? [...config.tools, createRunSkillTool(() => this.skills)]
+                : config.tools
+
         // 3. assemble final system prompt with model-specific dispatch and dynamic tool guidelines
         const finalPrompt = assembleSystemPrompt({
             baseSystemPrompt: config.baseSystemPrompt,
             workspaceDir: config.workspaceDir,
-            tools: config.tools,
+            tools: effectiveTools,
             modelOptions: config.modelOptions,
             thinkingLevel: config.thinkingLevel,
             skills: this.skills,
@@ -359,6 +377,7 @@ export class AgentHarness {
         // 4. initialize core agent
         this.agent = new Agent({
             ...config,
+            tools: effectiveTools,
             systemPrompt: finalPrompt,
         })
     }

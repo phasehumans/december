@@ -13,6 +13,7 @@ export interface SkillMetadata {
         bins?: string[]
         skills?: string[]
     }
+    allowedTools?: string[]
 }
 
 export type SkillOrigin =

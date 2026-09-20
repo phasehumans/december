@@ -1,5 +1,5 @@
 import { Agent, runAgentLoop } from '@december/agent'
-import { SkillDiscoveryEngine, parseSkillFile, interpolateSkillPrompt } from '@december/shared'
+import { SkillDiscoveryEngine } from '@december/shared'
 import { type Message, openPlanInPager } from '@december/tui'
 import { useEffect, useCallback, useState, useRef } from 'react'
 
@@ -2187,13 +2187,8 @@ ${decStatus}
                                 (s) => s.name.toLowerCase() === potentialCmd
                             )
                             if (matchedSkill) {
-                                const { body } = parseSkillFile(matchedSkill.entryFilePath)
-                                executionPrompt = interpolateSkillPrompt(
-                                    matchedSkill.name,
-                                    body,
-                                    restArgs,
-                                    matchedSkill.directoryPath
-                                )
+                                const fullArgs = restArgs.join(' ').trim()
+                                executionPrompt = `Execute skill '${matchedSkill.name}'${fullArgs ? ` with arguments: ${fullArgs}` : ''}. Use the 'run_skill' tool to delegate this procedure to an isolated subagent.`
                                 displayText = promptToProcess
                             }
                         } catch {
