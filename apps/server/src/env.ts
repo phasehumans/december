@@ -21,10 +21,9 @@ const envSchema = z
     .object({
         PORT: z.coerce.number().default(4000),
         NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
-        WEB_URL: z.string().url(),
-        DOCS_URL: emptyAsUndefined,
-        LANDING_URL: emptyAsUndefined,
-        SERVER_URL: z.string().url(),
+        WEB_URL: z.string().url().default('http://localhost:2000'),
+        APP_URL: z.string().url().default('http://localhost:3000'),
+        SERVER_URL: z.string().url().default('http://localhost:4000'),
         RESEND_API_KEY: emptyAsUndefined,
         SENDER_EMAIL: z.preprocess(
             (val) => (typeof val === 'string' && val.trim() === '' ? undefined : val),

@@ -24,7 +24,7 @@ const connectVercel = asyncHandler(async (req: Request, res: Response) => {
         configurationId,
     })
 
-    return res.redirect(`${env.WEB_URL}${redirectPath}`)
+    return res.redirect(`${env.APP_URL}${redirectPath}`)
 })
 
 const connectSupabase = asyncHandler(async (req: Request, res: Response) => {
@@ -50,7 +50,7 @@ const connectSupabase = asyncHandler(async (req: Request, res: Response) => {
     }
 
     return res.redirect(
-        `${env.WEB_URL}${redirectPath.startsWith('/') ? redirectPath : `/${redirectPath}`}`
+        `${env.APP_URL}${redirectPath.startsWith('/') ? redirectPath : `/${redirectPath}`}`
     )
 })
 
@@ -77,7 +77,7 @@ const connectNotion = asyncHandler(async (req: Request, res: Response) => {
     }
 
     return res.redirect(
-        `${env.WEB_URL}${redirectPath.startsWith('/') ? redirectPath : `/${redirectPath}`}`
+        `${env.APP_URL}${redirectPath.startsWith('/') ? redirectPath : `/${redirectPath}`}`
     )
 })
 
@@ -85,7 +85,7 @@ const connectGithub = asyncHandler(async (req: Request, res: Response) => {
     const { code, state } = connectOAuthQuerySchema.parse(req.query)
 
     if (state === 'auth') {
-        return res.redirect(`${env.WEB_URL}/github/callback?code=${code}`)
+        return res.redirect(`${env.APP_URL}/github/callback?code=${code}`)
     }
 
     let userId = state
@@ -104,7 +104,7 @@ const connectGithub = asyncHandler(async (req: Request, res: Response) => {
         await integrationsService.handleGitHubOAuth({ code, userId })
     }
 
-    return res.redirect(`${env.WEB_URL}${redirectPath}`)
+    return res.redirect(`${env.APP_URL}${redirectPath}`)
 })
 
 export const integrationsController = {

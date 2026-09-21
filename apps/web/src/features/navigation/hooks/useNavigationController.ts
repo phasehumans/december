@@ -100,8 +100,7 @@ export const useNavigationController = () => {
     )
 
     const handleSignOut = React.useCallback(async () => {
-        const landingUrl =
-            process.env.DOCS_URL || process.env.LANDING_URL || 'https://trydecember.com'
+        const landingUrl = process.env.WEB_URL || 'https://trydecember.com'
         try {
             document.cookie =
                 'december_logged_in=; Path=/; Domain=.trydecember.com; Expires=Thu, 01 Jan 1970 00:00:01 GMT;'

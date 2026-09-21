@@ -703,12 +703,7 @@ export function resolveDocsSectionPath(section?: string): string {
 export async function handleDocsCommand(options?: { section?: string }): Promise<void> {
     const rawSection = options?.section?.toLowerCase().trim()
     const sectionPath = resolveDocsSectionPath(rawSection)
-    const baseUrl = (
-        process.env.DECEMBER_DOCS_URL ||
-        process.env.DOCS_URL ||
-        process.env.LANDING_URL ||
-        'https://trydecember.com'
-    ).replace(/\/$/, '')
+    const baseUrl = (process.env.WEB_URL || 'https://trydecember.com').replace(/\/$/, '')
     const targetUrl = `${baseUrl}/docs${sectionPath}`
 
     console.log('Opening December documentation in your default browser...')

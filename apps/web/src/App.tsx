@@ -63,10 +63,7 @@ const App: React.FC = () => {
                         isOpen={true}
                         initialMode={location.pathname === '/signup' ? 'signup' : 'login'}
                         onClose={() => {
-                            const landingUrl =
-                                process.env.DOCS_URL ||
-                                process.env.LANDING_URL ||
-                                'https://trydecember.com'
+                            const landingUrl = process.env.WEB_URL || 'https://trydecember.com'
                             if (typeof window !== 'undefined') {
                                 window.location.replace(landingUrl)
                             }

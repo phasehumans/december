@@ -14,5 +14,25 @@ export default defineConfig({
     integrations: [mdx()],
     vite: {
         plugins: [tailwindcss()],
+        define: {
+            'import.meta.env.WEB_URL': JSON.stringify(
+                process.env.WEB_URL ||
+                    (process.env.NODE_ENV === 'production'
+                        ? 'https://trydecember.com'
+                        : 'http://localhost:2000')
+            ),
+            'import.meta.env.APP_URL': JSON.stringify(
+                process.env.APP_URL ||
+                    (process.env.NODE_ENV === 'production'
+                        ? 'https://app.trydecember.com'
+                        : 'http://localhost:3000')
+            ),
+            'import.meta.env.SERVER_URL': JSON.stringify(
+                process.env.SERVER_URL ||
+                    (process.env.NODE_ENV === 'production'
+                        ? 'https://api.trydecember.com'
+                        : 'http://localhost:4000')
+            ),
+        },
     },
 })

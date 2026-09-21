@@ -139,18 +139,29 @@ const result = await Bun.build({
     sourcemap: 'linked',
     define: {
         'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'production'),
-        'process.env.WEB_URL': JSON.stringify(process.env.WEB_URL || 'https://app.trydecember.com'),
-        'process.env.DOCS_URL': JSON.stringify(
-            process.env.DOCS_URL || process.env.LANDING_URL || 'https://trydecember.com'
+        'process.env.WEB_URL': JSON.stringify(
+            process.env.WEB_URL ||
+                (process.env.NODE_ENV === 'production'
+                    ? 'https://trydecember.com'
+                    : 'http://localhost:2000')
         ),
-        'process.env.LANDING_URL': JSON.stringify(
-            process.env.LANDING_URL || process.env.DOCS_URL || 'https://trydecember.com'
+        'process.env.APP_URL': JSON.stringify(
+            process.env.APP_URL ||
+                (process.env.NODE_ENV === 'production'
+                    ? 'https://app.trydecember.com'
+                    : 'http://localhost:3000')
         ),
         'process.env.SERVER_URL': JSON.stringify(
-            process.env.SERVER_URL || process.env.BASE_URL || 'https://api.trydecember.com'
+            process.env.SERVER_URL ||
+                (process.env.NODE_ENV === 'production'
+                    ? 'https://api.trydecember.com'
+                    : 'http://localhost:4000')
         ),
         'process.env.BASE_URL': JSON.stringify(
-            process.env.SERVER_URL || process.env.BASE_URL || 'https://api.trydecember.com'
+            process.env.SERVER_URL ||
+                (process.env.NODE_ENV === 'production'
+                    ? 'https://api.trydecember.com'
+                    : 'http://localhost:4000')
         ),
         'process.env.GITHUB_CLIENT_ID': JSON.stringify(
             process.env.PUBLIC_GITHUB_CLIENT_ID ||

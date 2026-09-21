@@ -1412,12 +1412,10 @@ ${decStatus}
                 const section = parts[1]
                 const { resolveDocsSectionPath } = await import('../commands')
                 const sectionPath = resolveDocsSectionPath(section)
-                const baseUrl = (
-                    process.env.DECEMBER_DOCS_URL ||
-                    process.env.DOCS_URL ||
-                    process.env.LANDING_URL ||
-                    'https://trydecember.com'
-                ).replace(/\/$/, '')
+                const baseUrl = (process.env.WEB_URL || 'https://trydecember.com').replace(
+                    /\/$/,
+                    ''
+                )
                 const targetUrl = `${baseUrl}/docs${sectionPath}`
 
                 addToast('Opening documentation in your browser...', 'info')

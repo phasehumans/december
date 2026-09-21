@@ -7,9 +7,6 @@ describe('CLI docs command', () => {
     const originalEnv = { ...process.env }
 
     beforeEach(() => {
-        delete process.env.DECEMBER_DOCS_URL
-        delete process.env.DOCS_URL
-        delete process.env.LANDING_URL
         delete process.env.WEB_URL
     })
 
@@ -73,31 +70,13 @@ describe('CLI docs command', () => {
             expect(openSpy).toHaveBeenCalledWith('https://trydecember.com/docs/cli')
         })
 
-        it('respects DECEMBER_DOCS_URL environment variable', async () => {
-            process.env.DECEMBER_DOCS_URL = 'http://localhost:5173'
-            const openSpy = vi.spyOn(openUtils, 'openUrl').mockResolvedValue(undefined)
-
-            await handleDocsCommand({ section: 'quickstart' })
-
-            expect(openSpy).toHaveBeenCalledWith('http://localhost:5173/docs/quickstart')
-        })
-
-        it('respects DOCS_URL environment variable', async () => {
-            process.env.DOCS_URL = 'http://localhost:2000'
+        it('respects WEB_URL environment variable', async () => {
+            process.env.WEB_URL = 'http://localhost:2000'
             const openSpy = vi.spyOn(openUtils, 'openUrl').mockResolvedValue(undefined)
 
             await handleDocsCommand({ section: 'cli' })
 
             expect(openSpy).toHaveBeenCalledWith('http://localhost:2000/docs/cli')
-        })
-
-        it('respects LANDING_URL environment variable', async () => {
-            process.env.LANDING_URL = 'https://trydecember.com'
-            const openSpy = vi.spyOn(openUtils, 'openUrl').mockResolvedValue(undefined)
-
-            await handleDocsCommand({ section: 'architecture' })
-
-            expect(openSpy).toHaveBeenCalledWith('https://trydecember.com/docs/architecture')
         })
 
         it('does not crash or throw if openUrl rejects (headless server fallback)', async () => {

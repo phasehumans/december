@@ -99,8 +99,7 @@ describe('Authentication & Multi-Domain Redirection Flow', () => {
             </MemoryRouter>
         )
 
-        const expectedLandingUrl =
-            process.env.DOCS_URL || process.env.LANDING_URL || 'https://trydecember.com'
+        const expectedLandingUrl = process.env.WEB_URL || 'https://trydecember.com'
 
         expect(window.location.replace).toHaveBeenCalledWith(expectedLandingUrl)
         expect(container.querySelector('[aria-label="New Thread"]')).toBeNull()
@@ -135,8 +134,7 @@ describe('Authentication & Multi-Domain Redirection Flow', () => {
         expect(capturedSignOut).not.toBeNull()
         await capturedSignOut!()
 
-        const expectedLandingUrl =
-            process.env.DOCS_URL || process.env.LANDING_URL || 'https://trydecember.com'
+        const expectedLandingUrl = process.env.WEB_URL || 'https://trydecember.com'
 
         expect(signoutMock).toHaveBeenCalledTimes(1)
         expect(useAppStore.getState().isAuthenticated).toBe(false)

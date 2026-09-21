@@ -26,7 +26,7 @@ const {
   showLoader = false,
 } = Astro.props;
 
-const webUrl = import.meta.env.PUBLIC_WEB_URL || (import.meta.env.DEV ? 'http://localhost:3000' : 'https://app.trydecember.com');
+const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localhost:3000' : 'https://app.trydecember.com');
 ---
 
 <!doctype html>
@@ -71,7 +71,7 @@ const webUrl = import.meta.env.PUBLIC_WEB_URL || (import.meta.env.DEV ? 'http://
     <ClientRouter />
 
     <!-- Instant authenticated redirect for root landing page -->
-    <script is:inline define:vars={{ webUrl }}>
+    <script is:inline define:vars={{ appUrl }}>
       (function () {
         function checkAuthRedirect() {
           if (
@@ -80,7 +80,7 @@ const webUrl = import.meta.env.PUBLIC_WEB_URL || (import.meta.env.DEV ? 'http://
               return c.trim().startsWith('december_logged_in=1');
             })
           ) {
-            window.location.replace(webUrl);
+            window.location.replace(appUrl);
           }
         }
         checkAuthRedirect();

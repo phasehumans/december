@@ -108,7 +108,7 @@ const nextItem = currentIdx >= 0 && currentIdx < allSubpages.length - 1 ? allSub
   <div class="mx-auto max-w-[940px] px-6 sm:px-8 md:px-10 lg:px-12 pt-4 pb-16 sm:pt-6 sm:pb-24">
     
     <!-- Breadcrumb Navigation Bar -->
-    <nav class="flex items-center justify-between font-mono text-xs text-[#64748b] mb-8 pb-3 border-b border-[#f1f5f9]">
+    <nav class="flex items-center justify-between font-mono text-xs text-[#64748b] mb-8">
       <div class="flex items-center gap-2">
         <a href="/" class="hover:text-[#090a0f] transition-colors">home</a>
         <span class="text-[#cbd5e1]">/</span>
@@ -126,7 +126,7 @@ const nextItem = currentIdx >= 0 && currentIdx < allSubpages.length - 1 ? allSub
       {!isIndex && (
         <a
           href="/docs"
-          class="inline-flex items-center gap-1.5 text-[#64748b] hover:text-[#090a0f] transition-colors"
+          class="inline-flex items-center gap-1.5 text-[#64748b] hover:text-[#87b2f4] transition-colors font-mono text-xs"
         >
           <span>← Back to Docs</span>
         </a>
@@ -136,35 +136,35 @@ const nextItem = currentIdx >= 0 && currentIdx < allSubpages.length - 1 ? allSub
     <!-- Compact Article Layout (No Sidebar) -->
     <article class="max-w-3xl">
       <!-- Document Header -->
-      <header class="mb-10 pb-6 border-b border-[#f1f5f9]">
-        <h1 class="text-3xl sm:text-4xl font-medium tracking-tight text-[#090a0f] leading-snug">
+      <header class="mb-8">
+        <h1 class="text-2xl sm:text-3xl font-medium tracking-tight text-[#090a0f] leading-snug">
           {title}
         </h1>
         {description && (
-          <p class="mt-3 text-sm sm:text-base text-[#52525b] leading-relaxed">
+          <p class="mt-2.5 text-sm sm:text-[15px] text-[#52525b] leading-relaxed">
             {description}
           </p>
         )}
       </header>
 
       <!-- Markdown / MDX Slot Content -->
-      <div class="docs-prose text-[#334155] text-[15px] leading-relaxed">
+      <div class="docs-prose text-[#52525b] text-sm sm:text-[15px] leading-relaxed">
         <slot />
       </div>
 
       <!-- Overview Page: Documentation Directory Grid with all subpage links -->
       {isIndex && (
-        <section class="mt-14 pt-8 border-t border-[#f1f5f9] space-y-10">
+        <section class="mt-14 space-y-8">
           <div>
-            <h2 class="text-xl font-medium text-[#090a0f] tracking-tight mb-2">
+            <h2 class="text-xl font-medium text-[#090a0f] tracking-tight mb-1.5">
               Documentation Directory
             </h2>
-            <p class="text-sm text-[#64748b]">
+            <p class="text-sm text-[#52525b]">
               Explore guides, architecture deep-dives, CLI references, and integrations.
             </p>
           </div>
 
-          <div class="space-y-8">
+          <div class="space-y-7">
             {docCategories.map((section) => (
               <div>
                 <h3 class="font-mono text-xs uppercase tracking-wider text-[#87b2f4] font-medium mb-3">
@@ -182,7 +182,7 @@ const nextItem = currentIdx >= 0 && currentIdx < allSubpages.length - 1 ? allSub
                           →
                         </span>
                       </div>
-                      <p class="mt-1.5 text-xs text-[#64748b] leading-relaxed">
+                      <p class="mt-1.5 text-xs text-[#52525b] leading-relaxed">
                         {item.desc}
                       </p>
                     </a>
@@ -196,11 +196,11 @@ const nextItem = currentIdx >= 0 && currentIdx < allSubpages.length - 1 ? allSub
 
       <!-- Subpages: Linear Previous / Next Navigation -->
       {!isIndex && (
-        <div class="mt-16 pt-8 border-t border-[#f1f5f9] flex flex-col sm:flex-row items-center justify-between gap-4 font-mono text-xs">
+        <div class="mt-14 flex flex-col sm:flex-row items-center justify-between gap-4 font-mono text-xs">
           {prevItem ? (
             <a
               href={`/docs/${prevItem.slug}`}
-              class="group inline-flex items-center gap-2 p-3 border border-[#e2e8f0] bg-white hover:border-[#87b2f4] text-[#475569] hover:text-[#090a0f] transition-all w-full sm:w-auto"
+              class="group inline-flex items-center gap-2 p-3 border border-[#e2e8f0] bg-white hover:border-[#87b2f4] text-[#090a0f] transition-all w-full sm:w-auto"
             >
               <span class="text-[#94a3b8] group-hover:text-[#87b2f4]">←</span>
               <span>{prevItem.label}</span>
@@ -208,7 +208,7 @@ const nextItem = currentIdx >= 0 && currentIdx < allSubpages.length - 1 ? allSub
           ) : (
             <a
               href="/docs"
-              class="inline-flex items-center gap-2 p-3 border border-[#e2e8f0] bg-white hover:border-[#87b2f4] text-[#475569] hover:text-[#090a0f] transition-all w-full sm:w-auto"
+              class="inline-flex items-center gap-2 p-3 border border-[#e2e8f0] bg-white hover:border-[#87b2f4] text-[#090a0f] transition-all w-full sm:w-auto"
             >
               <span>← Docs Overview</span>
             </a>
@@ -217,7 +217,7 @@ const nextItem = currentIdx >= 0 && currentIdx < allSubpages.length - 1 ? allSub
           {nextItem ? (
             <a
               href={`/docs/${nextItem.slug}`}
-              class="group inline-flex items-center justify-end gap-2 p-3 border border-[#e2e8f0] bg-white hover:border-[#87b2f4] text-[#475569] hover:text-[#090a0f] transition-all w-full sm:w-auto sm:ml-auto"
+              class="group inline-flex items-center justify-end gap-2 p-3 border border-[#e2e8f0] bg-white hover:border-[#87b2f4] text-[#090a0f] transition-all w-full sm:w-auto sm:ml-auto"
             >
               <span>{nextItem.label}</span>
               <span class="text-[#94a3b8] group-hover:text-[#87b2f4]">→</span>
@@ -225,7 +225,7 @@ const nextItem = currentIdx >= 0 && currentIdx < allSubpages.length - 1 ? allSub
           ) : (
             <a
               href="/docs"
-              class="inline-flex items-center gap-2 p-3 border border-[#e2e8f0] bg-white hover:border-[#87b2f4] text-[#475569] hover:text-[#090a0f] transition-all w-full sm:w-auto sm:ml-auto"
+              class="inline-flex items-center gap-2 p-3 border border-[#e2e8f0] bg-white hover:border-[#87b2f4] text-[#090a0f] transition-all w-full sm:w-auto sm:ml-auto"
             >
               <span>Back to Overview ↑</span>
             </a>
@@ -237,29 +237,33 @@ const nextItem = currentIdx >= 0 && currentIdx < allSubpages.length - 1 ? allSub
 </BaseLayout>
 
 <style is:global>
+  .docs-prose {
+    color: #52525b;
+    font-size: 15px;
+    line-height: 1.7;
+  }
+
   .docs-prose h2 {
-    font-size: 1.35rem;
+    font-size: 1.25rem;
     font-weight: 600;
     color: #090a0f;
-    margin-top: 2.25rem;
-    margin-bottom: 0.75rem;
+    margin-top: 2rem;
+    margin-bottom: 0.5rem;
     letter-spacing: -0.02em;
-    border-bottom: 1px solid #f1f5f9;
-    padding-bottom: 0.5rem;
   }
 
   .docs-prose h3 {
-    font-size: 1.1rem;
-    font-weight: 500;
-    color: #0f172a;
-    margin-top: 1.75rem;
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: #090a0f;
+    margin-top: 1.5rem;
     margin-bottom: 0.5rem;
     letter-spacing: -0.01em;
   }
 
   .docs-prose p {
     margin-bottom: 1.25rem;
-    color: #475569;
+    color: #52525b;
     line-height: 1.7;
   }
 
@@ -267,14 +271,14 @@ const nextItem = currentIdx >= 0 && currentIdx < allSubpages.length - 1 ? allSub
     list-style-type: disc;
     padding-left: 1.5rem;
     margin-bottom: 1.25rem;
-    color: #475569;
+    color: #52525b;
   }
 
   .docs-prose ol {
     list-style-type: decimal;
     padding-left: 1.5rem;
     margin-bottom: 1.25rem;
-    color: #475569;
+    color: #52525b;
   }
 
   .docs-prose li {
@@ -287,14 +291,14 @@ const nextItem = currentIdx >= 0 && currentIdx < allSubpages.length - 1 ? allSub
     background-color: #f8fafc;
     color: #090a0f;
     padding: 0.15rem 0.35rem;
-    border-radius: 0.25rem;
+    border-radius: 0;
     border: 1px solid #e2e8f0;
   }
 
   .docs-prose pre {
     background-color: #0c1017 !important;
     border: 1px solid #1e293b;
-    border-radius: 0.5rem;
+    border-radius: 0;
     padding: 1rem;
     overflow-x: auto;
     margin: 1.25rem 0;
@@ -313,8 +317,8 @@ const nextItem = currentIdx >= 0 && currentIdx < allSubpages.length - 1 ? allSub
     background-color: #f8fafc;
     padding: 0.75rem 1rem;
     margin: 1.25rem 0;
-    border-radius: 0 0.375rem 0.375rem 0;
-    color: #475569;
+    border-radius: 0;
+    color: #52525b;
   }
 
   .docs-prose strong {
@@ -323,14 +327,12 @@ const nextItem = currentIdx >= 0 && currentIdx < allSubpages.length - 1 ? allSub
   }
 
   .docs-prose a {
-    color: #2563eb;
+    color: #87b2f4;
     text-decoration: underline;
     text-underline-offset: 2px;
   }
 
   .docs-prose hr {
-    border: 0;
-    border-top: 1px solid #f1f5f9;
-    margin: 2rem 0;
+    display: none;
   }
 </style>

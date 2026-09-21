@@ -27,7 +27,7 @@ describe('Integrations Module Integration Tests', () => {
                 .set('x-forwarded-for', getRandomIP())
 
             expect(res.status).toBe(302)
-            expect(res.headers.location).toBe(`${env.WEB_URL}/custom/redirect`)
+            expect(res.headers.location).toBe(`${env.APP_URL}/custom/redirect`)
         } finally {
             integrationsService.connectVercel = originalConnect
         }
@@ -39,7 +39,7 @@ describe('Integrations Module Integration Tests', () => {
             .set('x-forwarded-for', getRandomIP())
 
         expect(res.status).toBe(302)
-        expect(res.headers.location).toBe(`${env.WEB_URL}/github/callback?code=ghcode123`)
+        expect(res.headers.location).toBe(`${env.APP_URL}/github/callback?code=ghcode123`)
     })
 
     it('4. GET /api/v1/integrations/github/connect - handles oauth connect and redirects (302)', async () => {
@@ -54,7 +54,7 @@ describe('Integrations Module Integration Tests', () => {
                 .set('x-forwarded-for', getRandomIP())
 
             expect(res.status).toBe(302)
-            expect(res.headers.location).toBe(`${env.WEB_URL}/profile/integrations`)
+            expect(res.headers.location).toBe(`${env.APP_URL}/profile/integrations`)
         } finally {
             integrationsService.handleGitHubOAuth = originalHandle
         }
@@ -78,7 +78,7 @@ describe('Integrations Module Integration Tests', () => {
                 .set('x-forwarded-for', getRandomIP())
 
             expect(res.status).toBe(302)
-            expect(res.headers.location).toBe(`${env.WEB_URL}/settings/connections`)
+            expect(res.headers.location).toBe(`${env.APP_URL}/settings/connections`)
         } finally {
             integrationsService.connectSupabase = originalConnect
         }
@@ -94,7 +94,7 @@ describe('Integrations Module Integration Tests', () => {
                 .set('x-forwarded-for', getRandomIP())
 
             expect(res.status).toBe(302)
-            expect(res.headers.location).toBe(`${env.WEB_URL}/settings/connections`)
+            expect(res.headers.location).toBe(`${env.APP_URL}/settings/connections`)
         } finally {
             integrationsService.connectNotion = originalConnect
         }

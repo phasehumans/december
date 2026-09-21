@@ -62,7 +62,7 @@ const handleCallback = asyncHandler(async (req: Request, res: Response) => {
         })
     }
 
-    let redirectTarget = `${env.WEB_URL}${returnUrl.startsWith('/') ? returnUrl : `/${returnUrl}`}`
+    let redirectTarget = `${env.APP_URL}${returnUrl.startsWith('/') ? returnUrl : `/${returnUrl}`}`
     if (returnUrl.startsWith('http://') || returnUrl.startsWith('https://')) {
         try {
             const parsed = new URL(returnUrl)
@@ -71,7 +71,7 @@ const handleCallback = asyncHandler(async (req: Request, res: Response) => {
                 '127.0.0.1',
                 'trydecember.com',
                 'www.trydecember.com',
-                ...(env.WEB_URL ? [new URL(env.WEB_URL).hostname] : []),
+                ...(env.APP_URL ? [new URL(env.APP_URL).hostname] : []),
             ]
             if (
                 allowedHosts.includes(parsed.hostname) ||
@@ -81,7 +81,7 @@ const handleCallback = asyncHandler(async (req: Request, res: Response) => {
                 redirectTarget = returnUrl
             }
         } catch {
-            // Intentionally swallowed: invalid URL fallback to env.WEB_URL
+            // Intentionally swallowed: invalid URL fallback to env.APP_URL
         }
     }
 

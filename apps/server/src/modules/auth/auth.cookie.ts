@@ -7,7 +7,7 @@ const isProduction = env.NODE_ENV === 'production'
 const getCookieDomain = (): string | undefined => {
     if (!isProduction) return undefined
     try {
-        const hostname = new URL(env.WEB_URL).hostname
+        const hostname = new URL(env.APP_URL || env.WEB_URL).hostname
         if (hostname === 'localhost' || hostname === '127.0.0.1') return undefined
 
         // Prevent setting domain cookies on Public Suffixes (which browsers reject)
