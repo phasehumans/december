@@ -46,6 +46,16 @@ const getBaseCookieOptions = () => ({
     ...(cookieDomain ? { domain: cookieDomain } : {}),
 })
 
+const LOGGED_IN_COOKIE_NAME = 'december_logged_in'
+
+const getClientVisibleCookieOptions = () => ({
+    httpOnly: false,
+    secure: isProduction,
+    sameSite: 'lax' as const,
+    path: '/',
+    ...(cookieDomain ? { domain: cookieDomain } : {}),
+})
+
 const SESSION_COOKIE_MAX_AGE = 30 * 24 * 60 * 60 * 1000 // 30 days
 
 const setAuthCookies = (res: Response, accessToken: string, refreshToken?: string) => {
@@ -61,12 +71,22 @@ const setAuthCookies = (res: Response, accessToken: string, refreshToken?: strin
             maxAge: SESSION_COOKIE_MAX_AGE,
         })
     }
+
+    res.cookie(LOGGED_IN_COOKIE_NAME, '1', {
+        ...getClientVisibleCookieOptions(),
+        maxAge: SESSION_COOKIE_MAX_AGE,
+    })
 }
 
 const setAccessTokenCookie = (res: Response, accessToken: string) => {
     const base = getBaseCookieOptions()
     res.cookie('accessToken', accessToken, {
         ...base,
+        maxAge: SESSION_COOKIE_MAX_AGE,
+    })
+
+    res.cookie(LOGGED_IN_COOKIE_NAME, '1', {
+        ...getClientVisibleCookieOptions(),
         maxAge: SESSION_COOKIE_MAX_AGE,
     })
 }
@@ -81,8 +101,10 @@ const setRefreshTokenCookie = (res: Response, refreshToken: string) => {
 
 const clearAuthCookies = (res: Response) => {
     const base = getBaseCookieOptions()
+    const clientBase = getClientVisibleCookieOptions()
     res.clearCookie('accessToken', base)
     res.clearCookie('refreshToken', base)
+    res.clearCookie(LOGGED_IN_COOKIE_NAME, clientBase)
 }
 
 export const authCookie = {

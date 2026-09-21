@@ -26,6 +26,7 @@ export default tseslint.config(
             '**/runtime/**',
             '**/infra/**',
             '**/.december/logs/**',
+            '**/.astro/**',
             '**/packages/database/src/generated/**',
             '**/generated/**',
         ],

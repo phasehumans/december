@@ -42,6 +42,9 @@ describe('apps/docs static build verification', () => {
         // Links to app.trydecember.com for Web Workspace and Login
         expect(indexHtml).toContain('https://app.trydecember.com')
         expect(indexHtml).toContain('https://app.trydecember.com/login')
+
+        // Instant authenticated redirect script for trydecember.com root
+        expect(indexHtml).toContain('december_logged_in=1')
     })
 
     it('docs overview page contains documentation layout and links to subsections', () => {

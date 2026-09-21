@@ -3,7 +3,7 @@ import React from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 
 import { useAppStore } from '@/app/store'
-import { getViewForPath, isPublicPath, toProjectSlug, type ViewState } from '@/app/types'
+import { getViewForPath, toProjectSlug, type ViewState } from '@/app/types'
 import { useChatController } from '@/features/chat/hooks/useChatController'
 import { useNavigationController } from '@/features/navigation/hooks/useNavigationController'
 import { previewAPI } from '@/features/preview/api'
@@ -92,38 +92,46 @@ export const useAppController = () => {
         }
     }, [queryClient, setIsAuthenticated, setIsAuthRestored])
 
-    // Open auth modal when visiting /login or /signup
+    // Handle /login or /signup route behavior
     React.useEffect(() => {
         if (location.pathname === '/login' || location.pathname === '/signup') {
             if (isAuthenticated) {
-                navigate('/', { replace: true })
+                const searchParams = new URLSearchParams(location.search)
+                const redirectTarget = searchParams.get('redirect')
+                if (
+                    redirectTarget &&
+                    redirectTarget.startsWith('/') &&
+                    !redirectTarget.startsWith('//')
+                ) {
+                    navigate(redirectTarget, { replace: true })
+                } else {
+                    navigate('/', { replace: true })
+                }
             } else {
                 setShowAuthModal(true)
             }
         }
-    }, [location.pathname, isAuthenticated, navigate, setShowAuthModal])
+    }, [location.pathname, location.search, isAuthenticated, navigate, setShowAuthModal])
 
     // Redirect unauthenticated visitors attempting to access protected routes or root on app domain
     React.useEffect(() => {
         if (!isAuthRestored || isAuthenticated) return
 
-        const hostname = typeof window !== 'undefined' ? window.location.hostname : ''
-        const isAppProduction =
-            hostname === 'app.trydecember.com' ||
-            (hostname === 'trydecember.com' && process.env.NODE_ENV === 'production')
-
         const landingUrl =
             process.env.DOCS_URL || process.env.LANDING_URL || 'https://trydecember.com'
 
-        if (location.pathname === '/' && isAppProduction) {
-            window.location.replace(landingUrl)
+        if (location.pathname === '/') {
+            if (typeof window !== 'undefined') {
+                window.location.replace(landingUrl)
+            }
             return
         }
 
-        if (!isPublicPath(location.pathname)) {
-            navigate('/login', { replace: true })
+        if (location.pathname !== '/login' && location.pathname !== '/signup') {
+            const redirectTarget = encodeURIComponent(location.pathname + location.search)
+            navigate(`/login?redirect=${redirectTarget}`, { replace: true })
         }
-    }, [isAuthRestored, isAuthenticated, location.pathname, navigate])
+    }, [isAuthRestored, isAuthenticated, location.pathname, location.search, navigate])
 
     const { data: profile } = useQuery({
         queryKey: ['profile'],
@@ -437,6 +445,7 @@ export const useAppController = () => {
     return {
         queryClient,
         view,
+        isAuthRestored,
         isGenerating,
         setIsAuthenticated,
         showAuthModal,

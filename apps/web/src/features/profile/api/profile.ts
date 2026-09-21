@@ -151,6 +151,7 @@ const getQuickInfo = () => {
 const signout = () => {
     return apiRequest<void>('/auth/signout', {
         method: 'POST',
+        keepalive: true,
     })
 }
 

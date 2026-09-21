@@ -104,11 +104,11 @@ export const GithubCallback = () => {
                     </p>
                     <button
                         onClick={() => {
-                            window.location.href = '/'
+                            window.location.href = '/login'
                         }}
                         className="w-full py-2.5 bg-white text-black hover:bg-gray-200 font-medium rounded-xl text-sm transition-colors cursor-pointer"
                     >
-                        Back to App
+                        Back to Login
                     </button>
                 </div>
             </div>

@@ -99,13 +99,28 @@ export const useNavigationController = () => {
         [navigate, requireAuthOr]
     )
 
-    const handleSignOut = React.useCallback(() => {
-        void profileAPI.signout().catch(() => {})
+    const handleSignOut = React.useCallback(async () => {
+        const landingUrl =
+            process.env.DOCS_URL || process.env.LANDING_URL || 'https://trydecember.com'
+        try {
+            document.cookie =
+                'december_logged_in=; Path=/; Domain=.trydecember.com; Expires=Thu, 01 Jan 1970 00:00:01 GMT;'
+            document.cookie = 'december_logged_in=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;'
+        } catch {
+            // Intentionally swallowed: cookie clearing fallback in test/restricted environment
+        }
+        try {
+            await profileAPI.signout()
+        } catch {
+            // Intentionally swallowed: Proceed with client signout and redirect even if network fails
+        }
         setIsAuthenticated(false)
         queryClient.removeQueries({ queryKey: ['sessions'] })
         queryClient.removeQueries({ queryKey: ['profile'] })
-        navigate('/')
-    }, [setIsAuthenticated, queryClient, navigate])
+        if (typeof window !== 'undefined') {
+            window.location.replace(landingUrl)
+        }
+    }, [setIsAuthenticated, queryClient])
 
     const onOpenAuth = React.useCallback(() => {
         setShowAuthModal(true)

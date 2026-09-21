@@ -3,6 +3,7 @@ import { ClientRouter } from 'astro:transitions';
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 import CustomScrollbar from '../components/CustomScrollbar.astro';
+import PageLoader from '../components/PageLoader.astro';
 import '../styles/global.css';
 
 interface Props {
@@ -12,6 +13,7 @@ interface Props {
   activePath?: string;
   hideHeader?: boolean;
   hideFooter?: boolean;
+  showLoader?: boolean;
 }
 
 const {
@@ -21,7 +23,10 @@ const {
   activePath = '/',
   hideHeader = false,
   hideFooter = false,
+  showLoader = false,
 } = Astro.props;
+
+const webUrl = import.meta.env.PUBLIC_WEB_URL || (import.meta.env.DEV ? 'http://localhost:3000' : 'https://app.trydecember.com');
 ---
 
 <!doctype html>
@@ -64,8 +69,27 @@ const {
 
     <!-- Astro View Transitions for instant client navigation -->
     <ClientRouter />
+
+    <!-- Instant authenticated redirect for root landing page -->
+    <script is:inline define:vars={{ webUrl }}>
+      (function () {
+        function checkAuthRedirect() {
+          if (
+            window.location.pathname === '/' &&
+            document.cookie.split(';').some(function (c) {
+              return c.trim().startsWith('december_logged_in=1');
+            })
+          ) {
+            window.location.replace(webUrl);
+          }
+        }
+        checkAuthRedirect();
+        document.addEventListener('astro:page-load', checkAuthRedirect);
+      })();
+    </script>
   </head>
   <body class="min-h-screen flex flex-col bg-white text-[#090a0f] selection:bg-[#87b2f4] selection:text-[#0a1128]">
+    {showLoader && <PageLoader />}
     <CustomScrollbar />
     {!hideHeader && <Header activePath={activePath} />}
     <main class="flex-1">

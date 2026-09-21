@@ -14,15 +14,22 @@ describe('Auth Cookie - Unit Tests', () => {
         expect(cookies.accessToken.options.httpOnly).toBe(true)
         expect(cookies.accessToken.options.sameSite).toBe('lax')
         expect(cookies.accessToken.options.maxAge).toBe(30 * 24 * 60 * 60 * 1000)
+        expect(cookies.december_logged_in).toBeDefined()
+        expect(cookies.december_logged_in.value).toBe('1')
+        expect(cookies.december_logged_in.options.httpOnly).toBe(false)
+        expect(cookies.december_logged_in.options.sameSite).toBe('lax')
     })
 
-    it('setAccessTokenCookie should set only accessToken cookie', () => {
+    it('setAccessTokenCookie should set accessToken and logged_in cookie', () => {
         const res = createMockResponse()
         authCookie.setAccessTokenCookie(res, 'access-token-only')
 
         const cookies = (res as any).cookies
         expect(cookies.accessToken).toBeDefined()
         expect(cookies.accessToken.value).toBe('access-token-only')
+        expect(cookies.december_logged_in).toBeDefined()
+        expect(cookies.december_logged_in.value).toBe('1')
+        expect(cookies.december_logged_in.options.httpOnly).toBe(false)
         expect(cookies.refreshToken).toBeUndefined()
     })
 
@@ -36,7 +43,7 @@ describe('Auth Cookie - Unit Tests', () => {
         expect(cookies.accessToken).toBeUndefined()
     })
 
-    it('clearAuthCookies should clear both auth cookies', () => {
+    it('clearAuthCookies should clear all auth cookies including logged_in', () => {
         const res = createMockResponse()
         authCookie.clearAuthCookies(res)
 
@@ -45,5 +52,7 @@ describe('Auth Cookie - Unit Tests', () => {
         expect(cookies.accessToken.value).toBe('')
         expect(cookies.refreshToken).toBeDefined()
         expect(cookies.refreshToken.value).toBe('')
+        expect(cookies.december_logged_in).toBeDefined()
+        expect(cookies.december_logged_in.value).toBe('')
     })
 })
