@@ -25,6 +25,8 @@
         scroll-behavior: smooth;
         color-scheme: light;
         background-color: #ffffff;
+        overflow-x: hidden;
+        max-width: 100vw;
     }
 
     body {
@@ -35,6 +37,17 @@
         -moz-osx-font-smoothing: grayscale;
         selection-background-color: #87b2f4;
         selection-color: #0a1128;
+        overflow-x: hidden;
+        max-width: 100vw;
+        width: 100%;
+    }
+
+    /* Prevent image and media overflow on mobile */
+    img,
+    video,
+    canvas,
+    svg {
+        max-width: 100%;
     }
 
     ::selection {
@@ -85,6 +98,107 @@
         width: 0 !important;
         height: 0 !important;
     }
+}
+
+/* Documentation & Legal Prose Styling */
+.docs-prose {
+    color: #52525b;
+    font-size: 15px;
+    line-height: 1.7;
+    overflow-wrap: break-word;
+}
+
+.docs-prose section {
+    margin-bottom: 2rem;
+}
+
+.docs-prose h2 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #090a0f;
+    margin-top: 2rem;
+    margin-bottom: 0.5rem;
+    letter-spacing: -0.02em;
+}
+
+.docs-prose h3 {
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: #090a0f;
+    margin-top: 1.5rem;
+    margin-bottom: 0.5rem;
+    letter-spacing: -0.01em;
+}
+
+.docs-prose p {
+    margin-bottom: 1.25rem;
+    color: #52525b;
+    line-height: 1.7;
+}
+
+.docs-prose ul {
+    list-style-type: disc;
+    padding-left: 1.5rem;
+    margin-bottom: 1.25rem;
+    color: #52525b;
+}
+
+.docs-prose ol {
+    list-style-type: decimal;
+    padding-left: 1.5rem;
+    margin-bottom: 1.25rem;
+    color: #52525b;
+}
+
+.docs-prose li {
+    margin-bottom: 0.4rem;
+}
+
+.docs-prose code {
+    font-family: var(--font-mono, monospace);
+    font-size: 0.88em;
+    color: #090a0f;
+    font-weight: 500;
+}
+
+.docs-prose :not(pre) > code {
+    font-family: var(--font-mono, monospace);
+    font-size: 0.84em;
+    color: #090a0f;
+    background-color: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    padding: 0.15rem 0.35rem;
+    border-radius: 2px;
+    font-weight: 500;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.docs-prose blockquote {
+    border: 1px solid #e2e8f0;
+    border-left: 3px solid #87b2f4;
+    background-color: #f8fafc;
+    padding: 0.75rem 1rem;
+    margin: 1.25rem 0;
+    border-radius: 0;
+    color: #52525b;
+}
+
+.docs-prose strong {
+    color: #090a0f;
+    font-weight: 600;
+}
+
+.docs-prose a {
+    color: #87b2f4;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.docs-prose hr {
+    display: none;
 }
 
 /* Supermemory / Hermes Corner Bracket Widget */

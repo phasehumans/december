@@ -28,9 +28,9 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
 
       <!-- Quick Install Command Bar & Cloud Option -->
       <div class="mt-7 max-w-2xl">
-        <div class="flex flex-wrap items-center gap-3">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center gap-2.5 sm:gap-3">
           <!-- Command Bar with Package Manager Dropdown -->
-          <div class="relative flex-1 min-w-0 w-full sm:w-auto sm:min-w-[280px] max-w-[420px]" id="hero-install-container">
+          <div class="relative w-full sm:w-auto sm:flex-1 sm:min-w-[280px] max-w-[420px]" id="hero-install-container">
             <div class="h-10 flex items-center justify-between border border-[#e2e8f0] bg-white rounded-none pl-3 sm:pl-3.5 pr-1.5 shadow-xs transition-all hover:border-[#cbd5e1]">
               <!-- Command Text button -->
               <button
@@ -90,7 +90,7 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
                 data-pm="npm"
                 data-cmd="npm install -g @trydecember/cli"
               >
-                <svg class="w-4 h-4 text-[#cb3837] shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                <svg class="w-4 h-4 text-[#cb3837]" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M1.763 0C.786 0 0 .786 0 1.763v20.474C0 23.214.786 24 1.763 24h20.474c.977 0 1.763-.786 1.763-1.763V1.763C24 .786 23.214 0 22.237 0zM5.13 5.323l13.837.019-.009 13.836h-3.464l.01-10.382h-3.456L12.04 19.17H5.113z"/>
                 </svg>
                 <span class="font-medium">npm</span>
@@ -150,12 +150,12 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
           </div>
 
           <!-- Divider: or -->
-          <span class="font-mono text-xs text-[#94a3b8] font-normal select-none">or</span>
+          <span class="hidden sm:inline font-mono text-xs text-[#94a3b8] font-normal select-none">or</span>
 
           <!-- Cloud / Web: Get Started Button -->
           <a
             href={`${appUrl}/login`}
-            class="corner-brackets relative h-10 inline-flex items-center gap-2 border border-[#e2e8f0] bg-[#EDF4FE] px-4 font-mono text-xs uppercase tracking-wider text-[#1e293b] font-medium hover:border-[#87b2f4] hover:shadow-xs transition-all active:scale-[0.98] shrink-0"
+            class="corner-brackets relative h-10 inline-flex items-center justify-center gap-2 border border-[#e2e8f0] bg-[#EDF4FE] px-4 font-mono text-xs uppercase tracking-wider text-[#1e293b] font-medium hover:border-[#87b2f4] hover:shadow-xs transition-all active:scale-[0.98] shrink-0"
           >
             <span class="corner-brackets-tr"></span>
             <span class="corner-brackets-bl"></span>
@@ -167,7 +167,7 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
         </div>
 
         <!-- USE API KEYS FOR Strip -->
-        <div class="mt-6 border border-[#e2e8f0] bg-[#f8fafc]/50 px-3 sm:px-3.5 py-2 flex flex-nowrap sm:flex-wrap items-center gap-x-2 sm:gap-x-2.5 gap-y-2 overflow-x-hidden sm:overflow-visible transition-colors hover:border-[#cbd5e1]">
+        <div class="mt-5 sm:mt-6 py-1 flex flex-nowrap sm:flex-wrap items-center gap-x-2 sm:gap-x-2.5 gap-y-2 overflow-x-hidden sm:overflow-visible">
           <span class="font-mono text-[10px] sm:text-xs text-[#64748b] font-medium tracking-wider shrink-0 mr-0.5 sm:mr-1">USE API KEYS FOR</span>
             <!-- OpenAI -->
             <span title="OpenAI" class="hover:opacity-80 transition-opacity cursor-pointer inline-flex items-center shrink-0">
@@ -246,6 +246,21 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
               </svg>
             </span>
 
+            <!-- Fireworks AI -->
+            <span title="Fireworks AI" class="hover:opacity-80 transition-opacity cursor-pointer hidden sm:inline-flex items-center shrink-0">
+              <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="#E2231A">
+                <path clip-rule="evenodd" d="M14.8 5l-2.801 6.795L9.195 5H7.397l3.072 7.428a1.64 1.64 0 003.038.002L16.598 5H14.8zm1.196 10.352l5.124-5.244-.699-1.669-5.596 5.739a1.664 1.664 0 00-.343 1.807 1.642 1.642 0 001.516 1.012L16 17l8-.02-.699-1.669-7.303.041h-.002zM2.88 10.104l.699-1.669 5.596 5.739c.468.479.603 1.189.343 1.807a1.643 1.643 0 01-1.516 1.012l-8-.018-.002.002.699-1.669 7.303.042-5.122-5.246z" fill-rule="evenodd"></path>
+              </svg>
+            </span>
+
+            <!-- Cerebras -->
+            <span title="Cerebras" class="hover:opacity-80 transition-opacity cursor-pointer hidden sm:inline-flex items-center shrink-0">
+              <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="#FF5E00">
+                <path clip-rule="evenodd" d="M14.121 2.701a9.299 9.299 0 000 18.598V22.7c-5.91 0-10.7-4.791-10.7-10.701S8.21 1.299 14.12 1.299V2.7zm4.752 3.677A7.353 7.353 0 109.42 17.643l-.901 1.074a8.754 8.754 0 01-1.08-12.334 8.755 8.755 0 0112.335-1.08l-.901 1.075zm-2.255.844a5.407 5.407 0 00-5.048 9.563l-.656 1.24a6.81 6.81 0 016.358-12.043l-.654 1.24zM14.12 8.539a3.46 3.46 0 100 6.922v1.402a4.863 4.863 0 010-9.726v1.402z" fill-rule="evenodd"></path>
+                <path d="M15.407 10.836a2.24 2.24 0 00-.51-.409 1.084 1.084 0 00-.544-.152c-.255 0-.483.047-.684.14a1.58 1.58 0 00-.84.912c-.074.203-.11.416-.11.631 0 .218.036.43.11.631a1.594 1.594 0 00.84.913c.2.093.43.14.684.14.216 0 .417-.046.602-.135.188-.09.35-.225.475-.392l.928 1.006c-.14.14-.3.261-.482.363a3.367 3.367 0 01-1.083.38c-.17.026-.317.04-.44.04a3.315 3.315 0 01-1.182-.21 2.825 2.825 0 01-.961-.597 2.816 2.816 0 01-.644-.929 2.987 2.987 0 01-.238-1.21c0-.444.08-.847.238-1.21.15-.35.368-.666.643-.929.278-.261.605-.464.962-.596a3.315 3.315 0 011.182-.21c.355 0 .712.068 1.072.204.361.138.685.36.944.649l-.962.97z"></path>
+              </svg>
+            </span>
+
             <!-- Ollama -->
             <span title="Ollama" class="hover:opacity-80 transition-opacity cursor-pointer inline-flex items-center shrink-0">
               <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="#090a0f">
@@ -258,7 +273,7 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
             href="/docs/integrations"
             class="font-mono text-[10px] sm:text-xs text-[#64748b] hover:text-[#090a0f] transition-colors whitespace-nowrap shrink-0 ml-0.5 sm:ml-1"
           >
-            <span class="sm:hidden">+50 more</span><span class="hidden sm:inline">and 50+ more providers</span>
+            <span class="sm:hidden">and 50+ more</span><span class="hidden sm:inline">and 50+ more providers</span>
           </a>
         </div>
       </div>
@@ -664,7 +679,7 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
 
 
     <!-- FAQ Section -->
-    <section id="faq" class="mb-16 sm:mb-20">
+    <section id="faq" class="mb-11 sm:mb-14">
       <div class="max-w-2xl mb-6 sm:mb-8">
         <h2 class="font-mono text-xs uppercase tracking-wider text-[#87b2f4] font-medium mb-1.5">
           FAQ
@@ -815,7 +830,7 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
     </section>
 
     <!-- Brand Banner above Footer -->
-    <div class="mt-3 sm:mt-4 mb-1 sm:mb-2">
+    <div class="mb-1 sm:mb-2">
       <div class="relative w-full bg-[#f0f7ff] overflow-hidden group transition-all">
         <!-- Blue Particle F1 Car Background Image spanning full width -->
         <img
@@ -840,7 +855,7 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
             <div class="mt-3">
               <a
                 href="/docs/quickstart"
-                class="inline-flex items-center gap-1.5 font-mono text-xs font-medium text-[#2563eb] hover:text-[#1d4ed8] hover:underline transition-all"
+                class="inline-flex items-center gap-1.5 font-mono text-xs font-medium text-[#87b2f4] hover:text-[#090a0f] transition-colors"
               >
                 Quickstart guide ↗
               </a>

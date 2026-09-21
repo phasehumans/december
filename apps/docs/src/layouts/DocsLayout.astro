@@ -105,11 +105,11 @@ const nextItem = currentIdx >= 0 && currentIdx < allSubpages.length - 1 ? allSub
   hideFooter={false}
 >
   <!-- Main Container: Identical horizontal gap/margins to landing page and header -->
-  <div class="mx-auto max-w-[940px] px-6 sm:px-8 md:px-10 lg:px-12 pt-8 pb-16 sm:pt-12 sm:pb-24">
+  <div class="mx-auto max-w-[940px] px-6 sm:px-8 md:px-10 lg:px-12 pt-8 pb-16 sm:pt-12 sm:pb-24 min-w-0">
     
     <!-- Breadcrumb Navigation Bar -->
-    <nav class="flex items-center font-mono text-xs text-[#64748b] mb-8">
-      <div class="flex items-center gap-2">
+    <nav class="flex items-center flex-wrap font-mono text-xs text-[#64748b] mb-8">
+      <div class="flex items-center flex-wrap gap-2">
         <a href="/" class="hover:text-[#090a0f] transition-colors">home</a>
         <span class="text-[#cbd5e1]">/</span>
         {isIndex ? (
@@ -125,9 +125,9 @@ const nextItem = currentIdx >= 0 && currentIdx < allSubpages.length - 1 ? allSub
     </nav>
 
     <!-- Article Layout: Spans full width matching landing page structure -->
-    <article class="w-full">
+    <article class="w-full min-w-0 max-w-full">
       <!-- Document Header -->
-      <header class="mb-8 max-w-3xl">
+      <header class="mb-8 max-w-3xl min-w-0">
         <h1 class="text-2xl sm:text-3xl font-medium tracking-tight text-[#090a0f] leading-snug">
           {title}
         </h1>
@@ -139,7 +139,7 @@ const nextItem = currentIdx >= 0 && currentIdx < allSubpages.length - 1 ? allSub
       </header>
 
       <!-- Markdown / MDX Slot Content -->
-      <div class="docs-prose text-[#52525b] text-sm sm:text-[15px] leading-relaxed">
+      <div class="docs-prose min-w-0 max-w-full text-[#52525b] text-sm sm:text-[15px] leading-relaxed">
         <slot />
       </div>
 
@@ -302,6 +302,7 @@ const nextItem = currentIdx >= 0 && currentIdx < allSubpages.length - 1 ? allSub
     color: #52525b;
     font-size: 15px;
     line-height: 1.7;
+    overflow-wrap: break-word;
   }
 
   .docs-prose h2 {
@@ -362,6 +363,8 @@ const nextItem = currentIdx >= 0 && currentIdx < allSubpages.length - 1 ? allSub
     padding: 0.15rem 0.35rem;
     border-radius: 2px;
     font-weight: 500;
+    overflow-wrap: anywhere;
+    word-break: break-word;
   }
 
   /* Minimalist Code Block Container & Pre - Zero Scrollbars, Clean Wrapping */
@@ -484,11 +487,20 @@ const nextItem = currentIdx >= 0 && currentIdx < allSubpages.length - 1 ? allSub
   /* Table styling matching landing page cards */
   .docs-prose table {
     width: 100%;
+    max-width: 100%;
     border-collapse: collapse;
     margin: 1.5rem 0;
     border: 1px solid #e2e8f0;
     background-color: #ffffff;
     box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.02);
+  }
+
+  @media (max-width: 640px) {
+    .docs-prose table {
+      display: block;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
   }
 
   .docs-prose th {
@@ -538,6 +550,8 @@ const nextItem = currentIdx >= 0 && currentIdx < allSubpages.length - 1 ? allSub
     color: #87b2f4;
     text-decoration: underline;
     text-underline-offset: 2px;
+    overflow-wrap: anywhere;
+    word-break: break-word;
   }
 
   .docs-prose hr {

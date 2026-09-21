@@ -88,11 +88,11 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
       })();
     </script>
   </head>
-  <body class="min-h-screen flex flex-col bg-white text-[#090a0f] selection:bg-[#87b2f4] selection:text-[#0a1128]">
+  <body class="min-h-screen flex flex-col bg-white text-[#090a0f] selection:bg-[#87b2f4] selection:text-[#0a1128] overflow-x-hidden w-full max-w-[100vw]">
     {showLoader && <PageLoader />}
     <CustomScrollbar />
     {!hideHeader && <Header activePath={activePath} />}
-    <main class="flex-1">
+    <main class="flex-1 w-full max-w-[100vw] overflow-x-hidden">
       <slot />
     </main>
     {!hideFooter && <Footer />}
